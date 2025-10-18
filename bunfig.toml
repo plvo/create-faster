@@ -1,0 +1,6 @@
+[test]
+coverageSkipTestFiles = true
+coverageThreshold = 0.9
+coverageDir = "coverage"
+coverageReporter = ["text"]
+coveragePathIgnorePatterns = ["**/*/tests/**/*", "**/*.test.ts", "**/*.spec.ts"]

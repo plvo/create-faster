@@ -1,17 +1,37 @@
 {
-  "name": "create-quick",
-  "private": true,
+  "name": "create-faster-repository",
+  "description": "A quick way to create a new project",
+  "version": "0.0.1",
+  "author": "plvo <plvdev@proton.me>",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
   "scripts": {
+    "check": "biome check --write .",
+    "check:unused": "knip",
+    "clean": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\"",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
     "build": "turbo run build",
+    "build:cli": "turbo run build --filter=create-faster",
+    "build:www": "turbo run build --filter=create-faster-www",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "dev:cli": "turbo run dev --filter=create-faster",
+    "dev:www": "turbo run dev --filter=create-faster-www",
+    "start": "turbo run start",
+    "start:cli": "turbo run start --filter=create-faster",
+    "start:www": "turbo run start --filter=create-faster-www",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "prettier": "^3.6.2",
+    "@biomejs/biome": "^2.2.6",
+    "husky": "^9.1.7",
+    "knip": "^5.66.0",
+    "rimraf": "^6.0.1",
     "turbo": "^2.5.8",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "@tailwindcss/postcss": "^4.0.8",
+    "tailwindcss": "^4"
   },
   "engines": {
     "node": ">=18"

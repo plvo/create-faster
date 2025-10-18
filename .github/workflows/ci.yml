@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: "🧪 Test & Quality"
+    runs-on: ubuntu-latest
+    outputs:
+      build-success: ${{ steps.build.outcome == 'success' }}
+
+    steps:
+      - name: "📥 Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "🔧 Setup Bun Runtime"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "📦 Install Dependencies"
+        run: bun install
+
+      - name: "🏗️ Build Check"
+        id: build
+        run: ls && bun run build
+
+      - name: "💾 Cache Build Artifacts"
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            dist/
+            node_modules/
+          key: build-${{ github.sha }}-${{ hashFiles('**/bun.lock') }}

@@ -21,11 +21,15 @@ coverage
 # Vercel
 .vercel
 
-# Build Outputs
+# Next.js
 .next/
+next-env.d.ts
+
+# Build Outputs
 out/
 build
 dist
+create-faster
 
 
 # Debug
