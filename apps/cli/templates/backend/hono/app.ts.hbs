@@ -1,0 +1,56 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { timeout } from 'hono/timeout';
+
+const app = new Hono();
+
+app.use(logger());
+app.use(timeout(15000));
+
+app.use(
+  '*',
+  cors({
+    origin: ['*'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['GET', 'POST'],
+  }),
+);
+
+app.notFound((c) => {
+  return c.json(
+    {
+      ok: false,
+      message: 'Not found',
+    },
+    404,
+  );
+});
+
+app.get('/health/:id', (c) => {
+  const { id } = c.req.param();
+  return c.json(
+    {
+      ok: true,
+      message: 'Health check',
+      data: {
+        id,
+      },
+    },
+    200,
+  );
+});
+
+app.onError((err, c) => {
+  console.error('Error:', err);
+  return c.json(
+    {
+      ok: false,
+      message: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    },
+    500,
+  );
+});
+
+export default app;

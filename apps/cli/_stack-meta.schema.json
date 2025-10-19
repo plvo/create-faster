@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "create-faster stack-meta Schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "The path to the schema file."
+    },
+    "templates": {
+      "type": "object",
+      "description": "Top-level template category (e.g., backend, database, orm, repo, extras, etc.).",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+$": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z0-9_.-]+\\.hbs$": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string",
+                    "description": "Target destination path for this context glob."
+                  },
+                  "description": "Map of context globs (e.g., 'single.*', 'turborepo.*', '*', etc.) to destination paths."
+                }
+              },
+              "additionalProperties": false,
+              "description": "Templates for subcategory."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Template subcategories (e.g., frameworks, database engines, etc.)."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["templates"],
+  "additionalProperties": false
+}

@@ -1,0 +1,17 @@
+detect_package_manager() {
+  if [ -f "bun.lock" ]; then
+    echo "bun"
+  elif [ -f "pnpm-lock.yaml" ]; then
+    echo "pnpm"
+  elif [ -f "yarn.lock" ]; then
+    echo "yarn"
+  elif [ -f "package-lock.json" ]; then
+    echo "npm"
+  else
+    echo "bun"
+  fi
+}
+
+PACKAGE_MANAGER=$(detect_package_manager)
+
+$PACKAGE_MANAGER run format

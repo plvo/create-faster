@@ -1,0 +1,32 @@
+#!/bin/sh
+
+commit_msg=$(cat "$1")
+
+type=$(echo "$commit_msg" | awk 'match($0, /^(build|ci|feat|fix|perf|refactor|style|docs|test|chore|revert|workflow|wip|security)/) {print substr($0, RSTART, RLENGTH)}')
+
+if [ -z "$type" ]; then
+    echo "❌ Invalid commit type!"
+    echo "Allowed types:" 
+    echo "• build 🏗️"
+    echo "• ci 👷"
+    echo "• feat ✨"
+    echo "• fix 🐛"
+    echo "• perf ⚡"
+    echo "• refactor ♻️"
+    echo "• style 💄"
+    echo "• docs 📝"
+    echo "• test 🧪"
+    echo "• chore 🔧"
+    echo "• revert ⏪"
+    echo "• workflow 📋"
+    echo "• wip ⏳"
+    echo "• security 🔒"
+    echo ""
+    echo "Expected format: <type>(<scope>): <subject>"
+    echo "Example: feat(auth): add email login"
+    exit 1
+fi
+
+echo "✅ Commit message is valid!"
+
+exit 0
