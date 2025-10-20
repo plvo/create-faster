@@ -1,125 +1,83 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: nope */
+
 import * as p from '@clack/prompts';
-import { program } from 'commander';
 import { META } from '@/__meta__';
-import { mergeOptions, validateOptions } from '@/lib/options';
 import type { Config } from '@/lib/schema';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { Category, TemplateContext } from '@/types';
+import type { App, Platform, TemplateContext } from '@/types';
+import { promptMultiselect, promptSelect, promptText } from './lib/prompts';
 
-interface RawFlags {
-  name?: string;
-  framework?: string;
-  frameworkApp?: string;
-  backend?: string;
-  backendApp?: string;
-  orm?: string;
-  database?: string;
-  extras?: string[];
-}
-
-function parseFlags(): Partial<Config> {
-  program
-    .name('create-faster')
-    .description('A quick way to create a new project')
-    .option('--name <string>', 'Project name')
-    .option('--framework <type>', 'Framework (nextjs)')
-    .option('--framework-app <name>', 'Framework app name', 'web')
-    .option('--backend <type>', 'Backend (hono)')
-    .option('--backend-app <name>', 'Backend app name', 'api')
-    .option('--orm <type>', 'ORM (prisma|drizzle)')
-    .option('--database <type>', 'Database (postgres)')
-    .option('--extras <items...>', 'Extras (biome, git, husky)')
-    .parse();
-
-  const raw = program.opts<RawFlags>();
-
-  // Transform raw flags to Config format
-  return {
-    name: raw.name,
-    framework: raw.framework ? { stack: raw.framework, appName: raw.frameworkApp || 'web' } : undefined,
-    backend: raw.backend ? { stack: raw.backend, appName: raw.backendApp || 'api' } : undefined,
-    orm: raw.orm,
-    database: raw.database,
-    extras: raw.extras,
-  };
-}
-
-function hasAnyFlags(flags: Partial<Config>): boolean {
-  return Object.keys(flags).length > 0;
-}
-
-async function cli(partial: Partial<Config> = {}): Promise<Config> {
+async function cli(): Promise<Config> {
   p.intro('create-faster');
 
-  const name = await promptText('Project name?', partial.name, {
+  const name = await promptText('Project name?', {
     placeholder: 'my-app',
-    defaultValue: 'my-app',
+    initialValue: 'my-app',
     validate: (value) => {
-      if (!value) return 'Project name is required';
+      if (!value || value.trim() === '') return 'Project name is required';
     },
   });
 
-  // Framework
-  const frameworkStack = await promptSelect('framework', 'Framework?', partial.framework?.stack, { allowNone: true });
-  const frameworkAppName = frameworkStack
-    ? await promptText(`Framework app name?`, partial.framework?.appName, {
-        defaultValue: 'web',
-      })
-    : undefined;
-
-  const framework =
-    frameworkStack && frameworkAppName
-      ? {
-          stack: frameworkStack,
-          appName: frameworkAppName,
-        }
-      : undefined;
-
-  // Backend
-  const backendStack = await promptSelect('backend', 'Backend?', partial.backend?.stack, { allowNone: true });
-  const backendAppName = backendStack
-    ? await promptText(`Backend app name?`, partial.backend?.appName, {
-        defaultValue: 'api',
-      })
-    : undefined;
-
-  const backend =
-    backendStack && backendAppName
-      ? {
-          stack: backendStack,
-          appName: backendAppName,
-        }
-      : undefined;
-
-  const orm = await promptSelect('orm', 'ORM?', partial.orm, { allowNone: true });
-  const database = await promptSelect('database', 'Database?', partial.database, {
-    allowNone: true,
-    skip: !orm,
+  const appCount = await promptText<number>('How many apps?', {
+    initialValue: '1',
+    placeholder: '1',
+    validate: (value) => {
+      const num = Number(value);
+      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
+    },
   });
-  const extras = await promptMultiselect('extras', 'Select extras:', partial.extras);
+
+  const apps: App[] = [];
+
+  for (let i = 0; i < Number(appCount); i++) {
+    const app = await promptApp(i + 1);
+    apps.push(app);
+  }
+
+  const database = await promptSelect('database', 'Database?', { allowNone: true });
+  const orm = await promptSelect('orm', 'ORM?', { allowNone: true, skip: !database });
+  const extras = await promptMultiselect('extras', 'Extras?');
 
   p.outro('Configuration complete!');
 
   return {
-    name,
-    framework,
-    backend,
+    name: name!,
+    apps,
     orm,
     database,
     extras,
   };
 }
 
-async function promptText(
-  message: string,
-  partial?: string,
-  options?: Partial<p.TextOptions>,
-): Promise<string | undefined> {
-  if (partial) return partial;
+async function promptApp(index: number): Promise<App> {
+  const name = await promptText(`App ${index} - Name? (folder name)`, {
+    defaultValue: `app-${index}`,
+    placeholder: `app-${index}`,
+    validate: (value) => {
+      if (!value || value.trim() === '') return 'App name is required';
+    },
+  });
 
-  const result = await p.text({
+  const platform = await promptPlatform(`App ${index} - Platform?`);
+  const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
+  const backend = await promptBackendForApp(name || 'app', platform, framework || '');
+
+  return {
+    name: name!,
+    platform,
+    framework: framework!,
+    backend,
+  };
+}
+
+async function promptPlatform(message: string): Promise<Platform> {
+  const result = await p.select({
     message,
-    ...options,
+    options: [
+      { value: 'web' as Platform, label: 'Web', hint: 'Next.js, Astro...' },
+      { value: 'api' as Platform, label: 'API/Server', hint: 'Hono, Express...' },
+      { value: 'mobile' as Platform, label: 'Mobile', hint: 'Expo, React Native' },
+    ],
   });
 
   if (p.isCancel(result)) {
@@ -127,68 +85,78 @@ async function promptText(
     process.exit(0);
   }
 
-  return result;
+  return result as Platform;
 }
 
-async function promptSelect<C extends Category>(
-  category: C,
-  message: string,
-  partial?: string,
-  options?: { allowNone?: boolean; skip?: boolean },
+async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<string | undefined> {
+  const stacks = META[platform].stacks;
+
+  const options = Object.entries(stacks).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  const result = await p.select({ message, options });
+
+  if (p.isCancel(result)) {
+    p.cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  return result as string;
+}
+
+async function promptBackendForApp(
+  appName: string,
+  platform: Platform,
+  framework: string,
 ): Promise<string | undefined> {
-  if (partial) return partial;
-  if (options?.skip) return undefined;
+  const frameworkMeta = META[platform].stacks[framework];
 
-  const selectOptions: p.Option<string | undefined>[] = Object.entries(META[category].stacks).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
+  const options: p.Option<string | undefined>[] = [];
 
-  if (options?.allowNone) {
-    selectOptions.push({ value: undefined, label: 'None', hint: undefined });
+  // Si framework a backend intégré
+  if (frameworkMeta?.hasBackend) {
+    options.push({
+      value: 'builtin',
+      label: `Use ${frameworkMeta.label} built-in`,
+      hint: 'API routes, server actions',
+    });
   }
 
-  const result = await p.select({ message, options: selectOptions });
+  // Toujours proposer backends dédiés
+  Object.entries(META.api.stacks).forEach(([key, meta]) => {
+    options.push({
+      value: key,
+      label: meta.label,
+      hint: meta.hint,
+    });
+  });
+
+  // None seulement si le framework n'a pas de backend intégré
+  if (!frameworkMeta?.hasBackend) {
+    options.push({ value: undefined, label: 'None' });
+  }
+
+  const result = await p.select({
+    message: `${appName} - Backend?`,
+    options,
+  });
 
   if (p.isCancel(result)) {
     p.cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result;
-}
-
-async function promptMultiselect<C extends Category>(
-  category: C,
-  message: string,
-  partial?: string[],
-): Promise<string[] | undefined> {
-  if (partial) return partial;
-
-  const selectOptions = Object.entries(META[category].stacks).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
-
-  const result = await p.multiselect({ message, options: selectOptions, required: false });
-
-  if (p.isCancel(result)) {
-    p.cancel('Operation cancelled');
-    process.exit(0);
-  }
-
-  return result;
+  return result as string | undefined;
 }
 
 async function main() {
-  const flags = parseFlags();
-
-  const config: Config = hasAnyFlags(flags) ? mergeOptions(validateOptions(flags), await cli(flags)) : await cli();
+  const config = await cli();
 
   const ctx: TemplateContext = {
-    repo: config.framework && config.backend ? 'turborepo' : 'single',
+    repo: config.apps.length > 1 ? 'turborepo' : 'single',
     ...config,
   };
 

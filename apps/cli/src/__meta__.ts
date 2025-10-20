@@ -1,21 +1,40 @@
 import type { Meta } from './types';
 
 export const META: Meta = {
-  framework: {
+  web: {
     scope: 'app',
     stacks: {
       nextjs: {
         label: 'Next.js',
         hint: 'React framework with SSR',
+        hasBackend: true,
+      },
+      astro: {
+        label: 'Astro',
+        hint: 'Static site generator',
+        hasBackend: false,
       },
     },
   },
-  backend: {
+  api: {
     scope: 'app',
     stacks: {
       hono: {
         label: 'Hono',
         hint: 'Fast web framework',
+      },
+      express: {
+        label: 'Express',
+        hint: 'Node.js framework',
+      },
+    },
+  },
+  mobile: {
+    scope: 'app',
+    stacks: {
+      expo: {
+        label: 'Expo',
+        hint: 'React Native framework',
       },
     },
   },
