@@ -1,98 +1,75 @@
-import { type Category, META, type StackForCategory } from '@/__meta__';
+import { Glob } from 'bun';
+import { META } from '@/__meta__';
+import type { Category, Scope, TemplateContext } from '@/types';
 
-export interface TemplateContext {
-  repo: StackForCategory<'repo'>;
-  framework?: StackForCategory<'framework'>;
-  backend?: StackForCategory<'backend'>;
-  orm?: StackForCategory<'orm'>;
-  database?: StackForCategory<'database'>;
-  extras?: StackForCategory<'extras'>[];
+/**
+ * Scanne tous les fichiers .hbs dans un dossier de templates
+ */
+function scanTemplates(category: Category, stack: string): string[] {
+  const dir = `${import.meta.dir}/../../templates/${category}/${stack}`;
+  const glob = new Glob('**/*.hbs');
+
+  return Array.from(glob.scanSync({ cwd: dir })).map((f) => f.toString());
 }
 
 /**
- * Résout le chemin de destination d'un template selon le contexte
- *
- * Logique de matching :
- * 1. Match exact "single.nextjs" ou "turborepo.nextjs"
- * 2. Wildcard framework "single.*" ou "turborepo.*"
- * 3. Wildcard complet "*"
+ * Résout le chemin de destination selon le scope et le contexte
  */
-export function resolveTemplatePath<C extends Category, S extends StackForCategory<C>>(
-  category: C,
-  stack: S,
-  filename: string,
-  context: TemplateContext,
-): string {
-  const categoryMeta = META[category];
+function resolveDestination(relativePath: string, category: Category, scope: Scope, context: TemplateContext): string {
+  // Enlever extension .hbs
+  const cleanPath = relativePath.replace('.hbs', '');
 
-  if (!categoryMeta) {
-    throw new Error(`Category not found: ${category}`);
+  if (context.repo === 'single') {
+    return cleanPath;
   }
 
-  const stackData = categoryMeta[stack];
-  if (!stackData) {
-    throw new Error(`Stack not found: ${category}/${String(stack)}`);
+  // turborepo
+  switch (scope) {
+    case 'app': {
+      // Déterminer le bon appName selon la catégorie
+      let appName = 'app';
+      if (category === 'framework' && context.framework) {
+        appName = context.framework.appName;
+      } else if (category === 'backend' && context.backend) {
+        appName = context.backend.appName;
+      }
+      return `apps/${appName}/${cleanPath}`;
+    }
+    case 'package': {
+      const packageName = META[category].packageName || 'shared';
+      return `packages/${packageName}/${cleanPath}`;
+    }
+    case 'root':
+      return cleanPath;
   }
-
-  const fileMeta = stackData.templates[filename];
-  if (!fileMeta) {
-    throw new Error(`File not found: ${category}/${String(stack)}/${filename}`);
-  }
-
-  const paths = fileMeta as Record<string, string>;
-  const slug = context.framework ? `${context.repo}.${context.framework}` : context.repo;
-
-  // 1. Match exact (ex: "single.nextjs" ou "turborepo.nextjs")
-  if (paths[slug]) {
-    return paths[slug];
-  }
-
-  // 2. Wildcard framework (ex: "single.*" ou "turborepo.*")
-  const monorepoWildcard = `${context.repo}.*`;
-  if (paths[monorepoWildcard]) {
-    return paths[monorepoWildcard];
-  }
-
-  // 3. Wildcard complet (ex: "*")
-  if (paths['*']) {
-    return paths['*'];
-  }
-
-  throw new Error(`No path mapping found for ${category}/${String(stack)}/${filename} with context: ${slug}`);
 }
 
 /**
  * Liste tous les templates à générer pour une stack donnée
  */
-export function getTemplatesForStack<C extends Category, S extends StackForCategory<C>>(
-  category: C,
-  stack: S,
+export function getTemplatesForStack(
+  category: Category,
+  stack: string,
   context: TemplateContext,
 ): Array<{ source: string; destination: string }> {
   const categoryMeta = META[category];
 
-  if (!categoryMeta) {
+  if (!categoryMeta || !categoryMeta.stacks[stack]) {
     return [];
   }
 
-  const stackData = categoryMeta[stack];
-  if (!stackData) {
+  try {
+    const files = scanTemplates(category, stack);
+    const scope = categoryMeta.scope;
+
+    return files.map((file) => ({
+      source: `templates/${category}/${stack}/${file}`,
+      destination: resolveDestination(file, category, scope, context),
+    }));
+  } catch {
+    // Si le dossier n'existe pas, retourner tableau vide
     return [];
   }
-
-  const result: Array<{ source: string; destination: string }> = [];
-
-  for (const filename of Object.keys(stackData.templates)) {
-    try {
-      const destination = resolveTemplatePath(category, stack, filename, context);
-      const source = `templates/${category}/${String(stack)}/${filename}`;
-      result.push({ source, destination });
-    } catch {
-      // Skip si pas de mapping pour ce contexte
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -103,12 +80,12 @@ export function getAllTemplatesForContext(context: TemplateContext): Array<{ sou
 
   // Framework
   if (context.framework) {
-    result.push(...getTemplatesForStack('framework', context.framework, context));
+    result.push(...getTemplatesForStack('framework', context.framework.stack, context));
   }
 
   // Backend
   if (context.backend) {
-    result.push(...getTemplatesForStack('backend', context.backend, context));
+    result.push(...getTemplatesForStack('backend', context.backend.stack, context));
   }
 
   // ORM
@@ -121,9 +98,6 @@ export function getAllTemplatesForContext(context: TemplateContext): Array<{ sou
     result.push(...getTemplatesForStack('database', context.database, context));
   }
 
-  // Repo
-  result.push(...getTemplatesForStack('repo', context.repo, context));
-
   // Extras
   if (context.extras) {
     for (const extra of context.extras) {
@@ -133,20 +107,3 @@ export function getAllTemplatesForContext(context: TemplateContext): Array<{ sou
 
   return result;
 }
-
-/**
- * Exemple d'utilisation :
- *
- * const ctx = {
- *   repo: 'turborepo',
- *   framework: 'nextjs',
- *   orm: 'prisma',
- *   extras: ['biome', 'husky']
- * };
- *
- * const dest = resolveTemplatePath('orm', 'prisma', 'schema.prisma.hbs', ctx);
- * // => 'packages/db/prisma/schema.prisma'
- *
- * const allTemplates = getAllTemplatesForContext(ctx);
- * // => [{ source: 'templates/...', destination: '...' }, ...]
- */

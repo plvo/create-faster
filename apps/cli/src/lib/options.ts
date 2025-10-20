@@ -1,6 +1,5 @@
 import { log } from '@clack/prompts';
 import { validateCompatibility } from './compatibility';
-import type { FlagOptions } from './flags';
 import type { Config } from './schema';
 import { configSchema } from './schema';
 
@@ -17,6 +16,6 @@ export function validateOptions(flags: Partial<Config>): Config {
   return validated;
 }
 
-export function mergeOptions(flags: FlagOptions, prompted: Partial<Config>): Config {
+export function mergeOptions(flags: Partial<Config>, prompted: Partial<Config>): Config {
   return { ...prompted, ...flags };
 }
