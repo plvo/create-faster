@@ -1,16 +1,12 @@
-import stackMetaJson from '#/_stack-meta.json';
-
-type StackMeta = typeof stackMetaJson;
-type Category = keyof StackMeta['templates'];
-type StackForCategory<C extends Category> = keyof StackMeta['templates'][C];
+import { type Category, META, type StackForCategory } from '@/__meta__';
 
 export interface TemplateContext {
-  repo: keyof StackMeta['templates']['repo'];
-  framework?: keyof StackMeta['templates']['frameworks'];
-  backend?: keyof StackMeta['templates']['backend'];
-  orm?: keyof StackMeta['templates']['orm'];
-  database?: keyof StackMeta['templates']['database'];
-  extras?: (keyof StackMeta['templates']['extras'])[];
+  repo: StackForCategory<'repo'>;
+  framework?: StackForCategory<'framework'>;
+  backend?: StackForCategory<'backend'>;
+  orm?: StackForCategory<'orm'>;
+  database?: StackForCategory<'database'>;
+  extras?: StackForCategory<'extras'>[];
 }
 
 /**
@@ -27,8 +23,7 @@ export function resolveTemplatePath<C extends Category, S extends StackForCatego
   filename: string,
   context: TemplateContext,
 ): string {
-  const templates: StackMeta['templates'] = stackMetaJson.templates;
-  const categoryMeta: StackMeta['templates'][C] = templates[category];
+  const categoryMeta = META[category];
 
   if (!categoryMeta) {
     throw new Error(`Category not found: ${category}`);
@@ -39,7 +34,7 @@ export function resolveTemplatePath<C extends Category, S extends StackForCatego
     throw new Error(`Stack not found: ${category}/${String(stack)}`);
   }
 
-  const fileMeta = (stackData as Record<string, Record<string, string>>)[filename];
+  const fileMeta = stackData.templates[filename];
   if (!fileMeta) {
     throw new Error(`File not found: ${category}/${String(stack)}/${filename}`);
   }
@@ -74,8 +69,7 @@ export function getTemplatesForStack<C extends Category, S extends StackForCateg
   stack: S,
   context: TemplateContext,
 ): Array<{ source: string; destination: string }> {
-  const templates = stackMetaJson.templates as StackMeta['templates'];
-  const categoryMeta = templates[category];
+  const categoryMeta = META[category];
 
   if (!categoryMeta) {
     return [];
@@ -88,7 +82,7 @@ export function getTemplatesForStack<C extends Category, S extends StackForCateg
 
   const result: Array<{ source: string; destination: string }> = [];
 
-  for (const filename of Object.keys(stackData)) {
+  for (const filename of Object.keys(stackData.templates)) {
     try {
       const destination = resolveTemplatePath(category, stack, filename, context);
       const source = `templates/${category}/${String(stack)}/${filename}`;
@@ -109,7 +103,7 @@ export function getAllTemplatesForContext(context: TemplateContext): Array<{ sou
 
   // Framework
   if (context.framework) {
-    result.push(...getTemplatesForStack('frameworks', context.framework, context));
+    result.push(...getTemplatesForStack('framework', context.framework, context));
   }
 
   // Backend
@@ -127,15 +121,13 @@ export function getAllTemplatesForContext(context: TemplateContext): Array<{ sou
     result.push(...getTemplatesForStack('database', context.database, context));
   }
 
-  // Repo (turborepo setup)
-  if (context.repo === 'turborepo') {
-    result.push(...getTemplatesForStack('repo', 'turborepo', context));
-  }
+  // Repo
+  result.push(...getTemplatesForStack('repo', context.repo, context));
 
   // Extras
   if (context.extras) {
     for (const extra of context.extras) {
-      result.push(...getTemplatesForStack('extras', extra as keyof StackMeta['templates']['extras'], context));
+      result.push(...getTemplatesForStack('extras', extra, context));
     }
   }
 

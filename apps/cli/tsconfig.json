@@ -1,6 +1,7 @@
 {
   "extends": "@repo/config/ts/base.json",
   "compilerOptions": {
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./src/*"],
       "#/*": ["./*"]
