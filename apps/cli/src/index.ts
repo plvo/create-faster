@@ -1,31 +1,30 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 
-import * as p from '@clack/prompts';
+import { cancel, intro, isCancel, type Option, outro, select } from '@clack/prompts';
 import { META } from '@/__meta__';
-import type { Config } from '@/lib/schema';
+import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { App, Platform, TemplateContext } from '@/types';
-import { promptMultiselect, promptSelect, promptText } from './lib/prompts';
+import type { App, Backend, Framework, Platform, TemplateContext } from '@/types';
 
 async function promptPlatform(message: string): Promise<Platform> {
-  const result = await p.select({
+  const result = await select({
     message,
     options: [
-      { value: 'web' as Platform, label: 'Web', hint: 'Next.js, Astro...' },
-      { value: 'api' as Platform, label: 'API/Server', hint: 'Hono, Express...' },
-      { value: 'mobile' as Platform, label: 'Mobile', hint: 'Expo, React Native' },
+      { value: 'web', label: 'Web', hint: 'Next.js, Astro...' },
+      { value: 'api', label: 'API/Server', hint: 'Hono, Express...' },
+      { value: 'mobile', label: 'Mobile', hint: 'Expo, React Native' },
     ],
   });
 
-  if (p.isCancel(result)) {
-    p.cancel('Operation cancelled');
+  if (isCancel(result)) {
+    cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result as Platform;
+  return result;
 }
 
-async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<string | undefined> {
+async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<Framework> {
   const stacks = META[platform].stacks;
 
   const options = Object.entries(stacks).map(([value, meta]) => ({
@@ -34,26 +33,25 @@ async function promptFrameworkForPlatform(platform: Platform, message: string): 
     hint: meta.hint,
   }));
 
-  const result = await p.select({ message, options });
+  const result = await select({ message, options });
 
-  if (p.isCancel(result)) {
-    p.cancel('Operation cancelled');
+  if (isCancel(result)) {
+    cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result as string;
+  return result;
 }
 
 async function promptBackendForApp(
   appName: string,
   platform: Platform,
-  framework: string,
-): Promise<string | undefined> {
+  framework: Framework,
+): Promise<Backend | undefined> {
   const frameworkMeta = META[platform].stacks[framework];
 
-  const options: p.Option<string | undefined>[] = [];
+  const options: Option<Backend | undefined>[] = [];
 
-  // Si framework a backend intégré
   if (frameworkMeta?.hasBackend) {
     options.push({
       value: 'builtin',
@@ -62,35 +60,29 @@ async function promptBackendForApp(
     });
   }
 
-  // Toujours proposer backends dédiés
   Object.entries(META.api.stacks).forEach(([key, meta]) => {
-    options.push({
-      value: key,
-      label: meta.label,
-      hint: meta.hint,
-    });
+    options.push({ value: key, label: meta.label, hint: meta.hint });
   });
 
-  // None seulement si le framework n'a pas de backend intégré
   if (!frameworkMeta?.hasBackend) {
     options.push({ value: undefined, label: 'None' });
   }
 
-  const result = await p.select({
+  const result = await select({
     message: `${appName} - Backend?`,
     options,
   });
 
-  if (p.isCancel(result)) {
-    p.cancel('Operation cancelled');
+  if (isCancel(result)) {
+    cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result as string | undefined;
+  return result;
 }
 
 async function promptApp(index: number): Promise<App> {
-  const name = await promptText(`App ${index} - Name? (folder name)`, {
+  const appName = await promptText(`App ${index} - Name? (folder name)`, {
     defaultValue: `app-${index}`,
     placeholder: `app-${index}`,
     validate: (value) => {
@@ -100,15 +92,20 @@ async function promptApp(index: number): Promise<App> {
 
   const platform = await promptPlatform(`App ${index} - Platform?`);
   const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
-  const backend = platform !== 'api' ? await promptBackendForApp(name || 'app', platform, framework || '') : undefined;
+  const backend = platform !== 'api' ? await promptBackendForApp(appName!, platform, framework!) : undefined;
 
-  return { name: name!, platform, framework: framework!, backend };
+  return { appName: appName!, platform, framework: framework!, backend };
 }
 
-async function cli(): Promise<Config> {
-  p.intro('create-faster');
+async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
+  intro('create-faster');
+  const ctx: Omit<TemplateContext, 'repo'> = {
+    apps: [],
+    git: false,
+    projectName: '',
+  };
 
-  const name = await promptText('Project name?', {
+  const projectName = await promptText('Project name?', {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
@@ -116,29 +113,40 @@ async function cli(): Promise<Config> {
     },
   });
 
-  const appCount = await promptText<number>('How many apps?', {
-    initialValue: '1',
-    placeholder: '1',
-    validate: (value) => {
-      const num = Number(value);
-      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
-    },
-  });
+  ctx.projectName = projectName!;
 
-  const apps: App[] = [];
+  const appCount = await promptText<number>(
+    'How many apps? Turborepo mode will be used if you have more than one app',
+    {
+      initialValue: '1',
+      placeholder: '1',
+      validate: (value) => {
+        const num = Number(value);
+        if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
+      },
+    },
+  );
 
   for (let i = 0; i < Number(appCount); i++) {
     const app = await promptApp(i + 1);
-    apps.push(app);
+    ctx.apps.push(app);
   }
 
-  const database = await promptSelect('database', 'Database?', { allowNone: true });
-  const orm = await promptSelect('orm', 'ORM?', { allowNone: true, skip: !database });
-  const extras = await promptMultiselect('extras', 'Extras?');
+  const database = await promptSelect('database', 'Database?', ctx, { allowNone: true });
+  ctx.database = database;
 
-  p.outro('Configuration complete!');
+  const orm = await promptSelect('orm', 'ORM?', ctx, { allowNone: true });
+  ctx.orm = orm;
 
-  return { name: name!, apps, orm, database, extras };
+  const git = await promptConfirm('Do you want to configure Git?', { initialValue: true });
+  ctx.git = git;
+
+  const extras = await promptMultiselect('extras', 'Extras?', ctx, { required: false });
+  ctx.extras = extras;
+
+  outro('Configuration complete!');
+
+  return ctx;
 }
 
 async function main() {

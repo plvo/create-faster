@@ -15,7 +15,11 @@ function scanTemplates(category: Category, stack: string): string[] {
 }
 
 function resolveDestination(relativePath: string, appName: string, scope: Scope, context: TemplateContext): string {
-  const cleanPath = relativePath.replace('.hbs', '');
+  let cleanPath = relativePath.replace('.hbs', '');
+
+  if (cleanPath.startsWith('_')) {
+    cleanPath = `.${cleanPath.slice(1)}`;
+  }
 
   if (context.repo === 'single') {
     return cleanPath;
@@ -59,7 +63,7 @@ function getTemplatesForStack(
 }
 
 function getTemplatesForApp(app: App, context: TemplateContext): Array<{ source: string; destination: string }> {
-  return getTemplatesForStack(app.platform, app.framework, app.name, context);
+  return getTemplatesForStack(app.platform, app.framework, app.appName, context);
 }
 
 function getTemplatesForBackend(app: App, context: TemplateContext): Array<{ source: string; destination: string }> {
@@ -67,26 +71,35 @@ function getTemplatesForBackend(app: App, context: TemplateContext): Array<{ sou
     return [];
   }
 
-  const backendAppName = `${app.name}-api`;
+  const backendAppName = `${app.appName}-api`;
   return getTemplatesForStack('api', app.backend, backendAppName, context);
 }
 
 export function getAllTemplatesForContext(context: TemplateContext): Array<{ source: string; destination: string }> {
   const result: Array<{ source: string; destination: string }> = [];
 
+  // Apps and backends
   for (const app of context.apps) {
     result.push(...getTemplatesForApp(app, context));
     result.push(...getTemplatesForBackend(app, context));
   }
 
+  // ORM
   if (context.orm) {
     result.push(...getTemplatesForStack('orm', context.orm, 'db', context));
   }
 
+  // Database
   if (context.database) {
     result.push(...getTemplatesForStack('database', context.database, '', context));
   }
 
+  // Git (category with empty stacks but templates)
+  if (context.git) {
+    result.push(...getTemplatesForStack('git', 'git', '', context));
+  }
+
+  // Extras
   if (context.extras) {
     for (const extra of context.extras) {
       result.push(...getTemplatesForStack('extras', extra, '', context));

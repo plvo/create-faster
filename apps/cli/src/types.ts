@@ -1,43 +1,40 @@
+export type Repo = 'single' | 'turborepo';
 export type Scope = 'app' | 'package' | 'root';
 export type Platform = 'web' | 'api' | 'mobile';
-export type Category = 'web' | 'api' | 'mobile' | 'orm' | 'database' | 'extras';
+export type Category = Platform | 'orm' | 'database' | 'git' | 'extras';
 
 export interface StackMeta {
   label: string;
   hint?: string;
-  requires?: Category[];
   hasBackend?: boolean;
+  requires?: Category[];
 }
 
 export interface CategoryMeta {
   scope: Scope;
   packageName?: string;
+  requires?: Category[];
   stacks: Record<string, StackMeta>;
 }
 
 export type Meta = Record<Category, CategoryMeta>;
 
-export type StackForCategory<C extends Category> = keyof Meta[C]['stacks'];
+export type Framework = keyof Meta[Platform]['stacks'];
+export type Backend = 'builtin' | keyof Meta['api']['stacks'];
 
 export interface App {
-  name: string;
+  appName: string;
   platform: Platform;
-  framework: string;
-  backend?: string;
-}
-
-export interface Config {
-  name: string;
-  apps: App[];
-  orm?: string;
-  database?: string;
-  extras?: string[];
+  framework: Framework;
+  backend?: Backend;
 }
 
 export interface TemplateContext {
-  repo: 'single' | 'turborepo';
+  projectName: string;
+  repo: Repo;
   apps: App[];
-  orm?: string;
-  database?: string;
-  extras?: string[];
+  orm?: keyof Meta['orm']['stacks'];
+  database?: keyof Meta['database']['stacks'];
+  git: boolean;
+  extras?: (keyof Meta['extras']['stacks'])[];
 }
