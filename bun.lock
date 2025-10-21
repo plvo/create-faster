@@ -4,7 +4,6 @@
     "": {
       "name": "create-faster",
       "dependencies": {
-        "commander": "^14.0.1",
         "zod": "^4.1.12",
       },
       "devDependencies": {
@@ -26,6 +25,8 @@
       },
       "dependencies": {
         "@clack/prompts": "^0.11.0",
+        "commander": "^14.0.1",
+        "fast-glob": "^3.3.3",
         "handlebars": "^4.7.8",
       },
       "devDependencies": {

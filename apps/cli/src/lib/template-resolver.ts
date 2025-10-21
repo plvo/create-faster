@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Glob } from 'bun';
+import fg from 'fast-glob';
 import { META } from '@/__meta__';
 import type { App, Category, Scope, TemplateContext } from '@/types';
 
@@ -11,8 +11,7 @@ function getTemplatesRoot(): string {
 
 function scanTemplates(category: Category, stack: string): string[] {
   const dir = path.join(getTemplatesRoot(), category, stack);
-  const glob = new Glob('**/*.hbs');
-  return Array.from(glob.scanSync({ cwd: dir })).map((f) => f.toString());
+  return fg.sync('**/*.hbs', { cwd: dir });
 }
 
 function resolveDestination(relativePath: string, appName: string, scope: Scope, context: TemplateContext): string {

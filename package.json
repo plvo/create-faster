@@ -6,6 +6,14 @@
   "license": "MIT",
   "private": false,
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.2.23",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "check": "biome check --write .",
     "check:unused": "knip",
@@ -33,14 +41,6 @@
     "@tailwindcss/postcss": "^4.0.8",
     "tailwindcss": "^4"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "packageManager": "bun@1.2.23",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "dependencies": {
     "zod": "^4.1.12"
   }

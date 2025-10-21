@@ -7,69 +7,6 @@ import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { App, Platform, TemplateContext } from '@/types';
 import { promptMultiselect, promptSelect, promptText } from './lib/prompts';
 
-async function cli(): Promise<Config> {
-  p.intro('create-faster');
-
-  const name = await promptText('Project name?', {
-    placeholder: 'my-app',
-    initialValue: 'my-app',
-    validate: (value) => {
-      if (!value || value.trim() === '') return 'Project name is required';
-    },
-  });
-
-  const appCount = await promptText<number>('How many apps?', {
-    initialValue: '1',
-    placeholder: '1',
-    validate: (value) => {
-      const num = Number(value);
-      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
-    },
-  });
-
-  const apps: App[] = [];
-
-  for (let i = 0; i < Number(appCount); i++) {
-    const app = await promptApp(i + 1);
-    apps.push(app);
-  }
-
-  const database = await promptSelect('database', 'Database?', { allowNone: true });
-  const orm = await promptSelect('orm', 'ORM?', { allowNone: true, skip: !database });
-  const extras = await promptMultiselect('extras', 'Extras?');
-
-  p.outro('Configuration complete!');
-
-  return {
-    name: name!,
-    apps,
-    orm,
-    database,
-    extras,
-  };
-}
-
-async function promptApp(index: number): Promise<App> {
-  const name = await promptText(`App ${index} - Name? (folder name)`, {
-    defaultValue: `app-${index}`,
-    placeholder: `app-${index}`,
-    validate: (value) => {
-      if (!value || value.trim() === '') return 'App name is required';
-    },
-  });
-
-  const platform = await promptPlatform(`App ${index} - Platform?`);
-  const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
-  const backend = await promptBackendForApp(name || 'app', platform, framework || '');
-
-  return {
-    name: name!,
-    platform,
-    framework: framework!,
-    backend,
-  };
-}
-
 async function promptPlatform(message: string): Promise<Platform> {
   const result = await p.select({
     message,
@@ -150,6 +87,58 @@ async function promptBackendForApp(
   }
 
   return result as string | undefined;
+}
+
+async function promptApp(index: number): Promise<App> {
+  const name = await promptText(`App ${index} - Name? (folder name)`, {
+    defaultValue: `app-${index}`,
+    placeholder: `app-${index}`,
+    validate: (value) => {
+      if (!value || value.trim() === '') return 'App name is required';
+    },
+  });
+
+  const platform = await promptPlatform(`App ${index} - Platform?`);
+  const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
+  const backend = platform !== 'api' ? await promptBackendForApp(name || 'app', platform, framework || '') : undefined;
+
+  return { name: name!, platform, framework: framework!, backend };
+}
+
+async function cli(): Promise<Config> {
+  p.intro('create-faster');
+
+  const name = await promptText('Project name?', {
+    placeholder: 'my-app',
+    initialValue: 'my-app',
+    validate: (value) => {
+      if (!value || value.trim() === '') return 'Project name is required';
+    },
+  });
+
+  const appCount = await promptText<number>('How many apps?', {
+    initialValue: '1',
+    placeholder: '1',
+    validate: (value) => {
+      const num = Number(value);
+      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
+    },
+  });
+
+  const apps: App[] = [];
+
+  for (let i = 0; i < Number(appCount); i++) {
+    const app = await promptApp(i + 1);
+    apps.push(app);
+  }
+
+  const database = await promptSelect('database', 'Database?', { allowNone: true });
+  const orm = await promptSelect('orm', 'ORM?', { allowNone: true, skip: !database });
+  const extras = await promptMultiselect('extras', 'Extras?');
+
+  p.outro('Configuration complete!');
+
+  return { name: name!, apps, orm, database, extras };
 }
 
 async function main() {
