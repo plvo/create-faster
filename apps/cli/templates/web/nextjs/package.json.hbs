@@ -1,11 +1,19 @@
 {
-  "name": "web",
+  "name": "{{appName}}",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port=3001",
-    "build": "next build",
-    "start": "next start"
+    {{#if (eq repo "single")}}
+    "check": "biome check --write .",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "prepare": "husky",
+    {{/if}}
+    "dev": "next dev --turbopack {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
+    "build": "next build --turbo",
+    "build:analyze": "ANALYZE=true next build --turbo",
+    "start": "next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
+    "start:inspect": "NODE_OPTIONS=\"--inspect\" next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}"
   },
   "dependencies": {
     "radix-ui": "^1.4.2",
@@ -23,7 +31,13 @@
     "zod": "^4.0.2"
   },
   "devDependencies": {
+    {{#if (eq repo "turborepo")}}
+    "@repo/ui": "*",
+    "@repo/config": "*",
+    {{/if}}
+    {{#if (eq repo "single")}}
     "@tailwindcss/postcss": "^4.1.10",
+    {{/if}}
     "@types/node": "^20",
     "@types/react": "~19.1.10",
     "@types/react-dom": "^19",

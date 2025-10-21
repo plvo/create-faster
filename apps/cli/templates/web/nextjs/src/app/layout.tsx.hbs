@@ -1,0 +1,42 @@
+import type { Metadata } from 'next';
+import { AppProviders } from '@/components/app-providers';
+import '@/styles/globals.css';
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+import { Rochester } from 'next/font/google';
+import localFont from 'next/font/local';
+import { Toaster } from 'sonner';
+import { MascotToggle } from '@/features/mascot-tips/components/mascot';
+
+const geistSans = localFont({
+  src: '../styles/fonts/GeistVF.woff',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+});
+const geistMono = localFont({
+  src: '../styles/fonts/GeistMonoVF.woff',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+});
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Template',
+    default: 'Home | Template',
+  },
+  description: "Template.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang='en' suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+          <main>{children}</main>
+      </body>
+    </html>
+  );
+}

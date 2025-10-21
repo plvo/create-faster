@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    {{#if (eq repo "single")}}
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -19,26 +20,15 @@
         "name": "next"
       }
     ],
+    {{/if}}
     "paths": {
-      "@/*": ["./src/*"]
-    }{{#if (or (eq serverDeploy "alchemy") (eq webDeploy "alchemy"))}},
-    "types": [
-      "@cloudflare/workers-types"
-    ]{{/if}}
+      {{#if (eq repo "turborepo")}}
+      "@repo/ui/*": ["../../packages/ui/src/*"],
+      {{/if}}
+      "@/*": ["./src/*"],
+      "#/*": ["./*"]
+    }
   },
-  "include": [
-    {{#if (eq serverDeploy "alchemy")}}
-    "../server/env.d.ts",
-    {{/if}}
-    {{#if (eq serverDeploy "wrangler")}}
-    "../server/worker-configuration.d.ts",
-    {{/if}}
-    "./next-env.d.ts",
-    "./**/*.ts",
-    "./**/*.tsx",
-    "./.next/types/**/*.ts"
-  ],
-  "exclude": [
-    "./node_modules"
-  ]
+  "include": ["next-env.d.ts", "next.config.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["./node_modules"]
 }

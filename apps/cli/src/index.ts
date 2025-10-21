@@ -1,7 +1,10 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 
+import { join } from 'node:path';
 import { cancel, intro, isCancel, type Option, outro, select } from '@clack/prompts';
 import { META } from '@/__meta__';
+import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
+import { runPostGeneration } from '@/lib/post-generation';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { App, Backend, Framework, Platform, TemplateContext } from '@/types';
@@ -150,17 +153,40 @@ async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
 }
 
 async function main() {
-  const config = await cli();
+  try {
+    const config = await cli();
 
-  const ctx: TemplateContext = {
-    repo: config.apps.length > 1 ? 'turborepo' : 'single',
-    ...config,
-  };
+    const ctx: TemplateContext = {
+      repo: config.apps.length > 1 ? 'turborepo' : 'single',
+      ...config,
+    };
 
-  const templates = getAllTemplatesForContext(ctx);
+    // Get all templates to generate
+    const templates = getAllTemplatesForContext(ctx);
 
-  console.log('\nTemplates to generate:');
-  console.log(templates);
+    // Generate project files
+    const result = await generateProjectFiles(templates, ctx);
+
+    // Display results
+    displayGenerationResults(result);
+
+    // Exit if generation failed
+    if (!result.success) {
+      console.error('\n✗ Project generation failed. Please fix the errors and try again.');
+      process.exit(1);
+    }
+
+    // Run post-generation tasks (install deps, git init)
+    const projectPath = join(process.cwd(), ctx.projectName);
+    await runPostGeneration(ctx, projectPath, {
+      install: true,
+      packageManager: 'bun',
+    });
+  } catch (error) {
+    console.error('\n✗ An error occurred:');
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
 
 main().catch(console.error);

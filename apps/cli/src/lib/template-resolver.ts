@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { META } from '@/__meta__';
-import type { App, Category, Scope, TemplateContext } from '@/types';
+import type { Category, Scope, TemplateContext, TemplateFile } from '@/types';
 
 function getTemplatesRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -14,14 +14,14 @@ function scanTemplates(category: Category, stack: string): string[] {
   return fg.sync('**/*.hbs', { cwd: dir });
 }
 
-function resolveDestination(relativePath: string, appName: string, scope: Scope, context: TemplateContext): string {
+function resolveDestination(relativePath: string, appName: string, scope: Scope, ctx: TemplateContext): string {
   let cleanPath = relativePath.replace('.hbs', '');
 
   if (cleanPath.startsWith('_')) {
     cleanPath = `.${cleanPath.slice(1)}`;
   }
 
-  if (context.repo === 'single') {
+  if (ctx.repo === 'single') {
     return cleanPath;
   }
 
@@ -41,8 +41,8 @@ function getTemplatesForStack(
   category: Category,
   stack: string,
   appName: string,
-  context: TemplateContext,
-): Array<{ source: string; destination: string }> {
+  ctx: TemplateContext,
+): Array<TemplateFile> {
   const categoryMeta = META[category];
 
   if (!categoryMeta || !categoryMeta.stacks[stack]) {
@@ -55,54 +55,41 @@ function getTemplatesForStack(
 
     return files.map((file) => ({
       source: `templates/${category}/${stack}/${file}`,
-      destination: resolveDestination(file, appName, scope, context),
+      destination: resolveDestination(file, appName, scope, ctx),
     }));
   } catch {
     return [];
   }
 }
 
-function getTemplatesForApp(app: App, context: TemplateContext): Array<{ source: string; destination: string }> {
-  return getTemplatesForStack(app.platform, app.framework, app.appName, context);
-}
+export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateFile> {
+  const result: Array<TemplateFile> = [];
 
-function getTemplatesForBackend(app: App, context: TemplateContext): Array<{ source: string; destination: string }> {
-  if (!app.backend || app.backend === 'builtin') {
-    return [];
+  for (const app of ctx.apps) {
+    result.push(...getTemplatesForStack(app.platform, app.framework, app.appName, ctx));
+    if (!app.backend || app.backend === 'builtin') {
+      continue;
+    }
+
+    const backendAppName = `${app.appName}-api`;
+    result.push(...getTemplatesForStack('api', app.backend, backendAppName, ctx));
   }
 
-  const backendAppName = `${app.appName}-api`;
-  return getTemplatesForStack('api', app.backend, backendAppName, context);
-}
-
-export function getAllTemplatesForContext(context: TemplateContext): Array<{ source: string; destination: string }> {
-  const result: Array<{ source: string; destination: string }> = [];
-
-  // Apps and backends
-  for (const app of context.apps) {
-    result.push(...getTemplatesForApp(app, context));
-    result.push(...getTemplatesForBackend(app, context));
+  if (ctx.orm) {
+    result.push(...getTemplatesForStack('orm', ctx.orm, 'db', ctx));
   }
 
-  // ORM
-  if (context.orm) {
-    result.push(...getTemplatesForStack('orm', context.orm, 'db', context));
+  if (ctx.database) {
+    result.push(...getTemplatesForStack('database', ctx.database, '', ctx));
   }
-
-  // Database
-  if (context.database) {
-    result.push(...getTemplatesForStack('database', context.database, '', context));
-  }
-
   // Git (category with empty stacks but templates)
-  if (context.git) {
-    result.push(...getTemplatesForStack('git', 'git', '', context));
+  if (ctx.git) {
+    result.push(...getTemplatesForStack('git', 'git', '', ctx));
   }
 
-  // Extras
-  if (context.extras) {
-    for (const extra of context.extras) {
-      result.push(...getTemplatesForStack('extras', extra, '', context));
+  if (ctx.extras) {
+    for (const extra of ctx.extras) {
+      result.push(...getTemplatesForStack('extras', extra, '', ctx));
     }
   }
 

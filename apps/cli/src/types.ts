@@ -38,3 +38,8 @@ export interface TemplateContext {
   git: boolean;
   extras?: (keyof Meta['extras']['stacks'])[];
 }
+
+export interface TemplateFile {
+  source: string;
+  destination: string;
+}

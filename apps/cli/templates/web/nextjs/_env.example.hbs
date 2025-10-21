@@ -1,0 +1,6 @@
+{{#if (eq database "postgres")}}
+DATABASE_URL=postgresql://username:password@localhost:5432/database
+{{/if}}
+{{#if (eq database "mysql")}}
+DATABASE_URL=mysql://username:password@localhost:3306/database
+{{/if}}
