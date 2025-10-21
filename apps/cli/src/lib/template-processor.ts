@@ -9,11 +9,14 @@ import {
   writeFileContent,
 } from './file-writer';
 import { renderTemplate } from './handlebars-utils';
+import { extractFirstLine, formatMagicComments, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
   destination: string;
   error?: string;
+  skipped?: boolean;
+  reason?: string;
 }
 
 /**
@@ -46,6 +49,21 @@ export async function processTemplate(
 
     // Read source content
     const content = await readFileContent(source);
+
+    // Check for magic comments in .hbs templates
+    if (isHbsTemplate) {
+      const firstLine = extractFirstLine(content);
+      const magicComments = parseMagicComments(firstLine);
+
+      if (shouldSkipTemplate(magicComments, context)) {
+        return {
+          success: true,
+          destination: finalDestination,
+          skipped: true,
+          reason: `Magic comment: ${formatMagicComments(magicComments)}`,
+        };
+      }
+    }
 
     // Process .hbs templates with Handlebars
     if (isHbsTemplate) {

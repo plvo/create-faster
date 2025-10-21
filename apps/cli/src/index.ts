@@ -1,8 +1,8 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 
 import { join } from 'node:path';
-import { cancel, intro, isCancel, type Option, outro, select } from '@clack/prompts';
-import { META } from '@/__meta__';
+import { cancel, intro, isCancel, multiselect, type Option, outro, select } from '@clack/prompts';
+import { META, MODULES } from '@/__meta__';
 import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
@@ -30,20 +30,20 @@ async function promptPlatform(message: string): Promise<Platform> {
 async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<Framework> {
   const stacks = META[platform].stacks;
 
-  const options = Object.entries(stacks).map(([value, meta]) => ({
+  const options: Option<Framework>[] = Object.entries(stacks).map(([value, meta]) => ({
     value,
     label: meta.label,
     hint: meta.hint,
   }));
 
-  const result = await select({ message, options });
+  const result = await select<Framework>({ message, options });
 
   if (isCancel(result)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result;
+  return result as Framework;
 }
 
 async function promptBackendForApp(
@@ -97,7 +97,31 @@ async function promptApp(index: number): Promise<App> {
   const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
   const backend = platform !== 'api' ? await promptBackendForApp(appName!, platform, framework!) : undefined;
 
-  return { appName: appName!, platform, framework: framework!, backend };
+  // Prompt for framework-specific modules
+  const moduleOptions = Object.entries(MODULES[framework] ?? {}).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  let modules: string[] | undefined;
+
+  if (moduleOptions.length > 0) {
+    const result = await multiselect({
+      message: `App ${index} - Modules?`,
+      options: moduleOptions,
+      required: false,
+    });
+
+    if (isCancel(result)) {
+      cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    modules = result as string[] | undefined;
+  }
+
+  return { appName: appName!, platform, framework: framework!, backend, modules };
 }
 
 async function cli(): Promise<Omit<TemplateContext, 'repo'>> {

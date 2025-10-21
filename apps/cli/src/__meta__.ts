@@ -1,6 +1,19 @@
-import type { Meta } from './types';
+import type { Meta, ModuleMeta } from './types';
 
 export const META: Meta = {
+  repo: {
+    scope: 'root',
+    stacks: {
+      single: {
+        label: 'Single',
+        hint: 'Single repository',
+      },
+      turborepo: {
+        label: 'Turborepo',
+        hint: 'Monorepo repository',
+      },
+    },
+  },
   web: {
     scope: 'app',
     stacks: {
@@ -8,11 +21,6 @@ export const META: Meta = {
         label: 'Next.js',
         hint: 'React framework with SSR',
         hasBackend: true,
-      },
-      astro: {
-        label: 'Astro',
-        hint: 'Static site generator',
-        hasBackend: false,
       },
     },
   },
@@ -56,19 +64,15 @@ export const META: Meta = {
     packageName: 'db',
     requires: ['database'],
     stacks: {
-      prisma: {
-        label: 'Prisma',
-        hint: 'Type-safe ORM with migrations',
-      },
       drizzle: {
         label: 'Drizzle',
         hint: 'Lightweight TypeScript ORM',
       },
+      prisma: {
+        label: 'Prisma',
+        hint: 'Type-safe ORM with migrations',
+      },
     },
-  },
-  git: {
-    scope: 'root',
-    stacks: {},
   },
   extras: {
     scope: 'root',
@@ -85,3 +89,22 @@ export const META: Meta = {
     },
   },
 } as const;
+
+export const MODULES: ModuleMeta = {
+  nextjs: {
+    shadcn: {
+      label: 'shadcn/ui',
+      hint: 'Accessible UI components',
+      packageName: 'ui',
+    },
+    pwa: {
+      label: 'PWA',
+      hint: 'Progressive Web App support',
+    },
+    trpc: {
+      label: 'tRPC',
+      hint: 'End-to-end type safety',
+      requires: ['database'],
+    },
+  },
+};

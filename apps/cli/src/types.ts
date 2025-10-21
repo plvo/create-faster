@@ -1,13 +1,14 @@
 export type Repo = 'single' | 'turborepo';
 export type Scope = 'app' | 'package' | 'root';
 export type Platform = 'web' | 'api' | 'mobile';
-export type Category = Platform | 'orm' | 'database' | 'git' | 'extras';
+export type Category = Platform | 'orm' | 'database' | 'extras' | 'repo';
 
 export interface StackMeta {
   label: string;
   hint?: string;
   hasBackend?: boolean;
-  requires?: Category[];
+  requires?: (Category | (string & {}))[];
+  framework?: Framework;
 }
 
 export interface CategoryMeta {
@@ -19,6 +20,9 @@ export interface CategoryMeta {
 
 export type Meta = Record<Category, CategoryMeta>;
 
+export type ModuleStackMeta = Omit<StackMeta, 'framework'> & { packageName?: string };
+export type ModuleMeta = Record<Framework, Record<string, ModuleStackMeta>>;
+
 export type Framework = keyof Meta[Platform]['stacks'];
 export type Backend = 'builtin' | keyof Meta['api']['stacks'];
 
@@ -27,6 +31,7 @@ export interface App {
   platform: Platform;
   framework: Framework;
   backend?: Backend;
+  modules?: string[];
 }
 
 export interface TemplateContext {

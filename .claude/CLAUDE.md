@@ -47,11 +47,25 @@ create-faster/
    - `hono`/`express`: Dedicated backend in `{appName}-api/`
    - `undefined`: No backend (only for frameworks without built-in backend)
 
-5. **Context-Aware Filtering** (NEW)
+5. **Context-Aware Filtering**
    - Category-level `requires`: Dependencies between categories (e.g., `orm.requires = ['database']`)
    - Stack-level `requires`: Dependencies for specific stacks (e.g., `husky.requires = ['git']`)
    - Progressive context building: Each prompt updates shared context for dynamic filtering
    - Automatic skip: Prompts auto-skip when requirements not met with informative logs
+
+6. **Framework Modules System** (2025-10-21)
+   - Optional addons per framework (shadcn, PWA, tRPC for Next.js)
+   - Separate `MODULES` metadata independent from core stacks
+   - Module-specific `packageName` for turborepo package placement
+   - Context-aware activation based on requirements
+
+7. **Magic Comments System** (2025-10-21)
+   - First-line directives for conditional template rendering
+   - `@repo:` - Control rendering based on repo type (single/turborepo)
+   - `@scope:` - Override default file placement (app/package/root)
+   - `@if:` and `@require:` - Context-based conditions
+   - Pre-scan optimization (reads only first line before rendering)
+   - Negation support (`@repo:!single`)
 
 ### CLI Application Flow
 
@@ -123,32 +137,39 @@ create-faster/
 ## Core Files & Responsibilities
 
 ### [apps/cli/src/__meta__.ts](apps/cli/src/__meta__.ts)
-**Single source of truth** for all available stacks (88 lines)
-- Defines labels, hints, dependencies, and capabilities for each framework/tool
-- Category-level `requires`: Dependencies between entire categories (e.g., `orm.requires = ['database']`)
-- Stack-level `requires`: Dependencies for individual stacks (e.g., `husky.requires = ['git']`)
-- Types: `StackMeta`, `CategoryMeta`, `Meta`
-- To add new framework: add entry here first
-- Categories: web, api, mobile, database, orm, git, extras
+**Single source of truth** for all available stacks and modules
+- **META**: Core stacks (platforms, frameworks, database, ORM, extras)
+  - Category-level `requires`: Dependencies between entire categories (e.g., `orm.requires = ['database']`)
+  - Stack-level `requires`: Dependencies for individual stacks (e.g., `husky.requires = ['git']`)
+  - Types: `StackMeta`, `CategoryMeta`, `Meta`
+  - Categories: web, api, mobile, database, orm, extras, repo
+- **MODULES**: Framework-specific optional addons (shadcn, PWA, tRPC)
+  - Structured by framework: `MODULES.nextjs.shadcn`
+  - Optional `packageName` for turborepo package placement
+  - Support `requires` for module dependencies
+  - Type: `ModuleMeta = Record<Framework, Record<string, StackMeta & { packageName?: string }>>`
 
 ### [apps/cli/src/types.ts](apps/cli/src/types.ts)
-Core type definitions (44 lines)
+Core type definitions
 - `Platform`: web, api, mobile
-- `Category`: web, api, mobile, orm, database, extras
+- `Category`: web, api, mobile, orm, database, extras, repo
 - `Scope`: app, package, root (controls output path)
-- `App`: Application configuration
+- `App`: Application configuration with optional `modules?: string[]`
 - `Config`: Final user configuration object
 - `TemplateContext`: Runtime context for template resolution
+- `ModuleMeta`: Type for framework-specific modules metadata
+- `ProcessResult`: Extended with `skipped?: boolean` and `reason?: string`
 
 ### [apps/cli/src/index.ts](apps/cli/src/index.ts)
-Main CLI entry point (167 lines)
+Main CLI entry point
 - Orchestrates interactive prompt flow with progressive context building
 - Handles multi-app configuration
+- **Per-app module selection**: Filters `MODULES[framework]` and prompts multiselect
 - Context-aware database → ORM selection (ORM requires database)
 - Git confirmation with boolean context
 - Extras multi-selection with automatic filtering (husky requires git)
 - Progressive `ctx` object updated after each prompt for dependency chain
-- Currently ends at `getAllTemplatesForContext()` call
+- Generates files with `generateProjectFiles()` and runs post-generation hooks
 
 ### [apps/cli/src/lib/schema.ts](apps/cli/src/lib/schema.ts)
 Zod validation schemas (24 lines)
@@ -167,15 +188,54 @@ Context-aware prompt wrappers (124 lines)
 - Built on @clack/prompts
 
 ### [apps/cli/src/lib/template-resolver.ts](apps/cli/src/lib/template-resolver.ts)
-Template discovery and path resolution (99 lines)
-- Scans template directory using Bun Glob
+Template discovery and path resolution with module support
+- Scans template directory using Bun Glob and fast-glob
+- **Module resolution**: `scanModuleTemplates()` for framework-specific addons
+- **Dynamic scope detection**: Reads first line of module templates for `@scope:` override
 - Maps source templates → destination paths
 - Handles scope-aware paths:
-  - `app` scope → `apps/{appName}/{path}`
+  - `app` scope → `apps/{appName}/{path}` (or root in single mode)
   - `package` scope → `packages/{packageName}/{path}`
   - `root` scope → `{path}`
+- **Smart defaults**: Uses `packageName` if turborepo, else app scope
 - Detects single-file vs. monorepo layout
 - Returns `TemplateFile[]` array ready for rendering
+
+### [apps/cli/src/lib/magic-comments.ts](apps/cli/src/lib/magic-comments.ts)
+Magic comments system for conditional template rendering (164 lines)
+- **Directive types supported**:
+  - `@repo:turborepo|single` - Render only in specific repo type
+  - `@scope:app|package|root` - Override default file placement
+  - `@if:key` - Render if context key exists and is truthy
+  - `@require:key` - Render if context key equals true
+  - Negation: `@repo:!single` - All except single
+- **Functions**:
+  - `parseMagicComments()` - Parse first line directives
+  - `shouldSkipTemplate()` - Determine if template should be skipped
+  - `validateMagicComments()` - Validate syntax and values
+  - `formatMagicComments()` - Format for logging
+- **Performance**: Pre-scan first line only, skip rendering if not needed
+- **Multi-condition support**: `{{!-- @repo:turborepo @scope:package --}}`
+
+### [apps/cli/src/lib/template-processor.ts](apps/cli/src/lib/template-processor.ts)
+Template file processing with magic comments integration
+- Processes binary files, text files, and Handlebars templates
+- **Magic comments integration**: Pre-scans first line before rendering
+- Context enrichment: Injects app-specific data for turborepo templates
+- Returns `ProcessResult` with `skipped` and `reason` for skipped files
+- File transformations: `_gitignore.hbs` → `.gitignore`
+
+### [apps/cli/src/lib/handlebars-utils.ts](apps/cli/src/lib/handlebars-utils.ts)
+Handlebars custom helpers and configuration
+- **Template helpers**:
+  - `eq`, `ne`, `and`, `or` - Logical operations
+  - `includes` - Array membership
+  - `hasModule(name)` / `moduleEnabled(name)` - Check if app has module
+  - `hasBackend(app)` - Check if app has backend
+  - `isTurborepo()` / `isSingleRepo()` - Repo type checks
+  - `kebabCase`, `pascalCase` - String transformations
+  - `app(name)`, `appIndex(name)`, `appPort(name)` - App lookups
+- Configuration: `noEscape: true` for code generation
 
 ### Config Files
 
@@ -210,6 +270,16 @@ Template discovery and path resolution (99 lines)
 - Interactive CLI with beautiful prompts (@clack/prompts)
 - Multi-app configuration support (unlimited apps)
 - Platform/framework/backend selection per app
+- **Framework Modules System** (2025-10-21):
+  - Optional addons per framework (shadcn, PWA, tRPC for Next.js)
+  - Separate `MODULES` metadata with `packageName` support
+  - Per-app module multiselect with framework filtering
+  - Context-aware module requirements
+- **Magic Comments System** (2025-10-21):
+  - First-line directives: `@repo:`, `@scope:`, `@if:`, `@require:`
+  - Pre-scan optimization (skip before rendering)
+  - Multi-condition support with AND logic
+  - Negation support (`@repo:!single`)
 - **Context-aware filtering system**:
   - Category-level `requires` (database → ORM dependency chain)
   - Stack-level `requires` (husky → git filtering)
@@ -219,28 +289,31 @@ Template discovery and path resolution (99 lines)
 - Database → ORM selection with automatic skip
 - Git confirmation (boolean) feeding into extras filtering
 - Extras multi-selection with auto-filter
-- Template resolution engine (path mapping complete)
-- Scope-aware path mapping (app/package/root)
+- Template resolution engine with module support
+- Scope-aware path mapping (app/package/root) with dynamic override
 - Unified prompt API (promptText, promptSelect, promptMultiselect, promptConfirm)
 - Meta-driven stack system (easy to extend)
 - Auto-detection of single-file vs. monorepo structure
+- File generation with Handlebars rendering
+- Post-generation hooks (install deps, git init)
+- Handlebars custom helpers (hasModule, isTurborepo, etc.)
 
 ### 🚧 In Progress
-- **File generation engine**: Render Handlebars templates to disk
-- **Post-generation hooks**: Run `bun install`, `git init`
-- **Error handling**: Rollback on failure, duplicate project detection
+- **Template content**: Fill in remaining `.hbs` templates for all stacks
+- **Module templates**: Add more modules (PWA, tRPC, auth, etc.)
+- **Error handling**: Enhanced rollback on failure
 
 ### 📋 Planned
-- Template content (many `.hbs` files are placeholders)
-- Root package.json generation with workspaces
-- turbo.json generation for multi-app projects
-- Non-interactive mode (CLI flags)
+- Non-interactive mode (CLI flags: `--name`, `--framework`, etc.)
 - Package manager auto-detection (bun/npm/pnpm)
 - Web UI (alternative to CLI via apps/www)
-- Custom template directories
-- Configuration save/load
-- More framework support (Solid, Qwik, Remix)
+- Custom template directories (user-defined templates)
+- Configuration save/load (.create-faster.json)
+- More framework support (Solid, Qwik, Remix, SvelteKit)
+- More modules (Auth.js, MDX, Storybook, i18n, etc.)
 - Plugin system for third-party templates
+- Template validation and testing framework
+- Update command to refresh existing projects
 
 ## Development Workflow
 
@@ -306,48 +379,91 @@ Package details:
 - Bin: `create-faster` command
 - Files included: executable, templates/, package.json
 
-## Adding New Frameworks
+## Adding New Content
 
-### 1. Add to META
-Edit [__meta__.ts](apps/cli/src/__meta__.ts):
+### Adding a New Framework
 
+1. **Add to META** in [__meta__.ts](apps/cli/src/__meta__.ts):
 ```typescript
 export const META = {
   web: {
-    solid: {
-      label: 'Solid',
-      hint: 'Fast reactive framework',
-      category: 'web',
-      platform: 'web',
-      hasBackend: false,
+    stacks: {
+      solid: {
+        label: 'Solid',
+        hint: 'Fast reactive framework',
+        hasBackend: false,
+      }
     }
   }
 } as const satisfies Meta;
 ```
 
-### 2. Create Template Directory
+2. **Create Template Directory**:
 ```bash
-mkdir -p apps/cli/templates/web/solid/app
+mkdir -p apps/cli/templates/web/solid
 ```
 
-### 3. Add Template Files
-Create `.hbs` files:
+3. **Add Template Files**:
 ```
 templates/web/solid/
-└── app/
-    ├── package.json.hbs
-    ├── tsconfig.json.hbs
-    └── src/
-        └── index.tsx.hbs
+├── package.json.hbs
+├── tsconfig.json.hbs
+└── src/
+    └── index.tsx.hbs
 ```
 
-### 4. Test
+4. **Test**:
 ```bash
 bun run dev:cli
-# Select Web platform → Solid should appear in list
+# Select Web platform → Solid appears
 ```
 
-Schema validation automatically includes the new stack!
+### Adding a New Module
+
+1. **Add to MODULES** in [__meta__.ts](apps/cli/src/__meta__.ts):
+```typescript
+export const MODULES: ModuleMeta = {
+  nextjs: {
+    analytics: {
+      label: 'Vercel Analytics',
+      hint: 'Web analytics',
+      packageName: 'analytics', // Optional: for turborepo packages/analytics/
+      requires: ['database'],   // Optional: dependency
+    }
+  }
+}
+```
+
+2. **Create Module Templates**:
+```bash
+mkdir -p apps/cli/templates/modules/nextjs/analytics
+```
+
+3. **Add Template Files with Magic Comments**:
+```handlebars
+{{!-- package.json.hbs --}}
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "name": "@repo/analytics",
+  "dependencies": {
+    "@vercel/analytics": "^1.0.0"
+  }
+}
+```
+
+```handlebars
+{{!-- config.ts.hbs --}}
+{{!-- @scope:app --}}
+import { Analytics } from '@vercel/analytics/react'
+
+export const analytics = <Analytics />
+```
+
+4. **Test**:
+```bash
+bun run dev:cli
+# Select Next.js → Analytics appears in modules
+```
 
 ## Code Conventions
 
@@ -392,6 +508,11 @@ templates/
 ├── web/{framework}/        # Next.js, Astro
 ├── api/{framework}/        # Hono, Express
 ├── mobile/{framework}/     # Expo
+├── modules/{framework}/    # Framework-specific addons (shadcn, PWA, tRPC)
+│   └── nextjs/
+│       ├── shadcn/         # shadcn/ui components
+│       ├── pwa/            # Progressive Web App
+│       └── trpc/           # tRPC API layer
 ├── orm/{provider}/         # Prisma, Drizzle
 ├── database/{provider}/    # Postgres config
 ├── extras/{tool}/          # Biome, Git, Husky
@@ -401,21 +522,81 @@ templates/
 ### Handlebars Variables
 Available in all templates:
 - `{{projectName}}` - User's project name
-- `{{appName}}` - Current app name
-- `{{repo}}` - Repository type (single/monorepo)
+- `{{appName}}` - Current app name (auto-injected for app-scoped templates)
+- `{{repo}}` - Repository type (single/turborepo)
+- `{{framework}}` - App's framework (auto-injected for app-scoped templates)
+- `{{backend}}` - App's backend choice (auto-injected for app-scoped templates)
+- `{{modules}}` - Array of selected modules (auto-injected for app-scoped templates)
+- `{{orm}}`, `{{database}}`, `{{git}}`, `{{extras}}` - Context-level selections
 - Additional context from `TemplateContext` type
 
+### Magic Comments (First Line Directives)
+Control template rendering and file placement:
+```handlebars
+{{!-- @repo:turborepo --}}              → Only render in turborepo mode
+{{!-- @repo:single --}}                 → Only render in single repo mode
+{{!-- @scope:app --}}                   → Place in app directory (override default)
+{{!-- @scope:package --}}               → Place in package directory
+{{!-- @if:database --}}                 → Render if database is selected
+{{!-- @require:git --}}                 → Render if git is enabled
+{{!-- @repo:!single --}}                → Negation: everything except single
+{{!-- @repo:turborepo @scope:package --}} → Multiple conditions (AND logic)
+```
+
+**Usage Examples**:
+```handlebars
+{{!-- package.json for shared UI package in turborepo --}}
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "name": "@repo/ui",
+  "version": "0.0.0"
+}
+```
+
+```handlebars
+{{!-- components.json always goes in app, even in turborepo --}}
+{{!-- @scope:app --}}
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "aliases": {
+    "ui": "@repo/ui"
+  }
+}
+```
+
 ### Template Resolution Flow
-1. Scan templates using Bun Glob (`**/*.hbs`)
+1. Scan templates using fast-glob (`**/*.hbs`)
 2. Filter by selected stacks from config
-3. Map source path → destination path based on scope
-4. Determine single-file vs. monorepo structure
-5. Generate `TemplateFile[]` array for rendering
+3. **For modules**: Read first line to detect `@scope:` override
+4. Map source path → destination path based on scope (with override if present)
+5. Determine single-file vs. monorepo structure
+6. Pre-scan magic comments to determine if skip
+7. Generate `TemplateFile[]` array for rendering
 
 ### Scope Mapping
-- `app` scope → `apps/{appName}/{path}`
-- `package` scope → `packages/{packageName}/{path}`
-- `root` scope → `{path}`
+- `app` scope → `apps/{appName}/{path}` (turborepo) or `{path}` (single)
+- `package` scope → `packages/{packageName}/{path}` (turborepo only)
+- `root` scope → `{path}` (always at project root)
+
+### Module Scope Resolution Logic
+For module templates, scope is determined by:
+1. **If `@scope:` magic comment present**: Use that scope explicitly
+2. **Else if turborepo + `packageName` defined**: Use `package` scope → `packages/{packageName}/`
+3. **Else**: Use `app` scope → `apps/{appName}/` or root in single mode
+
+**Example**:
+```
+Module: nextjs/shadcn with packageName: "ui"
+Turborepo mode:
+  - src/lib/utils.ts.hbs → packages/ui/src/lib/utils.ts (default: follows packageName)
+  - components.json.hbs → apps/web/components.json (@scope:app override)
+  - package.json.hbs → packages/ui/package.json (@scope:package explicit)
+
+Single mode:
+  - src/lib/utils.ts.hbs → src/lib/utils.ts (no packageName in single mode)
+  - components.json.hbs → components.json (@scope:app)
+  - package.json.hbs → SKIPPED (@repo:turborepo)
+```
 
 ## Design Decisions
 
@@ -625,40 +806,71 @@ This project combines the best of:
 
 ## Next Steps (Priority Order)
 
-1. **File Generation Engine** (Critical)
-   - Implement Handlebars rendering
-   - Write files to disk
-   - Handle directory creation
+1. **Template Content** (High)
+   - Complete all base framework templates (Next.js, Astro, Hono, Express, Expo)
+   - Finish shadcn module templates
+   - Add PWA and tRPC module templates
+   - Add working package.json files with correct dependencies
 
-2. **Post-Generation** (High)
-   - Run `bun install`
-   - Initialize git repository
-   - Create initial commit
+2. **Testing** (High)
+   - Unit tests for magic-comments.ts
+   - Unit tests for template-resolver.ts
+   - Integration tests for module resolution
+   - E2E tests for CLI flow
 
-3. **Error Handling** (High)
-   - Check for existing project directory
-   - Rollback on failure
-   - Better error messages
+3. **More Modules** (Medium)
+   - Auth.js / NextAuth integration
+   - MDX support for content sites
+   - i18n (next-intl, react-i18next)
+   - Storybook for component development
+   - Testing frameworks (Vitest, Playwright)
 
-4. **Template Content** (Medium)
-   - Fill in all `.hbs` templates
-   - Add working package.json files
-   - Create minimal working apps
+4. **Error Handling & UX** (Medium)
+   - Better error messages with suggestions
+   - Validation of template syntax
+   - Graceful degradation on partial failures
+   - Progress indicators for long operations
 
-5. **Testing** (Medium)
-   - Unit tests for core logic
-   - Integration tests for CLI flow
-   - Template validation tests
-
-6. **CLI Enhancements** (Low)
-   - Non-interactive mode (flags)
+5. **CLI Enhancements** (Low)
+   - Non-interactive mode with flags
    - Configuration save/load
-   - Update command
+   - Update/migrate command for existing projects
+   - Dry-run mode (show what would be generated)
 
-7. **Documentation** (Low)
-   - Complete README.md
-   - Add CONTRIBUTING.md
+6. **Documentation** (Low)
+   - Complete README.md with examples
+   - Add CONTRIBUTING.md with module creation guide
    - Create website content (apps/www)
+   - Video tutorials
+
+## Recent Changes Log
+
+### 2025-10-21: Framework Modules System + Magic Comments
+**Added**:
+- Framework modules system (`MODULES` in `__meta__.ts`)
+- Magic comments for conditional rendering (`@repo:`, `@scope:`, `@if:`, `@require:`)
+- Dynamic scope resolution for module templates
+- Per-app module selection in CLI flow
+- Handlebars helpers: `hasModule()`, `moduleEnabled()`
+- Template processor integration with magic comments pre-scan
+
+**Files Created**:
+- `lib/magic-comments.ts` (164 lines) - Magic comment parsing and validation
+
+**Files Modified**:
+- `types.ts` - Added `modules` to `App`, `ModuleMeta` type, extended `ProcessResult`
+- `__meta__.ts` - Added `MODULES` export with Next.js modules
+- `index.ts` - Module selection prompt per app
+- `lib/template-resolver.ts` - Module template scanning with scope override detection
+- `lib/template-processor.ts` - Magic comments pre-scan integration
+- `lib/handlebars-utils.ts` - Added `hasModule` helpers
+- `templates/modules/nextjs/shadcn/` - Added magic comments to templates
+
+**Impact**:
+- Enables modular, composable project generation
+- Supports complex multi-repo scenarios with fine-grained control
+- Performance optimized (first-line pre-scan)
+- Easy to extend with new modules
 
 ## License & Contact
 

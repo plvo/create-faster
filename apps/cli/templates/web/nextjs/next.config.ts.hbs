@@ -6,7 +6,12 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig: NextConfig = {
   {{#if (eq repo "turborepo")}}
-  transpilePackages: ['@repo/ui', '@repo/db'],
+  transpilePackages: [
+    {{#if (hasModule "shadcn")}}"@repo/ui",{{/if}} 
+    {{#if (hasModule "trpc")}}"@repo/trpc",{{/if}} 
+    {{#if (eq orm "prisma")}}"@repo/db",{{/if}}
+    {{#if (eq orm "drizzle")}}"@repo/db",{{/if}}
+  ]
   {{/if}}
 
   reactStrictMode: true,

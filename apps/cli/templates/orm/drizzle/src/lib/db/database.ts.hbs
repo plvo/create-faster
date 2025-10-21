@@ -1,0 +1,20 @@
+import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import { drizzle } from {{#if (eq database "postgres")}}'drizzle-orm/node-postgres'{{/if}}{{#if (eq database "mysql")}}'drizzle-orm/mysql2'{{/if}};
+import * as schema from './schema';
+
+dotenv.config();
+
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is not set (from database.ts)');
+}
+
+const connectionString = process.env.DATABASE_URL || '{{databaseUrl}}';
+
+export const db = drizzle({
+  schema,
+  connection: {
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production',
+  },
+});

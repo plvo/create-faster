@@ -38,6 +38,15 @@ export function registerHandlebarsHelpers(): void {
     return index === -1 ? 3000 : 3000 + index;
   });
 
+  Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
+    if (this.database === 'postgres') {
+      return `postgresql://{{projectName}}:password@localhost:5432/{{projectName}}`;
+    } else if (this.database === 'mysql') {
+      return `mysql://{{projectName}}:password@localhost:3306/{{projectName}}`;
+    }
+    return '';
+  });
+
   Handlebars.registerHelper('hasBackend', (app: App | undefined) => {
     if (!app) return false;
     return app.backend !== undefined;
@@ -63,6 +72,18 @@ export function registerHandlebarsHelpers(): void {
       .split(/[-_\s]+/)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join('');
+  });
+
+  Handlebars.registerHelper('hasModule', function (this: App | TemplateContext, moduleName: string) {
+    const modules = 'modules' in this ? this.modules : undefined;
+    if (!modules || !Array.isArray(modules)) return false;
+    return modules.some((m) => m.includes(moduleName));
+  });
+
+  Handlebars.registerHelper('moduleEnabled', function (this: App | TemplateContext, moduleName: string) {
+    const modules = 'modules' in this ? this.modules : undefined;
+    if (!modules || !Array.isArray(modules)) return false;
+    return modules.some((m) => m.includes(moduleName));
   });
 }
 
