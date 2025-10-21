@@ -38,31 +38,37 @@ export const META: Meta = {
       },
     },
   },
-  orm: {
-    scope: 'package',
-    packageName: 'db',
-    stacks: {
-      prisma: {
-        label: 'Prisma',
-        hint: 'Type-safe ORM with migrations',
-        requires: ['database'],
-      },
-      drizzle: {
-        label: 'Drizzle',
-        hint: 'Lightweight TypeScript ORM',
-        requires: ['database'],
-      },
-    },
-  },
   database: {
     scope: 'root',
     stacks: {
       postgres: {
         label: 'PostgreSQL',
         hint: 'Relational database',
-        requires: ['orm'],
+      },
+      mysql: {
+        label: 'MySQL',
+        hint: 'Relational database',
       },
     },
+  },
+  orm: {
+    scope: 'package',
+    packageName: 'db',
+    requires: ['database'],
+    stacks: {
+      prisma: {
+        label: 'Prisma',
+        hint: 'Type-safe ORM with migrations',
+      },
+      drizzle: {
+        label: 'Drizzle',
+        hint: 'Lightweight TypeScript ORM',
+      },
+    },
+  },
+  git: {
+    scope: 'root',
+    stacks: {},
   },
   extras: {
     scope: 'root',
@@ -71,11 +77,8 @@ export const META: Meta = {
         label: 'Biome',
         hint: 'Fast linter & formatter',
       },
-      git: {
-        label: 'Git',
-        hint: 'Version control config',
-      },
       husky: {
+        requires: ['git'],
         label: 'Husky',
         hint: 'Git hooks for quality checks',
       },

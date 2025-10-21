@@ -47,6 +47,12 @@ create-faster/
    - `hono`/`express`: Dedicated backend in `{appName}-api/`
    - `undefined`: No backend (only for frameworks without built-in backend)
 
+5. **Context-Aware Filtering** (NEW)
+   - Category-level `requires`: Dependencies between categories (e.g., `orm.requires = ['database']`)
+   - Stack-level `requires`: Dependencies for specific stacks (e.g., `husky.requires = ['git']`)
+   - Progressive context building: Each prompt updates shared context for dynamic filtering
+   - Automatic skip: Prompts auto-skip when requirements not met with informative logs
+
 ### CLI Application Flow
 
 ```
@@ -117,11 +123,13 @@ create-faster/
 ## Core Files & Responsibilities
 
 ### [apps/cli/src/__meta__.ts](apps/cli/src/__meta__.ts)
-**Single source of truth** for all available stacks (85 lines)
+**Single source of truth** for all available stacks (88 lines)
 - Defines labels, hints, dependencies, and capabilities for each framework/tool
+- Category-level `requires`: Dependencies between entire categories (e.g., `orm.requires = ['database']`)
+- Stack-level `requires`: Dependencies for individual stacks (e.g., `husky.requires = ['git']`)
 - Types: `StackMeta`, `CategoryMeta`, `Meta`
 - To add new framework: add entry here first
-- Categories: web, api, mobile, orm, database, extras
+- Categories: web, api, mobile, database, orm, git, extras
 
 ### [apps/cli/src/types.ts](apps/cli/src/types.ts)
 Core type definitions (44 lines)
@@ -133,11 +141,13 @@ Core type definitions (44 lines)
 - `TemplateContext`: Runtime context for template resolution
 
 ### [apps/cli/src/index.ts](apps/cli/src/index.ts)
-Main CLI entry point (170 lines)
-- Orchestrates interactive prompt flow
+Main CLI entry point (167 lines)
+- Orchestrates interactive prompt flow with progressive context building
 - Handles multi-app configuration
-- Conditional database/ORM selection
-- Extras multi-selection (biome, git, husky)
+- Context-aware database → ORM selection (ORM requires database)
+- Git confirmation with boolean context
+- Extras multi-selection with automatic filtering (husky requires git)
+- Progressive `ctx` object updated after each prompt for dependency chain
 - Currently ends at `getAllTemplatesForContext()` call
 
 ### [apps/cli/src/lib/schema.ts](apps/cli/src/lib/schema.ts)
@@ -147,10 +157,12 @@ Zod validation schemas (24 lines)
 - Type-safe runtime validation
 
 ### [apps/cli/src/lib/prompts.ts](apps/cli/src/lib/prompts.ts)
-Reusable prompt wrappers (68 lines)
+Context-aware prompt wrappers (124 lines)
+- `filterOptionsByContext()`: Central filtering logic for category + stack requires
 - `promptText()`: Open text input with validation
-- `promptSelect()`: Single selection from options
-- `promptMultiselect()`: Multiple selection from options
+- `promptSelect()`: Single selection with auto-skip based on context
+- `promptMultiselect()`: Multiple selection with auto-filter based on context
+- `promptConfirm()`: Boolean confirmation prompt
 - Unified cancellation/error handling
 - Built on @clack/prompts
 
@@ -180,13 +192,14 @@ Template discovery and path resolution (99 lines)
 - **Mobile**: Expo (React Native)
 
 ### Database & ORM
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL, MySQL
 - **ORM**: Prisma (type-safe), Drizzle (lightweight SQL-like)
+- **Dependency Chain**: Database → ORM (ORM requires database selection first)
 
 ### Extras
 - **Biome**: Linter + formatter (replaces Prettier + ESLint)
-- **Git**: Configuration files
-- **Husky**: Git hooks management
+- **Git**: Configuration files (confirm prompt, boolean in context)
+- **Husky**: Git hooks management (requires git = true, auto-filtered)
 
 ### Repository Configuration
 - **Turborepo**: Auto-enabled for multi-app projects
@@ -197,11 +210,18 @@ Template discovery and path resolution (99 lines)
 - Interactive CLI with beautiful prompts (@clack/prompts)
 - Multi-app configuration support (unlimited apps)
 - Platform/framework/backend selection per app
-- Database/ORM conditional selection
-- Extras multi-selection
+- **Context-aware filtering system**:
+  - Category-level `requires` (database → ORM dependency chain)
+  - Stack-level `requires` (husky → git filtering)
+  - Progressive context building (`ctx` updated after each prompt)
+  - Auto-skip prompts with informative logging
+  - Central `filterOptionsByContext()` for all filtering logic
+- Database → ORM selection with automatic skip
+- Git confirmation (boolean) feeding into extras filtering
+- Extras multi-selection with auto-filter
 - Template resolution engine (path mapping complete)
 - Scope-aware path mapping (app/package/root)
-- Zod validation for all inputs
+- Unified prompt API (promptText, promptSelect, promptMultiselect, promptConfirm)
 - Meta-driven stack system (easy to extend)
 - Auto-detection of single-file vs. monorepo structure
 

@@ -1,15 +1,54 @@
-import { cancel, isCancel, multiselect, type Option, select, type TextOptions, text } from '@clack/prompts';
+import {
+  type ConfirmOptions,
+  cancel,
+  confirm,
+  isCancel,
+  log,
+  type MultiSelectOptions,
+  multiselect,
+  type Option,
+  type SelectOptions,
+  select,
+  type TextOptions,
+  text,
+} from '@clack/prompts';
 import { META } from '@/__meta__';
-import type { Category } from '@/types';
+import type { Category, TemplateContext } from '@/types';
+
+function filterOptionsByContext<C extends Category>(
+  category: C,
+  ctx: Partial<TemplateContext>,
+): Option<string | undefined>[] {
+  if (META[category].requires) {
+    const isRequired = META[category].requires.every(
+      (required) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
+    );
+    if (!isRequired) {
+      log.info(`${category} skipped (requires: ${META[category].requires.join(', ')})`);
+      return [];
+    }
+  }
+
+  return Object.entries(META[category].stacks)
+    .filter(([_value, meta]) => {
+      if (!meta.requires) return true;
+      const isRequired = meta.requires.every(
+        (required) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
+      );
+      if (!isRequired) {
+        log.info(`${meta.label} skipped because it requires ${meta.requires.join(', ')}`);
+        return false;
+      }
+      return isRequired;
+    })
+    .map(([value, meta]) => ({ value, label: meta.label, hint: meta.hint }));
+}
 
 export async function promptText<T extends string | number = string>(
   message: string,
-  options?: Partial<Omit<TextOptions, 'message'>>,
+  options?: Partial<TextOptions>,
 ): Promise<T | undefined> {
-  const result = await text({
-    message,
-    ...options,
-  });
+  const result = await text({ message, ...options });
 
   if (isCancel(result)) {
     cancel('Operation cancelled');
@@ -22,41 +61,47 @@ export async function promptText<T extends string | number = string>(
 export async function promptSelect<C extends Category>(
   category: C,
   message: string,
-  options?: { allowNone?: boolean; skip?: boolean },
+  ctx: Partial<TemplateContext>,
+  options?: { allowNone?: boolean } & Partial<SelectOptions<string | undefined>>,
 ): Promise<string | undefined> {
-  if (options?.skip) return undefined;
+  const selectOptions = filterOptionsByContext(category, ctx);
 
-  const selectOptions: Option<string | undefined>[] = Object.entries(META[category].stacks).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
+  if (selectOptions.length === 0) {
+    return undefined;
+  }
 
   if (options?.allowNone) {
     selectOptions.push({ value: undefined, label: 'None' });
   }
 
-  const result = await select({ message, options: selectOptions });
+  const result = await select({
+    message,
+    options: selectOptions,
+    initialValue: selectOptions[0]?.value,
+    ...options,
+  });
 
   if (isCancel(result)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result as string | undefined;
+  return result;
 }
 
 export async function promptMultiselect<C extends Category>(
   category: C,
   message: string,
+  ctx: Partial<TemplateContext>,
+  options?: Partial<MultiSelectOptions<string>>,
 ): Promise<string[] | undefined> {
-  const selectOptions = Object.entries(META[category].stacks).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
+  const selectOptions = filterOptionsByContext(category, ctx);
 
-  const result = await multiselect({ message, options: selectOptions, required: false });
+  if (selectOptions.length === 0) {
+    return undefined;
+  }
+
+  const result = await multiselect({ message, options: selectOptions, required: false, ...options });
 
   if (isCancel(result)) {
     cancel('Operation cancelled');
@@ -64,4 +109,15 @@ export async function promptMultiselect<C extends Category>(
   }
 
   return result as string[] | undefined;
+}
+
+export async function promptConfirm(message: string, options?: Partial<ConfirmOptions>): Promise<boolean> {
+  const result = await confirm({ message, ...options });
+
+  if (isCancel(result)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  return result;
 }
