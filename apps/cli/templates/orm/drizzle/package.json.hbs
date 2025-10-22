@@ -1,0 +1,35 @@
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "name": "@repo/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run scripts/seed.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.38.3",
+    {{#if (eq database "postgres")}}
+    "pg": "^8.13.1"
+    {{/if}}
+    {{#if (eq database "mysql")}}
+    "mysql2": "^3.11.5"
+    {{/if}}
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.1",
+    {{#if (eq database "postgres")}}
+    "@types/pg": "^8.11.10"
+    {{/if}}
+    {{#if (eq database "mysql")}}
+    "@types/mysql2": "^3.11.5"
+    {{/if}}
+  }
+}

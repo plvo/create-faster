@@ -1,0 +1,12 @@
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "extends": "@repo/config/ts/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

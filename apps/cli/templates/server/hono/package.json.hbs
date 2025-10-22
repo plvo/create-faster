@@ -1,0 +1,31 @@
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "name": "gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/index.ts --production --target node --format esm --outfile dist/index.js",
+    "dev": "bun run --watch src/app.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@hono/zod-validator": "^0.7.0",
+	{{#if (eq orm "prisma")}}
+    "@repo/db": "*",
+	{{/if}}
+	{{#if (eq orm "drizzle")}}
+    "@repo/db": "*",
+	{{/if}}
+    "hono": "^4.7.10"
+  },
+  "devDependencies": {
+	{{#if (eq orm "prisma")}}
+    "@repo/db": "*",
+	{{/if}}
+    "@types/bun": "latest",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,7 +1,20 @@
-import type { Meta } from './types';
+import type { Meta, MetaModule } from './types';
 
 export const META: Meta = {
-  web: {
+  repo: {
+    scope: 'root',
+    stacks: {
+      single: {
+        label: 'Single',
+        hint: 'Single repository',
+      },
+      turborepo: {
+        label: 'Turborepo',
+        hint: 'Monorepo repository',
+      },
+    },
+  },
+  app: {
     scope: 'app',
     stacks: {
       nextjs: {
@@ -9,33 +22,24 @@ export const META: Meta = {
         hint: 'React framework with SSR',
         hasBackend: true,
       },
-      astro: {
-        label: 'Astro',
-        hint: 'Static site generator',
-        hasBackend: false,
-      },
+      // expo: {
+      //   label: 'Expo',
+      //   hint: 'React Native framework',
+      //   hasBackend: false,
+      // },
     },
   },
-  api: {
+  server: {
     scope: 'app',
     stacks: {
       hono: {
         label: 'Hono',
         hint: 'Fast web framework',
       },
-      express: {
-        label: 'Express',
-        hint: 'Node.js framework',
-      },
-    },
-  },
-  mobile: {
-    scope: 'app',
-    stacks: {
-      expo: {
-        label: 'Expo',
-        hint: 'React Native framework',
-      },
+      // express: {
+      //   label: 'Express',
+      //   hint: 'Node.js framework',
+      // },
     },
   },
   database: {
@@ -56,19 +60,15 @@ export const META: Meta = {
     packageName: 'db',
     requires: ['database'],
     stacks: {
-      prisma: {
-        label: 'Prisma',
-        hint: 'Type-safe ORM with migrations',
-      },
       drizzle: {
         label: 'Drizzle',
         hint: 'Lightweight TypeScript ORM',
       },
+      prisma: {
+        label: 'Prisma',
+        hint: 'Type-safe ORM with migrations',
+      },
     },
-  },
-  git: {
-    scope: 'root',
-    stacks: {},
   },
   extras: {
     scope: 'root',
@@ -85,3 +85,42 @@ export const META: Meta = {
     },
   },
 } as const;
+
+export const MODULES: MetaModule = {
+  nextjs: {
+    shadcn: {
+      label: 'shadcn/ui',
+      hint: 'Accessible UI components',
+      packageName: 'ui',
+    },
+    mdx: {
+      label: 'MDX',
+      hint: 'Markdown-based content',
+    },
+    // pwa: {
+    //   label: 'PWA',
+    //   hint: 'Progressive Web App support',
+    // },
+    // trpc: {
+    //   label: 'tRPC',
+    //   hint: 'End-to-end type safety',
+    //   requires: ['database'],
+    // },
+  },
+  // expo: {
+  //   nativewind: {
+  //     label: 'NativeWind',
+  //     hint: 'Tailwind CSS for React Native',
+  //   },
+  // },
+  // hono: {
+  //   openapi: {
+  //     label: 'OpenAPI',
+  //     hint: 'Auto-generated API docs',
+  //   },
+  //   jwt: {
+  //     label: 'JWT Auth',
+  //     hint: 'Authentication middleware',
+  //   },
+  // },
+};

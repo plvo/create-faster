@@ -1,40 +1,50 @@
-export type Repo = 'single' | 'turborepo';
 export type Scope = 'app' | 'package' | 'root';
-export type Platform = 'web' | 'api' | 'mobile';
-export type Category = Platform | 'orm' | 'database' | 'git' | 'extras';
+export type Category = 'app' | 'server' | 'orm' | 'database' | 'extras' | 'repo';
 
-export interface StackMeta {
+export interface MetaStack {
   label: string;
   hint?: string;
-  hasBackend?: boolean;
-  requires?: Category[];
+  hasBackend?: boolean; // like nextjs
+  requires?: (Category | (string & {}))[];
 }
 
-export interface CategoryMeta {
+export interface MetaCategory {
   scope: Scope;
-  packageName?: string;
-  requires?: Category[];
-  stacks: Record<string, StackMeta>;
+  packageName?: string; // used for turborepo packages/<packageName>
+  requires?: Category[]; // like orm.requires = ['database']
+  stacks: Record<string, MetaStack>;
 }
 
-export type Meta = Record<Category, CategoryMeta>;
+export type Meta = Record<Category, MetaCategory>;
+type MetaApp = keyof Meta['app']['stacks'];
+type MetaServer = keyof Meta['server']['stacks'] | 'builtin';
 
-export type Framework = keyof Meta[Platform]['stacks'];
-export type Backend = 'builtin' | keyof Meta['api']['stacks'];
+type MetaModuleStack = Omit<MetaStack, 'hasBackend'> & { packageName?: string };
+export type MetaModule = Record<string, Record<string, MetaModuleStack>>; // like nextjs.shadcn
 
-export interface App {
+export interface AppContext {
   appName: string;
-  platform: Platform;
-  framework: Framework;
-  backend?: Backend;
+  metaApp?: {
+    name: MetaApp;
+    modules: string[];
+  };
+  metaServer?: {
+    name: MetaServer;
+    modules: string[];
+  };
 }
 
 export interface TemplateContext {
   projectName: string;
-  repo: Repo;
-  apps: App[];
+  repo: 'single' | 'turborepo';
+  apps: AppContext[];
   orm?: keyof Meta['orm']['stacks'];
   database?: keyof Meta['database']['stacks'];
   git: boolean;
   extras?: (keyof Meta['extras']['stacks'])[];
+}
+
+export interface TemplateFile {
+  source: string;
+  destination: string;
 }

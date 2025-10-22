@@ -1,0 +1,66 @@
+{{!-- @repo:turborepo @scope:package --}}
+{{#if (eq database "postgres")}}
+import { pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+{{/if}}
+{{#if (eq database "mysql")}}
+import { mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
+{{/if}}
+import { relations } from 'drizzle-orm';
+
+{{#if (eq database "postgres")}}
+// Users table
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  bio: text('bio'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Posts table
+export const posts = pgTable('posts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  published: varchar('published', { length: 10 }).notNull().default('false'),
+  authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+{{/if}}
+
+{{#if (eq database "mysql")}}
+// Users table
+export const users = mysqlTable('users', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  bio: text('bio'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Posts table
+export const posts = mysqlTable('posts', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  published: varchar('published', { length: 10 }).notNull().default('false'),
+  authorId: varchar('author_id', { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+{{/if}}
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts),
+}));
+
+export const postsRelations = relations(posts, ({ one }) => ({
+  author: one(users, {
+    fields: [posts.authorId],
+    references: [users.id],
+  }),
+}));

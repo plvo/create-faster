@@ -1,100 +1,168 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 
-import { cancel, intro, isCancel, type Option, outro, select } from '@clack/prompts';
-import { META } from '@/__meta__';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { cancel, intro, isCancel, multiselect, type Option, outro, select } from '@clack/prompts';
+import { META, MODULES } from '@/__meta__';
+import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
+import { runPostGeneration } from '@/lib/post-generation';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { App, Backend, Framework, Platform, TemplateContext } from '@/types';
+import type { AppContext, TemplateContext } from '@/types';
 
-async function promptPlatform(message: string): Promise<Platform> {
-  const result = await select({
-    message,
-    options: [
-      { value: 'web', label: 'Web', hint: 'Next.js, Astro...' },
-      { value: 'api', label: 'API/Server', hint: 'Hono, Express...' },
-      { value: 'mobile', label: 'Mobile', hint: 'Expo, React Native' },
-    ],
+type MetaApp = keyof typeof META.app.stacks;
+type MetaServer = keyof typeof META.server.stacks | 'builtin';
+
+async function processAppWithServer(index: number, appName: string): Promise<AppContext> {
+  const stacks = META.app.stacks;
+
+  const options: Option<MetaApp>[] = Object.entries(stacks).map(([value, meta]) => ({
+    value: value as MetaApp,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  const appName_ = await select<MetaApp>({
+    message: `App ${index} - Framework?`,
+    options,
   });
 
-  if (isCancel(result)) {
+  if (isCancel(appName_)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result;
-}
-
-async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<Framework> {
-  const stacks = META[platform].stacks;
-
-  const options = Object.entries(stacks).map(([value, meta]) => ({
+  const moduleOptions = Object.entries(MODULES[appName_] ?? {}).map(([value, meta]) => ({
     value,
     label: meta.label,
     hint: meta.hint,
   }));
 
-  const result = await select({ message, options });
+  let modules: string[] = [];
+  if (moduleOptions.length > 0) {
+    const result = await multiselect({
+      message: `App ${index} - Modules?`,
+      options: moduleOptions,
+      required: false,
+    });
 
-  if (isCancel(result)) {
-    cancel('Operation cancelled');
-    process.exit(0);
+    if (isCancel(result)) {
+      cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    modules = (result as string[]) || [];
   }
 
-  return result;
+  return await processServer(index, appName, appName_, modules);
 }
 
-async function promptBackendForApp(
+async function processServer(
+  index: number,
   appName: string,
-  platform: Platform,
-  framework: Framework,
-): Promise<Backend | undefined> {
-  const frameworkMeta = META[platform].stacks[framework];
+  metaAppName?: MetaApp,
+  appModules?: string[],
+): Promise<AppContext> {
+  const serverOptions = Object.entries(META.server.stacks).map(([value, meta]) => ({
+    value: value as MetaServer,
+    label: meta.label,
+    hint: meta.hint,
+  }));
 
-  const options: Option<Backend | undefined>[] = [];
+  const appMeta = metaAppName ? META.app.stacks[metaAppName] : undefined;
 
-  if (frameworkMeta?.hasBackend) {
-    options.push({
-      value: 'builtin',
-      label: `Use ${frameworkMeta.label} built-in`,
+  if (appMeta?.hasBackend) {
+    serverOptions.unshift({
+      value: 'builtin' as MetaServer,
+      label: `Use ${appMeta.label} built-in`,
       hint: 'API routes, server actions',
     });
   }
 
-  Object.entries(META.api.stacks).forEach(([key, meta]) => {
-    options.push({ value: key, label: meta.label, hint: meta.hint });
+  const serverName = await select<MetaServer>({
+    message: `App ${index} - Server?`,
+    options: serverOptions,
   });
 
-  if (!frameworkMeta?.hasBackend) {
-    options.push({ value: undefined, label: 'None' });
-  }
-
-  const result = await select({
-    message: `${appName} - Backend?`,
-    options,
-  });
-
-  if (isCancel(result)) {
+  if (isCancel(serverName)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
+  const result: AppContext = {
+    appName,
+    metaApp: metaAppName ? { name: metaAppName, modules: appModules || [] } : undefined,
+    metaServer: { name: serverName, modules: [] },
+  };
+
+  if (serverName === 'builtin') {
+    return result;
+  }
+
+  // Prompt for server modules
+  const serverModuleOptions = Object.entries(MODULES[serverName] ?? {}).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  let serverModules: string[] = [];
+
+  if (serverModuleOptions.length > 0) {
+    const modulesResult = await multiselect({
+      message: `App ${index} - Server Modules?`,
+      options: serverModuleOptions,
+      required: false,
+    });
+
+    if (isCancel(modulesResult)) {
+      cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    serverModules = (modulesResult as string[]) || [];
+  }
+
+  result.metaServer!.modules = serverModules;
   return result;
 }
 
-async function promptApp(index: number): Promise<App> {
+async function promptApp(index: number): Promise<AppContext> {
   const appName = await promptText(`App ${index} - Name? (folder name)`, {
     defaultValue: `app-${index}`,
     placeholder: `app-${index}`,
     validate: (value) => {
-      if (!value || value.trim() === '') return 'App name is required';
+      const trimedValue = value.trim();
+      if (!value || trimedValue === '') return 'App name is required';
+      const fullPath = join(process.cwd(), trimedValue);
+      try {
+        if (existsSync(fullPath)) {
+          return `A file or directory named "${trimedValue}" already exists. Please choose a different name.`;
+        }
+      } catch (e) {
+        return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
+      }
     },
   });
 
-  const platform = await promptPlatform(`App ${index} - Platform?`);
-  const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
-  const backend = platform !== 'api' ? await promptBackendForApp(appName!, platform, framework!) : undefined;
+  const platform = await select({
+    message: `Select the platform type for app "${appName}":`,
+    options: [
+      { value: 'app', label: 'Web / Mobile App', hint: 'Next.js, React Native, Astro...' },
+      { value: 'server', label: 'Server / API', hint: 'Hono, Express...' },
+    ],
+  });
 
-  return { appName: appName!, platform, framework: framework!, backend };
+  if (isCancel(platform)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  if (platform === 'app') {
+    return await processAppWithServer(index, appName!);
+  }
+
+  return await processServer(index, appName!);
 }
 
 async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
@@ -150,17 +218,40 @@ async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
 }
 
 async function main() {
-  const config = await cli();
+  try {
+    const config = await cli();
 
-  const ctx: TemplateContext = {
-    repo: config.apps.length > 1 ? 'turborepo' : 'single',
-    ...config,
-  };
+    const ctx: TemplateContext = {
+      repo: config.apps.length > 1 ? 'turborepo' : 'single',
+      ...config,
+    };
 
-  const templates = getAllTemplatesForContext(ctx);
+    // Get all templates to generate
+    const templates = getAllTemplatesForContext(ctx);
 
-  console.log('\nTemplates to generate:');
-  console.log(templates);
+    // Generate project files
+    const result = await generateProjectFiles(templates, ctx);
+
+    // Display results
+    displayGenerationResults(result);
+
+    // Exit if generation failed
+    if (!result.success) {
+      console.error('\n✗ Project generation failed. Please fix the errors and try again.');
+      process.exit(1);
+    }
+
+    // Run post-generation tasks (install deps, git init)
+    const projectPath = join(process.cwd(), ctx.projectName);
+    await runPostGeneration(ctx, projectPath, {
+      install: true,
+      packageManager: 'bun',
+    });
+  } catch (error) {
+    console.error('\n✗ An error occurred:');
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
 
 main().catch(console.error);

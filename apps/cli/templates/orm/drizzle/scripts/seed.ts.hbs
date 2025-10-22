@@ -1,0 +1,67 @@
+{{! @scope: root }}
+{{#if (eq repo "turborepo")}}
+import { db, posts, users } from '@repo/db';
+{{else}}
+import { db, posts, users } from '@/lib/db';
+{{/if}}
+
+async function seed() {
+  console.log('🌱 Seeding database...');
+
+  // Clear existing data
+  await db.delete(posts);
+  await db.delete(users);
+
+  // Create users
+  const [alice, bob] = await db
+    .insert(users)
+    .values([
+      {
+        name: 'Alice Johnson',
+        email: 'alice@example.com',
+        bio: 'Software engineer and open source enthusiast',
+      },
+      {
+        name: 'Bob Smith',
+        email: 'bob@example.com',
+        bio: 'Tech writer and developer advocate',
+      },
+    ])
+    .returning();
+
+  console.log(`✅ Created ${2} users`);
+
+  // Create posts
+  await db.insert(posts).values([
+    {
+      title: 'Getting Started with Drizzle ORM',
+      content: 'Drizzle ORM is a TypeScript-first ORM that provides excellent type safety...',
+      published: 'true',
+      authorId: alice.id,
+    },
+    {
+      title: 'Building Modern APIs',
+      content: 'Modern API development requires careful consideration of many factors...',
+      published: 'true',
+      authorId: alice.id,
+    },
+    {
+      title: 'Draft: Upcoming Features',
+      content: 'This is a draft post about upcoming features...',
+      published: 'false',
+      authorId: bob.id,
+    },
+  ]);
+
+  console.log(`✅ Created ${3} posts`);
+  console.log('🎉 Seeding completed!');
+}
+
+seed()
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(() => {
+    process.exit(0);
+  });
