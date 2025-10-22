@@ -75,20 +75,6 @@ export function registerHandlebarsHelpers(): void {
     return this.repo === 'single';
   });
 
-  Handlebars.registerHelper('kebabCase', (str: string) => {
-    return str
-      .replace(/([a-z])([A-Z])/g, '$1-$2')
-      .replace(/[\s_]+/g, '-')
-      .toLowerCase();
-  });
-
-  Handlebars.registerHelper('pascalCase', (str: string) => {
-    return str
-      .split(/[-_\s]+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join('');
-  });
-
   Handlebars.registerHelper('hasModule', function (this: AppContext | TemplateContext, moduleName: string) {
     const modules = 'metaApp' in this ? this.metaApp?.modules : undefined;
     if (!modules || !Array.isArray(modules)) return false;
@@ -119,6 +105,14 @@ export function registerHandlebarsHelpers(): void {
       return contextName in this && (this as TemplateContext)[contextName] !== undefined;
     },
   );
+
+  Handlebars.registerHelper('hasAnyApp', function (this: TemplateContext, appType: string) {
+    return this.apps.some((app) => app.metaApp?.name === appType);
+  });
+
+  Handlebars.registerHelper('hasAnyServer', function (this: TemplateContext, serverType: string) {
+    return this.apps.some((app) => app.metaServer?.name === serverType);
+  });
 }
 
 /**

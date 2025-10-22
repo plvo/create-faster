@@ -22,11 +22,11 @@ export const META: Meta = {
         hint: 'React framework with SSR',
         hasBackend: true,
       },
-      expo: {
-        label: 'Expo',
-        hint: 'React Native framework',
-        hasBackend: false,
-      },
+      // expo: {
+      //   label: 'Expo',
+      //   hint: 'React Native framework',
+      //   hasBackend: false,
+      // },
     },
   },
   server: {
@@ -36,10 +36,10 @@ export const META: Meta = {
         label: 'Hono',
         hint: 'Fast web framework',
       },
-      express: {
-        label: 'Express',
-        hint: 'Node.js framework',
-      },
+      // express: {
+      //   label: 'Express',
+      //   hint: 'Node.js framework',
+      // },
     },
   },
   database: {
@@ -93,30 +93,34 @@ export const MODULES: MetaModule = {
       hint: 'Accessible UI components',
       packageName: 'ui',
     },
-    pwa: {
-      label: 'PWA',
-      hint: 'Progressive Web App support',
+    mdx: {
+      label: 'MDX',
+      hint: 'Markdown-based content',
     },
-    trpc: {
-      label: 'tRPC',
-      hint: 'End-to-end type safety',
-      requires: ['database'],
-    },
+    // pwa: {
+    //   label: 'PWA',
+    //   hint: 'Progressive Web App support',
+    // },
+    // trpc: {
+    //   label: 'tRPC',
+    //   hint: 'End-to-end type safety',
+    //   requires: ['database'],
+    // },
   },
-  expo: {
-    nativewind: {
-      label: 'NativeWind',
-      hint: 'Tailwind CSS for React Native',
-    },
-  },
-  hono: {
-    openapi: {
-      label: 'OpenAPI',
-      hint: 'Auto-generated API docs',
-    },
-    jwt: {
-      label: 'JWT Auth',
-      hint: 'Authentication middleware',
-    },
-  },
+  // expo: {
+  //   nativewind: {
+  //     label: 'NativeWind',
+  //     hint: 'Tailwind CSS for React Native',
+  //   },
+  // },
+  // hono: {
+  //   openapi: {
+  //     label: 'OpenAPI',
+  //     hint: 'Auto-generated API docs',
+  //   },
+  //   jwt: {
+  //     label: 'JWT Auth',
+  //     hint: 'Authentication middleware',
+  //   },
+  // },
 };

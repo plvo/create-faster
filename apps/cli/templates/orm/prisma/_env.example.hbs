@@ -1,7 +1,2 @@
-# Database connection string
-{{#if (eq database "postgres")}}
-DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
-{{/if}}
-{{#if (eq database "mysql")}}
-DATABASE_URL="mysql://user:password@localhost:3306/dbname"
-{{/if}}
+{{!-- @repo:turborepo @scope:package --}}
+DATABASE_URL="{{databaseUrl}}"

@@ -21,9 +21,11 @@ coverage
 # Vercel
 .vercel
 
+{{#if (hasAnyApp "nextjs")}}
 # Next.js
 .next/
 next-env.d.ts
+{{/if}}
 
 # Build Outputs
 out/

@@ -1,6 +1,6 @@
 {{!-- @repo:single --}}
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import { users, posts } from './schema';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type { posts, users } from './schema';
 
 // Inferred types from schema
 export type User = InferSelectModel<typeof users>;
