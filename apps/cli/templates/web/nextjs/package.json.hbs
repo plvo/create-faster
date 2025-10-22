@@ -4,6 +4,20 @@
   "private": true,
   "scripts": {
     {{#if (eq repo "single")}}
+    {{#if (eq orm "drizzle")}}
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run scripts/seed.ts",
+    {{/if}}
+    {{#if (eq orm "prisma")}}
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "bun run scripts/seed.ts",
+    {{/if}}
     "check": "biome check --write .",
     "format": "biome format --write .",
     "lint": "biome lint --write .",
@@ -24,6 +38,23 @@
     "vaul": "^1.1.2",
     "tailwind-merge": "^3.3.1",
     {{/if}}
+    {{#if (and (eq repo "turborepo") (hasContext "orm"))}}
+    "@repo/db": "*",
+    {{/if}}
+    {{#if (eq repo "single")}}
+    {{#if (eq orm "drizzle")}}
+    "drizzle-orm": "^0.38.3",
+    {{#if (eq database "postgres")}}
+    "pg": "^8.13.1",
+    {{/if}}
+    {{#if (eq database "mysql")}}
+    "mysql2": "^3.11.5",
+    {{/if}}
+    {{/if}}
+    {{#if (eq orm "prisma")}}
+    "@prisma/client": "^6.13.0",
+    {{/if}}
+    {{/if}}
     "lucide-react": "^0.487.0",
     "next": "15.5.4",
     "next-themes": "^0.4.6",
@@ -41,7 +72,22 @@
     "@types/node": "^20",
     "@types/react": "~19.1.10",
     "@types/react-dom": "^19",
+    {{#if (eq repo "single")}}
+    {{#if (eq orm "drizzle")}}
+    "drizzle-kit": "^0.30.1",
+    {{#if (eq database "postgres")}}
+    "@types/pg": "^8.11.10",
+    {{/if}}
+    {{#if (eq database "mysql")}}
+    "@types/mysql2": "^3.11.5",
+    {{/if}}
+    {{/if}}
+    {{#if (eq orm "prisma")}}
+    "prisma": "^6.13.0",
+    {{/if}}
+    {{/if}}
     "tailwindcss": "^4.1.10",
+    "@next/bundle-analyzer": "^15.5.2",
     "typescript": "^5"
   }
 }

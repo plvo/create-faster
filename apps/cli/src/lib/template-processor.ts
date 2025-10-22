@@ -41,6 +41,12 @@ export async function processTemplate(
     const isHbsTemplate = source.endsWith('.hbs');
     const isBinary = isBinaryFile(source);
 
+    console.log('isHbsTemplate', isHbsTemplate);
+    console.log('isBinary', isBinary);
+    console.log('source', source);
+    console.log('finalDestination', finalDestination);
+    console.log('-----------------------');
+
     // Binary file without .hbs extension: direct copy
     if (isBinary && !isHbsTemplate) {
       await copyBinaryFile(source, finalDestination);

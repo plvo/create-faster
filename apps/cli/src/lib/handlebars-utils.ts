@@ -40,9 +40,9 @@ export function registerHandlebarsHelpers(): void {
 
   Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
     if (this.database === 'postgres') {
-      return `postgresql://{{projectName}}:password@localhost:5432/{{projectName}}`;
+      return `postgresql://postgres:password@localhost:5432/postgres-${this.projectName}`;
     } else if (this.database === 'mysql') {
-      return `mysql://{{projectName}}:password@localhost:3306/{{projectName}}`;
+      return `mysql://mysql:password@localhost:3306/mysql-${this.projectName}`;
     }
     return '';
   });
@@ -84,6 +84,10 @@ export function registerHandlebarsHelpers(): void {
     const modules = 'modules' in this ? this.modules : undefined;
     if (!modules || !Array.isArray(modules)) return false;
     return modules.some((m) => m.includes(moduleName));
+  });
+
+  Handlebars.registerHelper('hasContext', function (this: App | TemplateContext, contextName: keyof TemplateContext) {
+    return contextName in this && (this as TemplateContext)[contextName] !== undefined;
   });
 }
 

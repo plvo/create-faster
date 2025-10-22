@@ -1,0 +1,19 @@
+{{!-- @repo:turborepo @scope:package --}}
+import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { users, posts } from './schema';
+
+// Inferred types from schema
+export type User = InferSelectModel<typeof users>;
+export type NewUser = InferInsertModel<typeof users>;
+
+export type Post = InferSelectModel<typeof posts>;
+export type NewPost = InferInsertModel<typeof posts>;
+
+// Relation types
+export type UserWithPosts = User & {
+  posts: Post[];
+};
+
+export type PostWithAuthor = Post & {
+  author: User;
+};

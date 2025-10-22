@@ -4,21 +4,21 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { META, MODULES } from '@/__meta__';
 import type { Category, Scope, TemplateContext, TemplateFile } from '@/types';
-import { extractFirstLine, parseMagicComments } from './magic-comments';
+import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 function getTemplatesRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   return path.join(currentDir, '../../templates');
 }
 
-function scanTemplates(category: Category, stack: string): string[] {
+function scanTemplates(category: Category | 'modules', stack: string): string[] {
   const dir = path.join(getTemplatesRoot(), category, stack);
-  return fg.sync('**/*.hbs', { cwd: dir });
+  return fg.sync('**/*', { cwd: dir });
 }
 
 function scanModuleTemplates(framework: string, moduleName: string): string[] {
   const dir = path.join(getTemplatesRoot(), 'modules', framework, moduleName);
-  return fg.sync('**/*.hbs', { cwd: dir });
+  return fg.sync('**/*', { cwd: dir });
 }
 
 function resolveDestination(
@@ -66,11 +66,40 @@ function getTemplatesForStack(
   try {
     const files = scanTemplates(category, stack);
     const scope = categoryMeta.scope;
+    const templatesRoot = getTemplatesRoot();
 
-    return files.map((file) => ({
-      source: `templates/${category}/${stack}/${file}`,
-      destination: resolveDestination(file, appName, scope, ctx, packageName),
-    }));
+    return files
+      .map((file) => {
+        const fullPath = path.join(templatesRoot, category, stack, file);
+
+        // Read first line to check for magic comments (like @repo:turborepo)
+        try {
+          const content = readFileSync(fullPath, 'utf8');
+          const firstLine = extractFirstLine(content);
+          const magicComments = parseMagicComments(firstLine);
+
+          // Skip file if magic comments say so (e.g., @repo:turborepo in single mode)
+          if (shouldSkipTemplate(magicComments, ctx)) {
+            return null; // Skip this file
+          }
+
+          // Check for @scope override
+          const scopeComment = magicComments.find((c) => c.type === 'scope');
+          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
+
+          return {
+            source: `templates/${category}/${stack}/${file}`,
+            destination: resolveDestination(file, appName, finalScope, ctx, packageName),
+          };
+        } catch {
+          // If can't read, include it (fallback)
+          return {
+            source: `templates/${category}/${stack}/${file}`,
+            destination: resolveDestination(file, appName, scope, ctx, packageName),
+          };
+        }
+      })
+      .filter((t): t is TemplateFile => t !== null);
   } catch {
     return [];
   }

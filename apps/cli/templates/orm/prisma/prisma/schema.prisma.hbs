@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+  {{#if (eq repo "turborepo")}}
+  output   = "../generated/prisma"
+  {{/if}}
+}
+
+datasource db {
+  {{#if (eq database "postgres")}}
+  provider = "postgresql"
+  {{/if}}
+  {{#if (eq database "mysql")}}
+  provider = "mysql"
+  {{/if}}
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  bio       String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  posts     Post[]
+
+  @@map("users")
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  published Boolean  @default(false)
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+}

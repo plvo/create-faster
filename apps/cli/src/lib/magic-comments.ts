@@ -41,9 +41,9 @@ function parseSingleDirective(directive: string): MagicComment | null {
 
   if (!match) return null;
 
-  const [type, negation, valuesStr] = match;
+  const [, type, negation, valuesStr] = match; // Skip first element (full match)
 
-  if (!['repo', 'if', 'require', 'scope'].includes(type)) {
+  if (!type || !['repo', 'if', 'require', 'scope'].includes(type)) {
     return null;
   }
 
