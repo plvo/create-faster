@@ -29,37 +29,46 @@ create-faster/
 
 ### Core Concepts
 
-1. **Platform vs Framework**
-   - Platform: Type of app (`web`, `api`, `mobile`)
-   - Framework: Specific stack (`nextjs`, `astro`, `hono`, `express`, `expo`)
+1. **Platform Types** (2025-10-22 Refactored)
+   - `app`: Client-side applications (Next.js, Expo, Astro...)
+   - `server`: Backend/API servers (Hono, Express...)
+   - **No more** `web`/`mobile` distinction - unified as `app`
 
-2. **Scope System**
+2. **App Configuration Types** (Discriminated Union)
+   - **App only**: `{ app: 'nextjs', modules?: [...] }`
+   - **Server only**: `{ server: 'hono', serverModules?: [...] }`
+   - **Fullstack**: `{ app: 'nextjs', server: 'hono', modules?: [...], serverModules?: [...] }`
+   - Type guards: `hasApp()`, `hasServer()`, `isStandaloneServer()`, `isFullstack()`
+
+3. **Scope System**
    - `app`: Application-level templates → `apps/{name}/`
    - `package`: Shared package templates → `packages/{name}/`
    - `root`: Root-level config → `./`
 
-3. **Auto-detection**
+4. **Auto-detection**
    - Turborepo mode when `apps.length > 1`
    - Single repo mode for single app projects
 
-4. **Backend Choice**
+5. **Server Choice**
    - `builtin`: Use framework's built-in backend (Next.js API routes)
-   - `hono`/`express`: Dedicated backend in `{appName}-api/`
-   - `undefined`: No backend (only for frameworks without built-in backend)
+   - `hono`/`express`: Dedicated server in `{appName}-server/`
+   - Standalone servers use app name directly
 
-5. **Context-Aware Filtering**
+6. **Context-Aware Filtering**
    - Category-level `requires`: Dependencies between categories (e.g., `orm.requires = ['database']`)
    - Stack-level `requires`: Dependencies for specific stacks (e.g., `husky.requires = ['git']`)
    - Progressive context building: Each prompt updates shared context for dynamic filtering
    - Automatic skip: Prompts auto-skip when requirements not met with informative logs
 
-6. **Framework Modules System** (2025-10-21)
-   - Optional addons per framework (shadcn, PWA, tRPC for Next.js)
+7. **Modules System** (2025-10-21 + Server Support 2025-10-22)
+   - **App modules**: shadcn, PWA, tRPC for Next.js | NativeWind for Expo
+   - **Server modules**: OpenAPI, JWT for Hono | Passport, Helmet for Express
    - Separate `MODULES` metadata independent from core stacks
    - Module-specific `packageName` for turborepo package placement
    - Context-aware activation based on requirements
+   - Per-framework AND per-server module selection
 
-7. **Magic Comments System** (2025-10-21)
+8. **Magic Comments System** (2025-10-21)
    - First-line directives for conditional template rendering
    - `@repo:` - Control rendering based on repo type (single/turborepo)
    - `@scope:` - Override default file placement (app/package/root)
@@ -122,9 +131,9 @@ create-faster/
 │   │   │       ├── schema.ts           # Zod validation schemas
 │   │   │       └── template-resolver.ts # Template discovery logic
 │   │   └── templates/         # Handlebars templates
-│   │       ├── web/{framework}/
-│   │       ├── api/{framework}/
-│   │       ├── mobile/{framework}/
+│   │       ├── app/{framework}/        # Next.js, Expo (was web/ + mobile/)
+│   │       ├── server/{framework}/     # Hono, Express (was api/)
+│   │       ├── modules/{framework}/    # shadcn, PWA, OpenAPI, JWT
 │   │       ├── orm/{provider}/
 │   │       ├── database/{provider}/
 │   │       ├── extras/{tool}/
@@ -142,34 +151,60 @@ create-faster/
   - Category-level `requires`: Dependencies between entire categories (e.g., `orm.requires = ['database']`)
   - Stack-level `requires`: Dependencies for individual stacks (e.g., `husky.requires = ['git']`)
   - Types: `StackMeta`, `CategoryMeta`, `Meta`
-  - Categories: web, api, mobile, database, orm, extras, repo
-- **MODULES**: Framework-specific optional addons (shadcn, PWA, tRPC)
-  - Structured by framework: `MODULES.nextjs.shadcn`
+  - Categories: `app`, `server`, database, orm, extras, repo (no more web/mobile)
+- **MODULES**: App + Server modules (2025-10-22 Extended)
+  - **App modules**: `MODULES.nextjs.shadcn`, `MODULES.expo.nativewind`
+  - **Server modules**: `MODULES.hono.openapi`, `MODULES.express.passport`
   - Optional `packageName` for turborepo package placement
   - Support `requires` for module dependencies
-  - Type: `ModuleMeta = Record<Framework, Record<string, StackMeta & { packageName?: string }>>`
+  - Type: `ModuleMeta = Record<string, Record<string, StackMeta & { packageName?: string }>>`
 
 ### [apps/cli/src/types.ts](apps/cli/src/types.ts)
-Core type definitions
-- `Platform`: web, api, mobile
-- `Category`: web, api, mobile, orm, database, extras, repo
+Core type definitions (2025-10-22 Refactored with clearer naming)
+- **Naming Convention**: All Meta types prefixed with `Meta*` for consistency
+- `Category`: `'app' | 'server'` | orm, database, extras, repo
 - `Scope`: app, package, root (controls output path)
-- `App`: Application configuration with optional `modules?: string[]`
-- `Config`: Final user configuration object
-- `TemplateContext`: Runtime context for template resolution
-- `ModuleMeta`: Type for framework-specific modules metadata
+- **Meta Types**:
+  - `MetaStack`: Stack metadata (label, hint, hasBackend, requires)
+  - `MetaCategory`: Category metadata (scope, stacks, packageName, requires)
+  - `Meta`: Record of all categories → `Record<Category, MetaCategory>`
+  - `MetaModule`: Framework + server modules → `Record<string, Record<string, MetaModuleStack>>`
+  - `MetaModuleStack`: Module stack metadata with optional `packageName`
+- **`AppContext`**: Main app configuration (renamed from `App`)
+  ```typescript
+  {
+    appName: string;
+    metaApp?: { name: 'nextjs' | 'expo'; modules: string[] };
+    metaServer?: { name: 'hono' | 'express' | 'builtin'; modules: string[] };
+  }
+  ```
+- **Helper types** (local in files):
+  - `MetaApp`: keyof `META.app.stacks` (nextjs, expo)
+  - `MetaServer`: keyof `META.server.stacks` | 'builtin' (hono, express, builtin)
+- `TemplateContext`: Runtime context for template resolution with `apps: AppContext[]`
 - `ProcessResult`: Extended with `skipped?: boolean` and `reason?: string`
 
 ### [apps/cli/src/index.ts](apps/cli/src/index.ts)
-Main CLI entry point
-- Orchestrates interactive prompt flow with progressive context building
+Main CLI entry point (2025-10-22 Refactored with new structure)
+- **Types**: Uses `AppContext` (not `App`), local `MetaApp` / `MetaServer` types
+- **New flow**: App/Server platform choice → Framework → Modules → Optional server
+- **Return structure**:
+  ```typescript
+  AppContext {
+    appName: string,
+    metaApp?: { name: 'nextjs', modules: ['shadcn'] },
+    metaServer?: { name: 'hono', modules: ['openapi'] }
+  }
+  ```
 - Handles multi-app configuration
 - **Per-app module selection**: Filters `MODULES[framework]` and prompts multiselect
+- **Per-server module selection**: Filters `MODULES[server]` for dedicated servers
 - Context-aware database → ORM selection (ORM requires database)
 - Git confirmation with boolean context
 - Extras multi-selection with automatic filtering (husky requires git)
 - Progressive `ctx` object updated after each prompt for dependency chain
 - Generates files with `generateProjectFiles()` and runs post-generation hooks
+- **3 use cases**: App only, Server only, Fullstack (app + server)
 
 ### [apps/cli/src/lib/schema.ts](apps/cli/src/lib/schema.ts)
 Zod validation schemas (24 lines)
@@ -188,10 +223,17 @@ Context-aware prompt wrappers (124 lines)
 - Built on @clack/prompts
 
 ### [apps/cli/src/lib/template-resolver.ts](apps/cli/src/lib/template-resolver.ts)
-Template discovery and path resolution with module support
+Template discovery and path resolution with module support (2025-10-22 Extended with new structure)
 - Scans template directory using Bun Glob and fast-glob
-- **Module resolution**: `scanModuleTemplates()` for framework-specific addons
+- **`processModules()`**: Unified module processing for apps AND servers
+- **Adapted for `AppContext`**:
+  - `app.metaApp?.name` → app framework
+  - `app.metaApp.modules` → app modules
+  - `app.metaServer?.name` → server framework
+  - `app.metaServer.modules` → server modules
+- **Module resolution**: `scanModuleTemplates()` for framework + server addons
 - **Dynamic scope detection**: Reads first line of module templates for `@scope:` override
+- **Server template resolution**: Handles `{appName}-server` for dedicated servers
 - Maps source templates → destination paths
 - Handles scope-aware paths:
   - `app` scope → `apps/{appName}/{path}` (or root in single mode)
@@ -218,20 +260,34 @@ Magic comments system for conditional template rendering (164 lines)
 - **Multi-condition support**: `{{!-- @repo:turborepo @scope:package --}}`
 
 ### [apps/cli/src/lib/template-processor.ts](apps/cli/src/lib/template-processor.ts)
-Template file processing with magic comments integration
+Template file processing with magic comments integration (2025-10-22 Extended with new structure)
 - Processes binary files, text files, and Handlebars templates
 - **Magic comments integration**: Pre-scans first line before rendering
+- **Server context enrichment**: Detects `{appName}-server` pattern and injects server context
+- **Adapted for `AppContext`**:
+  - Detects `parentApp?.metaServer` for dedicated servers
+  - Enriches context with `metaServer` object
 - Context enrichment: Injects app-specific data for turborepo templates
+- **Virtual server app context**: Creates context for dedicated servers with full `metaServer` object
 - Returns `ProcessResult` with `skipped` and `reason` for skipped files
 - File transformations: `_gitignore.hbs` → `.gitignore`
 
 ### [apps/cli/src/lib/handlebars-utils.ts](apps/cli/src/lib/handlebars-utils.ts)
-Handlebars custom helpers and configuration
+Handlebars custom helpers and configuration (2025-10-22 Refactored with new structure)
+- **Uses `AppContext`** instead of `App`
 - **Template helpers**:
   - `eq`, `ne`, `and`, `or` - Logical operations
   - `includes` - Array membership
-  - `hasModule(name)` / `moduleEnabled(name)` - Check if app has module
-  - `hasBackend(app)` - Check if app has backend
+  - **App/Server helpers** (adapted to `AppContext`):
+    - `hasApp(app)` - Checks `app.metaApp !== undefined`
+    - `hasServer(app)` - Checks `app.metaServer !== undefined`
+    - `isStandaloneServer(app)` - Checks `metaServer && !metaApp`
+    - `isFullstack(app)` - Checks `metaApp && metaServer`
+  - **Module helpers** (adapted to new structure):
+    - `hasModule(name)` - Checks `this.metaApp?.modules`
+    - `moduleEnabled(name)` - Checks `this.metaApp?.modules`
+    - `hasServerModule(name)` - Checks `this.metaServer?.modules`
+    - `serverModuleEnabled(name)` - Checks `this.metaServer?.modules`
   - `isTurborepo()` / `isSingleRepo()` - Repo type checks
   - `kebabCase`, `pascalCase` - String transformations
   - `app(name)`, `appIndex(name)`, `appPort(name)` - App lookups
@@ -246,10 +302,14 @@ Handlebars custom helpers and configuration
 
 ## Supported Stacks
 
-### Platforms & Frameworks
-- **Web**: Next.js (SSR capable), Astro (static-first)
-- **API**: Hono (fast edge), Express (Node.js standard)
-- **Mobile**: Expo (React Native)
+### Platforms & Frameworks (2025-10-22 Reorganized)
+- **App** (web + mobile unified):
+  - Next.js - React framework with SSR
+  - Expo - React Native framework
+- **Server** (backend/API):
+  - Hono - Fast web framework
+  - Express - Node.js framework
+  - `builtin` - Use Next.js API routes (app-specific)
 
 ### Database & ORM
 - **Database**: PostgreSQL, MySQL
@@ -269,11 +329,16 @@ Handlebars custom helpers and configuration
 ### ✅ Implemented
 - Interactive CLI with beautiful prompts (@clack/prompts)
 - Multi-app configuration support (unlimited apps)
-- Platform/framework/backend selection per app
-- **Framework Modules System** (2025-10-21):
-  - Optional addons per framework (shadcn, PWA, tRPC for Next.js)
+- **Platform/App/Server Architecture** (2025-10-22 Refactored):
+  - Platform choice: `app` (Next.js, Expo) or `server` (Hono, Express)
+  - Discriminated union types for type safety
+  - Support for App only, Server only, Fullstack configurations
+  - Type guards: `hasApp()`, `hasServer()`, `isStandaloneServer()`, `isFullstack()`
+- **Modules System** (2025-10-21 + Server Support 2025-10-22):
+  - **App modules**: shadcn, PWA, tRPC for Next.js | NativeWind for Expo
+  - **Server modules**: OpenAPI, JWT for Hono | Passport, Helmet for Express
   - Separate `MODULES` metadata with `packageName` support
-  - Per-app module multiselect with framework filtering
+  - Per-app AND per-server module multiselect
   - Context-aware module requirements
 - **Magic Comments System** (2025-10-21):
   - First-line directives: `@repo:`, `@scope:`, `@if:`, `@require:`
@@ -475,7 +540,7 @@ bun run dev:cli
 - **Special files**: dunder notation (`__meta__.ts`)
 - **Templates**: `feature.extension.hbs` (`package.json.hbs`)
 - **App names**: User-provided (becomes folder name)
-- **Backend apps**: Auto-named `{appName}-api`
+- **Server apps**: Auto-named `{appName}-server` (was `{appName}-api`)
 - **Package names**: Defined in META (e.g., `db` for ORM)
 
 ### Type Safety
@@ -502,31 +567,45 @@ bun run dev:cli
 
 ## Template System
 
-### Directory Structure
+### Directory Structure (2025-10-22 Updated)
 ```
 templates/
-├── web/{framework}/        # Next.js, Astro
-├── api/{framework}/        # Hono, Express
-├── mobile/{framework}/     # Expo
-├── modules/{framework}/    # Framework-specific addons (shadcn, PWA, tRPC)
-│   └── nextjs/
-│       ├── shadcn/         # shadcn/ui components
-│       ├── pwa/            # Progressive Web App
-│       └── trpc/           # tRPC API layer
+├── app/{framework}/        # Next.js, Expo (merged web/ + mobile/)
+├── server/{framework}/     # Hono, Express (was api/)
+├── modules/{framework}/    # App + Server modules
+│   ├── nextjs/             # App modules
+│   │   ├── shadcn/         # shadcn/ui components
+│   │   ├── pwa/            # Progressive Web App
+│   │   └── trpc/           # tRPC API layer
+│   ├── expo/               # App modules
+│   │   └── nativewind/     # Tailwind for React Native
+│   ├── hono/               # Server modules
+│   │   ├── openapi/        # OpenAPI docs
+│   │   └── jwt/            # JWT authentication
+│   └── express/            # Server modules
+│       ├── passport/       # Passport.js auth
+│       └── helmet/         # Security headers
 ├── orm/{provider}/         # Prisma, Drizzle
 ├── database/{provider}/    # Postgres config
 ├── extras/{tool}/          # Biome, Git, Husky
 └── repo/turborepo/         # Turborepo config
 ```
 
-### Handlebars Variables
+### Handlebars Variables (2025-10-22 Updated with new structure)
 Available in all templates:
 - `{{projectName}}` - User's project name
 - `{{appName}}` - Current app name (auto-injected for app-scoped templates)
 - `{{repo}}` - Repository type (single/turborepo)
-- `{{framework}}` - App's framework (auto-injected for app-scoped templates)
-- `{{backend}}` - App's backend choice (auto-injected for app-scoped templates)
-- `{{modules}}` - Array of selected modules (auto-injected for app-scoped templates)
+- **App variables** (if `metaApp` exists):
+  - `{{metaApp.name}}` - App framework (nextjs, expo)
+  - `{{metaApp.modules}}` - Array of selected app modules
+- **Server variables** (if `metaServer` exists):
+  - `{{metaServer.name}}` - Server framework (hono, express, builtin)
+  - `{{metaServer.modules}}` - Array of selected server modules
+- **Helpers for cleaner access**:
+  - `{{#if (hasApp this)}}` - Check if app exists
+  - `{{#if (hasModule "shadcn")}}` - Check if module enabled
+  - `{{#if (hasServerModule "jwt")}}` - Check if server module enabled
 - `{{orm}}`, `{{database}}`, `{{git}}`, `{{extras}}` - Context-level selections
 - Additional context from `TemplateContext` type
 
@@ -844,6 +923,74 @@ This project combines the best of:
    - Video tutorials
 
 ## Recent Changes Log
+
+### 2025-10-22 (Later): Type Naming Refactor - Clearer Conventions
+**Motivation**: Improve code clarity with consistent `Meta*` prefix for all metadata types
+
+**Type Renamings**:
+- `StackMeta` → `MetaStack` (metadata of a stack)
+- `CategoryMeta` → `MetaCategory` (metadata of a category)
+- `ModuleMeta` → `MetaModule` (metadata of modules)
+- `ModuleStackMeta` → `MetaModuleStack` (metadata of module stack)
+- `App` → `AppContext` (more explicit, it's a context object)
+
+**Structure Changes**:
+```typescript
+// Before
+{ app: 'nextjs', server: 'hono', modules: [...], serverModules: [...] }
+
+// After (clearer nested structure)
+{
+  appName: 'web',
+  metaApp: { name: 'nextjs', modules: [...] },
+  metaServer: { name: 'hono', modules: [...] }
+}
+```
+
+**Files Modified**:
+- `types.ts` - All type renamings, `AppContext` structure
+- `__meta__.ts` - Import `MetaModule` (was `ModuleMeta`)
+- `index.ts` - `App` → `AppContext`, adapted to new structure
+- `lib/template-resolver.ts` - Access `metaApp.name`, `metaServer.name`, nested modules
+- `lib/template-processor.ts` - Context enrichment with `metaServer`
+- `lib/handlebars-utils.ts` - All helpers adapted to `AppContext` and nested structure
+- `lib/post-generation.ts` - Display logic with `metaApp.name`, `metaServer.name`
+
+**Benefits**:
+- **Consistent naming**: All metadata types use `Meta*` prefix
+- **Clearer structure**: `metaApp` / `metaServer` are explicit and self-documenting
+- **Type-safe**: Nested structure prevents property conflicts
+- **Better DX**: Auto-complete shows `metaApp.name` and `metaApp.modules` together
+
+### 2025-10-22: Platform Refactor (`api` → `server`) + Server Modules
+**Major Refactoring**:
+- **Platform system**: `web`/`mobile` unified → `app` | `api` renamed → `server`
+- **Type `App`**: Refactored to discriminated union (removed `platform` field)
+- **Type guards**: Added `hasApp()`, `hasServer()`, `isStandaloneServer()`, `isFullstack()`
+- **Server modules**: Extended `MODULES` to support Hono (OpenAPI, JWT) and Express (Passport, Helmet)
+- **CLI flow**: New "Add dedicated server?" prompt for fullstack apps
+- **Naming**: Backend apps renamed from `{appName}-api` → `{appName}-server`
+
+**Files Modified**:
+- `types.ts` - Discriminated union for `App`, new type guards, `ServerMeta` type
+- `__meta__.ts` - `META.api` → `META.server`, added server modules to `MODULES`
+- `index.ts` - Refactored prompt flow, added server module selection
+- `lib/template-resolver.ts` - Added `processModules()`, server template resolution
+- `lib/template-processor.ts` - Server context enrichment for `{appName}-server`
+- `lib/handlebars-utils.ts` - Added `hasServer()`, `hasApp()`, `isStandaloneServer()`, `isFullstack()`, `hasServerModule()`, `serverModuleEnabled()`
+- `lib/post-generation.ts` - Updated app summary display logic
+
+**Templates Restructured**:
+- `templates/web/` + `templates/mobile/` → `templates/app/` (unified)
+- `templates/api/` → `templates/server/` (renamed)
+- Added `modules/hono/` and `modules/express/` for server modules
+
+**Impact**:
+- **Type-safe**: Impossible to have inconsistent state (e.g., server without app in fullstack)
+- **3 use cases**: App only, Server only, Fullstack (all fully supported)
+- **Extensible**: Easy to add server modules like app modules
+- **Clean API**: No redundant `platform` field, type guards clarify intent
+- **-318 lines** of templates migrated/consolidated
 
 ### 2025-10-21: Framework Modules System + Magic Comments
 **Added**:

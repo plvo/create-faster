@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, intro, isCancel, multiselect, type Option, outro, select } from '@clack/prompts';
 import { META, MODULES } from '@/__meta__';
@@ -7,105 +8,37 @@ import { displayGenerationResults, generateProjectFiles } from '@/lib/file-gener
 import { runPostGeneration } from '@/lib/post-generation';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { App, Backend, Framework, Platform, TemplateContext } from '@/types';
+import type { AppContext, TemplateContext } from '@/types';
 
-async function promptPlatform(message: string): Promise<Platform> {
-  const result = await select({
-    message,
-    options: [
-      { value: 'web', label: 'Web', hint: 'Next.js, Astro...' },
-      { value: 'api', label: 'API/Server', hint: 'Hono, Express...' },
-      { value: 'mobile', label: 'Mobile', hint: 'Expo, React Native' },
-    ],
-  });
+type MetaApp = keyof typeof META.app.stacks;
+type MetaServer = keyof typeof META.server.stacks | 'builtin';
 
-  if (isCancel(result)) {
-    cancel('Operation cancelled');
-    process.exit(0);
-  }
+async function processAppWithServer(index: number, appName: string): Promise<AppContext> {
+  const stacks = META.app.stacks;
 
-  return result;
-}
-
-async function promptFrameworkForPlatform(platform: Platform, message: string): Promise<Framework> {
-  const stacks = META[platform].stacks;
-
-  const options: Option<Framework>[] = Object.entries(stacks).map(([value, meta]) => ({
-    value,
+  const options: Option<MetaApp>[] = Object.entries(stacks).map(([value, meta]) => ({
+    value: value as MetaApp,
     label: meta.label,
     hint: meta.hint,
   }));
 
-  const result = await select<Framework>({ message, options });
-
-  if (isCancel(result)) {
-    cancel('Operation cancelled');
-    process.exit(0);
-  }
-
-  return result as Framework;
-}
-
-async function promptBackendForApp(
-  appName: string,
-  platform: Platform,
-  framework: Framework,
-): Promise<Backend | undefined> {
-  const frameworkMeta = META[platform].stacks[framework];
-
-  const options: Option<Backend | undefined>[] = [];
-
-  if (frameworkMeta?.hasBackend) {
-    options.push({
-      value: 'builtin',
-      label: `Use ${frameworkMeta.label} built-in`,
-      hint: 'API routes, server actions',
-    });
-  }
-
-  Object.entries(META.api.stacks).forEach(([key, meta]) => {
-    options.push({ value: key, label: meta.label, hint: meta.hint });
-  });
-
-  if (!frameworkMeta?.hasBackend) {
-    options.push({ value: undefined, label: 'None' });
-  }
-
-  const result = await select({
-    message: `${appName} - Backend?`,
+  const appName_ = await select<MetaApp>({
+    message: `App ${index} - Framework?`,
     options,
   });
 
-  if (isCancel(result)) {
+  if (isCancel(appName_)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  return result;
-}
-
-async function promptApp(index: number): Promise<App> {
-  const appName = await promptText(`App ${index} - Name? (folder name)`, {
-    defaultValue: `app-${index}`,
-    placeholder: `app-${index}`,
-    validate: (value) => {
-      if (!value || value.trim() === '') return 'App name is required';
-    },
-  });
-
-  const platform = await promptPlatform(`App ${index} - Platform?`);
-  const framework = await promptFrameworkForPlatform(platform, `App ${index} - Framework?`);
-  const backend = platform !== 'api' ? await promptBackendForApp(appName!, platform, framework!) : undefined;
-
-  // Prompt for framework-specific modules
-  const moduleOptions = Object.entries(MODULES[framework] ?? {}).map(([value, meta]) => ({
+  const moduleOptions = Object.entries(MODULES[appName_] ?? {}).map(([value, meta]) => ({
     value,
     label: meta.label,
     hint: meta.hint,
   }));
 
-  let modules: string[] | undefined;
-
+  let modules: string[] = [];
   if (moduleOptions.length > 0) {
     const result = await multiselect({
       message: `App ${index} - Modules?`,
@@ -118,10 +51,118 @@ async function promptApp(index: number): Promise<App> {
       process.exit(0);
     }
 
-    modules = result as string[] | undefined;
+    modules = (result as string[]) || [];
   }
 
-  return { appName: appName!, platform, framework: framework!, backend, modules };
+  return await processServer(index, appName, appName_, modules);
+}
+
+async function processServer(
+  index: number,
+  appName: string,
+  metaAppName?: MetaApp,
+  appModules?: string[],
+): Promise<AppContext> {
+  const serverOptions = Object.entries(META.server.stacks).map(([value, meta]) => ({
+    value: value as MetaServer,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  const appMeta = metaAppName ? META.app.stacks[metaAppName] : undefined;
+
+  if (appMeta?.hasBackend) {
+    serverOptions.unshift({
+      value: 'builtin' as MetaServer,
+      label: `Use ${appMeta.label} built-in`,
+      hint: 'API routes, server actions',
+    });
+  }
+
+  const serverName = await select<MetaServer>({
+    message: `App ${index} - Server?`,
+    options: serverOptions,
+  });
+
+  if (isCancel(serverName)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  const result: AppContext = {
+    appName,
+    metaApp: metaAppName ? { name: metaAppName, modules: appModules || [] } : undefined,
+    metaServer: { name: serverName, modules: [] },
+  };
+
+  if (serverName === 'builtin') {
+    return result;
+  }
+
+  // Prompt for server modules
+  const serverModuleOptions = Object.entries(MODULES[serverName] ?? {}).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  let serverModules: string[] = [];
+
+  if (serverModuleOptions.length > 0) {
+    const modulesResult = await multiselect({
+      message: `App ${index} - Server Modules?`,
+      options: serverModuleOptions,
+      required: false,
+    });
+
+    if (isCancel(modulesResult)) {
+      cancel('Operation cancelled');
+      process.exit(0);
+    }
+
+    serverModules = (modulesResult as string[]) || [];
+  }
+
+  result.metaServer!.modules = serverModules;
+  return result;
+}
+
+async function promptApp(index: number): Promise<AppContext> {
+  const appName = await promptText(`App ${index} - Name? (folder name)`, {
+    defaultValue: `app-${index}`,
+    placeholder: `app-${index}`,
+    validate: (value) => {
+      const trimedValue = value.trim();
+      if (!value || trimedValue === '') return 'App name is required';
+      const fullPath = join(process.cwd(), trimedValue);
+      try {
+        if (existsSync(fullPath)) {
+          return `A file or directory named "${trimedValue}" already exists. Please choose a different name.`;
+        }
+      } catch (e) {
+        return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
+      }
+    },
+  });
+
+  const platform = await select({
+    message: `Select the platform type for app "${appName}":`,
+    options: [
+      { value: 'app', label: 'Web / Mobile App', hint: 'Next.js, React Native, Astro...' },
+      { value: 'server', label: 'Server / API', hint: 'Hono, Express...' },
+    ],
+  });
+
+  if (isCancel(platform)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  if (platform === 'app') {
+    return await processAppWithServer(index, appName!);
+  }
+
+  return await processServer(index, appName!);
 }
 
 async function cli(): Promise<Omit<TemplateContext, 'repo'>> {

@@ -1,5 +1,5 @@
 import Handlebars from 'handlebars';
-import type { App, TemplateContext } from '@/types';
+import type { AppContext, TemplateContext } from '@/types';
 
 /**
  * Register custom Handlebars helpers for template rendering
@@ -47,9 +47,24 @@ export function registerHandlebarsHelpers(): void {
     return '';
   });
 
-  Handlebars.registerHelper('hasBackend', (app: App | undefined) => {
+  Handlebars.registerHelper('hasServer', (app: AppContext | undefined) => {
     if (!app) return false;
-    return app.backend !== undefined;
+    return app.metaServer !== undefined;
+  });
+
+  Handlebars.registerHelper('hasApp', (app: AppContext | undefined) => {
+    if (!app) return false;
+    return app.metaApp !== undefined;
+  });
+
+  Handlebars.registerHelper('isStandaloneServer', (app: AppContext | undefined) => {
+    if (!app) return false;
+    return app.metaServer !== undefined && app.metaApp === undefined;
+  });
+
+  Handlebars.registerHelper('isFullstack', (app: AppContext | undefined) => {
+    if (!app) return false;
+    return app.metaApp !== undefined && app.metaServer !== undefined;
   });
 
   Handlebars.registerHelper('isTurborepo', function (this: TemplateContext) {
@@ -74,21 +89,36 @@ export function registerHandlebarsHelpers(): void {
       .join('');
   });
 
-  Handlebars.registerHelper('hasModule', function (this: App | TemplateContext, moduleName: string) {
-    const modules = 'modules' in this ? this.modules : undefined;
+  Handlebars.registerHelper('hasModule', function (this: AppContext | TemplateContext, moduleName: string) {
+    const modules = 'metaApp' in this ? this.metaApp?.modules : undefined;
     if (!modules || !Array.isArray(modules)) return false;
     return modules.some((m) => m.includes(moduleName));
   });
 
-  Handlebars.registerHelper('moduleEnabled', function (this: App | TemplateContext, moduleName: string) {
-    const modules = 'modules' in this ? this.modules : undefined;
+  Handlebars.registerHelper('moduleEnabled', function (this: AppContext | TemplateContext, moduleName: string) {
+    const modules = 'metaApp' in this ? this.metaApp?.modules : undefined;
     if (!modules || !Array.isArray(modules)) return false;
     return modules.some((m) => m.includes(moduleName));
   });
 
-  Handlebars.registerHelper('hasContext', function (this: App | TemplateContext, contextName: keyof TemplateContext) {
-    return contextName in this && (this as TemplateContext)[contextName] !== undefined;
+  Handlebars.registerHelper('hasServerModule', function (this: AppContext | TemplateContext, moduleName: string) {
+    const serverModules = 'metaServer' in this ? this.metaServer?.modules : undefined;
+    if (!serverModules || !Array.isArray(serverModules)) return false;
+    return serverModules.some((m) => m.includes(moduleName));
   });
+
+  Handlebars.registerHelper('serverModuleEnabled', function (this: AppContext | TemplateContext, moduleName: string) {
+    const serverModules = 'metaServer' in this ? this.metaServer?.modules : undefined;
+    if (!serverModules || !Array.isArray(serverModules)) return false;
+    return serverModules.some((m) => m.includes(moduleName));
+  });
+
+  Handlebars.registerHelper(
+    'hasContext',
+    function (this: AppContext | TemplateContext, contextName: keyof TemplateContext) {
+      return contextName in this && (this as TemplateContext)[contextName] !== undefined;
+    },
+  );
 }
 
 /**

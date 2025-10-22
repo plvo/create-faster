@@ -105,76 +105,90 @@ function getTemplatesForStack(
   }
 }
 
+function processModules(
+  framework: string,
+  modules: string[] | undefined,
+  appName: string,
+  ctx: TemplateContext,
+): Array<TemplateFile> {
+  if (!modules || modules.length === 0) return [];
+
+  const result: Array<TemplateFile> = [];
+  const frameworkModules = MODULES[framework];
+  if (!frameworkModules) return [];
+
+  for (const moduleName of modules) {
+    const moduleMeta = frameworkModules[moduleName];
+    if (!moduleMeta) continue;
+
+    try {
+      const files = scanModuleTemplates(framework, moduleName);
+      const templatesRoot = getTemplatesRoot();
+
+      const moduleTemplates = files.map((file) => {
+        const fullPath = path.join(templatesRoot, 'modules', framework, moduleName, file);
+
+        // Read first line to check for @scope override
+        let scope: Scope;
+        let targetName: string;
+        let packageNameOverride: string | undefined;
+
+        try {
+          const content = readFileSync(fullPath, 'utf8');
+          const firstLine = extractFirstLine(content);
+          const magicComments = parseMagicComments(firstLine);
+          const scopeComment = magicComments.find((c) => c.type === 'scope');
+
+          if (scopeComment) {
+            // Magic comment @scope overrides default behavior
+            scope = scopeComment.values[0] as Scope;
+            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
+            packageNameOverride = scope === 'package' ? moduleMeta.packageName : undefined;
+          } else {
+            // Default: package if turborepo + packageName, else app
+            scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
+            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
+            packageNameOverride = moduleMeta.packageName;
+          }
+        } catch {
+          // Fallback if can't read file
+          scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
+          targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
+          packageNameOverride = moduleMeta.packageName;
+        }
+
+        return {
+          source: `templates/modules/${framework}/${moduleName}/${file}`,
+          destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
+        };
+      });
+
+      result.push(...moduleTemplates);
+    } catch {
+      // Module templates not found, skip silently
+    }
+  }
+
+  return result;
+}
+
 export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateFile> {
   const result: Array<TemplateFile> = [];
 
   result.push(...getTemplatesForStack('repo', ctx.repo, '', ctx));
 
   for (const app of ctx.apps) {
-    result.push(...getTemplatesForStack(app.platform, app.framework, app.appName, ctx));
-
-    // Add backend if specified
-    if (app.backend && app.backend !== 'builtin') {
-      const backendAppName = `${app.appName}-api`;
-      result.push(...getTemplatesForStack('api', app.backend, backendAppName, ctx));
+    // App templates
+    if (app.metaApp) {
+      result.push(...getTemplatesForStack('app', app.metaApp.name, app.appName, ctx));
+      result.push(...processModules(app.metaApp.name, app.metaApp.modules, app.appName, ctx));
     }
 
-    // Add modules for this app
-    if (app.modules && app.modules.length > 0) {
-      const frameworkModules = MODULES[app.framework];
-      if (frameworkModules) {
-        for (const moduleName of app.modules) {
-          const moduleMeta = frameworkModules[moduleName];
-          if (!moduleMeta) continue;
-
-          try {
-            const files = scanModuleTemplates(app.framework, moduleName);
-            const templatesRoot = getTemplatesRoot();
-
-            const moduleTemplates = files.map((file) => {
-              const fullPath = path.join(templatesRoot, 'modules', app.framework, moduleName, file);
-
-              // Read first line to check for @scope override
-              let scope: Scope;
-              let targetName: string;
-              let packageNameOverride: string | undefined;
-
-              try {
-                const content = readFileSync(fullPath, 'utf8');
-                const firstLine = extractFirstLine(content);
-                const magicComments = parseMagicComments(firstLine);
-                const scopeComment = magicComments.find((c) => c.type === 'scope');
-
-                if (scopeComment) {
-                  // Magic comment @scope overrides default behavior
-                  scope = scopeComment.values[0] as Scope;
-                  targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : app.appName;
-                  packageNameOverride = scope === 'package' ? moduleMeta.packageName : undefined;
-                } else {
-                  // Default: package if turborepo + packageName, else app
-                  scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-                  targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : app.appName;
-                  packageNameOverride = moduleMeta.packageName;
-                }
-              } catch {
-                // Fallback if can't read file
-                scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-                targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : app.appName;
-                packageNameOverride = moduleMeta.packageName;
-              }
-
-              return {
-                source: `templates/modules/${app.framework}/${moduleName}/${file}`,
-                destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
-              };
-            });
-
-            result.push(...moduleTemplates);
-          } catch {
-            // Module templates not found, skip silently
-          }
-        }
-      }
+    // Server templates
+    if (app.metaServer && app.metaServer.name !== 'builtin') {
+      const serverAppName = app.metaApp ? `${app.appName}-server` : app.appName;
+      result.push(...getTemplatesForStack('server', app.metaServer.name, serverAppName, ctx));
+      result.push(...processModules(app.metaServer.name, app.metaServer.modules, serverAppName, ctx));
     }
   }
 

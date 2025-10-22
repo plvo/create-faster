@@ -1,4 +1,4 @@
-import type { Meta, ModuleMeta } from './types';
+import type { Meta, MetaModule } from './types';
 
 export const META: Meta = {
   repo: {
@@ -14,7 +14,7 @@ export const META: Meta = {
       },
     },
   },
-  web: {
+  app: {
     scope: 'app',
     stacks: {
       nextjs: {
@@ -22,9 +22,14 @@ export const META: Meta = {
         hint: 'React framework with SSR',
         hasBackend: true,
       },
+      expo: {
+        label: 'Expo',
+        hint: 'React Native framework',
+        hasBackend: false,
+      },
     },
   },
-  api: {
+  server: {
     scope: 'app',
     stacks: {
       hono: {
@@ -34,15 +39,6 @@ export const META: Meta = {
       express: {
         label: 'Express',
         hint: 'Node.js framework',
-      },
-    },
-  },
-  mobile: {
-    scope: 'app',
-    stacks: {
-      expo: {
-        label: 'Expo',
-        hint: 'React Native framework',
       },
     },
   },
@@ -90,7 +86,7 @@ export const META: Meta = {
   },
 } as const;
 
-export const MODULES: ModuleMeta = {
+export const MODULES: MetaModule = {
   nextjs: {
     shadcn: {
       label: 'shadcn/ui',
@@ -105,6 +101,22 @@ export const MODULES: ModuleMeta = {
       label: 'tRPC',
       hint: 'End-to-end type safety',
       requires: ['database'],
+    },
+  },
+  expo: {
+    nativewind: {
+      label: 'NativeWind',
+      hint: 'Tailwind CSS for React Native',
+    },
+  },
+  hono: {
+    openapi: {
+      label: 'OpenAPI',
+      hint: 'Auto-generated API docs',
+    },
+    jwt: {
+      label: 'JWT Auth',
+      hint: 'Authentication middleware',
     },
   },
 };

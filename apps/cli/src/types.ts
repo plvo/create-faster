@@ -1,43 +1,43 @@
-export type Repo = 'single' | 'turborepo';
 export type Scope = 'app' | 'package' | 'root';
-export type Platform = 'web' | 'api' | 'mobile';
-export type Category = Platform | 'orm' | 'database' | 'extras' | 'repo';
+export type Category = 'app' | 'server' | 'orm' | 'database' | 'extras' | 'repo';
 
-export interface StackMeta {
+export interface MetaStack {
   label: string;
   hint?: string;
-  hasBackend?: boolean;
+  hasBackend?: boolean; // like nextjs
   requires?: (Category | (string & {}))[];
-  framework?: Framework;
 }
 
-export interface CategoryMeta {
+export interface MetaCategory {
   scope: Scope;
-  packageName?: string;
-  requires?: Category[];
-  stacks: Record<string, StackMeta>;
+  packageName?: string; // used for turborepo packages/<packageName>
+  requires?: Category[]; // like orm.requires = ['database']
+  stacks: Record<string, MetaStack>;
 }
 
-export type Meta = Record<Category, CategoryMeta>;
+export type Meta = Record<Category, MetaCategory>;
+type MetaApp = keyof Meta['app']['stacks'];
+type MetaServer = keyof Meta['server']['stacks'] | 'builtin';
 
-export type ModuleStackMeta = Omit<StackMeta, 'framework'> & { packageName?: string };
-export type ModuleMeta = Record<Framework, Record<string, ModuleStackMeta>>;
+type MetaModuleStack = Omit<MetaStack, 'hasBackend'> & { packageName?: string };
+export type MetaModule = Record<string, Record<string, MetaModuleStack>>; // like nextjs.shadcn
 
-export type Framework = keyof Meta[Platform]['stacks'];
-export type Backend = 'builtin' | keyof Meta['api']['stacks'];
-
-export interface App {
+export interface AppContext {
   appName: string;
-  platform: Platform;
-  framework: Framework;
-  backend?: Backend;
-  modules?: string[];
+  metaApp?: {
+    name: MetaApp;
+    modules: string[];
+  };
+  metaServer?: {
+    name: MetaServer;
+    modules: string[];
+  };
 }
 
 export interface TemplateContext {
   projectName: string;
-  repo: Repo;
-  apps: App[];
+  repo: 'single' | 'turborepo';
+  apps: AppContext[];
   orm?: keyof Meta['orm']['stacks'];
   database?: keyof Meta['database']['stacks'];
   git: boolean;

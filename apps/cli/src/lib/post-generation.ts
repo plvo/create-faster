@@ -119,8 +119,11 @@ export function displaySuccessMessage(context: TemplateContext, projectPath: str
   if (apps.length > 1) {
     const appsSummary = apps
       .map((app) => {
-        const backend = app.backend ? ` + ${app.backend}` : '';
-        return `  • ${app.appName} (${app.framework}${backend})`;
+        if (app.metaApp) {
+          const server = app.metaServer ? ` + ${app.metaServer.name}` : '';
+          return `  • ${app.appName} (${app.metaApp.name}${server})`;
+        }
+        return `  • ${app.appName} (${app.metaServer?.name})`;
       })
       .join('\n');
 
