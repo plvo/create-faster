@@ -28,14 +28,14 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:seed": "bun run scripts/seed.ts",
     {{/if}}
     {{#if (eq orm "prisma")}}
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "bun run scripts/seed.ts"
+    "db:seed": "bun run scripts/seed.ts",
 	{{/if}}
 	{{#if (hasAnyApp "nextjs")}}
     "prebuild": "next telemetry disable",
@@ -46,24 +46,24 @@
   },
   "dependencies": {
     "lucide-react": "^0.544.0",
-	{{#if (hasAnyApp "nextjs")}}
+	  {{#if (hasAnyApp "nextjs")}}
     "next": "15.5.3",
     "next-themes": "^0.4.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-	{{/if}}
-	"zod": "^4.1"
+	  {{/if}}
+	  "zod": "^4.1"
   },
   "devDependencies": {
     "@repo/config": "*",
-	{{#if (hasAnyApp "nextjs")}}
+	  {{#if (hasAnyApp "nextjs")}}
     "@next/bundle-analyzer": "^15.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-	{{/if}}
-	{{#if (eq extras "biome")}}
+	  {{/if}}
+	  {{#if (eq extras "biome")}}
     "@biomejs/biome": "^2.2.4",
-	{{/if}}
+	  {{/if}}
     "@types/node": "^24.5.2",
     "knip": "^5",
     "rimraf": "^6",

@@ -1,3 +1,6 @@
+{{#if (hasModule "mdx")}}
+import createMDX from '@next/mdx';
+{{/if}}
 import type { NextConfig } from 'next';
 
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -7,11 +10,13 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig: NextConfig = {
   {{#if (eq repo "turborepo")}}
   transpilePackages: [
-    {{#if (hasModule "shadcn")}}"@repo/ui",{{/if}} 
-    {{#if (hasModule "trpc")}}"@repo/trpc",{{/if}} 
-    {{#if (eq orm "prisma")}}"@repo/db",{{/if}}
-    {{#if (eq orm "drizzle")}}"@repo/db",{{/if}}
-  ]
+    {{#if (hasModule "shadcn")}}
+    "@repo/ui",
+    {{/if}} 
+    {{#if (eq hasContext "orm")}}
+    "@repo/db",
+    {{/if}}
+  ],
   {{/if}}
 
   reactStrictMode: true,
@@ -37,8 +42,31 @@ const nextConfig: NextConfig = {
   },
 
   turbopack: {
-    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
+    resolveExtensions: [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      {{#if (hasModule "mdx")}}
+      '.mdx',
+      '.md',
+      {{/if}}
+    ],
   },
 };
 
+{{#if (hasModule "mdx")}}
+const withMDX = createMDX({
+  extension: /\.(md|mdx)$/,
+  options: {
+  }
+});
+{{/if}}
+
+{{#if (hasModule "mdx")}}
+export default withMDX(withBundleAnalyzer(nextConfig));
+{{else}}
 export default withBundleAnalyzer(nextConfig);
+{{/if}}

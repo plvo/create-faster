@@ -97,10 +97,10 @@ export const MODULES: MetaModule = {
       label: 'MDX',
       hint: 'Markdown-based content',
     },
-    // pwa: {
-    //   label: 'PWA',
-    //   hint: 'Progressive Web App support',
-    // },
+    pwa: {
+      label: 'PWA',
+      hint: 'Progressive Web App support',
+    },
     // trpc: {
     //   label: 'tRPC',
     //   hint: 'End-to-end type safety',

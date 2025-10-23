@@ -44,7 +44,7 @@ export function registerHandlebarsHelpers(): void {
     } else if (this.database === 'mysql') {
       return `mysql://mysql:password@localhost:3306/mysql-${this.projectName}`;
     }
-    return '';
+    return null;
   });
 
   Handlebars.registerHelper('hasServer', (app: AppContext | undefined) => {
