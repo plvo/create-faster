@@ -1,0 +1,20 @@
+{{!-- @repo:turborepo @scope:package --}}
+{
+  "name": "@repo/auth",
+  "version": "0.0.0",
+  "private": true,
+    "exports": {
+    "./route": "./src/route.ts",
+    "./auth": "./src/auth.ts",
+    "./auth-client": "./src/auth-client.ts",
+    "./types": "./src/types.ts"
+  },
+  "dependencies": {
+    "better-auth": "^1.2.10",
+    "@repo/db": "*",
+    "zod": "^4.1"
+  },
+  "devDependencies": {
+    "@repo/config": "*",
+  }
+}

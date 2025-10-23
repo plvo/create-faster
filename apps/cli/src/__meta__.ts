@@ -101,6 +101,11 @@ export const MODULES: MetaModule = {
       label: 'PWA',
       hint: 'Progressive Web App support',
     },
+    'better-auth': {
+      label: 'Better Auth',
+      hint: 'Authentication library',
+      packageName: 'auth',
+    },
     // trpc: {
     //   label: 'tRPC',
     //   hint: 'End-to-end type safety',

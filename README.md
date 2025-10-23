@@ -8,15 +8,14 @@ bunx create-faster
 
 # WIP
 
-## TODO
-- **ai**
+## TODO- **ai**
     - [ ]  `.cursor`
     - [ ]  `.claude`
 - app
-    - [x]  nextjs
-    - [ ]  expo
-    - [ ]  react native
     - [ ]  astro
+    - [ ]  expo
+    - [x]  nextjs
+    - [ ]  react native
     - [ ]  tanstack router
 - cloud
     - [ ]  terraform (aws)
@@ -24,7 +23,6 @@ bunx create-faster
 - database
     - [x]  mysql
     - [x]  postgresql
-    - [ ]  sqlite
 - extras
     - [x]  biomejs
     - [ ]  devcontainer
@@ -32,20 +30,21 @@ bunx create-faster
     - [x]  husky
     - [ ]  prettier
 - modules
-    - [ ]  better auth
+    - [x]  better auth
     - [x]  mdx
+    - [ ]  next-themes
     - [ ]  posthog
-    - [ ]  pwa
+    - [x]  pwa
     - [x]  shadcn
     - [ ]  stripe
     - [ ]  react hook form
     - [ ]  tanstack form
     - [ ]  tanstack query
     - [ ]  tanstack devtools
+    - [ ]  trpc
 - orm
     - [x]  drizzle
     - [x]  prisma
 - server
-    - [ ]  protocols: rest, trpc, orpc ….
-    - [x]  **orm:** prisma / drizzle
-    - [x]  docker db (postgres …)
+    - [x]  hono
+    - [ ]  express
