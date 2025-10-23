@@ -24,5 +24,16 @@ export * from '@prisma/client';
 // Type helpers
 export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
 export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
-export type UserWithPosts = Awaited<ReturnType<typeof prisma.user.findUnique<{ include: { posts: true } }>>>;
-export type PostWithAuthor = Awaited<ReturnType<typeof prisma.post.findUnique<{ include: { author: true } }>>>;
+export type UserWithPosts = Awaited<
+  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
+>;
+export type PostWithAuthor = Awaited<
+  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
+>;
+
+{{#if (hasModule "better-auth")}}
+// Auth types
+export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
+export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
+export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+{{/if}}

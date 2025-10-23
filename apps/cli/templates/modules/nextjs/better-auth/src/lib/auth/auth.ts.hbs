@@ -36,6 +36,9 @@ export const auth = betterAuth({
     {{#if (eq database "postgres")}}
     provider: 'postgresql',
     {{/if}}
+    {{#if (eq database "mysql")}}
+    provider: 'mysql',
+    {{/if}}
     usePlural: false,
   }),
   {{/if}}

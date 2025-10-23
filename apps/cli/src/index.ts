@@ -127,23 +127,25 @@ async function processServer(
   return result;
 }
 
-async function promptApp(index: number): Promise<AppContext> {
-  const appName = await promptText(`App ${index} - Name? (folder name)`, {
-    defaultValue: `app-${index}`,
-    placeholder: `app-${index}`,
-    validate: (value) => {
-      const trimedValue = value.trim();
-      if (!value || trimedValue === '') return 'App name is required';
-      const fullPath = join(process.cwd(), trimedValue);
-      try {
-        if (existsSync(fullPath)) {
-          return `A file or directory named "${trimedValue}" already exists. Please choose a different name.`;
+async function promptApp(index: number, projectNameIfOneApp?: string): Promise<AppContext> {
+  const appName =
+    projectNameIfOneApp ??
+    (await promptText(`App ${index} - Name? (folder name)`, {
+      defaultValue: `app-${index}`,
+      placeholder: `app-${index}`,
+      validate: (value) => {
+        const trimedValue = value.trim();
+        if (!value || trimedValue === '') return 'App name is required';
+        const fullPath = join(process.cwd(), trimedValue);
+        try {
+          if (existsSync(fullPath)) {
+            return `A file or directory named "${trimedValue}" already exists. Please choose a different name.`;
+          }
+        } catch (e) {
+          return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
         }
-      } catch (e) {
-        return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
-      }
-    },
-  });
+      },
+    }));
 
   const platform = await select({
     message: `Select the platform type for app "${appName}":`,
@@ -183,20 +185,17 @@ async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
 
   ctx.projectName = projectName!;
 
-  const appCount = await promptText<number>(
-    'How many apps? Turborepo mode will be used if you have more than one app',
-    {
-      initialValue: '1',
-      placeholder: '1',
-      validate: (value) => {
-        const num = Number(value);
-        if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
-      },
+  const appCount = await promptText<number>('How many apps? Turborepo will be used if you have more than one app', {
+    initialValue: '1',
+    placeholder: '1',
+    validate: (value) => {
+      const num = Number(value);
+      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
     },
-  );
+  });
 
   for (let i = 0; i < Number(appCount); i++) {
-    const app = await promptApp(i + 1);
+    const app = await promptApp(i + 1, i === 0 ? ctx.projectName : undefined);
     ctx.apps.push(app);
   }
 
