@@ -68,6 +68,7 @@ jobs:
         run: bun run build:cli
 
       - name: "📦 Create Distribution Archive"
+        working-directory: apps/cli
         run: bun pm pack --ignore-scripts --filename create-faster-${{ needs.create-release.outputs.version }}.tar.gz
 
       - name: "📤 Upload Release Asset"
@@ -76,6 +77,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ needs.create-release.outputs.tag_name }}
-          files: create-faster-${{ needs.create-release.outputs.version }}.tar.gz
+          files: apps/cli/create-faster-${{ needs.create-release.outputs.version }}.tar.gz
           make_latest: true
           generate_release_notes: true
