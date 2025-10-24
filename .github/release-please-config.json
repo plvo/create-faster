@@ -1,13 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "release-type": "node",
   "include-v-in-tag": true,
   "separate-pull-requests": false,
-  "extra-files": [],
-  "pull-request-title-pattern": "chore: release v${version}",
-  "group-pull-request-title-pattern": "chore: release v${version}",
+  "pull-request-title-pattern": "chore${scope}: release${component} ${version}",
+  "plugins": ["node-workspace"],
   "packages": {
-    ".": {
+    "apps/cli": {
+      "release-type": "node",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
@@ -15,8 +14,7 @@
         { "type": "refactor", "section": "Refactor" },
         { "type": "chore", "section": "Miscellaneous" },
         { "type": "docs", "section": "Documentation" }
-      ],
-      "release-type": "node"
+      ]
     }
   }
 }
