@@ -27,55 +27,6 @@ create-faster/
 └── templates/        # Handlebars template files
 ```
 
-### Core Concepts
-
-1. **Platform Types** (2025-10-22 Refactored)
-   - `app`: Client-side applications (Next.js, Expo, Astro...)
-   - `server`: Backend/API servers (Hono, Express...)
-   - **No more** `web`/`mobile` distinction - unified as `app`
-
-2. **App Configuration Types** (Discriminated Union)
-   - **App only**: `{ app: 'nextjs', modules?: [...] }`
-   - **Server only**: `{ server: 'hono', serverModules?: [...] }`
-   - **Fullstack**: `{ app: 'nextjs', server: 'hono', modules?: [...], serverModules?: [...] }`
-   - Type guards: `hasApp()`, `hasServer()`, `isStandaloneServer()`, `isFullstack()`
-
-3. **Scope System**
-   - `app`: Application-level templates → `apps/{name}/`
-   - `package`: Shared package templates → `packages/{name}/`
-   - `root`: Root-level config → `./`
-
-4. **Auto-detection**
-   - Turborepo mode when `apps.length > 1`
-   - Single repo mode for single app projects
-
-5. **Server Choice**
-   - `builtin`: Use framework's built-in backend (Next.js API routes)
-   - `hono`/`express`: Dedicated server in `{appName}-server/`
-   - Standalone servers use app name directly
-
-6. **Context-Aware Filtering**
-   - Category-level `requires`: Dependencies between categories (e.g., `orm.requires = ['database']`)
-   - Stack-level `requires`: Dependencies for specific stacks (e.g., `husky.requires = ['git']`)
-   - Progressive context building: Each prompt updates shared context for dynamic filtering
-   - Automatic skip: Prompts auto-skip when requirements not met with informative logs
-
-7. **Modules System** (2025-10-21 + Server Support 2025-10-22)
-   - **App modules**: shadcn, PWA, tRPC for Next.js | NativeWind for Expo
-   - **Server modules**: OpenAPI, JWT for Hono | Passport, Helmet for Express
-   - Separate `MODULES` metadata independent from core stacks
-   - Module-specific `packageName` for turborepo package placement
-   - Context-aware activation based on requirements
-   - Per-framework AND per-server module selection
-
-8. **Magic Comments System** (2025-10-21)
-   - First-line directives for conditional template rendering
-   - `@repo:` - Control rendering based on repo type (single/turborepo)
-   - `@scope:` - Override default file placement (app/package/root)
-   - `@if:` and `@require:` - Context-based conditions
-   - Pre-scan optimization (reads only first line before rendering)
-   - Negation support (`@repo:!single`)
-
 ### CLI Application Flow
 
 ```
@@ -446,89 +397,15 @@ Package details:
 
 ## Adding New Content
 
-### Adding a New Framework
+Use slash commands for automated template generation:
+- `/templates:add "description"` - Generate new framework or module templates
+- `/templates:test "pattern"` - Validate template syntax
 
-1. **Add to META** in [__meta__.ts](apps/cli/src/__meta__.ts):
-```typescript
-export const META = {
-  web: {
-    stacks: {
-      solid: {
-        label: 'Solid',
-        hint: 'Fast reactive framework',
-        hasBackend: false,
-      }
-    }
-  }
-} as const satisfies Meta;
-```
-
-2. **Create Template Directory**:
-```bash
-mkdir -p apps/cli/templates/web/solid
-```
-
-3. **Add Template Files**:
-```
-templates/web/solid/
-├── package.json.hbs
-├── tsconfig.json.hbs
-└── src/
-    └── index.tsx.hbs
-```
-
-4. **Test**:
-```bash
-bun run dev:cli
-# Select Web platform → Solid appears
-```
-
-### Adding a New Module
-
-1. **Add to MODULES** in [__meta__.ts](apps/cli/src/__meta__.ts):
-```typescript
-export const MODULES: ModuleMeta = {
-  nextjs: {
-    analytics: {
-      label: 'Vercel Analytics',
-      hint: 'Web analytics',
-      packageName: 'analytics', // Optional: for turborepo packages/analytics/
-      requires: ['database'],   // Optional: dependency
-    }
-  }
-}
-```
-
-2. **Create Module Templates**:
-```bash
-mkdir -p apps/cli/templates/modules/nextjs/analytics
-```
-
-3. **Add Template Files with Magic Comments**:
-```handlebars
-{{!-- package.json.hbs --}}
-{{!-- @repo:turborepo @scope:package --}}
-{
-  "name": "@repo/analytics",
-  "dependencies": {
-    "@vercel/analytics": "^1.0.0"
-  }
-}
-```
-
-```handlebars
-{{!-- config.ts.hbs --}}
-{{!-- @scope:app --}}
-import { Analytics } from '@vercel/analytics/react'
-
-export const analytics = <Analytics />
-```
-
-4. **Test**:
-```bash
-bun run dev:cli
-# Select Next.js → Analytics appears in modules
-```
+Manual process:
+1. Add to `META` or `MODULES` in [__meta__.ts](apps/cli/src/__meta__.ts)
+2. Create template directory under `templates/`
+3. Add `.hbs` files with magic comments
+4. Test with `bun run dev:cli`
 
 ## Code Conventions
 
@@ -591,57 +468,20 @@ templates/
 └── repo/turborepo/         # Turborepo config
 ```
 
-### Handlebars Variables (2025-10-22 Updated with new structure)
-Available in all templates:
-- `{{projectName}}` - User's project name
-- `{{appName}}` - Current app name (auto-injected for app-scoped templates)
-- `{{repo}}` - Repository type (single/turborepo)
-- **App variables** (if `metaApp` exists):
-  - `{{metaApp.name}}` - App framework (nextjs, expo)
-  - `{{metaApp.modules}}` - Array of selected app modules
-- **Server variables** (if `metaServer` exists):
-  - `{{metaServer.name}}` - Server framework (hono, express, builtin)
-  - `{{metaServer.modules}}` - Array of selected server modules
-- **Helpers for cleaner access**:
-  - `{{#if (hasApp this)}}` - Check if app exists
-  - `{{#if (hasModule "shadcn")}}` - Check if module enabled
-  - `{{#if (hasServerModule "jwt")}}` - Check if server module enabled
-- `{{orm}}`, `{{database}}`, `{{git}}`, `{{extras}}` - Context-level selections
-- Additional context from `TemplateContext` type
+### Handlebars Variables
+- `{{projectName}}`, `{{appName}}`, `{{repo}}`
+- `{{metaApp.name}}`, `{{metaApp.modules}}` - App framework and modules
+- `{{metaServer.name}}`, `{{metaServer.modules}}` - Server framework and modules
+- `{{orm}}`, `{{database}}`, `{{git}}`, `{{extras}}`
+- Helpers: `hasApp()`, `hasServer()`, `hasModule()`, `hasServerModule()`, etc.
+- See [handlebars-utils.ts](apps/cli/src/lib/handlebars-utils.ts) for complete list
 
 ### Magic Comments (First Line Directives)
-Control template rendering and file placement:
-```handlebars
-{{!-- @repo:turborepo --}}              → Only render in turborepo mode
-{{!-- @repo:single --}}                 → Only render in single repo mode
-{{!-- @scope:app --}}                   → Place in app directory (override default)
-{{!-- @scope:package --}}               → Place in package directory
-{{!-- @if:database --}}                 → Render if database is selected
-{{!-- @require:git --}}                 → Render if git is enabled
-{{!-- @repo:!single --}}                → Negation: everything except single
-{{!-- @repo:turborepo @scope:package --}} → Multiple conditions (AND logic)
-```
-
-**Usage Examples**:
-```handlebars
-{{!-- package.json for shared UI package in turborepo --}}
-{{!-- @repo:turborepo @scope:package --}}
-{
-  "name": "@repo/ui",
-  "version": "0.0.0"
-}
-```
-
-```handlebars
-{{!-- components.json always goes in app, even in turborepo --}}
-{{!-- @scope:app --}}
-{
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "aliases": {
-    "ui": "@repo/ui"
-  }
-}
-```
+- `@repo:turborepo|single|!single` - Control rendering by repo type
+- `@scope:app|package|root` - Override file placement
+- `@if:key` / `@require:key` - Conditional rendering
+- Multiple conditions: `{{!-- @repo:turborepo @scope:package --}}`
+- See [magic-comments.ts](apps/cli/src/lib/magic-comments.ts) for details
 
 ### Template Resolution Flow
 1. Scan templates using fast-glob (`**/*.hbs`)
@@ -658,24 +498,9 @@ Control template rendering and file placement:
 - `root` scope → `{path}` (always at project root)
 
 ### Module Scope Resolution Logic
-For module templates, scope is determined by:
-1. **If `@scope:` magic comment present**: Use that scope explicitly
-2. **Else if turborepo + `packageName` defined**: Use `package` scope → `packages/{packageName}/`
-3. **Else**: Use `app` scope → `apps/{appName}/` or root in single mode
-
-**Example**:
-```
-Module: nextjs/shadcn with packageName: "ui"
-Turborepo mode:
-  - src/lib/utils.ts.hbs → packages/ui/src/lib/utils.ts (default: follows packageName)
-  - components.json.hbs → apps/web/components.json (@scope:app override)
-  - package.json.hbs → packages/ui/package.json (@scope:package explicit)
-
-Single mode:
-  - src/lib/utils.ts.hbs → src/lib/utils.ts (no packageName in single mode)
-  - components.json.hbs → components.json (@scope:app)
-  - package.json.hbs → SKIPPED (@repo:turborepo)
-```
+1. If `@scope:` magic comment present → use that scope
+2. Else if turborepo + `packageName` defined → `packages/{packageName}/`
+3. Else → `apps/{appName}/` (turborepo) or root (single mode)
 
 ## Design Decisions
 
@@ -758,36 +583,10 @@ apps/cli/src/
 
 ## Common Development Tasks
 
-### Debug Template Resolution
-```typescript
-import { getAllTemplatesForContext } from './lib/template-resolver';
-
-const templates = getAllTemplatesForContext(config, context);
-console.log(templates); // Array of TemplateFile objects
-```
-
-### Add New Prompt
-Edit [index.ts](apps/cli/src/index.ts), use helpers from [prompts.ts](apps/cli/src/lib/prompts.ts):
-```typescript
-const result = await promptSelect({
-  message: 'Choose option',
-  options: [
-    { value: 'a', label: 'Option A', hint: 'Description' },
-    { value: 'b', label: 'Option B' },
-  ],
-});
-```
-
-### Update Dependencies
-```bash
-bun update              # Update all packages
-bun run check:unused    # Find unused deps with knip
-```
-
-### Clean Build Artifacts
-```bash
-bun run clean           # Removes dist/, .next/, node_modules/.cache/
-```
+- **Debug templates**: Use `getAllTemplatesForContext()` from [template-resolver.ts](apps/cli/src/lib/template-resolver.ts)
+- **Add prompts**: Use helpers from [prompts.ts](apps/cli/src/lib/prompts.ts)
+- **Update deps**: `bun update` and `bun run check:unused`
+- **Clean**: `bun run clean`
 
 ## Performance Optimizations
 
