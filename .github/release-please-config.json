@@ -7,7 +7,7 @@
   "pull-request-title-pattern": "chore: release v${version}",
   "group-pull-request-title-pattern": "chore: release v${version}",
   "packages": {
-    ".": {
+    "./apps/cli": {
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
