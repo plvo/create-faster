@@ -76,9 +76,6 @@ export function registerHandlebarsHelpers(): void {
   });
 
   Handlebars.registerHelper('hasModule', function (this: AppContext | TemplateContext, moduleName: string) {
-    if (moduleName === 'better-auth') {
-      console.log('hasModule', this, moduleName);
-    }
     const modules = 'metaApp' in this ? this.metaApp?.modules : undefined;
     if (!modules || !Array.isArray(modules)) return false;
     return modules.some((m) => m.includes(moduleName));

@@ -39,19 +39,20 @@ Use this minimal context for JSON validation:
 {
   repo: 'single',
   projectName: 'test-project',
-  appName: 'test-app',
-  framework: 'nextjs',
-  platform: 'web',
   database: 'postgres',
   orm: 'drizzle',
-  modules: ['shadcn'],
   extras: ['biome'],
   git: true,
   apps: [{
     appName: 'test-app',
-    framework: 'nextjs',
-    platform: 'web',
-    modules: ['shadcn']
+    metaApp: {
+      name: 'nextjs',
+      modules: ['shadcn']
+    },
+    metaServer: {
+      name: 'hono',
+      modules: ['openapi']
+    }
   }]
 }
 ```

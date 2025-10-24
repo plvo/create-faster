@@ -1,3 +1,13 @@
-export default function Home() {
-  return <div>Hello World!</div>;
+export default function HomePage() {
+  return (
+    <div className='flex flex-col items-center justify-center h-screen'>
+      <h1>Home Page</h1>
+
+      {{#if (hasModule "mdx")}}
+      <p>
+        MDX module is enabled, you can see the example page <a href='/mdx'>here</a>.
+      </p>
+      {{/if}}
+    </div>
+  );
 }

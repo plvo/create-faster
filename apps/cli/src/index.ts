@@ -2,7 +2,7 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { cancel, intro, isCancel, multiselect, type Option, outro, select } from '@clack/prompts';
+import { cancel, intro, isCancel, log, multiselect, type Option, outro, select } from '@clack/prompts';
 import { META, MODULES } from '@/__meta__';
 import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
@@ -225,32 +225,28 @@ async function main() {
       ...config,
     };
 
-    // Get all templates to generate
     const templates = getAllTemplatesForContext(ctx);
 
-    // Generate project files
     const result = await generateProjectFiles(templates, ctx);
 
-    // Display results
     displayGenerationResults(result);
 
-    // Exit if generation failed
     if (!result.success) {
       console.error('\n✗ Project generation failed. Please fix the errors and try again.');
       process.exit(1);
     }
 
-    // Run post-generation tasks (install deps, git init)
     const projectPath = join(process.cwd(), ctx.projectName);
+
     await runPostGeneration(ctx, projectPath, {
       install: true,
       packageManager: 'bun',
     });
   } catch (error) {
-    console.error('\n✗ An error occurred:');
-    console.error(error instanceof Error ? error.message : String(error));
+    log.error('\n✗ An error occurred:');
+    log.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
 
-main().catch(console.error);
+main().catch(log.error);

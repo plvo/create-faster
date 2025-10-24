@@ -22,7 +22,7 @@ Example:
 ### 1. Parse & Research Phase
 
 1. **Extract information from description:**
-   - Type: stack (web/api/mobile/orm/database/extras) or module (nextjs/*)
+   - Type: stack (app/server/orm/database/extras) or module (nextjs/expo/hono/express)
    - Name: astro, trpc, auth-js, etc.
    - Key features: SSR, edge runtime, type safety, etc.
 
@@ -32,8 +32,8 @@ Example:
    - Note latest package versions
 
 3. **Analyze existing similar templates:**
-   - Find closest match (e.g., for Astro → look at web/nextjs/)
-   - For modules → look at modules/nextjs/shadcn/
+   - Find closest match (e.g., for Astro → look at app/nextjs/)
+   - For modules → look at modules/{framework}/shadcn/
    - Identify patterns: magic comments, scope, structure
 
 ### 2. Planning Phase
@@ -97,7 +97,7 @@ Update `apps/cli/src/__meta__.ts`:
 
 **For stack:**
 ```typescript
-web: {
+app: {
   scope: 'app',
   stacks: {
     astro: {
@@ -109,7 +109,7 @@ web: {
 }
 ```
 
-**For module:**
+**For app module:**
 ```typescript
 MODULES: {
   nextjs: {
@@ -117,7 +117,20 @@ MODULES: {
       label: 'tRPC',
       hint: 'End-to-end type safety',
       requires: ['database'],
-      packageName: 'api', // If turborepo package
+      packageName: 'trpc', // If turborepo package
+    }
+  }
+}
+```
+
+**For server module:**
+```typescript
+MODULES: {
+  hono: {
+    openapi: {
+      label: 'OpenAPI',
+      hint: 'API documentation',
+      packageName: 'openapi', // If turborepo package
     }
   }
 }
@@ -177,7 +190,11 @@ Common Handlebars patterns to use:
 - `{{#if (eq repo "turborepo")}}` - Monorepo only
 - `{{#if (eq orm "drizzle")}}` - If Drizzle ORM selected
 - `{{#if (eq database "postgres")}}` - Database-specific
-- `{{#if (hasModule "shadcn")}}` - If module enabled
+- `{{#if (hasModule "shadcn")}}` - If app module enabled
+- `{{#if (hasServerModule "openapi")}}` - If server module enabled
+- `{{#if (hasApp this)}}` - If app exists
+- `{{#if (hasServer this)}}` - If server exists
+- `{{#if (isFullstack this)}}` - If fullstack (app + server)
 - `{{#if (and (eq repo "single") (eq orm "drizzle"))}}` - Multiple conditions
 
 ## Output Format
@@ -193,10 +210,10 @@ After generation, provide:
 ```
 User: /templates:add "Add Astro framework" --resources https://docs.astro.build
 
-1. ✓ Parsed: type=web, name=astro
+1. ✓ Parsed: type=app, name=astro
 2. ✓ Fetched Astro docs
-3. ✓ Analyzed web/nextjs/ as reference
-4. ✓ Created 5 files in templates/web/astro/
+3. ✓ Analyzed app/nextjs/ as reference
+4. ✓ Created 5 files in templates/app/astro/
 5. ✓ Updated __meta__.ts
 6. ✓ Ran /templates:test - All valid
 7. ✅ Done! Ready to test with CLI
