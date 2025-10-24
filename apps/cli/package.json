@@ -1,7 +1,7 @@
 {
   "name": "create-faster",
   "description": "A quick way to create a new project",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "license": "MIT",
   "author": "plvo <plvdev@proton.me>",
   "private": false,
@@ -32,7 +32,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outfile create-faster --target bun --production --banner '#!/usr/bin/env node'",
+    "build": "bun build src/index.ts --outfile create-faster --target node --production --banner '#!/usr/bin/env node'",
     "dev": "bun run src/index.ts",
     "dev:watch": "bun run src/index.ts --watch",
     "prepublishOnly": "bun run build && chmod +x create-faster",

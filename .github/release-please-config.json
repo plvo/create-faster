@@ -1,22 +1,41 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "release-type": "node",
-  "include-v-in-tag": true,
-  "separate-pull-requests": false,
+  "exclude-packages": ["apps/www"],
   "extra-files": [],
-  "pull-request-title-pattern": "chore: release v${version}",
   "group-pull-request-title-pattern": "chore: release v${version}",
+  "include-v-in-tag": true,
   "packages": {
-    ".": {
+    "apps/cli": {
+      "path": "apps/cli",
+      "release-type": "node",
       "changelog-sections": [
-        { "type": "feat", "section": "Features" },
-        { "type": "fix", "section": "Bug Fixes" },
-        { "type": "perf", "section": "Performance" },
-        { "type": "refactor", "section": "Refactor" },
-        { "type": "chore", "section": "Miscellaneous" },
-        { "type": "docs", "section": "Documentation" }
-      ],
-      "release-type": "node"
+        {
+          "section": "Features",
+          "type": "feat"
+        },
+        {
+          "section": "Bug Fixes",
+          "type": "fix"
+        },
+        {
+          "section": "Performance",
+          "type": "perf"
+        },
+        {
+          "section": "Refactor",
+          "type": "refactor"
+        },
+        {
+          "section": "Miscellaneous",
+          "type": "chore"
+        },
+        {
+          "section": "Documentation",
+          "type": "docs"
+        }
+      ]
     }
-  }
+  },
+  "pull-request-title-pattern": "chore: release v${version}",
+  "separate-pull-requests": false
 }
