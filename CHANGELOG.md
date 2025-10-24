@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/plvo/create-faster/compare/v1.0.0...v1.0.1) (2025-10-24)
+
+
+### Bug Fixes
+
+* **gha:** correct release-please configuration ([b123c7f](https://github.com/plvo/create-faster/commit/b123c7f986b35b13e062a7da5ce4c537de2e6b31))
+* trigger gha ([0056c0c](https://github.com/plvo/create-faster/commit/0056c0cd82385383e80625e3f6ed313d9721d501))
+
 ## 1.0.0 (2025-10-23)
 
 
