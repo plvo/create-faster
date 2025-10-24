@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/plvo/create-faster/compare/v1.0.0...v1.0.1) (2025-10-24)
+
+
+### Bug Fixes
+
+* **gha:** release please ([9bbb68a](https://github.com/plvo/create-faster/commit/9bbb68ab9eba0207466d3563be769f96fb76f972))
+
 ## 1.0.0 (2025-10-23)
 
 
