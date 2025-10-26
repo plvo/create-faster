@@ -88,44 +88,81 @@ export const META: Meta = {
 
 export const MODULES: MetaModule = {
   nextjs: {
-    shadcn: {
-      label: 'shadcn/ui',
-      hint: 'Accessible UI components',
-      packageName: 'ui',
+    'UI & Styling': {
+      shadcn: {
+        label: 'shadcn/ui',
+        hint: 'A set of beautifully designed components that you can customize, extend, and build on',
+        packageName: 'ui',
+      },
+      'next-themes': {
+        label: 'Next Themes',
+        hint: 'A library for managing themes in Next.js',
+        packageName: 'themes',
+      },
     },
-    mdx: {
-      label: 'MDX',
-      hint: 'Markdown-based content',
+    Features: {
+      mdx: {
+        label: 'MDX',
+        hint: 'Markdown-based content',
+      },
+      pwa: {
+        label: 'PWA',
+        hint: 'Progressive Web App support',
+      },
     },
-    pwa: {
-      label: 'PWA',
-      hint: 'Progressive Web App support',
+    Authentication: {
+      'better-auth': {
+        label: 'Better Auth',
+        hint: 'The most comprehensive authentication framework for TypeScript',
+        packageName: 'auth',
+      },
     },
-    'better-auth': {
-      label: 'Better Auth',
-      hint: 'Authentication library',
-      packageName: 'auth',
+    'Data Fetching': {
+      'tanstack-query': {
+        label: 'TanStack Query',
+        hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
+      },
+      'tanstack-devtools': {
+        label: 'TanStack Devtools',
+        hint: 'Devtools panel for TanStack libraries and other custom devtools',
+      },
+      // trpc: {
+      //   label: 'tRPC',
+      //   hint: 'End-to-end type safety',
+      //   requires: ['database'],
+      // },
     },
-    // trpc: {
-    //   label: 'tRPC',
-    //   hint: 'End-to-end type safety',
-    //   requires: ['database'],
+    Forms: {
+      'react-hook-form': {
+        label: 'React Hook Form',
+        hint: 'Performant, flexible and extensible forms with easy-to-use validation',
+      },
+      'tanstack-form': {
+        label: 'TanStack Form',
+        hint: 'Headless UI for building performant and type-safe forms',
+      },
+    },
+    // expo: {
+    //   'UI & Styling': {
+    //     nativewind: {
+    //       label: 'NativeWind',
+    //       hint: 'Tailwind CSS for React Native',
+    //     },
+    //   },
+    // },
+    // hono: {
+    //   Documentation: {
+    //     openapi: {
+    //       label: 'OpenAPI',
+    //       hint: 'Auto-generated API docs',
+    //     },
+    //   },
+    //   Authentication: {
+    //     jwt: {
+    //       label: 'JWT Auth',
+    //       hint: 'Authentication middleware',
+    //     },
+    //   },
     // },
   },
-  // expo: {
-  //   nativewind: {
-  //     label: 'NativeWind',
-  //     hint: 'Tailwind CSS for React Native',
-  //   },
-  // },
-  // hono: {
-  //   openapi: {
-  //     label: 'OpenAPI',
-  //     hint: 'Auto-generated API docs',
-  //   },
-  //   jwt: {
-  //     label: 'JWT Auth',
-  //     hint: 'Authentication middleware',
-  //   },
-  // },
 };

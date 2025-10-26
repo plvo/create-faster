@@ -1,14 +1,16 @@
 export type Scope = 'app' | 'package' | 'root';
 export type Category = 'app' | 'server' | 'orm' | 'database' | 'extras' | 'repo';
 
-export interface MetaStack {
+interface MetaStack {
   label: string;
   hint?: string;
   hasBackend?: boolean; // like nextjs
   requires?: (Category | (string & {}))[];
 }
 
-export interface MetaCategory {
+type MetaModuleStack = Omit<MetaStack, 'hasBackend'> & { packageName?: string };
+
+interface MetaCategory {
   scope: Scope;
   packageName?: string; // used for turborepo packages/<packageName>
   requires?: Category[]; // like orm.requires = ['database']
@@ -16,11 +18,11 @@ export interface MetaCategory {
 }
 
 export type Meta = Record<Category, MetaCategory>;
-type MetaApp = keyof Meta['app']['stacks'];
-type MetaServer = keyof Meta['server']['stacks'] | 'builtin';
+export type MetaApp = keyof Meta['app']['stacks'];
+export type MetaServer = keyof Meta['server']['stacks'] | 'builtin';
 
-type MetaModuleStack = Omit<MetaStack, 'hasBackend'> & { packageName?: string };
-export type MetaModule = Record<string, Record<string, MetaModuleStack>>; // like nextjs.shadcn
+// MODULES[framework][category][moduleName]
+export type MetaModule = Record<MetaApp, Record<string, Record<string, MetaModuleStack>>>;
 
 export interface AppContext {
   appName: string;

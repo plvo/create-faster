@@ -1,12 +1,17 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
+{{#if (hasModule "tanstack-devtools")}}
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+{{/if}}
 
 const geistSans = localFont({
   src: '../styles/fonts/geist-sans-vf.woff',
   variable: '--font-geist-sans',
   weight: '100 900',
 });
+
 const geistMono = localFont({
   src: '../styles/fonts/geist-mono-vf.woff',
   variable: '--font-geist-mono',
@@ -30,6 +35,15 @@ export default function RootLayout({
     <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
           <main>{children}</main>
+          {{#if (hasModule "tanstack-devtools")}}
+          {process.env.NODE_ENV === 'development' && (
+            <TanStackDevtools
+              config={{ position: 'top-left' }}
+              eventBusConfig={{ connectToServerBus: true }}
+              plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
+            />
+          )}
+          {{/if}}
       </body>
     </html>
   );

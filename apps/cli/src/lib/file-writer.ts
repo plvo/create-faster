@@ -39,7 +39,7 @@ export function isBinaryFile(filePath: string): boolean {
 /**
  * Ensure a directory exists, creating it recursively if needed
  */
-export async function ensureDirectory(dirPath: string): Promise<void> {
+async function ensureDirectory(dirPath: string): Promise<void> {
   try {
     await mkdir(dirPath, { recursive: true });
   } catch (error) {

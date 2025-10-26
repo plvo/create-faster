@@ -17,7 +17,7 @@ import type { TemplateContext } from '@/types';
  * - {{!-- @repo:turborepo @scope:package --}}
  */
 
-export interface MagicComment {
+interface MagicComment {
   type: 'repo' | 'if' | 'require' | 'scope';
   values: string[];
   negated?: boolean;
@@ -121,42 +121,6 @@ export function shouldSkipTemplate(comments: MagicComment[], ctx: TemplateContex
 
   // AND logic: skip if ANY comment says to skip
   return comments.some((comment) => shouldSkipForComment(comment, ctx));
-}
-
-/**
- * Validate magic comments for common errors
- * Returns array of warning messages
- */
-export function validateMagicComments(comments: MagicComment[]): string[] {
-  const warnings: string[] = [];
-
-  for (const comment of comments) {
-    if (comment.values.length === 0) {
-      warnings.push(`Magic comment @${comment.type} has no values`);
-    }
-
-    if (comment.type === 'repo') {
-      const validRepos = ['single', 'turborepo'];
-      const invalidRepos = comment.values.filter((v) => !validRepos.includes(v));
-      if (invalidRepos.length > 0) {
-        warnings.push(`Unknown repo type(s): ${invalidRepos.join(', ')}`);
-      }
-    }
-
-    if (comment.type === 'scope') {
-      const validScopes = ['app', 'package', 'root'];
-      const invalidScopes = comment.values.filter((v) => !validScopes.includes(v));
-      if (invalidScopes.length > 0) {
-        warnings.push(`Unknown scope type(s): ${invalidScopes.join(', ')}`);
-      }
-    }
-
-    if (comment.type !== 'repo' && comment.values.length > 1) {
-      warnings.push(`@${comment.type} only supports a single value, got: ${comment.values.join(', ')}`);
-    }
-  }
-
-  return warnings;
 }
 
 /**

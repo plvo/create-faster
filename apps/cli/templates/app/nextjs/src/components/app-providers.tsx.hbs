@@ -1,0 +1,45 @@
+'use client';
+
+{{#if (hasModule "tanstack-query")}}
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+{{/if}}
+{{#if (hasModule "shadcn")}}
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
+{{/if}}
+import type React from 'react';
+
+{{#if (hasModule "tanstack-query")}}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 1000 * 60 * 5, // 5 min
+      gcTime: 1000 * 60 * 10, // 10 min
+    },
+  },
+});
+{{/if}}
+
+interface AppProvidersProps {
+  children: React.ReactNode;
+}
+
+export function AppProviders({ children }: AppProvidersProps) {
+  return (
+    {{#if (hasModule "tanstack-query")}}
+    <QueryClientProvider client={queryClient}>
+    {{/if}}
+    {{#if (hasModule "next-themes")}}
+    <NextThemesProvider enableSystem storageKey={"{{appName}}-theme"}>
+    {{/if}}
+    {children}
+    {{#if (hasModule "next-themes")}}
+    </NextThemesProvider>
+    {{/if}}
+    {{#if (hasModule "tanstack-query")}}
+    </QueryClientProvider>
+    {{/if}}
+  );
+}
