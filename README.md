@@ -22,10 +22,11 @@ bunx create-faster
     - [x]  mysql
     - [x]  postgresql
 - extras
-    - [ ]  `.cursor`
-    - [ ]  `.claude`
+    - [ ]  .cursor
+    - [ ]  .claude
     - [x]  biomejs
     - [ ]  git-crypt
+    - [ ]  github actions
     - [x]  husky
     - [ ]  prettier
 - modules

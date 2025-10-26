@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { META, MODULES } from '@/__meta__';
 import type { Category, Scope, TemplateContext, TemplateFile } from '@/types';
+import { transformSpecialFilename } from './file-writer';
 import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 function getTemplatesRoot(): string {
@@ -30,9 +31,7 @@ function resolveDestination(
 ): string {
   let cleanPath = relativePath.replace('.hbs', '');
 
-  if (cleanPath.startsWith('_')) {
-    cleanPath = `.${cleanPath.slice(1)}`;
-  }
+  cleanPath = transformSpecialFilename(cleanPath);
 
   if (ctx.repo === 'single') {
     return cleanPath;

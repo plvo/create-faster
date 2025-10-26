@@ -19,7 +19,7 @@ interface MetaCategory {
 
 export type Meta = Record<Category, MetaCategory>;
 export type MetaApp = keyof Meta['app']['stacks'];
-export type MetaServer = keyof Meta['server']['stacks'] | 'builtin';
+export type MetaServer = keyof Meta['server']['stacks'] | 'none';
 
 // MODULES[framework][category][moduleName]
 export type MetaModule = Record<MetaApp, Record<string, Record<string, MetaModuleStack>>>;

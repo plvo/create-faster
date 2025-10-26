@@ -1,0 +1,60 @@
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  slug: '{{appName}}',
+  name: '{{appName}}',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  newArchEnabled: true,
+  scheme: '{{appName}}',
+  splash: {
+    image: './assets/splash-icon.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff',
+  },
+  android: {
+    package: 'com.anonymous.{{appName}}',
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#ffffff',
+    },
+    edgeToEdgeEnabled: true,
+  },
+  web: {
+    bundler: 'metro',
+  },
+  // ios: {
+  //   supportsTablet: true,
+  // },
+  // web: {
+  //   favicon: './assets/favicon.png',
+  // },
+  plugins: [
+    'expo-router',
+    'expo-dev-client',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 200,
+        resizeMode: 'contain',
+        backgroundColor: '#ffffff',
+      },
+    ],
+  ],
+  experiments: {
+    typedRoutes: true,
+    reactCompiler: true
+  }
+  
+  // owner: YOUR NAME,
+  // if you use EAS: 
+  // extra: {
+  //   eas: {
+  //     projectId: PROJECT_UUID
+  //   },
+  // },
+});
