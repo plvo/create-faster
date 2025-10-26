@@ -9,9 +9,6 @@ bunx create-faster
 # WIP
 
 ## TODO
-- ai
-    - [ ]  `.cursor`
-    - [ ]  `.claude`
 - app
     - [ ]  astro
     - [ ]  expo
@@ -25,8 +22,9 @@ bunx create-faster
     - [x]  mysql
     - [x]  postgresql
 - extras
+    - [ ]  `.cursor`
+    - [ ]  `.claude`
     - [x]  biomejs
-    - [ ]  devcontainer
     - [ ]  git-crypt
     - [x]  husky
     - [ ]  prettier
@@ -38,8 +36,8 @@ bunx create-faster
     - [x]  pwa
     - [x]  shadcn
     - [ ]  stripe
-    - [ ]  react hook form
-    - [ ]  tanstack form
+    - [x]  react hook form
+    - [x]  tanstack form
     - [x]  tanstack query
     - [x]  tanstack devtools
     - [ ]  trpc
