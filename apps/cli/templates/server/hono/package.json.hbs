@@ -1,6 +1,5 @@
-{{!-- @repo:turborepo @scope:package --}}
 {
-  "name": "gateway",
+  "name": "{{appName}}",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -12,20 +11,29 @@
   "dependencies": {
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.7.0",
-	{{#if (eq orm "prisma")}}
+    {{#if (and (eq repo "turborepo") (hasContext "orm"))}}
     "@repo/db": "*",
-	{{/if}}
-	{{#if (eq orm "drizzle")}}
-    "@repo/db": "*",
-	{{/if}}
+    {{/if}}
+    {{#if (eq repo "single")}}
+    {{#if (eq orm "drizzle")}}
+    "drizzle-orm": "^0.38.3",
+    {{#if (eq database "postgres")}}
+    "pg": "^8.13.1",
+    {{/if}}
+    {{#if (eq database "mysql")}}
+    "mysql2": "^3.11.5",
+    {{/if}}
+    {{/if}}
+    {{#if (eq orm "prisma")}}
+    "@prisma/client": "^6.13.0",
+    {{/if}}
+    {{/if}}
     "hono": "^4.7.10"
   },
   "devDependencies": {
-	{{#if (eq orm "prisma")}}
-    "@repo/db": "*",
-	{{/if}}
-    "@types/bun": "latest",
-    "rimraf": "^6.0.1",
-    "typescript": "^5.0.0"
+    {{#if (eq repo "turborepo")}}
+      "@repo/config": "*",
+    {{/if}}
+    "typescript": "^5"
   }
 }

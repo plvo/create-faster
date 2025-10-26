@@ -113,8 +113,8 @@ export async function pathExists(path: string): Promise<boolean> {
  */
 export function transformSpecialFilename(filename: string): string {
   // Handle underscore-prefixed files
-  if (filename.startsWith('_')) {
-    return `.${filename.slice(1)}`;
+  if (filename.startsWith('__')) {
+    return `.${filename.slice(2)}`;
   }
 
   return filename;

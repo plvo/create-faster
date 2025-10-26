@@ -1,0 +1,59 @@
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import * as React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AppFooter from '@/components/app-footer';
+import '@/styles/globals.css';
+
+SplashScreen.preventAutoHideAsync();
+
+function AppContent() {
+  const [loaded] = useFonts({
+    Inter: require('#/assets/fonts/inter-18pt-black.ttf'),
+    InterBold: require('#/assets/fonts/inter-18pt-bold.ttf'),
+  });
+
+  // Hide splash screen when ready
+  React.useEffect(() => {
+    (async () => {
+      if (loaded) {
+        await SplashScreen.hideAsync();
+      }
+    })();
+  }, [loaded]);
+
+  if (!loaded) {
+    return (
+      <GestureHandlerRootView style=\{\{ flex: 1 \}\}>
+        <View {{#if (hasModule "nativewind")}}className='flex-1 bg-blue-600 justify-center items-center'{{/if}}>
+          <ActivityIndicator size='large' color='white' />
+          <Text {{#if (hasModule "nativewind")}}className='text-white text-lg mt-4 font-bold'{{/if}}>Initialization...</Text>
+        </View>
+      </GestureHandlerRootView>
+    );
+  }
+
+  const isAuthenticated = true;
+
+  return (
+    <GestureHandlerRootView style=\{\{ flex: 1 \}\}>
+      <Stack screenOptions=\{\{ headerShown: false \}\}>
+        <Stack.Protected guard={isAuthenticated}>
+          <Stack.Screen name='index' />
+          {/* You can add other screens here like: <Stack.Screen name='profile' /> */}
+        </Stack.Protected>
+        <Stack.Protected guard={!isAuthenticated}>
+          <Stack.Screen name='activation' />
+        </Stack.Protected>
+      </Stack>
+
+      <AppFooter />
+    </GestureHandlerRootView>
+  );
+}
+
+export default function AppLayout() {
+  return <AppContent />;
+}

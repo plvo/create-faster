@@ -64,7 +64,7 @@ async function processAppWithServer(index: number, appName: string): Promise<App
 async function processServer(
   index: number,
   appName: string,
-  framework?: MetaApp,
+  appFramework?: MetaApp,
   appModules?: string[],
 ): Promise<AppContext> {
   const serverOptions = Object.entries(META.server.stacks).map(([value, meta]) => ({
@@ -73,14 +73,22 @@ async function processServer(
     hint: meta.hint,
   }));
 
-  const appMeta = framework ? META.app.stacks[framework] : undefined;
+  const appMeta = appFramework ? META.app.stacks[appFramework] : undefined;
 
-  if (appMeta?.hasBackend) {
-    serverOptions.unshift({
-      value: 'builtin' as MetaServer,
-      label: `Use ${appMeta.label} built-in`,
-      hint: 'API routes, server actions',
-    });
+  if (appMeta) {
+    if (appMeta.hasBackend) {
+      serverOptions.unshift({
+        value: 'none',
+        label: `Use ${appMeta.label} built-in`,
+        hint: 'API routes, server actions',
+      });
+    } else {
+      serverOptions.push({
+        value: 'none',
+        label: 'None',
+        hint: 'No server',
+      });
+    }
   }
 
   const serverName = await select<MetaServer>({
@@ -95,15 +103,14 @@ async function processServer(
 
   const result: AppContext = {
     appName,
-    metaApp: framework ? { name: framework, modules: appModules || [] } : undefined,
+    metaApp: appFramework ? { name: appFramework, modules: appModules || [] } : undefined,
     metaServer: { name: serverName, modules: [] },
   };
 
-  if (serverName === 'builtin') {
+  if (serverName === 'none') {
     return result;
   }
 
-  // Build grouped options for server modules
   const serverFrameworkModules = MODULES[serverName] ?? {};
   const groupedServerModules: Record<string, Option<string>[]> = {};
 
@@ -205,7 +212,7 @@ async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
   });
 
   for (let i = 0; i < Number(appCount); i++) {
-    const app = await promptApp(i + 1, i === 0 ? ctx.projectName : undefined);
+    const app = await promptApp(i + 1, i === 1 ? ctx.projectName : undefined);
     ctx.apps.push(app);
   }
 
@@ -230,8 +237,10 @@ async function main() {
   try {
     const config = await cli();
 
+    const isTurborepo = config.apps.length > 1 || config.apps.some((app) => app.metaApp && app.metaServer);
+
     const ctx: TemplateContext = {
-      repo: config.apps.length > 1 ? 'turborepo' : 'single',
+      repo: isTurborepo ? 'turborepo' : 'single',
       ...config,
     };
 

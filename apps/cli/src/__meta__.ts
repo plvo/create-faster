@@ -22,11 +22,11 @@ export const META: Meta = {
         hint: 'React framework with SSR',
         hasBackend: true,
       },
-      // expo: {
-      //   label: 'Expo',
-      //   hint: 'React Native framework',
-      //   hasBackend: false,
-      // },
+      expo: {
+        label: 'Expo',
+        hint: 'React Native framework',
+        hasBackend: false,
+      },
     },
   },
   server: {
@@ -142,27 +142,21 @@ export const MODULES: MetaModule = {
         hint: 'Headless UI for building performant and type-safe forms',
       },
     },
-    // expo: {
-    //   'UI & Styling': {
-    //     nativewind: {
-    //       label: 'NativeWind',
-    //       hint: 'Tailwind CSS for React Native',
-    //     },
-    //   },
-    // },
-    // hono: {
-    //   Documentation: {
-    //     openapi: {
-    //       label: 'OpenAPI',
-    //       hint: 'Auto-generated API docs',
-    //     },
-    //   },
-    //   Authentication: {
-    //     jwt: {
-    //       label: 'JWT Auth',
-    //       hint: 'Authentication middleware',
-    //     },
-    //   },
-    // },
   },
-};
+  expo: {
+    'UI & Styling': {
+      nativewind: {
+        label: 'NativeWind',
+        hint: 'Tailwind CSS for React Native',
+      },
+    },
+  },
+  hono: {
+    Cloud: {
+      'aws-lambda': {
+        label: 'AWS Lambda',
+        hint: 'Run on AWS Lambda',
+      },
+    },
+  },
+} as const;
