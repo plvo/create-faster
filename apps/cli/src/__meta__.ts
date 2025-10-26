@@ -159,4 +159,4 @@ export const MODULES: MetaModule = {
       },
     },
   },
-};
+} as const;
