@@ -2,16 +2,13 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { cancel, intro, isCancel, log, multiselect, type Option, outro, select } from '@clack/prompts';
+import { cancel, groupMultiselect, intro, isCancel, log, type Option, outro, select } from '@clack/prompts';
 import { META, MODULES } from '@/__meta__';
 import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { AppContext, TemplateContext } from '@/types';
-
-type MetaApp = keyof typeof META.app.stacks;
-type MetaServer = keyof typeof META.server.stacks | 'builtin';
+import type { AppContext, MetaApp, MetaServer, TemplateContext } from '@/types';
 
 async function processAppWithServer(index: number, appName: string): Promise<AppContext> {
   const stacks = META.app.stacks;
@@ -22,28 +19,35 @@ async function processAppWithServer(index: number, appName: string): Promise<App
     hint: meta.hint,
   }));
 
-  const appName_ = await select<MetaApp>({
-    message: `App ${index} - Framework?`,
+  const framework = await select<MetaApp>({
+    message: `App #${index} - ${appName} - Framework?`,
     options,
   });
 
-  if (isCancel(appName_)) {
+  if (isCancel(framework)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  const moduleOptions = Object.entries(MODULES[appName_] ?? {}).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
+  // Build grouped options from nested MODULES structure
+  const frameworkModules = MODULES[framework] ?? {};
+  const groupedModules: Record<string, Option<string>[]> = {};
+
+  for (const [category, categoryModules] of Object.entries(frameworkModules)) {
+    groupedModules[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
+      value: moduleName,
+      label: meta.label,
+      hint: meta.hint,
+    }));
+  }
 
   let modules: string[] = [];
-  if (moduleOptions.length > 0) {
-    const result = await multiselect({
-      message: `App ${index} - Modules?`,
-      options: moduleOptions,
+  if (Object.keys(groupedModules).length > 0) {
+    const result = await groupMultiselect({
+      message: `App #${index} - ${appName} - Modules?`,
+      options: groupedModules,
       required: false,
+      selectableGroups: true,
     });
 
     if (isCancel(result)) {
@@ -54,13 +58,13 @@ async function processAppWithServer(index: number, appName: string): Promise<App
     modules = (result as string[]) || [];
   }
 
-  return await processServer(index, appName, appName_, modules);
+  return await processServer(index, appName, framework, modules);
 }
 
 async function processServer(
   index: number,
   appName: string,
-  metaAppName?: MetaApp,
+  framework?: MetaApp,
   appModules?: string[],
 ): Promise<AppContext> {
   const serverOptions = Object.entries(META.server.stacks).map(([value, meta]) => ({
@@ -69,7 +73,7 @@ async function processServer(
     hint: meta.hint,
   }));
 
-  const appMeta = metaAppName ? META.app.stacks[metaAppName] : undefined;
+  const appMeta = framework ? META.app.stacks[framework] : undefined;
 
   if (appMeta?.hasBackend) {
     serverOptions.unshift({
@@ -80,7 +84,7 @@ async function processServer(
   }
 
   const serverName = await select<MetaServer>({
-    message: `App ${index} - Server?`,
+    message: `App #${index} - ${appName} - Server?`,
     options: serverOptions,
   });
 
@@ -91,7 +95,7 @@ async function processServer(
 
   const result: AppContext = {
     appName,
-    metaApp: metaAppName ? { name: metaAppName, modules: appModules || [] } : undefined,
+    metaApp: framework ? { name: framework, modules: appModules || [] } : undefined,
     metaServer: { name: serverName, modules: [] },
   };
 
@@ -99,20 +103,26 @@ async function processServer(
     return result;
   }
 
-  // Prompt for server modules
-  const serverModuleOptions = Object.entries(MODULES[serverName] ?? {}).map(([value, meta]) => ({
-    value,
-    label: meta.label,
-    hint: meta.hint,
-  }));
+  // Build grouped options for server modules
+  const serverFrameworkModules = MODULES[serverName] ?? {};
+  const groupedServerModules: Record<string, Option<string>[]> = {};
+
+  for (const [category, categoryModules] of Object.entries(serverFrameworkModules)) {
+    groupedServerModules[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
+      value: moduleName,
+      label: meta.label,
+      hint: meta.hint,
+    }));
+  }
 
   let serverModules: string[] = [];
 
-  if (serverModuleOptions.length > 0) {
-    const modulesResult = await multiselect({
+  if (Object.keys(groupedServerModules).length > 0) {
+    const modulesResult = await groupMultiselect({
       message: `App ${index} - Server Modules?`,
-      options: serverModuleOptions,
+      options: groupedServerModules,
       required: false,
+      selectableGroups: true,
     });
 
     if (isCancel(modulesResult)) {

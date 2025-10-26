@@ -5,11 +5,11 @@ import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars-utils';
 import { processTemplate } from './template-processor';
 
-export interface GenerationOptions {
+interface GenerationOptions {
   overwrite?: boolean;
 }
 
-export interface GenerationResult {
+interface GenerationResult {
   success: boolean;
   generated: string[];
   failed: Array<{ file: string; error: string }>;
@@ -19,7 +19,7 @@ export interface GenerationResult {
 /**
  * Validate that the project directory doesn't already exist
  */
-export async function validateProjectDirectory(projectPath: string): Promise<void> {
+async function validateProjectDirectory(projectPath: string): Promise<void> {
   const exists = await pathExists(projectPath);
   if (exists) {
     throw new Error(

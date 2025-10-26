@@ -5,34 +5,22 @@ import type { TemplateContext } from '@/types';
 
 const execAsync = promisify(exec);
 
-/**
- * Package manager types
- */
-export type PackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn';
+type PackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn';
 
-/**
- * Detect available package manager
- */
-export async function detectPackageManager(): Promise<PackageManager> {
+async function detectPackageManager(): Promise<PackageManager> {
   const managers: PackageManager[] = ['bun', 'pnpm', 'npm', 'yarn'];
 
   for (const manager of managers) {
     try {
       await execAsync(`${manager} --version`, { timeout: 3000 });
       return manager;
-    } catch {
-      // Manager not available, try next
-    }
+    } catch {}
   }
 
-  // Fallback to npm (should always be available with Node.js)
   return 'npm';
 }
 
-/**
- * Install dependencies using the specified package manager
- */
-export async function installDependencies(
+async function installDependencies(
   projectPath: string,
   packageManager?: PackageManager,
 ): Promise<{ success: boolean; error?: string }> {
@@ -58,14 +46,10 @@ export async function installDependencies(
   }
 }
 
-/**
- * Initialize git repository
- */
-export async function initializeGit(projectPath: string): Promise<{ success: boolean; error?: string }> {
+async function initializeGit(projectPath: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('\nInitializing git repository...');
 
-    // Initialize git
     await execAsync('git init', { cwd: projectPath, timeout: 10000 });
 
     return { success: true };
@@ -78,13 +62,9 @@ export async function initializeGit(projectPath: string): Promise<{ success: boo
   }
 }
 
-/**
- * Display success message with next steps
- */
-export function displaySuccessMessage(context: TemplateContext, projectPath: string): void {
+function displaySuccessMessage(context: TemplateContext, projectPath: string): void {
   const { projectName, apps, repo, git } = context;
 
-  // Build next steps message
   const steps: string[] = [];
 
   steps.push(`cd ${projectName}`);
@@ -115,7 +95,6 @@ export function displaySuccessMessage(context: TemplateContext, projectPath: str
 
   note(steps.join('\n'), 'Next steps');
 
-  // Display apps summary
   if (apps.length > 1) {
     const appsSummary = apps
       .map((app) => {
@@ -146,7 +125,6 @@ export async function runPostGeneration(
 ): Promise<void> {
   const { install = true, packageManager } = options;
 
-  // Install dependencies
   if (install) {
     const installResult = await installDependencies(projectPath, packageManager);
     if (!installResult.success) {
@@ -155,7 +133,6 @@ export async function runPostGeneration(
     }
   }
 
-  // Initialize git if requested
   if (context.git) {
     const gitResult = await initializeGit(projectPath);
     if (!gitResult.success) {
@@ -164,6 +141,5 @@ export async function runPostGeneration(
     }
   }
 
-  // Display success message
   displaySuccessMessage(context, projectPath);
 }

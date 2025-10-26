@@ -88,48 +88,66 @@ export const META: Meta = {
 
 export const MODULES: MetaModule = {
   nextjs: {
-    shadcn: {
-      label: 'shadcn/ui',
-      hint: 'Accessible UI components',
-      packageName: 'ui',
+    'UI & Styling': {
+      shadcn: {
+        label: 'shadcn/ui',
+        hint: 'Accessible UI components',
+        packageName: 'ui',
+      },
     },
-    mdx: {
-      label: 'MDX',
-      hint: 'Markdown-based content',
+    Features: {
+      mdx: {
+        label: 'MDX',
+        hint: 'Markdown-based content',
+      },
+      pwa: {
+        label: 'PWA',
+        hint: 'Progressive Web App support',
+      },
     },
-    pwa: {
-      label: 'PWA',
-      hint: 'Progressive Web App support',
+    Authentication: {
+      'better-auth': {
+        label: 'Better Auth',
+        hint: 'Authentication library',
+        packageName: 'auth',
+      },
     },
-    'better-auth': {
-      label: 'Better Auth',
-      hint: 'Authentication library',
-      packageName: 'auth',
+    'Data Fetching': {
+      'tanstack-query': {
+        label: 'TanStack Query',
+        hint: 'Query client for React.',
+      },
+      'tanstack-devtools': {
+        label: 'TanStack Devtools',
+        hint: 'Devtools for TanStack Query',
+      },
+      // trpc: {
+      //   label: 'tRPC',
+      //   hint: 'End-to-end type safety',
+      //   requires: ['database'],
+      // },
     },
-    'tanstack-query': {
-      label: 'TanStack Query',
-      hint: 'Query client',
-    },
-    // trpc: {
-    //   label: 'tRPC',
-    //   hint: 'End-to-end type safety',
-    //   requires: ['database'],
-    // },
   },
   // expo: {
-  //   nativewind: {
-  //     label: 'NativeWind',
-  //     hint: 'Tailwind CSS for React Native',
+  //   'UI & Styling': {
+  //     nativewind: {
+  //       label: 'NativeWind',
+  //       hint: 'Tailwind CSS for React Native',
+  //     },
   //   },
   // },
   // hono: {
-  //   openapi: {
-  //     label: 'OpenAPI',
-  //     hint: 'Auto-generated API docs',
+  //   Documentation: {
+  //     openapi: {
+  //       label: 'OpenAPI',
+  //       hint: 'Auto-generated API docs',
+  //     },
   //   },
-  //   jwt: {
-  //     label: 'JWT Auth',
-  //     hint: 'Authentication middleware',
+  //   Authentication: {
+  //     jwt: {
+  //       label: 'JWT Auth',
+  //       hint: 'Authentication middleware',
+  //     },
   //   },
   // },
 };

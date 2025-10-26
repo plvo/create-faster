@@ -116,25 +116,3 @@ export async function processTemplate(
     };
   }
 }
-
-/**
- * Validate template content for common issues
- */
-export function validateTemplateContent(content: string, filePath: string): string[] {
-  const errors: string[] = [];
-
-  // Check for unescaped triple braces (potential HTML escaping issues)
-  if (content.includes('{{{') && !content.includes('{{{{')) {
-    errors.push(`${filePath} contains triple braces {{{. Use {{{{ for raw blocks if needed.`);
-  }
-
-  // Check for common typos in helpers
-  const commonTypos = ['{{#if eq ', '{{#if ne ', '{{#if and ', '{{#if or '];
-  for (const typo of commonTypos) {
-    if (content.includes(typo)) {
-      errors.push(`${filePath} contains invalid helper syntax '${typo}'. Use '{{#if (eq ...)}}' with parentheses.`);
-    }
-  }
-
-  return errors;
-}

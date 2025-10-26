@@ -118,7 +118,14 @@ function processModules(
   if (!frameworkModules) return [];
 
   for (const moduleName of modules) {
-    const moduleMeta = frameworkModules[moduleName];
+    // Find module in any category (nested structure: MODULES[framework][category][moduleName])
+    let moduleMeta: (typeof frameworkModules)[string][string] | undefined;
+    for (const categoryModules of Object.values(frameworkModules)) {
+      if (categoryModules[moduleName]) {
+        moduleMeta = categoryModules[moduleName];
+        break;
+      }
+    }
     if (!moduleMeta) continue;
 
     try {

@@ -8,7 +8,8 @@ bunx create-faster
 
 # WIP
 
-## TODO- **ai**
+## TODO
+- ai
     - [ ]  `.cursor`
     - [ ]  `.claude`
 - app
@@ -32,15 +33,15 @@ bunx create-faster
 - modules
     - [x]  better auth
     - [x]  mdx
-    - [ ]  next-themes
+    - [x]  next-themes
     - [ ]  posthog
     - [x]  pwa
     - [x]  shadcn
     - [ ]  stripe
     - [ ]  react hook form
     - [ ]  tanstack form
-    - [ ]  tanstack query
-    - [ ]  tanstack devtools
+    - [x]  tanstack query
+    - [x]  tanstack devtools
     - [ ]  trpc
 - orm
     - [x]  drizzle

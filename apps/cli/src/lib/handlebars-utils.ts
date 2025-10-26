@@ -116,19 +116,6 @@ export function registerHandlebarsHelpers(): void {
 }
 
 /**
- * Configure Handlebars with optimal settings for code generation
- */
-export function configureHandlebars(): typeof Handlebars {
-  // Disable HTML escaping (we're generating code, not HTML)
-  const hbs = Handlebars.create();
-
-  // Copy registered helpers to new instance
-  registerHandlebarsHelpers();
-
-  return hbs;
-}
-
-/**
  * Compile and render a Handlebars template
  */
 export function renderTemplate(templateContent: string, context: TemplateContext): string {
