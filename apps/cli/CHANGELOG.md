@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/plvo/create-faster/compare/create-faster-v1.0.0...create-faster-v1.1.0) (2025-10-26)
+
+
+### Features
+
+* **nextjs:** enhance base templates, tanstack-query ([#14](https://github.com/plvo/create-faster/issues/14)) ([a8af35c](https://github.com/plvo/create-faster/commit/a8af35c60ff453658c92d22144cdef61fd2a9da3))
+* **template:** Expo and Hono ([#16](https://github.com/plvo/create-faster/issues/16)) ([46acee5](https://github.com/plvo/create-faster/commit/46acee542bb753d20484853ddd70528fdbaba143))
+
 ## 1.0.0 (2025-10-24)
 
 
