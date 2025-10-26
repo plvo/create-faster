@@ -91,8 +91,13 @@ export const MODULES: MetaModule = {
     'UI & Styling': {
       shadcn: {
         label: 'shadcn/ui',
-        hint: 'Accessible UI components',
+        hint: 'A set of beautifully designed components that you can customize, extend, and build on',
         packageName: 'ui',
+      },
+      'next-themes': {
+        label: 'Next Themes',
+        hint: 'A library for managing themes in Next.js',
+        packageName: 'themes',
       },
     },
     Features: {
@@ -108,18 +113,18 @@ export const MODULES: MetaModule = {
     Authentication: {
       'better-auth': {
         label: 'Better Auth',
-        hint: 'Authentication library',
+        hint: 'The most comprehensive authentication framework for TypeScript',
         packageName: 'auth',
       },
     },
     'Data Fetching': {
       'tanstack-query': {
         label: 'TanStack Query',
-        hint: 'Query client for React.',
+        hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
       },
       'tanstack-devtools': {
         label: 'TanStack Devtools',
-        hint: 'Devtools for TanStack Query',
+        hint: 'Devtools panel for TanStack libraries and other custom devtools',
       },
       // trpc: {
       //   label: 'tRPC',
@@ -127,27 +132,37 @@ export const MODULES: MetaModule = {
       //   requires: ['database'],
       // },
     },
+    Forms: {
+      'react-hook-form': {
+        label: 'React Hook Form',
+        hint: 'Performant, flexible and extensible forms with easy-to-use validation',
+      },
+      'tanstack-form': {
+        label: 'TanStack Form',
+        hint: 'Headless UI for building performant and type-safe forms',
+      },
+    },
+    // expo: {
+    //   'UI & Styling': {
+    //     nativewind: {
+    //       label: 'NativeWind',
+    //       hint: 'Tailwind CSS for React Native',
+    //     },
+    //   },
+    // },
+    // hono: {
+    //   Documentation: {
+    //     openapi: {
+    //       label: 'OpenAPI',
+    //       hint: 'Auto-generated API docs',
+    //     },
+    //   },
+    //   Authentication: {
+    //     jwt: {
+    //       label: 'JWT Auth',
+    //       hint: 'Authentication middleware',
+    //     },
+    //   },
+    // },
   },
-  // expo: {
-  //   'UI & Styling': {
-  //     nativewind: {
-  //       label: 'NativeWind',
-  //       hint: 'Tailwind CSS for React Native',
-  //     },
-  //   },
-  // },
-  // hono: {
-  //   Documentation: {
-  //     openapi: {
-  //       label: 'OpenAPI',
-  //       hint: 'Auto-generated API docs',
-  //     },
-  //   },
-  //   Authentication: {
-  //     jwt: {
-  //       label: 'JWT Auth',
-  //       hint: 'Authentication middleware',
-  //     },
-  //   },
-  // },
 };

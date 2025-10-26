@@ -36,7 +36,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "vaul": "^1.1.2",
-    "next-themes": "^0.4.6",
     "tailwind-merge": "^3.3.1",
     {{/if}}
     {{#if (hasModule "better-auth")}}
@@ -51,7 +50,9 @@
     {{#if (hasModule "tanstack-query")}}
     "@tanstack/react-query": "^5.90.0",
     {{/if}}
-
+    {{#if (hasModule "next-themes")}}
+    "next-themes": "^0.4.6",
+    {{/if}}
     {{#if (and (eq repo "turborepo") (hasContext "orm"))}}
     "@repo/db": "*",
     {{/if}}

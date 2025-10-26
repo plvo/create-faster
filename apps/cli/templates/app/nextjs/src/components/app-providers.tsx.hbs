@@ -31,11 +31,11 @@ export function AppProviders({ children }: AppProvidersProps) {
     {{#if (hasModule "tanstack-query")}}
     <QueryClientProvider client={queryClient}>
     {{/if}}
-    {{#if (hasModule "shadcn")}}
+    {{#if (hasModule "next-themes")}}
     <NextThemesProvider enableSystem storageKey={"{{appName}}-theme"}>
     {{/if}}
     {children}
-    {{#if (hasModule "shadcn")}}
+    {{#if (hasModule "next-themes")}}
     </NextThemesProvider>
     {{/if}}
     {{#if (hasModule "tanstack-query")}}
