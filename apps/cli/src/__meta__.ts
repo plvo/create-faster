@@ -106,6 +106,10 @@ export const MODULES: MetaModule = {
       hint: 'Authentication library',
       packageName: 'auth',
     },
+    'tanstack-query': {
+      label: 'TanStack Query',
+      hint: 'Query client',
+    },
     // trpc: {
     //   label: 'tRPC',
     //   hint: 'End-to-end type safety',

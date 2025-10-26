@@ -1,9 +1,9 @@
 {{!-- @repo:single --}}
 {{#if (eq database "postgres")}}
-import { pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
 {{#if (eq database "mysql")}}
-import { mysqlTable, text, timestamp, uuid, varchar } from 'drizzle-orm/mysql-core';
+import { boolean, mysqlTable, text, timestamp, uuid, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
 import { relations } from 'drizzle-orm';
 
