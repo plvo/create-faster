@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.1](https://github.com/plvo/create-faster/compare/create-faster-v1.1.0...create-faster-v1.1.1) (2025-10-27)
+## [1.1.2](https://github.com/plvo/create-faster/compare/create-faster-v1.1.0...create-faster-v1.1.2) (2025-10-27)
 
 
 ### Refactor
