@@ -30,13 +30,17 @@
     "start:inspect": "NODE_OPTIONS=\"--inspect\" next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}"
   },
   "dependencies": {
-    {{#if (and (eq repo "single") (hasModule "shadcn"))}}
+    {{#if  (hasModule "shadcn")}}
+    {{#if (eq repo "single")}}
     "radix-ui": "^1.4.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "vaul": "^1.1.2",
     "tailwind-merge": "^3.3.1",
+    {{else}}
+    "@repo/ui": "*",
+    {{/if}}
     {{/if}}
     {{#if (hasModule "react-hook-form")}}
     "react-hook-form": "^7.56.1",
@@ -85,7 +89,6 @@
   },
   "devDependencies": {
     {{#if (eq repo "turborepo")}}
-    "@repo/ui": "*",
     "@repo/config": "*",
     {{else}}
     "@tailwindcss/postcss": "^4.1.10",

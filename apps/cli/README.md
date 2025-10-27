@@ -1,0 +1,3 @@
+```bash
+bunx create-faster
+```

@@ -1,24 +1,19 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { META, MODULES } from '@/__meta__';
+import { TEMPLATES_DIR } from '@/constants';
 import type { Category, Scope, TemplateContext, TemplateFile } from '@/types';
 import { transformSpecialFilename } from './file-writer';
 import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
-function getTemplatesRoot(): string {
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(currentDir, '../../templates');
-}
-
 function scanTemplates(category: Category | 'modules', stack: string): string[] {
-  const dir = path.join(getTemplatesRoot(), category, stack);
+  const dir = path.join(TEMPLATES_DIR, category, stack);
   return fg.sync('**/*', { cwd: dir });
 }
 
 function scanModuleTemplates(framework: string, moduleName: string): string[] {
-  const dir = path.join(getTemplatesRoot(), 'modules', framework, moduleName);
+  const dir = path.join(TEMPLATES_DIR, 'modules', framework, moduleName);
   return fg.sync('**/*', { cwd: dir });
 }
 
@@ -65,11 +60,10 @@ function getTemplatesForStack(
   try {
     const files = scanTemplates(category, stack);
     const scope = categoryMeta.scope;
-    const templatesRoot = getTemplatesRoot();
 
     return files
       .map((file) => {
-        const fullPath = path.join(templatesRoot, category, stack, file);
+        const fullPath = path.join(TEMPLATES_DIR, category, stack, file);
 
         // Read first line to check for magic comments (like @repo:turborepo)
         try {
@@ -129,10 +123,9 @@ function processModules(
 
     try {
       const files = scanModuleTemplates(framework, moduleName);
-      const templatesRoot = getTemplatesRoot();
 
       const moduleTemplates = files.map((file) => {
-        const fullPath = path.join(templatesRoot, 'modules', framework, moduleName, file);
+        const fullPath = path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file);
 
         // Read first line to check for @scope override
         let scope: Scope;

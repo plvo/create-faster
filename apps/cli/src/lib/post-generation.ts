@@ -1,33 +1,48 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { note, outro } from '@clack/prompts';
+import { log, note, outro } from '@clack/prompts';
 import type { TemplateContext } from '@/types';
 
 const execAsync = promisify(exec);
 
 type PackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn';
 
-async function detectPackageManager(): Promise<PackageManager> {
-  const managers: PackageManager[] = ['bun', 'pnpm', 'npm', 'yarn'];
+/**
+ * Run all post-generation tasks
+ */
+export async function runPostGeneration(
+  context: TemplateContext,
+  projectPath: string,
+  options: {
+    install?: boolean;
+    packageManager?: PackageManager;
+  } = {},
+): Promise<void> {
+  const { install = true, packageManager } = options;
 
-  for (const manager of managers) {
-    try {
-      await execAsync(`${manager} --version`, { timeout: 3000 });
-      return manager;
-    } catch {}
+  if (install) {
+    const installResult = await installDependencies(projectPath, packageManager);
+    if (!installResult.success) {
+      log.warn(`⚠ Warning: ${installResult.error}\nYou can manually run the install command later.`);
+    }
   }
 
-  return 'npm';
+  if (context.git) {
+    const gitResult = await initializeGit(projectPath);
+    if (!gitResult.success) {
+      log.warn(`⚠ Warning: ${gitResult.error}\nYou can manually run "git init" later.`);
+    }
+  }
+
+  displaySuccessMessage(context, projectPath);
 }
 
 async function installDependencies(
   projectPath: string,
-  packageManager?: PackageManager,
+  pm: PackageManager = 'npm',
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const pm = packageManager || (await detectPackageManager());
-
-    console.log(`\nInstalling dependencies with ${pm}...`);
+    log.info(`Installing dependencies with ${pm}...`);
 
     const installCommand = pm === 'npm' ? 'npm install' : `${pm} install`;
 
@@ -48,7 +63,7 @@ async function installDependencies(
 
 async function initializeGit(projectPath: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('\nInitializing git repository...');
+    log.info('Initializing git repository...');
 
     await execAsync('git init', { cwd: projectPath, timeout: 10000 });
 
@@ -110,36 +125,4 @@ function displaySuccessMessage(context: TemplateContext, projectPath: string): v
   }
 
   outro(`✨ Project created successfully at ${projectPath}!`);
-}
-
-/**
- * Run all post-generation tasks
- */
-export async function runPostGeneration(
-  context: TemplateContext,
-  projectPath: string,
-  options: {
-    install?: boolean;
-    packageManager?: PackageManager;
-  } = {},
-): Promise<void> {
-  const { install = true, packageManager } = options;
-
-  if (install) {
-    const installResult = await installDependencies(projectPath, packageManager);
-    if (!installResult.success) {
-      console.warn(`⚠ Warning: ${installResult.error}`);
-      console.warn('You can manually run the install command later.');
-    }
-  }
-
-  if (context.git) {
-    const gitResult = await initializeGit(projectPath);
-    if (!gitResult.success) {
-      console.warn(`⚠ Warning: ${gitResult.error}`);
-      console.warn('You can manually run "git init" later.');
-    }
-  }
-
-  displaySuccessMessage(context, projectPath);
 }

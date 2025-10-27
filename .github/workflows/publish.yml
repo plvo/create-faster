@@ -1,0 +1,37 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-npm:
+    name: "📤 Publish to NPM"
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/apps/cli')
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+
+      - name: "🔧 Setup Bun"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "📦 Install Dependencies"
+        run: bun install
+
+      - name: "🏗️ Build CLI"
+        run: bun run build:cli
+
+      - name: "📤 Publish to NPM"
+        working-directory: apps/cli
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          bun publish --access public --dry-run
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

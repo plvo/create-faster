@@ -17,6 +17,16 @@
   "bugs": {
     "url": "https://github.com/plvo/create-faster/issues"
   },
+  "keywords": [
+    "cli",
+    "nextjs",
+    "turborepo",
+    "starter",
+    "boilerplate",
+    "templates",
+    "react",
+    "typescript"
+  ],
   "type": "module",
   "module": "src/index.ts",
   "engines": {
@@ -33,14 +43,13 @@
   ],
   "scripts": {
     "build": "bun build src/index.ts --outfile create-faster --target node --production --banner '#!/usr/bin/env node'",
-    "dev": "bun run src/index.ts",
-    "dev:watch": "bun run src/index.ts --watch",
+    "dev": "NODE_ENV=development bun run src/index.ts",
+    "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "prepublishOnly": "bun run build && chmod +x create-faster",
     "test": "bun test"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
-    "commander": "^14.0.1",
     "fast-glob": "^3.3.3",
     "handlebars": "^4.7.8"
   },
