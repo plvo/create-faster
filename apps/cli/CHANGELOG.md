@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/plvo/create-faster/compare/create-faster-v1.1.0...create-faster-v1.1.2) (2025-10-27)
+
+
+### Refactor
+
+* **ci:** update release workflow and enhance CLI functionality ([aa8581c](https://github.com/plvo/create-faster/commit/aa8581c6050f91f156d9e8356f9509e6011d9ab7))
+
 ## [1.1.0](https://github.com/plvo/create-faster/compare/create-faster-v1.0.0...create-faster-v1.1.0) (2025-10-26)
 
 
