@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/plvo/create-faster/compare/create-faster-v1.1.2...create-faster-v1.1.3) (2025-10-30)
+
+
+### Bug Fixes
+
+* **cli:** pkg build and templates path ([5e2330a](https://github.com/plvo/create-faster/commit/5e2330ac08c02329aa99f4349f080d38df1d1155))
+
 ## [1.1.2](https://github.com/plvo/create-faster/compare/create-faster-v1.1.0...create-faster-v1.1.2) (2025-10-27)
 
 
