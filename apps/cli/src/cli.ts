@@ -204,7 +204,6 @@ async function processServer(
 }
 
 async function promptApp(index: number, projectNameIfOneApp?: string): Promise<AppContext> {
-  console.log({ projectNameIfOneApp });
   const appName =
     projectNameIfOneApp ??
     (await promptText(`App ${index} - Name? (folder name)`, {

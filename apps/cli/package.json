@@ -30,22 +30,22 @@
   "type": "module",
   "module": "src/index.ts",
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.3.1"
   },
   "bin": {
-    "create-faster": "create-faster"
+    "create-faster": "./dist/index.js"
   },
   "files": [
-    "create-faster",
+    "dist",
     "templates",
     "package.json",
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outfile create-faster --target node --production --banner '#!/usr/bin/env node'",
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --banner '#!/usr/bin/env node' && chmod +x dist/index.js",
     "dev": "NODE_ENV=development bun run src/index.ts",
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
-    "prepublishOnly": "bun run build && chmod +x create-faster",
+    "prepublishOnly": "bun run build",
     "test": "bun test"
   },
   "dependencies": {

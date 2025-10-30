@@ -81,13 +81,13 @@ function getTemplatesForStack(
           const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
 
           return {
-            source: `templates/${category}/${stack}/${file}`,
+            source: path.join(TEMPLATES_DIR, category, stack, file),
             destination: resolveDestination(file, appName, finalScope, ctx, packageName),
           };
         } catch {
           // If can't read, include it (fallback)
           return {
-            source: `templates/${category}/${stack}/${file}`,
+            source: path.join(TEMPLATES_DIR, category, stack, file),
             destination: resolveDestination(file, appName, scope, ctx, packageName),
           };
         }
@@ -157,7 +157,7 @@ function processModules(
         }
 
         return {
-          source: `templates/modules/${framework}/${moduleName}/${file}`,
+          source: path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file),
           destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
         };
       });
