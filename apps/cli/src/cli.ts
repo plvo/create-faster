@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, groupMultiselect, intro, isCancel, type Option, outro, select } from '@clack/prompts';
 import { META } from '@/__meta__';
-import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
+import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaApp, MetaServer } from '@/types/meta';
 
