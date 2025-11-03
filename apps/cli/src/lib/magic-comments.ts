@@ -1,4 +1,4 @@
-import type { TemplateContext } from '@/types';
+import type { TemplateContext } from '@/types/ctx';
 
 /**
  * Magic comments system for conditional template rendering

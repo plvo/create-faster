@@ -13,7 +13,8 @@ import {
   text,
 } from '@clack/prompts';
 import { META } from '@/__meta__';
-import type { Category, TemplateContext } from '@/types';
+import type { TemplateContext } from '@/types/ctx';
+import type { Category } from '@/types/meta';
 
 function filterOptionsByContext<C extends Category>(
   category: C,

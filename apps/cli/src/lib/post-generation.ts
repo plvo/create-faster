@@ -1,7 +1,7 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { log, note, outro } from '@clack/prompts';
-import type { TemplateContext } from '@/types';
+import type { TemplateContext } from '@/types/ctx';
 
 const execAsync = promisify(exec);
 

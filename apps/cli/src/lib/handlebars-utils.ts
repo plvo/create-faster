@@ -1,5 +1,5 @@
 import Handlebars from 'handlebars';
-import type { AppContext, TemplateContext } from '@/types';
+import type { AppContext, TemplateContext } from '@/types/ctx';
 
 /**
  * Register custom Handlebars helpers for template rendering

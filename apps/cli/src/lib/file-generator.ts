@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { spinner } from '@clack/prompts';
-import type { TemplateContext, TemplateFile } from '@/types';
+import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars-utils';
 import { processTemplate } from './template-processor';

@@ -1,5 +1,5 @@
 import { basename, join } from 'node:path';
-import type { TemplateContext, TemplateFile } from '@/types';
+import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import {
   copyBinaryFile,
   isBinaryFile,

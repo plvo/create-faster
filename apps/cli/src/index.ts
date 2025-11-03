@@ -3,7 +3,7 @@ import { log } from '@clack/prompts';
 import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
-import type { TemplateContext } from '@/types';
+import type { TemplateContext } from '@/types/ctx';
 import { cli } from './cli';
 
 async function main() {
