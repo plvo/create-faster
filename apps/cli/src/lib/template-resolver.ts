@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
-import { META, MODULES } from '@/__meta__';
+import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/constants';
-import type { Category, Scope, TemplateContext, TemplateFile } from '@/types';
+import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import type { Category, Scope } from '@/types/meta';
 import { transformSpecialFilename } from './file-writer';
 import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
@@ -107,7 +108,7 @@ function processModules(
   if (!modules || modules.length === 0) return [];
 
   const result: Array<TemplateFile> = [];
-  const frameworkModules = MODULES[framework];
+  const frameworkModules = META.app.stacks[framework]?.modules;
   if (!frameworkModules) return [];
 
   for (const moduleName of modules) {

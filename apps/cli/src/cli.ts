@@ -2,9 +2,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, groupMultiselect, intro, isCancel, type Option, outro, select } from '@clack/prompts';
-import { META, MODULES } from '@/__meta__';
+import { META } from '@/__meta__';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/lib/prompts';
-import type { AppContext, MetaApp, MetaServer, TemplateContext } from '@/types';
+import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { MetaApp, MetaServer } from '@/types/meta';
 
 export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
   intro('create-faster');
@@ -89,7 +90,7 @@ async function processAppWithServer(index: number, appName: string): Promise<App
   }
 
   // Build grouped options from nested MODULES structure
-  const frameworkModules = MODULES[framework] ?? {};
+  const frameworkModules = META.app.stacks[framework]?.modules ?? {};
   const groupedModules: Record<string, Option<string>[]> = {};
 
   for (const [category, categoryModules] of Object.entries(frameworkModules)) {
@@ -170,7 +171,7 @@ async function processServer(
     return result;
   }
 
-  const serverFrameworkModules = MODULES[serverName] ?? {};
+  const serverFrameworkModules = META.server.stacks[serverName]?.modules ?? {};
   const groupedServerModules: Record<string, Option<string>[]> = {};
 
   for (const [category, categoryModules] of Object.entries(serverFrameworkModules)) {
