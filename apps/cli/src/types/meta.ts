@@ -10,11 +10,13 @@ interface MetaModuleStack extends SelectOptionBase {
   packageName?: string; // if defined, default scope is 'package' for turborepo
 }
 
-interface MetaStack extends SelectOptionBase {
+export type MetaModules = Record<string, Record<string, MetaModuleStack>>;
+
+export interface MetaStack extends SelectOptionBase {
   hasBackend?: boolean; // like nextjs
   requires?: (Category | (string & {}))[];
   // [group][moduleName]
-  modules?: Record<string, Record<string, MetaModuleStack>>;
+  modules?: MetaModules;
 }
 
 interface MetaCategory {

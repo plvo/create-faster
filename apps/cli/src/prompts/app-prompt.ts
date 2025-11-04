@@ -1,10 +1,11 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import { cancel } from '@clack/prompts';
+import { cancel, groupMultiselect } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import type { MetaApp, MetaServer } from '@/types/meta';
+import { transformModulesToGroupedOptions } from '@/lib/options';
+import type { MetaApp, MetaModules, MetaServer } from '@/types/meta';
 
-export async function selectStack(message: string): Promise<MetaApp | MetaServer> {
+export async function selectStackPrompt(message: string): Promise<MetaApp | MetaServer> {
   const SelectStackPrompt = new SelectPrompt({
     options: [
       ...Object.entries(META.app.stacks).map(([key, meta]) => ({
@@ -36,11 +37,7 @@ export async function selectStack(message: string): Promise<MetaApp | MetaServer
         const prefix = isSelected ? '›' : ' ';
         const hint = isSelected && option.hint ? color.dim(`(${option.hint})`) : '';
 
-        const opt = isSelected
-          ? color.bgCyan(`  ${prefix} ${option.label} ${hint}\n`)
-          : `  ${prefix} ${option.label} ${hint}\n`;
-
-        output += opt;
+        output += `  ${prefix} ${option.label} ${hint}\n`;
       });
 
       return output;
@@ -57,4 +54,28 @@ export async function selectStack(message: string): Promise<MetaApp | MetaServer
   return result;
 }
 
-console.log(await selectStack('Select your stack:'));
+export async function multiselectModulesPrompt(
+  modules: MetaModules,
+  message: string,
+  required: boolean,
+): Promise<string[]> {
+  const groupedModules = transformModulesToGroupedOptions(modules);
+
+  if (Object.keys(groupedModules).length === 0) {
+    return [];
+  }
+
+  const result = await groupMultiselect({
+    options: groupedModules,
+    message,
+    required,
+    selectableGroups: true,
+  });
+
+  if (isCancel(result)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  return result;
+}

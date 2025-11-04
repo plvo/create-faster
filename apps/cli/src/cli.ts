@@ -1,18 +1,21 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { cancel, groupMultiselect, intro, isCancel, type Option, outro, select } from '@clack/prompts';
+import { cancel, intro, isCancel, outro, select } from '@clack/prompts';
 import { META } from '@/__meta__';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { MetaApp, MetaServer } from '@/types/meta';
+import type { MetaServer, MetaStack } from '@/types/meta';
+import { buildServerOptions } from './lib/options';
+import { multiselectModulesPrompt, selectStackPrompt } from './prompts/app-prompt';
 
 export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
   intro('create-faster');
+
   const ctx: Omit<TemplateContext, 'repo'> = {
+    projectName: '',
     apps: [],
     git: false,
-    projectName: '',
   };
 
   const projectName = await promptText('Project name?', {
@@ -43,195 +46,125 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
     },
   });
 
-  if (Number(appCount) === 1) {
-    const app = await promptApp(0, ctx.projectName);
-    ctx.apps.push(app);
-  } else {
-    for (let i = 0; i < Number(appCount); i++) {
-      const app = await promptApp(i + 1);
-      ctx.apps.push(app);
-    }
-  }
-
-  const database = await promptSelect('database', 'Database?', ctx, { allowNone: true });
-  ctx.database = database;
-
-  const orm = await promptSelect('orm', 'ORM?', ctx, { allowNone: true });
-  ctx.orm = orm;
-
-  const git = await promptConfirm('Do you want to configure Git?', { initialValue: true });
-  ctx.git = git;
-
-  const extras = await promptMultiselect('extras', 'Extras?', ctx, { required: false });
-  ctx.extras = extras;
+  ctx.apps = await promptAllApps(Number(appCount), ctx.projectName);
+  ctx.database = await promptSelect('database', 'Database?', ctx, { allowNone: true });
+  ctx.orm = await promptSelect('orm', 'ORM?', ctx, { allowNone: true });
+  ctx.git = await promptConfirm('Do you want to configure Git?', { initialValue: true });
+  ctx.extras = await promptMultiselect('extras', 'Extras?', ctx, { required: false });
 
   outro('Configuration complete!');
 
   return ctx;
 }
 
-async function processAppWithServer(index: number, appName: string): Promise<AppContext> {
-  const stacks = META.app.stacks;
-
-  const options: Option<MetaApp>[] = Object.entries(stacks).map(([value, meta]) => ({
-    value: value as MetaApp,
-    label: meta.label,
-    hint: meta.hint,
-  }));
-
-  const framework = await select<MetaApp>({
-    message: `App #${index} - ${appName} - Framework?`,
-    options,
-  });
-
-  if (isCancel(framework)) {
-    cancel('Operation cancelled');
-    process.exit(0);
+async function promptAllApps(count: number, projectName: string): Promise<AppContext[]> {
+  if (count <= 1) {
+    const app = await promptApp(1, projectName);
+    return [app];
   }
 
-  // Build grouped options from nested MODULES structure
-  const frameworkModules = META.app.stacks[framework]?.modules ?? {};
-  const groupedModules: Record<string, Option<string>[]> = {};
-
-  for (const [category, categoryModules] of Object.entries(frameworkModules)) {
-    groupedModules[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
-      value: moduleName,
-      label: meta.label,
-      hint: meta.hint,
-    }));
+  const apps: AppContext[] = [];
+  for (let i = 0; i < count; i++) {
+    const app = await promptApp(i + 1);
+    apps.push(app);
   }
-
-  let modules: string[] = [];
-  if (Object.keys(groupedModules).length > 0) {
-    const result = await groupMultiselect({
-      message: `App #${index} - ${appName} - Modules?`,
-      options: groupedModules,
-      required: false,
-      selectableGroups: true,
-    });
-
-    if (isCancel(result)) {
-      cancel('Operation cancelled');
-      process.exit(0);
-    }
-
-    modules = (result as string[]) || [];
-  }
-
-  return await processServer(index, appName, framework, modules);
-}
-
-async function processServer(
-  index: number,
-  appName: string,
-  appFramework?: MetaApp,
-  appModules?: string[],
-): Promise<AppContext> {
-  const serverOptions = Object.entries(META.server.stacks).map(([value, meta]) => ({
-    value: value as MetaServer,
-    label: meta.label,
-    hint: meta.hint,
-  }));
-
-  const appMeta = appFramework ? META.app.stacks[appFramework] : undefined;
-
-  if (appMeta) {
-    if (appMeta.hasBackend) {
-      serverOptions.unshift({
-        value: 'none',
-        label: `Use ${appMeta.label} built-in`,
-        hint: 'API routes, server actions',
-      });
-    } else {
-      serverOptions.push({
-        value: 'none',
-        label: 'None',
-        hint: 'No server',
-      });
-    }
-  }
-
-  const serverName = await select<MetaServer>({
-    message: `App #${index} - ${appName} - Server?`,
-    options: serverOptions,
-  });
-
-  if (isCancel(serverName)) {
-    cancel('Operation cancelled');
-    process.exit(0);
-  }
-
-  const result: AppContext = {
-    appName,
-    metaApp: appFramework ? { name: appFramework, modules: appModules || [] } : undefined,
-    metaServer: { name: serverName, modules: [] },
-  };
-
-  if (serverName === 'none') {
-    return result;
-  }
-
-  const serverFrameworkModules = META.server.stacks[serverName]?.modules ?? {};
-  const groupedServerModules: Record<string, Option<string>[]> = {};
-
-  for (const [category, categoryModules] of Object.entries(serverFrameworkModules)) {
-    groupedServerModules[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
-      value: moduleName,
-      label: meta.label,
-      hint: meta.hint,
-    }));
-  }
-
-  let serverModules: string[] = [];
-
-  if (Object.keys(groupedServerModules).length > 0) {
-    const modulesResult = await groupMultiselect({
-      message: `App ${index} - Server Modules?`,
-      options: groupedServerModules,
-      required: false,
-      selectableGroups: true,
-    });
-
-    if (isCancel(modulesResult)) {
-      cancel('Operation cancelled');
-      process.exit(0);
-    }
-
-    serverModules = (modulesResult as string[]) || [];
-  }
-
-  result.metaServer!.modules = serverModules;
-  return result;
+  return apps;
 }
 
 async function promptApp(index: number, projectNameIfOneApp?: string): Promise<AppContext> {
-  const appName =
-    projectNameIfOneApp ??
-    (await promptText(`App ${index} - Name? (folder name)`, {
-      defaultValue: `app-${index}`,
-      placeholder: `app-${index}`,
-      validate: (value) => {
-        const trimedValue = value.trim();
-        if (!value || trimedValue === '') return 'App name is required';
-      },
-    }));
+  const appName = await promptAppName(index, projectNameIfOneApp);
+  const { stackKey, isApp, modules } = await promptStackConfiguration(appName, index);
 
-  const platform = await select({
-    message: `Select the platform type for app "${appName}":`,
-    options: [
-      { value: 'app', label: 'Web / Mobile App', hint: 'Next.js, React Native, Astro...' },
-      { value: 'server', label: 'Server / API', hint: 'Hono, Express...' },
-    ],
+  const result: AppContext = {
+    appName,
+    metaApp: undefined,
+    metaServer: undefined,
+  };
+
+  if (isApp) {
+    result.metaApp = { name: stackKey, modules };
+    const metaStack = META.app.stacks[stackKey];
+    if (metaStack) {
+      result.metaServer = await promptServerConfiguration(appName, index, metaStack);
+    }
+  } else {
+    result.metaServer = { name: stackKey, modules };
+  }
+
+  return result;
+}
+
+async function promptAppName(index: number, projectNameIfOneApp?: string): Promise<string> {
+  if (projectNameIfOneApp) {
+    return projectNameIfOneApp;
+  }
+
+  const appName = await promptText(`App ${index} - Name? (folder name)`, {
+    defaultValue: `app-${index}`,
+    placeholder: `app-${index}`,
+    validate: (value) => {
+      const trimedValue = value.trim();
+      if (!value || trimedValue === '') return 'App name is required';
+    },
   });
 
-  if (isCancel(platform)) {
+  if (isCancel(appName)) {
     cancel('Operation cancelled');
     process.exit(0);
   }
 
-  if (platform === 'app') {
-    return await processAppWithServer(index, appName!);
+  return appName!;
+}
+
+async function promptStackConfiguration(
+  appName: string,
+  index: number,
+): Promise<{ stackKey: string; isApp: boolean; modules: string[] }> {
+  const stackKey = await selectStackPrompt(`Select the stack for app "${appName}":`);
+  const isApp = stackKey in META.app.stacks;
+  const metaStack = isApp ? META.app.stacks[stackKey] : META.server.stacks[stackKey];
+
+  if (!metaStack) {
+    cancel('Operation cancelled');
+    process.exit(0);
   }
 
-  return await processServer(index, appName!);
+  const modules = await multiselectModulesPrompt(
+    metaStack.modules ?? {},
+    `App #${index} - ${appName} - Modules?`,
+    false,
+  );
+
+  return { stackKey, isApp, modules };
+}
+
+async function promptServerConfiguration(
+  appName: string,
+  index: number,
+  metaStack: MetaStack,
+): Promise<AppContext['metaServer']> {
+  const serverOptions = buildServerOptions(metaStack);
+
+  const serverKey = await select<MetaServer>({
+    message: `Do you want to add a server to your app "${appName}"?`,
+    options: serverOptions,
+  });
+
+  if (isCancel(serverKey)) {
+    cancel('Operation cancelled');
+    process.exit(0);
+  }
+
+  if (serverKey === 'none') {
+    return undefined;
+  }
+
+  const serverFrameworkModules = META.server.stacks[serverKey]?.modules ?? {};
+  const serverModules = await multiselectModulesPrompt(
+    serverFrameworkModules,
+    `App #${index} - ${appName} - Server Modules?`,
+    false,
+  );
+
+  return { name: serverKey, modules: serverModules };
 }
