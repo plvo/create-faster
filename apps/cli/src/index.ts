@@ -1,17 +1,16 @@
 import { join } from 'node:path';
-import { intro, log, note, outro } from '@clack/prompts';
+import { intro, log, outro } from '@clack/prompts';
 import color from 'picocolors';
-import { META } from '@/__meta__';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 import { cli } from './cli';
 import { INTRO_ASCII, INTRO_MESSAGE } from './constants';
+import { displayProjectStructure, displayStepsNote } from './tui/summary';
 
 async function main() {
   console.log(INTRO_ASCII);
-
   intro(INTRO_MESSAGE);
 
   try {
@@ -20,8 +19,8 @@ async function main() {
     const isTurborepo = config.apps.length > 1;
 
     const ctx: TemplateContext = {
-      repo: isTurborepo ? 'turborepo' : 'single',
       ...config,
+      repo: isTurborepo ? 'turborepo' : 'single',
     };
 
     const templates = getAllTemplatesForContext(ctx);
@@ -41,8 +40,10 @@ async function main() {
 
     await runPostGeneration(ctx, projectPath);
 
-    displaySummaryNote(ctx);
-    outro(color.green(`✨ Project created successfully at ${projectPath}!`));
+    displayProjectStructure(ctx);
+    displayStepsNote(ctx);
+
+    outro(color.bgCyan(color.black(`🚀 Project created successfully at ${ctx.projectName}!`)));
   } catch (error) {
     log.error(`An error occurred:\n${error instanceof Error ? error.message : String(error)}`);
     outro('Operation cancelled, bye');
@@ -51,36 +52,3 @@ async function main() {
 }
 
 main().catch(log.error);
-
-function displaySummaryNote(ctx: TemplateContext): void {
-  const appsSummary = ctx.apps
-    .map((app) => {
-      const stack = META.stacks[app.stackName];
-      const stackLabel = stack ? stack.label : app.stackName;
-      const modulesCount = color.dim(` +${app.modules.length} modules`);
-
-      return `• ${app.appName} (${stackLabel}${modulesCount})`;
-    })
-    .join('\n');
-
-  note(appsSummary, 'Summary');
-
-  const steps: string[] = [];
-
-  steps.push(`cd ${ctx.projectName}`);
-  steps.push('');
-  steps.push('# Development:');
-  steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
-  steps.push('');
-  steps.push('# Build:');
-  steps.push(`${ctx.pm ?? 'npm'} run build      # Build for production`);
-
-  if (ctx.git) {
-    steps.push('');
-    steps.push('# Git:');
-    steps.push('git remote add origin <your-repo-url>');
-    steps.push('git push -u origin main');
-  }
-
-  note(steps.join('\n'), 'Next steps');
-}
