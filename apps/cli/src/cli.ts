@@ -5,17 +5,20 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
 import { multiselectModulesPrompt, selectStackPrompt } from '@/prompts/stack-prompts';
+import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { S_GRAY_BAR } from './lib/tui';
+import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
+  const progress = new Progress(['Project', 'Apps', 'Database', 'Extras', 'Install']);
+
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
     git: false,
   };
 
-  ctx.projectName = await promptText<string>('Name of your project?', {
+  ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
@@ -31,12 +34,13 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
       }
     },
   });
+  progress.next();
 
   const appCount = await promptText<number>(
-    `How many apps do you want to create?
-    ${S_GRAY_BAR}  ${color.italic(color.gray('Eg: a backend + a frontend = enter 2'))}
-    ${S_GRAY_BAR}  ${color.italic(color.gray('Only a Next.js app = enter 1'))}
-    ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than one'))}`,
+    `${progress.message('How many apps do you want to create?')}
+${S_GRAY_BAR} ${color.italic(color.gray('Eg: a backend + a frontend = enter 2'))}
+${S_GRAY_BAR} ${color.italic(color.gray('Only a Next.js app = enter 1'))}
+${S_GRAY_BAR} ${color.italic(color.gray('Turborepo will be used if more than one'))}`,
     {
       initialValue: '1',
       placeholder: 'Enter a number',
@@ -47,12 +51,25 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
     },
   );
 
-  ctx.apps = await promptAllApps(Number(appCount), ctx.projectName);
-  ctx.database = await promptSelect('database', `Include a ${color.bold('database')}?`, ctx, { allowNone: true });
-  ctx.orm = await promptSelect('orm', `Configure an ${color.bold('ORM')}?`, ctx, { allowNone: true });
-  ctx.git = await promptConfirm(`Initialize ${color.bold('Git')}?`, { initialValue: true });
-  ctx.extras = await promptMultiselect('extras', `Add any ${color.bold('extras')}?`, ctx, { required: false });
-  ctx.pm = await promptSelect(undefined, `Install dependencies ${color.bold('now')}?`, ctx, {
+  ctx.apps = await promptAllApps(Number(appCount), ctx.projectName, progress);
+  progress.next();
+
+  ctx.database = await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
+    allowNone: true,
+  });
+  ctx.orm = await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
+    allowNone: true,
+  });
+  progress.next();
+  ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
+    initialValue: true,
+  });
+  ctx.extras = await promptMultiselect('extras', progress.message(`Add any ${color.bold('extras')}?`), ctx, {
+    required: false,
+  });
+  progress.next();
+
+  ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
     options: [
       { label: 'Install with bun', value: 'bun' },
       { label: 'Install with pnpm', value: 'pnpm' },
@@ -60,31 +77,32 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
       { label: 'Skip installation', value: undefined },
     ],
   });
+  progress.next();
 
   return ctx;
 }
 
-async function promptAllApps(count: number, projectName: string): Promise<AppContext[]> {
+async function promptAllApps(count: number, projectName: string, progress: Progress): Promise<AppContext[]> {
   if (count <= 1) {
-    const app = await promptApp(1, projectName);
+    const app = await promptApp(1, progress, projectName);
     return [app];
   }
 
   const apps: AppContext[] = [];
   for (let i = 0; i < count; i++) {
-    const app = await promptApp(i + 1);
+    const app = await promptApp(i + 1, progress, undefined);
     apps.push(app);
   }
   return apps;
 }
 
-async function promptApp(index: number, projectNameIfOneApp?: string): Promise<AppContext> {
+async function promptApp(index: number, progress: Progress, projectNameIfOneApp?: string): Promise<AppContext> {
   let appName = '';
 
   if (projectNameIfOneApp) {
     appName = projectNameIfOneApp;
   } else {
-    appName = await promptText<string>(`Name of the app ${color.bold(`#${index}`)}?`, {
+    appName = await promptText<string>(progress.message(`Name of the app ${color.bold(`#${index}`)}?`), {
       defaultValue: `app-${index}`,
       placeholder: `app-${index}`,
       validate: (value) => {
@@ -94,7 +112,7 @@ async function promptApp(index: number, projectNameIfOneApp?: string): Promise<A
     });
   }
 
-  const stackName = await selectStackPrompt(`Select the stack for ${color.bold(appName)}`);
+  const stackName = await selectStackPrompt(progress.message(`Select the stack for ${color.bold(appName)}`));
 
   const metaStack = META.stacks[stackName];
 
@@ -105,7 +123,7 @@ async function promptApp(index: number, projectNameIfOneApp?: string): Promise<A
 
   const modules = await multiselectModulesPrompt(
     metaStack.modules ?? {},
-    `Do you want to add any ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`,
+    progress.message(`Do you want to add any ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`),
     false,
   );
 

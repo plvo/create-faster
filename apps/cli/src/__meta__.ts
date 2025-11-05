@@ -1,4 +1,4 @@
-import type { Meta } from './types/meta';
+import type { Meta } from '@/types/meta';
 
 export const META: Meta = {
   stacks: {
