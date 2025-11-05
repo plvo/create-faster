@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { spinner } from '@clack/prompts';
+import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars-utils';
@@ -89,22 +89,20 @@ export async function generateProjectFiles(
 /**
  * Display generation results with detailed error information
  */
-export function displayGenerationResults(result: GenerationResult): void {
-  console.log('\n=== Generation Results ===\n');
-
-  if (result.generated.length > 0) {
-    console.log(`✓ Successfully generated ${result.generated.length} files`);
-  }
+export function displayGenerationErrors(result: GenerationResult): void {
+  const results: string[] = [];
 
   if (result.skipped.length > 0) {
-    console.log(`⊘ Skipped ${result.skipped.length} files (already exist)`);
+    results.push(`⊘ Skipped ${result.skipped.length} files (already exist)`);
   }
 
   if (result.failed.length > 0) {
-    console.log(`\n✗ Failed to generate ${result.failed.length} files:\n`);
+    results.push(`✗ Failed to generate ${result.failed.length} files:\n`);
     for (const failure of result.failed) {
-      console.log(`  • ${failure.file}`);
-      console.log(`    ${failure.error}`);
+      results.push(`  • ${failure.file}`);
+      results.push(`    ${failure.error}`);
     }
   }
+
+  note(results.join('\n'), 'Generation results');
 }
