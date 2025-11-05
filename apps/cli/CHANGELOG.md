@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/plvo/create-faster/compare/create-faster-v1.1.3...create-faster-v1.2.0) (2025-11-05)
+
+
+### Features
+
+* **cli:** enhance TUI and setup experience ([#22](https://github.com/plvo/create-faster/issues/22)) ([813ebac](https://github.com/plvo/create-faster/commit/813ebac432826a03c7c199fcc6a601dd13fab1fc))
+* tui ([#21](https://github.com/plvo/create-faster/issues/21)) ([2b3e626](https://github.com/plvo/create-faster/commit/2b3e6267c64057964f4cf62d2097be983fc61615))
+
+
+### Refactor
+
+* **cli:** restructure metadata and update type imports ([#19](https://github.com/plvo/create-faster/issues/19)) ([e0768ca](https://github.com/plvo/create-faster/commit/e0768caa24e69bd4488659c3344f9075407e1908))
+* **cli:** tui, progress component, summary ([#24](https://github.com/plvo/create-faster/issues/24)) ([3c18a08](https://github.com/plvo/create-faster/commit/3c18a086db929f6bda550008c1f61957194739d2))
+
+
+### Miscellaneous
+
+* change operation canceled messages ([#25](https://github.com/plvo/create-faster/issues/25)) ([203ad4e](https://github.com/plvo/create-faster/commit/203ad4ef33444356341130fd83b7f16eaca31927))
+
 ## [1.1.3](https://github.com/plvo/create-faster/compare/create-faster-v1.1.2...create-faster-v1.1.3) (2025-10-30)
 
 
