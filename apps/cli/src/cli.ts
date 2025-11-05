@@ -1,24 +1,21 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: nope */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { cancel, intro, isCancel, outro, select } from '@clack/prompts';
+import { cancel, isCancel, select } from '@clack/prompts';
 import { META } from '@/__meta__';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaServer, MetaStack } from '@/types/meta';
-import { buildServerOptions } from './lib/options';
-import { multiselectModulesPrompt, selectStackPrompt } from './prompts/app-prompt';
+import { multiselectModulesPrompt, selectStackPrompt } from './prompts/stack-prompts';
 
 export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
-  intro('create-faster');
-
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
     git: false,
   };
 
-  const projectName = await promptText('Project name?', {
+  const projectName = await promptText('Name of your project?', {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
@@ -47,12 +44,10 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
   });
 
   ctx.apps = await promptAllApps(Number(appCount), ctx.projectName);
-  ctx.database = await promptSelect('database', 'Database?', ctx, { allowNone: true });
-  ctx.orm = await promptSelect('orm', 'ORM?', ctx, { allowNone: true });
+  ctx.database = await promptSelect('database', 'Do you want to configure a database?', ctx, { allowNone: true });
+  ctx.orm = await promptSelect('orm', 'Do you want to configure an ORM?', ctx, { allowNone: true });
   ctx.git = await promptConfirm('Do you want to configure Git?', { initialValue: true });
-  ctx.extras = await promptMultiselect('extras', 'Extras?', ctx, { required: false });
-
-  outro('Configuration complete!');
+  ctx.extras = await promptMultiselect('extras', 'Do you want to configure any extras?', ctx, { required: false });
 
   return ctx;
 }
@@ -73,7 +68,7 @@ async function promptAllApps(count: number, projectName: string): Promise<AppCon
 
 async function promptApp(index: number, projectNameIfOneApp?: string): Promise<AppContext> {
   const appName = await promptAppName(index, projectNameIfOneApp);
-  const { stackKey, isApp, modules } = await promptStackConfiguration(appName, index);
+  const { stackKey, isApp, modules } = await promptStackConfiguration(appName);
 
   const result: AppContext = {
     appName,
@@ -85,7 +80,7 @@ async function promptApp(index: number, projectNameIfOneApp?: string): Promise<A
     result.metaApp = { name: stackKey, modules };
     const metaStack = META.app.stacks[stackKey];
     if (metaStack) {
-      result.metaServer = await promptServerConfiguration(appName, index, metaStack);
+      result.metaServer = await promptServerConfiguration(appName, metaStack);
     }
   } else {
     result.metaServer = { name: stackKey, modules };
@@ -99,7 +94,7 @@ async function promptAppName(index: number, projectNameIfOneApp?: string): Promi
     return projectNameIfOneApp;
   }
 
-  const appName = await promptText(`App ${index} - Name? (folder name)`, {
+  const appName = await promptText(`Name of the app #${index}? (folder name)`, {
     defaultValue: `app-${index}`,
     placeholder: `app-${index}`,
     validate: (value) => {
@@ -118,7 +113,6 @@ async function promptAppName(index: number, projectNameIfOneApp?: string): Promi
 
 async function promptStackConfiguration(
   appName: string,
-  index: number,
 ): Promise<{ stackKey: string; isApp: boolean; modules: string[] }> {
   const stackKey = await selectStackPrompt(`Select the stack for app "${appName}":`);
   const isApp = stackKey in META.app.stacks;
@@ -131,18 +125,14 @@ async function promptStackConfiguration(
 
   const modules = await multiselectModulesPrompt(
     metaStack.modules ?? {},
-    `App #${index} - ${appName} - Modules?`,
+    `Do you want to add any modules to "${appName}"?`,
     false,
   );
 
   return { stackKey, isApp, modules };
 }
 
-async function promptServerConfiguration(
-  appName: string,
-  index: number,
-  metaStack: MetaStack,
-): Promise<AppContext['metaServer']> {
+async function promptServerConfiguration(appName: string, metaStack: MetaStack): Promise<AppContext['metaServer']> {
   const serverOptions = buildServerOptions(metaStack);
 
   const serverKey = await select<MetaServer>({
@@ -162,9 +152,33 @@ async function promptServerConfiguration(
   const serverFrameworkModules = META.server.stacks[serverKey]?.modules ?? {};
   const serverModules = await multiselectModulesPrompt(
     serverFrameworkModules,
-    `App #${index} - ${appName} - Server Modules?`,
+    `Do you want to add any server modules to "${appName}"?`,
     false,
   );
 
   return { name: serverKey, modules: serverModules };
+}
+
+function buildServerOptions(metaStack: MetaStack) {
+  const serverOptions = Object.entries(META.server.stacks).map(([key, meta]) => ({
+    value: key,
+    label: meta.label,
+    hint: meta.hint,
+  }));
+
+  if (metaStack.hasBackend) {
+    serverOptions.unshift({
+      value: 'none',
+      label: `Use ${metaStack.label} built-in`,
+      hint: 'API routes, server actions',
+    });
+  } else {
+    serverOptions.push({
+      value: 'none',
+      label: 'None',
+      hint: 'No server',
+    });
+  }
+
+  return serverOptions;
 }

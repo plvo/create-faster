@@ -52,6 +52,7 @@
     "@clack/prompts": "^0.11.0",
     "fast-glob": "^3.3.3",
     "handlebars": "^4.7.8",
+    "is-unicode-supported": "^2.1.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {

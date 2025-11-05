@@ -123,6 +123,4 @@ function displaySuccessMessage(context: TemplateContext, projectPath: string): v
 
     note(appsSummary, 'Created apps');
   }
-
-  outro(`✨ Project created successfully at ${projectPath}!`);
 }

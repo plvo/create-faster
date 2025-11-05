@@ -1,12 +1,18 @@
 import { join } from 'node:path';
-import { log } from '@clack/prompts';
-import { displayGenerationResults, generateProjectFiles } from '@/lib/file-generator';
+import { intro, log, outro } from '@clack/prompts';
+import color from 'picocolors';
+import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 import { cli } from './cli';
+import { INTRO_ASCII, INTRO_MESSAGE } from './constants';
 
 async function main() {
+  console.log(INTRO_ASCII);
+
+  intro(INTRO_MESSAGE);
+
   try {
     const config = await cli();
 
@@ -22,7 +28,9 @@ async function main() {
 
     const result = await generateProjectFiles(templates, ctx);
 
-    displayGenerationResults(result);
+    if (result.skipped.length > 0 || result.failed.length > 0) {
+      displayGenerationErrors(result);
+    }
 
     if (!result.success) {
       log.error('Project generation failed. Please fix the errors and try again.');
@@ -35,8 +43,11 @@ async function main() {
       install: true,
       packageManager: 'bun',
     });
+
+    outro(color.green(`✨ Project created successfully at ${projectPath}!`));
   } catch (error) {
     log.error(`An error occurred:\n${error instanceof Error ? error.message : String(error)}`);
+    outro('Operation cancelled, bye');
     process.exit(1);
   }
 }
