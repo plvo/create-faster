@@ -3,24 +3,16 @@ import { cancel, groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/lib/tui';
-import type { MetaApp, MetaModules, MetaServer } from '@/types/meta';
+import type { MetaModules } from '@/types/meta';
 
-export async function selectStackPrompt(message: string): Promise<MetaApp | MetaServer> {
+export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
-    options: [
-      ...Object.entries(META.app.stacks).map(([key, meta]) => ({
-        value: key as MetaApp,
-        label: meta.label,
-        hint: meta.hint,
-        section: 'Web / Mobile App',
-      })),
-      ...Object.entries(META.server.stacks).map(([key, meta]) => ({
-        value: key as MetaServer,
-        label: meta.label,
-        hint: meta.hint,
-        section: 'Server / API',
-      })),
-    ],
+    options: Object.entries(META.stacks).map(([key, meta]) => ({
+      value: key,
+      label: meta.label,
+      hint: meta.hint,
+      section: meta.type === 'app' ? 'Web / Mobile App' : 'Server / API',
+    })),
 
     render() {
       let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${message}`;

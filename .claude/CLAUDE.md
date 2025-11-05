@@ -65,27 +65,29 @@ apps/cli/src/
 
 ### __meta__.ts
 Single source of truth for all stacks and modules:
-- `META.app`: Next.js, Expo (with nested `modules` per framework)
-- `META.server`: Hono
+- `META.stacks`: Unified app and server stacks (Next.js, Expo, Hono) with `type: 'app' | 'server'` field
+- Each stack has `label`, `hint`, `type`, `scope`, optional `requires`, and optional `modules`
 - `META.database`, `META.orm`, `META.extras`, `META.repo`
 - Category-level `requires` (e.g., orm requires database)
 - Stack-level `requires` (e.g., husky requires git)
 
 ### types/meta.ts
-- `PackageManager`: 'bun' | 'npm' | 'pnpm' | undefined
-- `MetaStack`: Stack metadata (label, hint, hasBackend, requires, modules)
+- `MetaStack`: Stack metadata (label, hint, type: 'app' | 'server', scope, requires, modules)
 - `MetaModules`: Grouped modules (UI & Styling, Features, etc.)
+- `StackName`: Type alias for `keyof Meta['stacks']`
+- `Category`: 'orm' | 'database' | 'extras' | 'repo' (no longer includes 'app' | 'server')
 
 ### types/ctx.ts
-- `AppContext`: { appName, metaApp?, metaServer? }
-- `TemplateContext`: Full context with project name, repo type, apps[], orm, database, git, pm, extras
+- `AppContext`: { appName, stackName, modules } - Simplified flat structure
+- `TemplateContext`: Full context with projectName, repo type, apps[], orm, database, git, pm, extras
+- `PackageManager`: 'bun' | 'npm' | 'pnpm' | undefined
 
 ### cli.ts
 Main CLI flow with functions:
 - `cli()`: Returns TemplateContext (without repo type)
 - `promptAllApps()`: Handles 1 or N apps
-- `promptApp()`: Single app config (name, stack, modules, optional server)
-- `promptStackConfiguration()`: Custom TUI with sections
+- `promptApp()`: Single app config (name, stack, modules) - Simplified, no server prompt
+- `promptStackConfiguration()`: Custom TUI with sections for unified stack selection
 - Package manager prompt: 4 options (bun/pnpm/npm/skip)
 
 ### index.ts
@@ -112,10 +114,11 @@ First-line directives for conditional rendering:
 ### lib/handlebars-utils.ts
 Custom helpers:
 - Logical: `eq`, `ne`, `and`, `or`, `includes`
-- App/Server: `hasApp()`, `hasServer()`, `isFullstack()`, `isStandaloneServer()`
-- Modules: `hasModule()`, `hasServerModule()`
+- Stack: `isAppStack(app)`, `isServerStack(app)` - Check stack type
+- Modules: `hasModule(moduleName)`, `moduleEnabled(moduleName)` - Check app modules
 - Repo: `isTurborepo()`, `isSingleRepo()`
-- Utils: `app()`, `appPort()`, `kebabCase`, `pascalCase`, `databaseUrl()`
+- Context: `hasContext(key)`, `hasAnyStack(stackName)` - Check if any app uses stack
+- Utils: `app(name)`, `appPort(name)`, `kebabCase`, `pascalCase`, `databaseUrl()`
 
 ### lib/post-generation.ts
 - Dependency installation: Runs `${ctx.pm} install` (5min timeout, graceful errors)
@@ -143,8 +146,9 @@ Custom helpers:
 - TUI system (ASCII art, custom prompts, grouped multiselect, Unicode symbols)
 - Type system refactor (types/meta.ts, types/ctx.ts with Meta* prefix)
 - Package manager selection (bun/pnpm/npm/skip + auto-install + smart command suggestions)
-- Platform/App/Server architecture (discriminated unions, type guards)
-- Modules system (nested in META, per-app/server selection, context-aware)
+- **Unified Stack Architecture**: Merged `META.app` and `META.server` into single `META.stacks` with `type` field
+- **Simplified AppContext**: From `{appName, metaApp?, metaServer?}` to `{appName, stackName, modules}`
+- Modules system (nested in stacks, per-app selection, context-aware)
 - Complete Expo support (full templates + assets)
 - Enhanced Next.js templates (error pages, app providers, custom hooks)
 - Better Auth integration (user/account/session tables for Prisma & Drizzle)
@@ -190,9 +194,9 @@ templates/
 
 ### Handlebars Context
 - `{{projectName}}`, `{{appName}}`, `{{repo}}`
-- `{{metaApp.name}}`, `{{metaApp.modules}}`
-- `{{metaServer.name}}`, `{{metaServer.modules}}`
+- `{{stackName}}`, `{{modules}}` - Simplified app context
 - `{{orm}}`, `{{database}}`, `{{git}}`, `{{pm}}`, `{{extras}}`
+- Access stack metadata: `{{#with (app "myapp")}}{{stackName}}{{/with}}`
 
 ### Magic Comments
 First-line directives:

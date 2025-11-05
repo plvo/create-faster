@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { intro, log, note, outro } from '@clack/prompts';
 import color from 'picocolors';
+import { META } from '@/__meta__';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
@@ -16,8 +17,7 @@ async function main() {
   try {
     const config = await cli();
 
-    const isTurborepo =
-      config.apps.length > 1 || config.apps.some((app) => app.metaApp && app.metaServer?.name !== 'none');
+    const isTurborepo = config.apps.length > 1;
 
     const ctx: TemplateContext = {
       repo: isTurborepo ? 'turborepo' : 'single',
@@ -55,14 +55,10 @@ main().catch(log.error);
 function displaySummaryNote(ctx: TemplateContext): void {
   const appsSummary = ctx.apps
     .map((app) => {
-      let content = '';
-      if (app.metaApp) {
-        const server = app.metaServer ? color.green(` + ${app.metaServer.name}`) : '';
-        content += `• ${app.appName} (${app.metaApp.name}${server})`;
-      } else {
-        content += `• ${app.appName} (${app.metaServer?.name})`;
-      }
-      return content;
+      const stack = META.stacks[app.stackName];
+      const stackLabel = stack ? stack.label : app.stackName;
+      const modulesCount = app.modules.length > 0 ? color.dim(` +${app.modules.length} modules`) : '';
+      return `• ${app.appName} (${stackLabel}${modulesCount})`;
     })
     .join('\n');
 

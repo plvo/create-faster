@@ -95,8 +95,52 @@ function getTemplatesForStack(
   }
 }
 
+function getTemplatesForStackType(stackName: string, appName: string, ctx: TemplateContext): Array<TemplateFile> {
+  const stackMeta = META.stacks[stackName];
+  if (!stackMeta) return [];
+
+  const stackType = stackMeta.type;
+  const scope = stackMeta.scope;
+
+  try {
+    const dir = path.join(TEMPLATES_DIR, stackType, stackName);
+    const files = fg.sync('**/*', { cwd: dir });
+
+    return files
+      .map((file) => {
+        const fullPath = path.join(dir, file);
+
+        try {
+          const content = readFileSync(fullPath, 'utf8');
+          const firstLine = extractFirstLine(content);
+          const magicComments = parseMagicComments(firstLine);
+
+          if (shouldSkipTemplate(magicComments, ctx)) {
+            return null;
+          }
+
+          const scopeComment = magicComments.find((c) => c.type === 'scope');
+          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
+
+          return {
+            source: fullPath,
+            destination: resolveDestination(file, appName, finalScope, ctx),
+          };
+        } catch {
+          return {
+            source: fullPath,
+            destination: resolveDestination(file, appName, scope, ctx),
+          };
+        }
+      })
+      .filter((t): t is TemplateFile => t !== null);
+  } catch {
+    return [];
+  }
+}
+
 function processModules(
-  framework: string,
+  stackName: string,
   modules: string[] | undefined,
   appName: string,
   ctx: TemplateContext,
@@ -104,12 +148,12 @@ function processModules(
   if (!modules || modules.length === 0) return [];
 
   const result: Array<TemplateFile> = [];
-  const frameworkModules = META.app.stacks[framework]?.modules;
-  if (!frameworkModules) return [];
+  const stackModules = META.stacks[stackName]?.modules;
+  if (!stackModules) return [];
 
   for (const moduleName of modules) {
-    let moduleMeta: (typeof frameworkModules)[string][string] | undefined;
-    for (const categoryModules of Object.values(frameworkModules)) {
+    let moduleMeta: (typeof stackModules)[string][string] | undefined;
+    for (const categoryModules of Object.values(stackModules)) {
       if (categoryModules[moduleName]) {
         moduleMeta = categoryModules[moduleName];
         break;
@@ -118,10 +162,10 @@ function processModules(
     if (!moduleMeta) continue;
 
     try {
-      const files = scanModuleTemplates(framework, moduleName);
+      const files = scanModuleTemplates(stackName, moduleName);
 
       const moduleTemplates = files.map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file);
+        const fullPath = path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file);
 
         let scope: Scope;
         let targetName: string;
@@ -149,7 +193,7 @@ function processModules(
         }
 
         return {
-          source: path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file),
+          source: path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file),
           destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
         };
       });
@@ -169,16 +213,8 @@ export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateF
   result.push(...getTemplatesForStack('repo', ctx.repo, '', ctx));
 
   for (const app of ctx.apps) {
-    if (app.metaApp) {
-      result.push(...getTemplatesForStack('app', app.metaApp.name, app.appName, ctx));
-      result.push(...processModules(app.metaApp.name, app.metaApp.modules, app.appName, ctx));
-    }
-
-    if (app.metaServer && app.metaServer.name !== 'builtin') {
-      const serverAppName = app.metaApp ? `${app.appName}-server` : app.appName;
-      result.push(...getTemplatesForStack('server', app.metaServer.name, serverAppName, ctx));
-      result.push(...processModules(app.metaServer.name, app.metaServer.modules, serverAppName, ctx));
-    }
+    result.push(...getTemplatesForStackType(app.stackName, app.appName, ctx));
+    result.push(...processModules(app.stackName, app.modules, app.appName, ctx));
   }
 
   if (ctx.orm) {

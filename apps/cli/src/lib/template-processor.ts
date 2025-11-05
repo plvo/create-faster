@@ -67,23 +67,10 @@ export async function processTemplate(
       const pathParts = destination.split('/');
 
       if (pathParts[0] === 'apps' && pathParts[1]) {
-        // Turborepo mode: apps/web/... → extract "web" or "web-server"
         const appName = pathParts[1];
-
         const currentApp = context.apps.find((app) => app.appName === appName);
 
-        if (!currentApp && appName.endsWith('-server')) {
-          const parentAppName = appName.replace('-server', '');
-          const parentApp = context.apps.find((app) => app.appName === parentAppName);
-
-          if (parentApp?.metaServer) {
-            enrichedContext = {
-              ...context,
-              appName,
-              metaServer: parentApp.metaServer,
-            };
-          }
-        } else if (currentApp) {
+        if (currentApp) {
           enrichedContext = { ...context, ...currentApp };
         }
       } else if (context.repo === 'single' && context.apps.length > 0) {

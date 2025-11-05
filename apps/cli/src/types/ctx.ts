@@ -1,15 +1,9 @@
-import type { Meta, MetaApp, MetaServer } from './meta';
+import type { Meta, StackName } from './meta';
 
 export interface AppContext {
   appName: string;
-  metaApp?: {
-    name: MetaApp;
-    modules: string[];
-  };
-  metaServer?: {
-    name: MetaServer;
-    modules: string[];
-  };
+  stackName: StackName;
+  modules: string[];
 }
 
 type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;

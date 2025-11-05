@@ -48,7 +48,7 @@ function filterOptionsByContext<C extends Category>(
 export async function promptText<T extends string | number = string>(
   message: string,
   options?: Partial<TextOptions>,
-): Promise<T | undefined> {
+): Promise<T> {
   const result = await text({ message, ...options });
 
   if (isCancel(result)) {
@@ -56,7 +56,7 @@ export async function promptText<T extends string | number = string>(
     process.exit(0);
   }
 
-  return result as T | undefined;
+  return result as T;
 }
 
 export async function promptSelect<C extends Category | undefined, R extends string | undefined>(

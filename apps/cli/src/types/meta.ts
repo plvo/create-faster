@@ -1,5 +1,5 @@
 export type Scope = 'app' | 'package' | 'root';
-export type Category = 'app' | 'server' | 'orm' | 'database' | 'extras' | 'repo';
+export type Category = 'orm' | 'database' | 'extras' | 'repo';
 
 interface SelectOptionBase {
   label: string;
@@ -13,9 +13,9 @@ interface MetaModuleStack extends SelectOptionBase {
 export type MetaModules = Record<string, Record<string, MetaModuleStack>>;
 
 export interface MetaStack extends SelectOptionBase {
-  hasBackend?: boolean; // like nextjs
+  type: 'app' | 'server';
+  scope: Scope;
   requires?: (Category | (string & {}))[];
-  // [group][moduleName]
   modules?: MetaModules;
 }
 
@@ -23,9 +23,15 @@ interface MetaCategory {
   scope: Scope;
   packageName?: string; // used for turborepo packages/<packageName>
   requires?: Category[]; // like orm.requires = ['database']
-  stacks: Record<string, MetaStack>;
+  stacks: Record<string, Omit<MetaStack, 'type' | 'scope'>>;
 }
 
-export type Meta = Record<Category, MetaCategory>;
-export type MetaApp = keyof Meta['app']['stacks'];
-export type MetaServer = keyof Meta['server']['stacks'] | 'none';
+export interface Meta {
+  stacks: Record<string, MetaStack>;
+  database: MetaCategory;
+  orm: MetaCategory;
+  extras: MetaCategory;
+  repo: MetaCategory;
+}
+
+export type StackName = keyof Meta['stacks'];

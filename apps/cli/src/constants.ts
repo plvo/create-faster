@@ -13,7 +13,11 @@ export const INTRO_ASCII = color.blueBright(`
   _____________  ____ _/ /____        / __/___ ______/ /____  _____
  / ___/ ___/ _ \\/ __ \`/ __/ _ \\______/ /_/ __ \`/ ___/ __/ _ \\/ ___/
 / /__/ /  /  __/ /_/ / /_/  __/_____/ __/ /_/ (__  ) /_/  __/ /    
-\\___/_/   \\___/\\__,_/\\__/\\___/     /_/  \\__,_/____/\\__/\\___/_/   ${color.green(VERSION)}
+\\___/_/   \\___/\\__,_/\\__/\\___/     /_/  \\__,_/____/\\__/\\___/_/   ${color.cyan(VERSION)}
 `);
 
-export const INTRO_MESSAGE = color.bgBlue(' Creating a new project structure ');
+const emojis = ['🌱', '🚀', '💻', '🔥', '🔧', '🔨', '🔩', '🐱', '🤖'];
+
+export const INTRO_MESSAGE = color.bgBlue(
+  ` Creating a new project structure ${emojis[Math.floor(Math.random() * emojis.length)]} `,
+);
