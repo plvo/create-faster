@@ -1,12 +1,12 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: nope */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, isCancel, select } from '@clack/prompts';
+import color from 'picocolors';
 import { META } from '@/__meta__';
 import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
+import { multiselectModulesPrompt, selectStackPrompt } from '@/prompts/stack-prompts';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaServer, MetaStack } from '@/types/meta';
-import { multiselectModulesPrompt, selectStackPrompt } from './prompts/stack-prompts';
 
 export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
   const ctx: Omit<TemplateContext, 'repo'> = {
@@ -15,7 +15,7 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
     git: false,
   };
 
-  const projectName = await promptText('Name of your project?', {
+  ctx.projectName = (await promptText('Name of your project?', {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
@@ -30,24 +30,33 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
         return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
       }
     },
-  });
+  })) as string;
 
-  ctx.projectName = projectName!;
-
-  const appCount = await promptText<number>('How many apps? Turborepo will be used if you have more than one app', {
-    initialValue: '1',
-    placeholder: '1',
-    validate: (value) => {
-      const num = Number(value);
-      if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
+  const appCount = await promptText<number>(
+    `How many apps do you want to create? ${color.gray('(Turborepo if more than one)')}`,
+    {
+      initialValue: '1',
+      placeholder: '1',
+      validate: (value) => {
+        const num = Number(value);
+        if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
+      },
     },
-  });
+  );
 
   ctx.apps = await promptAllApps(Number(appCount), ctx.projectName);
-  ctx.database = await promptSelect('database', 'Do you want to configure a database?', ctx, { allowNone: true });
-  ctx.orm = await promptSelect('orm', 'Do you want to configure an ORM?', ctx, { allowNone: true });
-  ctx.git = await promptConfirm('Do you want to configure Git?', { initialValue: true });
-  ctx.extras = await promptMultiselect('extras', 'Do you want to configure any extras?', ctx, { required: false });
+  ctx.database = await promptSelect('database', 'Include a database?', ctx, { allowNone: true });
+  ctx.orm = await promptSelect('orm', 'Configure an ORM?', ctx, { allowNone: true });
+  ctx.extras = await promptMultiselect('extras', 'Add any extras?', ctx, { required: false });
+  ctx.git = await promptConfirm('Initialize Git?', { initialValue: true });
+  ctx.pm = await promptSelect(undefined, 'Install dependencies now?', ctx, {
+    options: [
+      { label: 'Install with bun', value: 'bun' },
+      { label: 'Install with pnpm', value: 'pnpm' },
+      { label: 'Install with npm', value: 'npm' },
+      { label: 'Skip installation', value: undefined },
+    ],
+  });
 
   return ctx;
 }

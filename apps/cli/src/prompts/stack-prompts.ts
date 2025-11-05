@@ -2,7 +2,7 @@ import { isCancel, SelectPrompt } from '@clack/core';
 import { cancel, groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/prompts/tui';
+import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/lib/tui';
 import type { MetaApp, MetaModules, MetaServer } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<MetaApp | MetaServer> {

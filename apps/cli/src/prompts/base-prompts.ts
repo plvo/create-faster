@@ -59,16 +59,16 @@ export async function promptText<T extends string | number = string>(
   return result as T | undefined;
 }
 
-export async function promptSelect<C extends Category>(
+export async function promptSelect<C extends Category | undefined, R extends string | undefined>(
   category: C,
   message: string,
   ctx: Partial<TemplateContext>,
   options?: { allowNone?: boolean } & Partial<SelectOptions<string | undefined>>,
-): Promise<string | undefined> {
-  const selectOptions = filterOptionsByContext(category, ctx);
+): Promise<R> {
+  const selectOptions = category ? filterOptionsByContext(category, ctx) : (options?.options ?? []);
 
-  if (selectOptions.length === 0) {
-    return undefined;
+  if (selectOptions?.length === 0) {
+    return undefined as R;
   }
 
   if (options?.allowNone) {
@@ -87,7 +87,7 @@ export async function promptSelect<C extends Category>(
     process.exit(0);
   }
 
-  return result;
+  return result as R;
 }
 
 export async function promptMultiselect<C extends Category>(

@@ -2,9 +2,6 @@ import { constants } from 'node:fs';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname } from 'node:path';
 
-/**
- * Binary file extensions that should never be processed as text
- */
 const BINARY_EXTENSIONS = new Set([
   '.png',
   '.jpg',
@@ -28,17 +25,11 @@ const BINARY_EXTENSIONS = new Set([
   '.gz',
 ]);
 
-/**
- * Check if a file path represents a binary file
- */
 export function isBinaryFile(filePath: string): boolean {
   const ext = extname(filePath).toLowerCase();
   return BINARY_EXTENSIONS.has(ext);
 }
 
-/**
- * Ensure a directory exists, creating it recursively if needed
- */
 async function ensureDirectory(dirPath: string): Promise<void> {
   try {
     await mkdir(dirPath, { recursive: true });
@@ -50,9 +41,6 @@ async function ensureDirectory(dirPath: string): Promise<void> {
   }
 }
 
-/**
- * Write content to a file, creating parent directories if needed
- */
 export async function writeFileContent(filePath: string, content: string): Promise<void> {
   try {
     const dir = dirname(filePath);
@@ -66,9 +54,6 @@ export async function writeFileContent(filePath: string, content: string): Promi
   }
 }
 
-/**
- * Copy a binary file without processing
- */
 export async function copyBinaryFile(sourcePath: string, destPath: string): Promise<void> {
   try {
     const dir = dirname(destPath);
@@ -82,9 +67,6 @@ export async function copyBinaryFile(sourcePath: string, destPath: string): Prom
   }
 }
 
-/**
- * Read file content as text
- */
 export async function readFileContent(filePath: string): Promise<string> {
   try {
     return await readFile(filePath, 'utf-8');
@@ -96,9 +78,6 @@ export async function readFileContent(filePath: string): Promise<string> {
   }
 }
 
-/**
- * Check if a path exists
- */
 export async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path, constants.F_OK);
@@ -108,11 +87,7 @@ export async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-/**
- * Transform special filenames (_gitignore -> .gitignore)
- */
 export function transformSpecialFilename(filename: string): string {
-  // Handle underscore-prefixed files
   if (filename.startsWith('__')) {
     return `.${filename.slice(2)}`;
   }
@@ -120,9 +95,6 @@ export function transformSpecialFilename(filename: string): string {
   return filename;
 }
 
-/**
- * Remove .hbs extension from filename
- */
 export function removeHbsExtension(filename: string): string {
   if (filename.endsWith('.hbs')) {
     return filename.slice(0, -4);

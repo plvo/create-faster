@@ -1,9 +1,6 @@
 import Handlebars from 'handlebars';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 
-/**
- * Register custom Handlebars helpers for template rendering
- */
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
 
@@ -115,9 +112,6 @@ export function registerHandlebarsHelpers(): void {
   });
 }
 
-/**
- * Compile and render a Handlebars template
- */
 export function renderTemplate(templateContent: string, context: TemplateContext): string {
   try {
     const template = Handlebars.compile(templateContent, {

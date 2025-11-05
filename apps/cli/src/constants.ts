@@ -6,7 +6,7 @@ import packageJson from '../package.json' with { type: 'json' };
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 export const TEMPLATES_DIR = path.resolve(dirname, '..', 'templates');
 
-export const VERSION = packageJson.version;
+const VERSION = packageJson.version;
 
 export const INTRO_ASCII = color.blueBright(`
                         __             ____           __           

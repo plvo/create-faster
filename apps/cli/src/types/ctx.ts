@@ -12,6 +12,8 @@ export interface AppContext {
   };
 }
 
+type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;
+
 export interface TemplateContext {
   projectName: string;
   repo: 'single' | 'turborepo';
@@ -19,6 +21,7 @@ export interface TemplateContext {
   orm?: keyof Meta['orm']['stacks'];
   database?: keyof Meta['database']['stacks'];
   git: boolean;
+  pm?: PackageManager;
   extras?: (keyof Meta['extras']['stacks'])[];
 }
 
