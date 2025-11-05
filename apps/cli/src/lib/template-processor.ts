@@ -8,7 +8,7 @@ import {
   transformSpecialFilename,
   writeFileContent,
 } from './file-writer';
-import { renderTemplate } from './handlebars-utils';
+import { renderTemplate } from './handlebars';
 import { extractFirstLine, formatMagicComments, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 interface ProcessResult {

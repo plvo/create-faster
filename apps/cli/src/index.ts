@@ -57,7 +57,8 @@ function displaySummaryNote(ctx: TemplateContext): void {
     .map((app) => {
       const stack = META.stacks[app.stackName];
       const stackLabel = stack ? stack.label : app.stackName;
-      const modulesCount = app.modules.length > 0 ? color.dim(` +${app.modules.length} modules`) : '';
+      const modulesCount = color.dim(` +${app.modules.length} modules`);
+
       return `• ${app.appName} (${stackLabel}${modulesCount})`;
     })
     .join('\n');

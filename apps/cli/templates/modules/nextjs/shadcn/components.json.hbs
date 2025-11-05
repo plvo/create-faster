@@ -21,11 +21,9 @@
     "lib": "@/lib",
 	{{#if (eq repo "turborepo")}}
     "utils": "@repo/ui/lib/utils",
-	{{else}}
-    "utils": "src/lib/utils",
-	{{/if}}
-	{{#if (eq repo "turborepo")}}
     "ui": "@repo/ui"
+	{{else}}
+    "utils": "src/lib/utils"
 	{{/if}}
   }
 }

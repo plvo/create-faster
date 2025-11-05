@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { pathExists } from './file-writer';
-import { registerHandlebarsHelpers } from './handlebars-utils';
+import { registerHandlebarsHelpers } from './handlebars';
 import { processTemplate } from './template-processor';
 
 interface GenerationOptions {

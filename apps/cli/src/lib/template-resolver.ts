@@ -99,11 +99,10 @@ function getTemplatesForStackType(stackName: string, appName: string, ctx: Templ
   const stackMeta = META.stacks[stackName];
   if (!stackMeta) return [];
 
-  const stackType = stackMeta.type;
   const scope = stackMeta.scope;
 
   try {
-    const dir = path.join(TEMPLATES_DIR, stackType, stackName);
+    const dir = path.join(TEMPLATES_DIR, 'stack', stackName);
     const files = fg.sync('**/*', { cwd: dir });
 
     return files

@@ -12,7 +12,7 @@ interface MetaModuleStack extends SelectOptionBase {
 
 export type MetaModules = Record<string, Record<string, MetaModuleStack>>;
 
-export interface MetaStack extends SelectOptionBase {
+interface MetaStack extends SelectOptionBase {
   type: 'app' | 'server';
   scope: Scope;
   requires?: (Category | (string & {}))[];
