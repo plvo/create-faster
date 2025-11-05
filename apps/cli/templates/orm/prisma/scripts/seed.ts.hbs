@@ -2,7 +2,7 @@
 {{#if (eq repo "turborepo")}}
 import { prisma } from '@repo/db';
 {{else}}
-import { prisma } from '@/lib/db';
+import { prisma } from '../src/lib/db';
 {{/if}}
 
 async function seed() {

@@ -2,7 +2,7 @@
 {{#if (eq repo "turborepo")}}
 import { db, postTable, userTable } from '@repo/db';
 {{else}}
-import { db, postTable, userTable } from '@/lib/db';
+import { db, postTable, userTable } from '../src/lib/db';
 {{/if}}
 
 

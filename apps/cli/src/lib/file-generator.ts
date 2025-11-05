@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { pathExists } from './file-writer';
-import { registerHandlebarsHelpers } from './handlebars-utils';
+import { registerHandlebarsHelpers } from './handlebars';
 import { processTemplate } from './template-processor';
 
 interface GenerationOptions {
@@ -16,9 +16,6 @@ interface GenerationResult {
   skipped: string[];
 }
 
-/**
- * Validate that the project directory doesn't already exist
- */
 async function validateProjectDirectory(projectPath: string): Promise<void> {
   const exists = await pathExists(projectPath);
   if (exists) {
@@ -28,9 +25,6 @@ async function validateProjectDirectory(projectPath: string): Promise<void> {
   }
 }
 
-/**
- * Generate all project files from templates
- */
 export async function generateProjectFiles(
   templates: TemplateFile[],
   context: TemplateContext,
@@ -86,9 +80,6 @@ export async function generateProjectFiles(
   return result;
 }
 
-/**
- * Display generation results with detailed error information
- */
 export function displayGenerationErrors(result: GenerationResult): void {
   const results: string[] = [];
 

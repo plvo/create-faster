@@ -8,7 +8,7 @@ import {
   transformSpecialFilename,
   writeFileContent,
 } from './file-writer';
-import { renderTemplate } from './handlebars-utils';
+import { renderTemplate } from './handlebars';
 import { extractFirstLine, formatMagicComments, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 interface ProcessResult {
@@ -33,7 +33,6 @@ export async function processTemplate(
   const { source, destination } = template;
 
   try {
-    // Determine final destination path with transformations
     const filename = basename(destination);
     const transformedFilename = transformSpecialFilename(removeHbsExtension(filename));
     const finalDestination = join(projectPath, destination.replace(filename, transformedFilename));
@@ -41,16 +40,13 @@ export async function processTemplate(
     const isHbsTemplate = source.endsWith('.hbs');
     const isBinary = isBinaryFile(source);
 
-    // Binary file without .hbs extension: direct copy
     if (isBinary && !isHbsTemplate) {
       await copyBinaryFile(source, finalDestination);
       return { success: true, destination: finalDestination };
     }
 
-    // Read source content
     const content = await readFileContent(source);
 
-    // Check for magic comments in .hbs templates
     if (isHbsTemplate) {
       const firstLine = extractFirstLine(content);
       const magicComments = parseMagicComments(firstLine);
@@ -66,36 +62,18 @@ export async function processTemplate(
     }
 
     if (isHbsTemplate) {
-      // Enrich context with current app info
       let enrichedContext: TemplateContext | (TemplateContext & Record<string, unknown>) = context;
 
       const pathParts = destination.split('/');
 
       if (pathParts[0] === 'apps' && pathParts[1]) {
-        // Turborepo mode: apps/web/... → extract "web" or "web-server"
         const appName = pathParts[1];
-
-        // Check if it's a server app (ends with -server)
         const currentApp = context.apps.find((app) => app.appName === appName);
 
-        // If not found and ends with -server, find parent app
-        if (!currentApp && appName.endsWith('-server')) {
-          const parentAppName = appName.replace('-server', '');
-          const parentApp = context.apps.find((app) => app.appName === parentAppName);
-
-          if (parentApp?.metaServer) {
-            // Create a virtual server app context
-            enrichedContext = {
-              ...context,
-              appName,
-              metaServer: parentApp.metaServer,
-            };
-          }
-        } else if (currentApp) {
+        if (currentApp) {
           enrichedContext = { ...context, ...currentApp };
         }
       } else if (context.repo === 'single' && context.apps.length > 0) {
-        // Single repo mode: use first (and only) app
         enrichedContext = { ...context, ...context.apps[0] };
       }
 
@@ -104,7 +82,6 @@ export async function processTemplate(
       return { success: true, destination: finalDestination };
     }
 
-    // Regular text file: copy as-is
     await writeFileContent(finalDestination, content);
     return { success: true, destination: finalDestination };
   } catch (error) {

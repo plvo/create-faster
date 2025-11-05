@@ -38,8 +38,8 @@ export default function RootLayout({
           {{#if (hasModule "tanstack-devtools")}}
           {process.env.NODE_ENV === 'development' && (
             <TanStackDevtools
-              config={{ position: 'top-left' }}
-              eventBusConfig={{ connectToServerBus: true }}
+              config=\{{ position: 'top-left' }}
+              eventBusConfig=\{{ connectToServerBus: true }}
               plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
             />
           )}

@@ -1,5 +1,3 @@
-import type { TemplateContext } from '@/types/ctx';
-
 /**
  * Magic comments system for conditional template rendering
  *
@@ -17,6 +15,8 @@ import type { TemplateContext } from '@/types/ctx';
  * - {{!-- @repo:turborepo @scope:package --}}
  */
 
+import type { TemplateContext } from '@/types/ctx';
+
 interface MagicComment {
   type: 'repo' | 'if' | 'require' | 'scope';
   values: string[];
@@ -24,9 +24,6 @@ interface MagicComment {
   raw: string;
 }
 
-/**
- * Extract the first line from template content
- */
 export function extractFirstLine(content: string): string {
   const firstLineEnd = content.indexOf('\n');
   return firstLineEnd === -1 ? content : content.slice(0, firstLineEnd);
@@ -113,19 +110,13 @@ function shouldSkipForComment(comment: MagicComment, ctx: TemplateContext): bool
 /**
  * Determine if a template should be skipped based on magic comments
  * Multiple comments are combined with AND logic
- *
  * @returns true if template should be skipped, false if it should be rendered
  */
 export function shouldSkipTemplate(comments: MagicComment[], ctx: TemplateContext): boolean {
-  if (comments.length === 0) return false; // No magic comments = render everywhere
-
-  // AND logic: skip if ANY comment says to skip
+  if (comments.length === 0) return false;
   return comments.some((comment) => shouldSkipForComment(comment, ctx));
 }
 
-/**
- * Format magic comments into a human-readable string for logging
- */
 export function formatMagicComments(comments: MagicComment[]): string {
   if (comments.length === 0) return 'none';
 

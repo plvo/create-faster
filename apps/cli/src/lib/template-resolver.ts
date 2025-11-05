@@ -8,7 +8,7 @@ import type { Category, Scope } from '@/types/meta';
 import { transformSpecialFilename } from './file-writer';
 import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
-function scanTemplates(category: Category | 'modules', stack: string): string[] {
+function scanTemplates(category: Category, stack: string): string[] {
   const dir = path.join(TEMPLATES_DIR, category, stack);
   return fg.sync('**/*', { cwd: dir });
 }
@@ -66,18 +66,15 @@ function getTemplatesForStack(
       .map((file) => {
         const fullPath = path.join(TEMPLATES_DIR, category, stack, file);
 
-        // Read first line to check for magic comments (like @repo:turborepo)
         try {
           const content = readFileSync(fullPath, 'utf8');
           const firstLine = extractFirstLine(content);
           const magicComments = parseMagicComments(firstLine);
 
-          // Skip file if magic comments say so (e.g., @repo:turborepo in single mode)
           if (shouldSkipTemplate(magicComments, ctx)) {
-            return null; // Skip this file
+            return null;
           }
 
-          // Check for @scope override
           const scopeComment = magicComments.find((c) => c.type === 'scope');
           const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
 
@@ -86,7 +83,6 @@ function getTemplatesForStack(
             destination: resolveDestination(file, appName, finalScope, ctx, packageName),
           };
         } catch {
-          // If can't read, include it (fallback)
           return {
             source: path.join(TEMPLATES_DIR, category, stack, file),
             destination: resolveDestination(file, appName, scope, ctx, packageName),
@@ -99,8 +95,51 @@ function getTemplatesForStack(
   }
 }
 
+function getTemplatesForStackType(stackName: string, appName: string, ctx: TemplateContext): Array<TemplateFile> {
+  const stackMeta = META.stacks[stackName];
+  if (!stackMeta) return [];
+
+  const scope = stackMeta.scope;
+
+  try {
+    const dir = path.join(TEMPLATES_DIR, 'stack', stackName);
+    const files = fg.sync('**/*', { cwd: dir });
+
+    return files
+      .map((file) => {
+        const fullPath = path.join(dir, file);
+
+        try {
+          const content = readFileSync(fullPath, 'utf8');
+          const firstLine = extractFirstLine(content);
+          const magicComments = parseMagicComments(firstLine);
+
+          if (shouldSkipTemplate(magicComments, ctx)) {
+            return null;
+          }
+
+          const scopeComment = magicComments.find((c) => c.type === 'scope');
+          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
+
+          return {
+            source: fullPath,
+            destination: resolveDestination(file, appName, finalScope, ctx),
+          };
+        } catch {
+          return {
+            source: fullPath,
+            destination: resolveDestination(file, appName, scope, ctx),
+          };
+        }
+      })
+      .filter((t): t is TemplateFile => t !== null);
+  } catch {
+    return [];
+  }
+}
+
 function processModules(
-  framework: string,
+  stackName: string,
   modules: string[] | undefined,
   appName: string,
   ctx: TemplateContext,
@@ -108,13 +147,12 @@ function processModules(
   if (!modules || modules.length === 0) return [];
 
   const result: Array<TemplateFile> = [];
-  const frameworkModules = META.app.stacks[framework]?.modules;
-  if (!frameworkModules) return [];
+  const stackModules = META.stacks[stackName]?.modules;
+  if (!stackModules) return [];
 
   for (const moduleName of modules) {
-    // Find module in any category (nested structure: MODULES[framework][category][moduleName])
-    let moduleMeta: (typeof frameworkModules)[string][string] | undefined;
-    for (const categoryModules of Object.values(frameworkModules)) {
+    let moduleMeta: (typeof stackModules)[string][string] | undefined;
+    for (const categoryModules of Object.values(stackModules)) {
       if (categoryModules[moduleName]) {
         moduleMeta = categoryModules[moduleName];
         break;
@@ -123,12 +161,11 @@ function processModules(
     if (!moduleMeta) continue;
 
     try {
-      const files = scanModuleTemplates(framework, moduleName);
+      const files = scanModuleTemplates(stackName, moduleName);
 
       const moduleTemplates = files.map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file);
+        const fullPath = path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file);
 
-        // Read first line to check for @scope override
         let scope: Scope;
         let targetName: string;
         let packageNameOverride: string | undefined;
@@ -140,25 +177,22 @@ function processModules(
           const scopeComment = magicComments.find((c) => c.type === 'scope');
 
           if (scopeComment) {
-            // Magic comment @scope overrides default behavior
             scope = scopeComment.values[0] as Scope;
             targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
             packageNameOverride = scope === 'package' ? moduleMeta.packageName : undefined;
           } else {
-            // Default: package if turborepo + packageName, else app
             scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
             targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
             packageNameOverride = moduleMeta.packageName;
           }
         } catch {
-          // Fallback if can't read file
           scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
           targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
           packageNameOverride = moduleMeta.packageName;
         }
 
         return {
-          source: path.join(TEMPLATES_DIR, 'modules', framework, moduleName, file),
+          source: path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file),
           destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
         };
       });
@@ -178,18 +212,8 @@ export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateF
   result.push(...getTemplatesForStack('repo', ctx.repo, '', ctx));
 
   for (const app of ctx.apps) {
-    // App templates
-    if (app.metaApp) {
-      result.push(...getTemplatesForStack('app', app.metaApp.name, app.appName, ctx));
-      result.push(...processModules(app.metaApp.name, app.metaApp.modules, app.appName, ctx));
-    }
-
-    // Server templates
-    if (app.metaServer && app.metaServer.name !== 'builtin') {
-      const serverAppName = app.metaApp ? `${app.appName}-server` : app.appName;
-      result.push(...getTemplatesForStack('server', app.metaServer.name, serverAppName, ctx));
-      result.push(...processModules(app.metaServer.name, app.metaServer.modules, serverAppName, ctx));
-    }
+    result.push(...getTemplatesForStackType(app.stackName, app.appName, ctx));
+    result.push(...processModules(app.stackName, app.modules, app.appName, ctx));
   }
 
   if (ctx.orm) {
