@@ -46,7 +46,7 @@ async function main() {
     outro(color.bgCyan(color.black(`🚀 Project created successfully at ${ctx.projectName}!`)));
   } catch (error) {
     log.error(`An error occurred:\n${error instanceof Error ? error.message : String(error)}`);
-    outro('Operation cancelled, bye');
+    outro('👋 Bye');
     process.exit(1);
   }
 }

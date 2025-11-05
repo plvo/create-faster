@@ -52,7 +52,7 @@ export async function promptText<T extends string | number = string>(
   const result = await text({ message, ...options });
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 
@@ -83,7 +83,7 @@ export async function promptSelect<C extends Category | undefined, R extends str
   });
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 
@@ -105,7 +105,7 @@ export async function promptMultiselect<C extends Category>(
   const result = await multiselect({ message, options: selectOptions, required: false, ...options });
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 
@@ -116,7 +116,7 @@ export async function promptConfirm(message: string, options?: Partial<ConfirmOp
   const result = await confirm({ message, ...options });
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 

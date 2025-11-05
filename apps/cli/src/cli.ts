@@ -38,9 +38,9 @@ export async function cli(): Promise<Omit<TemplateContext, 'repo'>> {
 
   const appCount = await promptText<number>(
     `${progress.message('How many apps do you want to create?')}
-${S_GRAY_BAR} ${color.italic(color.gray('Eg: a backend + a frontend = enter 2'))}
-${S_GRAY_BAR} ${color.italic(color.gray('Only a Next.js app = enter 1'))}
-${S_GRAY_BAR} ${color.italic(color.gray('Turborepo will be used if more than one'))}`,
+${S_GRAY_BAR}  ${color.italic(color.gray('Eg: a backend + a frontend = enter 2'))}
+${S_GRAY_BAR}  ${color.italic(color.gray('Only a Next.js app = enter 1'))}
+${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than one'))}`,
     {
       initialValue: '1',
       placeholder: 'Enter a number',
