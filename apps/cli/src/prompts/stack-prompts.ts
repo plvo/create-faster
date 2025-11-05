@@ -37,7 +37,7 @@ export async function selectStackPrompt(message: string): Promise<string> {
   const result = await SelectStackPrompt.prompt();
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 
@@ -71,7 +71,7 @@ export async function multiselectModulesPrompt(
   });
 
   if (isCancel(result)) {
-    cancel('Operation cancelled');
+    cancel('👋 Bye');
     process.exit(0);
   }
 
