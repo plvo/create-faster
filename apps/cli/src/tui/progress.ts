@@ -28,7 +28,7 @@ export class Progress {
     const percent = Math.round((this.current / this.steps.length) * 100);
     const counter = color.blueBright(`${this.current}/${this.steps.length}`);
 
-    return `${color.blueBright('[')}${icons}${color.blueBright(']')} ${counter} ${color.dim(`${percent}%`)}`;
+    return `${color.blueBright('[ ')}${icons}${color.blueBright(' ]')} ${counter} ${color.dim(`${percent}%`)}`;
   }
 
   message(text: string): string {

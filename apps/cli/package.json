@@ -11,7 +11,8 @@
     "directory": "apps/cli"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "homepage": "https://github.com/plvo/create-faster",
   "bugs": {
@@ -42,7 +43,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node --format esm --banner '#!/usr/bin/env node' && chmod +x dist/index.js",
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --production --banner '#!/usr/bin/env node' && chmod +x dist/index.js",
     "dev": "NODE_ENV=development bun run src/index.ts",
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "prepublishOnly": "bun run build",
@@ -51,6 +52,7 @@
   "dependencies": {
     "@clack/core": "^0.5.0",
     "@clack/prompts": "^0.11.0",
+    "commander": "^14.0.2",
     "fast-glob": "^3.3.3",
     "handlebars": "^4.7.8",
     "is-unicode-supported": "^2.1.0",

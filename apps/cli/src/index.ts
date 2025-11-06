@@ -1,20 +1,23 @@
 import { join } from 'node:path';
 import { intro, log, outro } from '@clack/prompts';
-import color from 'picocolors';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 import { cli } from './cli';
-import { INTRO_ASCII, INTRO_MESSAGE } from './constants';
-import { displayProjectStructure, displayStepsNote } from './tui/summary';
+import { parseFlags } from './flags';
+import { INTRO_ASCII, INTRO_MESSAGE } from './lib/constants';
+import { displayOutroCliCommand, displaySummaryNote } from './tui/summary';
 
 async function main() {
+  const partial = parseFlags();
+
   console.log(INTRO_ASCII);
+
   intro(INTRO_MESSAGE);
 
   try {
-    const config = await cli();
+    const config = await cli(partial);
 
     const isTurborepo = config.apps.length > 1;
 
@@ -37,13 +40,10 @@ async function main() {
     }
 
     const projectPath = join(process.cwd(), ctx.projectName);
-
     await runPostGeneration(ctx, projectPath);
 
-    displayProjectStructure(ctx);
-    displayStepsNote(ctx);
-
-    outro(color.bgCyan(color.black(`🚀 Project created successfully at ${ctx.projectName}!`)));
+    displaySummaryNote(ctx);
+    displayOutroCliCommand(ctx, projectPath);
   } catch (error) {
     log.error(`An error occurred:\n${error instanceof Error ? error.message : String(error)}`);
     outro('👋 Bye');
@@ -51,4 +51,7 @@ async function main() {
   }
 }
 
-main().catch(log.error);
+main().catch((error) => {
+  log.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});
