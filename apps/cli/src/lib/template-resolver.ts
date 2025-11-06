@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { META } from '@/__meta__';
-import { TEMPLATES_DIR } from '@/constants';
+import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { Category, Scope } from '@/types/meta';
 import { transformSpecialFilename } from './file-writer';

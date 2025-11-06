@@ -9,15 +9,18 @@ bunx create-faster
 # WIP
 
 ## TODO
-- app
+- stacks
     - [ ]  astro
-    - [ ]  expo
+    - [x]  expo
     - [x]  nextjs
     - [ ]  react native
     - [ ]  tanstack router
+    - [x]  hono
+    - [ ]  express
 - cloud
     - [ ]  terraform (aws)
     - [ ]  vercel
+    - [ ]  cloudflare
 - database
     - [x]  mysql
     - [x]  postgresql
@@ -45,6 +48,3 @@ bunx create-faster
 - orm
     - [x]  drizzle
     - [x]  prisma
-- server
-    - [x]  hono
-    - [ ]  express

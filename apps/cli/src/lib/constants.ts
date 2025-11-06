@@ -1,10 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import color from 'picocolors';
-import packageJson from '../package.json' with { type: 'json' };
+import packageJson from '../../package.json' with { type: 'json' };
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-export const TEMPLATES_DIR = path.resolve(dirname, '..', 'templates');
+export const TEMPLATES_DIR = path.resolve(dirname, '..', '..', 'templates');
 
 const VERSION = packageJson.version;
 

@@ -2,18 +2,20 @@
 
 Modern, type-safe CLI scaffolding tool for quickly creating production-ready projects with multiple framework combinations.
 
-**Version**: 1.1.3
+**Version**: 1.2.0
 **Installation**: `bunx create-faster`
 **License**: MIT
 
 ## Overview
 
 CLI tool that generates full-stack projects with:
+- **Interactive & Non-interactive modes**: Full interactive prompts or CLI flags for automation
 - Interactive prompts with custom TUI (ASCII art, section headers, grouped multiselect)
 - Multi-app support (automatic turborepo for 2+ apps)
 - Modular system (Next.js: 9 modules, Expo: 1 module, Hono: 1 module)
 - Package manager selection (bun/pnpm/npm + auto-install)
 - Template engine with magic comments for conditional rendering
+- **Auto-generated CLI command**: Copy-paste ready command to recreate projects
 
 ## Architecture
 
@@ -26,7 +28,7 @@ templates/       # Handlebars templates
 ```
 
 ### CLI Flow
-1. ASCII intro → 2. Prompts (project, apps, database, ORM, extras, git, package manager) → 3. Validation → 4. Template resolution → 5. Handlebars rendering → 6. File generation → 7. Post-hooks (install deps, git init) → 8. Summary display
+1. Parse CLI flags (if provided) → 2. ASCII intro → 3. Interactive prompts (skipped if flags provided) → 4. Validation → 5. Template resolution → 6. Handlebars rendering → 7. File generation → 8. Post-hooks (install deps, git init) → 9. Summary display with auto-generated CLI command
 
 ### Tech Stack
 - **Runtime**: Bun 1.2.23
@@ -40,8 +42,8 @@ templates/       # Handlebars templates
 ```
 apps/cli/src/
 ├── index.ts                 # Entry point
-├── cli.ts                   # Main CLI flow
-├── constants.ts             # ASCII art, version, paths
+├── cli.ts                   # Main CLI flow (interactive mode)
+├── flags.ts                 # CLI flags parser & validator
 ├── __meta__.ts              # Stacks & modules metadata
 ├── types/
 │   ├── meta.ts              # Metadata types (MetaStack, MetaCategory, etc.)
@@ -49,16 +51,20 @@ apps/cli/src/
 ├── prompts/
 │   ├── base-prompts.ts      # Context-aware prompt wrappers
 │   └── stack-prompts.ts     # Custom stack selection with sections
-└── lib/
-    ├── schema.ts            # Zod validation
-    ├── template-resolver.ts # Template discovery & path mapping
-    ├── template-processor.ts # Template rendering
-    ├── magic-comments.ts    # Conditional rendering directives
-    ├── handlebars-utils.ts  # Custom Handlebars helpers
-    ├── file-generator.ts    # File generation orchestration
-    ├── file-writer.ts       # File writing operations
-    ├── post-generation.ts   # Post-gen hooks (install, git)
-    └── tui.ts               # Unicode symbols & TUI utilities
+├── lib/
+│   ├── constants.ts         # ASCII art, version, paths
+│   ├── schema.ts            # Zod validation
+│   ├── template-resolver.ts # Template discovery & path mapping
+│   ├── template-processor.ts # Template rendering
+│   ├── magic-comments.ts    # Conditional rendering directives
+│   ├── handlebars-utils.ts  # Custom Handlebars helpers
+│   ├── file-generator.ts    # File generation orchestration
+│   ├── file-writer.ts       # File writing operations
+│   └── post-generation.ts   # Post-gen hooks (install, git)
+└── tui/
+    ├── symbols.ts           # Unicode symbols
+    ├── progress.ts          # Progress indicator
+    └── summary.ts           # Summary display & CLI command generation
 ```
 
 ## Core Files
@@ -82,9 +88,19 @@ Single source of truth for all stacks and modules:
 - `TemplateContext`: Full context with projectName, repo type, apps[], orm, database, git, pm, extras
 - `PackageManager`: 'bun' | 'npm' | 'pnpm' | undefined
 
+### flags.ts
+CLI flags parser using Commander:
+- `parseFlags()`: Parses CLI arguments and returns `Partial<TemplateContext>`
+- `parseAppFlag()`: Parses `--app name:stack:modules` format
+- `validateContext()`: Validates dependencies (orm requires database, husky requires git, etc.)
+- **Format**: `--app <name:stack:modules>` (unified format for all apps)
+- Validation against META with helpful error messages showing available options
+- Auto-generated help with examples
+
 ### cli.ts
 Main CLI flow with functions:
-- `cli()`: Returns TemplateContext (without repo type)
+- `cli(partial?: Partial<TemplateContext>)`: Returns TemplateContext (without repo type)
+- Accepts optional partial context from flags - skips prompts if values provided
 - `promptAllApps()`: Handles 1 or N apps
 - `promptApp()`: Single app config (name, stack, modules) - Simplified, no server prompt
 - `promptStackConfiguration()`: Custom TUI with sections for unified stack selection
@@ -92,11 +108,19 @@ Main CLI flow with functions:
 
 ### index.ts
 Entry point:
-- Displays ASCII intro
-- Calls `cli()`
+- Parses CLI flags via `parseFlags()`
+- Displays ASCII intro (skipped if flags provided)
+- Calls `cli(partial)` with pre-filled context
 - Determines repo type (app count > 1 = turborepo)
 - Generates files + runs post-hooks
-- `displaySummaryNote()`: Shows project summary & next steps with selected package manager
+- Displays project structure, auto-generated CLI command, and next steps
+
+### tui/summary.ts
+Summary and CLI command generation:
+- `buildCliCommand(ctx)`: Generates copy-paste ready CLI command from context
+- `displayCliCommand(ctx)`: Displays command in styled note box
+- `displayProjectStructure(ctx)`: Shows project structure tree
+- `displayStepsNote(ctx)`: Shows next steps with package manager-specific commands
 
 ### lib/template-resolver.ts
 - Scans templates with fast-glob
@@ -146,6 +170,11 @@ Custom helpers:
 - TUI system (ASCII art, custom prompts, grouped multiselect, Unicode symbols)
 - Type system refactor (types/meta.ts, types/ctx.ts with Meta* prefix)
 - Package manager selection (bun/pnpm/npm/skip + auto-install + smart command suggestions)
+- **CLI Flags Support**: Non-interactive mode with Commander.js
+  - Unified `--app name:stack:modules` format for all apps
+  - Full validation against META with helpful error messages
+  - Mix of interactive and flag-based configuration
+  - Auto-generated CLI command for project recreation
 - **Unified Stack Architecture**: Merged `META.app` and `META.server` into single `META.stacks` with `type` field
 - **Simplified AppContext**: From `{appName, metaApp?, metaServer?}` to `{appName, stackName, modules}`
 - Modules system (nested in stacks, per-app selection, context-aware)
@@ -166,7 +195,6 @@ Custom helpers:
 - Enhanced error handling & rollback
 
 ### 📋 Planned
-- Non-interactive mode (CLI flags)
 - Web UI alternative
 - Custom template directories
 - Config save/load
@@ -268,6 +296,90 @@ Creates single executable with shebang.
 ```bash
 cd apps/cli && npm publish   # Runs prepublishOnly → build + chmod +x
 ```
+
+## CLI Flags Usage
+
+### Interactive Mode (Default)
+```bash
+bunx create-faster
+# Guided prompts for all options
+```
+
+### Non-Interactive Mode (Flags)
+
+**Single app:**
+```bash
+bunx create-faster myapp \
+  --app myapp:nextjs:shadcn,mdx \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome,husky
+```
+
+**Multi-app (Turborepo):**
+```bash
+bunx create-faster mysaas \
+  --app web:nextjs:shadcn,tanstack-query \
+  --app mobile:expo:nativewind \
+  --app api:hono \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome,husky
+```
+
+**Mixed mode (partial flags):**
+```bash
+bunx create-faster myapp \
+  --app myapp:nextjs:shadcn \
+  --database postgres
+# Will prompt for missing options (ORM, git, pm, extras)
+```
+
+### Available Flags
+
+- `--app <name:stack:modules>`: Add app (repeatable for multi-app)
+  - Format: `name:stack` or `name:stack:module1,module2`
+  - Example: `--app web:nextjs:shadcn,mdx`
+  - Stacks: `nextjs`, `expo`, `hono`
+
+- `--database <name>`: Database provider
+  - Options: `postgres`, `mysql`
+
+- `--orm <name>`: ORM provider (requires database)
+  - Options: `prisma`, `drizzle`
+
+- `--git`: Initialize git repository
+
+- `--pm <manager>`: Package manager
+  - Options: `bun`, `npm`, `pnpm`
+
+- `--extras <items>`: Comma-separated extras
+  - Options: `biome`, `husky` (husky requires git)
+
+### Auto-Generated Command
+
+After project creation, a copy-paste ready command is displayed:
+
+```
+┌  🔁 Recreate this project
+│
+│  create-faster mysaas \
+│    --app web:nextjs:shadcn,mdx \
+│    --app mobile:expo:nativewind \
+│    --database postgres \
+│    --orm drizzle \
+│    --git \
+│    --pm bun \
+│    --extras biome,husky
+│
+└
+```
+
+This allows easy reproduction of the exact same project setup.
 
 ## Adding New Content
 
