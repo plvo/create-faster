@@ -1,13 +1,172 @@
 ---
-title: Structure
-description: Structure of the project
+title: Project Structure
+description: Understanding single repo and Turborepo layouts
 ---
 
-## Structure
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-This project has the following structure:
+create-faster generates different project structures based on the number of applications you create. The decision is automatic: single applications use the framework's standard structure, while multiple applications trigger Turborepo configuration.
 
-- src/
-- public/
-- .env
-- .env.example
+## Single Repository Structure
+
+When creating one application, create-faster generates a standard project following the framework's conventions.
+
+### Next.js Structure
+
+```bash
+my-app/
+├── app/                    # Next.js app directory
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── ...
+├── public/                 # Static assets
+├── components/             # React components (if modules selected)
+├── lib/                    # Utility functions
+├── .env.example
+├── next.config.ts
+├── package.json
+├── tsconfig.json
+└── biome.json             # If Biome selected
+```
+
+### Expo Structure
+
+```bash
+my-app/
+├── app/                    # Expo Router app directory
+│   ├── _layout.tsx
+│   ├── index.tsx
+│   └── ...
+├── assets/                 # Images and fonts
+├── components/             # React Native components
+├── .env.example
+├── app.json
+├── package.json
+├── tsconfig.json
+└── biome.json             # If Biome selected
+```
+
+### Hono Structure
+
+```bash
+my-api/
+├── src/
+│   ├── index.ts           # Entry point
+│   └── routes/            # API routes
+├── .env.example
+├── package.json
+├── tsconfig.json
+└── biome.json             # If Biome selected
+```
+
+### Database Integration (Single Repo)
+
+When selecting a database and ORM, configuration files are added at the root level:
+
+```bash
+my-app/
+├── app/                    # Next.js/Expo app directory
+├── db/                     # Database schema and client
+│   ├── schema.ts          # Drizzle schema or Prisma schema
+│   └── index.ts           # Database client
+├── drizzle.config.ts      # If Drizzle selected
+├── .env.example           # With DATABASE_URL
+└── ...
+```
+
+## Turborepo Structure
+
+Creating multiple applications (e.g., web + mobile + API) automatically generates a monorepo using Turborepo.
+
+### Multi-App Layout
+
+```
+my-saas/
+├── apps/
+│   ├── web/               # Next.js application
+│   │   ├── app/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── mobile/            # Expo application
+│   │   ├── app/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── api/               # Hono application
+│       ├── src/
+│       ├── package.json
+│       └── tsconfig.json
+├── packages/
+│   └── db/                # Shared database package (if ORM selected)
+│       ├── src/
+│       │   ├── schema.ts
+│       │   └── index.ts
+│       ├── package.json
+│       └── tsconfig.json
+├── .env.example
+├── package.json           # Root workspace configuration
+├── turbo.json             # Turborepo pipeline config
+├── biome.json             # If Biome selected
+└── pnpm-workspace.yaml    # Workspace definition
+```
+
+### Shared Packages
+
+In a Turborepo setup, shared code is organized in the `packages/` directory:
+
+**Database Package** (`packages/db/`):
+- Centralized database schema (Drizzle or Prisma)
+- Type-safe database client
+- Better Auth integration (if selected)
+- Used by any app needing database access
+
+**UI Package** (if shadcn/ui selected for multiple apps):
+- Shared component library
+- Common design tokens
+- Accessible by web and potentially Expo apps
+
+### Root Configuration
+
+The monorepo root contains workspace-wide configuration:
+
+**`turbo.json`**: Defines build pipeline, caching strategy, and task dependencies
+**`package.json`**: Workspace scripts and shared dependencies
+**`biome.json`**: Unified linting and formatting rules (if selected)
+**`.gitignore`**: Comprehensive ignore patterns for all apps
+**`.env.example`**: Environment variable templates
+
+## Framework Conventions
+
+Each application within the monorepo maintains its framework's standard structure:
+
+- **Next.js apps** follow the App Router directory layout
+- **Expo apps** use Expo Router file-based routing
+- **Hono apps** organize routes in `src/routes/`
+
+This approach ensures that framework-specific tooling (dev servers, build tools, IDE support) works without modification.
+
+## About Turborepo
+
+Turborepo is a high-performance build system for JavaScript and TypeScript monorepos. It provides:
+
+- **Incremental builds**: Only rebuilds changed packages
+- **Remote caching**: Shares build artifacts across team members
+- **Task orchestration**: Runs tasks in optimal order based on dependencies
+- **Parallel execution**: Maximizes CPU usage for faster builds
+
+create-faster configures Turborepo with sensible defaults for your application stack. For advanced configuration and deployment strategies, refer to the [Turborepo documentation](https://turbo.build/repo/docs).
+
+## Extending the Structure
+
+The generated structure serves as a foundation. Common extensions include:
+
+**Additional packages**:
+- `packages/config/` for shared ESLint, TypeScript, or Tailwind configs
+- `packages/utils/` for shared utility functions
+- `packages/types/` for shared TypeScript types
+
+**Additional apps**:
+- Documentation sites
+- Admin dashboards
+- Background workers or cron jobs
+
+The Turborepo structure scales from a few apps to dozens of packages without architectural changes.

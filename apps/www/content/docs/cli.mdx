@@ -1,13 +1,298 @@
 ---
-title: CLI
-description: CLI for the project
+title: Interactive CLI
+description: Step-by-step guide to the interactive workflow
 ---
 
-## CLI
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
-This project has the following CLI:
+The interactive CLI provides a guided experience for creating projects. Run the command without any flags to start:
 
-- create-faster
-- create-faster-app
-- create-faster-module
-- create-faster-stack
+```bash
+# With your favorite package manager
+npx create-faster
+pnpm dlx create-faster
+bunx create-faster
+```
+
+## Workflow Overview
+
+The CLI walks through configuration in a logical sequence, starting with naming decisions, then application setup, followed by infrastructure choices, and finally installation preferences.
+
+## Step-by-Step Process
+
+<Steps>
+
+<Step>
+
+### Project Name
+
+First, you'll name your project:
+
+```
+┌  create-faster
+│
+◇  Name of your project?
+│  my-saas
+```
+
+The CLI validates that no file or directory with this name exists in the current directory. For single-app projects, this name becomes the application directory. For multi-app projects, it becomes the monorepo root.
+
+</Step>
+
+<Step>
+
+### Application Count
+
+Next, specify how many applications to create:
+
+```
+◇  How many apps do you want to create?
+│  Eg: a backend + a frontend = enter 2
+│  Only a Next.js app = enter 1
+│  Turborepo will be used if more than one
+│  3
+```
+
+**Single app (1)**: Generates a standard framework project structure.
+
+**Multiple apps (2+)**: Automatically configures Turborepo with apps in `apps/` directory and shared packages in `packages/`.
+
+</Step>
+
+<Step>
+
+### App Configuration
+
+For each application, you'll configure its name, stack, and modules.
+
+#### App Name
+
+For single-app projects, the app name matches the project name automatically. For multi-app projects, you'll name each application:
+
+```
+◇  Name of the app #1?
+│  web
+
+◇  Name of the app #2?
+│  mobile
+
+◇  Name of the app #3?
+│  api
+```
+
+#### Stack Selection
+
+Choose the framework for each app:
+
+```
+◇  Select the stack for web
+│  ● Next.js (React framework with SSR)
+│  ○ Expo (React Native framework)
+│  ○ Hono (Fast web framework)
+```
+
+The stack determines the base template and available modules.
+
+#### Module Selection
+
+After selecting a stack, choose optional modules to include. Available modules depend on the selected framework:
+
+**Next.js modules**:
+
+```
+◇  Do you want to add any Next.js modules to web?
+│
+│  UI & Styling
+│  ◻ shadcn/ui - A set of beautifully designed components
+│  ◻ Next Themes - A library for managing themes
+│
+│  Features
+│  ◻ MDX - Markdown-based content
+│  ◻ PWA - Progressive Web App support
+│
+│  Authentication
+│  ◻ Better Auth - Comprehensive authentication framework
+│
+│  Data Fetching
+│  ◻ TanStack Query - Asynchronous state management
+│  ◻ TanStack Devtools - Devtools for TanStack libraries
+│
+│  Forms
+│  ◻ React Hook Form - Performant form validation
+│  ◻ TanStack Form - Headless form library
+```
+
+**Expo modules**:
+
+```
+◇  Do you want to add any Expo modules to mobile?
+│
+│  UI & Styling
+│  ◻ NativeWind - Tailwind CSS for React Native
+```
+
+**Hono modules**:
+
+```
+◇  Do you want to add any Hono modules to api?
+│
+│  Cloud
+│  ◻ AWS Lambda - Run on AWS Lambda
+```
+
+Modules are grouped by category for easier navigation. Use arrow keys to navigate and space to toggle selections.
+
+</Step>
+
+<Step>
+
+### Database Selection
+
+Choose a database provider or skip:
+
+```
+◇  Include a database?
+│  ● PostgreSQL (Relational database)
+│  ○ MySQL (Relational database)
+│  ○ None
+```
+
+Selecting a database enables ORM selection in the next step. Database configuration is shared across all applications in a monorepo via the `packages/db` package.
+
+</Step>
+
+<Step>
+
+### ORM Selection
+
+If you selected a database, choose an ORM:
+
+```
+◇  Configure an ORM?
+│  ● Drizzle (Lightweight TypeScript ORM)
+│  ○ Prisma (Type-safe ORM with migrations)
+│  ○ None
+```
+
+The ORM package includes:
+- Type-safe database client
+- Schema definitions
+- Better Auth integration (if Better Auth module selected)
+- Database connection configuration
+
+</Step>
+
+<Step>
+
+### Git Initialization
+
+Choose whether to initialize a Git repository:
+
+```
+◇  Initialize Git?
+│  Yes / No (default: Yes)
+```
+
+If enabled, the CLI runs `git init` after file generation. This is required if you plan to use Husky for git hooks.
+
+</Step>
+
+<Step>
+
+### Extras
+
+Select additional development tools:
+
+```
+◇  Add any extras?
+│  ◻ Biome - Fast linter & formatter
+│  ◻ Husky - Git hooks for quality checks
+```
+
+**Biome**: Adds unified linting and formatting configuration across all apps.
+
+**Husky**: Configures pre-commit hooks (requires Git to be initialized).
+
+</Step>
+
+<Step>
+
+### Dependency Installation
+
+Finally, choose whether to install dependencies immediately and which package manager to use:
+
+```
+◇  Install dependencies now?
+│  ● Install with bun
+│  ○ Install with pnpm
+│  ○ Install with npm
+│  ○ Skip installation
+```
+
+If you select a package manager, the CLI runs the installation process with a 5-minute timeout. If you skip, you can manually run the installation later:
+
+```bash
+cd my-saas
+bun install
+```
+
+</Step>
+
+</Steps>
+
+## Validation Rules
+
+The CLI enforces compatibility requirements during configuration:
+
+**ORM requires Database**: You cannot select an ORM without first selecting a database provider.
+
+**Husky requires Git**: The Husky extra is only available if Git initialization is enabled.
+
+**Unique app names**: In multi-app projects, each application must have a unique name.
+
+If you make incompatible selections, the CLI displays an error message explaining the requirement.
+
+## After Generation
+
+Once the CLI completes, you'll see:
+
+1. **Project structure**: A tree view of generated files and directories
+2. **Auto-generated CLI command**: A copy-paste ready command to recreate the exact configuration
+3. **Next steps**: Commands to navigate to your project and start development
+
+Example output:
+
+```
+┌  Project structure
+│
+│  my-saas/
+│  ├── apps/
+│  │   ├── web/
+│  │   ├── mobile/
+│  │   └── api/
+│  ├── packages/
+│  │   └── db/
+│  └── package.json
+│
+└
+
+┌  Recreate this project
+│
+│  create-faster my-saas \
+│    --app web:nextjs:shadcn,tanstack-query \
+│    --app mobile:expo:nativewind \
+│    --app api:hono \
+│    --database postgres \
+│    --orm drizzle \
+│    --git \
+│    --pm bun \
+│    --extras biome,husky
+│
+└
+
+Next steps:
+  cd my-saas
+  bun run dev
+```
+
+The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.

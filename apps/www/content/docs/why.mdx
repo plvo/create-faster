@@ -1,8 +1,85 @@
 ---
-title: Why
-description: Why this project is needed
+title: Why create-faster
+description: Benefits, philosophy, and how create-faster compares to alternatives
 ---
 
-## Why
+## Core Benefits
 
-This project is needed because...
+### Time Savings
+
+Starting a new project typically involves hours of configuration: setting up build tools, configuring linters, integrating authentication, connecting databases, and ensuring all dependencies work together. create-faster eliminates this repetitive work by providing pre-configured, tested integrations.
+
+### Avoiding Copy-Paste Architecture
+
+Developers often bootstrap new projects by copying existing ones, inheriting outdated dependencies, accumulated technical debt, and configuration drift. create-faster generates fresh projects with current best practices and up-to-date dependencies every time.
+
+### Production-Ready Defaults
+
+Every configuration choice in create-faster reflects production deployment requirements:
+
+- Type-safe database access with Prisma or Drizzle
+- Authentication scaffolding with Better Auth
+- Linting and formatting with Biome
+- Git hooks for quality gates with Husky
+- Optimized builds for Next.js, Expo, and Hono
+
+### Integrated Multi-App Support
+
+Complex applications often require multiple deployment targets: web frontends, mobile apps, and backend APIs. create-faster handles the orchestration complexity by automatically configuring Turborepo for shared code, coordinated builds, and unified dependency management.
+
+### Automatic Monorepo Orchestration
+
+When you create multiple apps, create-faster configures Turborepo automatically. No manual workspace setup, package linking, or build pipeline configuration required. The generated monorepo includes:
+
+- Shared packages for database access and authentication
+- Optimized task execution with caching
+- Proper TypeScript project references
+- Coordinated dependency versions
+
+## Why Choose create-faster
+
+### vs create-t3-app
+
+create-t3-app pioneered the concept of type-safe, opinionated starters for Next.js applications. create-faster builds on this philosophy while addressing different use cases:
+
+**create-t3-app strengths**:
+- Focused Next.js experience
+- Deeply integrated tRPC + Next.js patterns
+- Proven production usage at scale
+- Strong community and documentation
+
+**create-faster differentiators**:
+- Multi-app support (Next.js + Expo + Hono simultaneously)
+- Automatic Turborepo configuration for monorepos
+- Framework flexibility (not Next.js exclusive)
+- Modular system with more opt-in features
+- CLI flags for non-interactive automation
+
+**Use create-t3-app when**: Building a single Next.js application with the T3 stack (Next.js, tRPC, Prisma, NextAuth, Tailwind).
+
+**Use create-faster when**: Creating multi-app projects (web + mobile + API), requiring monorepo structure, or needing framework diversity beyond Next.js.
+
+### vs better-t-stack
+
+better-t-stack emphasizes minimalism and user choice with a "pick only what you need" philosophy.
+
+**better-t-stack strengths**:
+- Extreme modularity
+- Wide framework support (including Remix, Solid, Svelte)
+- Minimal template approach
+- Transparent compatibility matrices
+
+**create-faster differentiators**:
+- Built-in multi-app workflow with automatic repo type selection
+- Integrated module system per framework (Next.js modules, Expo modules)
+- Unified stack selection interface
+- Automatic Turborepo orchestration
+- Auto-generated CLI command for reproducibility
+
+**Use better-t-stack when**: Building a single app with maximum framework choice and minimal pre-configuration.
+
+**Use create-faster when**: Building multi-app architectures or needing integrated module systems (shadcn/ui, Better Auth, TanStack Query) with framework-specific optimizations.
+
+## Who Should Use create-faster
+
+The tool is designed for developers who understand their stack choices but want to skip the configuration boilerplate and integration challenges.
