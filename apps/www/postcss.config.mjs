@@ -1,1 +1,5 @@
-export { default } from '@repo/ui/postcss.config.mjs';
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+};

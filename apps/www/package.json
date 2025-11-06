@@ -1,25 +1,31 @@
 {
   "name": "create-faster-www",
-  "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.0.0",
+  "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start"
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.6"
+    "fumadocs-core": "16.0.7",
+    "fumadocs-mdx": "13.0.5",
+    "fumadocs-ui": "16.0.7",
+    "lucide-react": "^0.548.0",
+    "next": "16.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@repo/config": "*",
-    "@repo/ui": "*",
-    "typescript": "*",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "*",
-    "tailwindcss": "*"
+    "@tailwindcss/postcss": "^4.1.16",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^24.9.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.16",
+    "typescript": "^5.9.3"
   }
 }

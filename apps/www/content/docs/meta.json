@@ -1,0 +1,17 @@
+{
+  "title": "Documentation",
+  "description": "Documentation for the project",
+  "root": true,
+  "pages": [
+    "---Introduction---",
+    "index",
+    "why",
+    "structure",
+    "cli",
+    "options",
+    "---Stacks---",
+    "stacks/nextjs",
+    "stacks/expo",
+    "stacks/hono"
+  ]
+}
