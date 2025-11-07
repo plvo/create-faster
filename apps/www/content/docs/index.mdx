@@ -29,21 +29,35 @@ create-faster is a modern CLI scaffolding tool that generates production-ready f
 
 ## Multi-App Support
 
-The defining feature of create-faster is its ability to scaffold multiple applications in a single command. Need a Next.js frontend, an Expo mobile app, and a Hono backend? Create all three at once with automatic Turborepo configuration.
+The defining feature of create-faster is its ability to scaffold multiple applications in a single command. The CLI automatically determines whether to use a standard structure or Turborepo based on the number of applications.
 
-**Single app** projects use the framework's standard structure:
-
-```bash
-bunx create-faster my-app
-# Creates a single Next.js/Expo/Hono application
-```
-
-**Multi-app** projects automatically configure Turborepo:
+**Single application** (enter `1`):
 
 ```bash
-bunx create-faster my-saas
-# Prompted to create multiple apps → automatic monorepo setup
+◇  How many apps do you want to create?
+│  1
+
+# Result: Standard framework structure
+my-app/
+└─ src/
 ```
+
+**Multiple applications** (enter `2` or more):
+
+```bash
+◇  How many apps do you want to create?
+│  3
+
+# Result: Automatic Turborepo configuration
+my-saas/
+├─ apps/
+│  ├─ web/
+│  ├─ mobile/
+│  └─ api/
+└─ packages/
+```
+
+Need a Next.js frontend, an Expo mobile app, and a Hono backend? Simply specify 3 apps and create-faster handles the monorepo orchestration automatically.
 
 ## Two Ways to Create Projects
 
@@ -58,7 +72,7 @@ bunx create-faster
 The interactive CLI walks you through:
 - Project and app naming
 - Stack selection (Next.js, Expo, Hono)
-- Module configuration (shadcn/ui, Better Auth, TanStack Query, etc.)
+- Module configuration (UI libraries, authentication, data fetching, etc.)
 - Database and ORM setup
 - Development tools (Biome, Git, Husky)
 - Dependency installation
@@ -98,6 +112,5 @@ Each framework follows its own standard conventions while benefiting from shared
 ## Next Steps
 
 - [Learn why](/docs/why) create-faster exists and how it compares to alternatives
-- [Understand the project structure](/docs/structure) for single and monorepo setups
 - [Explore the interactive CLI](/docs/cli) workflow
 - [Reference all available options](/docs/options) and flags

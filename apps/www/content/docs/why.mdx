@@ -9,19 +9,15 @@ description: Benefits, philosophy, and how create-faster compares to alternative
 
 Starting a new project typically involves hours of configuration: setting up build tools, configuring linters, integrating authentication, connecting databases, and ensuring all dependencies work together. create-faster eliminates this repetitive work by providing pre-configured, tested integrations.
 
-### Avoiding Copy-Paste Architecture
-
-Developers often bootstrap new projects by copying existing ones, inheriting outdated dependencies, accumulated technical debt, and configuration drift. create-faster generates fresh projects with current best practices and up-to-date dependencies every time.
-
 ### Production-Ready Defaults
 
 Every configuration choice in create-faster reflects production deployment requirements:
 
-- Type-safe database access with Prisma or Drizzle
-- Authentication scaffolding with Better Auth
-- Linting and formatting with Biome
-- Git hooks for quality gates with Husky
-- Optimized builds for Next.js, Expo, and Hono
+- Type-safe database access with supported ORMs
+- Authentication framework integration
+- Linting and formatting tools
+- Git hooks for quality gates
+- Optimized builds for all supported frameworks
 
 ### Integrated Multi-App Support
 
@@ -49,15 +45,15 @@ create-t3-app pioneered the concept of type-safe, opinionated starters for Next.
 - Strong community and documentation
 
 **create-faster differentiators**:
-- Multi-app support (Next.js + Expo + Hono simultaneously)
+- Multi-app support (web + mobile + server simultaneously)
 - Automatic Turborepo configuration for monorepos
-- Framework flexibility (not Next.js exclusive)
-- Modular system with more opt-in features
+- Framework flexibility beyond single-framework starters
+- Modular system with opt-in features per framework
 - CLI flags for non-interactive automation
 
-**Use create-t3-app when**: Building a single Next.js application with the T3 stack (Next.js, tRPC, Prisma, NextAuth, Tailwind).
+**Use create-t3-app when**: Building a single Next.js application with the opinionated T3 stack.
 
-**Use create-faster when**: Creating multi-app projects (web + mobile + API), requiring monorepo structure, or needing framework diversity beyond Next.js.
+**Use create-faster when**: Creating multi-app projects requiring monorepo structure, or needing framework diversity across web, mobile, and server applications.
 
 ### vs better-t-stack
 
@@ -71,14 +67,14 @@ better-t-stack emphasizes minimalism and user choice with a "pick only what you 
 
 **create-faster differentiators**:
 - Built-in multi-app workflow with automatic repo type selection
-- Integrated module system per framework (Next.js modules, Expo modules)
+- Integrated module system per framework
 - Unified stack selection interface
 - Automatic Turborepo orchestration
 - Auto-generated CLI command for reproducibility
 
 **Use better-t-stack when**: Building a single app with maximum framework choice and minimal pre-configuration.
 
-**Use create-faster when**: Building multi-app architectures or needing integrated module systems (shadcn/ui, Better Auth, TanStack Query) with framework-specific optimizations.
+**Use create-faster when**: Building multi-app architectures or needing integrated module systems with framework-specific optimizations.
 
 ## Who Should Use create-faster
 

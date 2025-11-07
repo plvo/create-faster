@@ -8,9 +8,6 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 The interactive CLI provides a guided experience for creating projects. Run the command without any flags to start:
 
 ```bash
-# With your favorite package manager
-npx create-faster
-pnpm dlx create-faster
 bunx create-faster
 ```
 
@@ -28,9 +25,7 @@ The CLI walks through configuration in a logical sequence, starting with naming 
 
 First, you'll name your project:
 
-```
-┌  create-faster
-│
+```bash
 ◇  Name of your project?
 │  my-saas
 ```
@@ -45,7 +40,7 @@ The CLI validates that no file or directory with this name exists in the current
 
 Next, specify how many applications to create:
 
-```
+```bash
 ◇  How many apps do you want to create?
 │  Eg: a backend + a frontend = enter 2
 │  Only a Next.js app = enter 1
@@ -69,7 +64,7 @@ For each application, you'll configure its name, stack, and modules.
 
 For single-app projects, the app name matches the project name automatically. For multi-app projects, you'll name each application:
 
-```
+```bash
 ◇  Name of the app #1?
 │  web
 
@@ -82,65 +77,49 @@ For single-app projects, the app name matches the project name automatically. Fo
 
 #### Stack Selection
 
-Choose the framework for each app:
+Choose the framework for each app. Stacks are organized by type:
 
-```
+```bash
 ◇  Select the stack for web
+│
+├ Web / Mobile App
 │  ● Next.js (React framework with SSR)
 │  ○ Expo (React Native framework)
-│  ○ Hono (Fast web framework)
+│
+└ Server / API
+   ○ Hono (Fast web framework)
 ```
 
 The stack determines the base template and available modules.
 
 #### Module Selection
 
-After selecting a stack, choose optional modules to include. Available modules depend on the selected framework:
+After selecting a stack, choose optional modules to include. Available modules depend on the selected framework and are grouped by category:
 
-**Next.js modules**:
-
-```
+```bash
 ◇  Do you want to add any Next.js modules to web?
 │
 │  UI & Styling
-│  ◻ shadcn/ui - A set of beautifully designed components
-│  ◻ Next Themes - A library for managing themes
+│  ◻ shadcn/ui
+│  ◻ Next Themes
 │
 │  Features
-│  ◻ MDX - Markdown-based content
-│  ◻ PWA - Progressive Web App support
+│  ◻ MDX
+│  ◻ PWA
 │
 │  Authentication
-│  ◻ Better Auth - Comprehensive authentication framework
+│  ◻ Better Auth
 │
 │  Data Fetching
-│  ◻ TanStack Query - Asynchronous state management
-│  ◻ TanStack Devtools - Devtools for TanStack libraries
+│  ◻ TanStack Query
+│  ◻ TanStack Devtools
 │
 │  Forms
-│  ◻ React Hook Form - Performant form validation
-│  ◻ TanStack Form - Headless form library
+│  ◻ React Hook Form
+│  ◻ TanStack Form
 ```
 
-**Expo modules**:
-
-```
-◇  Do you want to add any Expo modules to mobile?
-│
-│  UI & Styling
-│  ◻ NativeWind - Tailwind CSS for React Native
-```
-
-**Hono modules**:
-
-```
-◇  Do you want to add any Hono modules to api?
-│
-│  Cloud
-│  ◻ AWS Lambda - Run on AWS Lambda
-```
-
-Modules are grouped by category for easier navigation. Use arrow keys to navigate and space to toggle selections.
+Use arrow keys to navigate and space to toggle selections.
 
 </Step>
 
@@ -150,10 +129,10 @@ Modules are grouped by category for easier navigation. Use arrow keys to navigat
 
 Choose a database provider or skip:
 
-```
+```bash
 ◇  Include a database?
-│  ● PostgreSQL (Relational database)
-│  ○ MySQL (Relational database)
+│  ● PostgreSQL
+│  ○ MySQL
 │  ○ None
 ```
 
@@ -167,17 +146,17 @@ Selecting a database enables ORM selection in the next step. Database configurat
 
 If you selected a database, choose an ORM:
 
-```
+```bash
 ◇  Configure an ORM?
-│  ● Drizzle (Lightweight TypeScript ORM)
-│  ○ Prisma (Type-safe ORM with migrations)
+│  ● Drizzle
+│  ○ Prisma
 │  ○ None
 ```
 
 The ORM package includes:
 - Type-safe database client
 - Schema definitions
-- Better Auth integration (if Better Auth module selected)
+- Authentication integration (if auth module selected)
 - Database connection configuration
 
 </Step>
@@ -188,7 +167,7 @@ The ORM package includes:
 
 Choose whether to initialize a Git repository:
 
-```
+```bash
 ◇  Initialize Git?
 │  Yes / No (default: Yes)
 ```
@@ -203,10 +182,10 @@ If enabled, the CLI runs `git init` after file generation. This is required if y
 
 Select additional development tools:
 
-```
+```bash
 ◇  Add any extras?
-│  ◻ Biome - Fast linter & formatter
-│  ◻ Husky - Git hooks for quality checks
+│  ◻ Biome
+│  ◻ Husky
 ```
 
 **Biome**: Adds unified linting and formatting configuration across all apps.
@@ -221,7 +200,7 @@ Select additional development tools:
 
 Finally, choose whether to install dependencies immediately and which package manager to use:
 
-```
+```bash
 ◇  Install dependencies now?
 │  ● Install with bun
 │  ○ Install with pnpm
@@ -229,7 +208,15 @@ Finally, choose whether to install dependencies immediately and which package ma
 │  ○ Skip installation
 ```
 
-If you select a package manager, the CLI runs the installation process with a 5-minute timeout. If you skip, you can manually run the installation later:
+If you select a package manager, the CLI runs the installation process:
+
+```bash
+◆  Installing dependencies with bun...
+│
+◇  Dependencies installed successfully!
+```
+
+If you skip, you can manually run the installation later:
 
 ```bash
 cd my-saas
@@ -254,31 +241,56 @@ If you make incompatible selections, the CLI displays an error message explainin
 
 ## After Generation
 
-Once the CLI completes, you'll see:
+Once file generation completes, the CLI runs post-generation tasks if configured:
 
-1. **Project structure**: A tree view of generated files and directories
-2. **Auto-generated CLI command**: A copy-paste ready command to recreate the exact configuration
-3. **Next steps**: Commands to navigate to your project and start development
-
-Example output:
-
-```
-┌  Project structure
+```bash
+◆  Initializing git repository...
 │
-│  my-saas/
-│  ├── apps/
-│  │   ├── web/
-│  │   ├── mobile/
-│  │   └── api/
-│  ├── packages/
-│  │   └── db/
-│  └── package.json
+◇  Git repository initialized successfully!
+```
+
+Then displays a comprehensive summary:
+
+```bash
+┌  📂 Summary
+│
+│  #🏠 Structure:
+│
+│  📦 my-saas/
+│  ├─ 🚀 apps/
+│  │  ├─ web/ (Next.js +2 modules)
+│  │  ├─ mobile/ (Expo +1 modules)
+│  │  └─ api/ (Hono)
+│  ├─ 📦 packages/
+│  │  └─ db/ (Drizzle + PostgreSQL)
+│  └─ ⚙️  Turborepo, Git, Biome, Husky
+│
+│  #💡 Next steps:
+│
+│  cd my-saas
+│
+│  # Development:
+│  bun run dev        # Start development server
+│
+│  # Build:
+│  bun run build      # Build for production
+│
+│  # Git:
+│  git remote add origin <your-repo-url>
+│  git push -u origin main
 │
 └
+```
 
-┌  Recreate this project
+Finally, an auto-generated command to recreate the project:
+
+```bash
+┌
+│  🚀 Project created successfully at /path/to/my-saas!
 │
-│  create-faster my-saas \
+│  🔥 You can recreate this project with the following command:
+│
+│  bunx create-faster my-saas \
 │    --app web:nextjs:shadcn,tanstack-query \
 │    --app mobile:expo:nativewind \
 │    --app api:hono \
@@ -289,10 +301,6 @@ Example output:
 │    --extras biome,husky
 │
 └
-
-Next steps:
-  cd my-saas
-  bun run dev
 ```
 
 The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.

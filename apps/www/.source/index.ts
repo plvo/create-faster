@@ -1,9 +1,8 @@
 // @ts-nocheck -- skip type checking
-import * as d_docs_7 from '../content/docs/stacks/nextjs.mdx?collection=docs';
-import * as d_docs_6 from '../content/docs/stacks/hono.mdx?collection=docs';
-import * as d_docs_5 from '../content/docs/stacks/expo.mdx?collection=docs';
-import * as d_docs_4 from '../content/docs/why.mdx?collection=docs';
-import * as d_docs_3 from '../content/docs/structure.mdx?collection=docs';
+import * as d_docs_6 from '../content/docs/stacks/nextjs.mdx?collection=docs';
+import * as d_docs_5 from '../content/docs/stacks/hono.mdx?collection=docs';
+import * as d_docs_4 from '../content/docs/stacks/expo.mdx?collection=docs';
+import * as d_docs_3 from '../content/docs/why.mdx?collection=docs';
 import * as d_docs_2 from '../content/docs/options.mdx?collection=docs';
 import * as d_docs_1 from '../content/docs/index.mdx?collection=docs';
 import * as d_docs_0 from '../content/docs/cli.mdx?collection=docs';
@@ -14,11 +13,10 @@ export const docs = _runtime.docs<typeof _source.docs>(
     { info: { path: 'cli.mdx', fullPath: 'content/docs/cli.mdx' }, data: d_docs_0 },
     { info: { path: 'index.mdx', fullPath: 'content/docs/index.mdx' }, data: d_docs_1 },
     { info: { path: 'options.mdx', fullPath: 'content/docs/options.mdx' }, data: d_docs_2 },
-    { info: { path: 'structure.mdx', fullPath: 'content/docs/structure.mdx' }, data: d_docs_3 },
-    { info: { path: 'why.mdx', fullPath: 'content/docs/why.mdx' }, data: d_docs_4 },
-    { info: { path: 'stacks/expo.mdx', fullPath: 'content/docs/stacks/expo.mdx' }, data: d_docs_5 },
-    { info: { path: 'stacks/hono.mdx', fullPath: 'content/docs/stacks/hono.mdx' }, data: d_docs_6 },
-    { info: { path: 'stacks/nextjs.mdx', fullPath: 'content/docs/stacks/nextjs.mdx' }, data: d_docs_7 },
+    { info: { path: 'why.mdx', fullPath: 'content/docs/why.mdx' }, data: d_docs_3 },
+    { info: { path: 'stacks/expo.mdx', fullPath: 'content/docs/stacks/expo.mdx' }, data: d_docs_4 },
+    { info: { path: 'stacks/hono.mdx', fullPath: 'content/docs/stacks/hono.mdx' }, data: d_docs_5 },
+    { info: { path: 'stacks/nextjs.mdx', fullPath: 'content/docs/stacks/nextjs.mdx' }, data: d_docs_6 },
   ],
   [
     {
@@ -29,7 +27,6 @@ export const docs = _runtime.docs<typeof _source.docs>(
           '---Introduction---',
           'index',
           'why',
-          'structure',
           'cli',
           'options',
           '---Stacks---',
