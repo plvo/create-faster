@@ -1,3 +1,41 @@
 ---
 title: Hono
+description: Hono is an ultra-fast, edge-first web framework for building APIs and web services with TypeScript.
 ---
+
+[Hono](https://hono.dev) is a small, simple, and ultrafast web framework for the Edges. It works on Cloudflare Workers, Fastly Compute, Deno, Bun, Vercel, AWS Lambda, and Node.js.
+
+**Why use Hono?**
+- **Ultra-Fast**: Built for edge runtimes with minimal overhead
+- **Lightweight**: Small bundle size (~12KB) with zero dependencies
+- **TypeScript**: First-class TypeScript support with end-to-end type safety
+- **Middleware**: Rich ecosystem of built-in and third-party middleware
+- **Edge-First**: Optimized for Cloudflare Workers, Deno Deploy, and other edge platforms
+- **Web Standard**: Built on Web Standards API (Request/Response)
+
+# Modules
+
+## Cloud
+
+### AWS Lambda
+
+*[Link to AWS Lambda](https://aws.amazon.com/lambda)*
+
+Deploy your Hono application to AWS Lambda with automatic request/response transformation.
+
+**Technical changes:**
+- **Inline modification pattern**: This module uses conditional template logic instead of separate files
+- Modifies `src/index.ts` to expose the `handler` function for AWS Lambda:
+  ```typescript
+  + import { handle } from 'hono/aws-lambda';
+  import app from './app'; // hono app
+
+  + export const handler = handle(app);
+  ```
+- When enabled:
+  - Imports `handle` adapter from `hono/aws-lambda`
+  - Exports `handler` function wrapping the Hono app (Lambda entry point)
+  - Transforms incoming Lambda events to Hono requests
+  - Transforms Hono responses to Lambda responses
+- When disabled:
+  - Exports raw Hono `app` for standard Node.js server

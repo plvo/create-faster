@@ -1,5 +1,34 @@
 ---
 title: Expo
-description: Expo is a platform for building native mobile applications using React Native.
+description: Expo is a platform for building native mobile applications using React Native with a superior developer experience.
 ---
 
+[Expo](https://expo.dev) is a production-ready framework for building native iOS and Android apps with React Native. It provides a complete development workflow from prototyping to deployment.
+
+**Why use Expo?**
+- **Developer Experience**: Hot reload, TypeScript support, and over-the-air updates
+- **Native APIs**: Access to 50+ native modules (camera, location, notifications, etc.)
+- **Cross-Platform**: Write once, run on iOS, Android, and web
+- **EAS (Expo Application Services)**: Cloud build, submit, and update services
+- **File-Based Routing**: Expo Router for type-safe navigation
+- **No Native Code Required**: Build production apps without touching Swift/Kotlin
+
+# Modules
+
+## UI & Styling
+
+### NativeWind
+
+*[Link to NativeWind](https://nativewind.dev)*
+
+Tailwind CSS for React Native. Write utility-first styling with the same Tailwind classes you use on the web.
+
+**Technical changes:**
+- Adds `nativewind` dependency to `package.json`
+- Adds `tailwindcss` v3.3.2 as dev dependency
+- Creates `tailwind.config.js` - Tailwind configuration:
+  - Content paths: `./src/**/*.{js,jsx,ts,tsx}`
+  - Preset: `require('nativewind/preset')`
+- Creates `metro.config.js` - Metro bundler config with NativeWind transformer
+- Creates `nativewind-env.d.ts` - TypeScript declaration file for NativeWind types
+- Creates `styles/globals.css` - Global CSS entry point for Tailwind directives

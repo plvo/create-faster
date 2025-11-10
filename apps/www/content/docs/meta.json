@@ -13,6 +13,15 @@
     "---Stacks---",
     "stacks/nextjs",
     "stacks/expo",
-    "stacks/hono"
+    "stacks/hono",
+    "---Database---",
+    "database/postgresql",
+    "database/mysql",
+    "---ORM---",
+    "orm/drizzle",
+    "orm/prisma",
+    "---Extras---",
+    "extras/biomejs",
+    "extras/husky"
   ]
 }
