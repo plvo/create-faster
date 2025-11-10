@@ -1,5 +1,5 @@
 ---
-title: Why create-faster
+title: Why create-faster?
 description: Benefits, philosophy, and how create-faster compares to alternatives
 ---
 
@@ -34,47 +34,27 @@ When you create multiple apps, create-faster configures Turborepo automatically.
 
 ## Why Choose create-faster
 
-### vs create-t3-app
+create-faster addresses specific gaps in the current scaffolding tool ecosystem while maintaining flexibility and modern best practices.
 
-create-t3-app pioneered the concept of type-safe, opinionated starters for Next.js applications. create-faster builds on this philosophy while addressing different use cases:
+### Key Differentiators
 
-**create-t3-app strengths**:
-- Focused Next.js experience
-- Deeply integrated tRPC + Next.js patterns
-- Proven production usage at scale
-- Strong community and documentation
+**Multi-App Architecture**: Native support for creating multiple applications simultaneously (web, mobile, server) with automatic monorepo configuration. No need to manually set up Turborepo or workspace linking.
 
-**create-faster differentiators**:
-- Multi-app support (web + mobile + server simultaneously)
-- Automatic Turborepo configuration for monorepos
-- Framework flexibility beyond single-framework starters
-- Modular system with opt-in features per framework
-- CLI flags for non-interactive automation
+**Automatic Orchestration**: When creating 2+ apps, Turborepo configuration happens automatically with proper caching, task pipelines, and shared package management.
 
-**Use create-t3-app when**: Building a single Next.js application with the opinionated T3 stack.
+**Framework Diversity**: Support for multiple frameworks across different application types. Not limited to single-ecosystem starters.
 
-**Use create-faster when**: Creating multi-app projects requiring monorepo structure, or needing framework diversity across web, mobile, and server applications.
+**Modular by Design**: Opt-in features per framework without forcing specific technology choices. Each stack has its own module system tailored to its ecosystem.
 
-### vs better-t-stack
+### Ideal Use Cases
 
-better-t-stack emphasizes minimalism and user choice with a "pick only what you need" philosophy.
+create-faster is designed for:
 
-**better-t-stack strengths**:
-- Extreme modularity
-- Wide framework support (including Remix, Solid, Svelte)
-- Minimal template approach
-- Transparent compatibility matrices
-
-**create-faster differentiators**:
-- Built-in multi-app workflow with automatic repo type selection
-- Integrated module system per framework
-- Unified stack selection interface
-- Automatic Turborepo orchestration
-- Auto-generated CLI command for reproducibility
-
-**Use better-t-stack when**: Building a single app with maximum framework choice and minimal pre-configuration.
-
-**Use create-faster when**: Building multi-app architectures or needing integrated module systems with framework-specific optimizations.
+- **SaaS applications** requiring web + mobile + API components in a single repository
+- **Teams** needing consistent scaffolding across multiple project types
+- **Production applications** with complex architecture requirements from day one
+- **Projects** requiring framework flexibility and monorepo structure without manual configuration
+- **Automated workflows** where reproducible project generation is essential
 
 ## Who Should Use create-faster
 

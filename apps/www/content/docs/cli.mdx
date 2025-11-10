@@ -249,58 +249,53 @@ Once file generation completes, the CLI runs post-generation tasks if configured
 ◇  Git repository initialized successfully!
 ```
 
-Then displays a comprehensive summary:
+Then displays a comprehensive summary with an auto-generated command to recreate the project:
 
 ```bash
-┌  📂 Summary
+◇  📂 Summary ────────────────────────────────────╮
+│                                                 │
+│  #🏠 Structure:                                 │
+│                                                 │
+│  📦 my-app/                                     │
+│  ├─ 🚀 apps/                                    │
+│  │  ├─ web/ (Next.js +4 modules)                │
+│  │  ├─ mobile/ (Expo +1 modules)                │
+│  │  ├─ api/ (Hono +1 modules)                   │
+│  ├─ 📦 packages/                                │
+│  │  └─ db/ (Drizzle + PostgreSQL)               │
+│  └─ ⚙️  Turborepo, Git, Biome                   │
+│                                                 │
+│  #💡 Next steps:                                │
+│                                                 │
+│  cd my-app                                      │
+│                                                 │
+│  # Development:                                 │
+│  bun run dev        # Start development server  │
+│                                                 │
+│  # Build:                                       │
+│  bun run build      # Build for production      │
+│                                                 │
+│  # Git:                                         │
+│  git remote add origin <your-repo-url>          │
+│  git push -u origin main                        │
+│                                                 │
+├─────────────────────────────────────────────────╯
 │
-│  #🏠 Structure:
-│
-│  📦 my-saas/
-│  ├─ 🚀 apps/
-│  │  ├─ web/ (Next.js +2 modules)
-│  │  ├─ mobile/ (Expo +1 modules)
-│  │  └─ api/ (Hono)
-│  ├─ 📦 packages/
-│  │  └─ db/ (Drizzle + PostgreSQL)
-│  └─ ⚙️  Turborepo, Git, Biome, Husky
-│
-│  #💡 Next steps:
-│
-│  cd my-saas
-│
-│  # Development:
-│  bun run dev        # Start development server
-│
-│  # Build:
-│  bun run build      # Build for production
-│
-│  # Git:
-│  git remote add origin <your-repo-url>
-│  git push -u origin main
-│
-└
+└  🚀 Project created successfully at /home/bob/my-app!
 ```
 
-Finally, an auto-generated command to recreate the project:
-
 ```bash
-┌
-│  🚀 Project created successfully at /path/to/my-saas!
-│
-│  🔥 You can recreate this project with the following command:
-│
-│  bunx create-faster my-saas \
-│    --app web:nextjs:shadcn,tanstack-query \
-│    --app mobile:expo:nativewind \
-│    --app api:hono \
-│    --database postgres \
-│    --orm drizzle \
-│    --git \
-│    --pm bun \
-│    --extras biome,husky
-│
-└
+🔥 You can recreate this project with the following command:
+
+bunx create-faster my-app \
+  --app web:nextjs:shadcn,next-themes,mdx,pwa \
+  --app mobile:expo:nativewind \
+  --app api:hono:aws-lambda \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome
 ```
 
 The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.
