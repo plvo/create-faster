@@ -37,11 +37,35 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://create-faster.dev';
+  const pageUrl = `${baseUrl}/docs/${page.slugs.join('/')}`;
+  const ogImage = getPageImage(page).url;
+
   return {
-    title: `${page.data.title} - create-faster`,
+    title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: pageUrl,
+    },
     openGraph: {
-      images: getPageImage(page).url,
+      title: page.data.title,
+      description: page.data.description,
+      url: pageUrl,
+      type: 'article',
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: page.data.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.data.title,
+      description: page.data.description,
+      images: [ogImage],
     },
   };
 }
