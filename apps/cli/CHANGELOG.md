@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/plvo/create-faster/compare/create-faster-v1.2.0...create-faster-v1.3.0) (2025-11-14)
+
+
+### Features
+
+* flags support ([#26](https://github.com/plvo/create-faster/issues/26)) ([d483edd](https://github.com/plvo/create-faster/commit/d483eddcedf958a95dd53787320390724d5efea1))
+* **www:** init docs and showcase ([#28](https://github.com/plvo/create-faster/issues/28)) ([f465153](https://github.com/plvo/create-faster/commit/f465153e9d68cbfc9d50597e0d138a55140b43f0))
+
 ## [1.2.0](https://github.com/plvo/create-faster/compare/create-faster-v1.1.3...create-faster-v1.2.0) (2025-11-05)
 
 
