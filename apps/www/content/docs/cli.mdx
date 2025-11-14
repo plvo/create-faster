@@ -1,0 +1,302 @@
+---
+title: Interactive CLI
+description: Step-by-step guide to the interactive workflow
+icon: Terminal
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+The interactive CLI provides a guided experience for creating projects. Run the command without any flags to start:
+
+```bash
+bunx create-faster
+```
+
+## Workflow Overview
+
+The CLI walks through configuration in a logical sequence, starting with naming decisions, then application setup, followed by infrastructure choices, and finally installation preferences.
+
+## Step-by-Step Process
+
+<Steps>
+
+<Step>
+
+### Project Name
+
+First, you'll name your project:
+
+```bash
+◇  Name of your project?
+│  my-saas
+```
+
+The CLI validates that no file or directory with this name exists in the current directory. For single-app projects, this name becomes the application directory. For multi-app projects, it becomes the monorepo root.
+
+</Step>
+
+<Step>
+
+### Application Count
+
+Next, specify how many applications to create:
+
+```bash
+◇  How many apps do you want to create?
+│  Eg: a backend + a frontend = enter 2
+│  Only a Next.js app = enter 1
+│  Turborepo will be used if more than one
+│  3
+```
+
+**Single app (1)**: Generates a standard framework project structure.
+
+**Multiple apps (2+)**: Automatically configures Turborepo with apps in `apps/` directory and shared packages in `packages/`.
+
+</Step>
+
+<Step>
+
+### App Configuration
+
+For each application, you'll configure its name, stack, and modules.
+
+#### App Name
+
+For single-app projects, the app name matches the project name automatically. For multi-app projects, you'll name each application:
+
+```bash
+◇  Name of the app #1?
+│  web
+
+◇  Name of the app #2?
+│  mobile
+
+◇  Name of the app #3?
+│  api
+```
+
+#### Stack Selection
+
+Choose the framework for each app. Stacks are organized by type:
+
+```bash
+◇  Select the stack for web
+│
+├ Web / Mobile App
+│  ● Next.js (React framework with SSR)
+│  ○ Expo (React Native framework)
+│
+└ Server / API
+   ○ Hono (Fast web framework)
+```
+
+The stack determines the base template and available modules.
+
+#### Module Selection
+
+After selecting a stack, choose optional modules to include. Available modules depend on the selected framework and are grouped by category:
+
+```bash
+◇  Do you want to add any Next.js modules to web?
+│
+│  UI & Styling
+│  ◻ shadcn/ui
+│  ◻ Next Themes
+│
+│  Features
+│  ◻ MDX
+│  ◻ PWA
+│
+│  Authentication
+│  ◻ Better Auth
+│
+│  Data Fetching
+│  ◻ TanStack Query
+│  ◻ TanStack Devtools
+│
+│  Forms
+│  ◻ React Hook Form
+│  ◻ TanStack Form
+```
+
+Use arrow keys to navigate and space to toggle selections.
+
+</Step>
+
+<Step>
+
+### Database Selection
+
+Choose a database provider or skip:
+
+```bash
+◇  Include a database?
+│  ● PostgreSQL
+│  ○ MySQL
+│  ○ None
+```
+
+Selecting a database enables ORM selection in the next step. Database configuration is shared across all applications in a monorepo via the `packages/db` package.
+
+</Step>
+
+<Step>
+
+### ORM Selection
+
+If you selected a database, choose an ORM:
+
+```bash
+◇  Configure an ORM?
+│  ● Drizzle
+│  ○ Prisma
+│  ○ None
+```
+
+The ORM package includes:
+- Type-safe database client
+- Schema definitions
+- Authentication integration (if auth module selected)
+- Database connection configuration
+
+</Step>
+
+<Step>
+
+### Git Initialization
+
+Choose whether to initialize a Git repository:
+
+```bash
+◇  Initialize Git?
+│  Yes / No (default: Yes)
+```
+
+If enabled, the CLI runs `git init` after file generation. This is required if you plan to use Husky for git hooks.
+
+</Step>
+
+<Step>
+
+### Extras
+
+Select additional development tools:
+
+```bash
+◇  Add any extras?
+│  ◻ Biome
+│  ◻ Husky
+```
+
+**Biome**: Adds unified linting and formatting configuration across all apps.
+
+**Husky**: Configures pre-commit hooks (requires Git to be initialized).
+
+</Step>
+
+<Step>
+
+### Dependency Installation
+
+Finally, choose whether to install dependencies immediately and which package manager to use:
+
+```bash
+◇  Install dependencies now?
+│  ● Install with bun
+│  ○ Install with pnpm
+│  ○ Install with npm
+│  ○ Skip installation
+```
+
+If you select a package manager, the CLI runs the installation process:
+
+```bash
+◆  Installing dependencies with bun...
+│
+◇  Dependencies installed successfully!
+```
+
+If you skip, you can manually run the installation later:
+
+```bash
+cd my-saas
+bun install
+```
+
+</Step>
+
+</Steps>
+
+## Validation Rules
+
+The CLI enforces compatibility requirements during configuration:
+
+**ORM requires Database**: You cannot select an ORM without first selecting a database provider.
+
+**Husky requires Git**: The Husky extra is only available if Git initialization is enabled.
+
+**Unique app names**: In multi-app projects, each application must have a unique name.
+
+If you make incompatible selections, the CLI displays an error message explaining the requirement.
+
+## After Generation
+
+Once file generation completes, the CLI runs post-generation tasks if configured:
+
+```bash
+◆  Initializing git repository...
+│
+◇  Git repository initialized successfully!
+```
+
+Then displays a comprehensive summary with an auto-generated command to recreate the project:
+
+```bash
+◇  📂 Summary ────────────────────────────────────╮
+│                                                 │
+│  #🏠 Structure:                                 │
+│                                                 │
+│  📦 my-app/                                     │
+│  ├─ 🚀 apps/                                    │
+│  │  ├─ web/ (Next.js +4 modules)                │
+│  │  ├─ mobile/ (Expo +1 modules)                │
+│  │  ├─ api/ (Hono +1 modules)                   │
+│  ├─ 📦 packages/                                │
+│  │  └─ db/ (Drizzle + PostgreSQL)               │
+│  └─ ⚙️  Turborepo, Git, Biome                   │
+│                                                 │
+│  #💡 Next steps:                                │
+│                                                 │
+│  cd my-app                                      │
+│                                                 │
+│  # Development:                                 │
+│  bun run dev        # Start development server  │
+│                                                 │
+│  # Build:                                       │
+│  bun run build      # Build for production      │
+│                                                 │
+│  # Git:                                         │
+│  git remote add origin <your-repo-url>          │
+│  git push -u origin main                        │
+│                                                 │
+├─────────────────────────────────────────────────╯
+│
+└  🚀 Project created successfully at /home/bob/my-app!
+```
+
+```bash
+🔥 You can recreate this project with the following command:
+
+bunx create-faster my-app \
+  --app web:nextjs:shadcn,next-themes,mdx,pwa \
+  --app mobile:expo:nativewind \
+  --app api:hono:aws-lambda \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome
+```
+
+The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.

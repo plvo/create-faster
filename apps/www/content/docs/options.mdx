@@ -1,0 +1,273 @@
+---
+title: CLI Options
+description: Complete reference for CLI flags and non-interactive mode
+icon: Option
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+The CLI supports flags for non-interactive automation and reproducibility. Use flags to skip prompts and create projects with predefined configurations.
+
+## Non-Interactive Mode
+
+Pass flags to create a project without interactive prompts:
+
+```bash
+bunx create-faster my-project [options]
+```
+
+You can combine flags with prompts for a hybrid approach: provide known values via flags and let the CLI prompt for the rest.
+
+## Available Flags
+
+### Project Name (Positional)
+
+```bash
+bunx create-faster <project-name>
+```
+
+The first argument specifies the project name. If omitted, the CLI prompts for it.
+
+**Example**:
+```bash
+bunx create-faster my-saas
+```
+
+### `--app <name:stack:modules>`
+
+Define an application to create. Repeatable for multi-app projects.
+
+**Format**: `name:stack` or `name:stack:module1,module2`
+
+**Examples**:
+```bash
+--app web:nextjs
+--app web:nextjs:shadcn,tanstack-query
+--app mobile:expo:nativewind
+--app api:hono
+```
+
+Use multiple `--app` flags for multi-app monorepos:
+```bash
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn,mdx \
+  --app mobile:expo:nativewind \
+  --app api:hono
+```
+
+### `--database <provider>`
+
+Select a database provider.
+
+**Options**: `postgres`, `mysql`
+
+**Example**:
+```bash
+--database postgres
+```
+
+### `--orm <provider>`
+
+Select an ORM. Requires `--database` to be specified.
+
+**Options**: `prisma`, `drizzle`
+
+**Example**:
+```bash
+--database postgres --orm drizzle
+```
+
+### `--git`
+
+Initialize a Git repository after generation.
+
+**Example**:
+```bash
+--git
+```
+
+### `--pm <manager>`
+
+Select a package manager for dependency installation.
+
+**Options**: `bun`, `npm`, `pnpm`
+
+**Example**:
+```bash
+--pm bun
+```
+
+If omitted, the CLI prompts for installation preferences.
+
+### `--extras <items>`
+
+Add development tools as a comma-separated list.
+
+**Options**: `biome`, `husky`
+
+**Example**:
+```bash
+--extras biome,husky
+```
+
+**Note**: `husky` requires `--git` to be specified.
+
+## Dependency Rules
+
+The CLI validates flag combinations to ensure compatibility:
+
+**ORM requires Database**:
+```bash
+# ❌ Invalid - ORM without database
+bunx create-faster myapp --orm drizzle
+
+# ✓ Valid
+bunx create-faster myapp --database postgres --orm drizzle
+```
+
+**Husky requires Git**:
+```bash
+# ❌ Invalid - Husky without git
+bunx create-faster myapp --extras husky
+
+# ✓ Valid
+bunx create-faster myapp --git --extras husky
+```
+
+**Unique app names** (multi-app only):
+```bash
+# ❌ Invalid - Duplicate app names
+bunx create-faster myapp --app web:nextjs --app web:expo
+
+# ✓ Valid
+bunx create-faster myapp --app web:nextjs --app mobile:expo
+```
+
+## Complete Examples
+
+### Single Next.js App with Modules
+
+<Tabs items={['bun', 'npm', 'pnpm']}>
+  <Tab value="bun">
+    ```bash
+    bunx create-faster my-app \
+      --app my-app:nextjs:shadcn,better-auth,tanstack-query \
+      --database postgres \
+      --orm drizzle \
+      --git \
+      --pm bun \
+      --extras biome,husky
+    ```
+  </Tab>
+  <Tab value="npm">
+    ```bash
+    npx create-faster my-app \
+      --app my-app:nextjs:shadcn,better-auth,tanstack-query \
+      --database postgres \
+      --orm drizzle \
+      --git \
+      --pm npm \
+      --extras biome,husky
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx create-faster my-app \
+      --app my-app:nextjs:shadcn,better-auth,tanstack-query \
+      --database postgres \
+      --orm drizzle \
+      --git \
+      --pm pnpm \
+      --extras biome,husky
+    ```
+  </Tab>
+</Tabs>
+
+### Multi-App SaaS with Turborepo
+
+```bash
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn,next-themes,better-auth,tanstack-query \
+  --app mobile:expo:nativewind \
+  --app api:hono \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome,husky
+```
+
+This creates:
+- Next.js web app with UI, theming, authentication, and data fetching
+- Expo mobile app with Tailwind-like styling
+- Hono API server
+- Shared database package with Drizzle ORM
+- Automatic Turborepo configuration
+- Git repository with pre-commit hooks
+- Dependencies installed via bun
+
+### Minimal Setup
+
+```bash
+bunx create-faster my-app \
+  --app my-app:nextjs \
+  --pm bun
+```
+
+Creates a basic Next.js app with no modules, no database, and automatic dependency installation.
+
+### Mixed Interactive Mode
+
+Provide partial flags and let the CLI prompt for missing options:
+
+```bash
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn \
+  --database postgres
+```
+
+This pre-fills the project with a Next.js app and PostgreSQL, then prompts for:
+- ORM selection
+- Git initialization
+- Extras
+- Package manager
+
+## Auto-Generated Command
+
+After project generation, create-faster displays a copy-paste ready command reflecting your exact configuration:
+
+```
+┌  Recreate this project
+│
+│  create-faster my-saas \
+│    --app web:nextjs:shadcn,better-auth,tanstack-query \
+│    --app mobile:expo:nativewind \
+│    --app api:hono \
+│    --database postgres \
+│    --orm drizzle \
+│    --git \
+│    --pm bun \
+│    --extras biome,husky
+│
+└
+```
+
+This command is useful for:
+- Sharing configurations with team members
+- Documentation and onboarding
+- Reproducing exact setups for testing
+- Creating similar projects with variations
+
+## Getting Help
+
+Display all available options and examples:
+
+```bash
+bunx create-faster --help
+```
+
+The help output includes:
+- Usage syntax
+- Complete flag reference
+- Practical examples for single and multi-app projects
+- Available stacks, databases, and ORMs

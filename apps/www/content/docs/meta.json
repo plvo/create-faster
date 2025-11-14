@@ -1,0 +1,27 @@
+{
+  "title": "Documentation",
+  "description": "Documentation for the project",
+  "root": true,
+  "pages": [
+    "---INTRODUCTION---",
+    "index",
+    "why",
+    "cli",
+    "options",
+    "roadmap",
+    "changelog",
+    "---STACKS---",
+    "stacks/nextjs",
+    "stacks/expo",
+    "stacks/hono",
+    "---DATABASES---",
+    "database/postgresql",
+    "database/mysql",
+    "---ORMS---",
+    "orm/drizzle",
+    "orm/prisma",
+    "---EXTRAS---",
+    "extras/biomejs",
+    "extras/husky"
+  ]
+}

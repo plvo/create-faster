@@ -1,7 +1,14 @@
+import { createMDX } from 'fumadocs-mdx/next';
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const withMDX = createMDX();
+
+const config: NextConfig = {
+  reactStrictMode: true,
+
+  compiler: {
+    removeConsole: true,
+  },
 };
 
-export default nextConfig;
+export default withMDX(config);

@@ -1,0 +1,62 @@
+---
+title: Why create-faster?
+description: Benefits, philosophy, and how create-faster compares to alternatives
+icon: FileQuestionMark
+---
+
+## Core Benefits
+
+### Time Savings
+
+Starting a new project typically involves hours of configuration: setting up build tools, configuring linters, integrating authentication, connecting databases, and ensuring all dependencies work together. create-faster eliminates this repetitive work by providing pre-configured, tested integrations.
+
+### Production-Ready Defaults
+
+Every configuration choice in create-faster reflects production deployment requirements:
+
+- Type-safe database access with supported ORMs
+- Authentication framework integration
+- Linting and formatting tools
+- Git hooks for quality gates
+- Optimized builds for all supported frameworks
+
+### Integrated Multi-App Support
+
+Complex applications often require multiple deployment targets: web frontends, mobile apps, and backend APIs. create-faster handles the orchestration complexity by automatically configuring Turborepo for shared code, coordinated builds, and unified dependency management.
+
+### Automatic Monorepo Orchestration
+
+When you create multiple apps, create-faster configures Turborepo automatically. No manual workspace setup, package linking, or build pipeline configuration required. The generated monorepo includes:
+
+- Shared packages for database access and authentication
+- Optimized task execution with caching
+- Proper TypeScript project references
+- Coordinated dependency versions
+
+## Why Choose create-faster
+
+create-faster addresses specific gaps in the current scaffolding tool ecosystem while maintaining flexibility and modern best practices.
+
+### Key Differentiators
+
+**Multi-App Architecture**: Native support for creating multiple applications simultaneously (web, mobile, server) with automatic monorepo configuration. No need to manually set up Turborepo or workspace linking.
+
+**Automatic Orchestration**: When creating 2+ apps, Turborepo configuration happens automatically with proper caching, task pipelines, and shared package management.
+
+**Framework Diversity**: Support for multiple frameworks across different application types. Not limited to single-ecosystem starters.
+
+**Modular by Design**: Opt-in features per framework without forcing specific technology choices. Each stack has its own module system tailored to its ecosystem.
+
+### Ideal Use Cases
+
+create-faster is designed for:
+
+- **SaaS applications** requiring web + mobile + API components in a single repository
+- **Teams** needing consistent scaffolding across multiple project types
+- **Production applications** with complex architecture requirements from day one
+- **Projects** requiring framework flexibility and monorepo structure without manual configuration
+- **Automated workflows** where reproducible project generation is essential
+
+## Who Should Use create-faster
+
+The tool is designed for developers who understand their stack choices but want to skip the configuration boilerplate and integration challenges.

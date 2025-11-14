@@ -46,3 +46,5 @@ yarn-error.log*
 .claude/**.md
 !.claude/CLAUDE.md
 !.claude/commands/**.md
+
+**/*.source

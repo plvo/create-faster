@@ -1,0 +1,115 @@
+---
+title: Getting Started
+description: create-faster is a modern CLI scaffolding tool that generates production-ready full-stack projects with multiple framework combinations. Unlike traditional scaffolding tools, create-faster enables you to create multiple applications simultaneously with automatic monorepo orchestration.
+icon: Book
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+## Quick Start
+
+<Tabs items={['bun', 'npm', 'pnpm']}>
+  <Tab value="bun">
+    ```bash
+    bunx create-faster
+    ```
+  </Tab>
+  <Tab value="npm">
+    ```bash
+    npx create-faster
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx create-faster
+    ```
+  </Tab>
+</Tabs>
+
+## Multi-App Support
+
+The defining feature of create-faster is its ability to scaffold multiple applications in a single command. The CLI automatically determines whether to use a standard structure or Turborepo based on the number of applications.
+
+**Single application** (enter `1`):
+
+```bash
+◇  How many apps do you want to create?
+│  1
+
+# Result: Standard framework structure
+my-app/
+└─ src/
+```
+
+**Multiple applications** (enter `2` or more):
+
+```bash
+◇  How many apps do you want to create?
+│  3
+
+# Result: Automatic Turborepo configuration
+my-saas/
+├─ apps/
+│  ├─ web/
+│  ├─ mobile/
+│  └─ api/
+└─ packages/
+```
+
+Need a Next.js frontend, an Expo mobile app, and a Hono backend? Simply specify 3 apps and create-faster handles the monorepo orchestration automatically.
+
+## Two Ways to Create Projects
+
+### Interactive Mode
+
+Run the CLI without flags for a guided experience with prompts:
+
+```bash
+bunx create-faster
+```
+
+The interactive CLI walks you through:
+- Project and app naming
+- Stack selection (Next.js, Expo, Hono)
+- Module configuration (UI libraries, authentication, data fetching, etc.)
+- Database and ORM setup
+- Development tools (Biome, Git, Husky)
+- Dependency installation
+
+### Non-Interactive Mode
+
+Use CLI flags for automation and reproducibility:
+
+```bash
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn,tanstack-query \
+  --app mobile:expo:nativewind \
+  --app api:hono \
+  --database postgres \
+  --orm drizzle \
+  --git \
+  --pm bun \
+  --extras biome,husky
+```
+
+After each project generation, create-faster displays a copy-paste ready command to recreate the exact configuration.
+
+## Philosophy
+
+create-faster draws inspiration from established tools like create-t3-app and better-t-stack while addressing a specific gap: modern full-stack development often requires multiple applications working together.
+
+Rather than enforcing strict conventions, create-faster provides sensible production-ready defaults and handles the complexity of multi-app integration. The tool focuses on:
+
+- **Flexibility**: Choose only what you need
+- **Scale**: Single app or multi-app architecture
+- **Integration**: Pre-configured compatibility between stacks
+- **Modularity**: Opt-in features without bloat
+- **Currency**: Modern, actively maintained dependencies
+
+Each framework follows its own standard conventions while benefiting from shared infrastructure when using Turborepo.
+
+## Next Steps
+
+- [Learn why](/docs/why) create-faster exists and how it compares to alternatives
+- [Explore the interactive CLI](/docs/cli) workflow
+- [Reference all available options](/docs/options) and flags
