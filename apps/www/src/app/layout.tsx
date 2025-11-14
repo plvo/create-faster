@@ -1,5 +1,6 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import '@/styles/global.css';
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/constants';
@@ -103,6 +104,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
       </head>
       <body className='flex flex-col min-h-screen'>
         <RootProvider>{children}</RootProvider>
+        <Analytics />
       </body>
     </html>
   );
