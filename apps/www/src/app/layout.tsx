@@ -1,5 +1,5 @@
 import { RootProvider } from 'fumadocs-ui/provider/next';
-import './global.css';
+import '@/styles/global.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/constants';
@@ -70,8 +70,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
+    shortcut: '/cf-96x96.png',
+    apple: '/apple-icon.png',
   },
   manifest: '/manifest.json',
 };
@@ -97,6 +97,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <html lang='en' className={inter.className} suppressHydrationWarning>
       <head>
+        <meta name='apple-mobile-web-app-title' content='Create Faster' />
         {/** biome-ignore lint/security/noDangerouslySetInnerHtml: seo */}
         <script type='application/ld+json' dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
