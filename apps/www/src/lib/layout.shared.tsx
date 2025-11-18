@@ -8,7 +8,7 @@ export function baseOptions(): BaseLayoutProps {
         <div className='flex items-center gap-0.5'>
           <Image src='/cf-light.png' alt='Create Faster' width={64} height={64} className='size-7 dark:hidden' />
           <Image src='/cf-dark.png' alt='Create Faster' width={64} height={64} className='size-7 hidden dark:block' />
-          <span className='font-bold font-bluunext'>Create Faster</span>
+          <span className='font-bold font-bluunext whitespace-nowrap'>Create Faster</span>
         </div>
       ),
     },

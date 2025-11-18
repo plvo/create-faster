@@ -15,35 +15,44 @@ export function CliDemo() {
       <Terminal
         className='text-xs w-full max-w-full overflow-hidden'
         childrenHeader={
-          <div className='flex gap-2'>
-            <p className='text-gray-400 text-sm flex items-center mr-2'>
-              {scenario === 'single'
-                ? 'Initializing a single Next.js app'
-                : 'Initializing a complete project with a Next.js, Expo and Hono app'}
-            </p>
+          <div className='flex max-sm:flex-col justify-between gap-2 h-8'>
+            <div className='flex items-center justify-between gap-3'>
+              <div className='flex items-center gap-2'>
+                <div className='size-2 rounded-full bg-red-500'></div>
+                <div className='size-2 rounded-full bg-yellow-500'></div>
+                <div className='size-2 rounded-full bg-green-500'></div>
+              </div>
+              <p className='text-gray-400 text-sm flex items-center mr-2'>
+                {scenario === 'single'
+                  ? 'Initializing a single Next.js app'
+                  : 'Initializing a complete project with a Next.js, Expo and Hono app'}
+              </p>
+            </div>
 
-            <button
-              type='button'
-              onClick={() => setScenario('single')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                scenario === 'single' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              Single App
-            </button>
-            <button
-              type='button'
-              onClick={() => setScenario('turborepo')}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                scenario === 'turborepo' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              Monorepo
-            </button>
+            <div className='flex max-sm:justify-end gap-2'>
+              <button
+                type='button'
+                onClick={() => setScenario('single')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
+                  scenario === 'single' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Single App
+              </button>
+              <button
+                type='button'
+                onClick={() => setScenario('turborepo')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
+                  scenario === 'turborepo' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Monorepo
+              </button>
+            </div>
           </div>
         }
       >
-        <ScrollArea className='max-h-96'>
+        <ScrollArea className='h-96 bg-white dark:bg-black'>
           {scenario === 'single' ? <SingleAppScenario /> : <TurborepoScenario />}
         </ScrollArea>
       </Terminal>
@@ -51,54 +60,11 @@ export function CliDemo() {
   );
 }
 
-function Prompt({ content, step, delay }: { content: string; step: 1 | 2 | 3 | 4 | 5; delay: number }) {
-  const stepString = `[ ${'◆'.repeat(step)}${' ○'.repeat(5 - step)} ] ${step}/5 ${step * 20}%`;
-  return (
-    <AnimatedSpan delay={delay} className='flex items-center gap-2'>
-      <span className='text-cyan-400'>◆</span> {content} <span className='text-blue-400'>{stepString}</span>
-    </AnimatedSpan>
-  );
-}
-
-function CliLine({
-  content,
-  description,
-  icon,
-  startLine = '│',
-}: {
-  content: React.ReactNode;
-  description?: string;
-  icon?: '◼' | '◇' | '◻' | '✓';
-  startLine?: '◇' | '├' | '│' | '└' | '┌' | null;
-}) {
-  return (
-    <div className='flex items-center gap-2'>
-      {startLine && <span className='text-gray-400'>{startLine}</span>}
-      {icon && <span className='text-green-400'>{icon}</span>} {content}{' '}
-      {description && <span className='text-gray-500'>{description}</span>}
-    </div>
-  );
-}
-
-function Typing({ content, delay }: { content: string; delay: number }) {
-  return (
-    <AnimatedSpan delay={delay}>
-      <div className='flex items-center gap-2'>
-        <span className='text-gray-400'>│</span>
-        <TypingAnimation delay={1400} duration={40} className='text-green-400'>
-          {content}
-        </TypingAnimation>
-      </div>
-      <span className='text-gray-400'>│</span>
-    </AnimatedSpan>
-  );
-}
-
 function SingleAppScenario() {
   return (
     <div className='w-full text-left relative'>
-      <TypingAnimation delay={0} duration={10} className='text-cyan-400'>
-        $ bunx create-faster
+      <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400'>
+        $ bun create faster
       </TypingAnimation>
 
       <AnimatedSpan delay={500} className='text-blue-400 leading-tight mb-6'>
@@ -191,7 +157,7 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <AnimatedSpan delay={12000} className='text-green-400'>
+      <AnimatedSpan delay={12000} className='text-green-600 dark:text-green-400'>
         <CliLine content='Created 47 files' icon='✓' startLine='◇' />
         <span className='text-gray-400'>│</span>
         <CliLine content='Initialized Git repository' icon='✓' startLine='◇' />
@@ -240,7 +206,7 @@ function SingleAppScenario() {
       </AnimatedSpan>
 
       <AnimatedSpan delay={14500}>
-        <TypingAnimation delay={0} duration={10} className='text-cyan-400 pt-6'>
+        <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400 pt-6'>
           $ ls ./my-awesome-app
         </TypingAnimation>
 
@@ -259,8 +225,8 @@ docker.compose.yml  next-env.d.ts  node_modules       postcss.config.mjs  script
 function TurborepoScenario() {
   return (
     <div className='w-full text-left relative'>
-      <TypingAnimation delay={0} duration={10} className='text-cyan-400'>
-        $ bunx create-faster
+      <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400'>
+        $ bun create faster
       </TypingAnimation>
 
       <AnimatedSpan delay={500} className='text-blue-400 leading-tight mb-6'>
@@ -407,7 +373,7 @@ function TurborepoScenario() {
       </AnimatedSpan>
 
       {/* Results */}
-      <AnimatedSpan delay={19000} className='text-green-400'>
+      <AnimatedSpan delay={19000} className='text-green-600 dark:text-green-400'>
         <CliLine content='Created 142 files' icon='✓' startLine='◇' />
         <span className='text-gray-400'>│</span>
         <CliLine content='Initialized Git repository' icon='✓' startLine='◇' />
@@ -462,7 +428,7 @@ function TurborepoScenario() {
       </AnimatedSpan>
 
       <AnimatedSpan delay={21500}>
-        <TypingAnimation delay={0} duration={10} className='text-cyan-400 pt-6'>
+        <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400 pt-6'>
           $ ls ./my-saas-project
         </TypingAnimation>
 
@@ -475,5 +441,49 @@ packages      .gitignore     .husky         tsconfig.json
         />
       </AnimatedSpan>
     </div>
+  );
+}
+
+function Prompt({ content, step, delay }: { content: string; step: 1 | 2 | 3 | 4 | 5; delay: number }) {
+  const stepString = `[ ${'◆'.repeat(step)}${' ○'.repeat(5 - step)} ] ${step}/5 ${step * 20}%`;
+  return (
+    <AnimatedSpan delay={delay} className='flex items-center gap-2'>
+      <span className='text-cyan-600 dark:text-cyan-400'>◆</span> {content}{' '}
+      <span className='text-blue-400'>{stepString}</span>
+    </AnimatedSpan>
+  );
+}
+
+function CliLine({
+  content,
+  description,
+  icon,
+  startLine = '│',
+}: {
+  content: React.ReactNode;
+  description?: string;
+  icon?: '◼' | '◇' | '◻' | '✓';
+  startLine?: '◇' | '├' | '│' | '└' | '┌' | null;
+}) {
+  return (
+    <div className='flex items-center gap-2'>
+      {startLine && <span className='text-gray-400'>{startLine}</span>}
+      {icon && <span className='text-green-600 dark:text-green-400'>{icon}</span>} {content}{' '}
+      {description && <span className='text-gray-500'>{description}</span>}
+    </div>
+  );
+}
+
+function Typing({ content, delay }: { content: string; delay: number }) {
+  return (
+    <AnimatedSpan delay={delay}>
+      <div className='flex items-center gap-2'>
+        <span className='text-gray-400'>│</span>
+        <TypingAnimation delay={1400} duration={40} className='text-green-600 dark:text-green-400'>
+          {content}
+        </TypingAnimation>
+      </div>
+      <span className='text-gray-400'>│</span>
+    </AnimatedSpan>
   );
 }

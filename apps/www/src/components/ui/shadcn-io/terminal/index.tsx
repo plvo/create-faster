@@ -94,17 +94,10 @@ interface TerminalProps {
 
 export const Terminal = ({ children, className, childrenHeader }: TerminalProps) => {
   return (
-    <div className={cn('z-0 h-full w-full max-w-lg rounded-xl border border-border bg-background', className)}>
-      <div className='flex justify-between gap-y-2 border-b border-border p-4 w-full'>
-        <div className='flex items-center gap-2'>
-          <div className='size-2 rounded-full bg-red-500'></div>
-          <div className='size-2 rounded-full bg-yellow-500'></div>
-          <div className='size-2 rounded-full bg-green-500'></div>
-        </div>
-        {childrenHeader}
-      </div>
-      <pre className='p-4 font-mono'>
-        <code className='block overflow-auto'>{children}</code>
+    <div className={cn('z-0 h-full w-full max-w-lg rounded-xl border border-border bg-white dark:bg-black', className)}>
+      <div className='border-b border-border p-4 w-full'>{childrenHeader}</div>
+      <pre className='font-mono'>
+        <code className='block m-4'>{children}</code>
       </pre>
     </div>
   );

@@ -5,7 +5,7 @@ import { CliDemo } from '@/components/cli-demo';
 
 export default function HomePage() {
   return (
-    <main className='flex flex-col justify-center text-center flex-1 gap-6'>
+    <main className='flex flex-col justify-center text-center flex-1 gap-6 p-4'>
       <div className='space-y-2'>
         <div className='flex items-center justify-center'>
           <Image
@@ -23,7 +23,7 @@ export default function HomePage() {
             className='size-14 hidden dark:block'
           />
 
-          <h1 className='text-4xl font-bold font-bluunext'>Create Faster</h1>
+          <h1 className='text-4xl font-bold font-bluunext whitespace-nowrap'>Create Faster</h1>
         </div>
         <p className='text-lg text-fd-muted-foreground max-w-3xl mx-auto'>
           Initialize production-ready full-stack projects with multiple framework combinations
@@ -31,17 +31,17 @@ export default function HomePage() {
       </div>
 
       <div
-        className='w-full max-w-5xl border border-fd-accent rounded-xl mx-auto overflow-hidden
+        className='w-full max-w-4xl border border-fd-accent rounded-xl mx-auto overflow-hidden
           shadow-[0_0_32px_0_rgba(0,48,255,0.1),0_0_16px_0_rgba(0,48,255,0.08)]'
       >
         <CliDemo />
       </div>
 
-      <div className='flex max-md:flex-col items-center justify-center gap-2'>
+      <div className='flex max-md:w-full items-center justify-center gap-2'>
         <Link href='https://github.com/plvo/create-faster' target='_blank'>
           <button
             type='button'
-            className='px-4 py-2 rounded-md bg-fd-accent text-fd-accent-foreground cursor-pointer flex items-center gap-2 hover:bg-fd-accent/90'
+            className='px-4 py-2 max-md:w-full rounded-md bg-fd-accent text-fd-accent-foreground cursor-pointer flex items-center gap-2 hover:bg-fd-accent/90'
           >
             <svg
               role='img'
