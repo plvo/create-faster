@@ -6,9 +6,9 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <div className='flex items-center gap-0.5'>
-          <Image src='/cf-black.png' alt='Create Faster' width={64} height={64} className='size-7 dark:hidden' />
-          <Image src='/cf-white.png' alt='Create Faster' width={64} height={64} className='size-7 hidden dark:block' />
-          <span className='font-bold'>Create Faster</span>
+          <Image src='/cf-light.png' alt='Create Faster' width={64} height={64} className='size-7 dark:hidden' />
+          <Image src='/cf-dark.png' alt='Create Faster' width={64} height={64} className='size-7 hidden dark:block' />
+          <span className='font-bold font-bluunext whitespace-nowrap'>Create Faster</span>
         </div>
       ),
     },

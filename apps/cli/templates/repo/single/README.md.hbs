@@ -1,0 +1,82 @@
+# {{projectName}}
+
+This project was initialized with [create-faster](https://github.com/plvo/create-faster), a modern CLI scaffolding tool for production-ready full-stack applications with curated templates and modular architecture.
+
+## Stack
+
+{{#each apps}}
+**{{stackName}}**{{#if modules.length}} with {{modules.length}} module{{#if (ne modules.length 1)}}s{{/if}}{{/if}}
+{{#if modules}}
+- Modules: {{#each modules}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+
+{{/each}}
+
+{{#if database}}
+## Database & ORM
+
+- **Database**: {{database}}
+{{#if orm}}
+- **ORM**: {{orm}}
+{{/if}}
+
+{{/if}}
+## Development Tools
+
+{{#if git}}
+- Git version control initialized
+{{/if}}
+{{#if extras}}
+{{#each extras}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+## Getting Started
+
+Install dependencies:
+
+```bash
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+```
+
+{{#if database}}
+Set up the database:
+
+```bash
+# Create .env file with database credentials
+cp .env.example .env
+
+# Run migrations
+{{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
+```
+
+{{/if}}
+Start the development server:
+
+```bash
+{{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
+```
+
+{{#if (hasAnyStack "nextjs")}}
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+{{/if}}
+
+## Build for Production
+
+```bash
+{{#if pm}}{{pm}} run build{{else}}npm run build{{/if}}
+```
+
+## Learn More
+
+- [create-faster documentation](https://github.com/plvo/create-faster)
+{{#if (hasAnyStack "nextjs")}}
+- [Next.js documentation](https://nextjs.org/docs)
+{{/if}}
+{{#if (hasAnyStack "expo")}}
+- [Expo documentation](https://docs.expo.dev)
+{{/if}}
+{{#if (hasAnyStack "hono")}}
+- [Hono documentation](https://hono.dev)
+{{/if}}

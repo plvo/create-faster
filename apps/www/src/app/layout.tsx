@@ -3,17 +3,24 @@ import '@/styles/global.css';
 import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/constants';
 
 const inter = Inter({
   subsets: ['latin'],
 });
 
+const bluunext = localFont({
+  src: '../styles/fonts/bluunext-bold.otf',
+  variable: '--font-bluunext',
+  weight: '100 900',
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: `%s - ${SITE_TITLE}`,
+    template: `%s - ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   keywords: [
@@ -70,11 +77,21 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.ico',
     shortcut: '/cf-96x96.png',
     apple: '/apple-icon.png',
+    icon: [
+      {
+        rel: 'icon',
+        media: '(prefers-color-scheme: light)',
+        url: '/favicon-light.ico',
+      },
+      {
+        rel: 'icon',
+        media: '(prefers-color-scheme: dark)',
+        url: '/favicon-dark.ico',
+      },
+    ],
   },
-  manifest: '/manifest.json',
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {
@@ -96,7 +113,7 @@ export default function Layout({ children }: LayoutProps<'/'>) {
   };
 
   return (
-    <html lang='en' className={inter.className} suppressHydrationWarning>
+    <html lang='en' className={`${inter.className} ${bluunext.variable}`} suppressHydrationWarning>
       <head>
         <meta name='apple-mobile-web-app-title' content='Create Faster' />
         {/** biome-ignore lint/security/noDangerouslySetInnerHtml: seo */}

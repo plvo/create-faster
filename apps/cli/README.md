@@ -1,3 +1,1 @@
-```bash
-bunx create-faster
-```
+../../README.md
