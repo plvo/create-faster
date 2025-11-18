@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.6",
+    "@repo/config": "*",
     "husky": "^9.1.7",
     "knip": "^5.66.1",
     "rimraf": "^6.0.1",

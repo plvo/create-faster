@@ -12,7 +12,7 @@ interface AnimatedSpanProps extends MotionProps {
 
 export const AnimatedSpan = ({ children, delay = 0, className, ...props }: AnimatedSpanProps) => (
   <motion.div
-    initial={{ opacity: 0, y: -5 }}
+    initial={{ opacity: 0, y: -4 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3, delay: delay / 1000 }}
     className={cn('grid text-sm font-normal tracking-tight', className)}
@@ -89,22 +89,19 @@ export const TypingAnimation = ({
 interface TerminalProps {
   children: React.ReactNode;
   className?: string;
+  childrenHeader?: React.ReactNode;
 }
 
-export const Terminal = ({ children, className }: TerminalProps) => {
+export const Terminal = ({ children, className, childrenHeader }: TerminalProps) => {
   return (
-    <div
-      className={cn(
-        'z-0 h-full max-h-[400px] w-full max-w-lg rounded-xl border border-border bg-background',
-        className,
-      )}
-    >
-      <div className='flex flex-col gap-y-2 border-b border-border p-4'>
-        <div className='flex flex-row gap-x-2'>
-          <div className='h-2 w-2 rounded-full bg-red-500'></div>
-          <div className='h-2 w-2 rounded-full bg-yellow-500'></div>
-          <div className='h-2 w-2 rounded-full bg-green-500'></div>
+    <div className={cn('z-0 h-full w-full max-w-lg rounded-xl border border-border bg-background', className)}>
+      <div className='flex justify-between gap-y-2 border-b border-border p-4 w-full'>
+        <div className='flex items-center gap-2'>
+          <div className='size-2 rounded-full bg-red-500'></div>
+          <div className='size-2 rounded-full bg-yellow-500'></div>
+          <div className='size-2 rounded-full bg-green-500'></div>
         </div>
+        {childrenHeader}
       </div>
       <pre className='p-4 font-mono'>
         <code className='block overflow-auto'>{children}</code>

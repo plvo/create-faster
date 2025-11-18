@@ -1,9 +1,9 @@
+import { ASCII } from '@repo/shared';
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
-import { INTRO_ASCII } from './lib/constants';
 
 interface ParsedFlags {
   projectName?: string;
@@ -19,7 +19,7 @@ export function parseFlags(): Partial<TemplateContext> {
   const program = new Command();
 
   program
-    .addHelpText('before', INTRO_ASCII)
+    .addHelpText('before', ASCII)
     .name(color.blue('npx create-faster'))
     .usage(color.blue('<project-name> [options]'))
     .description(color.cyan('Modern CLI scaffolding tool for production-ready projects'))

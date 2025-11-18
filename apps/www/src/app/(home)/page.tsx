@@ -6,38 +6,35 @@ import { CliDemo } from '@/components/cli-demo';
 export default function HomePage() {
   return (
     <main className='flex flex-col justify-center text-center flex-1 gap-6'>
-      <div className='flex flex-col items-center justify-center gap-6'>
+      <div className='space-y-2'>
         <div className='flex items-center justify-center'>
           <Image
             src='/cf-light.png'
             alt='Create Faster'
             width={1024}
             height={1024}
-            className='size-20 block dark:hidden'
+            className='size-14 block dark:hidden'
           />
           <Image
             src='/cf-dark.png'
             alt='Create Faster'
             width={1024}
             height={1024}
-            className='size-20 hidden dark:block'
+            className='size-14 hidden dark:block'
           />
 
           <h1 className='text-4xl font-bold font-bluunext'>Create Faster</h1>
         </div>
-
-        <div
-          className='w-full max-w-5xl border border-fd-accent rounded-xl mx-auto
-          shadow-[0_0_32px_0_rgba(0,48,255,0.1),0_0_16px_0_rgba(0,48,255,0.08)]'
-        >
-          <CliDemo />
-        </div>
-
-        <p className='text-lg text-fd-muted-foreground max-w-3xl'>
-          Initialize production-ready full-stack projects with multiple framework combinations.
-          {/* A modern CLI scaffolding tool that generates production-ready full-stack projects with multiple framework
-          combinations. */}
+        <p className='text-lg text-fd-muted-foreground max-w-3xl mx-auto'>
+          Initialize production-ready full-stack projects with multiple framework combinations
         </p>
+      </div>
+
+      <div
+        className='w-full max-w-5xl border border-fd-accent rounded-xl mx-auto overflow-hidden
+          shadow-[0_0_32px_0_rgba(0,48,255,0.1),0_0_16px_0_rgba(0,48,255,0.08)]'
+      >
+        <CliDemo />
       </div>
 
       <div className='flex max-md:flex-col items-center justify-center gap-2'>
