@@ -1,0 +1,110 @@
+# {{projectName}}
+
+This project was initialized with [create-faster](https://github.com/plvo/create-faster), a modern CLI scaffolding tool for production-ready full-stack applications with curated templates and modular architecture.
+
+## Project Structure
+
+This is a monorepo managed with Turborepo containing {{apps.length}} application{{#if (ne apps.length 1)}}s{{/if}}:
+
+{{#each apps}}
+### `apps/{{appName}}` - {{stackName}}
+
+{{#if modules.length}}
+**Modules** ({{modules.length}}): {{#each modules}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{else}}
+No additional modules configured.
+{{/if}}
+
+{{#if ../database}}
+{{#if (eq @index 0)}}
+Uses shared database package (`packages/db`) with {{../orm}} ORM.
+{{/if}}
+{{/if}}
+
+{{/each}}
+
+{{#if database}}
+## Shared Packages
+
+### `packages/db`
+
+Shared database configuration and schema:
+- **Database**: {{database}}
+- **ORM**: {{orm}}
+
+{{/if}}
+## Development Tools
+
+{{#if git}}
+- Git version control initialized
+{{/if}}
+{{#if extras}}
+{{#each extras}}
+- {{this}}
+{{/each}}
+{{/if}}
+- Turborepo for monorepo management
+
+## Getting Started
+
+Install dependencies:
+
+```bash
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+```
+
+{{#if database}}
+Set up the database:
+
+```bash
+# Create .env file in the root with database credentials
+cp .env.example .env
+
+# Run migrations
+{{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
+```
+
+{{/if}}
+Start all applications in development mode:
+
+```bash
+{{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
+```
+
+{{#if (hasAnyStack "nextjs")}}
+{{#each apps}}
+{{#if (eq stackName "nextjs")}}
+- {{appName}}: [http://localhost:{{appPort appName}}](http://localhost:{{appPort appName}})
+{{/if}}
+{{/each}}
+{{/if}}
+
+## Available Scripts
+
+- `dev` - Start all apps in development mode
+- `build` - Build all apps for production
+- `start` - Start all apps in production mode
+{{#if database}}
+- `db:migrate` - Run database migrations
+- `db:push` - Push schema changes to database
+- `db:studio` - Open database management UI
+{{/if}}
+{{#if (includes extras "biome")}}
+- `lint` - Lint and fix code with Biome
+- `format` - Format code with Biome
+- `check` - Run both linting and formatting
+{{/if}}
+
+## Learn More
+
+- [create-faster documentation](https://github.com/plvo/create-faster)
+- [Turborepo documentation](https://turbo.build/repo/docs)
+{{#if (hasAnyStack "nextjs")}}
+- [Next.js documentation](https://nextjs.org/docs)
+{{/if}}
+{{#if (hasAnyStack "expo")}}
+- [Expo documentation](https://docs.expo.dev)
+{{/if}}
+{{#if (hasAnyStack "hono")}}
+- [Hono documentation](https://hono.dev)
+{{/if}}
