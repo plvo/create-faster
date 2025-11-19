@@ -14,17 +14,17 @@ import { CliDemo } from '@/components/cli-demo';
 <Tabs items={['bun', 'npm', 'pnpm']}>
   <Tab value="bun">
     ```bash
-    bunx create-faster
+    bun create faster
     ```
   </Tab>
   <Tab value="npm">
     ```bash
-    npx create-faster
+    npm create faster
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx create-faster
+    pnpm create faster
     ```
   </Tab>
 </Tabs>
@@ -68,7 +68,10 @@ Need a Next.js frontend, an Expo mobile app, and a Hono backend? Simply specify 
 Run the CLI without flags for a guided experience with prompts:
 
 ```bash
-bunx create-faster
+# Using your favorite package manager
+bun create faster
+pnpm create faster
+npm create faster
 ```
 
 The interactive CLI walks you through:
