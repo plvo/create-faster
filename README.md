@@ -22,9 +22,9 @@ Visit https://create.plvo.dev/docs for more details.
 ### Interactive Mode
 
 ```bash
-# Using npm, pnpm, or bun
+# Using your favorite package manager
 npm create faster
-pnpm dlx create faster
+pnpm create faster
 bun create faster
 ```
 
