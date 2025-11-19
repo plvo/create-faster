@@ -37,7 +37,7 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://create-faster.dev';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://create.plvo.dev';
   const pageUrl = `${baseUrl}/docs/${page.slugs.join('/')}`;
   const ogImage = getPageImage(page).url;
 
