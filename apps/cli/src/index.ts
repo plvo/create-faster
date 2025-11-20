@@ -1,14 +1,13 @@
 import { join } from 'node:path';
 import { intro, log, outro } from '@clack/prompts';
-import { ASCII } from '@repo/shared';
+import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
+import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 import { cli } from './cli';
 import { parseFlags } from './flags';
-import { INTRO_MESSAGE } from './lib/constants';
-import { displayOutroCliCommand, displaySummaryNote } from './tui/summary';
 
 async function main() {
   const partial = parseFlags();

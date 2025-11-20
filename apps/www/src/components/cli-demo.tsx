@@ -1,11 +1,22 @@
 'use client';
 
-import { ASCII } from '@repo/shared';
+import color from 'picocolors';
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AnimatedSpan, Terminal, TypingAnimation } from '@/components/ui/shadcn-io/terminal';
+import packageJson from '../../../cli/package.json' with { type: 'json' };
+
+const CLI_VERSION = packageJson.version;
 
 type Scenario = 'single' | 'turborepo';
+
+const ASCII = color.blueBright(`
+  __             ____           __           
+_____________  ____ _/ /____        / __/___ ______/ /____  _____
+/ ___/ ___/ _ \\/ __ \`/ __/ _ \\______/ /_/ __ \`/ ___/ __/ _ \\/ ___/
+/ /__/ /  /  __/ /_/ / /_/  __/_____/ __/ /_/ (__  ) /_/  __/ /    
+\\___/_/   \\___/\\__,_/\\__/\\___/     /_/  \\__,_/____/\\__/\\___/_/   ${color.cyan(CLI_VERSION)}
+`);
 
 export function CliDemo() {
   const [scenario, setScenario] = React.useState<Scenario>('single');

@@ -17,14 +17,13 @@
     },
     "apps/cli": {
       "name": "create-faster",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "bin": {
         "create-faster": "./dist/index.js",
       },
       "dependencies": {
         "@clack/core": "^0.5.0",
         "@clack/prompts": "^0.11.0",
-        "@repo/shared": "*",
         "commander": "^14.0.2",
         "fast-glob": "^3.3.3",
         "handlebars": "^4.7.8",
@@ -41,7 +40,6 @@
       "dependencies": {
         "@radix-ui/react-scroll-area": "^1.2.10",
         "@radix-ui/react-slot": "^1.2.4",
-        "@repo/shared": "*",
         "@vercel/analytics": "^1.5.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -52,6 +50,7 @@
         "motion": "^12.23.24",
         "next": "16.0.1",
         "next-mdx-remote": "^5.0.0",
+        "picocolors": "^1.1.1",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "tailwind-merge": "^3.4.0",
@@ -72,13 +71,6 @@
     "packages/config": {
       "name": "@repo/config",
       "version": "0.0.0",
-    },
-    "packages/shared": {
-      "name": "@repo/shared",
-      "version": "0.0.0",
-      "dependencies": {
-        "picocolors": "^1.1.1",
-      },
     },
   },
   "packages": {
@@ -381,8 +373,6 @@
     "@radix-ui/rect": ["@radix-ui/rect@1.1.1", "", {}, "sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw=="],
 
     "@repo/config": ["@repo/config@workspace:packages/config"],
-
-    "@repo/shared": ["@repo/shared@workspace:packages/shared"],
 
     "@shikijs/core": ["@shikijs/core@3.15.0", "", { "dependencies": { "@shikijs/types": "3.15.0", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4", "hast-util-to-html": "^9.0.5" } }, "sha512-8TOG6yG557q+fMsSVa8nkEDOZNTSxjbbR8l6lF2gyr6Np+jrPlslqDxQkN6rMXCECQ3isNPZAGszAfYoJOPGlg=="],
 

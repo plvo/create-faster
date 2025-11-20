@@ -1,7 +1,7 @@
-import { ASCII } from '@repo/shared';
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
 
