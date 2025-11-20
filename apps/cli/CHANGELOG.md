@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/plvo/create-faster/compare/create-faster-v1.3.0...create-faster-v1.3.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* **cli:** rm shared pkg ([bedfb41](https://github.com/plvo/create-faster/commit/bedfb41914b56253e46b4a8bb39b63ae7f20b963))
+
 ## [1.3.0](https://github.com/plvo/create-faster/compare/create-faster-v1.2.0...create-faster-v1.3.0) (2025-11-14)
 
 
