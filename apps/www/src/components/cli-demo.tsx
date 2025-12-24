@@ -1,88 +1,52 @@
 'use client';
 
-import color from 'picocolors';
 import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { AnimatedSpan, Terminal, TypingAnimation } from '@/components/ui/shadcn-io/terminal';
-import packageJson from '../../../cli/package.json' with { type: 'json' };
-
-const CLI_VERSION = packageJson.version;
+import { ASCII_BASE, CLI_VERSION } from '@/lib/constants';
+import { AnimatedSpan, Terminal, TypingAnimation } from './ui/terminal';
 
 type Scenario = 'single' | 'turborepo';
 
-const ASCII = color.blueBright(`
-  __             ____           __           
-_____________  ____ _/ /____        / __/___ ______/ /____  _____
-/ ___/ ___/ _ \\/ __ \`/ __/ _ \\______/ /_/ __ \`/ ___/ __/ _ \\/ ___/
-/ /__/ /  /  __/ /_/ / /_/  __/_____/ __/ /_/ (__  ) /_/  __/ /    
-\\___/_/   \\___/\\__,_/\\__/\\___/     /_/  \\__,_/____/\\__/\\___/_/   ${color.cyan(CLI_VERSION)}
-`);
+interface CliDemoProps {
+  scenario: Scenario;
+  setScenario: (scenario: Scenario) => void;
+}
 
 export function CliDemo() {
   const [scenario, setScenario] = React.useState<Scenario>('single');
 
   return (
-    <div className='relative w-full'>
-      <Terminal
-        className='text-xs w-full max-w-full overflow-hidden'
-        childrenHeader={
-          <div className='flex max-sm:flex-col justify-between gap-2 h-8'>
-            <div className='flex items-center justify-between gap-3'>
-              <div className='flex items-center gap-2'>
-                <div className='size-2 rounded-full bg-red-500'></div>
-                <div className='size-2 rounded-full bg-yellow-500'></div>
-                <div className='size-2 rounded-full bg-green-500'></div>
-              </div>
-              <p className='text-gray-400 text-sm flex items-center mr-2'>
-                {scenario === 'single'
-                  ? 'Initializing a single Next.js app'
-                  : 'Initializing a complete project with a Next.js, Expo and Hono app'}
-              </p>
-            </div>
-
-            <div className='flex max-sm:justify-end gap-2'>
-              <button
-                type='button'
-                onClick={() => setScenario('single')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
-                  scenario === 'single' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                Single App
-              </button>
-              <button
-                type='button'
-                onClick={() => setScenario('turborepo')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
-                  scenario === 'turborepo' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                Monorepo
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <ScrollArea className='h-96 bg-white dark:bg-black'>
-          {scenario === 'single' ? <SingleAppScenario /> : <TurborepoScenario />}
-        </ScrollArea>
-      </Terminal>
+    <div
+      className='w-full max-w-4xl border border-fd-accent rounded-xl mx-auto overflow-hidden
+      shadow-[0_0_32px_0_rgba(0,48,255,0.1),0_0_16px_0_rgba(0,48,255,0.08)]'
+    >
+      <div className='relative w-full'>
+        {scenario === 'single' ? (
+          <SingleAppDemo scenario={scenario} setScenario={setScenario} />
+        ) : (
+          <MonorepoDemo scenario={scenario} setScenario={setScenario} />
+        )}
+      </div>
     </div>
   );
 }
 
-function SingleAppScenario() {
+function SingleAppDemo({ scenario, setScenario }: CliDemoProps) {
   return (
-    <div className='w-full text-left relative'>
-      <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400'>
+    <Terminal
+      className='max-w-full text-left'
+      cliNav={<ScenarioSelector scenario={scenario} setScenario={setScenario} />}
+      startOnView={false}
+    >
+      <TypingAnimation duration={10} className='text-blue-400 leading-tight mb-6 flex items-end'>
         $ bun create faster
       </TypingAnimation>
 
-      <AnimatedSpan delay={500} className='text-blue-400 leading-tight mb-6'>
-        {ASCII}
+      <AnimatedSpan delay={2000} className='text-blue-400 leading-tight mb-6 flex items-end'>
+        {ASCII_BASE}
+        <span className='text-cyan-400'>{CLI_VERSION}</span>
       </AnimatedSpan>
 
-      <AnimatedSpan delay={1000}>
+      <AnimatedSpan>
         <CliLine
           content={<span className='bg-blue-600 text-white inline-block'>Creating a new project structure 🚀</span>}
           startLine='┌'
@@ -90,19 +54,19 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Name of your project?' step={1} delay={1250} />
-      <Typing content='my-awesome-app' delay={1250} />
+      <Prompt content='Name of your project?' step={1} />
+      <Typing content='my-awesome-app' />
 
-      <Prompt content='How many apps do you want to create?' step={2} delay={2500} />
-      <AnimatedSpan delay={2500} className='text-gray-400'>
+      <Prompt content='How many apps do you want to create?' step={2} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content={<span className='text-gray-500 italic'>Eg: a backend + a frontend = enter 2</span>} />
         <CliLine content={<span className='text-gray-500 italic'>Only a Next.js app = enter 1</span>} />
         <CliLine content={<span className='text-gray-500 italic'>Turborepo will be used if more than one</span>} />
       </AnimatedSpan>
-      <Typing content='1' delay={3500} />
+      <Typing content='1' />
 
-      <Prompt content='Select the stack for my-awesome-app' step={3} delay={5000} />
-      <AnimatedSpan delay={5000}>
+      <Prompt content='Select the stack for my-awesome-app' step={3} />
+      <AnimatedSpan>
         <div className='flex items-center gap-2'>
           <span className='text-gray-400'>├</span>
           <span className='underline font-bold'>Web / Mobile App</span>
@@ -118,7 +82,7 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Do you want to add any Next.js modules to my-awesome-app?' step={4} delay={6000} />
+      <Prompt content='Do you want to add any Next.js modules to my-awesome-app?' step={4} />
 
       <AnimatedSpan delay={6000}>
         <CliLine content='shadcn/ui' description='(UI & Styling)' icon='◼' />
@@ -130,7 +94,7 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Include a database?' step={3} delay={7000} />
+      <Prompt content='Include a database?' step={3} />
 
       <AnimatedSpan delay={7000}>
         <CliLine content='PostgreSQL' description='(Relational database)' icon='◇' />
@@ -139,7 +103,7 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Configure an ORM?' step={3} delay={8000} />
+      <Prompt content='Configure an ORM?' step={3} />
 
       <AnimatedSpan delay={8000}>
         <CliLine content='Drizzle' description='(Lightweight TypeScript ORM)' icon='◇' />
@@ -148,19 +112,19 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Initialize Git?' step={4} delay={9000} />
-      <Typing content='Yes' delay={9000} />
+      <Prompt content='Initialize Git?' step={4} />
+      <Typing content='Yes' />
 
-      <Prompt content='Add any extras?' step={4} delay={10000} />
+      <Prompt content='Add any extras?' step={4} />
 
-      <AnimatedSpan delay={10000} className='text-gray-400'>
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content='Biome' description='(Fast linter & formatter)' icon='◼' />
         <CliLine content='Husky' description='(Git hooks for quality checks)' icon='◼' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Install dependencies now?' step={5} delay={11000} />
-      <AnimatedSpan delay={11000} className='text-gray-400'>
+      <Prompt content='Install dependencies now?' step={5} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content='Install with bun' icon='◇' />
         <CliLine content='Install with pnpm' icon='◇' />
         <CliLine content='Install with npm' icon='◇' />
@@ -168,14 +132,14 @@ function SingleAppScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <AnimatedSpan delay={12000} className='text-green-600 dark:text-green-400'>
+      <AnimatedSpan className='text-green-600 dark:text-green-400'>
         <CliLine content='Created 47 files' icon='✓' startLine='◇' />
         <span className='text-gray-400'>│</span>
         <CliLine content='Initialized Git repository' icon='✓' startLine='◇' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <AnimatedSpan delay={13000}>
+      <AnimatedSpan>
         <span className='text-gray-400'>
           {`◇  📂 Structure Summary ────────────────╮
 │                                        │
@@ -204,8 +168,7 @@ function SingleAppScenario() {
         </span>
       </AnimatedSpan>
 
-      {/* Outro */}
-      <AnimatedSpan delay={14000}>
+      <AnimatedSpan>
         <CliLine
           content={
             <span className='bg-cyan-400 text-black inline-block mt-3 font-bold'>
@@ -216,8 +179,8 @@ function SingleAppScenario() {
         />
       </AnimatedSpan>
 
-      <AnimatedSpan delay={14500}>
-        <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400 pt-6'>
+      <AnimatedSpan>
+        <TypingAnimation duration={10} className='text-cyan-600 dark:text-cyan-400 pt-6'>
           $ ls ./my-awesome-app
         </TypingAnimation>
 
@@ -225,26 +188,30 @@ function SingleAppScenario() {
           content={`
 biome.json          bun.lock       drizzle.config.ts  next.config.ts      package.json  public   src
 docker.compose.yml  next-env.d.ts  node_modules       postcss.config.mjs  scripts       tsconfig.json
-          `}
+  `}
           startLine={null}
         />
       </AnimatedSpan>
-    </div>
+    </Terminal>
   );
 }
 
-function TurborepoScenario() {
+function MonorepoDemo({ scenario, setScenario }: CliDemoProps) {
   return (
-    <div className='w-full text-left relative'>
-      <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400'>
+    <Terminal
+      className='max-w-full text-left'
+      cliNav={<ScenarioSelector scenario={scenario} setScenario={setScenario} />}
+    >
+      <TypingAnimation duration={10} className='text-blue-400 leading-tight mb-6 flex items-end'>
         $ bun create faster
       </TypingAnimation>
 
-      <AnimatedSpan delay={500} className='text-blue-400 leading-tight mb-6'>
-        {ASCII}
+      <AnimatedSpan delay={2000} className='text-blue-400 leading-tight mb-6 flex items-end'>
+        {ASCII_BASE}
+        <span className='text-cyan-400'>{CLI_VERSION}</span>
       </AnimatedSpan>
 
-      <AnimatedSpan delay={1000}>
+      <AnimatedSpan>
         <CliLine
           content={<span className='bg-blue-600 text-white inline-block'>Creating a new project structure 🚀</span>}
           startLine='┌'
@@ -252,23 +219,23 @@ function TurborepoScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Name of your project?' step={1} delay={1250} />
-      <Typing content='my-saas-project' delay={1250} />
+      <Prompt content='Name of your project?' step={1} />
+      <Typing content='my-saas-project' />
 
-      <Prompt content='How many apps do you want to create?' step={2} delay={2500} />
-      <AnimatedSpan delay={2500} className='text-gray-400'>
+      <Prompt content='How many apps do you want to create?' step={2} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content={<span className='text-gray-500 italic'>Eg: a backend + a frontend = enter 2</span>} />
         <CliLine content={<span className='text-gray-500 italic'>Only a Next.js app = enter 1</span>} />
         <CliLine content={<span className='text-gray-500 italic'>Turborepo will be used if more than one</span>} />
       </AnimatedSpan>
-      <Typing content='3' delay={3500} />
+      <Typing content='3' />
 
       {/* App #1 - Next.js */}
-      <Prompt content='Name of the app #1?' step={2} delay={5000} />
-      <Typing content='web' delay={5000} />
+      <Prompt content='Name of the app #1?' step={2} />
+      <Typing content='web' />
 
-      <Prompt content='Select the stack for web' step={2} delay={6000} />
-      <AnimatedSpan delay={6000}>
+      <Prompt content='Select the stack for web' step={2} />
+      <AnimatedSpan>
         <div className='flex items-center gap-2'>
           <span className='text-gray-400'>├</span>
           <span className='underline font-bold'>Web / Mobile App</span>
@@ -284,19 +251,19 @@ function TurborepoScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Do you want to add any Next.js modules to web?' step={2} delay={7000} />
-      <AnimatedSpan delay={7000}>
+      <Prompt content='Do you want to add any Next.js modules to web?' step={2} />
+      <AnimatedSpan>
         <CliLine content='shadcn/ui' description='(UI & Styling)' icon='◼' />
         <CliLine content='tanstack-query' description='(Data fetching)' icon='◼' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
       {/* App #2 - Expo */}
-      <Prompt content='Name of the app #2?' step={2} delay={8000} />
-      <Typing content='mobile' delay={8000} />
+      <Prompt content='Name of the app #2?' step={2} />
+      <Typing content='mobile' />
 
-      <Prompt content='Select the stack for mobile' step={2} delay={9000} />
-      <AnimatedSpan delay={9000}>
+      <Prompt content='Select the stack for mobile' step={2} />
+      <AnimatedSpan>
         <div className='flex items-center gap-2'>
           <span className='text-gray-400'>├</span>
           <span className='underline font-bold'>Web / Mobile App</span>
@@ -312,18 +279,18 @@ function TurborepoScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Do you want to add any Expo modules to mobile?' step={2} delay={10000} />
-      <AnimatedSpan delay={10000}>
+      <Prompt content='Do you want to add any Expo modules to mobile?' step={2} />
+      <AnimatedSpan>
         <CliLine content='NativeWind' description='(UI & Styling)' icon='◼' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
       {/* App #3 - Hono */}
-      <Prompt content='Name of the app #3?' step={2} delay={11000} />
-      <Typing content='api' delay={11000} />
+      <Prompt content='Name of the app #3?' step={2} />
+      <Typing content='api' />
 
-      <Prompt content='Select the stack for api' step={2} delay={12000} />
-      <AnimatedSpan delay={12000}>
+      <Prompt content='Select the stack for api' step={2} />
+      <AnimatedSpan>
         <div className='flex items-center gap-2'>
           <span className='text-gray-400'>├</span>
           <span className='underline font-bold'>Web / Mobile App</span>
@@ -339,23 +306,23 @@ function TurborepoScenario() {
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Do you want to add any Hono modules to api?' step={2} delay={13000} />
-      <AnimatedSpan delay={13000} className='text-gray-400'>
+      <Prompt content='Do you want to add any Hono modules to api?' step={2} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content='(no modules selected)' icon='◻' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
       {/* Database & ORM */}
-      <Prompt content='Include a database?' step={3} delay={14000} />
-      <AnimatedSpan delay={14000}>
+      <Prompt content='Include a database?' step={3} />
+      <AnimatedSpan>
         <CliLine content='PostgreSQL' description='(Relational database)' icon='◇' />
         <CliLine content='MySQL' description='(Relational database)' icon='◇' />
         <CliLine content='None' icon='◇' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
-      <Prompt content='Configure an ORM?' step={3} delay={15000} />
-      <AnimatedSpan delay={15000}>
+      <Prompt content='Configure an ORM?' step={3} />
+      <AnimatedSpan>
         <CliLine content='Drizzle' description='(Lightweight TypeScript ORM)' icon='◇' />
         <CliLine content='Prisma' description='(Type-safe ORM with migrations)' icon='◇' />
         <CliLine content='None' icon='◇' />
@@ -363,19 +330,19 @@ function TurborepoScenario() {
       </AnimatedSpan>
 
       {/* Git & Extras */}
-      <Prompt content='Initialize Git?' step={4} delay={16000} />
-      <Typing content='Yes' delay={16000} />
+      <Prompt content='Initialize Git?' step={4} />
+      <Typing content='Yes' />
 
-      <Prompt content='Add any extras?' step={4} delay={17000} />
-      <AnimatedSpan delay={17000} className='text-gray-400'>
+      <Prompt content='Add any extras?' step={4} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content='Biome' description='(Fast linter & formatter)' icon='◼' />
         <CliLine content='Husky' description='(Git hooks for quality checks)' icon='◼' />
         <span className='text-gray-400'>│</span>
       </AnimatedSpan>
 
       {/* Package manager */}
-      <Prompt content='Install dependencies now?' step={5} delay={18000} />
-      <AnimatedSpan delay={18000} className='text-gray-400'>
+      <Prompt content='Install dependencies now?' step={5} />
+      <AnimatedSpan className='text-gray-400'>
         <CliLine content='Install with bun' icon='◇' />
         <CliLine content='Install with pnpm' icon='◇' />
         <CliLine content='Install with npm' icon='◇' />
@@ -384,7 +351,7 @@ function TurborepoScenario() {
       </AnimatedSpan>
 
       {/* Results */}
-      <AnimatedSpan delay={19000} className='text-green-600 dark:text-green-400'>
+      <AnimatedSpan className='text-green-600 dark:text-green-400'>
         <CliLine content='Created 142 files' icon='✓' startLine='◇' />
         <span className='text-gray-400'>│</span>
         <CliLine content='Initialized Git repository' icon='✓' startLine='◇' />
@@ -427,7 +394,7 @@ function TurborepoScenario() {
       </AnimatedSpan>
 
       {/* Outro */}
-      <AnimatedSpan delay={21000}>
+      <AnimatedSpan>
         <CliLine
           content={
             <span className='bg-cyan-400 text-black inline-block mt-3 font-bold'>
@@ -438,7 +405,7 @@ function TurborepoScenario() {
         />
       </AnimatedSpan>
 
-      <AnimatedSpan delay={21500}>
+      <AnimatedSpan>
         <TypingAnimation delay={0} duration={10} className='text-cyan-600 dark:text-cyan-400 pt-6'>
           $ ls ./my-saas-project
         </TypingAnimation>
@@ -451,14 +418,54 @@ packages      .gitignore     .husky         tsconfig.json
           startLine={null}
         />
       </AnimatedSpan>
+    </Terminal>
+  );
+}
+
+function ScenarioSelector({ scenario, setScenario }: CliDemoProps) {
+  return (
+    <div className='flex max-sm:flex-col justify-between gap-2 h-8'>
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex items-center gap-2'>
+          <div className='size-2 rounded-full bg-red-500'></div>
+          <div className='size-2 rounded-full bg-yellow-500'></div>
+          <div className='size-2 rounded-full bg-green-500'></div>
+        </div>
+        <p className='text-gray-400 text-sm flex items-center mr-2'>
+          {scenario === 'single'
+            ? 'Initializing a single Next.js app'
+            : 'Initializing a complete project with a Next.js, Expo and Hono app'}
+        </p>
+      </div>
+
+      <div className='flex max-sm:justify-end gap-2'>
+        <button
+          type='button'
+          onClick={() => setScenario('single')}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
+            scenario === 'single' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Single App
+        </button>
+        <button
+          type='button'
+          onClick={() => setScenario('turborepo')}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors h-8 ${
+            scenario === 'turborepo' ? 'bg-cyan-400 text-black' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Monorepo
+        </button>
+      </div>
     </div>
   );
 }
 
-function Prompt({ content, step, delay }: { content: string; step: 1 | 2 | 3 | 4 | 5; delay: number }) {
+function Prompt({ content, step }: { content: string; step: 1 | 2 | 3 | 4 | 5 }) {
   const stepString = `[ ${'◆'.repeat(step)}${' ○'.repeat(5 - step)} ] ${step}/5 ${step * 20}%`;
   return (
-    <AnimatedSpan delay={delay} className='flex items-center gap-2'>
+    <AnimatedSpan className='flex items-center gap-2'>
       <span className='text-cyan-600 dark:text-cyan-400'>◆</span> {content}{' '}
       <span className='text-blue-400'>{stepString}</span>
     </AnimatedSpan>
@@ -477,22 +484,20 @@ function CliLine({
   startLine?: '◇' | '├' | '│' | '└' | '┌' | null;
 }) {
   return (
-    <div className='flex items-center gap-2'>
+    <AnimatedSpan className='flex items-center gap-2'>
       {startLine && <span className='text-gray-400'>{startLine}</span>}
       {icon && <span className='text-green-600 dark:text-green-400'>{icon}</span>} {content}{' '}
       {description && <span className='text-gray-500'>{description}</span>}
-    </div>
+    </AnimatedSpan>
   );
 }
 
-function Typing({ content, delay }: { content: string; delay: number }) {
+function Typing({ content }: { content: string }) {
   return (
-    <AnimatedSpan delay={delay}>
+    <AnimatedSpan>
       <div className='flex items-center gap-2'>
         <span className='text-gray-400'>│</span>
-        <TypingAnimation delay={1400} duration={40} className='text-green-600 dark:text-green-400'>
-          {content}
-        </TypingAnimation>
+        <TypingAnimation className='text-green-600 dark:text-green-400'>{content}</TypingAnimation>
       </div>
       <span className='text-gray-400'>│</span>
     </AnimatedSpan>

@@ -30,12 +30,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div
-        className='w-full max-w-4xl border border-fd-accent rounded-xl mx-auto overflow-hidden
-          shadow-[0_0_32px_0_rgba(0,48,255,0.1),0_0_16px_0_rgba(0,48,255,0.08)]'
-      >
-        <CliDemo />
-      </div>
+      <CliDemo />
 
       <div className='flex max-md:w-full items-center justify-center gap-2'>
         <Link href='https://github.com/plvo/create-faster' target='_blank'>
