@@ -4,6 +4,8 @@
   "include-v-in-tag": true,
   "separate-pull-requests": false,
   "plugins": ["node-workspace"],
+  "pull-request-title-pattern": "chore: release ${component} v${version}",
+  "group-pull-request-title-pattern": "chore: release ${component} v${version}",
   "packages": {
     "apps/cli": {
       "component": "create-faster",
