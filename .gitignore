@@ -45,6 +45,7 @@ yarn-error.log*
 .claude/settings.local.json
 .claude/**.md
 !.claude/CLAUDE.md
-!.claude/commands/**.md
+
+*.tgz
 
 **/*.source

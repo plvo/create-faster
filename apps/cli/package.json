@@ -47,6 +47,8 @@
     "dev": "NODE_ENV=development bun run src/index.ts",
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "prepublishOnly": "bun run build",
+    "publish:test:verdaccio": "bun publish --registry http://localhost:4873",
+    "publish:test:start": "bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
     "test": "bun test"
   },
   "dependencies": {
@@ -59,6 +61,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@repo/config": "*"
+    "@repo/config": "*",
+    "verdaccio": "^6.2.4"
   }
 }

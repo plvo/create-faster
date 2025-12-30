@@ -1,8 +1,0 @@
-{
-  "action": "published",
-  "release": {
-    "tag_name": "apps/cli-v1.0.0",
-    "name": "v1.0.0"
-  },
-  "ref": "refs/tags/apps/cli-v1.0.0"
-}
