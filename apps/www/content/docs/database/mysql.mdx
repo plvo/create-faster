@@ -3,28 +3,56 @@ title: MySQL
 description: MySQL is the world's most popular open-source relational database, trusted by millions of applications worldwide.
 ---
 
-[MySQL](https://www.mysql.com) is a fast, reliable, and easy-to-use open-source relational database management system used by high-profile web applications.
+Production-ready MySQL database via Docker Compose with persistent volumes, health checks, and native password authentication.
 
-## Docker Compose Configuration
+[→ MySQL Documentation](https://www.mysql.com)
 
-- Creates `docker.compose.yml` at project root with MySQL service
-- **Image**: `mysql:latest` official Docker image
-- **Container**: Named `mysql-{projectName}` for easy identification
-- **Environment Variables**:
-  - `MYSQL_ROOT_PASSWORD`: password (change in production)
-  - `MYSQL_DATABASE`: `mysql-{projectName}`
-  - `MYSQL_USER`: mysql
-  - `MYSQL_PASSWORD`: password
-- **Ports**: Exposes port 3306 (MySQL default)
-- **Volume**: Persistent storage at `mysql-{projectName}-data:/var/lib/mysql`
-- **Network**: Dedicated bridge network `mysql-{projectName}-network`
-- **Command**: `--max-connections=100 --default-authentication-plugin=mysql_native_password`
-- **Healthcheck**:
-  - Test: `mysqladmin ping -h localhost -u root -ppassword`
-  - Interval: 10s, Timeout: 5s, Retries: 5
-  - Start period: 30s for initialization
+## What create-faster adds
 
-**Connection String Format:**
+Beyond the official setup, we include:
+
+**Docker Compose Configuration:**
+- Pre-configured `mysql:latest` service
+- Project-specific naming (`mysql-{projectName}`)
+- Persistent data volume
+- Health check with `mysqladmin ping`
+- Connection limit (100 max connections)
+- Native password authentication enabled
+- Dedicated network for isolation
+
+File created:
+```
+docker.compose.yml          # MySQL service configuration
+```
+
+**Service Configuration:**
+- **Image**: `mysql:latest`
+- **Container**: `mysql-{projectName}`
+- **Port**: 3306 (MySQL default)
+- **Restart**: always
+
+**Environment Variables:**
+- `MYSQL_ROOT_PASSWORD`: password (change in production)
+- `MYSQL_DATABASE`: `mysql-{projectName}`
+- `MYSQL_USER`: mysql
+- `MYSQL_PASSWORD`: password
+
+**Volume:**
+- `mysql-{projectName}-data:/var/lib/mysql` (persistent storage)
+
+**Network:**
+- `mysql-{projectName}-network` (bridge network for isolation)
+
+**Command:**
+- `--max-connections=100` - Connection pooling limit
+- `--default-authentication-plugin=mysql_native_password` - Compatibility with older clients
+
+**Health Check:**
+- Test: `mysqladmin ping -h localhost -u root -ppassword`
+- Interval: 10s, Timeout: 5s, Retries: 5
+- Start period: 30s for initialization
+
+**Connection String:**
 ```
 mysql://mysql:password@localhost:3306/mysql-{projectName}
 ```

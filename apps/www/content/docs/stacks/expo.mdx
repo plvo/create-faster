@@ -3,32 +3,82 @@ title: Expo
 description: Expo is a platform for building native mobile applications using React Native with a superior developer experience.
 ---
 
-[Expo](https://expo.dev) is a production-ready framework for building native iOS and Android apps with React Native. It provides a complete development workflow from prototyping to deployment.
+Production-ready React Native app with Expo Router, authentication scaffolding, and pre-configured assets.
 
-**Why use Expo?**
-- **Developer Experience**: Hot reload, TypeScript support, and over-the-air updates
-- **Native APIs**: Access to 50+ native modules (camera, location, notifications, etc.)
-- **Cross-Platform**: Write once, run on iOS, Android, and web
-- **EAS (Expo Application Services)**: Cloud build, submit, and update services
-- **File-Based Routing**: Expo Router for type-safe navigation
-- **No Native Code Required**: Build production apps without touching Swift/Kotlin
+[→ Expo Documentation](https://expo.dev)
 
-# Modules
+## What create-faster adds
 
-## UI & Styling
+Beyond the official setup, we include:
+
+**Project Structure:**
+- Pre-configured Expo Router with file-based routing
+- Authentication scaffolding with `Stack.Protected` guards
+- Custom components (`app-footer`)
+- Font loading setup with Inter typeface
+
+**Development Scripts:**
+- `start:android` / `start:ios` / `start:web` - Platform-specific development with cache clear
+- `prebuild:android` / `prebuild:ios` - Native project generation with clean flag
+- `build:eas:android` / `build:eas:ios` - EAS Build production profiles
+
+**Pre-configured Assets:**
+- App icon, adaptive icon, splash screen
+- Inter fonts (Black & Bold variants)
+- Favicon for web builds
+
+**App Configuration:**
+- React Compiler enabled (`experiments.reactCompiler: true`)
+- New Architecture enabled (`newArchEnabled: true`)
+- Typed routes (`experiments.typedRoutes: true`)
+- Edge-to-edge Android UI (`edgeToEdgeEnabled: true`)
+
+Files created:
+```
+src/
+├── app/
+│   ├── _layout.tsx         # Root layout with authentication guards
+│   └── index.tsx           # Home page
+├── components/
+│   └── app-footer.tsx      # Footer component
+└── styles/
+    └── globals.css         # Global styles (auto-imported in _layout)
+
+assets/
+├── fonts/
+│   ├── inter-18pt-black.ttf
+│   └── inter-18pt-bold.ttf
+├── icon.png                # App icon (1024×1024)
+├── adaptive-icon.png       # Android adaptive icon
+├── splash-icon.png         # Splash screen image
+└── favicon.png             # Web favicon
+
+app.config.ts               # Expo configuration with plugins
+```
+
+## Modules
 
 ### NativeWind
 
-*[Link to NativeWind](https://nativewind.dev)*
+*[→ NativeWind Documentation](https://nativewind.dev)*
 
-Tailwind CSS for React Native. Write utility-first styling with the same Tailwind classes you use on the web.
+Tailwind CSS for React Native. Write utility-first styling with the same classes you use on the web.
 
 **Technical changes:**
-- Adds `nativewind` dependency to `package.json`
-- Adds `tailwindcss` v3.3.2 as dev dependency
-- Creates `tailwind.config.js` - Tailwind configuration:
-  - Content paths: `./src/**/*.{js,jsx,ts,tsx}`
-  - Preset: `require('nativewind/preset')`
-- Creates `metro.config.js` - Metro bundler config with NativeWind transformer
-- Creates `nativewind-env.d.ts` - TypeScript declaration file for NativeWind types
-- Creates `styles/globals.css` - Global CSS entry point for Tailwind directives
+
+Files created:
+```
+metro.config.js            # Metro bundler with NativeWind transformer
+tailwind.config.js         # Tailwind config with NativeWind preset
+nativewind-env.d.ts        # TypeScript types for className prop
+src/styles/globals.css     # Tailwind directives entry point
+```
+
+**Dependencies added:**
+- `nativewind` (v4.1.23)
+- `tailwindcss` (v3.3.2) - dev dependency
+
+**Configuration details:**
+- Metro config uses `withNativeWind()` wrapper with `globals.css` input
+- Tailwind scans `./src/**/*.{js,jsx,ts,tsx}` for classes
+- NativeWind preset provides React Native-compatible utilities

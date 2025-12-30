@@ -3,68 +3,79 @@ title: Prisma
 description: Prisma is a next-generation ORM with an intuitive data model, automated migrations, and powerful type safety.
 ---
 
-[Prisma](https://www.prisma.io) is a modern database toolkit that makes database access easy with auto-generated type-safe queries and a visual database browser.
+Auto-generated type-safe database client with Prisma, including schema with User/Post models, Better Auth tables, migrations, and seeding scripts.
 
-**Why use Prisma?**
-- **Auto-Generated Types**: Fully typed client generated from your schema
-- **Prisma Studio**: Visual database browser for exploring and editing data
-- **Migration System**: Declarative migrations with automatic SQL generation
-- **Introspection**: Generate Prisma schema from existing database
-- **Developer Experience**: Excellent IntelliSense and error messages
-- **Active Development**: Large community and frequent updates
+[→ Prisma Documentation](https://www.prisma.io)
 
-**Requirements:** Database (PostgreSQL or MySQL)
+**Requires:** Database (PostgreSQL or MySQL)
 
-## Technical Changes
+## What create-faster adds
 
-### Package Structure
-- **Turborepo mode**: Creates `packages/db/` with `@repo/db` package
-- **Single repo mode**: Database logic in app's `src/lib/db/` directory
+Beyond the official setup, we include:
 
-### Dependencies
-- `package.json` includes:
-  - `@prisma/client`: Auto-generated database client
-  - `prisma` (dev): CLI for migrations and introspection
+**Pre-configured Schema:**
+- User and Post models with relations (`onDelete: Cascade`)
+- Better Auth models (Session, Account, Verification) when auth module selected
+- UUID primary keys, unique constraints, timestamps
 
-### Scripts
-- `build`: Compile package to `dist/index.js` (turborepo only)
-- `db:generate`: Generate Prisma Client from schema
-- `db:pull`: Introspect database and update schema
-- `db:push`: Push schema to database without migrations (dev)
-- `db:studio`: Launch Prisma Studio visual editor
-- `db:seed`: Run seed script to populate database
+**Development Scripts:**
+- `db:generate` - Generate Prisma Client from schema
+- `db:pull` - Introspect database and update schema
+- `db:push` - Push schema to database (dev)
+- `db:studio` - Launch Prisma Studio visual editor
+- `db:seed` - Populate database with sample data
 
-### Prisma Schema
-- Creates `prisma/schema.prisma` with:
-  - **Generator**: `prisma-client-js` with custom output path (turborepo: `../generated/prisma`)
-  - **Datasource**: Provider `postgresql` or `mysql`, URL from env
-  - **User Model**: id (uuid), username (unique), email (unique), emailVerified, avatarUrl, phone, firstName, lastName, timestamps
-  - **Post Model**: id (uuid), title, content, published, authorId (FK), timestamps, author relation
-  - **Relations**: User hasMany Posts, Post belongsTo User with `onDelete: Cascade`
-  - **Better Auth Models** (conditional if better-auth module selected):
-    - **Session Model**: id, userId (FK), token (unique), expiresAt, ipAddress, userAgent, timestamps
-    - **Account Model**: id, userId (FK), accountId, providerId, tokens, scope, idToken, password, timestamps
-    - **Verification Model**: id, identifier, value, expiresAt, timestamps
+**Prisma Client Setup:**
+- Singleton pattern with global caching (prevents hot-reload issues)
+- Environment-aware logging (verbose in dev, errors-only in prod)
+- Custom output path in Turborepo (`../generated/prisma`)
 
-### Database Client
-- Creates `src/index.ts`:
-  - PrismaClient singleton pattern with global caching (prevents hot-reload connection issues)
-  - Logging: `query`, `error`, `warn` in development; `error` only in production
-  - Re-exports all Prisma Client types
-  - **Type Helpers**:
-    - `User`, `Post`: Basic model types
-    - `UserWithPosts`: User with posts included
-    - `PostWithAuthor`: Post with author included
-    - `Session`, `Account`, `Verification` (conditional): Better Auth types
+**Type Helpers:**
+- `UserWithPosts`, `PostWithAuthor` - Relation includes
+- Better Auth types when module selected
 
-### Environment
-- Creates `.env.example`:
-  - `DATABASE_URL` template with connection string format
+**Seed Script:**
+- Sample Users (Alice, Bob) and Posts
+- Demonstrates `.create()`, `.createMany()`, relations
+- Proper cleanup with `$disconnect()`
 
-### Seed Script
-- Creates `scripts/seed.ts`:
-  - Clears existing data with `.deleteMany()` (posts, users)
-  - Creates 2 sample users (Alice, Bob) with `.create()`
-  - Creates 3 sample posts with `.createMany()` (2 published, 1 draft)
-  - Demonstrates Prisma Client API and relations
-  - Properly disconnects with `$disconnect()` in finally block
+Files created (Turborepo):
+```
+packages/db/
+├── prisma/
+│   └── schema.prisma       # Database schema with User, Post, auth models
+├── src/
+│   └── index.ts            # PrismaClient singleton with type helpers
+├── generated/              # Auto-generated Prisma Client (gitignored)
+│   └── prisma/
+├── scripts/
+│   └── seed.ts             # Seed script with sample data
+├── package.json            # Dependencies and db:* scripts
+├── tsconfig.json           # TypeScript config
+└── .env.example            # DATABASE_URL template
+```
+
+Files created (Single repo):
+```
+src/lib/db/
+└── index.ts                # PrismaClient singleton
+
+prisma/
+└── schema.prisma           # Database schema
+
+scripts/
+└── seed.ts                 # Seed script
+
+.env.example                # DATABASE_URL template
+```
+
+**Database Schema:**
+- `User`: id, username (unique), email (unique), emailVerified, avatarUrl, phone, firstName, lastName, createdAt, updatedAt
+- `Post`: id, title, content, published, authorId (FK to User), createdAt, updatedAt
+- `Session` (if Better Auth): id, userId, token (unique), expiresAt, ipAddress, userAgent, timestamps
+- `Account` (if Better Auth): id, userId, accountId, providerId, tokens, scope, idToken, password, timestamps
+- `Verification` (if Better Auth): id, identifier, value, expiresAt, timestamps
+
+**Dependencies:**
+- `@prisma/client` - Auto-generated database client
+- `prisma` (dev) - Migrations and introspection CLI

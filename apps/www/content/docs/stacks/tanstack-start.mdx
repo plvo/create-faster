@@ -1,0 +1,62 @@
+---
+title: TanStack Start
+description: Full-stack React framework powered by TanStack Router with type-safe file-based routing and SSR.
+---
+
+Production-ready React app with TanStack Router, Vite, Tailwind CSS v4, and Vitest testing setup.
+
+[→ TanStack Start Documentation](https://tanstack.com/start)
+
+## What create-faster adds
+
+Beyond the official setup, we include:
+
+**Project Structure:**
+- File-based routing with `__root.tsx` layout
+- Pre-styled landing page with dark theme
+- Router configuration with scroll restoration
+
+**Development Scripts:**
+- `dev` - Development server with dynamic port assignment (3000 or turborepo-specific)
+- `build` - Production build
+- `preview` - Preview production build
+- `test` - Run Vitest tests
+
+**Vite Configuration:**
+- TanStack Router DevTools enabled
+- TanStack DevTools plugin
+- Nitro SSR engine
+- Tailwind CSS v4 via Vite plugin
+- TypeScript path aliases configured
+
+**Testing Setup:**
+- Vitest configured with jsdom
+- React Testing Library included
+- Web Vitals for performance monitoring
+
+**Styling:**
+- Tailwind CSS v4 (latest version using new Vite plugin)
+- Dark theme with slate color palette
+- System font stack for optimal performance
+
+Files created:
+```
+src/
+├── routes/
+│   ├── ___root.tsx        # Root layout with meta tags and styles
+│   └── index.tsx          # Home page with welcome content
+├── router.tsx             # Router instance with scroll restoration
+└── styles.css             # Global styles with Tailwind import
+
+vite.config.ts             # Vite config with all plugins
+tsconfig.json              # TypeScript config with path aliases
+```
+
+**Integration notes:**
+- ORM integration: When Drizzle or Prisma is selected, database scripts are added to `package.json`
+- Turborepo: Uses `@repo/db` package for shared database logic
+- Single repo: Includes database scripts directly in app package
+
+## Modules
+
+No modules available yet. TanStack Start support is in early stages.

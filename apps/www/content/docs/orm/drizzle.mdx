@@ -3,72 +3,75 @@ title: Drizzle
 description: Drizzle ORM is a lightweight, TypeScript-first ORM with zero overhead and SQL-like syntax for maximum type safety.
 ---
 
-[Drizzle ORM](https://orm.drizzle.team) is a headless TypeScript ORM with a focus on type safety, composability, and developer experience.
+Type-safe database access with Drizzle ORM, including schema with User/Post models, Better Auth tables, migrations, and seeding scripts.
 
-**Why use Drizzle?**
-- **TypeScript-First**: Fully typed queries with excellent IntelliSense support
-- **Zero Overhead**: No runtime overhead, compiles to efficient SQL
-- **SQL-Like Syntax**: Write queries that feel natural if you know SQL
-- **Migrations**: Built-in migration system with `drizzle-kit`
-- **Performance**: Minimal abstraction layer for maximum performance
-- **Flexibility**: Works with PostgreSQL, MySQL, SQLite, and more
+[→ Drizzle ORM Documentation](https://orm.drizzle.team)
 
-**Requirements:** Database (PostgreSQL or MySQL)
+**Requires:** Database (PostgreSQL or MySQL)
 
-## Technical Changes
+## What create-faster adds
 
-### Package Structure
-- **Turborepo mode**: Creates `packages/db/` with `@repo/db` package
-- **Single repo mode**: Database logic in app's `src/lib/db/` directory
+Beyond the official setup, we include:
 
-### Dependencies
-- `package.json` includes:
-  - `drizzle-orm`: Core ORM library
-  - `pg` (PostgreSQL) or `mysql2` (MySQL): Database driver
-  - `drizzle-kit` (dev): CLI for migrations and introspection
-  - `@types/pg` or `@types/mysql2` (dev): TypeScript types
+**Pre-configured Schema:**
+- User and Post models with relations
+- Better Auth tables (Session, Account, Verification) when auth module selected
+- UUID primary keys, timestamps, foreign keys
 
-### Scripts
-- `db:generate`: Generate SQL migrations from schema changes
-- `db:migrate`: Run pending migrations
-- `db:push`: Push schema directly to database (dev)
-- `db:studio`: Launch Drizzle Studio (visual database browser)
-- `db:seed`: Run seed script to populate database
+**Development Scripts:**
+- `db:generate` - Generate SQL migrations from schema
+- `db:migrate` - Run pending migrations
+- `db:push` - Push schema to database (dev)
+- `db:studio` - Launch Drizzle Studio visual browser
+- `db:seed` - Populate database with sample data
 
-### Configuration
-- Creates `drizzle.config.ts`:
-  - Dialect: `postgresql` or `mysql`
-  - Schema path: `./src/schema.ts` (turborepo) or `./src/lib/db/schema.ts` (single)
-  - Output directory: `./drizzle` for migrations
-  - Verbose and strict mode enabled
+**Drizzle Kit Configuration:**
+- Pre-configured `drizzle.config.ts` with dialect detection
+- Verbose and strict mode enabled
+- Schema path auto-configured based on repo type
 
-### Database Schema
-- Creates `src/schema.ts` with:
-  - **User Table**: id (uuid), username, email, emailVerified, avatarUrl, phone, firstName, lastName, timestamps
-  - **Post Table**: id (uuid), title, content, published, authorId (FK), timestamps
-  - **Relations**: User hasMany Posts, Post belongsTo User
-  - **Better Auth Tables** (conditional if better-auth module selected):
-    - **Session Table**: id, userId (FK), token, expiresAt, ipAddress, userAgent, timestamps
-    - **Account Table**: id, userId (FK), accountId, providerId, tokens, scope, password, timestamps
-    - **Verification Table**: id, identifier, value, expiresAt, timestamps
+**Seed Script:**
+- Sample Users (Alice, Bob) and Posts
+- Demonstrates relations and `.returning()`
 
-### Database Connection
-- Creates `src/index.ts`:
-  - Exports `db` instance with `drizzle()` initialized
-  - Connection string from `DATABASE_URL` env variable
-  - SSL enabled in production
-  - Re-exports all schema, types, and Drizzle utilities
+Files created (Turborepo):
+```
+packages/db/
+├── src/
+│   ├── schema.ts           # Database schema with User, Post, auth tables
+│   ├── types.ts            # Inferred TypeScript types
+│   └── index.ts            # Database connection with SSL config
+├── scripts/
+│   └── seed.ts             # Seed script with sample data
+├── drizzle.config.ts       # Drizzle Kit configuration
+├── package.json            # Dependencies and db:* scripts
+├── tsconfig.json           # TypeScript config
+└── .env.example            # DATABASE_URL template
+```
 
-### Type Definitions
-- Creates `src/types.ts` with TypeScript types inferred from schema
+Files created (Single repo):
+```
+src/lib/db/
+├── schema.ts               # Database schema
+├── types.ts                # Inferred types
+└── index.ts                # Database connection
 
-### Environment
-- Creates `.env.example`:
-  - `DATABASE_URL` template with connection string format
+scripts/
+└── seed.ts                 # Seed script
 
-### Seed Script
-- Creates `scripts/seed.ts`:
-  - Clears existing data (posts, users)
-  - Creates 2 sample users (Alice, Bob)
-  - Creates 3 sample posts (2 published, 1 draft)
-  - Demonstrates insert with `.returning()` and relations
+drizzle.config.ts           # Drizzle Kit config
+.env.example                # DATABASE_URL template
+```
+
+**Database Schema:**
+- `User`: id, username, email, emailVerified, avatarUrl, phone, firstName, lastName, createdAt, updatedAt
+- `Post`: id, title, content, published, authorId (FK to User), createdAt, updatedAt
+- `Session` (if Better Auth): id, userId, token, expiresAt, ipAddress, userAgent, timestamps
+- `Account` (if Better Auth): id, userId, accountId, providerId, tokens, scope, password, timestamps
+- `Verification` (if Better Auth): id, identifier, value, expiresAt, timestamps
+
+**Dependencies:**
+- `drizzle-orm` - ORM library
+- `pg` or `mysql2` - Database driver
+- `drizzle-kit` (dev) - Migrations CLI
+- `@types/pg` or `@types/mysql2` (dev) - TypeScript types

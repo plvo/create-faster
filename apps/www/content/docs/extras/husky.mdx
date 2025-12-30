@@ -3,62 +3,62 @@ title: Husky
 description: Husky is a Git hooks manager that lets you run scripts at key moments in the Git workflow for quality assurance.
 ---
 
-[Husky](https://typicode.github.io/husky) makes Git hooks easy, allowing you to enforce code quality, commit message conventions, and automated formatting before commits.
+Pre-configured Git hooks for automated formatting, conventional commit validation, and auto-amending formatted code.
 
-**Why use Husky?**
-- **Quality Gates**: Prevent bad commits from entering the repository
-- **Automation**: Automatically format code and run checks
-- **Convention Enforcement**: Ensure commit messages follow standards
-- **Easy Setup**: Simple configuration with zero config needed
-- **Fast**: Lightweight shell scripts with minimal overhead
-- **Team Consistency**: Everyone uses the same hooks automatically
+[→ Husky Documentation](https://typicode.github.io/husky)
 
-**Requirements:** Git repository
+**Requires:** Git repository
 
-# Technical Changes
+## What create-faster adds
 
-### Git Hooks Setup
-- Creates `.husky/` directory at project root with three hooks
+Beyond the official setup, we include:
 
-### 1. Pre-Commit Hook `.husky/pre-commit`
-- **Purpose**: Automatically format code before committing
-- **Behavior**:
-  - Detects package manager (bun, pnpm, npm, or yarn) by checking lock files
-  - Defaults to `bun` if no lock file found
-  - If a linter like Biome is installed, runs `{pm} run format` command
+**Three Git Hooks:**
+1. **Pre-commit** - Auto-format code before committing
+2. **Commit-msg** - Validate conventional commit format
+3. **Post-commit** - Auto-amend if formatter changed files
 
-### 2. Commit Message Hook `.husky/commit-msg`
-- **Purpose**: Validate commit message format follows conventional commits
-- **Behavior**:
-  - Reads commit message from Git temporary file
-  - Validates commit type prefix using regex
-  - **Accepted Types**:
-    - `build` - Build system changes
-    - `ci` - CI/CD configuration
-    - `feat` - New features
-    - `fix` - Bug fixes
-    - `perf` - Performance improvements
-    - `refactor` - Code refactoring
-    - `style` - Code style changes
-    - `docs` - Documentation
-    - `test` - Tests
-    - `chore` - Maintenance tasks
-    - `revert` - Revert commits
-    - `workflow` - Workflow changes
-    - `wip` - Work in progress
-    - `security` - Security fixes
-  - **Expected Format**: `<type>(<scope>): <subject>`
-  - **Example**: `feat(auth): add email login`
-  - Shows warning with emoji guide if invalid, but allows commit to proceed
+**Smart Package Manager Detection:**
+- Detects bun, pnpm, npm, or yarn from lock files
+- Defaults to bun if no lock file found
+- Runs formatter only if Biome or similar is installed
 
-### 3. Post-Commit Hook `.husky/post-commit`
-- **Purpose**: Auto-amend commit if formatting changed files
-- **Behavior**:
-  - Checks if `git diff` shows changes after pre-commit formatting
-  - If changes detected:
-    - Stages all changes with `git add .`
-    - Amends the commit with `--no-edit --no-verify`
-    - Skips hooks with `--no-verify` to prevent infinite loop
-  - If no changes detected:
-    - Skips amend and logs message
-- **Use Case**: Ensures formatted code is included in the commit without manual intervention
+**Conventional Commits Validation:**
+- Enforces `<type>(<scope>): <subject>` format
+- Accepted types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `workflow`, `wip`, `security`
+- Example: `feat(auth): add email login`
+- Shows helpful emoji guide on invalid format
+- Allows commit to proceed (warning, not error)
+
+**Auto-Amend Workflow:**
+- If pre-commit hook formats files, post-commit auto-amends
+- Prevents "formatting" commits cluttering history
+- Uses `--no-verify` to avoid infinite hook loop
+
+Files created:
+```
+.husky/
+├── pre-commit              # Auto-format before commit
+├── commit-msg              # Validate conventional commit format
+└── post-commit             # Auto-amend if formatting changed files
+```
+
+**Pre-Commit Hook:**
+```bash
+# Detects package manager from lock files
+# Runs {pm} run format if linter installed
+```
+
+**Commit-Msg Hook:**
+```bash
+# Validates: <type>(<scope>): <subject>
+# Example: feat(auth): add email login
+# Shows warning with emoji guide if invalid
+```
+
+**Post-Commit Hook:**
+```bash
+# Checks if formatting changed files
+# Auto-amends commit if changes detected
+# Uses --no-verify to prevent loop
+```

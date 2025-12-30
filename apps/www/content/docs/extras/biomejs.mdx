@@ -3,70 +3,62 @@ title: Biome
 description: Biome is a fast, all-in-one toolchain for formatting, linting, and more - built in Rust for maximum performance.
 ---
 
-[Biome](https://biomejs.dev) is a blazingly fast formatter and linter for JavaScript, TypeScript, JSX, and JSON, designed to replace ESLint and Prettier with a single tool.
+Pre-configured Biome formatter and linter with project-specific rules, import sorting, and sensible defaults for TypeScript/React projects.
 
-**Why use Biome?**
-- **Ultra-Fast**: Written in Rust, up to 97% faster than ESLint/Prettier
-- **All-in-One**: Combines formatting and linting in a single tool
-- **Compatible**: Drop-in replacement for Prettier/ESLint configurations
-- **Zero Config**: Works out of the box with sensible defaults
-- **Editor Support**: Native integrations for VS Code, IntelliJ, and more
-- **Import Sorting**: Automatic organization of imports
+[→ Biome Documentation](https://biomejs.dev)
 
-## Technical Changes
+## What create-faster adds
 
-### Configuration File
-- Creates `biome.json` at project root with comprehensive settings
+Beyond the official setup, we include:
 
-### Schema & VCS
-- VCS integration: Git enabled with `.gitignore` support
+**Opinionated Configuration:**
+- Single quotes for JS/TS and JSX
+- 2-space indentation, 120 character line width
+- Semicolons always required
+- Trailing commas everywhere (except JSON)
+- LF line endings (Unix-style)
+
+**Automatic Import Sorting:**
+- Enabled via `assist.actions.source.organizeImports`
+
+**Relaxed Linter Rules:**
+- `noExplicitAny` off - Allows `any` type when needed
+- `noConsole` off - Allows `console.log` for debugging
+- `noArrayIndexKey` off - Allows array indices as React keys
+- `noForEach` off - Allows `.forEach()` loops
+- `useKeyWithClickEvents` off - Accessibility rule disabled
+- `noStaticElementInteractions` off - Accessibility rule disabled
+- `noUnusedVariables` info level - Warnings instead of errors
+
+**Smart Exclusions:**
+- Framework build directories (`.next/`, `.turbo/`, `dist/`, `out/`)
+- Generated code (`generated/`, `node_modules/`)
+- Git hooks (`.husky/`)
+- CSS files (handled by framework)
+
+File created:
+```
+biome.json                  # Complete Biome configuration
+```
+
+**Configuration Highlights:**
+- VCS integration with Git and `.gitignore` support
 - Default branch: `main`
+- Format-with-errors disabled (fail-safe)
+- Recommended linter rules as base
+- JSON spec-compliant formatting (no trailing commas)
 
-### File Configuration
-- `ignoreUnknown`: true (skip unknown file types)
-- **Excluded paths**:
-  - `apps/app/src/app/init/**/*`
-  - `packages/ui/src/components/**/*`
-  - `packages/ui/src/styles/**/*`
-  - `**/*.css`
-  - `**/.next/**/*`
-  - `**/node_modules/**/*`
-  - `**/.husky/**/*`
-  - `**/dist/**/*`
-  - `**/out/**/*`
-  - `**/generated/**/*`
-  - `**/.turbo/**/*`
-
-### Formatter Settings
-- Enabled with error-free formatting
-- Indent style: spaces (2 spaces)
-- Line ending: LF (Unix-style)
-- Line width: 120 characters
-
-### JavaScript/TypeScript Formatting
-- Quote style: single quotes
-- JSX quote style: single quotes
-- Semicolons: always required
-- Trailing commas: all (objects, arrays, functions)
-- Bracket spacing: enabled
-- Bracket same line: disabled (JSX closing brackets on new line)
-
-### JSON Formatting
-- Trailing commas: none (JSON spec compliant)
-
-### Linter Rules
-- Base: recommended rules enabled
-- **Suspicious rules**:
-  - `noExplicitAny`: off (allows `any` type)
-  - `noArrayIndexKey`: off (allows array indices as keys)
-  - `noConsole`: off with `console.log` allowed
-- **Accessibility (a11y)**:
-  - `useKeyWithClickEvents`: off
-  - `noStaticElementInteractions`: off
-- **Correctness**:
-  - `noUnusedVariables`: info level with unsafe fixes
-- **Complexity**:
-  - `noForEach`: off (allows `forEach` loops)
-
-### Import Organization
-- Automatic import sorting enabled via `assist.actions.source.organizeImports`
+**Excluded Paths:**
+```
+apps/app/src/app/init/**/*
+packages/ui/src/components/**/*
+packages/ui/src/styles/**/*
+**/*.css
+**/.next/**/*
+**/node_modules/**/*
+**/.husky/**/*
+**/dist/**/*
+**/out/**/*
+**/generated/**/*
+**/.turbo/**/*
+```

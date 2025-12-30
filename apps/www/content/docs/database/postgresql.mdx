@@ -3,27 +3,50 @@ title: PostgreSQL
 description: PostgreSQL is a powerful, open-source object-relational database system with over 35 years of active development.
 ---
 
-[PostgreSQL](https://www.postgresql.org) is an advanced, enterprise-class open-source relational database that supports both SQL (relational) and JSON (non-relational) querying.
+Production-ready PostgreSQL database via Docker Compose with persistent volumes, health checks, and connection pooling.
 
-## Docker Compose Configuration
+[→ PostgreSQL Documentation](https://www.postgresql.org)
 
-- Creates `docker.compose.yml` at project root with PostgreSQL service
-- **Image**: `postgres:latest` official Docker image
-- **Container**: Named `postgres-{projectName}` for easy identification
-- **Environment Variables**:
-  - `POSTGRES_USER`: postgres
-  - `POSTGRES_PASSWORD`: password (change in production)
-  - `POSTGRES_DB`: `postgres-{projectName}`
-- **Ports**: Exposes port 5432 (PostgreSQL default)
-- **Volume**: Persistent storage at `postgres-{projectName}-data:/var/lib/postgresql/data`
-- **Network**: Dedicated bridge network `postgres-{projectName}-network`
-- **Command**: `postgres -c 'max_connections=100'` for connection limit
-- **Healthcheck**:
-  - Test: `pg_isready -U postgres -d postgres-{projectName}`
-  - Interval: 10s, Timeout: 5s, Retries: 5
-  - Start period: 30s for initialization
+## What create-faster adds
 
-**Connection String Format:**
+Beyond the official setup, we include:
+
+**Docker Compose Configuration:**
+- Pre-configured `postgres:latest` service
+- Project-specific naming (`postgres-{projectName}`)
+- Persistent data volume
+- Health check with `pg_isready`
+- Connection limit (100 max connections)
+- Dedicated network for isolation
+
+File created:
+```
+docker.compose.yml          # PostgreSQL service configuration
+```
+
+**Service Configuration:**
+- **Image**: `postgres:latest`
+- **Container**: `postgres-{projectName}`
+- **Port**: 5432 (PostgreSQL default)
+- **Restart**: always
+
+**Environment Variables:**
+- `POSTGRES_USER`: postgres
+- `POSTGRES_PASSWORD`: password (change in production)
+- `POSTGRES_DB`: `postgres-{projectName}`
+
+**Volume:**
+- `postgres-{projectName}-data:/var/lib/postgresql/data` (persistent storage)
+
+**Network:**
+- `postgres-{projectName}-network` (bridge network for isolation)
+
+**Health Check:**
+- Test: `pg_isready -U postgres -d postgres-{projectName}`
+- Interval: 10s, Timeout: 5s, Retries: 5
+- Start period: 30s for initialization
+
+**Connection String:**
 ```
 postgresql://postgres:password@localhost:5432/postgres-{projectName}
 ```

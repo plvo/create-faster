@@ -3,155 +3,212 @@ title: Next.js
 description: Next.js is a React framework for building server-side rendered and static site applications with powerful features like Server Components and App Router.
 ---
 
-[Next.js](https://nextjs.org) is a React framework for production-grade applications with server-side rendering, static site generation, and React Server Components.
+Full-stack React framework for production-grade applications with server-side rendering, static site generation, and React Server Components.
 
-**Why use Next.js?**
-- **Performance**: Automatic code splitting, image optimization, and edge runtime support
-- **Developer Experience**: Hot reload, TypeScript support, and built-in routing
-- **Flexibility**: Choose between SSR, SSG, or ISR per page
-- **Server Components**: React Server Components for zero-bundle client code
-- **App Router**: Modern file-system based routing with layouts and streaming
+[→ Official Next.js Documentation](https://nextjs.org/docs)
 
-# Modules
+## What create-faster adds
 
-## UI & Styling
+Beyond the official Next.js setup, we include:
+
+**Project Structure:**
+- Pre-configured error pages (`404.tsx`, `error.tsx`, `not-found.tsx`)
+- Centralized app providers (`src/components/app-providers.tsx`)
+- Custom hooks directory with `useIsMobile` utility
+
+**Development Scripts:**
+- `build:analyze` - Bundle size analysis with `@next/bundle-analyzer`
+- `start:inspect` - Debug mode with Node inspector
+
+## Modules
 
 ### shadcn/ui
 
-*[Link to shadcn/ui](https://ui.shadcn.com)*
-
-A collection of beautifully designed, accessible components built with Radix UI and Tailwind CSS that you can copy, customize, and integrate directly into your app.
+*[→ shadcn/ui Documentation](https://ui.shadcn.com)*
 
 **Technical changes:**
-- **Turborepo mode**: Creates `packages/ui/` package with `package.json` exporting components
-  - Dependencies: `@radix-ui/react-slot`, `class-variance-authority`, `clsx`, `cmdk`, `lucide-react`, `radix-ui`, `tailwind-merge`, `vaul`, `tw-animate-css`
-  - Exports: `./components/*`, `./hooks/*`, `./lib/*`, `./postcss.config`
-- **Single repo mode**: Adds dependencies directly to app's `package.json`
-- Creates `src/components/ui/button.tsx` - Example button component with variants
-- Creates `src/lib/utils.ts` - `cn()` helper for merging Tailwind classes
-- Creates `components.json` - shadcn/ui configuration file
-- Creates `postcss.config.mjs` - PostCSS config for Tailwind
-- Creates `tsconfig.json` - TypeScript paths config
 
-### Next Themes
+Files added:
+```
+src/
+├── components/ui/
+│   └── button.tsx        # Example component with variants
+├── lib/
+│   └── utils.ts          # cn() helper for Tailwind classes
+└── styles/
+    └── globals.css       # Tailwind setup
 
-*[Link to Next Themes](https://github.com/pacocoursey/next-themes)*
+components.json           # shadcn CLI configuration
+postcss.config.mjs        # PostCSS config for Tailwind
 
-Theme management library for Next.js with system preference detection and no flash of incorrect theme.
+# Turborepo only:
+packages/ui/
+├── src/components/ui/
+├── package.json          # @repo/ui with exports
+└── postcss.config.mjs
+```
+
+**Modified files:**
+- `package.json` - Adds `radix-ui`, `class-variance-authority`, `clsx`, `cmdk`, `tailwind-merge`, `vaul`, `tw-animate-css`
+
+**Turborepo mode:**
+Creates `@repo/ui` package with shared components accessible via `@repo/ui` imports.
+
+---
+
+### next-themes
+
+*[→ next-themes Documentation](https://github.com/pacocoursey/next-themes)*
 
 **Technical changes:**
-- Adds `next-themes` dependency to `package.json`
-- Wraps app with `<NextThemesProvider>` in `src/components/app-providers.tsx`
-- Config: `enableSystem` and `storageKey` set to `{appName}-theme`
 
-## Features
+Modified files:
+- `src/components/app-providers.tsx` - Wraps app with `NextThemesProvider`
+- `package.json` - Adds `next-themes` dependency
+
+**Configuration:**
+- `enableSystem: true` - Respects system theme preference
+- `storageKey: '{appName}-theme'` - Persists theme choice
+
+---
 
 ### MDX
 
-*[Link to MDX](https://github.com/mdx-js/mdx)*
-
-Markdown with JSX support for content-driven pages. Parse frontmatter, render MDX files, and create dynamic content pages.
-
-**Requirements:** None
+*[→ MDX Documentation](https://mdxjs.com)*
 
 **Technical changes:**
-- Adds dependencies: `@mdx-js/loader`, `@mdx-js/react`, `@next/mdx`, `next-mdx-remote`, `@types/mdx` (dev)
-- Creates `src/lib/mdx.ts` - `parseFrontmatter()` utility for extracting metadata from MDX files
-- Creates `src/mdx-components.tsx` - Custom MDX component mappings
-- Creates `src/styles/mdx.css` - MDX-specific styling
-- Creates `src/app/[...mdxExampleSlug]/page.tsx` - Example dynamic MDX page route
-- Modifies `next.config.ts`:
-  - Imports `createMDX` from `@next/mdx`
-  - Adds `.mdx` and `.md` to `turbopack.resolveExtensions`
-  - Wraps config with `withMDX()`
+
+Files added:
+```
+src/
+├── lib/
+│   └── mdx.ts                  # parseFrontmatter() utility
+├── mdx-components.tsx          # Custom MDX component mappings
+├── styles/
+│   └── mdx.css                 # MDX-specific styling
+└── app/[...mdxExampleSlug]/
+    └── page.tsx                # Dynamic MDX route example
+```
+
+**Modified files:**
+- `next.config.ts` - Adds MDX support with `createMDX` and `.mdx`/`.md` extensions
+- `package.json` - Adds `@mdx-js/loader`, `@mdx-js/react`, `@next/mdx`, `next-mdx-remote`, `@types/mdx`
+
+---
 
 ### PWA
 
-*[Link to PWA documentation](https://nextjs.org/docs/app/guides/progressive-web-apps)*
-
-Progressive Web App support with web app manifest for installable apps.
+*[→ PWA Documentation](https://nextjs.org/docs/app/guides/progressive-web-apps)*
 
 **Technical changes:**
-- Creates `src/app/manifest.ts` - Web app manifest configuration with:
-  - App name and short name (uses `{appName}`)
-  - Description, start URL, display mode
-  - Icon definitions (192x192, 512x512)
-  - Background and theme colors
 
-## Authentication
+Files added:
+```
+src/app/
+└── manifest.ts             # Web app manifest config
+```
+
+**Manifest configuration:**
+- App name and short name (uses `{appName}`)
+- Icon definitions (192x192, 512x512)
+- Start URL, display mode, theme colors
+
+---
 
 ### Better Auth
 
-*[Link to Better Auth](https://www.better-auth.com)*
+*[→ Better Auth Documentation](https://better-auth.com)*
 
-The most comprehensive authentication framework for TypeScript with built-in session management, multiple providers, and type-safe APIs.
-
-**Requirements:** Requires database + ORM
+**Requirements:** Requires database + ORM selection
 
 **Technical changes:**
-- **Turborepo mode**: Creates `packages/auth/` package
-  - `package.json` with dependencies: `better-auth`, `@repo/db`, `zod`
-  - Exports: `./auth`, `./auth-client`, `./route`, `./types`
-- Adds `better-auth` dependency to app's `package.json`
-- Creates `src/auth.ts` (turborepo: `packages/auth/src/auth.ts`) - Server-side auth config:
-  - Database adapter (Drizzle or Prisma) with provider-specific config
-  - Schema mappings for user, account, session, verification tables
-  - Email/password plugin enabled
-  - Next.js cookies plugin
-  - Session expiry: 15 days
-- Creates `src/auth-client.ts` - Client-side auth hooks and utilities
-- Creates `src/types.ts` - TypeScript auth types
-- Creates `src/app/api/auth/[...all]/route.ts` - Auth API route handler
-- Creates `src/route.ts` - Route helper exports
-- Creates `tsconfig.json` - TypeScript config with path aliases
 
-## Data Fetching
+Files added:
+```
+src/
+├── lib/auth/
+│   ├── auth.ts              # Server auth config
+│   └── auth-client.ts       # Client auth helpers
+└── app/api/auth/[...all]/
+    └── route.ts             # Auth API handler
+
+# Turborepo only:
+packages/auth/
+├── src/
+│   ├── auth.ts
+│   ├── auth-client.ts
+│   ├── route.ts
+│   └── types.ts
+├── package.json             # @repo/auth
+└── tsconfig.json
+```
+
+**Modified files:**
+- `package.json` - Adds `better-auth` dependency
+
+**ORM Integration:**
+Automatically configures adapter based on:
+- **Drizzle**: `drizzleAdapter` with provider-specific config (pg/mysql)
+- **Prisma**: `prismaAdapter` with provider config (postgresql/mysql)
+
+Maps to database tables: `user`, `account`, `session`, `verification`
+
+**Turborepo mode:**
+Creates `@repo/auth` package, depends on `@repo/db` for database access.
+
+---
 
 ### TanStack Query
 
-*[Link to TanStack Query](https://tanstack.com/query)*
-
-Powerful data-fetching and state management library for server state with caching, background updates, and optimistic UI.
+*[→ TanStack Query Documentation](https://tanstack.com/query)*
 
 **Technical changes:**
-- Adds `@tanstack/react-query` dependency to `package.json`
-- Wraps app with `<QueryClientProvider>` in `src/components/app-providers.tsx`
-- QueryClient config:
-  - Retry: 1 attempt
-  - `refetchOnWindowFocus`: false
-  - `staleTime`: 5 minutes
-  - `gcTime`: 10 minutes
+
+Modified files:
+- `src/components/app-providers.tsx` - Adds `QueryClientProvider`
+- `package.json` - Adds `@tanstack/react-query`
+
+**QueryClient configuration:**
+- Retry: 1 attempt
+- `refetchOnWindowFocus: false`
+- `staleTime: 5 minutes`
+- `gcTime: 10 minutes`
+
+---
 
 ### TanStack Devtools
 
-*[Link to TanStack Devtools](https://tanstack.com/devtools)*
-
-Dedicated devtools panel for TanStack libraries (Query, Router, Form) for debugging and inspecting state.
+*[→ TanStack Devtools Documentation](https://tanstack.com/devtools)*
 
 **Technical changes:**
-- Adds dependencies: `@tanstack/react-devtools`, `@tanstack/react-query-devtools`
-- Adds devtools panel to `src/app/layout.tsx`:
-  - Only in development mode
-  - Position: top-left
-  - TanStack Query plugin integrated
-  - Server bus connection enabled
 
-## Forms
+Modified files:
+- `src/app/layout.tsx` - Adds devtools panel (development only)
+- `package.json` - Adds `@tanstack/react-devtools`, `@tanstack/react-query-devtools`
+
+**Devtools configuration:**
+- Position: top-left
+- TanStack Query plugin integrated
+- Server bus connection enabled
+
+---
 
 ### React Hook Form
 
-*[Link to React Hook Form](https://react-hook-form.com)*
-
-Performant, flexible form library with easy validation and minimal re-renders.
+*[→ React Hook Form Documentation](https://react-hook-form.com)*
 
 **Technical changes:**
-- Adds dependencies: `react-hook-form`, `@hookform/resolvers`
+
+Modified files:
+- `package.json` - Adds `react-hook-form`, `@hookform/resolvers`
+
+---
 
 ### TanStack Form
 
-*[Link to TanStack Form](https://tanstack.com/form)*
-
-Headless, type-safe form library with powerful validation and framework-agnostic design.
+*[→ TanStack Form Documentation](https://tanstack.com/form)*
 
 **Technical changes:**
-- Adds dependency: `@tanstack/react-form`
+
+Modified files:
+- `package.json` - Adds `@tanstack/react-form`
