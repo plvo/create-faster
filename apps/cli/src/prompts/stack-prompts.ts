@@ -7,12 +7,18 @@ import type { MetaModules } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
-    options: Object.entries(META.stacks).map(([key, meta]) => ({
-      value: key,
-      label: meta.label,
-      hint: meta.hint,
-      section: meta.type === 'app' ? 'Web / Mobile App' : 'Server / API',
-    })),
+    options: Object.entries(META.stacks)
+      // Sort by type to group app stacks together and server stacks together
+      .sort(([, a], [, b]) => {
+        if (a.type === b.type) return 0;
+        return a.type === 'app' ? -1 : 1;
+      })
+      .map(([key, meta]) => ({
+        value: key,
+        label: meta.label,
+        hint: meta.hint,
+        section: meta.type === 'app' ? 'Web / Mobile App' : 'Server / API',
+      })),
 
     render() {
       let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${message}`;

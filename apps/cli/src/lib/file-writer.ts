@@ -88,6 +88,12 @@ export async function pathExists(path: string): Promise<boolean> {
 }
 
 export function transformSpecialFilename(filename: string): string {
+  // Triple underscore escapes to double underscore (for files like __root.tsx)
+  if (filename.startsWith('___')) {
+    return `__${filename.slice(3)}`;
+  }
+
+  // Double underscore becomes dot (for dotfiles like .gitignore)
   if (filename.startsWith('__')) {
     return `.${filename.slice(2)}`;
   }

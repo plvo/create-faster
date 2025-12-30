@@ -87,6 +87,26 @@ export const META: Meta = {
         },
       },
     },
+    'tanstack-start': {
+      type: 'app',
+      scope: 'app',
+      label: 'TanStack Start',
+      hint: 'Full-stack React framework with TanStack Router',
+      modules: {
+        'Data Fetching': {
+          'tanstack-query': {
+            label: 'TanStack Query',
+            hint: 'Powerful asynchronous state management',
+          },
+        },
+        Forms: {
+          'tanstack-form': {
+            label: 'TanStack Form',
+            hint: 'Headless UI for building performant forms',
+          },
+        },
+      },
+    },
   },
   database: {
     scope: 'root',
