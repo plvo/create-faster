@@ -27,9 +27,9 @@ function AppContent() {
   if (!loaded) {
     return (
       <GestureHandlerRootView style=\{\{ flex: 1 \}\}>
-        <View {{#if (hasModule "nativewind")}}className='flex-1 bg-blue-600 justify-center items-center'{{/if}}>
+        <View{{#if (hasModule "nativewind")}} className='flex-1 bg-blue-600 justify-center items-center'{{/if}}>
           <ActivityIndicator size='large' color='white' />
-          <Text {{#if (hasModule "nativewind")}}className='text-white text-lg mt-4 font-bold'{{/if}}>Initialization...</Text>
+          <Text{{#if (hasModule "nativewind")}} className='text-white text-lg mt-4 font-bold'{{/if}}>Initialization...</Text>
         </View>
       </GestureHandlerRootView>
     );

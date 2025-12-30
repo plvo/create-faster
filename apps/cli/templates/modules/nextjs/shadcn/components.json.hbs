@@ -6,11 +6,11 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-	{{#if (eq repo "turborepo")}}
+    {{#if (eq repo "turborepo")}}
     "css": "@repo/ui/base.css",
-	{{else}}
+    {{else}}
     "css": "src/styles/globals.css",
-	{{/if}}
+    {{/if}}
     "baseColor": "neutral",
     "cssVariables": true
   },
@@ -19,11 +19,11 @@
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-	{{#if (eq repo "turborepo")}}
+    {{#if (eq repo "turborepo")}}
     "utils": "@repo/ui/lib/utils",
     "ui": "@repo/ui"
-	{{else}}
+    {{else}}
     "utils": "src/lib/utils"
-	{{/if}}
+    {{/if}}
   }
 }
