@@ -2,8 +2,6 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "include-v-in-tag": true,
   "separate-pull-requests": false,
-  "pull-request-title-pattern": "chore${scope}: release${component} ${version}",
-  "group-pull-request-title-pattern": "chore${scope}: release${component} ${version}",
   "plugins": ["node-workspace"],
   "packages": {
     "apps/cli": {
