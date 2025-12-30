@@ -1,0 +1,34 @@
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/')({ component: Home })
+
+function Home() {
+  return (
+    <div className="space-y-6">
+      <section className="bg-slate-800 border border-slate-700 rounded-lg p-8">
+        <h2 className="text-2xl font-semibold mb-4">Welcome to TanStack Start</h2>
+        <p className="text-gray-400 mb-4">
+          Your app is up and running with TanStack Start - a full-stack React framework
+          powered by TanStack Router.
+        </p>
+        <a
+          href="https://tanstack.com/start"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors"
+        >
+          View Documentation
+        </a>
+      </section>
+
+      <section className="bg-slate-800 border border-slate-700 rounded-lg p-8">
+        <h3 className="text-xl font-semibold mb-4">Next Steps</h3>
+        <ul className="list-disc list-inside space-y-2 text-gray-400">
+          <li>Edit this page in <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">src/routes/index.tsx</code></li>
+          <li>Add new routes by creating files in <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">src/routes/</code></li>
+          <li>Customize your app configuration in <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">vite.config.ts</code></li>
+        </ul>
+      </section>
+    </div>
+  )
+}
