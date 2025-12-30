@@ -7,6 +7,7 @@
   "plugins": ["node-workspace"],
   "packages": {
     "apps/cli": {
+      "component": "create-faster",
       "release-type": "node",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
