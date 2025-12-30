@@ -31,6 +31,8 @@ title: Stack Name
 description: Keep original style - framework presentation (don't change)
 ---
 
+## Presentation
+
 Brief explicit description of what you get as result (Full-stack X framework...).
 
 [→ Official Documentation](https://...)
@@ -101,15 +103,23 @@ packages/name/
 
 ### Step 1: Analyze Templates
 
+**CRITICAL: Templates are the source of truth. Verify every file reference.**
+
 ```bash
 # Find all template files for stack
 ls -la apps/cli/templates/stack/{stackname}/
 
-# Check modules
+# Check modules (not all stacks have modules directories)
 ls -la apps/cli/templates/modules/{framework}/
+
+# Verify specific files mentioned in docs
+find apps/cli/templates -name "filename.hbs"
+
+# Check package.json for scripts
+grep "script-name" apps/cli/templates/stack/{stackname}/package.json.hbs
 ```
 
-Document EXACTLY what files we create/modify.
+Document EXACTLY what files we create/modify. Cross-reference every claim with actual template files.
 
 ### Step 2: Structure Document
 
@@ -136,11 +146,18 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 ### Step 3: Focus on Technical Changes
 
 **DO document:**
-- Files we create (`src/lib/utils.ts`)
-- Files we modify (`next.config.ts` with MDX support)
-- Custom utilities (`cn()`, `useIsMobile`)
-- Custom scripts with clear purpose (`build:analyze - Bundle analysis`)
-- Turborepo package structure
+- Files we create (verifiable in `apps/cli/templates/`)
+  - Example: `apps/cli/templates/modules/nextjs/shadcn/src/lib/utils.ts.hbs`
+  - Example: `apps/cli/templates/stack/nextjs/src/hooks/use-mobile.ts.hbs`
+- Files we modify (verifiable in `apps/cli/templates/`)
+  - Example: `apps/cli/templates/stack/nextjs/next.config.ts.hbs` (MDX support)
+- Custom utilities (functions in template files)
+  - Example: `cn()` function in utils.ts
+  - Example: `useIsMobile()` hook in use-mobile.ts
+- Custom scripts with clear purpose (in package.json templates)
+  - Example: `build:analyze` in `apps/cli/templates/stack/nextjs/package.json.hbs`
+  - Example: `start:inspect` in `apps/cli/templates/stack/nextjs/package.json.hbs`
+- Turborepo package structure (conditional based on repo type)
 - Integration configs (ORM adapters, database providers)
 
 **DON'T document:**
@@ -202,6 +219,7 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 - [ ] `description:` keeps original framework presentation style
 
 **Document:**
+- [ ] `## Presentation` section added after frontmatter
 - [ ] Brief explicit description (what you get as result)
 - [ ] Link to official documentation (→ syntax, MANDATORY)
 - [ ] "What create-faster adds" section
@@ -216,6 +234,13 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 - [ ] Integration notes for ORM/database modules
 - [ ] No "Why use X?" sections
 - [ ] No framework feature explanations
+
+**Verification (MANDATORY):**
+- [ ] Every file reference verified in `apps/cli/templates/`
+- [ ] Every script reference verified in package.json.hbs
+- [ ] Every utility function verified in template source
+- [ ] Error page references checked against actual templates
+- [ ] Module structure verified (some use inline conditionals, not separate files)
 
 ## Real-World Impact
 

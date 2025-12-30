@@ -13,6 +13,7 @@
     "---STACKS---",
     "stacks/nextjs",
     "stacks/expo",
+    "stacks/tanstack-start",
     "stacks/hono",
     "---DATABASES---",
     "database/postgresql",
