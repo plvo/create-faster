@@ -17,13 +17,13 @@
   "scripts": {
     "clean": "rimraf .turbo node_modules .next bun.lock package-lock.json pnpm-lock.yaml",
     "clean:all": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\" && bun run clean",
-	{{#if (eq extras "biome")}}
+    {{#if (eq extras "biome")}}
     "check": "biome check  --write .",
     "check:unused": "knip",
     "format": "biome format --verbose --write .",
     "lint": "biome lint --verbose --write .",
     {{/if}}
-	{{#if (eq orm "drizzle")}}
+    {{#if (eq orm "drizzle")}}
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -36,34 +36,34 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "bun run scripts/seed.ts",
-	{{/if}}
-	{{#if (hasAnyStack "nextjs")}}
+    {{/if}}
+    {{#if (hasAnyStack "nextjs")}}
     "prebuild": "next telemetry disable",
-	{{/if}}
+    {{/if}}
     "build": "turbo run build",
     "dev": "turbo run dev",
     "start": "turbo run start"
   },
   "dependencies": {
     "lucide-react": "^0.544.0",
-	  {{#if (hasAnyStack "nextjs")}}
+    {{#if (hasAnyStack "nextjs")}}
     "next": "^15.5",
     "next-themes": "^0.4.6",
     "react": "^19",
     "react-dom": "^19",
-	  {{/if}}
-	  "zod": "^4.1"
+    {{/if}}
+    "zod": "^4.1"
   },
   "devDependencies": {
     "@repo/config": "*",
-	  {{#if (hasAnyStack "nextjs")}}
+    {{#if (hasAnyStack "nextjs")}}
     "@next/bundle-analyzer": "^15.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-	  {{/if}}
-	  {{#if (eq extras "biome")}}
+    {{/if}}
+    {{#if (eq extras "biome")}}
     "@biomejs/biome": "^2.2.4",
-	  {{/if}}
+    {{/if}}
     "@types/node": "^24.5.2",
     "knip": "^5",
     "rimraf": "^6",

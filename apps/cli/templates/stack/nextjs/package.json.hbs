@@ -23,14 +23,14 @@
     "lint": "biome lint --write .",
     "prepare": "husky",
     {{/if}}
-    "dev": "next dev --turbopack {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
+    "dev": "next dev --turbopack{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
     "build": "next build --turbo",
     "build:analyze": "ANALYZE=true next build --turbo",
-    "start": "next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
-    "start:inspect": "NODE_OPTIONS=\"--inspect\" next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}"
+    "start": "next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
+    "start:inspect": "NODE_OPTIONS=\"--inspect\" next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}"
   },
   "dependencies": {
-    {{#if  (hasModule "shadcn")}}
+    {{#if (hasModule "shadcn")}}
     {{#if (eq repo "single")}}
     "radix-ui": "^1.4.2",
     "class-variance-authority": "^0.7.1",

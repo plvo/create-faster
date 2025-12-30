@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     {{#if (hasModule "shadcn")}}
     "@repo/ui",
-    {{/if}} 
+    {{/if}}
     {{#if (eq hasContext "orm")}}
     "@repo/db",
     {{/if}}
