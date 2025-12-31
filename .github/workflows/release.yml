@@ -65,3 +65,33 @@ jobs:
           files: apps/cli/create-faster-${{ needs.release-please.outputs.version }}.tar.gz
           make_latest: true
           generate_release_notes: true
+
+  publish-npm:
+    name: "📤 Publish to NPM"
+    runs-on: ubuntu-latest
+    needs: [release-please, build-assets]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: "🔧 Setup Bun"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "📦 Install Dependencies"
+        run: bun install
+
+      - name: "🏗️ Build CLI"
+        run: bun run build:cli
+
+      - name: "📤 Publish to NPM"
+        working-directory: apps/cli
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          bun publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
