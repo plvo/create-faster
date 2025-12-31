@@ -119,7 +119,6 @@ ${color.bold('Examples:')}
     partial.extras = extrasList as (keyof typeof META.extras.stacks)[];
   }
 
-  // Validate context
   validateContext(partial);
 
   return partial;
