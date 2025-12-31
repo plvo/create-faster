@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/plvo/create-faster/compare/create-faster-v1.4.0...create-faster-v1.4.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* **ci:** npm token, trigger cli ([7298954](https://github.com/plvo/create-faster/commit/7298954a59043444c081b59d9dfd5c4f88e2ab26))
+
 ## [1.4.0](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2025-12-31)
 
 
