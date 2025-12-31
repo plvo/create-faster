@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/plvo/create-faster/compare/create-faster-v1.4.0...create-faster-v1.4.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* mv publish npm to release ([#38](https://github.com/plvo/create-faster/issues/38)) ([0801716](https://github.com/plvo/create-faster/commit/0801716f9bb4c34dc38d1f03ae3193c48271163e))
+
 ## [1.4.0](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2025-12-31)
 
 
