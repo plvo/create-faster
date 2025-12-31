@@ -18,11 +18,9 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
     git: false,
   };
 
-  // Project name
   if (partial?.projectName) {
     ctx.projectName = partial.projectName;
     log.info(`${color.green('✓')} Using project name from flags: ${color.bold(partial.projectName)}`);
-    // Validate path doesn't exist
     const fullPath = join(process.cwd(), partial.projectName);
     if (existsSync(fullPath)) {
       cancel(`A file or directory named "${partial.projectName}" already exists. Please choose a different name.`);
