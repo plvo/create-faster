@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.4.0](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2025-12-31)
+
+
+### Features
+
+* add TanStack Start framework support ([#32](https://github.com/plvo/create-faster/issues/32)) ([1fb80e3](https://github.com/plvo/create-faster/commit/1fb80e3a9a7932fef50d02f209c70c3e2f2f635e))
+
+
+### Bug Fixes
+
+* **templates:** remove trailing spaces and tabs from all templates ([#34](https://github.com/plvo/create-faster/issues/34)) ([0ef284c](https://github.com/plvo/create-faster/commit/0ef284c61cccd5f6dd541d694e8901ea82c3df21))
+
+
+### Miscellaneous
+
+* **dev:** add local publishing test, cc skills ([362859b](https://github.com/plvo/create-faster/commit/362859b669c43504417d0504dc733d278040fe1c))
+
 ## [1.3.1](https://github.com/plvo/create-faster/compare/create-faster-v1.3.0...create-faster-v1.3.1) (2025-11-20)
 
 
