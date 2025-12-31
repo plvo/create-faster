@@ -32,7 +32,7 @@ jobs:
 
       - name: "🏗️ Build Check"
         id: build
-        run: ls && bun run build
+        run: bun run build
 
       - name: "💾 Cache Build Artifacts"
         if: github.ref == 'refs/heads/main'
