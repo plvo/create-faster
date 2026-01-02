@@ -48,7 +48,7 @@
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "prepublishOnly": "bun run build",
     "publish:test:verdaccio": "bun publish --registry http://localhost:4873",
-    "publish:test:start": "bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
+    "publish:test:start": "bun run build && bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
     "test": "bun test"
   },
   "dependencies": {

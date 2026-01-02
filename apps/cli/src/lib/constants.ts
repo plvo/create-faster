@@ -4,7 +4,9 @@ import color from 'picocolors';
 import packageJson from '../../package.json' with { type: 'json' };
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
-export const TEMPLATES_DIR = path.resolve(dirname, '..', '..', 'templates');
+export const TEMPLATES_DIR = dirname.includes('/dist')
+  ? path.resolve(dirname, '..', 'templates')
+  : path.resolve(dirname, '..', '..', 'templates');
 
 const emojis = ['🌱', '🚀', '💻', '🔥', '🔧', '🔨', '🔩', '🐱', '🤖'];
 
