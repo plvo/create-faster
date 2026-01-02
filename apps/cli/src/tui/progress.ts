@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: <progress step status is always defined> */
+
 import color from 'picocolors';
 
 export type ProgressStep = {

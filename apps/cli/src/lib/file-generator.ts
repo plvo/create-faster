@@ -33,10 +33,8 @@ export async function generateProjectFiles(
   const { overwrite = false } = options;
   const projectPath = join(process.cwd(), context.projectName);
 
-  // Register Handlebars helpers once before processing
   registerHandlebarsHelpers();
 
-  // Validate project directory
   if (!overwrite) {
     await validateProjectDirectory(projectPath);
   }
@@ -48,7 +46,6 @@ export async function generateProjectFiles(
     skipped: [],
   };
 
-  // Create spinner for progress
   const s = spinner();
   s.start(`Generating ${templates.length} files...`);
 
