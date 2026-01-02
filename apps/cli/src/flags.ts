@@ -159,7 +159,6 @@ function parseAppFlag(appFlag: string): AppContext {
   }
   const modules: string[] = modulesStr ? modulesStr.split(',').map((m) => m.trim()) : [];
 
-  // Validate modules
   if (modules.length > 0 && metaStack.modules) {
     const availableModules = getAllModuleKeys(metaStack.modules);
     for (const module of modules) {
