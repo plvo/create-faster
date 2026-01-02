@@ -46,7 +46,6 @@
     "build": "bun build src/index.ts --outdir dist --target node --format esm --production --banner '#!/usr/bin/env node' && chmod +x dist/index.js",
     "dev": "NODE_ENV=development bun run src/index.ts",
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
-    "prepublishOnly": "bun run build",
     "publish:test:verdaccio": "bun publish --registry http://localhost:4873",
     "publish:test:start": "bun run build && bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
     "test": "bun test"
