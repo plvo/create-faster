@@ -18,7 +18,6 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
     git: false,
   };
 
-  // Project name
   if (partial?.projectName) {
     ctx.projectName = partial.projectName;
     log.info(`${color.green('✓')} Using project name from flags: ${color.bold(partial.projectName)}`);
@@ -48,7 +47,6 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
   }
   progress.next();
 
-  // Apps configuration
   if (partial?.apps && partial.apps.length > 0) {
     ctx.apps = partial.apps;
     log.info(
@@ -74,7 +72,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
   }
   progress.next();
 
-  // Database
   if (partial?.database !== undefined) {
     ctx.database = partial.database;
     if (partial.database) {
@@ -86,7 +83,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
     });
   }
 
-  // ORM
   if (partial?.orm !== undefined) {
     ctx.orm = partial.orm;
     if (partial.orm) {
@@ -100,7 +96,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
 
   progress.next();
 
-  // Git
   if (partial?.git !== undefined) {
     ctx.git = partial.git;
     if (partial.git) {
@@ -112,7 +107,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
     });
   }
 
-  // Extras
   if (partial?.extras !== undefined) {
     ctx.extras = partial.extras;
     if (partial.extras && partial.extras.length > 0) {
@@ -126,7 +120,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
 
   progress.next();
 
-  // Package manager
   if (partial?.pm !== undefined) {
     ctx.pm = partial.pm;
     if (partial.pm) {
