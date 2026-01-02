@@ -32,8 +32,8 @@ jobs:
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
 
-  build-assets:
-    name: "🏗️ Build & Upload Assets"
+  build:
+    name: "🏗️ Build CLI"
     runs-on: ubuntu-latest
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
@@ -54,6 +54,30 @@ jobs:
       - name: "🏗️ Build CLI"
         run: bun run build:cli
 
+      - name: "💾 Upload Build Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-build
+          path: apps/cli
+          retention-days: 1
+
+  build-assets:
+    name: "📦 Pack & Upload Assets"
+    runs-on: ubuntu-latest
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    steps:
+      - name: "📥 Download Build"
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-build
+          path: apps/cli
+
+      - name: "🔧 Setup Bun"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: "📦 Pack Distribution"
         working-directory: apps/cli
         run: bun pm pack --ignore-scripts --filename create-faster-${{ needs.release-please.outputs.version }}.tar.gz
@@ -65,3 +89,28 @@ jobs:
           files: apps/cli/create-faster-${{ needs.release-please.outputs.version }}.tar.gz
           make_latest: true
           generate_release_notes: true
+
+  publish-npm:
+    name: "📤 Publish to NPM"
+    runs-on: ubuntu-latest
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    steps:
+      - name: "📥 Download Build"
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-build
+          path: apps/cli
+
+      - name: "🔧 Setup Bun"
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "📤 Publish to NPM"
+        working-directory: apps/cli
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+          bun publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
