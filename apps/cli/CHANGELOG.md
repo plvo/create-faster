@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/plvo/create-faster/compare/create-faster-v1.4.1...create-faster-v1.5.0) (2026-01-05)
+
+
+### Features
+
+* **templates:** upgrade to Next.js 16 with React 19.2.3 ([#58](https://github.com/plvo/create-faster/issues/58)) ([1bedf3f](https://github.com/plvo/create-faster/commit/1bedf3fee5a93afe435a76104b45a9748ed2b9dd))
+
+
+### Bug Fixes
+
+* **templates:** add missing biome and husky deps in single-repo mode ([#56](https://github.com/plvo/create-faster/issues/56)) ([70f9bbd](https://github.com/plvo/create-faster/commit/70f9bbd386c424bef963f62fb5c05859c675da15))
+
 ## [1.4.1](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2026-01-02)
 
 
