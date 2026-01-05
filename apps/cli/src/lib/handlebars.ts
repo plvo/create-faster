@@ -75,6 +75,12 @@ export function registerHandlebarsHelpers(): void {
     return modules.some((m) => m.includes(moduleName));
   });
 
+  Handlebars.registerHelper('hasExtra', function (this: AppContext | TemplateContext, extraName: string) {
+    const extras = 'extras' in this && Array.isArray(this.extras) ? this.extras : undefined;
+    if (!extras) return false;
+    return extras.includes(extraName);
+  });
+
   Handlebars.registerHelper(
     'hasContext',
     function (this: AppContext | TemplateContext, contextName: keyof TemplateContext) {
