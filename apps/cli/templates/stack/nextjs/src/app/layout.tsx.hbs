@@ -20,10 +20,10 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Template',
-    default: 'Home | Template',
+    template: '%s | {{projectName}}',
+    default: 'Home | {{projectName}}',
   },
-  description: "Template.",
+  description: "{{projectName}} - Initialized with https://github.com/plvo/create-faster",
 };
 
 export default function RootLayout({

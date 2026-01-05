@@ -15,13 +15,14 @@
     },
   {{/if}}
   "scripts": {
-    "clean": "rimraf .turbo node_modules .next bun.lock package-lock.json pnpm-lock.yaml",
-    "clean:all": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\" && bun run clean",
-    {{#if (eq extras "biome")}}
-    "check": "biome check  --write .",
-    "check:unused": "knip",
-    "format": "biome format --verbose --write .",
-    "lint": "biome lint --verbose --write .",
+    "clean": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\" && bun run clean",
+    "unused": "knip",
+    {{#if (hasExtra "biome")}}
+    "lint": "biome lint",
+    "format": "biome format --write .",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
+    "prepare": "husky",
     {{/if}}
     {{#if (eq orm "drizzle")}}
     "db:generate": "drizzle-kit generate",
@@ -61,8 +62,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     {{/if}}
-    {{#if (eq extras "biome")}}
-    "@biomejs/biome": "^2.2.4",
+    {{#if (hasExtra "biome")}}
+    "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
+    "husky": "^9",
     {{/if}}
     "@types/node": "^24.5.2",
     "knip": "^5",
