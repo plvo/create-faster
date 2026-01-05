@@ -79,6 +79,14 @@
     "prisma": "^6.13.0",
     {{/if}}
     {{/if}}
+    {{#if (eq repo "single")}}
+    {{#if (hasExtra "biome")}}
+    "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
+    "husky": "^9.1.7",
+    {{/if}}
+    {{/if}}
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",

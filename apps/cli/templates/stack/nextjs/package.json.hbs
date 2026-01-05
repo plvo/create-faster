@@ -114,6 +114,14 @@
     {{/if}}
     {{/if}}
     "tailwindcss": "^4.1.10",
+    {{#if (eq repo "single")}}
+    {{#if (hasExtra "biome")}}
+    "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
+    "husky": "^9.1.7",
+    {{/if}}
+    {{/if}}
     "@next/bundle-analyzer": "^15.5.2",
     {{#if (hasModule "tanstack-devtools")}}
     "@tanstack/react-devtools": "^0.7.0",

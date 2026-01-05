@@ -32,7 +32,15 @@
   },
   "devDependencies": {
     {{#if (eq repo "turborepo")}}
-      "@repo/config": "*",
+    "@repo/config": "*",
+    {{/if}}
+    {{#if (eq repo "single")}}
+    {{#if (hasExtra "biome")}}
+    "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
+    "husky": "^9.1.7",
+    {{/if}}
     {{/if}}
     "typescript": "^5"
   }
