@@ -32,7 +32,7 @@ export function AppProviders({ children }: AppProvidersProps) {
     <QueryClientProvider client={queryClient}>
     {{/if}}
     {{#if (hasModule "next-themes")}}
-    <NextThemesProvider enableSystem storageKey={"{{appName}}-theme"}>
+    <NextThemesProvider attribute='class' defaultTheme='system' enableSystem storageKey={"{{appName}}-theme"}>
     {{/if}}
     {children}
     {{#if (hasModule "next-themes")}}
