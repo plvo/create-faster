@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/plvo/create-faster/compare/create-faster-v1.4.1...create-faster-v1.4.2) (2026-01-05)
+
+
+### Bug Fixes
+
+* **templates:** add missing biome and husky deps in single-repo mode ([124184e](https://github.com/plvo/create-faster/commit/124184eb97252ce070d8110ff2fdfc880da2760b))
+
 ## [1.4.1](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2026-01-02)
 
 
