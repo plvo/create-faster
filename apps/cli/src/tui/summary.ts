@@ -86,7 +86,8 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
-  if (ctx.extras?.includes('biome')) configs.push('Biome');
+  if (ctx.linter === 'biome') configs.push('Biome');
+  if (ctx.linter === 'eslint') configs.push('ESLint');
   if (ctx.extras?.includes('husky')) configs.push('Husky');
 
   if (configs.length > 0) {

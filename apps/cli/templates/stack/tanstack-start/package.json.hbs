@@ -19,10 +19,17 @@
     "db:studio": "prisma studio",
     "db:seed": "bun run scripts/seed.ts",
     {{/if}}
-    "check": "biome check --write .",
+    {{#if (eq linter "biome")}}
     "format": "biome format --write .",
-    "lint": "biome lint --write .",
+    "lint": "biome lint",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "format": "eslint --fix .",
+    "lint": "eslint",
+    {{/if}}
+    {{#if (hasExtra "husky")}}
     "prepare": "husky",
+    {{/if}}
     {{/if}}
     "dev": "vite dev{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{else}} --port 3000{{/if}}",
     "build": "vite build",
@@ -32,9 +39,9 @@
   "dependencies": {
     {{#if (eq repo "turborepo")}}
     "@repo/config": "*",
-    {{/if}}
-    {{#if (and (eq repo "turborepo") (hasContext "orm"))}}
+    {{#if (hasContext "orm")}}
     "@repo/db": "*",
+    {{/if}}
     {{/if}}
     {{#if (eq repo "single")}}
     {{#if (eq orm "drizzle")}}
@@ -80,8 +87,11 @@
     {{/if}}
     {{/if}}
     {{#if (eq repo "single")}}
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "eslint": "^9",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9.1.7",

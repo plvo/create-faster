@@ -19,18 +19,22 @@
     "db:seed": "bun run scripts/seed.ts",
     {{/if}}
     "clean": "rimraf node_modules .next bun.lock package-lock.json pnpm-lock.yaml",
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "format": "biome format --write .",
     "lint": "biome lint",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "format": "eslint --fix .",
+    "lint": "eslint",
     {{/if}}
     "unused": "knip",
     {{#if (hasExtra "husky")}}
     "prepare": "husky",
     {{/if}}
     {{/if}}
-    "dev": "next dev{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
+    "analyze": "next experimental-analyze",
     "build": "next build",
-    "build:analyze": "ANALYZE=true next build --turbo",
+    "dev": "next dev{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
     "start": "next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
     "start:inspect": "NODE_OPTIONS=\"--inspect\" next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}"
   },
@@ -120,8 +124,12 @@
     {{/if}}
     "tailwindcss": "^4.1.10",
     {{#if (eq repo "single")}}
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "eslint": "^9",
+    "eslint-config-next": "¨16.1.1",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9",

@@ -89,10 +89,13 @@ Start all applications in development mode:
 - `db:push` - Push schema changes to database
 - `db:studio` - Open database management UI
 {{/if}}
-{{#if (includes extras "biome")}}
+{{#if (eq linter "biome")}}
 - `lint` - Lint and fix code with Biome
 - `format` - Format code with Biome
-- `check` - Run both linting and formatting
+{{/if}}
+{{#if (eq linter "eslint")}}
+- `lint` - Lint code with ESLint
+- `format` - Format code with ESLint
 {{/if}}
 
 ## Learn More

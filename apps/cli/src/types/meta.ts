@@ -1,5 +1,5 @@
 export type Scope = 'app' | 'package' | 'root';
-export type Category = 'orm' | 'database' | 'extras' | 'repo';
+export type Category = 'orm' | 'database' | 'extras' | 'repo' | 'linter';
 
 interface SelectOptionBase {
   label: string;
@@ -30,6 +30,7 @@ export interface Meta {
   stacks: Record<string, MetaStack>;
   database: MetaCategory;
   orm: MetaCategory;
+  linter: MetaCategory;
   extras: MetaCategory;
   repo: MetaCategory;
 }

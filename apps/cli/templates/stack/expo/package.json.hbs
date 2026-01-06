@@ -3,6 +3,16 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    {{#if (eq repo "single")}}
+    {{#if (eq linter "biome")}}
+    "format": "biome format --write .",
+    "lint": "biome lint",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "format": "eslint --fix .",
+    "lint": "eslint",
+    {{/if}}
+    {{/if}}
     "start": "expo start -c",
     "start:android": "expo start --android -c",
     "start:ios": "expo start --ios -c",
@@ -51,8 +61,11 @@
     "tailwindcss": "3.3.2",
     {{/if}}
     {{#if (eq repo "single")}}
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "eslint": "^9",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9.1.7",

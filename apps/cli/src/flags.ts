@@ -12,6 +12,7 @@ interface ParsedFlags {
   orm?: string;
   git?: boolean;
   pm?: string;
+  linter?: string;
   extras?: string;
 }
 
@@ -29,9 +30,10 @@ export function parseFlags(): Partial<TemplateContext> {
     .option('--app <name:stack:modules>', 'Add app in format name:stack:module1,module2 (repeatable)', collect, [])
     .option('--database <name>', 'Database provider (postgres, mysql)')
     .option('--orm <name>', 'ORM provider (prisma, drizzle)')
+    .option('--linter <name>', 'Linter provider (biome, eslint)')
     .option('--git', 'Initialize git repository')
     .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
-    .option('--extras <items>', 'Comma-separated extras (biome, husky)')
+    .option('--extras <items>', 'Comma-separated extras')
     .addHelpText(
       'after',
       `
@@ -47,6 +49,7 @@ ${color.bold('Examples:')}
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
   ${color.gray('Available databases:')} ${Object.keys(META.database.stacks).join(', ')}
   ${color.gray('Available ORMs:')} ${Object.keys(META.orm.stacks).join(', ')}
+  ${color.gray('Available linters:')} ${Object.keys(META.linter.stacks).join(', ')}
 `,
     )
     .allowUnknownOption(false)
@@ -62,64 +65,19 @@ ${color.bold('Examples:')}
     return {};
   }
 
+  validateValues(flags);
+
   const partial: Partial<TemplateContext> = {};
 
-  // Project name
-  if (projectName) {
-    partial.projectName = projectName;
-  }
+  partial.projectName = projectName;
+  partial.apps = flags.app?.length ? flags.app.map((appFlag) => parseAppFlag(appFlag)) : [];
+  partial.database = flags.database;
+  partial.orm = flags.orm;
+  partial.git = !!flags.git;
+  partial.pm = flags.pm as 'bun' | 'npm' | 'pnpm' | undefined;
+  partial.linter = flags.linter;
+  partial.extras = flags.extras?.split(',').map((e) => e.trim());
 
-  // Apps configuration
-  if (flags.app && flags.app.length > 0) {
-    partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
-  }
-
-  // Database
-  if (flags.database) {
-    if (!isValidKey(flags.database, META.database.stacks)) {
-      printError(`Invalid database '${flags.database}'`, `Available databases: ${formatOptions(META.database.stacks)}`);
-      process.exit(1);
-    }
-    partial.database = flags.database as keyof typeof META.database.stacks;
-  }
-
-  // ORM
-  if (flags.orm) {
-    if (!isValidKey(flags.orm, META.orm.stacks)) {
-      printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${formatOptions(META.orm.stacks)}`);
-      process.exit(1);
-    }
-    partial.orm = flags.orm as keyof typeof META.orm.stacks;
-  }
-
-  // Git
-  if (flags.git) {
-    partial.git = true;
-  }
-
-  // Package manager
-  if (flags.pm) {
-    const validPms = ['bun', 'npm', 'pnpm'];
-    if (!validPms.includes(flags.pm)) {
-      printError(`Invalid package manager '${flags.pm}'`, `Available: ${validPms.join(', ')}`);
-      process.exit(1);
-    }
-    partial.pm = flags.pm as 'bun' | 'npm' | 'pnpm';
-  }
-
-  // Extras
-  if (flags.extras) {
-    const extrasList = flags.extras.split(',').map((e) => e.trim());
-    for (const extra of extrasList) {
-      if (!isValidKey(extra, META.extras.stacks)) {
-        printError(`Invalid extra '${extra}'`, `Available extras: ${formatOptions(META.extras.stacks)}`);
-        process.exit(1);
-      }
-    }
-    partial.extras = extrasList as (keyof typeof META.extras.stacks)[];
-  }
-
-  // Validate context
   validateContext(partial);
 
   return partial;
@@ -181,6 +139,40 @@ function parseAppFlag(appFlag: string): AppContext {
     stackName: stackName as StackName,
     modules,
   };
+}
+
+function validateValues(flags: ParsedFlags): void {
+  if (flags.database) {
+    if (!isValidKey(flags.database, META.database.stacks)) {
+      printError(`Invalid database '${flags.database}'`, `Available databases: ${formatOptions(META.database.stacks)}`);
+      process.exit(1);
+    }
+  }
+
+  if (flags.orm) {
+    if (!isValidKey(flags.orm, META.orm.stacks)) {
+      printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${formatOptions(META.orm.stacks)}`);
+      process.exit(1);
+    }
+  }
+
+  if (flags.pm) {
+    const validPms = ['bun', 'npm', 'pnpm'];
+    if (!validPms.includes(flags.pm)) {
+      printError(`Invalid package manager '${flags.pm}'`, `Available: ${validPms.join(', ')}`);
+      process.exit(1);
+    }
+  }
+
+  if (flags.extras) {
+    const extrasList = flags.extras.split(',').map((e) => e.trim());
+    for (const extra of extrasList) {
+      if (!isValidKey(extra, META.extras.stacks)) {
+        printError(`Invalid extra '${extra}'`, `Available extras: ${formatOptions(META.extras.stacks)}`);
+        process.exit(1);
+      }
+    }
+  }
 }
 
 function validateContext(partial: Partial<TemplateContext>): void {

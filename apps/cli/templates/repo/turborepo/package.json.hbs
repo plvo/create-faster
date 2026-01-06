@@ -5,7 +5,6 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "bun@1.2.23",
   "engines": {
     "node": ">=22"
   },
@@ -17,9 +16,13 @@
   "scripts": {
     "clean": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\" && bun run clean",
     "unused": "knip",
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "lint": "biome lint",
     "format": "biome format --write .",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "lint": "eslint",
+    "format": "eslint --fix .",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "prepare": "husky",
@@ -62,8 +65,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     {{/if}}
-    {{#if (hasExtra "biome")}}
+    {{#if (eq linter "biome")}}
     "@biomejs/biome": "^2.3.11",
+    {{/if}}
+    {{#if (eq linter "eslint")}}
+    "eslint": "^9",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9",

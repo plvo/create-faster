@@ -136,13 +136,22 @@ export const META: Meta = {
       },
     },
   },
-  extras: {
+  linter: {
     scope: 'root',
     stacks: {
       biome: {
         label: 'Biome',
         hint: 'Fast linter & formatter',
       },
+      eslint: {
+        label: 'ESLint',
+        hint: 'Most comprehensive lint rules',
+      },
+    },
+  },
+  extras: {
+    scope: 'root',
+    stacks: {
       husky: {
         requires: ['git'],
         label: 'Husky',
