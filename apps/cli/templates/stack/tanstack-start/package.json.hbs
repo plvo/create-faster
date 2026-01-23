@@ -72,6 +72,11 @@
     "vite-tsconfig-paths": "^6.0.2"
   },
   "devDependencies": {
+    {{#if (eq repo "turborepo")}}
+    {{#if (eq linter "eslint")}}
+    "@repo/eslint-config": "*",
+    {{/if}}
+    {{/if}}
     {{#if (eq repo "single")}}
     {{#if (eq orm "drizzle")}}
     "drizzle-kit": "^0.30.1",
@@ -92,6 +97,10 @@
     {{/if}}
     {{#if (eq linter "eslint")}}
     "eslint": "^9",
+    "@eslint/js": "^9",
+    "typescript-eslint": "^8",
+    "eslint-plugin-react": "^7",
+    "eslint-plugin-react-hooks": "^5",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9.1.7",

@@ -1,24 +1,101 @@
+{{!-- @repo:single --}}
 import { defineConfig, globalIgnores } from "eslint/config";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 {{#if (hasAnyStack "nextjs")}}
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+{{/if}}
+{{#if (hasAnyStack "tanstack-start")}}
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+{{/if}}
+{{#if (hasAnyStack "expo")}}
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+import reactNativePlugin from "eslint-plugin-react-native";
 {{/if}}
 
-const eslintConfig = defineConfig([
+export default defineConfig([
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
   {{#if (hasAnyStack "nextjs")}}
-  ...nextVitals,
-  ...nextTs,
+  {
+    name: "nextjs",
+    plugins: {
+      "@next/next": nextPlugin,
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
+      "react/react-in-jsx-scope": "off",
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+  },
   {{/if}}
-  // Override default ignores of eslint-config-next.
+
+  {{#if (hasAnyStack "tanstack-start")}}
+  {
+    name: "react",
+    plugins: {
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+    },
+    rules: {
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
+      "react/react-in-jsx-scope": "off",
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+  },
+  {{/if}}
+
+  {{#if (hasAnyStack "expo")}}
+  {
+    name: "react-native",
+    plugins: {
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+      "react-native": reactNativePlugin,
+    },
+    rules: {
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
+      ...reactNativePlugin.configs.all.rules,
+      "react/react-in-jsx-scope": "off",
+      "react-native/no-inline-styles": "warn",
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+  },
+  {{/if}}
+
   globalIgnores([
+    "node_modules/**",
+    "dist/**",
     {{#if (hasAnyStack "nextjs")}}
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
-    "build/**",
-    "next-env.d.ts",
+    {{/if}}
+    {{#if (hasAnyStack "expo")}}
+    ".expo/**",
+    "ios/**",
+    "android/**",
+    {{/if}}
+    {{#if (hasAnyStack "tanstack-start")}}
+    ".output/**",
+    ".vinxi/**",
     {{/if}}
   ]),
 ]);
-
-export default eslintConfig;

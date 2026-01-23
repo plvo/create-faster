@@ -5,6 +5,7 @@
  * - {{!-- @repo:turborepo --}}     → Only render in turborepo mode
  * - {{!-- @repo:single --}}        → Only render in single repo mode
  * - {{!-- @if:database --}}        → Only render if ctx.database exists
+ * - {{!-- @if:linter=eslint --}}   → Only render if ctx.linter === 'eslint'
  * - {{!-- @require:git --}}        → Only render if ctx.git === true
  * - {{!-- @repo:!single --}}       → Negation: everything except single
  * - {{!-- @scope:app --}}          → Force output to app scope (overrides packageName)
@@ -13,12 +14,14 @@
  * Multiple conditions (AND logic):
  * - {{!-- @repo:turborepo @if:database --}}
  * - {{!-- @repo:turborepo @scope:package --}}
+ * - {{!-- @if:linter=eslint @repo:turborepo --}}
  */
 
 import type { TemplateContext } from '@/types/ctx';
 
 interface MagicComment {
   type: 'repo' | 'if' | 'require' | 'scope';
+  key?: string;
   values: string[];
   negated?: boolean;
   raw: string;
@@ -31,21 +34,35 @@ export function extractFirstLine(content: string): string {
 
 /**
  * Parse a single magic comment directive
- * @example "{{!-- @repo:turborepo --}}" → { type: 'repo', values: ['turborepo'], raw: '...' }
+ * @example "@repo:turborepo" → { type: 'repo', values: ['turborepo'], raw: '...' }
+ * @example "@if:linter=eslint" → { type: 'if', key: 'linter', values: ['eslint'], raw: '...' }
  */
 function parseSingleDirective(directive: string): MagicComment | null {
   const match = directive.match(/@(\w+):(!?)(.+)/);
 
   if (!match) return null;
 
-  const [, type, negation, valuesStr] = match; // Skip first element (full match)
+  const [, type, negation, valuesStr] = match;
 
   if (!type || !['repo', 'if', 'require', 'scope'].includes(type)) {
     return null;
   }
 
-  const values = valuesStr?.split(',').map((v) => v.trim()) ?? [];
   const negated = negation === '!';
+
+  // Handle @if:key=value syntax
+  if (type === 'if' && valuesStr?.includes('=')) {
+    const [key, value] = valuesStr.split('=').map((s) => s.trim());
+    return {
+      type: 'if',
+      key,
+      values: [value ?? ''],
+      negated,
+      raw: directive,
+    };
+  }
+
+  const values = valuesStr?.split(',').map((v) => v.trim()) ?? [];
 
   return {
     type: type as 'repo' | 'if' | 'require' | 'scope',
@@ -85,6 +102,13 @@ function shouldSkipForComment(comment: MagicComment, ctx: TemplateContext): bool
     }
 
     case 'if': {
+      // @if:key=value → check ctx[key] === value
+      if (comment.key) {
+        const ctxValue = ctx[comment.key as keyof TemplateContext];
+        const matches = ctxValue === comment.values[0];
+        return comment.negated ? matches : !matches;
+      }
+      // @if:key → check ctx[key] exists
       const key = comment.values[0] as keyof TemplateContext;
       const exists = key in ctx && Boolean(ctx[key]);
       return comment.negated ? exists : !exists;
@@ -123,6 +147,9 @@ export function formatMagicComments(comments: MagicComment[]): string {
   return comments
     .map((c) => {
       const neg = c.negated ? '!' : '';
+      if (c.key) {
+        return `@${c.type}:${neg}${c.key}=${c.values[0]}`;
+      }
       return `@${c.type}:${neg}${c.values.join(',')}`;
     })
     .join(' ');

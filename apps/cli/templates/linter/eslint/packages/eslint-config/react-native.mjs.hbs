@@ -1,0 +1,31 @@
+{{!-- @repo:turborepo --}}
+import { defineConfig, globalIgnores } from "eslint/config";
+import { baseConfig } from "./base.mjs";
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+import reactNativePlugin from "eslint-plugin-react-native";
+
+export const reactNativeConfig = defineConfig([
+  ...baseConfig,
+  {
+    name: "react-native",
+    plugins: {
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+      "react-native": reactNativePlugin,
+    },
+    rules: {
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
+      ...reactNativePlugin.configs.all.rules,
+      "react/react-in-jsx-scope": "off",
+      "react-native/no-inline-styles": "warn",
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+  },
+  globalIgnores([".expo/**", "ios/**", "android/**"]),
+]);
+
+export default reactNativeConfig;

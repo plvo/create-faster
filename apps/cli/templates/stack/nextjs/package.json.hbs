@@ -99,6 +99,9 @@
   "devDependencies": {
     {{#if (eq repo "turborepo")}}
     "@repo/config": "*",
+    {{#if (eq linter "eslint")}}
+    "@repo/eslint-config": "*",
+    {{/if}}
     {{else}}
     "@tailwindcss/postcss": "^4.1.10",
     {{/if}}
@@ -129,7 +132,11 @@
     {{/if}}
     {{#if (eq linter "eslint")}}
     "eslint": "^9",
-    "eslint-config-next": "¨16.1.1",
+    "@eslint/js": "^9",
+    "typescript-eslint": "^8",
+    "@next/eslint-plugin-next": "^15",
+    "eslint-plugin-react": "^7",
+    "eslint-plugin-react-hooks": "^5",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9",

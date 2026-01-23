@@ -1,0 +1,23 @@
+{{!-- @repo:turborepo --}}
+{
+  "name": "@repo/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.mjs"{{#if (hasAnyStack "nextjs")}},
+    "./nextjs": "./nextjs.mjs"{{/if}}{{#if (hasAnyStack "tanstack-start")}},
+    "./react": "./react.mjs"{{/if}}{{#if (hasAnyStack "expo")}},
+    "./react-native": "./react-native.mjs"{{/if}}{{#if (hasAnyStack "hono")}},
+    "./node": "./node.mjs"{{/if}}
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "@eslint/js": "^9",
+    "typescript-eslint": "^8"{{#if (hasAnyStack "nextjs")}},
+    "@next/eslint-plugin-next": "^15"{{/if}}{{#if (or (hasAnyStack "nextjs") (hasAnyStack "tanstack-start") (hasAnyStack "expo"))}},
+    "eslint-plugin-react": "^7",
+    "eslint-plugin-react-hooks": "^5"{{/if}}{{#if (hasAnyStack "expo")}},
+    "eslint-plugin-react-native": "^4"{{/if}}
+  }
+}

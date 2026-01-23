@@ -19,6 +19,10 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
     flagsCommand += ` --orm ${ctx.orm}`;
   }
 
+  if (ctx.linter) {
+    flagsCommand += ` --linter ${ctx.linter}`;
+  }
+
   if (ctx.git) {
     flagsCommand += ' --git';
   }

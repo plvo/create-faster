@@ -156,6 +156,13 @@ function validateValues(flags: ParsedFlags): void {
     }
   }
 
+  if (flags.linter) {
+    if (!isValidKey(flags.linter, META.linter.stacks)) {
+      printError(`Invalid linter '${flags.linter}'`, `Available linters: ${formatOptions(META.linter.stacks)}`);
+      process.exit(1);
+    }
+  }
+
   if (flags.pm) {
     const validPms = ['bun', 'npm', 'pnpm'];
     if (!validPms.includes(flags.pm)) {

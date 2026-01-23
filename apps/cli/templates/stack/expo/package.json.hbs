@@ -55,6 +55,11 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    {{#if (eq repo "turborepo")}}
+    {{#if (eq linter "eslint")}}
+    "@repo/eslint-config": "*",
+    {{/if}}
+    {{/if}}
     "@babel/core": "^7.25.2",
     "@types/react": "^19",
     {{#if (hasModule "nativewind")}}
@@ -66,6 +71,11 @@
     {{/if}}
     {{#if (eq linter "eslint")}}
     "eslint": "^9",
+    "@eslint/js": "^9",
+    "typescript-eslint": "^8",
+    "eslint-plugin-react": "^7",
+    "eslint-plugin-react-hooks": "^5",
+    "eslint-plugin-react-native": "^4",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9.1.7",

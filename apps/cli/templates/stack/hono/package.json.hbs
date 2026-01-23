@@ -43,6 +43,9 @@
   "devDependencies": {
     {{#if (eq repo "turborepo")}}
     "@repo/config": "*",
+    {{#if (eq linter "eslint")}}
+    "@repo/eslint-config": "*",
+    {{/if}}
     {{/if}}
     {{#if (eq repo "single")}}
     {{#if (eq linter "biome")}}
@@ -50,6 +53,8 @@
     {{/if}}
     {{#if (eq linter "eslint")}}
     "eslint": "^9",
+    "@eslint/js": "^9",
+    "typescript-eslint": "^8",
     {{/if}}
     {{#if (hasExtra "husky")}}
     "husky": "^9.1.7",
