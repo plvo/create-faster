@@ -1,41 +1,63 @@
-// ABOUTME: Magic comment parser for template destination override
-// ABOUTME: Supports only @dest:app|pkg|root for explicit file placement
+// ABOUTME: Magic comment parser for template processing
+// ABOUTME: Supports @only:turborepo|single for skip and @dest:app|package|root for destination
 
-export type DestType = 'app' | 'pkg' | 'root';
+import type { TemplateContext } from '@/types/ctx';
 
-export interface MagicComment {
-  type: 'dest';
-  values: string[];
-  raw: string;
+export type DestType = 'app' | 'package' | 'root';
+export type OnlyType = 'turborepo' | 'single';
+
+export interface ParsedMagicComments {
+  dest?: DestType;
+  only?: OnlyType;
 }
+
+const MAGIC_COMMENT_REGEX = /^\{\{!--\s*((?:@(?:dest|only):[a-z]+\s*)+)--\}\}/;
+const DEST_REGEX = /@dest:(app|package|root)/;
+const ONLY_REGEX = /@only:(turborepo|single)/;
 
 export function extractFirstLine(content: string): string {
   const firstLineEnd = content.indexOf('\n');
   return firstLineEnd === -1 ? content : content.slice(0, firstLineEnd);
 }
 
-export function parseMagicComments(firstLine: string): MagicComment[] {
-  const commentMatch = firstLine.match(/^\{\{!--\s*@dest:(app|pkg|root)\s*--\}\}/);
+export function parseMagicComments(firstLine: string): ParsedMagicComments {
+  const result: ParsedMagicComments = {};
 
-  if (!commentMatch || !commentMatch[1]) return [];
+  const commentMatch = firstLine.match(MAGIC_COMMENT_REGEX);
+  if (!commentMatch) return result;
 
-  return [
-    {
-      type: 'dest',
-      values: [commentMatch[1]],
-      raw: commentMatch[0],
-    },
-  ];
+  const innerContent = commentMatch[1];
+
+  const destMatch = innerContent.match(DEST_REGEX);
+  if (destMatch) {
+    result.dest = destMatch[1] as DestType;
+  }
+
+  const onlyMatch = innerContent.match(ONLY_REGEX);
+  if (onlyMatch) {
+    result.only = onlyMatch[1] as OnlyType;
+  }
+
+  return result;
 }
 
 export function parseDestFromContent(content: string): DestType | null {
   const firstLine = extractFirstLine(content);
-  const comments = parseMagicComments(firstLine);
-  const firstComment = comments[0];
-  if (!firstComment) return null;
-  return firstComment.values[0] as DestType;
+  const parsed = parseMagicComments(firstLine);
+  return parsed.dest ?? null;
 }
 
-export function removeDestMagicComment(content: string): string {
-  return content.replace(/^\{\{!--\s*@dest:(app|pkg|root)\s*--\}\}\n?/, '');
+export function parseOnlyFromContent(content: string): OnlyType | null {
+  const firstLine = extractFirstLine(content);
+  const parsed = parseMagicComments(firstLine);
+  return parsed.only ?? null;
+}
+
+export function shouldSkipTemplate(only: OnlyType | null, ctx: TemplateContext): boolean {
+  if (!only) return false;
+  return only !== ctx.repo;
+}
+
+export function removeAllMagicComments(content: string): string {
+  return content.replace(/^\{\{!--\s*(?:@(?:dest|only):[a-z]+\s*)+--\}\}\n?/, '');
 }

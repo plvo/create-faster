@@ -1,13 +1,16 @@
 // ABOUTME: Unit tests for magic comments parsing
-// ABOUTME: Tests the @dest: magic comment for destination override
+// ABOUTME: Tests @only: for skip and @dest: for destination override
 
-import { describe, expect, test } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import {
-  extractFirstLine,
-  parseDestFromContent,
   parseMagicComments,
-  removeDestMagicComment,
+  parseDestFromContent,
+  parseOnlyFromContent,
+  shouldSkipTemplate,
+  removeAllMagicComments,
+  extractFirstLine,
 } from '../src/lib/magic-comments';
+import type { TemplateContext } from '../src/types/ctx';
 
 describe('extractFirstLine', () => {
   test('extracts first line from content', () => {
@@ -27,57 +30,118 @@ describe('extractFirstLine', () => {
 
 describe('parseMagicComments', () => {
   test('parses @dest:app', () => {
-    const comments = parseMagicComments('{{!-- @dest:app --}}');
-    expect(comments).toHaveLength(1);
-    expect(comments[0].type).toBe('dest');
-    expect(comments[0].values).toEqual(['app']);
+    const result = parseMagicComments('{{!-- @dest:app --}}');
+    expect(result.dest).toBe('app');
   });
 
-  test('parses @dest:pkg', () => {
-    const comments = parseMagicComments('{{!-- @dest:pkg --}}');
-    expect(comments).toHaveLength(1);
-    expect(comments[0].type).toBe('dest');
-    expect(comments[0].values).toEqual(['pkg']);
+  test('parses @dest:package', () => {
+    const result = parseMagicComments('{{!-- @dest:package --}}');
+    expect(result.dest).toBe('package');
   });
 
   test('parses @dest:root', () => {
-    const comments = parseMagicComments('{{!-- @dest:root --}}');
-    expect(comments).toHaveLength(1);
-    expect(comments[0].type).toBe('dest');
-    expect(comments[0].values).toEqual(['root']);
+    const result = parseMagicComments('{{!-- @dest:root --}}');
+    expect(result.dest).toBe('root');
   });
 
-  test('returns empty array for no magic comments', () => {
-    const comments = parseMagicComments('// regular comment');
-    expect(comments).toHaveLength(0);
+  test('parses @only:turborepo', () => {
+    const result = parseMagicComments('{{!-- @only:turborepo --}}');
+    expect(result.only).toBe('turborepo');
   });
 
-  test('returns empty array for empty string', () => {
-    const comments = parseMagicComments('');
-    expect(comments).toHaveLength(0);
+  test('parses @only:single', () => {
+    const result = parseMagicComments('{{!-- @only:single --}}');
+    expect(result.only).toBe('single');
+  });
+
+  test('parses combined @only and @dest', () => {
+    const result = parseMagicComments('{{!-- @only:turborepo @dest:package --}}');
+    expect(result.only).toBe('turborepo');
+    expect(result.dest).toBe('package');
+  });
+
+  test('returns empty for no magic comments', () => {
+    const result = parseMagicComments('// regular comment');
+    expect(result.dest).toBeUndefined();
+    expect(result.only).toBeUndefined();
   });
 });
 
 describe('parseDestFromContent', () => {
-  test('extracts dest type from content', () => {
-    const content = '{{!-- @dest:app --}}\nrest of file';
-    expect(parseDestFromContent(content)).toBe('app');
+  test('extracts dest from first line', () => {
+    const content = '{{!-- @dest:root --}}\nrest of file';
+    expect(parseDestFromContent(content)).toBe('root');
   });
 
-  test('returns null for no magic comment', () => {
-    const content = '// regular content\nrest of file';
+  test('returns null for no dest', () => {
+    const content = 'no magic comment\nrest of file';
     expect(parseDestFromContent(content)).toBeNull();
   });
 });
 
-describe('removeDestMagicComment', () => {
-  test('removes @dest: comment from content', () => {
-    const content = '{{!-- @dest:app --}}\nrest of file';
-    expect(removeDestMagicComment(content)).toBe('rest of file');
+describe('parseOnlyFromContent', () => {
+  test('extracts only from first line', () => {
+    const content = '{{!-- @only:turborepo --}}\nrest of file';
+    expect(parseOnlyFromContent(content)).toBe('turborepo');
   });
 
-  test('preserves content without magic comment', () => {
+  test('returns null for no only', () => {
+    const content = '{{!-- @dest:root --}}\nrest of file';
+    expect(parseOnlyFromContent(content)).toBeNull();
+  });
+});
+
+describe('shouldSkipTemplate', () => {
+  const turborepoCtx: TemplateContext = {
+    projectName: 'test',
+    repo: 'turborepo',
+    apps: [],
+    globalAddons: [],
+    git: true,
+  };
+
+  const singleCtx: TemplateContext = {
+    projectName: 'test',
+    repo: 'single',
+    apps: [],
+    globalAddons: [],
+    git: true,
+  };
+
+  test('@only:turborepo skips in single', () => {
+    expect(shouldSkipTemplate('turborepo', singleCtx)).toBe(true);
+    expect(shouldSkipTemplate('turborepo', turborepoCtx)).toBe(false);
+  });
+
+  test('@only:single skips in turborepo', () => {
+    expect(shouldSkipTemplate('single', turborepoCtx)).toBe(true);
+    expect(shouldSkipTemplate('single', singleCtx)).toBe(false);
+  });
+
+  test('no @only never skips', () => {
+    expect(shouldSkipTemplate(null, turborepoCtx)).toBe(false);
+    expect(shouldSkipTemplate(null, singleCtx)).toBe(false);
+  });
+});
+
+describe('removeAllMagicComments', () => {
+  test('removes @dest comment', () => {
+    const content = '{{!-- @dest:root --}}\nrest of file';
+    expect(removeAllMagicComments(content)).toBe('rest of file');
+  });
+
+  test('removes @only comment', () => {
+    const content = '{{!-- @only:turborepo --}}\nrest of file';
+    expect(removeAllMagicComments(content)).toBe('rest of file');
+  });
+
+  test('removes combined comments', () => {
+    const content = '{{!-- @only:turborepo @dest:package --}}\nrest of file';
+    expect(removeAllMagicComments(content)).toBe('rest of file');
+  });
+
+  test('preserves content without magic comments', () => {
     const content = 'no magic comment\nrest of file';
-    expect(removeDestMagicComment(content)).toBe('no magic comment\nrest of file');
+    expect(removeAllMagicComments(content)).toBe('no magic comment\nrest of file');
   });
 });
