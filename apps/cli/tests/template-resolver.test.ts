@@ -1,108 +1,89 @@
-// ABOUTME: Unit tests for template resolution logic
-// ABOUTME: Tests path resolution based on META (asPackage, singlePath) and @dest:
+// ABOUTME: Tests for unified template resolution
+// ABOUTME: Tests destination resolution for all addon types
 
 import { describe, test, expect } from 'bun:test';
-import { resolveDestination, resolveModuleDestination } from '../src/lib/template-resolver';
+import { resolveAddonDestination } from '../src/lib/template-resolver';
+import { META } from '../src/__meta__';
 import type { TemplateContext } from '../src/types/ctx';
 
-const turborepoCtx: TemplateContext = {
-  projectName: 'test',
-  projectPath: '/tmp/test',
-  repo: 'turborepo',
-  apps: [{ appName: 'web', stackName: 'nextjs', modules: ['shadcn'] }],
-};
+describe('resolveAddonDestination', () => {
+  const turborepoCtx: TemplateContext = {
+    projectName: 'test',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', addons: ['shadcn'] }],
+    globalAddons: ['drizzle', 'postgres', 'biome'],
+    git: true,
+  };
 
-const singleCtx: TemplateContext = {
-  projectName: 'test',
-  projectPath: '/tmp/test',
-  repo: 'single',
-  apps: [{ appName: 'web', stackName: 'nextjs', modules: ['shadcn'] }],
-};
+  const singleCtx: TemplateContext = {
+    projectName: 'test',
+    repo: 'single',
+    apps: [{ appName: 'test', stackName: 'nextjs', addons: ['shadcn'] }],
+    globalAddons: ['drizzle', 'postgres', 'biome'],
+    git: true,
+  };
 
-describe('resolveDestination', () => {
-  describe('stack templates', () => {
-    test('turborepo: resolves to apps/{appName}/', () => {
-      const result = resolveDestination('src/app/page.tsx', { type: 'stack', appName: 'web' }, turborepoCtx);
-      expect(result).toBe('apps/web/src/app/page.tsx');
+  describe('destination.target = package', () => {
+    const shadcnAddon = META.addons.shadcn;
+
+    test('turborepo: goes to packages/{name}/', () => {
+      const result = resolveAddonDestination('components/button.tsx', shadcnAddon, turborepoCtx, 'web', null);
+      expect(result).toBe('packages/ui/components/button.tsx');
     });
 
-    test('single: resolves to root', () => {
-      const result = resolveDestination('src/app/page.tsx', { type: 'stack', appName: 'web' }, singleCtx);
-      expect(result).toBe('src/app/page.tsx');
-    });
-  });
-
-  describe('repo templates', () => {
-    test('resolves to root', () => {
-      const result = resolveDestination('turbo.json', { type: 'repo' }, turborepoCtx);
-      expect(result).toBe('turbo.json');
-    });
-  });
-
-  describe('database templates', () => {
-    test('resolves to root', () => {
-      const result = resolveDestination('docker-compose.yml', { type: 'database' }, turborepoCtx);
-      expect(result).toBe('docker-compose.yml');
-    });
-  });
-
-  describe('extras templates', () => {
-    test('resolves to root', () => {
-      const result = resolveDestination('biome.json', { type: 'extras' }, turborepoCtx);
-      expect(result).toBe('biome.json');
-    });
-  });
-});
-
-describe('resolveModuleDestination', () => {
-  describe('module with asPackage (shadcn)', () => {
-    const moduleConfig = {
-      asPackage: 'ui',
-      singlePath: 'src/components/ui/',
-    };
-
-    test('turborepo: default resolves to packages/{asPackage}/', () => {
-      const result = resolveModuleDestination('src/components/button.tsx', moduleConfig, null, 'web', turborepoCtx);
-      expect(result).toBe('packages/ui/src/components/button.tsx');
+    test('single: goes to singlePath', () => {
+      const result = resolveAddonDestination('components/button.tsx', shadcnAddon, singleCtx, 'test', null);
+      expect(result).toBe('src/components/ui/components/button.tsx');
     });
 
-    test('turborepo: @dest:app overrides to apps/{appName}/', () => {
-      const result = resolveModuleDestination('components.json', moduleConfig, 'app', 'web', turborepoCtx);
+    test('@dest:app override goes to app', () => {
+      const result = resolveAddonDestination('components.json', shadcnAddon, turborepoCtx, 'web', 'app');
       expect(result).toBe('apps/web/components.json');
     });
 
-    test('turborepo: @dest:pkg explicit (same as default)', () => {
-      const result = resolveModuleDestination('src/components/button.tsx', moduleConfig, 'pkg', 'web', turborepoCtx);
-      expect(result).toBe('packages/ui/src/components/button.tsx');
-    });
-
-    test('turborepo: @dest:root overrides to root', () => {
-      const result = resolveModuleDestination('some-config.json', moduleConfig, 'root', 'web', turborepoCtx);
-      expect(result).toBe('some-config.json');
-    });
-
-    test('single: default resolves to root (template paths contain structure)', () => {
-      const result = resolveModuleDestination('src/components/button.tsx', moduleConfig, null, 'web', singleCtx);
-      expect(result).toBe('src/components/button.tsx');
-    });
-
-    test('single: @dest:app resolves to root (no apps/ prefix)', () => {
-      const result = resolveModuleDestination('components.json', moduleConfig, 'app', 'web', singleCtx);
-      expect(result).toBe('components.json');
+    test('@dest:root override goes to root', () => {
+      const result = resolveAddonDestination('drizzle.config.ts', META.addons.drizzle, turborepoCtx, 'web', 'root');
+      expect(result).toBe('drizzle.config.ts');
     });
   });
 
-  describe('module without asPackage (tanstack-query)', () => {
-    const moduleConfig = {};
+  describe('destination.target = root', () => {
+    const biomeAddon = META.addons.biome;
 
-    test('turborepo: resolves to apps/{appName}/', () => {
-      const result = resolveModuleDestination('src/lib/query-client.ts', moduleConfig, null, 'web', turborepoCtx);
-      expect(result).toBe('apps/web/src/lib/query-client.ts');
+    test('turborepo: goes to root', () => {
+      const result = resolveAddonDestination('biome.json', biomeAddon, turborepoCtx, 'web', null);
+      expect(result).toBe('biome.json');
     });
 
-    test('single: resolves to root', () => {
-      const result = resolveModuleDestination('src/lib/query-client.ts', moduleConfig, null, 'web', singleCtx);
-      expect(result).toBe('src/lib/query-client.ts');
+    test('single: goes to root', () => {
+      const result = resolveAddonDestination('biome.json', biomeAddon, singleCtx, 'test', null);
+      expect(result).toBe('biome.json');
+    });
+  });
+
+  describe('destination.target = app (default)', () => {
+    const tanstackQueryAddon = META.addons['tanstack-query'];
+
+    test('turborepo: goes to apps/{appName}/', () => {
+      const result = resolveAddonDestination(
+        'providers/query-provider.tsx',
+        tanstackQueryAddon,
+        turborepoCtx,
+        'web',
+        null,
+      );
+      expect(result).toBe('apps/web/providers/query-provider.tsx');
+    });
+
+    test('single: goes to root', () => {
+      const result = resolveAddonDestination(
+        'providers/query-provider.tsx',
+        tanstackQueryAddon,
+        singleCtx,
+        'test',
+        null,
+      );
+      expect(result).toBe('providers/query-provider.tsx');
     });
   });
 });

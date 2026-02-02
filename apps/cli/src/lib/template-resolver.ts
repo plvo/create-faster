@@ -1,109 +1,61 @@
-// ABOUTME: Resolves template files to their destination paths
-// ABOUTME: Uses META config (asPackage, singlePath) and @dest: magic comments
+// ABOUTME: Resolves template files to destination paths
+// ABOUTME: Unified resolution for all addon types using META destination config
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { globSync } from 'fast-glob';
 import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import { isModuleCompatible, type StackName } from '@/types/meta';
+import type { MetaAddon, StackName } from '@/types/meta';
+import { isAddonCompatible } from '@/lib/addon-utils';
 import { transformSpecialFilename } from './file-writer';
-import type { DestType } from './magic-comments';
-import { parseDestFromContent } from './magic-comments';
+import type { DestType, OnlyType } from './magic-comments';
+import { parseDestFromContent, parseOnlyFromContent, shouldSkipTemplate } from './magic-comments';
 
-interface DestinationMeta {
-  type: 'stack' | 'module' | 'orm' | 'database' | 'extras' | 'repo';
-  appName?: string;
-  asPackage?: string;
-  singlePath?: string;
-}
-
-export function resolveDestination(
+export function resolveAddonDestination(
   relativePath: string,
-  meta: DestinationMeta,
+  addon: MetaAddon,
   ctx: TemplateContext,
-  destOverride?: DestType | null,
+  appName: string,
+  destOverride: DestType | null,
 ): string {
   const isTurborepo = ctx.repo === 'turborepo';
+  const target = destOverride ?? addon.destination?.target ?? 'app';
 
-  // Handle @dest: overrides
-  if (destOverride === 'root') {
-    return relativePath;
-  }
+  switch (target) {
+    case 'root':
+      return relativePath;
 
-  if (destOverride === 'app' && meta.appName) {
-    return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
-  }
-
-  if (destOverride === 'pkg' && meta.asPackage) {
-    return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
-  }
-
-  // Default behavior based on type
-  switch (meta.type) {
-    case 'stack':
-      return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
-
-    case 'module':
-      if (meta.asPackage) {
-        // Turborepo: files go to packages/{asPackage}/
-        // Single: files go to root (template paths contain the structure)
-        return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
+    case 'package': {
+      if (!addon.destination || addon.destination.target !== 'package') {
+        return relativePath;
       }
-      return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
-
-    case 'orm': {
-      // Turborepo: files go to packages/{asPackage}/
-      // Single: files go to singlePath (e.g., src/lib/db/), stripping src/ from template path
       if (isTurborepo) {
-        return `packages/${meta.asPackage}/${relativePath}`;
+        return `packages/${addon.destination.name}/${relativePath}`;
       }
-      // For single repo, strip leading src/ from template path since singlePath handles the structure
-      const singlePath = relativePath.startsWith('src/') ? relativePath.slice(4) : relativePath;
-      return `${meta.singlePath ?? ''}${singlePath}`;
+      const singlePath = addon.destination.singlePath ?? '';
+      return `${singlePath}${relativePath}`;
     }
 
-    case 'database':
-    case 'extras':
-    case 'repo':
-      return relativePath;
-
+    case 'app':
     default:
-      return relativePath;
+      return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
   }
 }
 
-export function resolveModuleDestination(
-  relativePath: string,
-  moduleConfig: { asPackage?: string; singlePath?: string },
-  destOverride: DestType | null,
-  appName: string,
-  ctx: TemplateContext,
-): string {
-  return resolveDestination(
-    relativePath,
-    {
-      type: 'module',
-      appName,
-      asPackage: moduleConfig.asPackage,
-      singlePath: moduleConfig.singlePath,
-    },
-    ctx,
-    destOverride,
-  );
+export function resolveStackDestination(relativePath: string, ctx: TemplateContext, appName: string): string {
+  const isTurborepo = ctx.repo === 'turborepo';
+  return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
 }
 
 function scanTemplates(dir: string): string[] {
+  if (!existsSync(dir)) return [];
   try {
     return globSync('**/*', { cwd: dir, onlyFiles: true, dot: true });
   } catch {
     return [];
   }
-}
-
-function getRelativePath(file: string): string {
-  return file;
 }
 
 function transformFilename(filename: string): string {
@@ -112,19 +64,17 @@ function transformFilename(filename: string): string {
   return result;
 }
 
-function resolveTemplatesForStack(stackName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
+function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: TemplateContext): TemplateFile[] {
   const stackDir = join(TEMPLATES_DIR, 'stack', stackName);
   const files = scanTemplates(stackDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
-    // Skip package.json templates (generated programmatically)
     if (file.endsWith('package.json.hbs')) continue;
 
     const source = join(stackDir, file);
-    const relativePath = getRelativePath(file);
-    const transformedPath = transformFilename(relativePath);
-    const destination = resolveDestination(transformedPath, { type: 'stack', appName }, ctx);
+    const transformedPath = transformFilename(file);
+    const destination = resolveStackDestination(transformedPath, ctx, appName);
 
     templates.push({ source, destination });
   }
@@ -132,123 +82,35 @@ function resolveTemplatesForStack(stackName: string, appName: string, ctx: Templ
   return templates;
 }
 
-function resolveTemplatesForModule(moduleName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
-  const mod = META.modules[moduleName];
-  if (!mod) return [];
+function resolveTemplatesForAddon(addonName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
+  const addon = META.addons[addonName];
+  if (!addon) return [];
 
-  const app = ctx.apps.find((a) => a.appName === appName);
-  if (!app) return [];
-
-  const moduleDir = join(TEMPLATES_DIR, 'modules', app.stackName, moduleName);
-  const files = scanTemplates(moduleDir);
+  const addonDir = join(TEMPLATES_DIR, 'addons', addonName);
+  const files = scanTemplates(addonDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
-    // Skip package.json templates (generated programmatically)
     if (file.endsWith('package.json.hbs')) continue;
 
-    const source = join(moduleDir, file);
+    const source = join(addonDir, file);
 
-    // Read file to check for @dest: magic comment
     let destOverride: DestType | null = null;
+    let onlyValue: OnlyType | null = null;
     try {
       const content = readFileSync(source, 'utf-8');
       destOverride = parseDestFromContent(content);
+      onlyValue = parseOnlyFromContent(content);
     } catch {
-      // Can't read file, use default
+      // Can't read file, use defaults
     }
 
-    const relativePath = getRelativePath(file);
-    const transformedPath = transformFilename(relativePath);
-    const destination = resolveModuleDestination(
-      transformedPath,
-      { asPackage: mod.asPackage, singlePath: mod.singlePath },
-      destOverride,
-      appName,
-      ctx,
-    );
+    if (shouldSkipTemplate(onlyValue, ctx)) continue;
+
+    const transformedPath = transformFilename(file);
+    const destination = resolveAddonDestination(transformedPath, addon, ctx, appName, destOverride);
 
     templates.push({ source, destination });
-  }
-
-  return templates;
-}
-
-function resolveTemplatesForOrm(ctx: TemplateContext): TemplateFile[] {
-  if (!ctx.orm) return [];
-
-  const ormDir = join(TEMPLATES_DIR, 'orm', ctx.orm);
-  const files = scanTemplates(ormDir);
-  const templates: TemplateFile[] = [];
-
-  for (const file of files) {
-    // Skip package.json templates (generated programmatically)
-    if (file.endsWith('package.json.hbs')) continue;
-
-    const source = join(ormDir, file);
-
-    let destOverride: DestType | null = null;
-    try {
-      const content = readFileSync(source, 'utf-8');
-      destOverride = parseDestFromContent(content);
-    } catch {
-      // Can't read file, use default
-    }
-
-    const relativePath = getRelativePath(file);
-    const transformedPath = transformFilename(relativePath);
-    const destination = resolveDestination(
-      transformedPath,
-      {
-        type: 'orm',
-        asPackage: META.orm.asPackage,
-        singlePath: META.orm.singlePath,
-      },
-      ctx,
-      destOverride,
-    );
-
-    templates.push({ source, destination });
-  }
-
-  return templates;
-}
-
-function resolveTemplatesForDatabase(ctx: TemplateContext): TemplateFile[] {
-  if (!ctx.database) return [];
-
-  const dbDir = join(TEMPLATES_DIR, 'database', ctx.database);
-  const files = scanTemplates(dbDir);
-
-  return files.map((file) => {
-    const source = join(dbDir, file);
-    const relativePath = getRelativePath(file);
-    const transformedPath = transformFilename(relativePath);
-    return {
-      source,
-      destination: resolveDestination(transformedPath, { type: 'database' }, ctx),
-    };
-  });
-}
-
-function resolveTemplatesForExtras(ctx: TemplateContext): TemplateFile[] {
-  if (!ctx.extras?.length) return [];
-
-  const templates: TemplateFile[] = [];
-
-  for (const extra of ctx.extras) {
-    const extraDir = join(TEMPLATES_DIR, 'extras', extra);
-    const files = scanTemplates(extraDir);
-
-    for (const file of files) {
-      const source = join(extraDir, file);
-      const relativePath = getRelativePath(file);
-      const transformedPath = transformFilename(relativePath);
-      templates.push({
-        source,
-        destination: resolveDestination(transformedPath, { type: 'extras' }, ctx),
-      });
-    }
   }
 
   return templates;
@@ -262,38 +124,31 @@ function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
     .filter((file) => !file.endsWith('package.json.hbs'))
     .map((file) => {
       const source = join(repoDir, file);
-      const relativePath = getRelativePath(file);
-      const transformedPath = transformFilename(relativePath);
-      return {
-        source,
-        destination: resolveDestination(transformedPath, { type: 'repo' }, ctx),
-      };
+      const transformedPath = transformFilename(file);
+      return { source, destination: transformedPath };
     });
 }
 
 export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
   const templates: TemplateFile[] = [];
 
-  // 1. Repo templates (turborepo or single config files)
   templates.push(...resolveTemplatesForRepo(ctx));
 
-  // 2. Stack and module templates for each app
   for (const app of ctx.apps) {
-    // Stack templates
     templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx));
 
-    // Module templates
-    for (const moduleName of app.modules) {
-      const mod = META.modules[moduleName];
-      if (mod && isModuleCompatible(mod, app.stackName as StackName)) {
-        templates.push(...resolveTemplatesForModule(moduleName, app.appName, ctx));
+    for (const addonName of app.addons) {
+      const addon = META.addons[addonName];
+      if (addon && isAddonCompatible(addon, app.stackName)) {
+        templates.push(...resolveTemplatesForAddon(addonName, app.appName, ctx));
       }
     }
   }
 
-  templates.push(...resolveTemplatesForOrm(ctx));
-  templates.push(...resolveTemplatesForDatabase(ctx));
-  templates.push(...resolveTemplatesForExtras(ctx));
+  const defaultAppName = ctx.apps[0]?.appName ?? ctx.projectName;
+  for (const addonName of ctx.globalAddons) {
+    templates.push(...resolveTemplatesForAddon(addonName, defaultAppName, ctx));
+  }
 
   return templates;
 }
