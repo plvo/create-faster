@@ -1,3 +1,6 @@
+// ABOUTME: Summary display and CLI command generation
+// ABOUTME: Shows project structure and recreate command with unified addons
+
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
@@ -7,16 +10,12 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
   let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
 
   for (const app of ctx.apps) {
-    const modulesStr = app.modules.length > 0 ? `:${app.modules.join(',')}` : '';
-    flagsCommand += ` --app ${app.appName}:${app.stackName}${modulesStr}`;
+    const addonsStr = app.addons.length > 0 ? `:${app.addons.join(',')}` : '';
+    flagsCommand += ` --app ${app.appName}:${app.stackName}${addonsStr}`;
   }
 
-  if (ctx.database) {
-    flagsCommand += ` --database ${ctx.database}`;
-  }
-
-  if (ctx.orm) {
-    flagsCommand += ` --orm ${ctx.orm}`;
+  for (const addonName of ctx.globalAddons) {
+    flagsCommand += ` --addon ${addonName}`;
   }
 
   if (ctx.git) {
@@ -27,16 +26,12 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
     flagsCommand += ` --pm ${ctx.pm}`;
   }
 
-  if (ctx.extras && ctx.extras.length > 0) {
-    flagsCommand += ` --extras ${ctx.extras.join(',')}`;
-  }
-
   if (flagsCommand.length > 140) {
     flagsCommand = flagsCommand.replaceAll('--', '\\\n  --');
   }
 
   outro(`${color.bgCyan(color.black(`🚀 Project created successfully at ${projectPath}!`))}
-    
+
 ${color.gray('🔥 You can recreate this project with the following command:')}
 
 ${color.bold(flagsCommand)}`);
@@ -52,6 +47,9 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const lines: string[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
 
+  const hasOrm = ctx.globalAddons.some((name) => META.addons[name]?.type === 'orm');
+  const hasDb = ctx.globalAddons.some((name) => META.addons[name]?.type === 'database');
+
   lines.push(color.white(color.bold('#🏠 Structure:')));
   lines.push('');
 
@@ -61,33 +59,34 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
     lines.push('├─ 🚀 apps/');
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
-      const modulesInfo = app.modules.length > 0 ? color.dim(` +${app.modules.length} modules`) : '';
-      const isLast = i === ctx.apps.length - 1 && !ctx.orm;
+      const addonsInfo = app.addons.length > 0 ? color.dim(` +${app.addons.length} modules`) : '';
+      const isLast = i === ctx.apps.length - 1 && !hasOrm;
       const prefix = isLast ? '│  └─' : '│  ├─';
-      lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${modulesInfo})`)}`);
+      lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${addonsInfo})`)}`);
     });
   } else {
     const app = ctx.apps[0];
     if (app) {
       const stack = META.stacks[app.stackName];
-      const modulesInfo = app.modules.length > 0 ? color.dim(` +${app.modules.length} modules`) : '';
-      lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${modulesInfo})`)}`);
+      const addonsInfo = app.addons.length > 0 ? color.dim(` +${app.addons.length} modules`) : '';
+      lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${addonsInfo})`)}`);
     }
   }
 
-  if (isTurborepo && ctx.orm) {
+  if (isTurborepo && hasOrm) {
     lines.push('├─ 📦 packages/');
-    const ormMeta = ctx.orm ? META.orm.stacks[ctx.orm] : null;
-    const dbMeta = ctx.database ? META.database.stacks[ctx.database] : null;
-    const dbInfo = dbMeta ? ` + ${dbMeta.label}` : '';
-    lines.push(`│  └─ db/ ${color.magenta(`(${ormMeta?.label}${dbInfo})`)}`);
+    const ormAddon = ctx.globalAddons.find((name) => META.addons[name]?.type === 'orm');
+    const dbAddon = ctx.globalAddons.find((name) => META.addons[name]?.type === 'database');
+    const ormLabel = ormAddon ? META.addons[ormAddon]?.label : '';
+    const dbLabel = dbAddon ? ` + ${META.addons[dbAddon]?.label}` : '';
+    lines.push(`│  └─ db/ ${color.magenta(`(${ormLabel}${dbLabel})`)}`);
   }
 
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
-  if (ctx.extras?.includes('biome')) configs.push('Biome');
-  if (ctx.extras?.includes('husky')) configs.push('Husky');
+  if (ctx.globalAddons.includes('biome')) configs.push('Biome');
+  if (ctx.globalAddons.includes('husky')) configs.push('Husky');
 
   if (configs.length > 0) {
     lines.push(`└─ ⚙️  ${color.dim(configs.join(', '))}`);

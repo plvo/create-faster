@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for Handlebars helpers
-// ABOUTME: Tests the 6 simplified helpers: eq, ne, and, or, isTurborepo, has
+// ABOUTME: Tests helpers for unified addon system
 
 import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
@@ -71,30 +71,37 @@ describe('Handlebars helpers', () => {
   });
 
   describe('has', () => {
-    test('checks module existence', () => {
+    test('checks module (per-app addon) existence', () => {
       const template = Handlebars.compile('{{#if (has "module" "shadcn")}}yes{{else}}no{{/if}}');
-      expect(template({ modules: ['shadcn', 'mdx'] })).toBe('yes');
-      expect(template({ modules: ['mdx'] })).toBe('no');
-      expect(template({ modules: [] })).toBe('no');
+      expect(template({ addons: ['shadcn', 'mdx'] })).toBe('yes');
+      expect(template({ addons: ['mdx'] })).toBe('no');
+      expect(template({ addons: [] })).toBe('no');
     });
 
-    test('checks database value', () => {
+    test('checks database (global addon) value', () => {
       const template = Handlebars.compile('{{#if (has "database" "postgres")}}yes{{else}}no{{/if}}');
-      expect(template({ database: 'postgres' })).toBe('yes');
-      expect(template({ database: 'mysql' })).toBe('no');
-      expect(template({})).toBe('no');
+      expect(template({ globalAddons: ['postgres'] })).toBe('yes');
+      expect(template({ globalAddons: ['mysql'] })).toBe('no');
+      expect(template({ globalAddons: [] })).toBe('no');
     });
 
-    test('checks orm value', () => {
+    test('checks orm (global addon) value', () => {
       const template = Handlebars.compile('{{#if (has "orm" "drizzle")}}yes{{else}}no{{/if}}');
-      expect(template({ orm: 'drizzle' })).toBe('yes');
-      expect(template({ orm: 'prisma' })).toBe('no');
+      expect(template({ globalAddons: ['drizzle'] })).toBe('yes');
+      expect(template({ globalAddons: ['prisma'] })).toBe('no');
     });
 
-    test('checks extra existence', () => {
+    test('checks extra (global addon) existence', () => {
       const template = Handlebars.compile('{{#if (has "extra" "biome")}}yes{{else}}no{{/if}}');
-      expect(template({ extras: ['biome', 'husky'] })).toBe('yes');
-      expect(template({ extras: ['husky'] })).toBe('no');
+      expect(template({ globalAddons: ['biome', 'husky'] })).toBe('yes');
+      expect(template({ globalAddons: ['husky'] })).toBe('no');
+    });
+
+    test('checks addon (any addon) existence', () => {
+      const template = Handlebars.compile('{{#if (has "addon" "shadcn")}}yes{{else}}no{{/if}}');
+      expect(template({ addons: ['shadcn'] })).toBe('yes');
+      expect(template({ globalAddons: ['shadcn'] })).toBe('yes');
+      expect(template({ addons: [], globalAddons: [] })).toBe('no');
     });
 
     test('checks stack existence in apps', () => {
@@ -109,14 +116,31 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('hasAddon', () => {
+    test('returns true for per-app addon', () => {
+      const template = Handlebars.compile('{{#if (hasAddon "shadcn")}}yes{{else}}no{{/if}}');
+      expect(template({ addons: ['shadcn'] })).toBe('yes');
+    });
+
+    test('returns true for global addon', () => {
+      const template = Handlebars.compile('{{#if (hasAddon "drizzle")}}yes{{else}}no{{/if}}');
+      expect(template({ globalAddons: ['drizzle'] })).toBe('yes');
+    });
+
+    test('returns false when addon not present', () => {
+      const template = Handlebars.compile('{{#if (hasAddon "prisma")}}yes{{else}}no{{/if}}');
+      expect(template({ addons: [], globalAddons: [] })).toBe('no');
+    });
+  });
+
   describe('hasContext', () => {
     test('returns true when context has key with value', () => {
-      const template = Handlebars.compile('{{#if (hasContext "orm")}}yes{{else}}no{{/if}}');
-      expect(template({ orm: 'drizzle' })).toBe('yes');
+      const template = Handlebars.compile('{{#if (hasContext "globalAddons")}}yes{{else}}no{{/if}}');
+      expect(template({ globalAddons: ['drizzle'] })).toBe('yes');
     });
 
     test('returns false when context key is undefined', () => {
-      const template = Handlebars.compile('{{#if (hasContext "orm")}}yes{{else}}no{{/if}}');
+      const template = Handlebars.compile('{{#if (hasContext "globalAddons")}}yes{{else}}no{{/if}}');
       expect(template({})).toBe('no');
     });
   });
@@ -141,21 +165,21 @@ describe('Handlebars helpers', () => {
   describe('databaseUrl', () => {
     test('returns postgres URL', () => {
       const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ database: 'postgres', projectName: 'test' })).toBe(
+      expect(template({ globalAddons: ['postgres'], projectName: 'test' })).toBe(
         'postgresql://postgres:password@localhost:5432/postgres-test',
       );
     });
 
     test('returns mysql URL', () => {
       const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ database: 'mysql', projectName: 'test' })).toBe(
+      expect(template({ globalAddons: ['mysql'], projectName: 'test' })).toBe(
         'mysql://mysql:password@localhost:3306/mysql-test',
       );
     });
 
     test('returns null for no database', () => {
       const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ projectName: 'test' })).toBe('');
+      expect(template({ globalAddons: [], projectName: 'test' })).toBe('');
     });
   });
 });

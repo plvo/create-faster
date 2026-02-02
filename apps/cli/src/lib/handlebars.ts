@@ -1,9 +1,9 @@
 // ABOUTME: Handlebars template engine setup with custom helpers
-// ABOUTME: Provides core helpers for template rendering
+// ABOUTME: Provides core helpers for template rendering with unified addons
 
 import Handlebars from 'handlebars';
+import { META } from '@/__meta__';
 import type { AppContext, EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
-import type { ExtraName } from '@/types/meta';
 
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -17,18 +17,35 @@ export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
     switch (category) {
       case 'module':
-        return Array.isArray(this.modules) && this.modules.includes(value);
+        return Array.isArray(this.addons) && this.addons.includes(value);
       case 'database':
-        return this.database === value;
+        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
       case 'orm':
-        return this.orm === value;
+        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
       case 'extra':
-        return Array.isArray(this.extras) && this.extras.includes(value as ExtraName);
+        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
+      case 'addon':
+        return (
+          (Array.isArray(this.addons) && this.addons.includes(value)) ||
+          (Array.isArray(this.globalAddons) && this.globalAddons.includes(value))
+        );
       case 'stack':
         return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === value);
       default:
         return false;
     }
+  });
+
+  Handlebars.registerHelper('hasAddon', function (this: EnrichedTemplateContext, addonName: string) {
+    return (
+      (Array.isArray(this.addons) && this.addons.includes(addonName)) ||
+      (Array.isArray(this.globalAddons) && this.globalAddons.includes(addonName))
+    );
+  });
+
+  Handlebars.registerHelper('hasAddonType', function (this: EnrichedTemplateContext, addonType: string) {
+    const allAddons = [...(this.addons ?? []), ...(this.globalAddons ?? [])];
+    return allAddons.some((name) => META.addons[name]?.type === addonType);
   });
 
   Handlebars.registerHelper('hasContext', function (this: TemplateContext, contextName: keyof TemplateContext) {
@@ -42,9 +59,9 @@ export function registerHandlebarsHelpers(): void {
   });
 
   Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
-    if (this.database === 'postgres') {
+    if (this.globalAddons?.includes('postgres')) {
       return `postgresql://postgres:password@localhost:5432/postgres-${this.projectName}`;
-    } else if (this.database === 'mysql') {
+    } else if (this.globalAddons?.includes('mysql')) {
       return `mysql://mysql:password@localhost:3306/mysql-${this.projectName}`;
     }
     return null;
@@ -55,7 +72,7 @@ export function renderTemplate(templateContent: string, context: TemplateContext
   try {
     const template = Handlebars.compile(templateContent, {
       noEscape: true,
-      strict: false, // Changed from true to handle missing properties gracefully
+      strict: false,
       preventIndent: false,
     });
 

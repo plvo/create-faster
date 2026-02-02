@@ -1,13 +1,22 @@
+// ABOUTME: Main CLI flow with interactive prompts
+// ABOUTME: Collects project config and returns TemplateContext
+
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/prompts/base-prompts';
-import { multiselectModulesPrompt, selectStackPrompt } from '@/prompts/stack-prompts';
+import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
+import {
+  multiselectAddonsPrompt,
+  selectGlobalAddonPrompt,
+  multiselectGlobalAddonsPrompt,
+  selectStackPrompt,
+} from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { DatabaseName, ExtraName, OrmName, StackName } from '@/types/meta';
+import type { StackName } from '@/types/meta';
+import { areAddonDependenciesMet } from '@/lib/addon-utils';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
@@ -16,16 +25,16 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
+    globalAddons: [],
     git: false,
   };
 
   if (partial?.projectName) {
     ctx.projectName = partial.projectName;
-    log.info(`${color.green('✓')} Using project name from flags: ${color.bold(partial.projectName)}`);
-    // Validate path doesn't exist
+    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
     const fullPath = join(process.cwd(), partial.projectName);
     if (existsSync(fullPath)) {
-      cancel(`A file or directory named "${partial.projectName}" already exists. Please choose a different name.`);
+      cancel(`Directory "${partial.projectName}" already exists.`);
       process.exit(1);
     }
   } else {
@@ -33,15 +42,11 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
       placeholder: 'my-app',
       initialValue: 'my-app',
       validate: (value) => {
-        const trimedValue = value.trim();
-        if (!value || trimedValue === '') return 'Project name is required';
-        const fullPath = join(process.cwd(), trimedValue);
-        try {
-          if (existsSync(fullPath)) {
-            return `A file or directory named "${trimedValue}" already exists. Please choose a different name.`;
-          }
-        } catch (e) {
-          return `An error occurred while checking if the app name is valid: ${(e as Error).message}`;
+        const trimmed = value.trim();
+        if (!trimmed) return 'Project name is required';
+        const fullPath = join(process.cwd(), trimmed);
+        if (existsSync(fullPath)) {
+          return `Directory "${trimmed}" already exists.`;
         }
       },
     });
@@ -51,14 +56,12 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
   if (partial?.apps && partial.apps.length > 0) {
     ctx.apps = partial.apps;
     log.info(
-      `${color.green('✓')} Using ${partial.apps.length} app(s) from flags: ${partial.apps.map((a) => a.appName).join(', ')}`,
+      `${color.green('✓')} Using ${partial.apps.length} app(s): ${partial.apps.map((a) => a.appName).join(', ')}`,
     );
   } else {
     const appCount = await promptText<number>(
-      `${progress.message('How many apps do you want to create?')}
-${S_GRAY_BAR}  ${color.italic(color.gray('Eg: a backend + a frontend = enter 2'))}
-${S_GRAY_BAR}  ${color.italic(color.gray('Only a Next.js app = enter 1'))}
-${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than one'))}`,
+      `${progress.message('How many apps?')}
+${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}`,
       {
         initialValue: '1',
         placeholder: 'Enter a number',
@@ -73,38 +76,39 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
   }
   progress.next();
 
-  if (partial?.database !== undefined) {
-    ctx.database = partial.database ?? undefined;
-    if (partial.database) {
-      log.info(`${color.green('✓')} Using database from flags: ${color.bold(partial.database)}`);
-    } else if (partial.database === null) {
-      log.info(`${color.green('✓')} Skipping database setup`);
+  if (partial?.globalAddons !== undefined) {
+    ctx.globalAddons = partial.globalAddons;
+    if (partial.globalAddons.length > 0) {
+      log.info(`${color.green('✓')} Using addons: ${partial.globalAddons.join(', ')}`);
     }
   } else {
-    ctx.database = (await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
-      allowNone: true,
-    })) as DatabaseName | undefined;
-  }
-
-  if (partial?.orm !== undefined) {
-    ctx.orm = partial.orm ?? undefined;
-    if (partial.orm) {
-      log.info(`${color.green('✓')} Using ORM from flags: ${color.bold(partial.orm)}`);
-    } else if (partial.orm === null) {
-      log.info(`${color.green('✓')} Skipping ORM setup`);
+    const database = await selectGlobalAddonPrompt(
+      'database',
+      progress.message(`Include a ${color.bold('database')}?`),
+    );
+    if (database) {
+      ctx.globalAddons.push(database);
     }
-  } else {
-    ctx.orm = (await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
-      allowNone: true,
-    })) as OrmName | undefined;
-  }
 
+    if (database) {
+      const orm = await selectGlobalAddonPrompt('orm', progress.message(`Configure an ${color.bold('ORM')}?`));
+
+      if (orm) {
+        const ormAddon = META.addons[orm];
+        if (ormAddon && !areAddonDependenciesMet(ormAddon, ctx.globalAddons)) {
+          log.warn(`${orm} requires a database. Skipping.`);
+        } else {
+          ctx.globalAddons.push(orm);
+        }
+      }
+    }
+  }
   progress.next();
 
   if (partial?.git !== undefined) {
     ctx.git = partial.git;
     if (partial.git) {
-      log.info(`${color.green('✓')} Git initialization enabled from flags`);
+      log.info(`${color.green('✓')} Git initialization enabled`);
     }
   } else {
     ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
@@ -112,17 +116,21 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
     });
   }
 
-  if (partial?.extras !== undefined) {
-    ctx.extras = partial.extras;
-    if (partial.extras && partial.extras.length > 0) {
-      log.info(`${color.green('✓')} Using extras from flags: ${partial.extras.join(', ')}`);
-    }
-  } else {
-    ctx.extras = (await promptMultiselect('extras', progress.message(`Add any ${color.bold('extras')}?`), ctx, {
-      required: false,
-    })) as ExtraName[] | undefined;
-  }
+  if (partial?.globalAddons === undefined) {
+    const extras = await multiselectGlobalAddonsPrompt(
+      'extra',
+      progress.message(`Add any ${color.bold('extras')}?`),
+      false,
+    );
 
+    for (const extra of extras) {
+      if (extra === 'husky' && !ctx.git) {
+        log.warn('Husky requires git. Skipping.');
+        continue;
+      }
+      ctx.globalAddons.push(extra);
+    }
+  }
   progress.next();
 
   if (partial?.skipInstall) {
@@ -130,9 +138,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
     log.info(`${color.green('✓')} Skipping dependency installation`);
   } else if (partial?.pm !== undefined) {
     ctx.pm = partial.pm;
-    if (partial.pm) {
-      log.info(`${color.green('✓')} Using package manager from flags: ${color.bold(partial.pm)}`);
-    }
+    log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
   } else {
     ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
       options: [
@@ -143,7 +149,6 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
       ],
     });
   }
-
   progress.next();
 
   return ctx;
@@ -169,32 +174,28 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
   if (projectNameIfOneApp) {
     appName = projectNameIfOneApp;
   } else {
-    appName = await promptText<string>(progress.message(`Name of the app ${color.bold(`#${index}`)}?`), {
+    appName = await promptText<string>(progress.message(`Name of app ${color.bold(`#${index}`)}?`), {
       defaultValue: `app-${index}`,
       placeholder: `app-${index}`,
       validate: (value) => {
-        const trimedValue = value.trim();
-        if (!value || trimedValue === '') return 'App name is required';
+        if (!value.trim()) return 'App name is required';
       },
     });
   }
 
-  const stackName = (await selectStackPrompt(
-    progress.message(`Select the stack for ${color.bold(appName)}`),
-  )) as StackName;
+  const stackName = (await selectStackPrompt(progress.message(`Stack for ${color.bold(appName)}`))) as StackName;
 
   const metaStack = META.stacks[stackName];
-
   if (!metaStack) {
     cancel(`Stack "${stackName}" not found`);
     process.exit(0);
   }
 
-  const modules = await multiselectModulesPrompt(
+  const addons = await multiselectAddonsPrompt(
     stackName,
-    progress.message(`Do you want to add any ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`),
+    progress.message(`Add ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`),
     false,
   );
 
-  return { appName, stackName, modules };
+  return { appName, stackName, addons };
 }
