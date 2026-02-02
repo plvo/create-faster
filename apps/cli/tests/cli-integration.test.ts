@@ -1,9 +1,9 @@
 // ABOUTME: Integration tests for create-faster CLI
 // ABOUTME: Tests end-to-end project generation with various flag combinations
 
-import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { createTempDir, cleanupTempDir, runCli, fileExists, readJsonFile } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readJsonFile, runCli } from './helpers';
 
 describe('CLI Integration', () => {
   let tempDir: string;

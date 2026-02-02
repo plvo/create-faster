@@ -1,7 +1,7 @@
 // ABOUTME: Test utilities for CLI integration tests
 // ABOUTME: Provides functions to run CLI, create temp directories, and assert file contents
 
-import { mkdtemp, rm, readFile, access } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
@@ -21,7 +21,7 @@ export async function cleanupTempDir(dir: string): Promise<void> {
 }
 
 export async function runCli(args: string[], cwd: string): Promise<CliResult> {
-  const cliPath = join(import.meta.dir, '../index.ts');
+  const cliPath = join(import.meta.dir, '../src/index.ts');
 
   try {
     const result = await $`bun run ${cliPath} ${args}`.cwd(cwd).quiet();
