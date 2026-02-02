@@ -48,15 +48,21 @@ export function resolveDestination(
     case 'module':
       if (meta.asPackage) {
         // Turborepo: files go to packages/{asPackage}/
-        // Single: files go to root (template paths already contain the structure)
+        // Single: files go to root (template paths contain the structure)
         return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
       }
       return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
 
-    case 'orm':
+    case 'orm': {
       // Turborepo: files go to packages/{asPackage}/
-      // Single: files go to root (template paths already contain the structure)
-      return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
+      // Single: files go to singlePath (e.g., src/lib/db/), stripping src/ from template path
+      if (isTurborepo) {
+        return `packages/${meta.asPackage}/${relativePath}`;
+      }
+      // For single repo, strip leading src/ from template path since singlePath handles the structure
+      const singlePath = relativePath.startsWith('src/') ? relativePath.slice(4) : relativePath;
+      return `${meta.singlePath ?? ''}${singlePath}`;
+    }
 
     case 'database':
     case 'extras':
