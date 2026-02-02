@@ -1,6 +1,6 @@
-import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 {{#if (has "module" "better-auth")}}
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 {{/if}}
 
@@ -11,9 +11,11 @@ export default async function proxy(request: NextRequest) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
-  {{/if}}
 
   console.log(`PROXY "${pathname}" | "${session ? session.user.id : 'X'}"`);
+  {{else}}
+  console.log(`PROXY "${pathname}"`);
+  {{/if}}
 
   return NextResponse.next();
 }
