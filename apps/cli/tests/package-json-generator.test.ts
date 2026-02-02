@@ -1,7 +1,7 @@
 // ABOUTME: Unit tests for programmatic package.json generation
 // ABOUTME: Tests merge logic, workspace references, and port resolution
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
   generateAllPackageJsons,
   generateAppPackageJson,

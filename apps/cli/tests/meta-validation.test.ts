@@ -1,9 +1,15 @@
 // ABOUTME: Validation tests for META constant
 // ABOUTME: Ensures META has all required stacks, modules with valid packageJson
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
-import { isModuleCompatible } from '../src/types/meta';
+import {
+  isModuleCompatible,
+  type MetaModule,
+  type MetaStack,
+  type ModuleName,
+  type StackName,
+} from '../src/types/meta';
 
 describe('META validation', () => {
   describe('stacks', () => {
@@ -15,7 +21,7 @@ describe('META validation', () => {
     });
 
     test('each stack has type, label, and packageJson', () => {
-      for (const [name, stack] of Object.entries(META.stacks)) {
+      for (const [name, stack] of Object.entries(META.stacks) as [StackName, MetaStack][]) {
         expect(stack.type, `${name} should have type`).toBeDefined();
         expect(stack.label, `${name} should have label`).toBeDefined();
         expect(stack.packageJson, `${name} should have packageJson`).toBeDefined();
@@ -57,7 +63,7 @@ describe('META validation', () => {
     });
 
     test('modules with asPackage have exports', () => {
-      for (const [name, module] of Object.entries(META.modules)) {
+      for (const [name, module] of Object.entries(META.modules) as [ModuleName, MetaModule][]) {
         if (module.asPackage) {
           expect(module.packageJson.exports, `${name} with asPackage should have exports`).toBeDefined();
         }

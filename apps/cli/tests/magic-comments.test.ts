@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for magic comments parsing
 // ABOUTME: Tests the @dest: magic comment (new simplified system)
 
-import { describe, test, expect } from 'bun:test';
-import { parseMagicComments, shouldSkipTemplate, extractFirstLine } from '../src/lib/magic-comments';
+import { describe, expect, test } from 'bun:test';
+import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from '../src/lib/magic-comments';
 import type { TemplateContext } from '../src/types/ctx';
 
 const baseContext: TemplateContext = {

@@ -1,8 +1,8 @@
 // ABOUTME: Type tests for META structure
 // ABOUTME: Ensures META conforms to expected types
 
-import { describe, test, expect } from 'bun:test';
-import type { Meta, MetaStack, MetaModule, PackageJsonConfig, StackName, StacksCompatibility } from '../src/types/meta';
+import { describe, expect, test } from 'bun:test';
+import type { MetaModule, MetaStack, PackageJsonConfig } from '../src/types/meta';
 
 describe('Meta types', () => {
   test('PackageJsonConfig accepts valid config', () => {

@@ -1,7 +1,7 @@
 // ABOUTME: Unit tests for Handlebars helpers
 // ABOUTME: Tests the 6 simplified helpers: eq, ne, and, or, isTurborepo, has
 
-import { describe, test, expect, beforeAll } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
 import { registerHandlebarsHelpers } from '../src/lib/handlebars';
 
