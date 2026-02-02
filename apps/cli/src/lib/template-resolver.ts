@@ -1,241 +1,288 @@
+// ABOUTME: Resolves template files to their destination paths
+// ABOUTME: Uses META config (asPackage, singlePath) and @dest: magic comments
+
+import { globSync } from 'fast-glob';
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import fg from 'fast-glob';
+import { join, relative } from 'node:path';
 import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/lib/constants';
+import type { DestType } from './magic-comments';
+import { parseDestFromContent } from './magic-comments';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { isModuleCompatible, type StackName } from '@/types/meta';
-
-type Scope = 'app' | 'package' | 'root';
 import { transformSpecialFilename } from './file-writer';
-import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
-function scanTemplates(category: Category, stack: string): string[] {
-  const dir = path.join(TEMPLATES_DIR, category, stack);
-  return fg.sync('**/*', { cwd: dir });
+interface DestinationMeta {
+  type: 'stack' | 'module' | 'orm' | 'database' | 'extras' | 'repo';
+  appName?: string;
+  asPackage?: string;
+  singlePath?: string;
 }
 
-function scanModuleTemplates(framework: string, moduleName: string): string[] {
-  const dir = path.join(TEMPLATES_DIR, 'modules', framework, moduleName);
-  return fg.sync('**/*', { cwd: dir });
-}
-
-function resolveDestination(
+export function resolveDestination(
   relativePath: string,
-  appName: string,
-  scope: Scope,
+  meta: DestinationMeta,
   ctx: TemplateContext,
-  packageName?: string,
+  destOverride?: DestType | null,
 ): string {
-  let cleanPath = relativePath.replace('.hbs', '');
+  const isTurborepo = ctx.repo === 'turborepo';
 
-  cleanPath = transformSpecialFilename(cleanPath);
-
-  if (ctx.repo === 'single') {
-    return cleanPath;
+  // Handle @dest: overrides
+  if (destOverride === 'root') {
+    return relativePath;
   }
 
-  switch (scope) {
-    case 'app':
-      return `apps/${appName}/${cleanPath}`;
-    case 'package': {
-      const pkgName = packageName || META.orm?.asPackage || 'shared';
-      return `packages/${pkgName}/${cleanPath}`;
-    }
-    case 'root':
-      return cleanPath;
+  if (destOverride === 'app' && meta.appName) {
+    return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
   }
-}
 
-type Category = 'orm' | 'database' | 'extras' | 'repo';
+  if (destOverride === 'pkg' && meta.asPackage) {
+    return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
+  }
 
-function getCategoryScope(category: Category): Scope {
-  switch (category) {
+  // Default behavior based on type
+  switch (meta.type) {
+    case 'stack':
+      return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
+
+    case 'module':
+      if (meta.asPackage) {
+        // Turborepo: files go to packages/{asPackage}/
+        // Single: files go to root (template paths already contain the structure)
+        return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
+      }
+      return isTurborepo ? `apps/${meta.appName}/${relativePath}` : relativePath;
+
     case 'orm':
-      return 'package';
+      // Turborepo: files go to packages/{asPackage}/
+      // Single: files go to root (template paths already contain the structure)
+      return isTurborepo ? `packages/${meta.asPackage}/${relativePath}` : relativePath;
+
     case 'database':
     case 'extras':
     case 'repo':
-      return 'root';
+      return relativePath;
+
+    default:
+      return relativePath;
   }
 }
 
-function getTemplatesForStack(
-  category: Category,
-  stack: string,
+export function resolveModuleDestination(
+  relativePath: string,
+  moduleConfig: { asPackage?: string; singlePath?: string },
+  destOverride: DestType | null,
   appName: string,
   ctx: TemplateContext,
-  packageName?: string,
-): Array<TemplateFile> {
-  const categoryMeta = META[category];
+): string {
+  return resolveDestination(
+    relativePath,
+    {
+      type: 'module',
+      appName,
+      asPackage: moduleConfig.asPackage,
+      singlePath: moduleConfig.singlePath,
+    },
+    ctx,
+    destOverride,
+  );
+}
 
-  if (!categoryMeta || !categoryMeta.stacks[stack]) {
-    return [];
-  }
-
+function scanTemplates(dir: string): string[] {
   try {
-    const files = scanTemplates(category, stack);
-    const scope = getCategoryScope(category);
-
-    return files
-      .map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, category, stack, file);
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-
-          if (shouldSkipTemplate(magicComments, ctx)) {
-            return null;
-          }
-
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
-
-          return {
-            source: path.join(TEMPLATES_DIR, category, stack, file),
-            destination: resolveDestination(file, appName, finalScope, ctx, packageName),
-          };
-        } catch {
-          return {
-            source: path.join(TEMPLATES_DIR, category, stack, file),
-            destination: resolveDestination(file, appName, scope, ctx, packageName),
-          };
-        }
-      })
-      .filter((t): t is TemplateFile => t !== null);
+    return globSync('**/*', { cwd: dir, onlyFiles: true, dot: true });
   } catch {
     return [];
   }
 }
 
-function getTemplatesForStackType(stackName: string, appName: string, ctx: TemplateContext): Array<TemplateFile> {
-  const stackMeta = META.stacks[stackName as StackName];
-  if (!stackMeta) return [];
-
-  const scope: Scope = 'app';
-
-  try {
-    const dir = path.join(TEMPLATES_DIR, 'stack', stackName);
-    const files = fg.sync('**/*', { cwd: dir });
-
-    return files
-      .map((file) => {
-        const fullPath = path.join(dir, file);
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-
-          if (shouldSkipTemplate(magicComments, ctx)) {
-            return null;
-          }
-
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
-
-          return {
-            source: fullPath,
-            destination: resolveDestination(file, appName, finalScope, ctx),
-          };
-        } catch {
-          return {
-            source: fullPath,
-            destination: resolveDestination(file, appName, scope, ctx),
-          };
-        }
-      })
-      .filter((t): t is TemplateFile => t !== null);
-  } catch {
-    return [];
-  }
+function getRelativePath(file: string): string {
+  return file;
 }
 
-function processModules(
-  stackName: string,
-  modules: string[] | undefined,
-  appName: string,
-  ctx: TemplateContext,
-): Array<TemplateFile> {
-  if (!modules || modules.length === 0) return [];
+function transformFilename(filename: string): string {
+  let result = filename.replace(/\.hbs$/, '');
+  result = transformSpecialFilename(result);
+  return result;
+}
 
-  const result: Array<TemplateFile> = [];
+function resolveTemplatesForStack(stackName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
+  const stackDir = join(TEMPLATES_DIR, 'stack', stackName);
+  const files = scanTemplates(stackDir);
+  const templates: TemplateFile[] = [];
 
-  for (const moduleName of modules) {
-    const moduleMeta = META.modules[moduleName];
-    if (!moduleMeta || !isModuleCompatible(moduleMeta, stackName as StackName)) continue;
+  for (const file of files) {
+    const source = join(stackDir, file);
+    const relativePath = getRelativePath(file);
+    const transformedPath = transformFilename(relativePath);
+    const destination = resolveDestination(transformedPath, { type: 'stack', appName }, ctx);
 
+    templates.push({ source, destination, appName });
+  }
+
+  return templates;
+}
+
+function resolveTemplatesForModule(moduleName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
+  const mod = META.modules[moduleName];
+  if (!mod) return [];
+
+  const app = ctx.apps.find((a) => a.appName === appName);
+  if (!app) return [];
+
+  const moduleDir = join(TEMPLATES_DIR, 'modules', app.stackName, moduleName);
+  const files = scanTemplates(moduleDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(moduleDir, file);
+
+    // Read file to check for @dest: magic comment
+    let destOverride: DestType | null = null;
     try {
-      const files = scanModuleTemplates(stackName, moduleName);
-
-      const moduleTemplates = files.map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file);
-
-        let scope: Scope;
-        let targetName: string;
-        let packageNameOverride: string | undefined;
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-
-          if (scopeComment) {
-            scope = scopeComment.values[0] as Scope;
-            targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
-            packageNameOverride = scope === 'package' ? moduleMeta.asPackage : undefined;
-          } else {
-            scope = ctx.repo === 'turborepo' && moduleMeta.asPackage ? 'package' : 'app';
-            targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
-            packageNameOverride = moduleMeta.asPackage;
-          }
-        } catch {
-          scope = ctx.repo === 'turborepo' && moduleMeta.asPackage ? 'package' : 'app';
-          targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
-          packageNameOverride = moduleMeta.asPackage;
-        }
-
-        return {
-          source: path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file),
-          destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
-        };
-      });
-
-      result.push(...moduleTemplates);
+      const content = readFileSync(source, 'utf-8');
+      destOverride = parseDestFromContent(content);
     } catch {
-      // Module templates not found, skip silently
+      // Can't read file, use default
     }
+
+    const relativePath = getRelativePath(file);
+    const transformedPath = transformFilename(relativePath);
+    const destination = resolveModuleDestination(
+      transformedPath,
+      { asPackage: mod.asPackage, singlePath: mod.singlePath },
+      destOverride,
+      appName,
+      ctx,
+    );
+
+    templates.push({ source, destination, appName });
   }
 
-  return result;
+  return templates;
 }
 
-export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateFile> {
-  const result: Array<TemplateFile> = [];
+function resolveTemplatesForOrm(ctx: TemplateContext): TemplateFile[] {
+  if (!ctx.orm) return [];
 
-  result.push(...getTemplatesForStack('repo', ctx.repo, '', ctx));
+  const ormConfig = META.orm.stacks[ctx.orm];
+  const ormDir = join(TEMPLATES_DIR, 'orm', ctx.orm);
+  const files = scanTemplates(ormDir);
+  const templates: TemplateFile[] = [];
 
-  for (const app of ctx.apps) {
-    result.push(...getTemplatesForStackType(app.stackName, app.appName, ctx));
-    result.push(...processModules(app.stackName, app.modules, app.appName, ctx));
+  for (const file of files) {
+    const source = join(ormDir, file);
+
+    let destOverride: DestType | null = null;
+    try {
+      const content = readFileSync(source, 'utf-8');
+      destOverride = parseDestFromContent(content);
+    } catch {
+      // Can't read file, use default
+    }
+
+    const relativePath = getRelativePath(file);
+    const transformedPath = transformFilename(relativePath);
+    const destination = resolveDestination(
+      transformedPath,
+      {
+        type: 'orm',
+        asPackage: META.orm.asPackage,
+        singlePath: META.orm.singlePath,
+      },
+      ctx,
+      destOverride,
+    );
+
+    templates.push({ source, destination });
   }
 
-  if (ctx.orm) {
-    result.push(...getTemplatesForStack('orm', ctx.orm, 'db', ctx));
-  }
+  return templates;
+}
 
-  if (ctx.database) {
-    result.push(...getTemplatesForStack('database', ctx.database, '', ctx));
-  }
+function resolveTemplatesForDatabase(ctx: TemplateContext): TemplateFile[] {
+  if (!ctx.database) return [];
 
-  if (ctx.extras) {
-    for (const extra of ctx.extras) {
-      result.push(...getTemplatesForStack('extras', extra, '', ctx));
+  const dbDir = join(TEMPLATES_DIR, 'database', ctx.database);
+  const files = scanTemplates(dbDir);
+
+  return files.map((file) => {
+    const source = join(dbDir, file);
+    const relativePath = getRelativePath(file);
+    const transformedPath = transformFilename(relativePath);
+    return {
+      source,
+      destination: resolveDestination(transformedPath, { type: 'database' }, ctx),
+    };
+  });
+}
+
+function resolveTemplatesForExtras(ctx: TemplateContext): TemplateFile[] {
+  if (!ctx.extras?.length) return [];
+
+  const templates: TemplateFile[] = [];
+
+  for (const extra of ctx.extras) {
+    const extraDir = join(TEMPLATES_DIR, 'extras', extra);
+    const files = scanTemplates(extraDir);
+
+    for (const file of files) {
+      const source = join(extraDir, file);
+      const relativePath = getRelativePath(file);
+      const transformedPath = transformFilename(relativePath);
+      templates.push({
+        source,
+        destination: resolveDestination(transformedPath, { type: 'extras' }, ctx),
+      });
     }
   }
 
-  return result;
+  return templates;
+}
+
+function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
+  const repoDir = join(TEMPLATES_DIR, 'repo', ctx.repo);
+  const files = scanTemplates(repoDir);
+
+  return files.map((file) => {
+    const source = join(repoDir, file);
+    const relativePath = getRelativePath(file);
+    const transformedPath = transformFilename(relativePath);
+    return {
+      source,
+      destination: resolveDestination(transformedPath, { type: 'repo' }, ctx),
+    };
+  });
+}
+
+export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
+  const templates: TemplateFile[] = [];
+
+  // 1. Repo templates (turborepo or single config files)
+  templates.push(...resolveTemplatesForRepo(ctx));
+
+  // 2. Stack and module templates for each app
+  for (const app of ctx.apps) {
+    // Stack templates
+    templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx));
+
+    // Module templates
+    for (const moduleName of app.modules) {
+      const mod = META.modules[moduleName];
+      if (mod && isModuleCompatible(mod, app.stackName as StackName)) {
+        templates.push(...resolveTemplatesForModule(moduleName, app.appName, ctx));
+      }
+    }
+  }
+
+  // 3. ORM templates
+  templates.push(...resolveTemplatesForOrm(ctx));
+
+  // 4. Database templates
+  templates.push(...resolveTemplatesForDatabase(ctx));
+
+  // 5. Extras templates
+  templates.push(...resolveTemplatesForExtras(ctx));
+
+  return templates;
 }
