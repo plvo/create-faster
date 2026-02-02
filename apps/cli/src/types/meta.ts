@@ -8,6 +8,7 @@ export type OrmName = 'drizzle' | 'prisma';
 export type DatabaseName = 'postgres' | 'mysql';
 export type ExtraName = 'biome' | 'husky';
 export type RepoType = 'single' | 'turborepo';
+export type Category = 'orm' | 'database' | 'extras';
 
 export interface PackageJsonConfig {
   dependencies?: Record<string, string>;

@@ -7,6 +7,7 @@ import { promptConfirm, promptMultiselect, promptSelect, promptText } from '@/pr
 import { multiselectModulesPrompt, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { DatabaseName, ExtraName, OrmName, StackName } from '@/types/meta';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
@@ -80,9 +81,9 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
       log.info(`${color.green('✓')} Skipping database setup`);
     }
   } else {
-    ctx.database = await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
+    ctx.database = (await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
       allowNone: true,
-    });
+    })) as DatabaseName | undefined;
   }
 
   if (partial?.orm !== undefined) {
@@ -93,9 +94,9 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
       log.info(`${color.green('✓')} Skipping ORM setup`);
     }
   } else {
-    ctx.orm = await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
+    ctx.orm = (await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
       allowNone: true,
-    });
+    })) as OrmName | undefined;
   }
 
   progress.next();
@@ -117,9 +118,9 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
       log.info(`${color.green('✓')} Using extras from flags: ${partial.extras.join(', ')}`);
     }
   } else {
-    ctx.extras = await promptMultiselect('extras', progress.message(`Add any ${color.bold('extras')}?`), ctx, {
+    ctx.extras = (await promptMultiselect('extras', progress.message(`Add any ${color.bold('extras')}?`), ctx, {
       required: false,
-    });
+    })) as ExtraName[] | undefined;
   }
 
   progress.next();
@@ -178,7 +179,9 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
     });
   }
 
-  const stackName = await selectStackPrompt(progress.message(`Select the stack for ${color.bold(appName)}`));
+  const stackName = (await selectStackPrompt(
+    progress.message(`Select the stack for ${color.bold(appName)}`),
+  )) as StackName;
 
   const metaStack = META.stacks[stackName];
 

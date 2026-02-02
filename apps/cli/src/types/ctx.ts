@@ -24,3 +24,5 @@ export interface TemplateFile {
   source: string;
   destination: string;
 }
+
+export type EnrichedTemplateContext = TemplateContext & Partial<AppContext>;

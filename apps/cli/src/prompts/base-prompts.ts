@@ -1,3 +1,6 @@
+// ABOUTME: Base prompt wrappers with context-aware filtering
+// ABOUTME: Provides type-safe prompt functions with cancellation handling
+
 import {
   type ConfirmOptions,
   cancel,
@@ -16,25 +19,33 @@ import { META } from '@/__meta__';
 import type { TemplateContext } from '@/types/ctx';
 import type { Category } from '@/types/meta';
 
+interface StackMeta {
+  label: string;
+  hint?: string;
+  requires?: string[];
+}
+
 function filterOptionsByContext<C extends Category>(
   category: C,
   ctx: Partial<TemplateContext>,
 ): Option<string | undefined>[] {
-  if (META[category].requires) {
-    const isRequired = META[category].requires.every(
-      (required) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
+  const categoryMeta = META[category] as { requires?: string[]; stacks: Record<string, StackMeta> };
+
+  if (categoryMeta.requires) {
+    const isRequired = categoryMeta.requires.every(
+      (required: string) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
     );
     if (!isRequired) {
-      log.info(`${category} skipped (requires: ${META[category].requires.join(', ')})`);
+      log.info(`${category} skipped (requires: ${categoryMeta.requires.join(', ')})`);
       return [];
     }
   }
 
-  return Object.entries(META[category].stacks)
+  return Object.entries(categoryMeta.stacks)
     .filter(([_value, meta]) => {
       if (!meta.requires) return true;
       const isRequired = meta.requires.every(
-        (required) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
+        (required: string) => required in ctx && Boolean((ctx as Record<string, unknown>)[required]),
       );
       if (!isRequired) {
         log.info(`${meta.label} skipped because it requires ${meta.requires.join(', ')}`);

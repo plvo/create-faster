@@ -31,7 +31,9 @@ export function parseMagicComments(firstLine: string): MagicComment[] {
 export function parseDestFromContent(content: string): DestType | null {
   const firstLine = extractFirstLine(content);
   const comments = parseMagicComments(firstLine);
-  return comments.length > 0 ? (comments[0].values[0] as DestType) : null;
+  const firstComment = comments[0];
+  if (!firstComment) return null;
+  return firstComment.values[0] as DestType;
 }
 
 export function removeDestMagicComment(content: string): string {

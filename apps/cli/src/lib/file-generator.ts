@@ -1,8 +1,8 @@
 // ABOUTME: Orchestrates project file generation
 // ABOUTME: Combines package.json generation and template processing
 
-import { dirname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { pathExists } from './file-writer';
@@ -67,7 +67,7 @@ export async function generateProjectFiles(
 
     try {
       await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, JSON.stringify(content, null, 2) + '\n');
+      await writeFile(fullPath, `${JSON.stringify(content, null, 2)}\n`);
       allResults.push({ success: true, destination: path });
     } catch (error) {
       allResults.push({

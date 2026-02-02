@@ -1,16 +1,16 @@
 // ABOUTME: Resolves template files to their destination paths
 // ABOUTME: Uses META config (asPackage, singlePath) and @dest: magic comments
 
-import { globSync } from 'fast-glob';
 import { readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
+import { globSync } from 'fast-glob';
 import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/lib/constants';
-import type { DestType } from './magic-comments';
-import { parseDestFromContent } from './magic-comments';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { isModuleCompatible, type StackName } from '@/types/meta';
 import { transformSpecialFilename } from './file-writer';
+import type { DestType } from './magic-comments';
+import { parseDestFromContent } from './magic-comments';
 
 interface DestinationMeta {
   type: 'stack' | 'module' | 'orm' | 'database' | 'extras' | 'repo';
@@ -126,7 +126,7 @@ function resolveTemplatesForStack(stackName: string, appName: string, ctx: Templ
     const transformedPath = transformFilename(relativePath);
     const destination = resolveDestination(transformedPath, { type: 'stack', appName }, ctx);
 
-    templates.push({ source, destination, appName });
+    templates.push({ source, destination });
   }
 
   return templates;
@@ -168,7 +168,7 @@ function resolveTemplatesForModule(moduleName: string, appName: string, ctx: Tem
       ctx,
     );
 
-    templates.push({ source, destination, appName });
+    templates.push({ source, destination });
   }
 
   return templates;
@@ -291,13 +291,8 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
     }
   }
 
-  // 3. ORM templates
   templates.push(...resolveTemplatesForOrm(ctx));
-
-  // 4. Database templates
   templates.push(...resolveTemplatesForDatabase(ctx));
-
-  // 5. Extras templates
   templates.push(...resolveTemplatesForExtras(ctx));
 
   return templates;

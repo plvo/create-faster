@@ -223,7 +223,10 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       results.push(generatePackagePackageJson(name, config));
     }
   } else {
-    results.push(generateAppPackageJson(ctx.apps[0], ctx, 0));
+    const firstApp = ctx.apps[0];
+    if (firstApp) {
+      results.push(generateAppPackageJson(firstApp, ctx, 0));
+    }
   }
 
   return results;

@@ -2,7 +2,8 @@
 // ABOUTME: Provides core helpers for template rendering
 
 import Handlebars from 'handlebars';
-import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
+import type { ExtraName } from '@/types/meta';
 
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -13,7 +14,7 @@ export function registerHandlebarsHelpers(): void {
     return this.repo === 'turborepo';
   });
 
-  Handlebars.registerHelper('has', function (this: TemplateContext, category: string, value: string) {
+  Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
     switch (category) {
       case 'module':
         return Array.isArray(this.modules) && this.modules.includes(value);
@@ -22,7 +23,7 @@ export function registerHandlebarsHelpers(): void {
       case 'orm':
         return this.orm === value;
       case 'extra':
-        return Array.isArray(this.extras) && this.extras.includes(value);
+        return Array.isArray(this.extras) && this.extras.includes(value as ExtraName);
       case 'stack':
         return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === value);
       default:
