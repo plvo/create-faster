@@ -23,16 +23,19 @@ export function registerHandlebarsHelpers(): void {
     return array.includes(value);
   });
 
-  Handlebars.registerHelper('app', function (this: TemplateContext, appName: string) {
-    return this.apps.find((app) => app.appName === appName);
+  Handlebars.registerHelper('app', (appName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return root.apps?.find((app) => app.appName === appName);
   });
 
-  Handlebars.registerHelper('appIndex', function (this: TemplateContext, appName: string) {
-    return this.apps.findIndex((app) => app.appName === appName);
+  Handlebars.registerHelper('appIndex', (appName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return root.apps?.findIndex((app) => app.appName === appName) ?? -1;
   });
 
-  Handlebars.registerHelper('appPort', function (this: TemplateContext, appName: string) {
-    const index = this.apps.findIndex((app) => app.appName === appName);
+  Handlebars.registerHelper('appPort', (appName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    const index = root.apps?.findIndex((app) => app.appName === appName) ?? -1;
     return index === -1 ? 3000 : 3000 + index;
   });
 
@@ -88,8 +91,9 @@ export function registerHandlebarsHelpers(): void {
     },
   );
 
-  Handlebars.registerHelper('hasAnyStack', function (this: TemplateContext, stackName: string) {
-    return this.apps.some((app) => app.stackName === stackName);
+  Handlebars.registerHelper('hasAnyStack', (stackName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return root.apps?.some((app) => app.stackName === stackName) ?? false;
   });
 }
 
