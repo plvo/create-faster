@@ -9,7 +9,7 @@ import {
   writeFileContent,
 } from './file-writer';
 import { renderTemplate } from './handlebars';
-import { extractFirstLine, formatMagicComments, parseMagicComments, shouldSkipTemplate } from './magic-comments';
+import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
@@ -56,7 +56,7 @@ export async function processTemplate(
           success: true,
           destination: finalDestination,
           skipped: true,
-          reason: `Magic comment: ${formatMagicComments(magicComments)}`,
+          reason: 'Skipped by magic comment',
         };
       }
     }

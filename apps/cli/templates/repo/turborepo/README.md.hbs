@@ -71,7 +71,7 @@ Start all applications in development mode:
 {{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
 ```
 
-{{#if (hasAnyStack "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 {{#each apps}}
 {{#if (eq stackName "nextjs")}}
 - {{appName}}: [http://localhost:{{appPort appName}}](http://localhost:{{appPort appName}})
@@ -89,7 +89,7 @@ Start all applications in development mode:
 - `db:push` - Push schema changes to database
 - `db:studio` - Open database management UI
 {{/if}}
-{{#if (includes extras "biome")}}
+{{#if (has "extra" "biome")}}
 - `lint` - Lint and fix code with Biome
 - `format` - Format code with Biome
 - `check` - Run both linting and formatting
@@ -99,12 +99,12 @@ Start all applications in development mode:
 
 - [create-faster documentation](https://github.com/plvo/create-faster)
 - [Turborepo documentation](https://turbo.build/repo/docs)
-{{#if (hasAnyStack "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 - [Next.js documentation](https://nextjs.org/docs)
 {{/if}}
-{{#if (hasAnyStack "expo")}}
+{{#if (has "stack" "expo")}}
 - [Expo documentation](https://docs.expo.dev)
 {{/if}}
-{{#if (hasAnyStack "hono")}}
+{{#if (has "stack" "hono")}}
 - [Hono documentation](https://hono.dev)
 {{/if}}

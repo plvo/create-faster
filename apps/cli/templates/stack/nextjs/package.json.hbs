@@ -19,12 +19,12 @@
     "db:seed": "bun run scripts/seed.ts",
     {{/if}}
     "clean": "rimraf node_modules .next bun.lock package-lock.json pnpm-lock.yaml",
-    {{#if (hasExtra "biome")}}
+    {{#if (has "extra" "biome")}}
     "format": "biome format --write .",
     "lint": "biome lint",
     {{/if}}
     "unused": "knip",
-    {{#if (hasExtra "husky")}}
+    {{#if (has "extra" "husky")}}
     "prepare": "husky",
     {{/if}}
     {{/if}}
@@ -35,7 +35,7 @@
     "start:inspect": "NODE_OPTIONS=\"--inspect\" next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}"
   },
   "dependencies": {
-    {{#if (hasModule "shadcn")}}
+    {{#if (has "module" "shadcn")}}
     {{#if (eq repo "single")}}
     "radix-ui": "^1.4.2",
     "class-variance-authority": "^0.7.1",
@@ -47,26 +47,26 @@
     "@repo/ui": "*",
     {{/if}}
     {{/if}}
-    {{#if (hasModule "react-hook-form")}}
+    {{#if (has "module" "react-hook-form")}}
     "react-hook-form": "^7.56.1",
     "@hookform/resolvers": "^5.2.1",
     {{/if}}
-    {{#if (hasModule "tanstack-form")}}
+    {{#if (has "module" "tanstack-form")}}
     "@tanstack/react-form": "^1.23.7",
     {{/if}}
-    {{#if (hasModule "better-auth")}}
+    {{#if (has "module" "better-auth")}}
     "better-auth": "^1.4.10",
     {{/if}}
-    {{#if (hasModule "mdx")}}
+    {{#if (has "module" "mdx")}}
     "@mdx-js/loader": "^3",
     "@mdx-js/react": "^3",
     "@next/mdx": "^16.1.1",
     "next-mdx-remote": "^5.0.0",
     {{/if}}
-    {{#if (hasModule "tanstack-query")}}
+    {{#if (has "module" "tanstack-query")}}
     "@tanstack/react-query": "^5.90.0",
     {{/if}}
-    {{#if (hasModule "next-themes")}}
+    {{#if (has "module" "next-themes")}}
     "next-themes": "^0.4.6",
     {{/if}}
     {{#if (and (eq repo "turborepo") (hasContext "orm"))}}
@@ -102,7 +102,7 @@
     "@types/react": "^19.2.3",
     "@types/react-dom": "^19.2.3",
     {{#if (eq repo "single")}}
-    {{#if (hasModule "mdx")}}
+    {{#if (has "module" "mdx")}}
     "@types/mdx": "^2.0.13",
     {{/if}}
     {{#if (eq orm "drizzle")}}
@@ -120,17 +120,17 @@
     {{/if}}
     "tailwindcss": "^4.1.10",
     {{#if (eq repo "single")}}
-    {{#if (hasExtra "biome")}}
+    {{#if (has "extra" "biome")}}
     "@biomejs/biome": "^2.3.11",
     {{/if}}
-    {{#if (hasExtra "husky")}}
+    {{#if (has "extra" "husky")}}
     "husky": "^9",
     {{/if}}
     "knip": "^5",
     "rimraf": "^6",
     {{/if}}
     "@next/bundle-analyzer": "^16.1.1",
-    {{#if (hasModule "tanstack-devtools")}}
+    {{#if (has "module" "tanstack-devtools")}}
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-query-devtools": "^5.90.1",
     {{/if}}

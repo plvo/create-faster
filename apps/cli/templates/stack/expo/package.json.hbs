@@ -31,7 +31,7 @@
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "~6.0.7",
     "expo-web-browser": "~15.0.8",
-    {{#if (hasModule "nativewind")}}
+    {{#if (has "module" "nativewind")}}
     "nativewind": "^4.1.23",
     {{/if}}
     "react": "19.1.0",
@@ -47,14 +47,14 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "^19",
-    {{#if (hasModule "nativewind")}}
+    {{#if (has "module" "nativewind")}}
     "tailwindcss": "3.3.2",
     {{/if}}
     {{#if (eq repo "single")}}
-    {{#if (hasExtra "biome")}}
+    {{#if (has "extra" "biome")}}
     "@biomejs/biome": "^2.3.11",
     {{/if}}
-    {{#if (hasExtra "husky")}}
+    {{#if (has "extra" "husky")}}
     "husky": "^9.1.7",
     {{/if}}
     {{/if}}

@@ -31,7 +31,7 @@ export type PostWithAuthor = Awaited<
   ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
 >;
 
-{{#if (hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
 // Auth types
 export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
 export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;

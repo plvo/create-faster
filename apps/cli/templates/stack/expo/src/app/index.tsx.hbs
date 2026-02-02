@@ -7,8 +7,8 @@ const predefinedAmounts = [5, 10, 20, 50, 100, 200];
 
 export default function HomePage() {
   return (
-    <SafeAreaView{{#if (hasModule "nativewind")}} className='flex-1 bg-background'{{/if}}>
-      <View{{#if (hasModule "nativewind")}} className='flex-1 px-6 py-8'{{/if}}>
+    <SafeAreaView{{#if (has "module" "nativewind")}} className='flex-1 bg-background'{{/if}}>
+      <View{{#if (has "module" "nativewind")}} className='flex-1 px-6 py-8'{{/if}}>
           <Text>Home Page (index.tsx)</Text>
       </View>
     </SafeAreaView>

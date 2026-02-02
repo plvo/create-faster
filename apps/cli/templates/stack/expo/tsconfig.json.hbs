@@ -8,7 +8,7 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx",
-  {{#if (hasModule "nativewind")}}
+  {{#if (has "module" "nativewind")}}
   "nativewind-env.d.ts",
   {{/if}}
   ],

@@ -28,7 +28,7 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-{{#if (hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
   accounts      Account[]
   sessions      Session[]
 {{/if}}
@@ -37,7 +37,7 @@ model User {
   @@map("users")
 }
 
-{{#if (hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
 model Session {
   id        String   @id

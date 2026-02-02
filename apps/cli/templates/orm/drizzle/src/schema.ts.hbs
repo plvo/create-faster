@@ -31,14 +31,14 @@ export const userTable = mysqlTable('users', {
 });
 
 export const userTableRelations = relations(userTable, ({ many }) => ({
-{{#if (hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
   accounts: many(userAccountTable),
   sessions: many(userSessionTable),
 {{/if}}
   posts: many(postTable),
 }));
 
-{{#if (hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
 export const userSessionTable = pgTable('user_sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),

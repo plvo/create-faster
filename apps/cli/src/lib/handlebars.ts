@@ -1,44 +1,64 @@
+// ABOUTME: Handlebars template engine setup with custom helpers
+// ABOUTME: Provides core helpers for template rendering
+
 import Handlebars from 'handlebars';
-import { META } from '@/__meta__';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 
 export function registerHandlebarsHelpers(): void {
+  // Equality check
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
 
+  // Inequality check
   Handlebars.registerHelper('ne', (a: unknown, b: unknown) => a !== b);
 
+  // Logical AND - all args must be truthy
   Handlebars.registerHelper('and', (...args: unknown[]) => {
-    // Last argument is Handlebars options object
-    const values = args.slice(0, -1);
+    const values = args.slice(0, -1); // Last arg is Handlebars options
     return values.every((v) => Boolean(v));
   });
 
+  // Logical OR - any arg must be truthy
   Handlebars.registerHelper('or', (...args: unknown[]) => {
     const values = args.slice(0, -1);
     return values.some((v) => Boolean(v));
   });
 
-  Handlebars.registerHelper('includes', (array: unknown, value: unknown) => {
-    if (!Array.isArray(array)) return false;
-    return array.includes(value);
+  // Check if repo is turborepo
+  Handlebars.registerHelper('isTurborepo', function (this: TemplateContext) {
+    return this.repo === 'turborepo';
   });
 
-  Handlebars.registerHelper('app', (appName: string, options: Handlebars.HelperOptions) => {
-    const root = options.data.root as TemplateContext;
-    return root.apps?.find((app) => app.appName === appName);
+  // Generic existence/value check
+  Handlebars.registerHelper('has', function (this: TemplateContext, category: string, value: string) {
+    switch (category) {
+      case 'module':
+        return Array.isArray(this.modules) && this.modules.includes(value);
+      case 'database':
+        return this.database === value;
+      case 'orm':
+        return this.orm === value;
+      case 'extra':
+        return Array.isArray(this.extras) && this.extras.includes(value);
+      case 'stack':
+        return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === value);
+      default:
+        return false;
+    }
   });
 
-  Handlebars.registerHelper('appIndex', (appName: string, options: Handlebars.HelperOptions) => {
-    const root = options.data.root as TemplateContext;
-    return root.apps?.findIndex((app) => app.appName === appName) ?? -1;
+  // Check if context has a specific key with a value
+  Handlebars.registerHelper('hasContext', function (this: TemplateContext, contextName: keyof TemplateContext) {
+    return contextName in this && this[contextName] !== undefined;
   });
 
+  // Get app port based on app index
   Handlebars.registerHelper('appPort', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
-    const index = root.apps?.findIndex((app) => app.appName === appName) ?? -1;
+    const index = root.apps?.findIndex((app: AppContext) => app.appName === appName) ?? -1;
     return index === -1 ? 3000 : 3000 + index;
   });
 
+  // Generate database URL
   Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
     if (this.database === 'postgres') {
       return `postgresql://postgres:password@localhost:5432/postgres-${this.projectName}`;
@@ -47,61 +67,13 @@ export function registerHandlebarsHelpers(): void {
     }
     return null;
   });
-
-  Handlebars.registerHelper('isAppStack', (app: AppContext | undefined) => {
-    if (!app) return false;
-    return META.stacks[app.stackName]?.type === 'app';
-  });
-
-  Handlebars.registerHelper('isServerStack', (app: AppContext | undefined) => {
-    if (!app) return false;
-    return META.stacks[app.stackName]?.type === 'server';
-  });
-
-  Handlebars.registerHelper('isTurborepo', function (this: TemplateContext) {
-    return this.repo === 'turborepo';
-  });
-
-  Handlebars.registerHelper('isSingleRepo', function (this: TemplateContext) {
-    return this.repo === 'single';
-  });
-
-  Handlebars.registerHelper('hasModule', function (this: AppContext | TemplateContext, moduleName: string) {
-    const modules = 'modules' in this && Array.isArray(this.modules) ? this.modules : undefined;
-    if (!modules) return false;
-    return modules.some((m) => m.includes(moduleName));
-  });
-
-  Handlebars.registerHelper('moduleEnabled', function (this: AppContext | TemplateContext, moduleName: string) {
-    const modules = 'modules' in this && Array.isArray(this.modules) ? this.modules : undefined;
-    if (!modules) return false;
-    return modules.some((m) => m.includes(moduleName));
-  });
-
-  Handlebars.registerHelper('hasExtra', function (this: AppContext | TemplateContext, extraName: string) {
-    const extras = 'extras' in this && Array.isArray(this.extras) ? this.extras : undefined;
-    if (!extras) return false;
-    return extras.includes(extraName);
-  });
-
-  Handlebars.registerHelper(
-    'hasContext',
-    function (this: AppContext | TemplateContext, contextName: keyof TemplateContext) {
-      return contextName in this && (this as TemplateContext)[contextName] !== undefined;
-    },
-  );
-
-  Handlebars.registerHelper('hasAnyStack', (stackName: string, options: Handlebars.HelperOptions) => {
-    const root = options.data.root as TemplateContext;
-    return root.apps?.some((app) => app.stackName === stackName) ?? false;
-  });
 }
 
 export function renderTemplate(templateContent: string, context: TemplateContext): string {
   try {
     const template = Handlebars.compile(templateContent, {
       noEscape: true,
-      strict: true,
+      strict: false, // Changed from true to handle missing properties gracefully
       preventIndent: false,
     });
 

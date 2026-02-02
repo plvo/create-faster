@@ -1,6 +1,6 @@
 {{!-- @repo:turborepo @scope:package --}}
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-{{#if (eq hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
 import type { postTable, userAccountTable, userSessionTable, userTable, userVerificationTable } from './schema';
 {{else}}
 import type { postTable, userTable } from './schema';
@@ -22,7 +22,7 @@ export type PostWithAuthor = Post & {
   author: User;
 };
 
-{{#if (eq hasModule "better-auth")}}
+{{#if (has "module" "better-auth")}}
 export type UserWithRelations = User & {
   accounts: UserAccount[];
   sessions: UserSession[];

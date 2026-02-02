@@ -58,7 +58,7 @@ Start the development server:
 {{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
 ```
 
-{{#if (hasAnyStack "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 {{/if}}
 
@@ -71,12 +71,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Learn More
 
 - [create-faster documentation](https://github.com/plvo/create-faster)
-{{#if (hasAnyStack "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 - [Next.js documentation](https://nextjs.org/docs)
 {{/if}}
-{{#if (hasAnyStack "expo")}}
+{{#if (has "stack" "expo")}}
 - [Expo documentation](https://docs.expo.dev)
 {{/if}}
-{{#if (hasAnyStack "hono")}}
+{{#if (has "stack" "hono")}}
 - [Hono documentation](https://hono.dev)
 {{/if}}
