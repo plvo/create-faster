@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/plvo/create-faster/compare/create-faster-v1.4.1...create-faster-v1.5.0) (2026-02-02)
+
+
+### Features
+
+* **templates:** add nextjs proxy.ts file ([#59](https://github.com/plvo/create-faster/issues/59)) ([c1dcc4a](https://github.com/plvo/create-faster/commit/c1dcc4a3644392d8e57d6f55d839901f7a6ff0b4))
+* **templates:** upgrade to Next.js 16 with React 19.2.3 ([#58](https://github.com/plvo/create-faster/issues/58)) ([1bedf3f](https://github.com/plvo/create-faster/commit/1bedf3fee5a93afe435a76104b45a9748ed2b9dd))
+
+
+### Bug Fixes
+
+* **handlebars:** use root context in helpers that access apps array ([#62](https://github.com/plvo/create-faster/issues/62)) ([1c9501f](https://github.com/plvo/create-faster/commit/1c9501f74eb31959a7672915489a13683b45b350))
+* **templates:** add missing biome and husky deps in single-repo mode ([#56](https://github.com/plvo/create-faster/issues/56)) ([70f9bbd](https://github.com/plvo/create-faster/commit/70f9bbd386c424bef963f62fb5c05859c675da15))
+
 ## [1.4.1](https://github.com/plvo/create-faster/compare/create-faster-v1.3.1...create-faster-v1.4.0) (2026-01-02)
 
 
