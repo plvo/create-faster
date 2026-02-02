@@ -188,7 +188,7 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
   }
 
   const modules = await multiselectModulesPrompt(
-    metaStack.modules ?? {},
+    stackName,
     progress.message(`Do you want to add any ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`),
     false,
   );

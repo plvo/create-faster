@@ -3,7 +3,7 @@ import { cancel, groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
-import type { MetaModules } from '@/types/meta';
+import { isModuleCompatible, type StackName } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
@@ -51,23 +51,23 @@ export async function selectStackPrompt(message: string): Promise<string> {
 }
 
 export async function multiselectModulesPrompt(
-  modules: MetaModules,
+  stackName: StackName,
   message: string,
   required: boolean,
 ): Promise<string[]> {
-  const groupedOptions: Record<string, Option<string>[]> = {};
+  const compatibleModules = Object.entries(META.modules).filter(([, mod]) => isModuleCompatible(mod, stackName));
 
-  for (const [category, categoryModules] of Object.entries(modules)) {
-    groupedOptions[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
+  if (compatibleModules.length === 0) {
+    return [];
+  }
+
+  const groupedOptions: Record<string, Option<string>[]> = {
+    Modules: compatibleModules.map(([moduleName, meta]) => ({
       value: moduleName,
       label: meta.label,
       hint: meta.hint,
-    }));
-  }
-
-  if (Object.keys(groupedOptions).length === 0) {
-    return [];
-  }
+    })),
+  };
 
   const result = await groupMultiselect({
     options: groupedOptions,

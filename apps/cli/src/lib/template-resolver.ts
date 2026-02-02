@@ -4,7 +4,9 @@ import fg from 'fast-glob';
 import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { Category, Scope } from '@/types/meta';
+import { isModuleCompatible, type StackName } from '@/types/meta';
+
+type Scope = 'app' | 'package' | 'root';
 import { transformSpecialFilename } from './file-writer';
 import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
@@ -37,11 +39,24 @@ function resolveDestination(
     case 'app':
       return `apps/${appName}/${cleanPath}`;
     case 'package': {
-      const pkgName = packageName || META.orm?.packageName || 'shared';
+      const pkgName = packageName || META.orm?.asPackage || 'shared';
       return `packages/${pkgName}/${cleanPath}`;
     }
     case 'root':
       return cleanPath;
+  }
+}
+
+type Category = 'orm' | 'database' | 'extras' | 'repo';
+
+function getCategoryScope(category: Category): Scope {
+  switch (category) {
+    case 'orm':
+      return 'package';
+    case 'database':
+    case 'extras':
+    case 'repo':
+      return 'root';
   }
 }
 
@@ -60,7 +75,7 @@ function getTemplatesForStack(
 
   try {
     const files = scanTemplates(category, stack);
-    const scope = categoryMeta.scope;
+    const scope = getCategoryScope(category);
 
     return files
       .map((file) => {
@@ -96,10 +111,10 @@ function getTemplatesForStack(
 }
 
 function getTemplatesForStackType(stackName: string, appName: string, ctx: TemplateContext): Array<TemplateFile> {
-  const stackMeta = META.stacks[stackName];
+  const stackMeta = META.stacks[stackName as StackName];
   if (!stackMeta) return [];
 
-  const scope = stackMeta.scope;
+  const scope: Scope = 'app';
 
   try {
     const dir = path.join(TEMPLATES_DIR, 'stack', stackName);
@@ -147,18 +162,10 @@ function processModules(
   if (!modules || modules.length === 0) return [];
 
   const result: Array<TemplateFile> = [];
-  const stackModules = META.stacks[stackName]?.modules;
-  if (!stackModules) return [];
 
   for (const moduleName of modules) {
-    let moduleMeta: (typeof stackModules)[string][string] | undefined;
-    for (const categoryModules of Object.values(stackModules)) {
-      if (categoryModules[moduleName]) {
-        moduleMeta = categoryModules[moduleName];
-        break;
-      }
-    }
-    if (!moduleMeta) continue;
+    const moduleMeta = META.modules[moduleName];
+    if (!moduleMeta || !isModuleCompatible(moduleMeta, stackName as StackName)) continue;
 
     try {
       const files = scanModuleTemplates(stackName, moduleName);
@@ -178,17 +185,17 @@ function processModules(
 
           if (scopeComment) {
             scope = scopeComment.values[0] as Scope;
-            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-            packageNameOverride = scope === 'package' ? moduleMeta.packageName : undefined;
+            targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
+            packageNameOverride = scope === 'package' ? moduleMeta.asPackage : undefined;
           } else {
-            scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-            packageNameOverride = moduleMeta.packageName;
+            scope = ctx.repo === 'turborepo' && moduleMeta.asPackage ? 'package' : 'app';
+            targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
+            packageNameOverride = moduleMeta.asPackage;
           }
         } catch {
-          scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-          targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-          packageNameOverride = moduleMeta.packageName;
+          scope = ctx.repo === 'turborepo' && moduleMeta.asPackage ? 'package' : 'app';
+          targetName = scope === 'package' && moduleMeta.asPackage ? moduleMeta.asPackage : appName;
+          packageNameOverride = moduleMeta.asPackage;
         }
 
         return {

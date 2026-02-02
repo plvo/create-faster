@@ -1,157 +1,365 @@
+// ABOUTME: Single source of truth for all stacks, modules, and configuration
+// ABOUTME: Contains dependencies, scripts, and metadata for project generation
+
 import type { Meta } from '@/types/meta';
 
 export const META: Meta = {
   stacks: {
     nextjs: {
       type: 'app',
-      scope: 'app',
       label: 'Next.js',
       hint: 'React framework with SSR',
-      modules: {
-        'UI & Styling': {
-          shadcn: {
-            label: 'shadcn/ui',
-            hint: 'A set of beautifully designed components that you can customize, extend, and build on',
-            packageName: 'ui',
-          },
-          'next-themes': {
-            label: 'Next Themes',
-            hint: 'A library for managing themes in Next.js',
-            packageName: 'themes',
-          },
+      packageJson: {
+        dependencies: {
+          next: '^16.1.1',
+          react: '^19.2.3',
+          'react-dom': '^19.2.3',
+          'lucide-react': '^0.487.0',
+          'tw-animate-css': '^1.3.4',
         },
-        Features: {
-          mdx: {
-            label: 'MDX',
-            hint: 'Markdown-based content',
-          },
-          pwa: {
-            label: 'PWA',
-            hint: 'Progressive Web App support',
-          },
+        devDependencies: {
+          typescript: '^5',
+          '@types/node': '^20',
+          '@types/react': '^19.2.3',
+          '@types/react-dom': '^19.2.3',
+          tailwindcss: '^4.1.10',
+          '@next/bundle-analyzer': '^16.1.1',
         },
-        Authentication: {
-          'better-auth': {
-            label: 'Better Auth',
-            hint: 'The most comprehensive authentication framework for TypeScript',
-            packageName: 'auth',
-          },
-        },
-        'Data Fetching': {
-          'tanstack-query': {
-            label: 'TanStack Query',
-            hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
-          },
-          'tanstack-devtools': {
-            label: 'TanStack Devtools',
-            hint: 'Devtools panel for TanStack libraries and other custom devtools',
-          },
-        },
-        Forms: {
-          'react-hook-form': {
-            label: 'React Hook Form',
-            hint: 'Performant, flexible and extensible forms with easy-to-use validation',
-          },
-          'tanstack-form': {
-            label: 'TanStack Form',
-            hint: 'Headless UI for building performant and type-safe forms',
-          },
+        scripts: {
+          dev: 'next dev --port {{port}}',
+          build: 'next build',
+          'build:analyze': 'ANALYZE=true next build',
+          start: 'next start --port {{port}}',
         },
       },
     },
     expo: {
       type: 'app',
-      scope: 'app',
       label: 'Expo',
       hint: 'React Native framework',
-      modules: {
-        'UI & Styling': {
-          nativewind: {
-            label: 'NativeWind',
-            hint: 'Tailwind CSS for React Native',
-          },
+      packageJson: {
+        dependencies: {
+          expo: '~52.0.0',
+          'expo-status-bar': '~2.0.0',
+          react: '^18.3.1',
+          'react-native': '0.76.5',
+        },
+        devDependencies: {
+          typescript: '^5.3.0',
+          '@types/react': '~18.3.12',
+        },
+        scripts: {
+          start: 'expo start',
+          android: 'expo start --android',
+          ios: 'expo start --ios',
+          web: 'expo start --web',
         },
       },
     },
     hono: {
       type: 'server',
-      scope: 'app',
       label: 'Hono',
       hint: 'Fast web framework',
-      modules: {
-        Cloud: {
-          'aws-lambda': {
-            label: 'AWS Lambda',
-            hint: 'Run on AWS Lambda',
-          },
+      packageJson: {
+        dependencies: {
+          hono: '^4.7.4',
+        },
+        devDependencies: {
+          typescript: '^5',
+          '@types/node': '^20',
+        },
+        scripts: {
+          dev: 'bun run --hot src/index.ts',
+          start: 'bun run src/index.ts',
         },
       },
     },
     'tanstack-start': {
       type: 'app',
-      scope: 'app',
       label: 'TanStack Start',
-      hint: 'Full-stack React framework with TanStack Router',
-      modules: {
-        'Data Fetching': {
-          'tanstack-query': {
-            label: 'TanStack Query',
-            hint: 'Powerful asynchronous state management',
-          },
+      hint: 'Full-stack React framework',
+      packageJson: {
+        dependencies: {
+          '@tanstack/react-router': '^1.95.1',
+          '@tanstack/start': '^1.95.1',
+          react: '^19.0.0',
+          'react-dom': '^19.0.0',
+          vinxi: '^0.5.1',
         },
-        Forms: {
-          'tanstack-form': {
-            label: 'TanStack Form',
-            hint: 'Headless UI for building performant forms',
-          },
+        devDependencies: {
+          typescript: '^5',
+          '@types/react': '^19.0.0',
+          '@types/react-dom': '^19.0.0',
+          vite: '^6.0.0',
+        },
+        scripts: {
+          dev: 'vinxi dev --port {{port}}',
+          build: 'vinxi build',
+          start: 'vinxi start --port {{port}}',
         },
       },
     },
   },
-  database: {
-    scope: 'root',
-    stacks: {
-      postgres: {
-        label: 'PostgreSQL',
-        hint: 'Relational database',
+
+  modules: {
+    shadcn: {
+      label: 'shadcn/ui',
+      hint: 'Beautifully designed components',
+      stacks: ['nextjs', 'tanstack-start'],
+      asPackage: 'ui',
+      singlePath: 'src/components/ui/',
+      packageJson: {
+        dependencies: {
+          'radix-ui': '^1.4.2',
+          'class-variance-authority': '^0.7.1',
+          clsx: '^2.1.1',
+          cmdk: '^1.1.1',
+          vaul: '^1.1.2',
+          'tailwind-merge': '^3.3.1',
+        },
+        devDependencies: {
+          '@tailwindcss/postcss': '^4.1.10',
+        },
+        exports: {
+          './': './src/components/',
+          './components/*': './src/components/*.tsx',
+          './hooks/*': './src/hooks/*.ts',
+          './lib/*': './src/lib/*.ts',
+        },
       },
-      mysql: {
-        label: 'MySQL',
-        hint: 'Relational database',
+    },
+    'next-themes': {
+      label: 'Next Themes',
+      hint: 'Theme management',
+      stacks: ['nextjs'],
+      packageJson: {
+        dependencies: {
+          'next-themes': '^0.4.6',
+        },
+      },
+    },
+    mdx: {
+      label: 'MDX',
+      hint: 'Markdown-based content',
+      stacks: ['nextjs'],
+      packageJson: {
+        dependencies: {
+          '@mdx-js/loader': '^3',
+          '@mdx-js/react': '^3',
+          '@next/mdx': '^16.1.1',
+          'next-mdx-remote': '^5.0.0',
+        },
+        devDependencies: {
+          '@types/mdx': '^2.0.13',
+        },
+      },
+    },
+    pwa: {
+      label: 'PWA',
+      hint: 'Progressive Web App support',
+      stacks: ['nextjs'],
+      packageJson: {},
+    },
+    'better-auth': {
+      label: 'Better Auth',
+      hint: 'Authentication framework',
+      stacks: ['nextjs'],
+      asPackage: 'auth',
+      singlePath: 'src/lib/auth/',
+      requires: ['orm'],
+      packageJson: {
+        dependencies: {
+          'better-auth': '^1.4.10',
+        },
+        exports: {
+          '.': './src/index.ts',
+          './client': './src/client.ts',
+        },
+      },
+    },
+    'tanstack-query': {
+      label: 'TanStack Query',
+      hint: 'Async state management',
+      stacks: 'all',
+      packageJson: {
+        dependencies: {
+          '@tanstack/react-query': '^5.90.0',
+        },
+      },
+    },
+    'tanstack-devtools': {
+      label: 'TanStack Devtools',
+      hint: 'Devtools for TanStack',
+      stacks: ['nextjs', 'tanstack-start'],
+      packageJson: {
+        devDependencies: {
+          '@tanstack/react-devtools': '^0.7.0',
+          '@tanstack/react-query-devtools': '^5.90.1',
+        },
+      },
+    },
+    'react-hook-form': {
+      label: 'React Hook Form',
+      hint: 'Performant forms',
+      stacks: ['nextjs', 'tanstack-start'],
+      packageJson: {
+        dependencies: {
+          'react-hook-form': '^7.56.1',
+          '@hookform/resolvers': '^5.2.1',
+        },
+      },
+    },
+    'tanstack-form': {
+      label: 'TanStack Form',
+      hint: 'Type-safe forms',
+      stacks: ['nextjs', 'tanstack-start'],
+      packageJson: {
+        dependencies: {
+          '@tanstack/react-form': '^1.23.7',
+        },
+      },
+    },
+    nativewind: {
+      label: 'NativeWind',
+      hint: 'Tailwind for React Native',
+      stacks: ['expo'],
+      packageJson: {
+        dependencies: {
+          nativewind: '^4.1.23',
+        },
+        devDependencies: {
+          tailwindcss: '^3.4.17',
+        },
+      },
+    },
+    'aws-lambda': {
+      label: 'AWS Lambda',
+      hint: 'Serverless deployment',
+      stacks: ['hono'],
+      packageJson: {
+        dependencies: {
+          '@hono/aws-lambda': '^1.0.0',
+        },
       },
     },
   },
+
   orm: {
-    scope: 'package',
-    packageName: 'db',
+    asPackage: 'db',
+    singlePath: 'src/lib/db/',
     requires: ['database'],
     stacks: {
       drizzle: {
         label: 'Drizzle',
         hint: 'Lightweight TypeScript ORM',
+        asPackage: 'db',
+        singlePath: 'src/lib/db/',
+        packageJson: {
+          dependencies: {
+            'drizzle-orm': '^0.38.3',
+          },
+          devDependencies: {
+            'drizzle-kit': '^0.30.1',
+          },
+          scripts: {
+            'db:generate': 'drizzle-kit generate',
+            'db:migrate': 'drizzle-kit migrate',
+            'db:push': 'drizzle-kit push',
+            'db:studio': 'drizzle-kit studio',
+            'db:seed': 'bun run scripts/seed.ts',
+          },
+          exports: {
+            '.': './src/index.ts',
+            './schema': './src/schema.ts',
+            './types': './src/types.ts',
+          },
+        },
       },
       prisma: {
         label: 'Prisma',
         hint: 'Type-safe ORM with migrations',
+        asPackage: 'db',
+        singlePath: 'src/lib/db/',
+        packageJson: {
+          dependencies: {
+            '@prisma/client': '^6.13.0',
+          },
+          devDependencies: {
+            prisma: '^6.13.0',
+          },
+          scripts: {
+            'db:generate': 'prisma generate',
+            'db:migrate': 'prisma migrate dev',
+            'db:push': 'prisma db push',
+            'db:studio': 'prisma studio',
+            'db:seed': 'bun run scripts/seed.ts',
+          },
+          exports: {
+            '.': './src/index.ts',
+          },
+        },
       },
     },
   },
+
+  database: {
+    stacks: {
+      postgres: {
+        label: 'PostgreSQL',
+        hint: 'Relational database',
+        packageJson: {
+          dependencies: {
+            pg: '^8.13.1',
+          },
+          devDependencies: {
+            '@types/pg': '^8.11.10',
+          },
+        },
+      },
+      mysql: {
+        label: 'MySQL',
+        hint: 'Relational database',
+        packageJson: {
+          dependencies: {
+            mysql2: '^3.11.5',
+          },
+        },
+      },
+    },
+  },
+
   extras: {
-    scope: 'root',
     stacks: {
       biome: {
         label: 'Biome',
         hint: 'Fast linter & formatter',
+        packageJson: {
+          devDependencies: {
+            '@biomejs/biome': '^2.3.11',
+          },
+          scripts: {
+            format: 'biome format --write .',
+            lint: 'biome lint',
+          },
+        },
       },
       husky: {
-        requires: ['git'],
         label: 'Husky',
-        hint: 'Git hooks for quality checks',
+        hint: 'Git hooks',
+        requires: ['git'],
+        packageJson: {
+          devDependencies: {
+            husky: '^9',
+          },
+          scripts: {
+            prepare: 'husky',
+          },
+        },
       },
     },
   },
+
   repo: {
-    scope: 'root',
     stacks: {
       single: {
         label: 'Single',
@@ -163,4 +371,4 @@ export const META: Meta = {
       },
     },
   },
-} as const;
+} as const satisfies Meta;

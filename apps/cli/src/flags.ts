@@ -3,7 +3,7 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { StackName } from '@/types/meta';
+import { isModuleCompatible, type StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
@@ -176,21 +176,22 @@ function parseAppFlag(appFlag: string): AppContext {
   }
   const modules: string[] = modulesStr ? modulesStr.split(',').map((m) => m.trim()) : [];
 
-  if (modules.length > 0 && metaStack.modules) {
-    const availableModules = getAllModuleKeys(metaStack.modules);
-    for (const module of modules) {
-      if (!availableModules.includes(module)) {
+  if (modules.length > 0) {
+    for (const moduleName of modules) {
+      const mod = META.modules[moduleName];
+      if (!mod) {
+        printError(`Invalid module '${moduleName}'`, `Available modules: ${Object.keys(META.modules).join(', ')}`);
+        process.exit(1);
+      }
+      if (!isModuleCompatible(mod, stackName as StackName)) {
+        const compatibleStacks = mod.stacks === 'all' ? 'all' : (mod.stacks as string[]).join(', ');
         printError(
-          `Invalid module '${module}' for stack '${stackName}'`,
-          `Available modules for ${metaStack.label}:`,
-          formatModuleOptions(metaStack.modules),
+          `Module '${moduleName}' is not compatible with stack '${stackName}'`,
+          `Compatible stacks: ${compatibleStacks}`,
         );
         process.exit(1);
       }
     }
-  } else if (modules.length > 0 && !metaStack.modules) {
-    printError(`Stack '${stackName}' does not support modules`, `You provided: ${modules.join(', ')}`);
-    process.exit(1);
   }
 
   return {
@@ -243,21 +244,6 @@ function formatStackOptions(): string {
   return Object.entries(META.stacks)
     .map(([key, meta]) => `${key} [${meta.type}] (${meta.hint})`)
     .join(', ');
-}
-
-function formatModuleOptions(modules: Record<string, Record<string, { label: string; hint?: string }>>): string {
-  return Object.entries(modules)
-    .map(([category, mods]) => {
-      const modList = Object.entries(mods)
-        .map(([key, mod]) => `${key} (${mod.hint || mod.label})`)
-        .join(', ');
-      return `  ${category}: ${modList}`;
-    })
-    .join('\n');
-}
-
-function getAllModuleKeys(modules: Record<string, Record<string, { label: string; hint?: string }>>): string[] {
-  return Object.values(modules).flatMap((category) => Object.keys(category));
 }
 
 function printError(title: string, ...messages: string[]): void {
