@@ -1,37 +1,87 @@
-export type Scope = 'app' | 'package' | 'root';
-export type Category = 'orm' | 'database' | 'extras' | 'repo';
+// ABOUTME: Type definitions for META configuration
+// ABOUTME: Defines stacks, modules, orm, database, extras, and repo structures
 
-interface SelectOptionBase {
+export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start';
+export type StacksCompatibility = StackName[] | 'all';
+export type ModuleName = string;
+export type OrmName = 'drizzle' | 'prisma';
+export type DatabaseName = 'postgres' | 'mysql';
+export type ExtraName = 'biome' | 'husky';
+export type RepoType = 'single' | 'turborepo';
+
+export interface PackageJsonConfig {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+  exports?: Record<string, string>;
+}
+
+export interface MetaStack {
+  type: 'app' | 'server';
+  label: string;
+  hint?: string;
+  packageJson: PackageJsonConfig;
+}
+
+export interface MetaModule {
+  label: string;
+  hint?: string;
+  stacks: StacksCompatibility;
+  asPackage?: string;
+  singlePath?: string;
+  requires?: string[];
+  packageJson: PackageJsonConfig;
+}
+
+export interface MetaOrmStack {
+  label: string;
+  hint?: string;
+  asPackage: string;
+  singlePath: string;
+  packageJson: PackageJsonConfig;
+}
+
+export interface MetaDatabaseStack {
+  label: string;
+  hint?: string;
+  packageJson?: PackageJsonConfig;
+}
+
+export interface MetaExtraStack {
+  label: string;
+  hint?: string;
+  requires?: string[];
+  packageJson?: PackageJsonConfig;
+}
+
+export interface MetaRepoStack {
   label: string;
   hint?: string;
 }
 
-interface MetaModuleStack extends SelectOptionBase {
-  packageName?: string; // if defined, default scope is 'package' for turborepo
-}
-
-export type MetaModules = Record<string, Record<string, MetaModuleStack>>;
-
-interface MetaStack extends SelectOptionBase {
-  type: 'app' | 'server';
-  scope: Scope;
-  requires?: (Category | (string & {}))[];
-  modules?: MetaModules;
-}
-
-interface MetaCategory {
-  scope: Scope;
-  packageName?: string; // used for turborepo packages/<packageName>
-  requires?: Category[]; // like orm.requires = ['database']
-  stacks: Record<string, Omit<MetaStack, 'type' | 'scope'>>;
+export interface MetaOrm {
+  asPackage: string;
+  singlePath: string;
+  requires: string[];
+  stacks: Record<OrmName, MetaOrmStack>;
 }
 
 export interface Meta {
-  stacks: Record<string, MetaStack>;
-  database: MetaCategory;
-  orm: MetaCategory;
-  extras: MetaCategory;
-  repo: MetaCategory;
+  stacks: Record<StackName, MetaStack>;
+  modules: Record<ModuleName, MetaModule>;
+  orm: MetaOrm;
+  database: {
+    stacks: Record<DatabaseName, MetaDatabaseStack>;
+  };
+  extras: {
+    stacks: Record<ExtraName, MetaExtraStack>;
+  };
+  repo: {
+    stacks: Record<RepoType, MetaRepoStack>;
+  };
 }
 
-export type StackName = keyof Meta['stacks'];
+export function isModuleCompatible(module: MetaModule, stackName: StackName): boolean {
+  if (module.stacks === 'all') return true;
+  return module.stacks.includes(stackName);
+}
