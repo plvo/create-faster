@@ -1,23 +1,30 @@
+// ABOUTME: CLI flags parser for non-interactive mode
+// ABOUTME: Parses --app and --addon flags into TemplateContext
+
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isModuleCompatible, type StackName } from '@/types/meta';
+import type { StackName } from '@/types/meta';
+import { isAddonCompatible, getAddonsByType, areAddonDependenciesMet } from '@/lib/addon-utils';
 
 interface ParsedFlags {
   projectName?: string;
   app?: string[];
-  database?: string | boolean;
-  orm?: string | boolean;
+  addon?: string[];
   git?: boolean;
   pm?: string;
-  extras?: string | boolean;
   install?: boolean;
 }
 
 export function parseFlags(): Partial<TemplateContext> {
   const program = new Command();
+
+  const addonGroups = getAddonsByType(META);
+  const ormNames = addonGroups.orm?.join(', ') ?? '';
+  const dbNames = addonGroups.database?.join(', ') ?? '';
+  const extraNames = addonGroups.extra?.join(', ') ?? '';
 
   program
     .addHelpText('before', ASCII)
@@ -27,16 +34,11 @@ export function parseFlags(): Partial<TemplateContext> {
     .argument('[project-name]', 'Name of the project to create')
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
-    .option('--app <name:stack:modules>', 'Add app in format name:stack:module1,module2 (repeatable)', collect, [])
-    .option('--database <name>', 'Database provider (postgres, mysql)')
-    .option('--no-database', 'Skip database setup')
-    .option('--orm <name>', 'ORM provider (prisma, drizzle)')
-    .option('--no-orm', 'Skip ORM setup')
+    .option('--app <name:stack:addons>', 'Add app (repeatable)', collect, [])
+    .option('--addon <name>', 'Add global addon (repeatable)', collect, [])
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
-    .option('--extras <items>', 'Comma-separated extras (biome, husky)')
-    .option('--no-extras', 'Skip extras')
     .option('--no-install', 'Skip dependency installation')
     .addHelpText(
       'after',
@@ -44,15 +46,16 @@ export function parseFlags(): Partial<TemplateContext> {
 ${color.bold('Examples:')}
   ${color.gray('Single app:')}
     $ ${color.blue('npx create-faster myapp')} --app myapp:nextjs:shadcn,tanstack-query
-    $ ${color.blue('npx create-faster mysaas')} --app mysaas:nextjs --database postgres --orm drizzle --git
+    $ ${color.blue('npx create-faster mysaas')} --app mysaas:nextjs --addon drizzle --addon postgres --git
 
   ${color.gray('Multi apps (turborepo):')}
-    $ ${color.blue('npx create-faster myapp')} --app web:nextjs:shadcn,mdx --app mobile:expo:nativewind
-    $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --database postgres --orm drizzle
+    $ ${color.blue('npx create-faster myapp')} --app web:nextjs:shadcn --app mobile:expo:nativewind
+    $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --addon drizzle --addon postgres
 
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
-  ${color.gray('Available databases:')} ${Object.keys(META.database.stacks).join(', ')}
-  ${color.gray('Available ORMs:')} ${Object.keys(META.orm.stacks).join(', ')}
+  ${color.gray('Available ORMs:')} ${ormNames}
+  ${color.gray('Available databases:')} ${dbNames}
+  ${color.gray('Available extras:')} ${extraNames}
 `,
     )
     .allowUnknownOption(false)
@@ -63,51 +66,35 @@ ${color.bold('Examples:')}
   const flags = program.opts<ParsedFlags>();
   const projectName = program.args[0];
 
-  // If no flags provided, return empty partial (full interactive mode)
   if (Object.keys(flags).length === 0 && !projectName) {
     return {};
   }
 
   const partial: Partial<TemplateContext> = {};
 
-  // Project name
   if (projectName) {
     partial.projectName = projectName;
   }
 
-  // Apps configuration
   if (flags.app && flags.app.length > 0) {
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  // Database (--database <name> or --no-database)
-  if (flags.database === false) {
-    partial.database = null;
-  } else if (typeof flags.database === 'string') {
-    if (!isValidKey(flags.database, META.database.stacks)) {
-      printError(`Invalid database '${flags.database}'`, `Available databases: ${formatOptions(META.database.stacks)}`);
-      process.exit(1);
+  if (flags.addon && flags.addon.length > 0) {
+    partial.globalAddons = [];
+    for (const addonName of flags.addon) {
+      if (!META.addons[addonName]) {
+        printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+        process.exit(1);
+      }
+      partial.globalAddons.push(addonName);
     }
-    partial.database = flags.database as keyof typeof META.database.stacks;
   }
 
-  // ORM (--orm <name> or --no-orm)
-  if (flags.orm === false) {
-    partial.orm = null;
-  } else if (typeof flags.orm === 'string') {
-    if (!isValidKey(flags.orm, META.orm.stacks)) {
-      printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${formatOptions(META.orm.stacks)}`);
-      process.exit(1);
-    }
-    partial.orm = flags.orm as keyof typeof META.orm.stacks;
-  }
-
-  // Git (--git or --no-git)
   if (flags.git !== undefined) {
     partial.git = flags.git;
   }
 
-  // Package manager
   if (flags.pm) {
     const validPms = ['bun', 'npm', 'pnpm'];
     if (!validPms.includes(flags.pm)) {
@@ -117,26 +104,10 @@ ${color.bold('Examples:')}
     partial.pm = flags.pm as 'bun' | 'npm' | 'pnpm';
   }
 
-  // Extras (--extras <items> or --no-extras)
-  if (flags.extras === false) {
-    partial.extras = [];
-  } else if (typeof flags.extras === 'string') {
-    const extrasList = flags.extras.split(',').map((e) => e.trim());
-    for (const extra of extrasList) {
-      if (!isValidKey(extra, META.extras.stacks)) {
-        printError(`Invalid extra '${extra}'`, `Available extras: ${formatOptions(META.extras.stacks)}`);
-        process.exit(1);
-      }
-    }
-    partial.extras = extrasList as (keyof typeof META.extras.stacks)[];
-  }
-
-  // Skip install (--no-install flag is parsed as install: false by Commander)
   if (flags.install === false) {
     partial.skipInstall = true;
   }
 
-  // Validate context
   validateContext(partial);
 
   return partial;
@@ -152,73 +123,78 @@ function parseAppFlag(appFlag: string): AppContext {
   if (parts.length < 2 || parts.length > 3) {
     printError(
       `Invalid app format '${appFlag}'`,
-      'Expected format: name:stack or name:stack:module1,module2',
+      'Expected format: name:stack or name:stack:addon1,addon2',
       'Examples:',
       '  --app web:nextjs',
       '  --app web:nextjs:shadcn,mdx',
-      '  --app mobile:expo:nativewind',
     );
     process.exit(1);
   }
 
-  const [appName, stackName, modulesStr] = parts as [string, string, string];
+  const [appName, stackName, addonsStr] = parts as [string, string, string | undefined];
 
-  // Validate stack
-  if (!isValidKey(stackName, META.stacks)) {
-    printError(`Invalid stack '${stackName}' for app '${appName}'`, `Available stacks: ${formatStackOptions()}`);
+  if (!META.stacks[stackName as StackName]) {
+    printError(
+      `Invalid stack '${stackName}' for app '${appName}'`,
+      `Available stacks: ${Object.keys(META.stacks).join(', ')}`,
+    );
     process.exit(1);
   }
 
-  const metaStack = META.stacks[stackName as StackName];
-  if (!metaStack) {
-    printError(`Invalid stack '${stackName}' for app '${appName}'`, `Available stacks: ${formatStackOptions()}`);
-    process.exit(1);
-  }
-  const modules: string[] = modulesStr ? modulesStr.split(',').map((m) => m.trim()) : [];
+  const addons: string[] = addonsStr ? addonsStr.split(',').map((m) => m.trim()) : [];
 
-  if (modules.length > 0) {
-    for (const moduleName of modules) {
-      const mod = META.modules[moduleName];
-      if (!mod) {
-        printError(`Invalid module '${moduleName}'`, `Available modules: ${Object.keys(META.modules).join(', ')}`);
-        process.exit(1);
-      }
-      if (!isModuleCompatible(mod, stackName as StackName)) {
-        const compatibleStacks = mod.stacks === 'all' ? 'all' : (mod.stacks as string[]).join(', ');
-        printError(
-          `Module '${moduleName}' is not compatible with stack '${stackName}'`,
-          `Compatible stacks: ${compatibleStacks}`,
-        );
-        process.exit(1);
-      }
+  for (const addonName of addons) {
+    const addon = META.addons[addonName];
+    if (!addon) {
+      printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+      process.exit(1);
+    }
+    if (addon.type !== 'module') {
+      printError(
+        `Addon '${addonName}' is not a module`,
+        'Use --addon flag for orm, database, and extras',
+        `Example: --addon ${addonName}`,
+      );
+      process.exit(1);
+    }
+    if (!isAddonCompatible(addon, stackName as StackName)) {
+      const compatibleStacks =
+        addon.support?.stacks === 'all' ? 'all' : ((addon.support?.stacks as string[])?.join(', ') ?? 'none');
+      printError(
+        `Addon '${addonName}' is not compatible with stack '${stackName}'`,
+        `Compatible stacks: ${compatibleStacks}`,
+      );
+      process.exit(1);
     }
   }
 
   return {
     appName: appName.trim(),
     stackName: stackName as StackName,
-    modules,
+    addons,
   };
 }
 
 function validateContext(partial: Partial<TemplateContext>): void {
-  // ORM requires database
-  if (partial.orm && !partial.database) {
-    printError(
-      'ORM requires a database',
-      'Add --database postgres or --database mysql',
-      `You selected: --orm ${partial.orm}`,
-    );
+  const globalAddons = partial.globalAddons ?? [];
+
+  for (const addonName of globalAddons) {
+    const addon = META.addons[addonName];
+    if (addon && !areAddonDependenciesMet(addon, globalAddons)) {
+      const required = addon.support?.addons?.join(' or ') ?? '';
+      printError(
+        `Addon '${addonName}' requires one of: ${required}`,
+        `Add --addon ${addon.support?.addons?.[0] ?? 'postgres'}`,
+      );
+      process.exit(1);
+    }
+  }
+
+  if (globalAddons.includes('husky') && !partial.git) {
+    printError('Husky requires git', 'Add --git flag');
     process.exit(1);
   }
 
-  // Husky requires git
-  if (partial.extras?.includes('husky') && !partial.git) {
-    printError('Husky requires git to be initialized', 'Add --git flag', 'You selected: --extras husky');
-    process.exit(1);
-  }
-
-  // Validate app names are unique
   if (partial.apps && partial.apps.length > 1) {
     const names = partial.apps.map((app) => app.appName);
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
@@ -229,25 +205,8 @@ function validateContext(partial: Partial<TemplateContext>): void {
   }
 }
 
-// Helper functions
-function isValidKey<T extends Record<string, unknown>>(key: string, obj: T): boolean {
-  return key in obj;
-}
-
-function formatOptions<T extends Record<string, { label: string; hint?: string }>>(stacks: T): string {
-  return Object.entries(stacks)
-    .map(([key, meta]) => `${key} (${meta.hint || meta.label})`)
-    .join(', ');
-}
-
-function formatStackOptions(): string {
-  return Object.entries(META.stacks)
-    .map(([key, meta]) => `${key} [${meta.type}] (${meta.hint})`)
-    .join(', ');
-}
-
 function printError(title: string, ...messages: string[]): void {
-  console.error(`\n${color.red('')} ${color.bold(color.red(title))}`);
+  console.error(`\n${color.red('✖')} ${color.bold(color.red(title))}`);
   for (const msg of messages) {
     console.error(color.gray(msg));
   }
