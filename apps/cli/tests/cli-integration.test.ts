@@ -34,7 +34,7 @@ describe('CLI Integration', () => {
         name: string;
         dependencies: Record<string, string>;
       }>(join(projectPath, 'package.json'));
-      expect(pkg.name).toBe('web');
+      expect(pkg.name).toBe('test-nextjs-single'); // Single repo uses project name
       expect(pkg.dependencies.next).toBeDefined();
       expect(pkg.dependencies.react).toBeDefined();
     });

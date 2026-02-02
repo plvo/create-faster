@@ -112,6 +112,9 @@ function resolveTemplatesForStack(stackName: string, appName: string, ctx: Templ
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
+    // Skip package.json templates (generated programmatically)
+    if (file.endsWith('package.json.hbs')) continue;
+
     const source = join(stackDir, file);
     const relativePath = getRelativePath(file);
     const transformedPath = transformFilename(relativePath);
@@ -135,6 +138,9 @@ function resolveTemplatesForModule(moduleName: string, appName: string, ctx: Tem
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
+    // Skip package.json templates (generated programmatically)
+    if (file.endsWith('package.json.hbs')) continue;
+
     const source = join(moduleDir, file);
 
     // Read file to check for @dest: magic comment
@@ -165,12 +171,14 @@ function resolveTemplatesForModule(moduleName: string, appName: string, ctx: Tem
 function resolveTemplatesForOrm(ctx: TemplateContext): TemplateFile[] {
   if (!ctx.orm) return [];
 
-  const ormConfig = META.orm.stacks[ctx.orm];
   const ormDir = join(TEMPLATES_DIR, 'orm', ctx.orm);
   const files = scanTemplates(ormDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
+    // Skip package.json templates (generated programmatically)
+    if (file.endsWith('package.json.hbs')) continue;
+
     const source = join(ormDir, file);
 
     let destOverride: DestType | null = null;
@@ -244,15 +252,17 @@ function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
   const repoDir = join(TEMPLATES_DIR, 'repo', ctx.repo);
   const files = scanTemplates(repoDir);
 
-  return files.map((file) => {
-    const source = join(repoDir, file);
-    const relativePath = getRelativePath(file);
-    const transformedPath = transformFilename(relativePath);
-    return {
-      source,
-      destination: resolveDestination(transformedPath, { type: 'repo' }, ctx),
-    };
-  });
+  return files
+    .filter((file) => !file.endsWith('package.json.hbs'))
+    .map((file) => {
+      const source = join(repoDir, file);
+      const relativePath = getRelativePath(file);
+      const transformedPath = transformFilename(relativePath);
+      return {
+        source,
+        destination: resolveDestination(transformedPath, { type: 'repo' }, ctx),
+      };
+    });
 }
 
 export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
