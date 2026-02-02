@@ -12,11 +12,12 @@ export interface TemplateContext {
   projectName: string;
   repo: 'single' | 'turborepo';
   apps: AppContext[];
-  orm?: keyof Meta['orm']['stacks'];
-  database?: keyof Meta['database']['stacks'];
+  orm?: keyof Meta['orm']['stacks'] | null;
+  database?: keyof Meta['database']['stacks'] | null;
   git: boolean;
   pm?: PackageManager;
   extras?: (keyof Meta['extras']['stacks'])[];
+  skipInstall?: boolean;
 }
 
 export interface TemplateFile {

@@ -73,9 +73,11 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
   progress.next();
 
   if (partial?.database !== undefined) {
-    ctx.database = partial.database;
+    ctx.database = partial.database ?? undefined;
     if (partial.database) {
       log.info(`${color.green('✓')} Using database from flags: ${color.bold(partial.database)}`);
+    } else if (partial.database === null) {
+      log.info(`${color.green('✓')} Skipping database setup`);
     }
   } else {
     ctx.database = await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
@@ -84,9 +86,11 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
   }
 
   if (partial?.orm !== undefined) {
-    ctx.orm = partial.orm;
+    ctx.orm = partial.orm ?? undefined;
     if (partial.orm) {
       log.info(`${color.green('✓')} Using ORM from flags: ${color.bold(partial.orm)}`);
+    } else if (partial.orm === null) {
+      log.info(`${color.green('✓')} Skipping ORM setup`);
     }
   } else {
     ctx.orm = await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
@@ -120,7 +124,10 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
 
   progress.next();
 
-  if (partial?.pm !== undefined) {
+  if (partial?.skipInstall) {
+    ctx.skipInstall = true;
+    log.info(`${color.green('✓')} Skipping dependency installation`);
+  } else if (partial?.pm !== undefined) {
     ctx.pm = partial.pm;
     if (partial.pm) {
       log.info(`${color.green('✓')} Using package manager from flags: ${color.bold(partial.pm)}`);

@@ -8,11 +8,12 @@ import type { StackName } from '@/types/meta';
 interface ParsedFlags {
   projectName?: string;
   app?: string[];
-  database?: string;
-  orm?: string;
+  database?: string | boolean;
+  orm?: string | boolean;
   git?: boolean;
   pm?: string;
-  extras?: string;
+  extras?: string | boolean;
+  install?: boolean;
 }
 
 export function parseFlags(): Partial<TemplateContext> {
@@ -28,10 +29,15 @@ export function parseFlags(): Partial<TemplateContext> {
     .helpOption('--help', 'Display help for command')
     .option('--app <name:stack:modules>', 'Add app in format name:stack:module1,module2 (repeatable)', collect, [])
     .option('--database <name>', 'Database provider (postgres, mysql)')
+    .option('--no-database', 'Skip database setup')
     .option('--orm <name>', 'ORM provider (prisma, drizzle)')
+    .option('--no-orm', 'Skip ORM setup')
     .option('--git', 'Initialize git repository')
+    .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
     .option('--extras <items>', 'Comma-separated extras (biome, husky)')
+    .option('--no-extras', 'Skip extras')
+    .option('--no-install', 'Skip dependency installation')
     .addHelpText(
       'after',
       `
@@ -74,8 +80,10 @@ ${color.bold('Examples:')}
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  // Database
-  if (flags.database) {
+  // Database (--database <name> or --no-database)
+  if (flags.database === false) {
+    partial.database = null;
+  } else if (typeof flags.database === 'string') {
     if (!isValidKey(flags.database, META.database.stacks)) {
       printError(`Invalid database '${flags.database}'`, `Available databases: ${formatOptions(META.database.stacks)}`);
       process.exit(1);
@@ -83,8 +91,10 @@ ${color.bold('Examples:')}
     partial.database = flags.database as keyof typeof META.database.stacks;
   }
 
-  // ORM
-  if (flags.orm) {
+  // ORM (--orm <name> or --no-orm)
+  if (flags.orm === false) {
+    partial.orm = null;
+  } else if (typeof flags.orm === 'string') {
     if (!isValidKey(flags.orm, META.orm.stacks)) {
       printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${formatOptions(META.orm.stacks)}`);
       process.exit(1);
@@ -92,9 +102,9 @@ ${color.bold('Examples:')}
     partial.orm = flags.orm as keyof typeof META.orm.stacks;
   }
 
-  // Git
-  if (flags.git) {
-    partial.git = true;
+  // Git (--git or --no-git)
+  if (flags.git !== undefined) {
+    partial.git = flags.git;
   }
 
   // Package manager
@@ -107,8 +117,10 @@ ${color.bold('Examples:')}
     partial.pm = flags.pm as 'bun' | 'npm' | 'pnpm';
   }
 
-  // Extras
-  if (flags.extras) {
+  // Extras (--extras <items> or --no-extras)
+  if (flags.extras === false) {
+    partial.extras = [];
+  } else if (typeof flags.extras === 'string') {
     const extrasList = flags.extras.split(',').map((e) => e.trim());
     for (const extra of extrasList) {
       if (!isValidKey(extra, META.extras.stacks)) {
@@ -117,6 +129,11 @@ ${color.bold('Examples:')}
       }
     }
     partial.extras = extrasList as (keyof typeof META.extras.stacks)[];
+  }
+
+  // Skip install (--no-install flag is parsed as install: false by Commander)
+  if (flags.install === false) {
+    partial.skipInstall = true;
   }
 
   // Validate context
