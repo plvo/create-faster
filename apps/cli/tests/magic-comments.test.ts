@@ -1,16 +1,13 @@
 // ABOUTME: Unit tests for magic comments parsing
-// ABOUTME: Tests the @dest: magic comment (new simplified system)
+// ABOUTME: Tests the @dest: magic comment for destination override
 
 import { describe, expect, test } from 'bun:test';
-import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from '../src/lib/magic-comments';
-import type { TemplateContext } from '../src/types/ctx';
-
-const baseContext: TemplateContext = {
-  projectName: 'test',
-  repo: 'turborepo',
-  apps: [{ appName: 'web', stackName: 'nextjs', modules: [] }],
-  git: false,
-};
+import {
+  extractFirstLine,
+  parseDestFromContent,
+  parseMagicComments,
+  removeDestMagicComment,
+} from '../src/lib/magic-comments';
 
 describe('extractFirstLine', () => {
   test('extracts first line from content', () => {
@@ -61,13 +58,26 @@ describe('parseMagicComments', () => {
   });
 });
 
-describe('shouldSkipTemplate', () => {
-  test('@dest: comments never cause skip', () => {
-    const comments = parseMagicComments('{{!-- @dest:app --}}');
-    expect(shouldSkipTemplate(comments, baseContext)).toBe(false);
+describe('parseDestFromContent', () => {
+  test('extracts dest type from content', () => {
+    const content = '{{!-- @dest:app --}}\nrest of file';
+    expect(parseDestFromContent(content)).toBe('app');
   });
 
-  test('empty comments never cause skip', () => {
-    expect(shouldSkipTemplate([], baseContext)).toBe(false);
+  test('returns null for no magic comment', () => {
+    const content = '// regular content\nrest of file';
+    expect(parseDestFromContent(content)).toBeNull();
+  });
+});
+
+describe('removeDestMagicComment', () => {
+  test('removes @dest: comment from content', () => {
+    const content = '{{!-- @dest:app --}}\nrest of file';
+    expect(removeDestMagicComment(content)).toBe('rest of file');
+  });
+
+  test('preserves content without magic comment', () => {
+    const content = 'no magic comment\nrest of file';
+    expect(removeDestMagicComment(content)).toBe('no magic comment\nrest of file');
   });
 });

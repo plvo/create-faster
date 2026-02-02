@@ -26,9 +26,9 @@ export const META: Meta = {
           '@next/bundle-analyzer': '^16.1.1',
         },
         scripts: {
+          analyze: 'next experimental-analyze',
           dev: 'next dev --port {{port}}',
           build: 'next build',
-          'build:analyze': 'ANALYZE=true next build',
           start: 'next start --port {{port}}',
         },
       },
@@ -82,14 +82,14 @@ export const META: Meta = {
         dependencies: {
           '@tanstack/react-router': '^1.95.1',
           '@tanstack/start': '^1.95.1',
-          react: '^19.0.0',
-          'react-dom': '^19.0.0',
+          react: '^19.2.3',
+          'react-dom': '^19.2.3',
           vinxi: '^0.5.1',
         },
         devDependencies: {
           typescript: '^5',
-          '@types/react': '^19.0.0',
-          '@types/react-dom': '^19.0.0',
+          '@types/react': '^19.2.3',
+          '@types/react-dom': '^19.2.3',
           vite: '^6.0.0',
         },
         scripts: {
@@ -104,7 +104,7 @@ export const META: Meta = {
   modules: {
     shadcn: {
       label: 'shadcn/ui',
-      hint: 'Beautifully designed components',
+      hint: 'A set of beautifully designed components that you can customize, extend, and build on',
       stacks: ['nextjs', 'tanstack-start'],
       asPackage: 'ui',
       singlePath: 'src/components/ui/',
@@ -130,7 +130,7 @@ export const META: Meta = {
     },
     'next-themes': {
       label: 'Next Themes',
-      hint: 'Theme management',
+      hint: 'A library for managing themes in Next.js',
       stacks: ['nextjs'],
       packageJson: {
         dependencies: {
@@ -162,7 +162,7 @@ export const META: Meta = {
     },
     'better-auth': {
       label: 'Better Auth',
-      hint: 'Authentication framework',
+      hint: 'The most comprehensive authentication framework for TypeScript',
       stacks: ['nextjs'],
       asPackage: 'auth',
       singlePath: 'src/lib/auth/',
@@ -179,7 +179,7 @@ export const META: Meta = {
     },
     'tanstack-query': {
       label: 'TanStack Query',
-      hint: 'Async state management',
+      hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
       stacks: 'all',
       packageJson: {
         dependencies: {
@@ -189,7 +189,7 @@ export const META: Meta = {
     },
     'tanstack-devtools': {
       label: 'TanStack Devtools',
-      hint: 'Devtools for TanStack',
+      hint: 'Devtools panel for TanStack libraries and other custom devtools',
       stacks: ['nextjs', 'tanstack-start'],
       packageJson: {
         devDependencies: {
@@ -200,7 +200,7 @@ export const META: Meta = {
     },
     'react-hook-form': {
       label: 'React Hook Form',
-      hint: 'Performant forms',
+      hint: 'Performant, flexible and extensible forms with easy-to-use validation',
       stacks: ['nextjs', 'tanstack-start'],
       packageJson: {
         dependencies: {
@@ -211,7 +211,7 @@ export const META: Meta = {
     },
     'tanstack-form': {
       label: 'TanStack Form',
-      hint: 'Type-safe forms',
+      hint: 'Headless UI for building performant and type-safe forms',
       stacks: ['nextjs', 'tanstack-start'],
       packageJson: {
         dependencies: {
@@ -221,7 +221,7 @@ export const META: Meta = {
     },
     nativewind: {
       label: 'NativeWind',
-      hint: 'Tailwind for React Native',
+      hint: 'A library for styling React Native applications with Tailwind CSS',
       stacks: ['expo'],
       packageJson: {
         dependencies: {
@@ -234,7 +234,7 @@ export const META: Meta = {
     },
     'aws-lambda': {
       label: 'AWS Lambda',
-      hint: 'Serverless deployment',
+      hint: 'Serverless deployment for Hono',
       stacks: ['hono'],
       packageJson: {
         dependencies: {

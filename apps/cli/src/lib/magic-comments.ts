@@ -17,7 +17,7 @@ export function extractFirstLine(content: string): string {
 export function parseMagicComments(firstLine: string): MagicComment[] {
   const commentMatch = firstLine.match(/^\{\{!--\s*@dest:(app|pkg|root)\s*--\}\}/);
 
-  if (!commentMatch) return [];
+  if (!commentMatch || !commentMatch[1]) return [];
 
   return [
     {
@@ -36,8 +36,4 @@ export function parseDestFromContent(content: string): DestType | null {
 
 export function removeDestMagicComment(content: string): string {
   return content.replace(/^\{\{!--\s*@dest:(app|pkg|root)\s*--\}\}\n?/, '');
-}
-
-export function shouldSkipTemplate(_comments: MagicComment[], _ctx: unknown): boolean {
-  return false;
 }

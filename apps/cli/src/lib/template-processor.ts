@@ -9,7 +9,7 @@ import {
   writeFileContent,
 } from './file-writer';
 import { renderTemplate } from './handlebars';
-import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
+import { removeDestMagicComment } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
@@ -45,23 +45,11 @@ export async function processTemplate(
       return { success: true, destination: finalDestination };
     }
 
-    const content = await readFileContent(source);
+    let content = await readFileContent(source);
 
     if (isHbsTemplate) {
-      const firstLine = extractFirstLine(content);
-      const magicComments = parseMagicComments(firstLine);
-
-      if (shouldSkipTemplate(magicComments, context)) {
-        return {
-          success: true,
-          destination: finalDestination,
-          skipped: true,
-          reason: 'Skipped by magic comment',
-        };
-      }
-    }
-
-    if (isHbsTemplate) {
+      // Remove @dest: magic comment if present (destination already resolved)
+      content = removeDestMagicComment(content);
       let enrichedContext: TemplateContext | (TemplateContext & Record<string, unknown>) = context;
 
       const pathParts = destination.split('/');
