@@ -1,10 +1,10 @@
 // ABOUTME: Programmatic generation of package.json files
-// ABOUTME: Merges dependencies from META based on context (stacks, modules, orm, extras)
+// ABOUTME: Merges dependencies from META based on unified addon system
 
 import { META } from '@/__meta__';
-import type { PackageJsonConfig, StackName } from '@/types/meta';
+import type { PackageJsonConfig } from '@/types/meta';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isModuleCompatible } from '@/types/meta';
+import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
 
 export interface PackageJson {
   name: string;
@@ -70,6 +70,14 @@ function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
   return sorted;
 }
 
+function hasPackageDestination(addonName: string): string | null {
+  const addon = META.addons[addonName];
+  if (addon?.destination?.target === 'package') {
+    return addon.destination.name;
+  }
+  return null;
+}
+
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
@@ -77,37 +85,43 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   let merged = mergePackageJsonConfigs(stack.packageJson);
 
-  for (const moduleName of app.modules) {
-    const mod = META.modules[moduleName];
-    if (!mod || !isModuleCompatible(mod, app.stackName)) continue;
+  for (const addonName of app.addons) {
+    const addon = META.addons[addonName];
+    if (!addon || !isAddonCompatible(addon, app.stackName)) continue;
 
-    if (mod.asPackage && isTurborepo) {
+    const packageName = hasPackageDestination(addonName);
+    if (packageName && isTurborepo) {
       merged.dependencies = {
         ...merged.dependencies,
-        [`@repo/${mod.asPackage}`]: '*',
+        [`@repo/${packageName}`]: '*',
       };
     } else {
-      merged = mergePackageJsonConfigs(merged, mod.packageJson);
+      merged = mergePackageJsonConfigs(merged, addon.packageJson);
     }
   }
 
-  if (ctx.orm) {
-    if (isTurborepo) {
+  for (const addonName of ctx.globalAddons) {
+    const addon = META.addons[addonName];
+    if (!addon) continue;
+
+    const packageName = hasPackageDestination(addonName);
+
+    if (packageName && isTurborepo) {
       merged.dependencies = {
         ...merged.dependencies,
-        '@repo/db': '*',
+        [`@repo/${packageName}`]: '*',
       };
-    } else {
-      const ormConfig = META.orm.stacks[ctx.orm].packageJson;
-      const dbConfig = ctx.database ? META.database.stacks[ctx.database].packageJson : undefined;
-      merged = mergePackageJsonConfigs(merged, ormConfig, dbConfig);
+    } else if (!isTurborepo || addon.destination?.target === 'root') {
+      merged = mergePackageJsonConfigs(merged, addon.packageJson);
     }
   }
 
-  if (!isTurborepo && ctx.extras) {
-    for (const extra of ctx.extras) {
-      const extraConfig = META.extras.stacks[extra]?.packageJson;
-      merged = mergePackageJsonConfigs(merged, extraConfig);
+  if (!isTurborepo) {
+    for (const addonName of ctx.globalAddons) {
+      const addon = META.addons[addonName];
+      if (addon?.type === 'extra') {
+        merged = mergePackageJsonConfigs(merged, addon.packageJson);
+      }
     }
   }
 
@@ -164,16 +178,14 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     turbo: '^2.4.0',
   };
 
-  if (ctx.extras) {
-    for (const extra of ctx.extras) {
-      const extraConfig = META.extras.stacks[extra]?.packageJson;
-      if (extraConfig) {
-        if (extraConfig.devDependencies) {
-          devDependencies = { ...devDependencies, ...extraConfig.devDependencies };
-        }
-        if (extraConfig.scripts) {
-          Object.assign(scripts, extraConfig.scripts);
-        }
+  for (const addonName of ctx.globalAddons) {
+    const addon = META.addons[addonName];
+    if (addon?.type === 'extra' && addon.packageJson) {
+      if (addon.packageJson.devDependencies) {
+        devDependencies = { ...devDependencies, ...addon.packageJson.devDependencies };
+      }
+      if (addon.packageJson.scripts) {
+        Object.assign(scripts, addon.packageJson.scripts);
       }
     }
   }
@@ -204,19 +216,35 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
     const extractedPackages = new Map<string, PackageJsonConfig>();
 
     for (const app of ctx.apps) {
-      for (const moduleName of app.modules) {
-        const mod = META.modules[moduleName];
-        if (mod?.asPackage && !extractedPackages.has(mod.asPackage)) {
-          extractedPackages.set(mod.asPackage, mod.packageJson);
+      for (const addonName of app.addons) {
+        const addon = META.addons[addonName];
+        if (addon?.destination?.target === 'package') {
+          const pkgName = addon.destination.name;
+          if (!extractedPackages.has(pkgName)) {
+            extractedPackages.set(pkgName, addon.packageJson ?? {});
+          }
         }
       }
     }
 
-    if (ctx.orm) {
-      const ormConfig = META.orm.stacks[ctx.orm].packageJson;
-      const dbConfig = ctx.database ? META.database.stacks[ctx.database].packageJson : undefined;
-      const merged = mergePackageJsonConfigs(ormConfig, dbConfig);
-      extractedPackages.set('db', merged);
+    const ormAddons = ctx.globalAddons.filter((n) => META.addons[n]?.type === 'orm');
+    const dbAddons = ctx.globalAddons.filter((n) => META.addons[n]?.type === 'database');
+
+    if (ormAddons.length > 0) {
+      const ormAddon = META.addons[ormAddons[0]];
+      if (ormAddon?.destination?.target === 'package') {
+        const pkgName = ormAddon.destination.name;
+        let config = ormAddon.packageJson ?? {};
+
+        for (const dbName of dbAddons) {
+          const dbAddon = META.addons[dbName];
+          if (dbAddon?.packageJson) {
+            config = mergePackageJsonConfigs(config, dbAddon.packageJson);
+          }
+        }
+
+        extractedPackages.set(pkgName, config);
+      }
     }
 
     for (const [name, config] of extractedPackages) {
