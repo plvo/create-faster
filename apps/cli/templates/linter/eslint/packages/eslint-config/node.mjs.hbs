@@ -1,0 +1,22 @@
+{{!-- @repo:turborepo --}}
+import { defineConfig, globalIgnores } from "eslint/config";
+import { baseConfig } from "./base.mjs";
+
+export const nodeConfig = defineConfig([
+  ...baseConfig,
+  {
+    name: "node",
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+      },
+    },
+  },
+  globalIgnores(["dist/**"]),
+]);
+
+export default nodeConfig;

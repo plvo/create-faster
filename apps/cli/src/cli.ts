@@ -47,7 +47,7 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
   }
   progress.next();
 
-  if (partial?.apps && partial.apps.length > 0) {
+  if (partial?.apps?.length) {
     ctx.apps = partial.apps;
     log.info(
       `${color.green('✓')} Using ${partial.apps.length} app(s) from flags: ${partial.apps.map((a) => a.appName).join(', ')}`,
@@ -72,22 +72,18 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
   }
   progress.next();
 
-  if (partial?.database !== undefined) {
+  if (partial?.database) {
     ctx.database = partial.database;
-    if (partial.database) {
-      log.info(`${color.green('✓')} Using database from flags: ${color.bold(partial.database)}`);
-    }
+    log.info(`${color.green('✓')} Using database from flags: ${color.bold(partial.database)}`);
   } else {
     ctx.database = await promptSelect('database', progress.message(`Include a ${color.bold('database')}?`), ctx, {
       allowNone: true,
     });
   }
 
-  if (partial?.orm !== undefined) {
+  if (partial?.orm) {
     ctx.orm = partial.orm;
-    if (partial.orm) {
-      log.info(`${color.green('✓')} Using ORM from flags: ${color.bold(partial.orm)}`);
-    }
+    log.info(`${color.green('✓')} Using ORM from flags: ${color.bold(partial.orm)}`);
   } else {
     ctx.orm = await promptSelect('orm', progress.message(`Configure an ${color.bold('ORM')}?`), ctx, {
       allowNone: true,
@@ -96,10 +92,21 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
 
   progress.next();
 
+  if (partial?.linter) {
+    ctx.linter = partial.linter;
+    log.info(`${color.green('✓')} Using linter from flags: ${color.bold(partial.linter)}`);
+  } else {
+    ctx.linter = await promptSelect('linter', progress.message(`Configure a ${color.bold('linter')}?`), ctx, {
+      allowNone: false,
+    });
+  }
+
+  progress.next();
+
   if (partial?.git !== undefined) {
     ctx.git = partial.git;
     if (partial.git) {
-      log.info(`${color.green('✓')} Git initialization enabled from flags`);
+      log.info(`${color.green('✓')} Git initialization ${partial.git ? 'enabled' : 'disabled'} from flags`);
     }
   } else {
     ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
@@ -109,9 +116,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Turborepo will be used if more than on
 
   if (partial?.extras !== undefined) {
     ctx.extras = partial.extras;
-    if (partial.extras && partial.extras.length > 0) {
-      log.info(`${color.green('✓')} Using extras from flags: ${partial.extras.join(', ')}`);
-    }
+    log.info(`${color.green('✓')} Using extras from flags: ${partial.extras.join(', ')}`);
   } else {
     ctx.extras = await promptMultiselect('extras', progress.message(`Add any ${color.bold('extras')}?`), ctx, {
       required: false,

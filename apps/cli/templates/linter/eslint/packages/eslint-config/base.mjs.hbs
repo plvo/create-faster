@@ -1,0 +1,12 @@
+{{!-- @repo:turborepo --}}
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import { defineConfig, globalIgnores } from "eslint/config";
+
+export const baseConfig = defineConfig([
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  globalIgnores(["node_modules/**", "dist/**"]),
+]);
+
+export default baseConfig;

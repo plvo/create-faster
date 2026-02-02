@@ -1,0 +1,31 @@
+{{!-- @repo:turborepo --}}
+import { defineConfig, globalIgnores } from "eslint/config";
+import { baseConfig } from "./base.mjs";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+
+export const nextjsConfig = defineConfig([
+  ...baseConfig,
+  {
+    name: "nextjs",
+    plugins: {
+      "@next/next": nextPlugin,
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
+      "react/react-in-jsx-scope": "off",
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+  },
+  globalIgnores([".next/**", "out/**"]),
+]);
+
+export default nextjsConfig;

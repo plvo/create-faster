@@ -224,6 +224,10 @@ export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateF
     result.push(...getTemplatesForStack('database', ctx.database, '', ctx));
   }
 
+  if (ctx.linter) {
+    result.push(...getTemplatesForStack('linter', ctx.linter, '', ctx));
+  }
+
   if (ctx.extras) {
     for (const extra of ctx.extras) {
       result.push(...getTemplatesForStack('extras', extra, '', ctx));

@@ -14,6 +14,7 @@ export interface TemplateContext {
   apps: AppContext[];
   orm?: keyof Meta['orm']['stacks'];
   database?: keyof Meta['database']['stacks'];
+  linter?: keyof Meta['linter']['stacks'];
   git: boolean;
   pm?: PackageManager;
   extras?: (keyof Meta['extras']['stacks'])[];

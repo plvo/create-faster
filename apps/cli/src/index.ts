@@ -30,7 +30,7 @@ async function main() {
 
     const result = await generateProjectFiles(templates, ctx);
 
-    if (result.skipped.length > 0 || result.failed.length > 0) {
+    if (result.skipped.length || result.failed.length) {
       displayGenerationErrors(result);
     }
 
