@@ -1,22 +1,23 @@
-import type { Meta, StackName } from './meta';
+// ABOUTME: Context types for template rendering and CLI flow
+// ABOUTME: AppContext for per-app config, TemplateContext for full generation
+
+import type { StackName } from './meta';
 
 export interface AppContext {
   appName: string;
   stackName: StackName;
-  modules: string[];
+  addons: string[];
 }
 
-type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;
+export type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;
 
 export interface TemplateContext {
   projectName: string;
   repo: 'single' | 'turborepo';
   apps: AppContext[];
-  orm?: keyof Meta['orm']['stacks'] | null;
-  database?: keyof Meta['database']['stacks'] | null;
+  globalAddons: string[];
   git: boolean;
   pm?: PackageManager;
-  extras?: (keyof Meta['extras']['stacks'])[];
   skipInstall?: boolean;
 }
 
