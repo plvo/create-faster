@@ -176,8 +176,115 @@ export interface Meta {
     stacks: Record<RepoType, MetaRepoStack>;
   };
 }
+```
 
-// Helper: get addons grouped by type (cached)
+**Step 4: Run test to verify it passes**
+
+Run: `cd apps/cli && bun test tests/addon-types.test.ts`
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add apps/cli/src/types/meta.ts apps/cli/tests/addon-types.test.ts
+git commit -m "refactor(types): unified MetaAddon interface with discriminated destinations"
+```
+
+---
+
+### Task 1.2: Create addon helper functions
+
+**Files:**
+- Create: `apps/cli/src/lib/addon-utils.ts`
+- Create: `apps/cli/tests/addon-utils.test.ts`
+
+**Step 1: Write the failing test**
+
+```typescript
+// apps/cli/tests/addon-utils.test.ts
+
+// ABOUTME: Tests for addon utility functions
+// ABOUTME: Tests grouping, compatibility, and dependency checking
+
+import { describe, test, expect, beforeEach } from 'bun:test';
+import {
+  getAddonsByType,
+  isAddonCompatible,
+  areAddonDependenciesMet,
+  clearAddonGroupsCache,
+} from '../src/lib/addon-utils';
+import { META } from '../src/__meta__';
+
+beforeEach(() => {
+  clearAddonGroupsCache();
+});
+
+describe('getAddonsByType', () => {
+  test('groups addons correctly', () => {
+    const groups = getAddonsByType(META);
+
+    expect(groups.module).toContain('shadcn');
+    expect(groups.orm).toContain('drizzle');
+    expect(groups.database).toContain('postgres');
+    expect(groups.extra).toContain('biome');
+  });
+
+  test('caches result', () => {
+    const groups1 = getAddonsByType(META);
+    const groups2 = getAddonsByType(META);
+    expect(groups1).toBe(groups2);
+  });
+});
+
+describe('isAddonCompatible', () => {
+  test('shadcn is compatible with nextjs', () => {
+    expect(isAddonCompatible(META.addons.shadcn, 'nextjs')).toBe(true);
+  });
+
+  test('shadcn is not compatible with expo', () => {
+    expect(isAddonCompatible(META.addons.shadcn, 'expo')).toBe(false);
+  });
+
+  test('tanstack-query is compatible with all', () => {
+    expect(isAddonCompatible(META.addons['tanstack-query'], 'nextjs')).toBe(true);
+    expect(isAddonCompatible(META.addons['tanstack-query'], 'expo')).toBe(true);
+    expect(isAddonCompatible(META.addons['tanstack-query'], 'hono')).toBe(true);
+  });
+
+  test('addon without support.stacks is compatible with all', () => {
+    expect(isAddonCompatible(META.addons.biome, 'nextjs')).toBe(true);
+    expect(isAddonCompatible(META.addons.biome, 'expo')).toBe(true);
+  });
+});
+
+describe('areAddonDependenciesMet', () => {
+  test('drizzle requires postgres or mysql', () => {
+    expect(areAddonDependenciesMet(META.addons.drizzle, ['postgres'])).toBe(true);
+    expect(areAddonDependenciesMet(META.addons.drizzle, ['mysql'])).toBe(true);
+    expect(areAddonDependenciesMet(META.addons.drizzle, [])).toBe(false);
+  });
+
+  test('addon without dependencies always satisfied', () => {
+    expect(areAddonDependenciesMet(META.addons.biome, [])).toBe(true);
+  });
+});
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `cd apps/cli && bun test tests/addon-utils.test.ts`
+Expected: FAIL (module not found)
+
+**Step 3: Implement addon-utils.ts**
+
+```typescript
+// apps/cli/src/lib/addon-utils.ts
+
+// ABOUTME: Helper functions for working with META addons
+// ABOUTME: Grouping, compatibility checking, and dependency validation
+
+import type { Meta, MetaAddon, AddonType, StackName } from '@/types/meta';
+
 let addonGroupsCache: Record<AddonType, string[]> | null = null;
 
 export function getAddonsByType(meta: Meta): Record<AddonType, string[]> {
@@ -195,14 +302,12 @@ export function getAddonsByType(meta: Meta): Record<AddonType, string[]> {
   return addonGroupsCache;
 }
 
-// Helper: check if addon is compatible with stack
 export function isAddonCompatible(addon: MetaAddon, stackName: StackName): boolean {
   if (!addon.support?.stacks) return true;
   if (addon.support.stacks === 'all') return true;
   return addon.support.stacks.includes(stackName);
 }
 
-// Helper: check if addon dependencies are satisfied
 export function areAddonDependenciesMet(
   addon: MetaAddon,
   selectedAddons: string[]
@@ -211,7 +316,6 @@ export function areAddonDependenciesMet(
   return addon.support.addons.some((dep) => selectedAddons.includes(dep));
 }
 
-// Clear cache (for testing)
 export function clearAddonGroupsCache(): void {
   addonGroupsCache = null;
 }
@@ -219,27 +323,19 @@ export function clearAddonGroupsCache(): void {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd apps/cli && bun test tests/addon-types.test.ts`
+Run: `cd apps/cli && bun test tests/addon-utils.test.ts`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add apps/cli/src/types/meta.ts apps/cli/tests/addon-types.test.ts
-git commit -m "$(cat <<'EOF'
-refactor(types): unified MetaAddon interface with discriminated destinations
-
-- AddonType: module | orm | database | extra
-- AddonDestination: app | package (with name) | root
-- AddonSupport: stacks + addon dependencies
-- Helper functions for grouping and compatibility
-EOF
-)"
+git add apps/cli/src/lib/addon-utils.ts apps/cli/tests/addon-utils.test.ts
+git commit -m "feat(addon-utils): helper functions for grouping and compatibility"
 ```
 
 ---
 
-### Task 1.2: Update context types
+### Task 1.3: Update context types
 
 **Files:**
 - Modify: `apps/cli/src/types/ctx.ts`
@@ -289,7 +385,7 @@ git commit -m "refactor(types): update context types for unified addon system"
 
 ---
 
-### Task 1.3: Rewrite __meta__.ts with unified addons
+### Task 1.4: Rewrite __meta__.ts with unified addons
 
 **Files:**
 - Modify: `apps/cli/src/__meta__.ts`
@@ -305,7 +401,7 @@ git commit -m "refactor(types): update context types for unified addon system"
 
 import { describe, test, expect } from 'bun:test';
 import { META } from '../src/__meta__';
-import { getAddonsByType, isAddonCompatible, areAddonDependenciesMet } from '../src/types/meta';
+import { getAddonsByType, isAddonCompatible, areAddonDependenciesMet } from '../src/lib/addon-utils';
 
 describe('META.addons validation', () => {
   test('all addons have type and label', () => {
@@ -1234,7 +1330,7 @@ import { META } from '@/__meta__';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, StackName } from '@/types/meta';
-import { isAddonCompatible } from '@/types/meta';
+import { isAddonCompatible } from '@/lib/addon-utils';
 import { transformSpecialFilename } from './file-writer';
 import type { DestType, OnlyType } from './magic-comments';
 import { parseDestFromContent, parseOnlyFromContent, shouldSkipTemplate } from './magic-comments';
@@ -1595,7 +1691,7 @@ Expected: FAIL
 import { META } from '@/__meta__';
 import type { PackageJsonConfig } from '@/types/meta';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isAddonCompatible, getAddonsByType } from '@/types/meta';
+import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
 
 export interface PackageJson {
   name: string;
@@ -1920,7 +2016,8 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isAddonCompatible, getAddonsByType, areAddonDependenciesMet, type StackName } from '@/types/meta';
+import type { StackName } from '@/types/meta';
+import { isAddonCompatible, getAddonsByType, areAddonDependenciesMet } from '@/lib/addon-utils';
 
 interface ParsedFlags {
   projectName?: string;
@@ -2159,7 +2256,8 @@ import { cancel, groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
-import { isAddonCompatible, getAddonsByType, type StackName } from '@/types/meta';
+import type { StackName } from '@/types/meta';
+import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
@@ -2306,7 +2404,8 @@ import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts'
 import { multiselectAddonsPrompt, multiselectGlobalAddonsPrompt, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { areAddonDependenciesMet, type StackName } from '@/types/meta';
+import type { StackName } from '@/types/meta';
+import { areAddonDependenciesMet } from '@/lib/addon-utils';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
