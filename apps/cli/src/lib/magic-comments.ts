@@ -41,16 +41,9 @@ export function parseMagicComments(firstLine: string): ParsedMagicComments {
   return result;
 }
 
-export function parseDestFromContent(content: string): DestType | null {
+export function parseMagicCommentsFromContent(content: string): ParsedMagicComments {
   const firstLine = extractFirstLine(content);
-  const parsed = parseMagicComments(firstLine);
-  return parsed.dest ?? null;
-}
-
-export function parseOnlyFromContent(content: string): OnlyType | null {
-  const firstLine = extractFirstLine(content);
-  const parsed = parseMagicComments(firstLine);
-  return parsed.only ?? null;
+  return parseMagicComments(firstLine);
 }
 
 export function shouldSkipTemplate(only: OnlyType | null, ctx: TemplateContext): boolean {

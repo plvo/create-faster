@@ -108,7 +108,7 @@ export const META: Meta = {
       label: 'shadcn/ui',
       hint: 'A set of beautifully designed components that you can customize, extend, and build on',
       support: { stacks: ['nextjs', 'tanstack-start'] },
-      destination: { target: 'package', name: 'ui', singlePath: 'src/components/ui/' },
+      destination: { target: 'package', name: 'ui' },
       packageJson: {
         dependencies: {
           'radix-ui': '^1.4.2',
@@ -169,7 +169,7 @@ export const META: Meta = {
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
       support: { stacks: ['nextjs'], addons: ['drizzle', 'prisma'] },
-      destination: { target: 'package', name: 'auth', singlePath: 'src/lib/auth/' },
+      destination: { target: 'package', name: 'auth' },
       packageJson: {
         dependencies: {
           'better-auth': '^1.4.10',
@@ -274,9 +274,9 @@ export const META: Meta = {
           'db:seed': 'bun run scripts/seed.ts',
         },
         exports: {
-          '.': './src/index.ts',
-          './schema': './src/schema.ts',
-          './types': './src/types.ts',
+          '.': './index.ts',
+          './schema': './schema.ts',
+          './types': './types.ts',
         },
       },
     },
@@ -301,7 +301,7 @@ export const META: Meta = {
           'db:seed': 'bun run scripts/seed.ts',
         },
         exports: {
-          '.': './src/index.ts',
+          '.': './index.ts',
         },
       },
     },

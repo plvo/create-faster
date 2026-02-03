@@ -1,6 +1,7 @@
-import { constants } from 'node:fs';
+import { constants, existsSync } from 'node:fs';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname } from 'node:path';
+import { globSync } from 'fast-glob';
 
 const BINARY_EXTENSIONS = new Set([
   '.png',
@@ -87,23 +88,38 @@ export async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-export function transformSpecialFilename(filename: string): string {
-  // Triple underscore escapes to double underscore (for files like __root.tsx)
-  if (filename.startsWith('___')) {
-    return `__${filename.slice(3)}`;
+/**
+ * Transforms filenames to their corresponding filenames
+ * @example
+ * transformFilename('page.tsx.hbs') -> 'page.tsx'
+ * transformFilename('__gitignore.hbs') -> '.gitignore'
+ * transformFilename('___root.tsx.hbs') -> '__root.tsx'
+ */
+export function transformFilename(filename: string): string {
+  const result = filename.replace(/\.hbs$/, '');
+
+  if (result.startsWith('___')) {
+    return `__${result.slice(3)}`;
   }
 
   // Double underscore becomes dot (for dotfiles like .gitignore)
-  if (filename.startsWith('__')) {
-    return `.${filename.slice(2)}`;
+  if (result.startsWith('__')) {
+    return `.${result.slice(2)}`;
   }
 
-  return filename;
+  return result;
 }
 
-export function removeHbsExtension(filename: string): string {
-  if (filename.endsWith('.hbs')) {
-    return filename.slice(0, -4);
+/**
+ *  Scans a directory for files
+ * @example
+ * scanDirectory('apps/my-app/src') -> ['page.tsx', 'api.ts', 'api/route.ts']
+ */
+export function scanDirectory(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  try {
+    return globSync('**/*', { cwd: dir, onlyFiles: true, dot: true });
+  } catch {
+    return [];
   }
-  return filename;
 }

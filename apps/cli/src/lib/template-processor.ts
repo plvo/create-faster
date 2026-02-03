@@ -1,13 +1,6 @@
 import { basename, join } from 'node:path';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import {
-  copyBinaryFile,
-  isBinaryFile,
-  readFileContent,
-  removeHbsExtension,
-  transformSpecialFilename,
-  writeFileContent,
-} from './file-writer';
+import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, writeFileContent } from './file-writer';
 import { renderTemplate } from './handlebars';
 import { removeAllMagicComments } from './magic-comments';
 
@@ -34,7 +27,7 @@ export async function processTemplate(
 
   try {
     const filename = basename(destination);
-    const transformedFilename = transformSpecialFilename(removeHbsExtension(filename));
+    const transformedFilename = transformFilename(filename);
     const finalDestination = join(projectPath, destination.replace(filename, transformedFilename));
 
     const isHbsTemplate = source.endsWith('.hbs');
