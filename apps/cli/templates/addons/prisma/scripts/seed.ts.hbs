@@ -1,0 +1,71 @@
+{{!-- @dest:root --}}
+{{#if (eq repo "turborepo")}}
+import { prisma } from '@repo/db';
+{{else}}
+import { prisma } from '../src/lib/db';
+{{/if}}
+
+async function seed() {
+  console.log('🌱 Seeding database...');
+
+  // Clear existing data
+  await prisma.post.deleteMany();
+  await prisma.user.deleteMany();
+
+  // Create users
+  const alice = await prisma.user.create({
+    data: {
+      name: 'Alice Johnson',
+      email: 'alice@example.com',
+      bio: 'Software engineer and open source enthusiast',
+    },
+  });
+
+  const bob = await prisma.user.create({
+    data: {
+      name: 'Bob Smith',
+      email: 'bob@example.com',
+      bio: 'Tech writer and developer advocate',
+    },
+  });
+
+  console.log(`✅ Created 2 users`);
+
+  // Create posts
+  await prisma.post.createMany({
+    data: [
+      {
+        title: 'Getting Started with Prisma',
+        content: 'Prisma is a next-generation ORM that provides excellent type safety...',
+        published: true,
+        authorId: alice.id,
+      },
+      {
+        title: 'Building Modern APIs',
+        content: 'Modern API development requires careful consideration of many factors...',
+        published: true,
+        authorId: alice.id,
+      },
+      {
+        title: 'Draft: Upcoming Features',
+        content: 'This is a draft post about upcoming features...',
+        published: false,
+        authorId: bob.id,
+      },
+    ],
+  });
+
+  console.log(`✅ Created ${3} posts`);
+  console.log('🎉 Seeding completed!');
+}
+
+seed()
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+

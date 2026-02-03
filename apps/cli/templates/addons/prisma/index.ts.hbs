@@ -1,0 +1,39 @@
+{{!-- @only:turborepo --}}
+{{#if (eq repo "turborepo")}}
+import { PrismaClient } from '../generated/prisma';
+{{else}}
+import { PrismaClient } from '@prisma/client';
+{{/if}}
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+{{#if (eq repo "turborepo")}}
+export * from '../generated/prisma';
+{{else}}
+export * from '@prisma/client';
+{{/if}}
+
+// Type helpers
+export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
+export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
+export type UserWithPosts = Awaited<
+  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
+>;
+export type PostWithAuthor = Awaited<
+  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
+>;
+
+{{#if (has "module" "better-auth")}}
+// Auth types
+export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
+export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
+export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+{{/if}}

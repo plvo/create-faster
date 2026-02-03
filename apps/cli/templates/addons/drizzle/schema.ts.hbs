@@ -1,0 +1,117 @@
+{{!-- @only:turborepo --}}
+{{#if (hasAddon "postgres")}}
+import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+{{/if}}
+{{#if (hasAddon "mysql")}}
+import { mysqlTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/mysql-core';
+{{/if}}
+import { relations } from 'drizzle-orm';
+
+const timeColumns = {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+};
+
+{{#if (hasAddon "postgres")}}
+export const userTable = pgTable('users', {
+{{/if}}
+{{#if (hasAddon "mysql")}}
+export const userTable = mysqlTable('users', {
+{{/if}}
+  id: uuid('id').defaultRandom().primaryKey(),
+  username: varchar('username', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  avatarUrl: text('avatar_url'),
+
+  phone: varchar('phone', { length: 255 }),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  ...timeColumns,
+});
+
+export const userTableRelations = relations(userTable, ({ many }) => ({
+{{#if (has "module" "better-auth")}}
+  accounts: many(userAccountTable),
+  sessions: many(userSessionTable),
+{{/if}}
+  posts: many(postTable),
+}));
+
+{{#if (has "module" "better-auth")}}
+// https://www.better-auth.com/docs/concepts/database#session
+export const userSessionTable = pgTable('user_sessions', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ipAddress: varchar('ip_address', { length: 255 }),
+  userAgent: varchar('user_agent', { length: 255 }),
+  ...timeColumns,
+
+});
+
+export const userSessionTableRelations = relations(userSessionTable, ({ one }) => ({
+  user: one(userTable, {
+    fields: [userSessionTable.userId],
+    references: [userTable.id],
+  }),
+}));
+
+// https://www.better-auth.com/docs/concepts/database#account
+export const userAccountTable = pgTable('user_accounts', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => userTable.id),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  providerId: varchar('provider_id', { length: 255 }).notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: varchar('scope', { length: 255 }),
+  idToken: text('id_token'),
+  password: varchar('password', { length: 255 }),
+  ...timeColumns,
+});
+
+export const userAccountTableRelations = relations(userAccountTable, ({ one }) => ({
+  user: one(userTable, {
+    fields: [userAccountTable.userId],
+    references: [userTable.id],
+  }),
+}));
+
+// https://www.better-auth.com/docs/concepts/database#verification
+export const userVerificationTable = pgTable('user_verifications', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  identifier: varchar('identifier', { length: 255 }).notNull(),
+  value: varchar('value', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ...timeColumns,
+});
+{{/if}}
+
+{{#if (hasAddon "postgres")}}
+export const postTable = pgTable('posts', {
+{{/if}}
+{{#if (hasAddon "mysql")}}
+export const postTable = mysqlTable('posts', {
+{{/if}}
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  published: varchar('published', { length: 10 }).notNull().default('false'),
+  authorId: uuid('author_id').notNull().references(() => userTable.id, { onDelete: 'cascade' }),
+  ...timeColumns,
+});
+
+export const postsRelations = relations(postTable, ({ one }) => ({
+  author: one(userTable, {
+    fields: [postTable.authorId],
+    references: [userTable.id],
+  }),
+}));

@@ -1,0 +1,31 @@
+{{!-- @dest:root --}}
+import { defineConfig } from 'drizzle-kit';
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+export default defineConfig({
+  {{#if (eq repo "turborepo")}}
+  schema: './src/schema.ts',
+  {{else}}
+  schema: './src/lib/db/schema.ts',
+  {{/if}}
+  out: './drizzle',
+  {{#if (hasAddon "postgres")}}
+  dialect: 'postgresql',
+  {{/if}}
+  {{#if (hasAddon "mysql")}}
+  dialect: 'mysql',
+  {{/if}}
+  dbCredentials: {
+    {{#if (hasAddon "postgres")}}
+    url: process.env.DATABASE_URL,
+    {{/if}}
+    {{#if (hasAddon "mysql")}}
+    url: process.env.DATABASE_URL,
+    {{/if}}
+  },
+  verbose: true,
+  strict: true,
+});
