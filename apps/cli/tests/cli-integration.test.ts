@@ -1,5 +1,5 @@
-// ABOUTME: Integration tests for create-faster CLI
-// ABOUTME: Tests end-to-end project generation with various flag combinations
+// ABOUTME: End-to-end tests for CLI project generation
+// ABOUTME: Tests both single repo and turborepo with unified addons
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
@@ -21,10 +21,7 @@ describe('CLI Integration', () => {
       const projectName = 'test-nextjs-single';
       const projectPath = join(tempDir, projectName);
 
-      const result = await runCli(
-        [projectName, '--app', 'web:nextjs', '--no-database', '--no-orm', '--no-git', '--no-extras', '--no-install'],
-        tempDir,
-      );
+      const result = await runCli([projectName, '--app', `${projectName}:nextjs`, '--no-git', '--no-install'], tempDir);
 
       expect(result.exitCode).toBe(0);
       expect(await fileExists(join(projectPath, 'package.json'))).toBe(true);
@@ -34,26 +31,17 @@ describe('CLI Integration', () => {
         name: string;
         dependencies: Record<string, string>;
       }>(join(projectPath, 'package.json'));
-      expect(pkg.name).toBe('test-nextjs-single'); // Single repo uses project name
+      expect(pkg.name).toBe(projectName);
       expect(pkg.dependencies.next).toBeDefined();
       expect(pkg.dependencies.react).toBeDefined();
     });
 
-    test('generates Next.js with shadcn module', async () => {
+    test('generates Next.js with shadcn addon', async () => {
       const projectName = 'test-nextjs-shadcn';
       const projectPath = join(tempDir, projectName);
 
       const result = await runCli(
-        [
-          projectName,
-          '--app',
-          'web:nextjs:shadcn',
-          '--no-database',
-          '--no-orm',
-          '--no-git',
-          '--no-extras',
-          '--no-install',
-        ],
+        [projectName, '--app', `${projectName}:nextjs:shadcn`, '--no-git', '--no-install'],
         tempDir,
       );
 
@@ -69,7 +57,7 @@ describe('CLI Integration', () => {
       expect(await fileExists(join(projectPath, 'components.json'))).toBe(true);
     });
 
-    test('generates Next.js with drizzle ORM', async () => {
+    test('generates Next.js with drizzle addon', async () => {
       const projectName = 'test-nextjs-drizzle';
       const projectPath = join(tempDir, projectName);
 
@@ -77,13 +65,12 @@ describe('CLI Integration', () => {
         [
           projectName,
           '--app',
-          'web:nextjs',
-          '--database',
+          `${projectName}:nextjs`,
+          '--addon',
           'postgres',
-          '--orm',
+          '--addon',
           'drizzle',
           '--no-git',
-          '--no-extras',
           '--no-install',
         ],
         tempDir,
@@ -97,11 +84,12 @@ describe('CLI Integration', () => {
         scripts: Record<string, string>;
       }>(join(projectPath, 'package.json'));
       expect(pkg.dependencies['drizzle-orm']).toBeDefined();
-      expect(pkg.devDependencies['drizzle-kit']).toBeDefined();
+      expect(pkg.dependencies.pg).toBeDefined();
       expect(pkg.scripts['db:generate']).toBeDefined();
 
       expect(await fileExists(join(projectPath, 'src/lib/db/schema.ts'))).toBe(true);
-      expect(await fileExists(join(projectPath, 'src/lib/db/index.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'drizzle.config.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'scripts/seed.ts'))).toBe(true);
     });
   });
 
@@ -111,18 +99,7 @@ describe('CLI Integration', () => {
       const projectPath = join(tempDir, projectName);
 
       const result = await runCli(
-        [
-          projectName,
-          '--app',
-          'web:nextjs',
-          '--app',
-          'api:hono',
-          '--no-database',
-          '--no-orm',
-          '--no-git',
-          '--no-extras',
-          '--no-install',
-        ],
+        [projectName, '--app', 'web:nextjs', '--app', 'api:hono', '--no-git', '--no-install'],
         tempDir,
       );
 
@@ -160,12 +137,11 @@ describe('CLI Integration', () => {
           'web:nextjs:shadcn',
           '--app',
           'mobile:expo',
-          '--database',
+          '--addon',
           'postgres',
-          '--orm',
+          '--addon',
           'drizzle',
           '--no-git',
-          '--no-extras',
           '--no-install',
         ],
         tempDir,
@@ -195,6 +171,7 @@ describe('CLI Integration', () => {
       }>(join(projectPath, 'packages/db/package.json'));
       expect(dbPkg.name).toBe('@repo/db');
       expect(dbPkg.dependencies['drizzle-orm']).toBeDefined();
+      expect(dbPkg.dependencies.pg).toBeDefined();
     });
   });
 });

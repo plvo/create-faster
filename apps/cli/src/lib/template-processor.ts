@@ -9,7 +9,7 @@ import {
   writeFileContent,
 } from './file-writer';
 import { renderTemplate } from './handlebars';
-import { removeDestMagicComment } from './magic-comments';
+import { removeAllMagicComments } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
@@ -49,7 +49,7 @@ export async function processTemplate(
 
     if (isHbsTemplate) {
       // Remove @dest: magic comment if present (destination already resolved)
-      content = removeDestMagicComment(content);
+      content = removeAllMagicComments(content);
       let enrichedContext: TemplateContext | (TemplateContext & Record<string, unknown>) = context;
 
       const pathParts = destination.split('/');

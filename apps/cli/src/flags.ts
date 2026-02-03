@@ -80,15 +80,13 @@ ${color.bold('Examples:')}
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  if (flags.addon && flags.addon.length > 0) {
-    partial.globalAddons = [];
-    for (const addonName of flags.addon) {
-      if (!META.addons[addonName]) {
-        printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
-        process.exit(1);
-      }
-      partial.globalAddons.push(addonName);
+  partial.globalAddons = [];
+  for (const addonName of flags.addon ?? []) {
+    if (!META.addons[addonName]) {
+      printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+      process.exit(1);
     }
+    partial.globalAddons.push(addonName);
   }
 
   if (flags.git !== undefined) {
