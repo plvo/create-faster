@@ -1,0 +1,22 @@
+import { type NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth/auth';
+
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  console.log(`PROXY "${pathname}" | "${session ? session.user.id : 'X'}"`);
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    // Exclude API routes, static files, image optimizations, and .png files
+    '/((?!api|_next/static|manifest.webmanifest|_next/image|.*\\.png$).*)',
+  ],
+};

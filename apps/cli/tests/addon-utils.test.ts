@@ -1,14 +1,14 @@
 // ABOUTME: Tests for addon utility functions
 // ABOUTME: Tests grouping, compatibility, and dependency checking
 
-import { describe, test, expect, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
+import { META } from '../src/__meta__';
 import {
-  getAddonsByType,
-  isAddonCompatible,
   areAddonDependenciesMet,
   clearAddonGroupsCache,
+  getAddonsByType,
+  isAddonCompatible,
 } from '../src/lib/addon-utils';
-import { META } from '../src/__meta__';
 
 beforeEach(() => {
   clearAddonGroupsCache();

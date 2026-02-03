@@ -1,8 +1,8 @@
 // ABOUTME: Type tests for unified addon architecture
 // ABOUTME: Ensures MetaAddon types enforce correct destination constraints
 
-import { describe, test, expect } from 'bun:test';
-import type { AddonType, AddonDestination, AddonSupport, MetaAddon, StackName } from '../src/types/meta';
+import { describe, expect, test } from 'bun:test';
+import type { AddonDestination, AddonSupport, AddonType, MetaAddon, StackName } from '../src/types/meta';
 
 describe('MetaAddon types', () => {
   test('AddonType includes all valid types', () => {

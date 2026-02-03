@@ -1,0 +1,11 @@
+export default function HomePage() {
+  return (
+    <div className='flex flex-col items-center justify-center h-screen'>
+      <h1>Home Page</h1>
+
+      <p>
+        MDX module is enabled, you can see the example page <a href='/mdx'>here</a>.
+      </p>
+    </div>
+  );
+}
