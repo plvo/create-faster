@@ -14,7 +14,7 @@ CLI tool that generates full-stack projects with:
 - Multi-app support (automatic turborepo for 2+ apps)
 - Modular system (Next.js: 9 modules, Expo: 1 module, Hono: 1 module)
 - Package manager selection (bun/pnpm/npm + auto-install)
-- Template engine with magic comments for conditional rendering
+- Template engine with YAML frontmatter for path resolution and filtering
 - **Auto-generated CLI command**: Copy-paste ready command to recreate projects
 
 ## Architecture
@@ -56,7 +56,7 @@ apps/cli/src/
 │   ├── schema.ts            # Zod validation
 │   ├── template-resolver.ts # Template discovery & path mapping
 │   ├── template-processor.ts # Template rendering
-│   ├── magic-comments.ts    # Conditional rendering directives
+│   ├── frontmatter.ts       # YAML frontmatter parsing (gray-matter)
 │   ├── handlebars-utils.ts  # Custom Handlebars helpers
 │   ├── file-generator.ts    # File generation orchestration
 │   ├── file-writer.ts       # File writing operations
@@ -124,16 +124,16 @@ Summary and CLI command generation:
 
 ### lib/template-resolver.ts
 - Scans templates with fast-glob
-- `processModules()`: Unified module processing for apps & servers
-- `scanModuleTemplates()`: Dynamic scope detection from magic comments
-- Maps source → destination paths (app/package/root scope)
+- `resolveAddonDestination()`: Path resolution using frontmatter + META mono config
+- `parseStackSuffix()`: Detects `file.ext.{stack}.hbs` naming convention
+- Maps source → destination paths (app/pkg/root scope)
 
-### lib/magic-comments.ts
-First-line directives for conditional rendering:
-- `@repo:turborepo|single|!single`
-- `@scope:app|package|root`
-- `@if:key`, `@require:key`
-- Multi-condition support
+### lib/frontmatter.ts
+YAML frontmatter parsing using gray-matter:
+- `parseFrontmatter()`: Extracts frontmatter data and content
+- `shouldSkipTemplate()`: Checks `only: mono|single` filter
+- `removeFrontmatter()`: Strips frontmatter before rendering
+- `parseStackSuffix()`: Stack-specific template detection
 
 ### lib/handlebars-utils.ts
 Custom helpers:
@@ -181,7 +181,7 @@ Custom helpers:
 - Complete Expo support (full templates + assets)
 - Enhanced Next.js templates (error pages, app providers, custom hooks)
 - Better Auth integration (user/account/session tables for Prisma & Drizzle)
-- Magic comments system (@repo:, @scope:, @if:, @require:, negation, multi-condition)
+- Frontmatter system (YAML-based path resolution, repo filtering, stack suffixes)
 - Context-aware filtering (category & stack requires, progressive context building)
 - Template resolution with module support
 - Scope-aware path mapping (app/package/root + dynamic override)
@@ -226,22 +226,31 @@ templates/
 - `{{orm}}`, `{{database}}`, `{{git}}`, `{{pm}}`, `{{extras}}`
 - Access stack metadata: `{{#with (app "myapp")}}{{stackName}}{{/with}}`
 
-### Magic Comments
-First-line directives:
-- `@repo:turborepo|single|!single` - Control rendering by repo type
-- `@scope:app|package|root` - Override file placement
-- `@if:key` / `@require:key` - Conditional rendering
-- Multiple: `{{!-- @repo:turborepo @scope:package --}}`
+### Frontmatter
+YAML frontmatter for per-file configuration:
+```yaml
+---
+path: src/lib/db/schema.ts    # Output path for single repo
+mono:
+  scope: app | pkg | root     # Monorepo scope (overrides META)
+  path: schema.ts             # Monorepo path (relative to scope)
+only: mono | single           # Repo type filter
+---
+```
 
 ### Scope Mapping
 - `app` → `apps/{appName}/` (turborepo) or root (single)
 - `package` → `packages/{packageName}/` (turborepo only)
 - `root` → project root
 
-### Module Scope Resolution
-1. `@scope:` magic comment → use that
-2. Else turborepo + `packageName` → `packages/{packageName}/`
-3. Else → app scope
+### Path Resolution Algorithm
+1. Parse frontmatter (if present)
+2. Filter by `only` (skip if repo type doesn't match)
+3. Single repo: use `frontmatter.path` or file-based path
+4. Monorepo: use `frontmatter.mono.scope` or META `mono.scope` or default `app`
+   - `app` → `apps/{appName}/`
+   - `pkg` → `packages/{META.mono.name}/`
+   - `root` → project root
 
 ## Code Conventions
 
@@ -386,11 +395,11 @@ This allows easy reproduction of the exact same project setup.
 ### Add Stack
 1. Add to `META` in `__meta__.ts`
 2. Create `templates/{category}/{stack}/` directory
-3. Add `.hbs` files with magic comments
+3. Add `.hbs` files with frontmatter if needed
 4. Test with `bun run dev:cli`
 
 ### Add Module
 1. Add to `META.{framework}.stacks.{name}.modules` in `__meta__.ts`
 2. Create `templates/modules/{framework}/{module}/` directory
-3. Add magic comments for scope override if needed
+3. Add frontmatter for path/scope override if needed
 4. Test module selection in CLI

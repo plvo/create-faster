@@ -1,3 +1,6 @@
+---
+path: src/lib/db/schema.ts
+---
 {{#if (hasAddon "postgres")}}
 import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 {{/if}}

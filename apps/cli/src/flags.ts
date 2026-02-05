@@ -4,10 +4,10 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { areAddonDependenciesMet, getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
-import { isAddonCompatible, getAddonsByType, areAddonDependenciesMet } from '@/lib/addon-utils';
 
 interface ParsedFlags {
   projectName?: string;
@@ -80,13 +80,15 @@ ${color.bold('Examples:')}
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  partial.globalAddons = [];
-  for (const addonName of flags.addon ?? []) {
-    if (!META.addons[addonName]) {
-      printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
-      process.exit(1);
+  if (flags.addon && flags.addon.length > 0) {
+    partial.globalAddons = [];
+    for (const addonName of flags.addon ?? []) {
+      if (!META.addons[addonName]) {
+        printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+        process.exit(1);
+      }
+      partial.globalAddons.push(addonName);
     }
-    partial.globalAddons.push(addonName);
   }
 
   if (flags.git !== undefined) {

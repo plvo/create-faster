@@ -1,7 +1,6 @@
 // ABOUTME: Resolves template files to destination paths
-// ABOUTME: Unified resolution for all addon types using META destination config
+// ABOUTME: Uses frontmatter and META mono config for path resolution
 
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { isAddonCompatible } from '@/lib/addon-utils';
@@ -9,43 +8,54 @@ import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, StackName } from '@/types/meta';
 import { scanDirectory, transformFilename } from './file-writer';
-import type { DestType, OnlyType } from './magic-comments';
-import { parseMagicCommentsFromContent, shouldSkipTemplate } from './magic-comments';
+import type { TemplateFrontmatter } from './frontmatter';
+import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
+
+const VALID_STACKS = Object.keys(META.stacks);
 
 export function resolveAddonDestination(
   relativePath: string,
   addon: MetaAddon,
   ctx: TemplateContext,
   appName: string,
-  destOverride: DestType | null,
+  frontmatter: TemplateFrontmatter,
 ): string {
   const isTurborepo = ctx.repo === 'turborepo';
-  const target = destOverride ?? addon.destination?.target ?? 'app';
 
-  switch (target) {
+  if (!isTurborepo) {
+    return frontmatter.path ?? relativePath;
+  }
+
+  const scope = frontmatter.mono?.scope ?? addon.mono?.scope ?? 'app';
+  const filePath = frontmatter.mono?.path ?? relativePath;
+
+  switch (scope) {
     case 'root':
-      return relativePath;
+      return filePath;
 
-    case 'package': {
-      if (!addon.destination || addon.destination.target !== 'package') {
-        return relativePath;
-      }
-      if (isTurborepo) {
-        return `packages/${addon.destination.name}/${relativePath}`;
-      }
-      const singlePath = addon.destination.singlePath ?? '';
-      return `${singlePath}${relativePath}`;
+    case 'pkg': {
+      const name = addon.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
+      return `packages/${name}/${filePath}`;
     }
 
     case 'app':
     default:
-      return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
+      return `apps/${appName}/${filePath}`;
   }
 }
 
 export function resolveStackDestination(relativePath: string, ctx: TemplateContext, appName: string): string {
   const isTurborepo = ctx.repo === 'turborepo';
   return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
+}
+
+function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; only: string | undefined } {
+  try {
+    const parsed = readFrontmatterFile(source);
+    return { frontmatter: parsed.data, only: parsed.data.only };
+  } catch {
+    return { frontmatter: {}, only: undefined };
+  }
 }
 
 function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: TemplateContext): TemplateFile[] {
@@ -55,6 +65,10 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
 
   for (const file of files) {
     const source = join(stackDir, file);
+
+    const { only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
     const transformedFilename = transformFilename(file);
     const destination = resolveStackDestination(transformedFilename, ctx, appName);
 
@@ -64,33 +78,30 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
   return templates;
 }
 
-function resolveTemplatesForAddon(addonName: string, appName: string, ctx: TemplateContext): TemplateFile[] {
+function resolveTemplatesForAddon(
+  addonName: string,
+  appName: string,
+  ctx: TemplateContext,
+  stackName?: StackName,
+): TemplateFile[] {
   const addon = META.addons[addonName];
   if (!addon) return [];
 
   const addonDir = join(TEMPLATES_DIR, 'addons', addonName);
   const files = scanDirectory(addonDir);
-  console.log('files', files);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
     const source = join(addonDir, file);
 
-    let destOverride: DestType | null = null;
-    let onlyValue: OnlyType | null = null;
-    try {
-      const content = readFileSync(source, 'utf-8');
-      const parsed = parseMagicCommentsFromContent(content);
-      destOverride = parsed.dest ?? null;
-      onlyValue = parsed.only ?? null;
-    } catch {
-      // Can't read file, use defaults
-    }
+    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
+    if (fileSuffix && stackName && fileSuffix !== stackName) continue;
 
-    if (shouldSkipTemplate(onlyValue, ctx)) continue;
+    const { frontmatter, only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
 
-    const transformedPath = transformFilename(file);
-    const destination = resolveAddonDestination(transformedPath, addon, ctx, appName, destOverride);
+    const transformedPath = transformFilename(cleanFilename);
+    const destination = resolveAddonDestination(transformedPath, addon, ctx, appName, frontmatter);
 
     templates.push({ source, destination });
   }
@@ -120,7 +131,7 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
     for (const addonName of app.addons) {
       const addon = META.addons[addonName];
       if (addon && isAddonCompatible(addon, app.stackName)) {
-        templates.push(...resolveTemplatesForAddon(addonName, app.appName, ctx));
+        templates.push(...resolveTemplatesForAddon(addonName, app.appName, ctx, app.stackName));
       }
     }
   }

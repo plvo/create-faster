@@ -2,9 +2,9 @@
 // ABOUTME: Merges dependencies from META based on unified addon system
 
 import { META } from '@/__meta__';
-import type { PackageJsonConfig } from '@/types/meta';
+import { getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
+import type { PackageJsonConfig } from '@/types/meta';
 
 export interface PackageJson {
   name: string;
@@ -70,10 +70,10 @@ function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
   return sorted;
 }
 
-function hasPackageDestination(addonName: string): string | null {
+function getPackageName(addonName: string): string | null {
   const addon = META.addons[addonName];
-  if (addon?.destination?.target === 'package') {
-    return addon.destination.name;
+  if (addon?.mono?.scope === 'pkg') {
+    return addon.mono.name;
   }
   return null;
 }
@@ -89,7 +89,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     const addon = META.addons[addonName];
     if (!addon || !isAddonCompatible(addon, app.stackName)) continue;
 
-    const packageName = hasPackageDestination(addonName);
+    const packageName = getPackageName(addonName);
     if (packageName && isTurborepo) {
       merged.dependencies = {
         ...merged.dependencies,
@@ -104,14 +104,14 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     const addon = META.addons[addonName];
     if (!addon) continue;
 
-    const packageName = hasPackageDestination(addonName);
+    const packageName = getPackageName(addonName);
 
     if (packageName && isTurborepo) {
       merged.dependencies = {
         ...merged.dependencies,
         [`@repo/${packageName}`]: '*',
       };
-    } else if (!isTurborepo || addon.destination?.target === 'root') {
+    } else if (!isTurborepo || addon.mono?.scope === 'root') {
       merged = mergePackageJsonConfigs(merged, addon.packageJson);
     }
   }
@@ -218,8 +218,8 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
     for (const app of ctx.apps) {
       for (const addonName of app.addons) {
         const addon = META.addons[addonName];
-        if (addon?.destination?.target === 'package') {
-          const pkgName = addon.destination.name;
+        if (addon?.mono?.scope === 'pkg') {
+          const pkgName = addon.mono.name;
           if (!extractedPackages.has(pkgName)) {
             extractedPackages.set(pkgName, addon.packageJson ?? {});
           }
@@ -232,8 +232,8 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
 
     if (ormAddons.length > 0) {
       const ormAddon = META.addons[ormAddons[0]];
-      if (ormAddon?.destination?.target === 'package') {
-        const pkgName = ormAddon.destination.name;
+      if (ormAddon?.mono?.scope === 'pkg') {
+        const pkgName = ormAddon.mono.name;
         let config = ormAddon.packageJson ?? {};
 
         for (const dbName of dbAddons) {

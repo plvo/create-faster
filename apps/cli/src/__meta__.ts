@@ -108,7 +108,7 @@ export const META: Meta = {
       label: 'shadcn/ui',
       hint: 'A set of beautifully designed components that you can customize, extend, and build on',
       support: { stacks: ['nextjs', 'tanstack-start'] },
-      destination: { target: 'package', name: 'ui' },
+      mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
         dependencies: {
           'radix-ui': '^1.4.2',
@@ -169,7 +169,7 @@ export const META: Meta = {
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
       support: { stacks: ['nextjs'], addons: ['drizzle', 'prisma'] },
-      destination: { target: 'package', name: 'auth' },
+      mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
           'better-auth': '^1.4.10',
@@ -258,7 +258,7 @@ export const META: Meta = {
       label: 'Drizzle',
       hint: 'Lightweight TypeScript ORM',
       support: { addons: ['postgres', 'mysql'] },
-      destination: { target: 'package', name: 'db', singlePath: 'src/lib/db/' },
+      mono: { scope: 'pkg', name: 'db' },
       packageJson: {
         dependencies: {
           'drizzle-orm': '^0.38.3',
@@ -285,7 +285,7 @@ export const META: Meta = {
       label: 'Prisma',
       hint: 'Type-safe ORM with migrations',
       support: { addons: ['postgres', 'mysql'] },
-      destination: { target: 'package', name: 'db', singlePath: 'src/lib/db/' },
+      mono: { scope: 'pkg', name: 'db' },
       packageJson: {
         dependencies: {
           '@prisma/client': '^6.13.0',
@@ -311,7 +311,7 @@ export const META: Meta = {
       type: 'database',
       label: 'PostgreSQL',
       hint: 'Relational database',
-      destination: { target: 'root' },
+      mono: { scope: 'root' },
       packageJson: {
         dependencies: {
           pg: '^8.13.1',
@@ -325,7 +325,7 @@ export const META: Meta = {
       type: 'database',
       label: 'MySQL',
       hint: 'Relational database',
-      destination: { target: 'root' },
+      mono: { scope: 'root' },
       packageJson: {
         dependencies: {
           mysql2: '^3.11.5',
@@ -338,7 +338,7 @@ export const META: Meta = {
       type: 'extra',
       label: 'Biome',
       hint: 'Fast linter & formatter',
-      destination: { target: 'root' },
+      mono: { scope: 'root' },
       packageJson: {
         devDependencies: {
           '@biomejs/biome': '^2.3.11',
@@ -353,7 +353,7 @@ export const META: Meta = {
       type: 'extra',
       label: 'Husky',
       hint: 'Git hooks',
-      destination: { target: 'root' },
+      mono: { scope: 'root' },
       packageJson: {
         devDependencies: {
           husky: '^9',

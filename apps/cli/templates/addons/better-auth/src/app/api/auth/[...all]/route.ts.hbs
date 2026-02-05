@@ -1,4 +1,7 @@
-{{!-- @dest:app --}}
+---
+mono:
+  scope: app
+---
 {{#if (eq repo "single")}}
 import { toNextJsHandler } from 'better-auth/next-js';
 import { auth } from '@/lib/auth/auth';

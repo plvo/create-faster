@@ -1,8 +1,8 @@
 import { basename, join } from 'node:path';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, writeFileContent } from './file-writer';
+import { removeFrontmatter } from './frontmatter';
 import { renderTemplate } from './handlebars';
-import { removeAllMagicComments } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
@@ -41,8 +41,7 @@ export async function processTemplate(
     let content = await readFileContent(source);
 
     if (isHbsTemplate) {
-      // Remove @dest: magic comment if present (destination already resolved)
-      content = removeAllMagicComments(content);
+      content = removeFrontmatter(content);
       let enrichedContext: TemplateContext | (TemplateContext & Record<string, unknown>) = context;
 
       const pathParts = destination.split('/');

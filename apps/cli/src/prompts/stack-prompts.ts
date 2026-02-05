@@ -2,12 +2,12 @@
 // ABOUTME: Groups addons by type for better UX
 
 import { isCancel, SelectPrompt } from '@clack/core';
-import { cancel, groupMultiselect, select, type Option } from '@clack/prompts';
+import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { StackName } from '@/types/meta';
-import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({

@@ -1,13 +1,13 @@
 // ABOUTME: Validation tests for META with unified addons
 // ABOUTME: Ensures all addons have required fields and valid references
 
-import { describe, test, expect, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
 import {
-  getAddonsByType,
-  isAddonCompatible,
   areAddonDependenciesMet,
   clearAddonGroupsCache,
+  getAddonsByType,
+  isAddonCompatible,
 } from '../src/lib/addon-utils';
 
 beforeEach(() => {
@@ -22,10 +22,10 @@ describe('META.addons validation', () => {
     }
   });
 
-  test('package destinations have required name', () => {
+  test('pkg mono scopes have required name', () => {
     for (const [name, addon] of Object.entries(META.addons)) {
-      if (addon.destination?.target === 'package') {
-        expect(addon.destination.name, `${name} package destination needs name`).toBeDefined();
+      if (addon.mono?.scope === 'pkg') {
+        expect(addon.mono.name, `${name} pkg mono needs name`).toBeDefined();
       }
     }
   });
