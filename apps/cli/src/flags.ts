@@ -4,10 +4,10 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { areAddonDependenciesMet, getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
-import { isAddonCompatible, getAddonsByType, areAddonDependenciesMet } from '@/lib/addon-utils';
 
 interface ParsedFlags {
   projectName?: string;

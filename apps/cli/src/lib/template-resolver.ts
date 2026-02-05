@@ -9,8 +9,8 @@ import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, StackName } from '@/types/meta';
 import { scanDirectory, transformFilename } from './file-writer';
-import { parseFrontmatter, parseStackSuffix, shouldSkipTemplate } from './frontmatter';
 import type { TemplateFrontmatter } from './frontmatter';
+import { parseFrontmatter, parseStackSuffix, shouldSkipTemplate } from './frontmatter';
 
 const VALID_STACKS = Object.keys(META.stacks);
 

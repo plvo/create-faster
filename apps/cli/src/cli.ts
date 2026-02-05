@@ -6,17 +6,17 @@ import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { areAddonDependenciesMet } from '@/lib/addon-utils';
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
 import {
   multiselectAddonsPrompt,
-  selectGlobalAddonPrompt,
   multiselectGlobalAddonsPrompt,
+  selectGlobalAddonPrompt,
   selectStackPrompt,
 } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
-import { areAddonDependenciesMet } from '@/lib/addon-utils';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {

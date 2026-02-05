@@ -1,11 +1,11 @@
 // ABOUTME: Tests for template path resolution with frontmatter
 // ABOUTME: Tests destination resolution for all addon types and repo configurations
 
-import { describe, test, expect } from 'bun:test';
-import { resolveAddonDestination } from '../src/lib/template-resolver';
+import { describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
-import type { TemplateContext } from '../src/types/ctx';
 import type { TemplateFrontmatter } from '../src/lib/frontmatter';
+import { resolveAddonDestination } from '../src/lib/template-resolver';
+import type { TemplateContext } from '../src/types/ctx';
 
 describe('resolveAddonDestination', () => {
   const turborepoCtx: TemplateContext = {

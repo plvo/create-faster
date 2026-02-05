@@ -1,7 +1,7 @@
 // ABOUTME: Helper functions for working with META addons
 // ABOUTME: Grouping, compatibility checking, and dependency validation
 
-import type { Meta, MetaAddon, AddonType, StackName } from '@/types/meta';
+import type { AddonType, Meta, MetaAddon, StackName } from '@/types/meta';
 
 let addonGroupsCache: Record<AddonType, string[]> | null = null;
 

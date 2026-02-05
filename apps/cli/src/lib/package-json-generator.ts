@@ -2,9 +2,9 @@
 // ABOUTME: Merges dependencies from META based on unified addon system
 
 import { META } from '@/__meta__';
-import type { PackageJsonConfig } from '@/types/meta';
+import { getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import { isAddonCompatible, getAddonsByType } from '@/lib/addon-utils';
+import type { PackageJsonConfig } from '@/types/meta';
 
 export interface PackageJson {
   name: string;

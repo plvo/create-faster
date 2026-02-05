@@ -1,7 +1,7 @@
 // ABOUTME: Tests for programmatic package.json generation
 // ABOUTME: Tests merge logic with unified addons
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
   generateAllPackageJsons,
   generateAppPackageJson,

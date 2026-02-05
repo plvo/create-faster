@@ -1,8 +1,8 @@
 // ABOUTME: Unit tests for template frontmatter parsing
 // ABOUTME: Tests YAML frontmatter extraction, validation, and stack suffix detection
 
-import { describe, test, expect } from 'bun:test';
-import { parseFrontmatter, shouldSkipTemplate, removeFrontmatter, parseStackSuffix } from '../src/lib/frontmatter';
+import { describe, expect, test } from 'bun:test';
+import { parseFrontmatter, parseStackSuffix, removeFrontmatter, shouldSkipTemplate } from '../src/lib/frontmatter';
 import type { TemplateContext } from '../src/types/ctx';
 
 describe('parseFrontmatter', () => {
