@@ -1,89 +1,62 @@
-// ABOUTME: Validation tests for META with unified addons
-// ABOUTME: Ensures all addons have required fields and valid references
+// ABOUTME: Validation tests for META with declarative project addons
+// ABOUTME: Ensures libraries and project categories are correctly structured
 
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import { META } from '../src/__meta__';
-import {
-  areAddonDependenciesMet,
-  clearAddonGroupsCache,
-  getAddonsByType,
-  isAddonCompatible,
-} from '../src/lib/addon-utils';
 
-beforeEach(() => {
-  clearAddonGroupsCache();
-});
-
-describe('META.addons validation', () => {
-  test('all addons have type and label', () => {
-    for (const [name, addon] of Object.entries(META.addons)) {
-      expect(addon.type, `${name} should have type`).toBeDefined();
-      expect(addon.label, `${name} should have label`).toBeDefined();
+describe('META.libraries validation', () => {
+  test('all libraries have label', () => {
+    for (const [name, lib] of Object.entries(META.libraries)) {
+      expect(lib.label, `${name} should have label`).toBeDefined();
     }
   });
 
-  test('pkg mono scopes have required name', () => {
-    for (const [name, addon] of Object.entries(META.addons)) {
-      if (addon.mono?.scope === 'pkg') {
-        expect(addon.mono.name, `${name} pkg mono needs name`).toBeDefined();
+  test('libraries with pkg mono have name', () => {
+    for (const [name, lib] of Object.entries(META.libraries)) {
+      if (lib.mono?.scope === 'pkg') {
+        expect(lib.mono.name, `${name} pkg mono needs name`).toBeDefined();
       }
     }
   });
 
-  test('addon dependencies reference existing addons', () => {
-    const addonNames = Object.keys(META.addons);
-    for (const [name, addon] of Object.entries(META.addons)) {
-      if (addon.support?.addons) {
-        for (const dep of addon.support.addons) {
-          expect(addonNames, `${name} depends on non-existent addon: ${dep}`).toContain(dep);
-        }
-      }
-    }
-  });
-
-  test('stack references are valid', () => {
-    const stackNames = Object.keys(META.stacks);
-    for (const [name, addon] of Object.entries(META.addons)) {
-      if (addon.support?.stacks && addon.support.stacks !== 'all') {
-        for (const stack of addon.support.stacks) {
-          expect(stackNames, `${name} references non-existent stack: ${stack}`).toContain(stack);
-        }
-      }
-    }
+  test('shadcn is a library', () => {
+    expect(META.libraries.shadcn).toBeDefined();
+    expect(META.libraries.shadcn.label).toBe('shadcn/ui');
   });
 });
 
-describe('getAddonsByType', () => {
-  test('groups addons correctly', () => {
-    const groups = getAddonsByType(META);
+describe('META.project validation', () => {
+  test('database category exists with options', () => {
+    expect(META.project.database).toBeDefined();
+    expect(META.project.database.selection).toBe('single');
+    expect(META.project.database.options.postgres).toBeDefined();
+    expect(META.project.database.options.mysql).toBeDefined();
+  });
 
-    expect(groups.module).toContain('shadcn');
-    expect(groups.orm).toContain('drizzle');
-    expect(groups.database).toContain('postgres');
-    expect(groups.extra).toContain('biome');
+  test('orm category requires database', () => {
+    expect(META.project.orm).toBeDefined();
+    expect(META.project.orm.require).toContain('database');
+    expect(META.project.orm.options.drizzle).toBeDefined();
+    expect(META.project.orm.options.prisma).toBeDefined();
+  });
+
+  test('tooling category is multi-select', () => {
+    expect(META.project.tooling).toBeDefined();
+    expect(META.project.tooling.selection).toBe('multi');
+    expect(META.project.tooling.options.biome).toBeDefined();
+    expect(META.project.tooling.options.husky).toBeDefined();
+  });
+
+  test('project category order is database, orm, tooling', () => {
+    const keys = Object.keys(META.project);
+    expect(keys).toEqual(['database', 'orm', 'tooling']);
   });
 });
 
-describe('isAddonCompatible', () => {
-  test('shadcn is compatible with nextjs', () => {
-    expect(isAddonCompatible(META.addons.shadcn, 'nextjs')).toBe(true);
-  });
-
-  test('shadcn is not compatible with expo', () => {
-    expect(isAddonCompatible(META.addons.shadcn, 'expo')).toBe(false);
-  });
-
-  test('tanstack-query is compatible with all', () => {
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'nextjs')).toBe(true);
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'expo')).toBe(true);
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'hono')).toBe(true);
-  });
-});
-
-describe('areAddonDependenciesMet', () => {
-  test('drizzle requires postgres or mysql', () => {
-    expect(areAddonDependenciesMet(META.addons.drizzle, ['postgres'])).toBe(true);
-    expect(areAddonDependenciesMet(META.addons.drizzle, ['mysql'])).toBe(true);
-    expect(areAddonDependenciesMet(META.addons.drizzle, [])).toBe(false);
+describe('META.stacks validation', () => {
+  test('stacks are unchanged', () => {
+    expect(META.stacks.nextjs).toBeDefined();
+    expect(META.stacks.expo).toBeDefined();
+    expect(META.stacks.hono).toBeDefined();
   });
 });
