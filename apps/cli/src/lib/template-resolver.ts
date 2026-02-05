@@ -1,9 +1,9 @@
 // ABOUTME: Resolves template files to destination paths
-// ABOUTME: Uses frontmatter and META mono config for path resolution
+// ABOUTME: Uses frontmatter and META mono config for libraries and project addons
 
 import { join } from 'node:path';
-import { META } from '@/__meta__';
-import { isAddonCompatible } from '@/lib/addon-utils';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, StackName } from '@/types/meta';
@@ -13,9 +13,9 @@ import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './fro
 
 const VALID_STACKS = Object.keys(META.stacks);
 
-export function resolveAddonDestination(
+export function resolveLibraryDestination(
   relativePath: string,
-  addon: MetaAddon,
+  library: MetaAddon,
   ctx: TemplateContext,
   appName: string,
   frontmatter: TemplateFrontmatter,
@@ -26,21 +26,47 @@ export function resolveAddonDestination(
     return frontmatter.path ?? relativePath;
   }
 
-  const scope = frontmatter.mono?.scope ?? addon.mono?.scope ?? 'app';
+  const scope = frontmatter.mono?.scope ?? library.mono?.scope ?? 'app';
   const filePath = frontmatter.mono?.path ?? relativePath;
 
   switch (scope) {
     case 'root':
       return filePath;
+    case 'pkg': {
+      const name = library.mono?.scope === 'pkg' ? library.mono.name : 'unknown';
+      return `packages/${name}/${filePath}`;
+    }
+    case 'app':
+    default:
+      return `apps/${appName}/${filePath}`;
+  }
+}
 
+export function resolveProjectAddonDestination(
+  relativePath: string,
+  addon: MetaAddon,
+  ctx: TemplateContext,
+  frontmatter: TemplateFrontmatter,
+): string {
+  const isTurborepo = ctx.repo === 'turborepo';
+
+  if (!isTurborepo) {
+    return frontmatter.path ?? relativePath;
+  }
+
+  const scope = frontmatter.mono?.scope ?? addon.mono?.scope ?? 'root';
+  const filePath = frontmatter.mono?.path ?? relativePath;
+
+  switch (scope) {
     case 'pkg': {
       const name = addon.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
       return `packages/${name}/${filePath}`;
     }
-
     case 'app':
+      return `apps/${ctx.apps[0]?.appName ?? ctx.projectName}/${filePath}`;
+    case 'root':
     default:
-      return `apps/${appName}/${filePath}`;
+      return filePath;
   }
 }
 
@@ -65,44 +91,67 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
 
   for (const file of files) {
     const source = join(stackDir, file);
-
     const { only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedFilename = transformFilename(file);
     const destination = resolveStackDestination(transformedFilename, ctx, appName);
-
     templates.push({ source, destination });
   }
 
   return templates;
 }
 
-function resolveTemplatesForAddon(
-  addonName: string,
+function resolveTemplatesForLibrary(
+  libraryName: string,
   appName: string,
   ctx: TemplateContext,
-  stackName?: StackName,
+  stackName: StackName,
 ): TemplateFile[] {
-  const addon = META.addons[addonName];
+  const library = META.libraries[libraryName];
+  if (!library) return [];
+
+  const libraryDir = join(TEMPLATES_DIR, 'libraries', libraryName);
+  const files = scanDirectory(libraryDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(libraryDir, file);
+
+    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
+    if (fileSuffix && fileSuffix !== stackName) continue;
+
+    const { frontmatter, only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
+    const transformedPath = transformFilename(cleanFilename);
+    const destination = resolveLibraryDestination(transformedPath, library, ctx, appName, frontmatter);
+    templates.push({ source, destination });
+  }
+
+  return templates;
+}
+
+function resolveTemplatesForProjectAddon(
+  category: ProjectCategoryName,
+  addonName: string,
+  ctx: TemplateContext,
+): TemplateFile[] {
+  const addon = META.project[category]?.options[addonName];
   if (!addon) return [];
 
-  const addonDir = join(TEMPLATES_DIR, 'addons', addonName);
+  const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
   const files = scanDirectory(addonDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
     const source = join(addonDir, file);
 
-    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
-    if (fileSuffix && stackName && fileSuffix !== stackName) continue;
-
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
 
-    const transformedPath = transformFilename(cleanFilename);
-    const destination = resolveAddonDestination(transformedPath, addon, ctx, appName, frontmatter);
-
+    const transformedPath = transformFilename(file);
+    const destination = resolveProjectAddonDestination(transformedPath, addon, ctx, frontmatter);
     templates.push({ source, destination });
   }
 
@@ -128,16 +177,22 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
   for (const app of ctx.apps) {
     templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx));
 
-    for (const addonName of app.addons) {
-      const addon = META.addons[addonName];
-      if (addon && isAddonCompatible(addon, app.stackName)) {
-        templates.push(...resolveTemplatesForAddon(addonName, app.appName, ctx, app.stackName));
+    for (const libraryName of app.libraries) {
+      const library = META.libraries[libraryName];
+      if (library && isLibraryCompatible(library, app.stackName)) {
+        templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName));
       }
     }
   }
 
-  for (const addonName of ctx.globalAddons) {
-    templates.push(...resolveTemplatesForAddon(addonName, ctx.projectName, ctx));
+  if (ctx.project.database) {
+    templates.push(...resolveTemplatesForProjectAddon('database', ctx.project.database, ctx));
+  }
+  if (ctx.project.orm) {
+    templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
+  }
+  for (const tooling of ctx.project.tooling) {
+    templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));
   }
 
   return templates;
