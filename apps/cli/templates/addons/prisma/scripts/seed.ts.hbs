@@ -1,4 +1,7 @@
-{{!-- @dest:root --}}
+---
+mono:
+  scope: root
+---
 {{#if (eq repo "turborepo")}}
 import { prisma } from '@repo/db';
 {{else}}
