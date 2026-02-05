@@ -1,8 +1,7 @@
 // ABOUTME: Handlebars template engine setup with custom helpers
-// ABOUTME: Provides core helpers for template rendering with unified addons
+// ABOUTME: Provides helpers for libraries and project context
 
 import Handlebars from 'handlebars';
-import { META } from '@/__meta__';
 import type { AppContext, EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
 
 export function registerHandlebarsHelpers(): void {
@@ -10,42 +9,28 @@ export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('ne', (a: unknown, b: unknown) => a !== b);
   Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
   Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some((v) => Boolean(v)));
+
   Handlebars.registerHelper('isTurborepo', function (this: TemplateContext) {
     return this.repo === 'turborepo';
   });
 
+  Handlebars.registerHelper('hasLibrary', function (this: EnrichedTemplateContext, name: string) {
+    return Array.isArray(this.libraries) && this.libraries.includes(name);
+  });
+
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
     switch (category) {
-      case 'module':
-        return Array.isArray(this.addons) && this.addons.includes(value);
       case 'database':
-        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
+        return this.project?.database === value;
       case 'orm':
-        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
-      case 'extra':
-        return Array.isArray(this.globalAddons) && this.globalAddons.includes(value);
-      case 'addon':
-        return (
-          (Array.isArray(this.addons) && this.addons.includes(value)) ||
-          (Array.isArray(this.globalAddons) && this.globalAddons.includes(value))
-        );
+        return this.project?.orm === value;
+      case 'tooling':
+        return Array.isArray(this.project?.tooling) && this.project.tooling.includes(value);
       case 'stack':
         return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === value);
       default:
         return false;
     }
-  });
-
-  Handlebars.registerHelper('hasAddon', function (this: EnrichedTemplateContext, addonName: string) {
-    return (
-      (Array.isArray(this.addons) && this.addons.includes(addonName)) ||
-      (Array.isArray(this.globalAddons) && this.globalAddons.includes(addonName))
-    );
-  });
-
-  Handlebars.registerHelper('hasAddonType', function (this: EnrichedTemplateContext, addonType: string) {
-    const allAddons = [...(this.addons ?? []), ...(this.globalAddons ?? [])];
-    return allAddons.some((name) => META.addons[name]?.type === addonType);
   });
 
   Handlebars.registerHelper('hasContext', function (this: TemplateContext, contextName: keyof TemplateContext) {
@@ -59,9 +44,10 @@ export function registerHandlebarsHelpers(): void {
   });
 
   Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
-    if (this.globalAddons?.includes('postgres')) {
+    if (this.project?.database === 'postgres') {
       return `postgresql://postgres:password@localhost:5432/postgres-${this.projectName}`;
-    } else if (this.globalAddons?.includes('mysql')) {
+    }
+    if (this.project?.database === 'mysql') {
       return `mysql://mysql:password@localhost:3306/mysql-${this.projectName}`;
     }
     return null;

@@ -15,17 +15,17 @@ export default defineConfig({
   schema: './src/lib/db/schema.ts',
   {{/if}}
   out: './drizzle',
-  {{#if (hasAddon "postgres")}}
+  {{#if (has "database" "postgres")}}
   dialect: 'postgresql',
   {{/if}}
-  {{#if (hasAddon "mysql")}}
+  {{#if (has "database" "mysql")}}
   dialect: 'mysql',
   {{/if}}
   dbCredentials: {
-    {{#if (hasAddon "postgres")}}
+    {{#if (has "database" "postgres")}}
     url: process.env.DATABASE_URL,
     {{/if}}
-    {{#if (hasAddon "mysql")}}
+    {{#if (has "database" "mysql")}}
     url: process.env.DATABASE_URL,
     {{/if}}
   },

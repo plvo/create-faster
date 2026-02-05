@@ -1,5 +1,5 @@
-// ABOUTME: Single source of truth for all stacks and addons
-// ABOUTME: Unified addon system - modules, orm, database, extras all share same interface
+// ABOUTME: Single source of truth for all stacks, libraries, and project addons
+// ABOUTME: Libraries are per-app, project categories are project-level with prompt config
 
 import type { Meta } from '@/types/meta';
 
@@ -101,10 +101,8 @@ export const META: Meta = {
     },
   },
 
-  addons: {
-    // ==================== MODULES (per-app selection) ====================
+  libraries: {
     shadcn: {
-      type: 'module',
       label: 'shadcn/ui',
       hint: 'A set of beautifully designed components that you can customize, extend, and build on',
       support: { stacks: ['nextjs', 'tanstack-start'] },
@@ -130,7 +128,6 @@ export const META: Meta = {
       },
     },
     'next-themes': {
-      type: 'module',
       label: 'Next Themes',
       hint: 'A library for managing themes in Next.js',
       support: { stacks: ['nextjs'] },
@@ -141,7 +138,6 @@ export const META: Meta = {
       },
     },
     mdx: {
-      type: 'module',
       label: 'MDX',
       hint: 'Markdown-based content',
       support: { stacks: ['nextjs'] },
@@ -158,17 +154,16 @@ export const META: Meta = {
       },
     },
     pwa: {
-      type: 'module',
       label: 'PWA',
       hint: 'Progressive Web App support',
       support: { stacks: ['nextjs'] },
       packageJson: {},
     },
     'better-auth': {
-      type: 'module',
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
-      support: { stacks: ['nextjs'], addons: ['drizzle', 'prisma'] },
+      support: { stacks: ['nextjs'] },
+      require: { orm: ['drizzle', 'prisma'] },
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
@@ -181,7 +176,6 @@ export const META: Meta = {
       },
     },
     'tanstack-query': {
-      type: 'module',
       label: 'TanStack Query',
       hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
       support: { stacks: 'all' },
@@ -192,7 +186,6 @@ export const META: Meta = {
       },
     },
     'tanstack-devtools': {
-      type: 'module',
       label: 'TanStack Devtools',
       hint: 'Devtools panel for TanStack libraries and other custom devtools',
       support: { stacks: ['nextjs', 'tanstack-start'] },
@@ -204,7 +197,6 @@ export const META: Meta = {
       },
     },
     'react-hook-form': {
-      type: 'module',
       label: 'React Hook Form',
       hint: 'Performant, flexible and extensible forms with easy-to-use validation',
       support: { stacks: ['nextjs', 'tanstack-start'] },
@@ -216,7 +208,6 @@ export const META: Meta = {
       },
     },
     'tanstack-form': {
-      type: 'module',
       label: 'TanStack Form',
       hint: 'Headless UI for building performant and type-safe forms',
       support: { stacks: ['nextjs', 'tanstack-start'] },
@@ -227,7 +218,6 @@ export const META: Meta = {
       },
     },
     nativewind: {
-      type: 'module',
       label: 'NativeWind',
       hint: 'A library for styling React Native applications with Tailwind CSS',
       support: { stacks: ['expo'] },
@@ -241,7 +231,6 @@ export const META: Meta = {
       },
     },
     'aws-lambda': {
-      type: 'module',
       label: 'AWS Lambda',
       hint: 'Serverless deployment for Hono',
       support: { stacks: ['hono'] },
@@ -251,115 +240,124 @@ export const META: Meta = {
         },
       },
     },
+  },
 
-    // ==================== ORM (global selection) ====================
-    drizzle: {
-      type: 'orm',
-      label: 'Drizzle',
-      hint: 'Lightweight TypeScript ORM',
-      support: { addons: ['postgres', 'mysql'] },
-      mono: { scope: 'pkg', name: 'db' },
-      packageJson: {
-        dependencies: {
-          'drizzle-orm': '^0.38.3',
+  project: {
+    database: {
+      prompt: 'Include a database?',
+      selection: 'single',
+      options: {
+        postgres: {
+          label: 'PostgreSQL',
+          hint: 'Relational database',
+          mono: { scope: 'root' },
+          packageJson: {
+            dependencies: {
+              pg: '^8.13.1',
+            },
+            devDependencies: {
+              '@types/pg': '^8.11.10',
+            },
+          },
         },
-        devDependencies: {
-          'drizzle-kit': '^0.30.1',
-        },
-        scripts: {
-          'db:generate': 'drizzle-kit generate',
-          'db:migrate': 'drizzle-kit migrate',
-          'db:push': 'drizzle-kit push',
-          'db:studio': 'drizzle-kit studio',
-          'db:seed': 'bun run scripts/seed.ts',
-        },
-        exports: {
-          '.': './index.ts',
-          './schema': './schema.ts',
-          './types': './types.ts',
-        },
-      },
-    },
-    prisma: {
-      type: 'orm',
-      label: 'Prisma',
-      hint: 'Type-safe ORM with migrations',
-      support: { addons: ['postgres', 'mysql'] },
-      mono: { scope: 'pkg', name: 'db' },
-      packageJson: {
-        dependencies: {
-          '@prisma/client': '^6.13.0',
-        },
-        devDependencies: {
-          prisma: '^6.13.0',
-        },
-        scripts: {
-          'db:generate': 'prisma generate',
-          'db:migrate': 'prisma migrate dev',
-          'db:push': 'prisma db push',
-          'db:studio': 'prisma studio',
-          'db:seed': 'bun run scripts/seed.ts',
-        },
-        exports: {
-          '.': './index.ts',
+        mysql: {
+          label: 'MySQL',
+          hint: 'Relational database',
+          mono: { scope: 'root' },
+          packageJson: {
+            dependencies: {
+              mysql2: '^3.11.5',
+            },
+          },
         },
       },
     },
-
-    // ==================== DATABASE (global selection) ====================
-    postgres: {
-      type: 'database',
-      label: 'PostgreSQL',
-      hint: 'Relational database',
-      mono: { scope: 'root' },
-      packageJson: {
-        dependencies: {
-          pg: '^8.13.1',
+    orm: {
+      prompt: 'Configure an ORM?',
+      selection: 'single',
+      require: ['database'],
+      options: {
+        drizzle: {
+          label: 'Drizzle',
+          hint: 'Lightweight TypeScript ORM',
+          mono: { scope: 'pkg', name: 'db' },
+          packageJson: {
+            dependencies: {
+              'drizzle-orm': '^0.38.3',
+            },
+            devDependencies: {
+              'drizzle-kit': '^0.30.1',
+            },
+            scripts: {
+              'db:generate': 'drizzle-kit generate',
+              'db:migrate': 'drizzle-kit migrate',
+              'db:push': 'drizzle-kit push',
+              'db:studio': 'drizzle-kit studio',
+              'db:seed': 'bun run scripts/seed.ts',
+            },
+            exports: {
+              '.': './index.ts',
+              './schema': './schema.ts',
+              './types': './types.ts',
+            },
+          },
         },
-        devDependencies: {
-          '@types/pg': '^8.11.10',
+        prisma: {
+          label: 'Prisma',
+          hint: 'Type-safe ORM with migrations',
+          mono: { scope: 'pkg', name: 'db' },
+          packageJson: {
+            dependencies: {
+              '@prisma/client': '^6.13.0',
+            },
+            devDependencies: {
+              prisma: '^6.13.0',
+            },
+            scripts: {
+              'db:generate': 'prisma generate',
+              'db:migrate': 'prisma migrate dev',
+              'db:push': 'prisma db push',
+              'db:studio': 'prisma studio',
+              'db:seed': 'bun run scripts/seed.ts',
+            },
+            exports: {
+              '.': './index.ts',
+            },
+          },
         },
       },
     },
-    mysql: {
-      type: 'database',
-      label: 'MySQL',
-      hint: 'Relational database',
-      mono: { scope: 'root' },
-      packageJson: {
-        dependencies: {
-          mysql2: '^3.11.5',
+    tooling: {
+      prompt: 'Add any extras?',
+      selection: 'multi',
+      options: {
+        biome: {
+          label: 'Biome',
+          hint: 'Fast linter & formatter',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              '@biomejs/biome': '^2.3.11',
+            },
+            scripts: {
+              format: 'biome format --write .',
+              lint: 'biome lint',
+            },
+          },
         },
-      },
-    },
-
-    // ==================== EXTRAS (global selection) ====================
-    biome: {
-      type: 'extra',
-      label: 'Biome',
-      hint: 'Fast linter & formatter',
-      mono: { scope: 'root' },
-      packageJson: {
-        devDependencies: {
-          '@biomejs/biome': '^2.3.11',
-        },
-        scripts: {
-          format: 'biome format --write .',
-          lint: 'biome lint',
-        },
-      },
-    },
-    husky: {
-      type: 'extra',
-      label: 'Husky',
-      hint: 'Git hooks',
-      mono: { scope: 'root' },
-      packageJson: {
-        devDependencies: {
-          husky: '^9',
-        },
-        scripts: {
-          prepare: 'husky',
+        husky: {
+          label: 'Husky',
+          hint: 'Git hooks',
+          require: { git: true },
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              husky: '^9',
+            },
+            scripts: {
+              prepare: 'husky',
+            },
+          },
         },
       },
     },
@@ -378,3 +376,5 @@ export const META: Meta = {
     },
   },
 } as const satisfies Meta;
+
+export type ProjectCategoryName = keyof typeof META.project;

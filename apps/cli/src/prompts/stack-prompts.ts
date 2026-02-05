@@ -1,13 +1,13 @@
-// ABOUTME: Custom prompts for stack and addon selection
-// ABOUTME: Groups addons by type for better UX
+// ABOUTME: Custom prompts for stack and library selection
+// ABOUTME: Uses META.project for declarative prompt configuration
 
 import { isCancel, SelectPrompt } from '@clack/core';
 import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
-import { META } from '@/__meta__';
-import { getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isLibraryCompatible } from '@/lib/addon-utils';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
-import type { StackName } from '@/types/meta';
+import type { MetaProjectCategory, StackName } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
@@ -53,30 +53,26 @@ export async function selectStackPrompt(message: string): Promise<string> {
   return result;
 }
 
-export async function multiselectAddonsPrompt(
+export async function multiselectLibrariesPrompt(
   stackName: StackName,
   message: string,
   required: boolean,
 ): Promise<string[]> {
-  const addonGroups = getAddonsByType(META);
-  const moduleAddons = addonGroups.module ?? [];
+  const compatibleLibraries = Object.entries(META.libraries)
+    .filter(([, lib]) => isLibraryCompatible(lib, stackName))
+    .map(([name]) => name);
 
-  const compatibleAddons = moduleAddons.filter((addonName) => {
-    const addon = META.addons[addonName];
-    return addon && isAddonCompatible(addon, stackName);
-  });
-
-  if (compatibleAddons.length === 0) {
+  if (compatibleLibraries.length === 0) {
     return [];
   }
 
   const groupedOptions: Record<string, Option<string>[]> = {
-    Modules: compatibleAddons.map((addonName) => {
-      const addon = META.addons[addonName];
+    Libraries: compatibleLibraries.map((libraryName) => {
+      const library = META.libraries[libraryName]!;
       return {
-        value: addonName,
-        label: addon.label,
-        hint: addon.hint,
+        value: libraryName,
+        label: library.label,
+        hint: library.hint,
       };
     }),
   };
@@ -96,28 +92,18 @@ export async function multiselectAddonsPrompt(
   return result;
 }
 
-export async function selectGlobalAddonPrompt(type: 'orm' | 'database', message: string): Promise<string | undefined> {
-  const addonGroups = getAddonsByType(META);
-  const addons = addonGroups[type] ?? [];
-
-  if (addons.length === 0) {
-    return undefined;
-  }
-
+export async function promptProjectCategorySingle(category: MetaProjectCategory): Promise<string | undefined> {
   const options: { value: string | undefined; label: string; hint?: string }[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
-    ...addons.map((addonName) => {
-      const addon = META.addons[addonName];
-      return {
-        value: addonName,
-        label: addon.label,
-        hint: addon.hint,
-      };
-    }),
+    ...Object.entries(category.options).map(([name, addon]) => ({
+      value: name,
+      label: addon.label,
+      hint: addon.hint,
+    })),
   ];
 
   const result = await select({
-    message,
+    message: category.prompt,
     options,
   });
 
@@ -129,33 +115,24 @@ export async function selectGlobalAddonPrompt(type: 'orm' | 'database', message:
   return result;
 }
 
-export async function multiselectGlobalAddonsPrompt(
-  type: 'extra',
-  message: string,
-  required: boolean,
+export async function promptProjectCategoryMulti(
+  category: MetaProjectCategory,
+  categoryName: string,
 ): Promise<string[]> {
-  const addonGroups = getAddonsByType(META);
-  const addons = addonGroups[type] ?? [];
-
-  if (addons.length === 0) {
-    return [];
-  }
+  const groupLabel = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
 
   const groupedOptions: Record<string, Option<string>[]> = {
-    [type.charAt(0).toUpperCase() + type.slice(1)]: addons.map((addonName) => {
-      const addon = META.addons[addonName];
-      return {
-        value: addonName,
-        label: addon.label,
-        hint: addon.hint,
-      };
-    }),
+    [groupLabel]: Object.entries(category.options).map(([name, addon]) => ({
+      value: name,
+      label: addon.label,
+      hint: addon.hint,
+    })),
   };
 
   const result = await groupMultiselect({
     options: groupedOptions,
-    message,
-    required,
+    message: category.prompt,
+    required: false,
     selectableGroups: false,
   });
 
@@ -165,4 +142,13 @@ export async function multiselectGlobalAddonsPrompt(
   }
 
   return result;
+}
+
+export async function promptProjectCategory(categoryName: ProjectCategoryName): Promise<string | string[] | undefined> {
+  const category = META.project[categoryName];
+
+  if (category.selection === 'single') {
+    return promptProjectCategorySingle(category);
+  }
+  return promptProjectCategoryMulti(category, categoryName);
 }

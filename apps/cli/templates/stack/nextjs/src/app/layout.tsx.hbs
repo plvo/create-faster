@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
-{{#if (has "module" "tanstack-devtools")}}
+{{#if (hasLibrary "tanstack-devtools")}}
 import { TanStackDevtools } from '@tanstack/react-devtools';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 {{/if}}
@@ -35,7 +35,7 @@ export default function RootLayout({
     <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
           <main>{children}</main>
-          {{#if (has "module" "tanstack-devtools")}}
+          {{#if (hasLibrary "tanstack-devtools")}}
           {process.env.NODE_ENV === 'development' && (
             <TanStackDevtools
               config=\{{ position: 'top-left' }}

@@ -2,7 +2,7 @@
 path: src/lib/db/types.ts
 ---
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
 import type { postTable, userAccountTable, userSessionTable, userTable, userVerificationTable } from './schema';
 {{else}}
 import type { postTable, userTable } from './schema';
@@ -24,7 +24,7 @@ export type PostWithAuthor = Post & {
   author: User;
 };
 
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
 export type UserWithRelations = User & {
   accounts: UserAccount[];
   sessions: UserSession[];

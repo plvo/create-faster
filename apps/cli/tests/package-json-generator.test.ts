@@ -1,11 +1,10 @@
 // ABOUTME: Tests for programmatic package.json generation
-// ABOUTME: Tests merge logic with unified addons
+// ABOUTME: Tests merge logic with libraries and project addons
 
 import { describe, expect, test } from 'bun:test';
 import {
   generateAllPackageJsons,
   generateAppPackageJson,
-  generatePackagePackageJson,
   mergePackageJsonConfigs,
 } from '../src/lib/package-json-generator';
 import type { TemplateContext } from '../src/types/ctx';
@@ -27,10 +26,10 @@ describe('generateAppPackageJson (turborepo)', () => {
     projectName: 'test-project',
     repo: 'turborepo',
     apps: [
-      { appName: 'web', stackName: 'nextjs', addons: ['shadcn'] },
-      { appName: 'api', stackName: 'hono', addons: [] },
+      { appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
     ],
-    globalAddons: ['drizzle', 'postgres'],
+    project: { database: 'postgres', orm: 'drizzle', tooling: [] },
     git: true,
   };
 
@@ -46,13 +45,13 @@ describe('generateAppPackageJson (turborepo)', () => {
     expect(result.content.dependencies?.react).toBeDefined();
   });
 
-  test('references workspace packages for addons with package destination', () => {
+  test('references workspace packages for libraries with package destination', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.dependencies?.['@repo/ui']).toBe('*');
     expect(result.content.dependencies?.['radix-ui']).toBeUndefined();
   });
 
-  test('references @repo/db when orm addon is selected', () => {
+  test('references @repo/db when orm is selected', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.dependencies?.['@repo/db']).toBe('*');
   });
@@ -67,8 +66,8 @@ describe('generateAppPackageJson (single repo)', () => {
   const ctx: TemplateContext = {
     projectName: 'test-single',
     repo: 'single',
-    apps: [{ appName: 'test-single', stackName: 'nextjs', addons: ['shadcn'] }],
-    globalAddons: ['drizzle', 'postgres', 'biome'],
+    apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
+    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
     git: true,
   };
 
@@ -78,7 +77,7 @@ describe('generateAppPackageJson (single repo)', () => {
     expect(result.content.name).toBe('test-single');
   });
 
-  test('includes addon dependencies directly (no workspace)', () => {
+  test('includes library dependencies directly (no workspace)', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.dependencies?.['radix-ui']).toBeDefined();
     expect(result.content.dependencies?.['@repo/ui']).toBeUndefined();
@@ -91,7 +90,7 @@ describe('generateAppPackageJson (single repo)', () => {
     expect(result.content.scripts?.['db:generate']).toBeDefined();
   });
 
-  test('includes extras', () => {
+  test('includes tooling extras', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
     expect(result.content.scripts?.format).toBeDefined();
@@ -104,10 +103,10 @@ describe('generateAllPackageJsons', () => {
       projectName: 'test',
       repo: 'turborepo',
       apps: [
-        { appName: 'web', stackName: 'nextjs', addons: ['shadcn'] },
-        { appName: 'api', stackName: 'hono', addons: [] },
+        { appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
       ],
-      globalAddons: ['drizzle', 'postgres'],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: true,
     };
 
@@ -125,8 +124,8 @@ describe('generateAllPackageJsons', () => {
     const ctx: TemplateContext = {
       projectName: 'test-single',
       repo: 'single',
-      apps: [{ appName: 'test-single', stackName: 'nextjs', addons: [] }],
-      globalAddons: [],
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
       git: true,
     };
 

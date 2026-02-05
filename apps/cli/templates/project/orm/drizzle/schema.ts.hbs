@@ -1,10 +1,10 @@
 ---
 path: src/lib/db/schema.ts
 ---
-{{#if (hasAddon "postgres")}}
+{{#if (has "database" "postgres")}}
 import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
-{{#if (hasAddon "mysql")}}
+{{#if (has "database" "mysql")}}
 import { mysqlTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
 import { relations } from 'drizzle-orm';
@@ -14,10 +14,10 @@ const timeColumns = {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 };
 
-{{#if (hasAddon "postgres")}}
+{{#if (has "database" "postgres")}}
 export const userTable = pgTable('users', {
 {{/if}}
-{{#if (hasAddon "mysql")}}
+{{#if (has "database" "mysql")}}
 export const userTable = mysqlTable('users', {
 {{/if}}
   id: uuid('id').defaultRandom().primaryKey(),
@@ -33,14 +33,14 @@ export const userTable = mysqlTable('users', {
 });
 
 export const userTableRelations = relations(userTable, ({ many }) => ({
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
   accounts: many(userAccountTable),
   sessions: many(userSessionTable),
 {{/if}}
   posts: many(postTable),
 }));
 
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
 export const userSessionTable = pgTable('user_sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -97,10 +97,10 @@ export const userVerificationTable = pgTable('user_verifications', {
 });
 {{/if}}
 
-{{#if (hasAddon "postgres")}}
+{{#if (has "database" "postgres")}}
 export const postTable = pgTable('posts', {
 {{/if}}
-{{#if (hasAddon "mysql")}}
+{{#if (has "database" "mysql")}}
 export const postTable = mysqlTable('posts', {
 {{/if}}
   id: uuid('id').defaultRandom().primaryKey(),

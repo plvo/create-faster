@@ -1,9 +1,9 @@
-{{#if (has "module" "aws-lambda")}}
+{{#if (hasLibrary "aws-lambda")}}
 import { handle } from 'hono/aws-lambda';
 {{/if}}
 import app from './app';
 
-{{#if (has "module" "aws-lambda")}}
+{{#if (hasLibrary "aws-lambda")}}
 export const handler = handle(app);
 {{else}}
 export default app;

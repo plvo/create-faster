@@ -112,7 +112,7 @@ describe('removeFrontmatter', () => {
 
 describe('readFrontmatterFile', () => {
   test('reads and parses frontmatter from file', () => {
-    const filepath = join(TEMPLATES_DIR, 'addons/drizzle/tsconfig.json.hbs');
+    const filepath = join(TEMPLATES_DIR, 'project/orm/drizzle/tsconfig.json.hbs');
     const result = readFrontmatterFile(filepath);
     expect(result.data.only).toBe('mono');
     expect(result.content).toContain('"extends"');

@@ -1,18 +1,21 @@
 // ABOUTME: CLI flags parser for non-interactive mode
-// ABOUTME: Parses --app and --addon flags into TemplateContext
+/** biome-ignore-all lint/style/noNonNullAssertion: <We know the project is defined> */
+// ABOUTME: Parses --app and project category flags into TemplateContext
 
 import { Command } from 'commander';
 import color from 'picocolors';
-import { META } from '@/__meta__';
-import { areAddonDependenciesMet, getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
-import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
   app?: string[];
-  addon?: string[];
+  database?: string;
+  orm?: string;
+  tooling?: string[];
   git?: boolean;
   pm?: string;
   install?: boolean;
@@ -21,10 +24,10 @@ interface ParsedFlags {
 export function parseFlags(): Partial<TemplateContext> {
   const program = new Command();
 
-  const addonGroups = getAddonsByType(META);
-  const ormNames = addonGroups.orm?.join(', ') ?? '';
-  const dbNames = addonGroups.database?.join(', ') ?? '';
-  const extraNames = addonGroups.extra?.join(', ') ?? '';
+  const ormNames = Object.keys(META.project.orm.options).join(', ');
+  const dbNames = Object.keys(META.project.database.options).join(', ');
+  const toolingNames = Object.keys(META.project.tooling.options).join(', ');
+  const libraryNames = Object.keys(META.libraries).join(', ');
 
   program
     .addHelpText('before', ASCII)
@@ -34,8 +37,10 @@ export function parseFlags(): Partial<TemplateContext> {
     .argument('[project-name]', 'Name of the project to create')
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
-    .option('--app <name:stack:addons>', 'Add app (repeatable)', collect, [])
-    .option('--addon <name>', 'Add global addon (repeatable)', collect, [])
+    .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect, [])
+    .option('--database <name>', `Database provider (${dbNames})`)
+    .option('--orm <name>', `ORM provider (${ormNames})`)
+    .option('--tooling <name>', 'Add tooling (repeatable)', collect, [])
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
@@ -46,16 +51,17 @@ export function parseFlags(): Partial<TemplateContext> {
 ${color.bold('Examples:')}
   ${color.gray('Single app:')}
     $ ${color.blue('npx create-faster myapp')} --app myapp:nextjs:shadcn,tanstack-query
-    $ ${color.blue('npx create-faster mysaas')} --app mysaas:nextjs --addon drizzle --addon postgres --git
+    $ ${color.blue('npx create-faster mysaas')} --app mysaas:nextjs --database postgres --orm drizzle --git
 
   ${color.gray('Multi apps (turborepo):')}
     $ ${color.blue('npx create-faster myapp')} --app web:nextjs:shadcn --app mobile:expo:nativewind
-    $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --addon drizzle --addon postgres
+    $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --database postgres --orm drizzle
 
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
+  ${color.gray('Available libraries:')} ${libraryNames}
   ${color.gray('Available ORMs:')} ${ormNames}
   ${color.gray('Available databases:')} ${dbNames}
-  ${color.gray('Available extras:')} ${extraNames}
+  ${color.gray('Available tooling:')} ${toolingNames}
 `,
     )
     .allowUnknownOption(false)
@@ -80,14 +86,40 @@ ${color.bold('Examples:')}
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  if (flags.addon && flags.addon.length > 0) {
-    partial.globalAddons = [];
-    for (const addonName of flags.addon ?? []) {
-      if (!META.addons[addonName]) {
-        printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+  const hasProjectFlags = flags.database || flags.orm || (flags.tooling && flags.tooling.length > 0);
+  if (hasProjectFlags) {
+    partial.project = { tooling: [] };
+  }
+
+  if (flags.database) {
+    if (!META.project.database.options[flags.database]) {
+      printError(
+        `Invalid database '${flags.database}'`,
+        `Available databases: ${Object.keys(META.project.database.options).join(', ')}`,
+      );
+      process.exit(1);
+    }
+    partial.project!.database = flags.database;
+  }
+
+  if (flags.orm) {
+    if (!META.project.orm.options[flags.orm]) {
+      printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${Object.keys(META.project.orm.options).join(', ')}`);
+      process.exit(1);
+    }
+    partial.project!.orm = flags.orm;
+  }
+
+  if (flags.tooling && flags.tooling.length > 0) {
+    for (const toolingName of flags.tooling) {
+      if (!META.project.tooling.options[toolingName]) {
+        printError(
+          `Invalid tooling '${toolingName}'`,
+          `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
+        );
         process.exit(1);
       }
-      partial.globalAddons.push(addonName);
+      partial.project!.tooling.push(toolingName);
     }
   }
 
@@ -123,7 +155,7 @@ function parseAppFlag(appFlag: string): AppContext {
   if (parts.length < 2 || parts.length > 3) {
     printError(
       `Invalid app format '${appFlag}'`,
-      'Expected format: name:stack or name:stack:addon1,addon2',
+      'Expected format: name:stack or name:stack:library1,library2',
       'Examples:',
       '  --app web:nextjs',
       '  --app web:nextjs:shadcn,mdx',
@@ -131,7 +163,7 @@ function parseAppFlag(appFlag: string): AppContext {
     process.exit(1);
   }
 
-  const [appName, stackName, addonsStr] = parts as [string, string, string | undefined];
+  const [appName, stackName, librariesStr] = parts as [string, string, string | undefined];
 
   if (!META.stacks[stackName as StackName]) {
     printError(
@@ -141,27 +173,19 @@ function parseAppFlag(appFlag: string): AppContext {
     process.exit(1);
   }
 
-  const addons: string[] = addonsStr ? addonsStr.split(',').map((m) => m.trim()) : [];
+  const libraries: string[] = librariesStr ? librariesStr.split(',').map((m) => m.trim()) : [];
 
-  for (const addonName of addons) {
-    const addon = META.addons[addonName];
-    if (!addon) {
-      printError(`Invalid addon '${addonName}'`, `Available addons: ${Object.keys(META.addons).join(', ')}`);
+  for (const libraryName of libraries) {
+    const library = META.libraries[libraryName];
+    if (!library) {
+      printError(`Invalid library '${libraryName}'`, `Available libraries: ${Object.keys(META.libraries).join(', ')}`);
       process.exit(1);
     }
-    if (addon.type !== 'module') {
-      printError(
-        `Addon '${addonName}' is not a module`,
-        'Use --addon flag for orm, database, and extras',
-        `Example: --addon ${addonName}`,
-      );
-      process.exit(1);
-    }
-    if (!isAddonCompatible(addon, stackName as StackName)) {
+    if (!isLibraryCompatible(library, stackName as StackName)) {
       const compatibleStacks =
-        addon.support?.stacks === 'all' ? 'all' : ((addon.support?.stacks as string[])?.join(', ') ?? 'none');
+        library.support?.stacks === 'all' ? 'all' : ((library.support?.stacks as string[])?.join(', ') ?? 'none');
       printError(
-        `Addon '${addonName}' is not compatible with stack '${stackName}'`,
+        `Library '${libraryName}' is not compatible with stack '${stackName}'`,
         `Compatible stacks: ${compatibleStacks}`,
       );
       process.exit(1);
@@ -171,26 +195,42 @@ function parseAppFlag(appFlag: string): AppContext {
   return {
     appName: appName.trim(),
     stackName: stackName as StackName,
-    addons,
+    libraries,
   };
 }
 
 function validateContext(partial: Partial<TemplateContext>): void {
-  const globalAddons = partial.globalAddons ?? [];
+  const project = partial.project ?? { tooling: [] };
 
-  for (const addonName of globalAddons) {
-    const addon = META.addons[addonName];
-    if (addon && !areAddonDependenciesMet(addon, globalAddons)) {
-      const required = addon.support?.addons?.join(' or ') ?? '';
-      printError(
-        `Addon '${addonName}' requires one of: ${required}`,
-        `Add --addon ${addon.support?.addons?.[0] ?? 'postgres'}`,
-      );
-      process.exit(1);
+  if (project.orm && !project.database) {
+    printError('ORM requires a database', 'Add --database postgres or --database mysql');
+    process.exit(1);
+  }
+
+  for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
+    const category = META.project[categoryName];
+    if (category.selection === 'single') {
+      const value = project[categoryName as keyof ProjectContext] as string | undefined;
+      if (value) {
+        const addon = category.options[value];
+        if (addon && !isRequirementMet(addon.require, partial as TemplateContext)) {
+          printError(`${categoryName} '${value}' has unmet requirements`, 'Check dependencies and try again');
+          process.exit(1);
+        }
+      }
+    } else {
+      const values = (project[categoryName as keyof ProjectContext] as string[] | undefined) ?? [];
+      for (const value of values) {
+        const addon = category.options[value];
+        if (addon && !isRequirementMet(addon.require, partial as TemplateContext)) {
+          printError(`${categoryName} '${value}' has unmet requirements`, 'Check dependencies and try again');
+          process.exit(1);
+        }
+      }
     }
   }
 
-  if (globalAddons.includes('husky') && !partial.git) {
+  if (project.tooling.includes('husky') && !partial.git) {
     printError('Husky requires git', 'Add --git flag');
     process.exit(1);
   }

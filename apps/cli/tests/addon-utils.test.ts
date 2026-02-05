@@ -1,65 +1,100 @@
 // ABOUTME: Tests for addon utility functions
-// ABOUTME: Tests grouping, compatibility, and dependency checking
+// ABOUTME: Tests compatibility checking for libraries and requirement validation
 
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
-import {
-  areAddonDependenciesMet,
-  clearAddonGroupsCache,
-  getAddonsByType,
-  isAddonCompatible,
-} from '../src/lib/addon-utils';
+import { getProjectAddon, isLibraryCompatible, isRequirementMet } from '../src/lib/addon-utils';
+import type { TemplateContext } from '../src/types/ctx';
 
-beforeEach(() => {
-  clearAddonGroupsCache();
-});
-
-describe('getAddonsByType', () => {
-  test('groups addons correctly', () => {
-    const groups = getAddonsByType(META);
-
-    expect(groups.module).toContain('shadcn');
-    expect(groups.orm).toContain('drizzle');
-    expect(groups.database).toContain('postgres');
-    expect(groups.extra).toContain('biome');
-  });
-
-  test('caches result', () => {
-    const groups1 = getAddonsByType(META);
-    const groups2 = getAddonsByType(META);
-    expect(groups1).toBe(groups2);
-  });
-});
-
-describe('isAddonCompatible', () => {
+describe('isLibraryCompatible', () => {
   test('shadcn is compatible with nextjs', () => {
-    expect(isAddonCompatible(META.addons.shadcn, 'nextjs')).toBe(true);
+    expect(isLibraryCompatible(META.libraries.shadcn, 'nextjs')).toBe(true);
   });
 
   test('shadcn is not compatible with expo', () => {
-    expect(isAddonCompatible(META.addons.shadcn, 'expo')).toBe(false);
+    expect(isLibraryCompatible(META.libraries.shadcn, 'expo')).toBe(false);
   });
 
   test('tanstack-query is compatible with all', () => {
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'nextjs')).toBe(true);
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'expo')).toBe(true);
-    expect(isAddonCompatible(META.addons['tanstack-query'], 'hono')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'nextjs')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'expo')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'hono')).toBe(true);
   });
 
-  test('addon without support.stacks is compatible with all', () => {
-    expect(isAddonCompatible(META.addons.biome, 'nextjs')).toBe(true);
-    expect(isAddonCompatible(META.addons.biome, 'expo')).toBe(true);
+  test('nativewind is only compatible with expo', () => {
+    expect(isLibraryCompatible(META.libraries.nativewind, 'expo')).toBe(true);
+    expect(isLibraryCompatible(META.libraries.nativewind, 'nextjs')).toBe(false);
   });
 });
 
-describe('areAddonDependenciesMet', () => {
-  test('drizzle requires postgres or mysql', () => {
-    expect(areAddonDependenciesMet(META.addons.drizzle, ['postgres'])).toBe(true);
-    expect(areAddonDependenciesMet(META.addons.drizzle, ['mysql'])).toBe(true);
-    expect(areAddonDependenciesMet(META.addons.drizzle, [])).toBe(false);
+describe('getProjectAddon', () => {
+  test('gets addon from database category', () => {
+    const addon = getProjectAddon('database', 'postgres');
+    expect(addon?.label).toBe('PostgreSQL');
   });
 
-  test('addon without dependencies always satisfied', () => {
-    expect(areAddonDependenciesMet(META.addons.biome, [])).toBe(true);
+  test('gets addon from orm category', () => {
+    const addon = getProjectAddon('orm', 'drizzle');
+    expect(addon?.label).toBe('Drizzle');
+  });
+
+  test('gets addon from tooling category', () => {
+    const addon = getProjectAddon('tooling', 'biome');
+    expect(addon?.label).toBe('Biome');
+  });
+
+  test('returns undefined for unknown addon', () => {
+    const addon = getProjectAddon('database', 'unknown');
+    expect(addon).toBeUndefined();
+  });
+
+  test('returns undefined for unknown category', () => {
+    const addon = getProjectAddon('unknown', 'postgres');
+    expect(addon).toBeUndefined();
+  });
+});
+
+describe('isRequirementMet', () => {
+  const baseCtx: TemplateContext = {
+    projectName: 'test',
+    repo: 'single',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    git: false,
+  };
+
+  test('no require means always satisfied', () => {
+    expect(isRequirementMet(undefined, baseCtx)).toBe(true);
+    expect(isRequirementMet({}, baseCtx)).toBe(true);
+  });
+
+  test('git requirement checks ctx.git', () => {
+    expect(isRequirementMet({ git: true }, { ...baseCtx, git: false })).toBe(false);
+    expect(isRequirementMet({ git: true }, { ...baseCtx, git: true })).toBe(true);
+  });
+
+  test('orm requirement checks ctx.project.orm', () => {
+    const ctxWithDrizzle = { ...baseCtx, project: { orm: 'drizzle', tooling: [] } };
+    const ctxWithPrisma = { ...baseCtx, project: { orm: 'prisma', tooling: [] } };
+    const ctxNoOrm = baseCtx;
+
+    expect(isRequirementMet({ orm: ['drizzle', 'prisma'] }, ctxWithDrizzle)).toBe(true);
+    expect(isRequirementMet({ orm: ['drizzle', 'prisma'] }, ctxWithPrisma)).toBe(true);
+    expect(isRequirementMet({ orm: ['drizzle', 'prisma'] }, ctxNoOrm)).toBe(false);
+  });
+
+  test('database requirement checks ctx.project.database', () => {
+    const ctxWithDb = { ...baseCtx, project: { database: 'postgres', tooling: [] } };
+    expect(isRequirementMet({ database: ['postgres'] }, ctxWithDb)).toBe(true);
+    expect(isRequirementMet({ database: ['mysql'] }, ctxWithDb)).toBe(false);
+  });
+
+  test('libraries requirement checks any app has library', () => {
+    const ctxWithLib = {
+      ...baseCtx,
+      apps: [{ appName: 'web', stackName: 'nextjs' as const, libraries: ['shadcn'] }],
+    };
+    expect(isRequirementMet({ libraries: ['shadcn'] }, ctxWithLib)).toBe(true);
+    expect(isRequirementMet({ libraries: ['mdx'] }, ctxWithLib)).toBe(false);
   });
 });

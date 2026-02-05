@@ -1,10 +1,10 @@
 // ABOUTME: Programmatic generation of package.json files
-// ABOUTME: Merges dependencies from META based on unified addon system
+// ABOUTME: Merges dependencies from META for libraries and project addons
 
 import { META } from '@/__meta__';
-import { getAddonsByType, isAddonCompatible } from '@/lib/addon-utils';
+import { isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { PackageJsonConfig } from '@/types/meta';
+import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
 
 export interface PackageJson {
   name: string;
@@ -70,9 +70,16 @@ function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
   return sorted;
 }
 
-function getPackageName(addonName: string): string | null {
-  const addon = META.addons[addonName];
-  if (addon?.mono?.scope === 'pkg') {
+function getLibraryPackageName(libraryName: string): string | null {
+  const library = META.libraries[libraryName];
+  if (library?.mono?.scope === 'pkg') {
+    return library.mono.name;
+  }
+  return null;
+}
+
+function getProjectAddonPackageName(addon: MetaAddon): string | null {
+  if (addon.mono?.scope === 'pkg') {
     return addon.mono.name;
   }
   return null;
@@ -85,42 +92,51 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   let merged = mergePackageJsonConfigs(stack.packageJson);
 
-  for (const addonName of app.addons) {
-    const addon = META.addons[addonName];
-    if (!addon || !isAddonCompatible(addon, app.stackName)) continue;
+  // Process per-app libraries
+  for (const libraryName of app.libraries) {
+    const library = META.libraries[libraryName];
+    if (!library || !isLibraryCompatible(library, app.stackName)) continue;
 
-    const packageName = getPackageName(addonName);
+    const packageName = getLibraryPackageName(libraryName);
     if (packageName && isTurborepo) {
       merged.dependencies = {
         ...merged.dependencies,
         [`@repo/${packageName}`]: '*',
       };
     } else {
-      merged = mergePackageJsonConfigs(merged, addon.packageJson);
+      merged = mergePackageJsonConfigs(merged, library.packageJson);
     }
   }
 
-  for (const addonName of ctx.globalAddons) {
-    const addon = META.addons[addonName];
-    if (!addon) continue;
-
-    const packageName = getPackageName(addonName);
-
-    if (packageName && isTurborepo) {
-      merged.dependencies = {
-        ...merged.dependencies,
-        [`@repo/${packageName}`]: '*',
-      };
-    } else if (!isTurborepo || addon.mono?.scope === 'root') {
-      merged = mergePackageJsonConfigs(merged, addon.packageJson);
+  // Process project addons (database, orm)
+  if (ctx.project.orm) {
+    const ormAddon = META.project.orm.options[ctx.project.orm];
+    if (ormAddon) {
+      const packageName = getProjectAddonPackageName(ormAddon);
+      if (packageName && isTurborepo) {
+        merged.dependencies = {
+          ...merged.dependencies,
+          [`@repo/${packageName}`]: '*',
+        };
+      } else {
+        merged = mergePackageJsonConfigs(merged, ormAddon.packageJson);
+      }
     }
   }
 
+  if (ctx.project.database && !isTurborepo) {
+    const dbAddon = META.project.database.options[ctx.project.database];
+    if (dbAddon) {
+      merged = mergePackageJsonConfigs(merged, dbAddon.packageJson);
+    }
+  }
+
+  // Process tooling (always goes to root in turborepo, or app in single)
   if (!isTurborepo) {
-    for (const addonName of ctx.globalAddons) {
-      const addon = META.addons[addonName];
-      if (addon?.type === 'extra') {
-        merged = mergePackageJsonConfigs(merged, addon.packageJson);
+    for (const toolingName of ctx.project.tooling) {
+      const toolingAddon = META.project.tooling.options[toolingName];
+      if (toolingAddon) {
+        merged = mergePackageJsonConfigs(merged, toolingAddon.packageJson);
       }
     }
   }
@@ -178,14 +194,15 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     turbo: '^2.4.0',
   };
 
-  for (const addonName of ctx.globalAddons) {
-    const addon = META.addons[addonName];
-    if (addon?.type === 'extra' && addon.packageJson) {
-      if (addon.packageJson.devDependencies) {
-        devDependencies = { ...devDependencies, ...addon.packageJson.devDependencies };
+  // Add tooling to root package.json
+  for (const toolingName of ctx.project.tooling) {
+    const toolingAddon = META.project.tooling.options[toolingName];
+    if (toolingAddon?.packageJson) {
+      if (toolingAddon.packageJson.devDependencies) {
+        devDependencies = { ...devDependencies, ...toolingAddon.packageJson.devDependencies };
       }
-      if (addon.packageJson.scripts) {
-        Object.assign(scripts, addon.packageJson.scripts);
+      if (toolingAddon.packageJson.scripts) {
+        Object.assign(scripts, toolingAddon.packageJson.scripts);
       }
     }
   }
@@ -215,29 +232,29 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
 
     const extractedPackages = new Map<string, PackageJsonConfig>();
 
+    // Collect library packages
     for (const app of ctx.apps) {
-      for (const addonName of app.addons) {
-        const addon = META.addons[addonName];
-        if (addon?.mono?.scope === 'pkg') {
-          const pkgName = addon.mono.name;
+      for (const libraryName of app.libraries) {
+        const library = META.libraries[libraryName];
+        if (library?.mono?.scope === 'pkg') {
+          const pkgName = library.mono.name;
           if (!extractedPackages.has(pkgName)) {
-            extractedPackages.set(pkgName, addon.packageJson ?? {});
+            extractedPackages.set(pkgName, library.packageJson ?? {});
           }
         }
       }
     }
 
-    const ormAddons = ctx.globalAddons.filter((n) => META.addons[n]?.type === 'orm');
-    const dbAddons = ctx.globalAddons.filter((n) => META.addons[n]?.type === 'database');
-
-    if (ormAddons.length > 0) {
-      const ormAddon = META.addons[ormAddons[0]];
+    // Collect ORM package with database deps merged
+    if (ctx.project.orm) {
+      const ormAddon = META.project.orm.options[ctx.project.orm];
       if (ormAddon?.mono?.scope === 'pkg') {
         const pkgName = ormAddon.mono.name;
         let config = ormAddon.packageJson ?? {};
 
-        for (const dbName of dbAddons) {
-          const dbAddon = META.addons[dbName];
+        // Merge database dependencies into ORM package
+        if (ctx.project.database) {
+          const dbAddon = META.project.database.options[ctx.project.database];
           if (dbAddon?.packageJson) {
             config = mergePackageJsonConfigs(config, dbAddon.packageJson);
           }

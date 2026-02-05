@@ -1,5 +1,5 @@
 // ABOUTME: Summary display and CLI command generation
-// ABOUTME: Shows project structure and recreate command with unified addons
+// ABOUTME: Shows project structure and recreate command with libraries and project config
 
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
@@ -10,12 +10,20 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
   let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
 
   for (const app of ctx.apps) {
-    const addonsStr = app.addons.length > 0 ? `:${app.addons.join(',')}` : '';
-    flagsCommand += ` --app ${app.appName}:${app.stackName}${addonsStr}`;
+    const librariesStr = app.libraries.length > 0 ? `:${app.libraries.join(',')}` : '';
+    flagsCommand += ` --app ${app.appName}:${app.stackName}${librariesStr}`;
   }
 
-  for (const addonName of ctx.globalAddons) {
-    flagsCommand += ` --addon ${addonName}`;
+  if (ctx.project.database) {
+    flagsCommand += ` --database ${ctx.project.database}`;
+  }
+
+  if (ctx.project.orm) {
+    flagsCommand += ` --orm ${ctx.project.orm}`;
+  }
+
+  for (const toolingName of ctx.project.tooling) {
+    flagsCommand += ` --tooling ${toolingName}`;
   }
 
   if (ctx.git) {
@@ -47,8 +55,7 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const lines: string[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
 
-  const hasOrm = ctx.globalAddons.some((name) => META.addons[name]?.type === 'orm');
-  const hasDb = ctx.globalAddons.some((name) => META.addons[name]?.type === 'database');
+  const hasOrm = !!ctx.project.orm;
 
   lines.push(color.white(color.bold('#🏠 Structure:')));
   lines.push('');
@@ -59,34 +66,32 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
     lines.push('├─ 🚀 apps/');
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
-      const addonsInfo = app.addons.length > 0 ? color.dim(` +${app.addons.length} modules`) : '';
+      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
       const isLast = i === ctx.apps.length - 1 && !hasOrm;
       const prefix = isLast ? '│  └─' : '│  ├─';
-      lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${addonsInfo})`)}`);
+      lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     });
   } else {
     const app = ctx.apps[0];
     if (app) {
       const stack = META.stacks[app.stackName];
-      const addonsInfo = app.addons.length > 0 ? color.dim(` +${app.addons.length} modules`) : '';
-      lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${addonsInfo})`)}`);
+      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
+      lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     }
   }
 
   if (isTurborepo && hasOrm) {
     lines.push('├─ 📦 packages/');
-    const ormAddon = ctx.globalAddons.find((name) => META.addons[name]?.type === 'orm');
-    const dbAddon = ctx.globalAddons.find((name) => META.addons[name]?.type === 'database');
-    const ormLabel = ormAddon ? META.addons[ormAddon]?.label : '';
-    const dbLabel = dbAddon ? ` + ${META.addons[dbAddon]?.label}` : '';
+    const ormLabel = ctx.project.orm ? META.project.orm.options[ctx.project.orm]?.label : '';
+    const dbLabel = ctx.project.database ? ` + ${META.project.database.options[ctx.project.database]?.label}` : '';
     lines.push(`│  └─ db/ ${color.magenta(`(${ormLabel}${dbLabel})`)}`);
   }
 
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
-  if (ctx.globalAddons.includes('biome')) configs.push('Biome');
-  if (ctx.globalAddons.includes('husky')) configs.push('Husky');
+  if (ctx.project.tooling.includes('biome')) configs.push('Biome');
+  if (ctx.project.tooling.includes('husky')) configs.push('Husky');
 
   if (configs.length > 0) {
     lines.push(`└─ ⚙️  ${color.dim(configs.join(', '))}`);

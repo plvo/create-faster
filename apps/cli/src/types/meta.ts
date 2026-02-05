@@ -1,8 +1,7 @@
 // ABOUTME: Type definitions for META configuration
-// ABOUTME: Unified addon system with mono scope for monorepo destination
+// ABOUTME: Declarative project addons with libraries and project categories
 
 export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start';
-export type AddonType = 'module' | 'orm' | 'database' | 'extra';
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
@@ -10,7 +9,15 @@ export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { sc
 
 export interface AddonSupport {
   stacks?: StackName[] | 'all';
-  addons?: string[];
+}
+
+// Mirrors ProjectContext keys but with string[] for "one of these" semantics
+export interface AddonRequire {
+  git?: true;
+  database?: string[];
+  orm?: string[];
+  tooling?: string[];
+  libraries?: string[];
 }
 
 export interface PackageJsonConfig {
@@ -21,12 +28,19 @@ export interface PackageJsonConfig {
 }
 
 export interface MetaAddon {
-  type: AddonType;
   label: string;
   hint?: string;
   support?: AddonSupport;
+  require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+}
+
+export interface MetaProjectCategory {
+  prompt: string;
+  selection: 'single' | 'multi';
+  require?: string[];
+  options: Record<string, MetaAddon>;
 }
 
 export interface MetaStack {
@@ -41,9 +55,16 @@ export interface MetaRepoStack {
   hint?: string;
 }
 
+export interface MetaProject {
+  database: MetaProjectCategory;
+  orm: MetaProjectCategory;
+  tooling: MetaProjectCategory;
+}
+
 export interface Meta {
   stacks: Record<StackName, MetaStack>;
-  addons: Record<string, MetaAddon>;
+  libraries: Record<string, MetaAddon>;
+  project: MetaProject;
   repo: {
     stacks: Record<RepoType, MetaRepoStack>;
   };

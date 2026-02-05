@@ -9,10 +9,10 @@ generator client {
 }
 
 datasource db {
-  {{#if (hasAddon "postgres")}}
+  {{#if (has "database" "postgres")}}
   provider = "postgresql"
   {{/if}}
-  {{#if (hasAddon "mysql")}}
+  {{#if (has "database" "mysql")}}
   provider = "mysql"
   {{/if}}
   url      = env("DATABASE_URL")
@@ -31,7 +31,7 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
   accounts      Account[]
   sessions      Session[]
 {{/if}}
@@ -40,7 +40,7 @@ model User {
   @@map("users")
 }
 
-{{#if (has "module" "better-auth")}}
+{{#if (hasLibrary "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
 model Session {
   id        String   @id

@@ -1,8 +1,13 @@
-{{#if (hasAddon "drizzle")}}
+---
+mono:
+  scope: pkg
+  path: src/auth.ts
+---
+{{#if (has "orm" "drizzle")}}
 import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 {{/if}}
-{{#if (hasAddon "prisma")}}
+{{#if (has "orm" "prisma")}}
 import { prisma } from '@/lib/db';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 {{/if}}
@@ -13,12 +18,12 @@ const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
 export const auth = betterAuth({
-  {{#if (hasAddon "drizzle")}}
+  {{#if (has "orm" "drizzle")}}
   database: drizzleAdapter(db, {
-    {{#if (hasAddon "postgres")}}
+    {{#if (has "database" "postgres")}}
     provider: 'pg',
     {{/if}}
-    {{#if (hasAddon "mysql")}}
+    {{#if (has "database" "mysql")}}
     provider: 'mysql',
     {{/if}}
     usePlural: false,
@@ -30,12 +35,12 @@ export const auth = betterAuth({
     },
   }),
   {{/if}}
-  {{#if (hasAddon "prisma")}}
+  {{#if (has "orm" "prisma")}}
   database: prismaAdapter(prisma, {
-    {{#if (hasAddon "postgres")}}
+    {{#if (has "database" "postgres")}}
     provider: 'postgresql',
     {{/if}}
-    {{#if (hasAddon "mysql")}}
+    {{#if (has "database" "mysql")}}
     provider: 'mysql',
     {{/if}}
     usePlural: false,
