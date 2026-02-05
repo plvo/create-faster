@@ -1,9 +1,9 @@
 // ABOUTME: Tests for addon utility functions
 // ABOUTME: Tests compatibility checking for libraries and requirement validation
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
-import { isLibraryCompatible, getProjectAddon, isRequirementMet } from '../src/lib/addon-utils';
+import { getProjectAddon, isLibraryCompatible, isRequirementMet } from '../src/lib/addon-utils';
 import type { TemplateContext } from '../src/types/ctx';
 
 describe('isLibraryCompatible', () => {

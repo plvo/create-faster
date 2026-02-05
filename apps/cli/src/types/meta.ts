@@ -55,10 +55,16 @@ export interface MetaRepoStack {
   hint?: string;
 }
 
+export interface MetaProject {
+  database: MetaProjectCategory;
+  orm: MetaProjectCategory;
+  tooling: MetaProjectCategory;
+}
+
 export interface Meta {
   stacks: Record<StackName, MetaStack>;
   libraries: Record<string, MetaAddon>;
-  project: Record<string, MetaProjectCategory>;
+  project: MetaProject;
   repo: {
     stacks: Record<RepoType, MetaRepoStack>;
   };

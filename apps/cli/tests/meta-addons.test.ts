@@ -1,7 +1,7 @@
 // ABOUTME: Validation tests for META with declarative project addons
 // ABOUTME: Ensures libraries and project categories are correctly structured
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { META } from '../src/__meta__';
 
 describe('META.libraries validation', () => {

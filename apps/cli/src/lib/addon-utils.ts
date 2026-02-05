@@ -2,8 +2,8 @@
 // ABOUTME: Compatibility checking and requirement validation
 
 import { META, type ProjectCategoryName } from '@/__meta__';
-import type { AddonRequire, MetaAddon, StackName } from '@/types/meta';
 import type { TemplateContext } from '@/types/ctx';
+import type { AddonRequire, MetaAddon, StackName } from '@/types/meta';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
   if (!library.support?.stacks) return true;

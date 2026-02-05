@@ -1,8 +1,8 @@
 // ABOUTME: Type tests for declarative project addons
 // ABOUTME: Ensures MetaAddon and MetaProjectCategory types are correct
 
-import { describe, test, expect } from 'bun:test';
-import type { MetaAddon, MetaProjectCategory, AddonMono, StackName } from '../src/types/meta';
+import { describe, expect, test } from 'bun:test';
+import type { AddonMono, MetaAddon, MetaProjectCategory, StackName } from '../src/types/meta';
 
 describe('MetaAddon types', () => {
   test('MetaAddon has required fields', () => {

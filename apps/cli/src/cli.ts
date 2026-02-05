@@ -10,7 +10,7 @@ import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils'
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
-import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
 import { S_GRAY_BAR } from './tui/symbols';
 
@@ -71,33 +71,38 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   }
   progress.next();
 
-  if (partial?.project !== undefined) {
-    ctx.project = partial.project;
+  const hasAnyFlags = partial && Object.keys(partial).length > 0;
+
+  if (hasAnyFlags) {
+    if (partial?.project) {
+      ctx.project = partial.project;
+    }
     const parts: string[] = [];
-    if (partial.project.database) parts.push(`database: ${partial.project.database}`);
-    if (partial.project.orm) parts.push(`orm: ${partial.project.orm}`);
-    if (partial.project.tooling.length > 0) parts.push(`tooling: ${partial.project.tooling.join(', ')}`);
+    if (ctx.project.database) parts.push(`database: ${ctx.project.database}`);
+    if (ctx.project.orm) parts.push(`orm: ${ctx.project.orm}`);
+    if (ctx.project.tooling.length > 0) parts.push(`tooling: ${ctx.project.tooling.join(', ')}`);
     if (parts.length > 0) {
       log.info(`${color.green('✓')} Using project config: ${parts.join(', ')}`);
     }
   } else {
     for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
-      const category = META.project[categoryName];
-
       if (!isProjectCategoryAvailable(categoryName, ctx)) {
         continue;
       }
 
       const result = await promptProjectCategory(categoryName);
 
-      if (category.selection === 'single') {
-        (ctx.project as Record<string, unknown>)[categoryName] = result as string | undefined;
-      } else {
-        (ctx.project as Record<string, unknown>)[categoryName] = (result as string[]) ?? [];
-      }
-
-      if (categoryName === 'database') {
-        progress.next();
+      switch (categoryName) {
+        case 'database':
+          ctx.project.database = result as string | undefined;
+          progress.next();
+          break;
+        case 'orm':
+          ctx.project.orm = result as string | undefined;
+          break;
+        case 'tooling':
+          ctx.project.tooling = (result as string[]) ?? [];
+          break;
       }
     }
   }

@@ -1,8 +1,8 @@
 // ABOUTME: Type tests for template context
 // ABOUTME: Ensures AppContext and TemplateContext have correct structure
 
-import { describe, test, expect } from 'bun:test';
-import type { AppContext, TemplateContext, ProjectContext } from '../src/types/ctx';
+import { describe, expect, test } from 'bun:test';
+import type { AppContext, ProjectContext, TemplateContext } from '../src/types/ctx';
 
 describe('AppContext types', () => {
   test('AppContext has libraries instead of addons', () => {

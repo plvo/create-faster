@@ -1,10 +1,10 @@
 ---
 path: src/lib/db/index.ts
 ---
-{{#if (hasAddon "postgres")}}
+{{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
 {{/if}}
-{{#if (hasAddon "mysql")}}
+{{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
 {{/if}}
 import * as schema from './schema';

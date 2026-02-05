@@ -1,5 +1,5 @@
 // ABOUTME: End-to-end tests for CLI project generation
-// ABOUTME: Tests both single repo and turborepo with unified addons
+// ABOUTME: Tests both single repo and turborepo with libraries and project config
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
@@ -57,7 +57,7 @@ describe('CLI Integration', () => {
       expect(await fileExists(join(projectPath, 'components.json'))).toBe(true);
     });
 
-    test('generates Next.js with drizzle addon', async () => {
+    test('generates Next.js with drizzle orm', async () => {
       const projectName = 'test-nextjs-drizzle';
       const projectPath = join(tempDir, projectName);
 
@@ -66,9 +66,9 @@ describe('CLI Integration', () => {
           projectName,
           '--app',
           `${projectName}:nextjs`,
-          '--addon',
+          '--database',
           'postgres',
-          '--addon',
+          '--orm',
           'drizzle',
           '--no-git',
           '--no-install',
@@ -137,9 +137,9 @@ describe('CLI Integration', () => {
           'web:nextjs:shadcn',
           '--app',
           'mobile:expo',
-          '--addon',
+          '--database',
           'postgres',
-          '--addon',
+          '--orm',
           'drizzle',
           '--no-git',
           '--no-install',
