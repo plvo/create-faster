@@ -5,17 +5,12 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
-import { META } from '@/__meta__';
-import { areAddonDependenciesMet } from '@/lib/addon-utils';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils';
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
-import {
-  multiselectAddonsPrompt,
-  multiselectGlobalAddonsPrompt,
-  selectGlobalAddonPrompt,
-  selectStackPrompt,
-} from '@/prompts/stack-prompts';
+import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
-import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/meta';
 import { S_GRAY_BAR } from './tui/symbols';
 
@@ -25,7 +20,7 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
-    globalAddons: [],
+    project: { tooling: [] },
     git: false,
   };
 
@@ -76,30 +71,33 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   }
   progress.next();
 
-  if (partial?.globalAddons !== undefined) {
-    ctx.globalAddons = partial.globalAddons;
-    if (partial.globalAddons.length > 0) {
-      log.info(`${color.green('✓')} Using addons: ${partial.globalAddons.join(', ')}`);
+  if (partial?.project !== undefined) {
+    ctx.project = partial.project;
+    const parts: string[] = [];
+    if (partial.project.database) parts.push(`database: ${partial.project.database}`);
+    if (partial.project.orm) parts.push(`orm: ${partial.project.orm}`);
+    if (partial.project.tooling.length > 0) parts.push(`tooling: ${partial.project.tooling.join(', ')}`);
+    if (parts.length > 0) {
+      log.info(`${color.green('✓')} Using project config: ${parts.join(', ')}`);
     }
   } else {
-    const database = await selectGlobalAddonPrompt(
-      'database',
-      progress.message(`Include a ${color.bold('database')}?`),
-    );
-    if (database) {
-      ctx.globalAddons.push(database);
-    }
+    for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
+      const category = META.project[categoryName];
 
-    if (database) {
-      const orm = await selectGlobalAddonPrompt('orm', progress.message(`Configure an ${color.bold('ORM')}?`));
+      if (!isProjectCategoryAvailable(categoryName, ctx)) {
+        continue;
+      }
 
-      if (orm) {
-        const ormAddon = META.addons[orm];
-        if (ormAddon && !areAddonDependenciesMet(ormAddon, ctx.globalAddons)) {
-          log.warn(`${orm} requires a database. Skipping.`);
-        } else {
-          ctx.globalAddons.push(orm);
-        }
+      const result = await promptProjectCategory(categoryName);
+
+      if (category.selection === 'single') {
+        (ctx.project as Record<string, unknown>)[categoryName] = result as string | undefined;
+      } else {
+        (ctx.project as Record<string, unknown>)[categoryName] = (result as string[]) ?? [];
+      }
+
+      if (categoryName === 'database') {
+        progress.next();
       }
     }
   }
@@ -116,22 +114,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
     });
   }
 
-  if (partial?.globalAddons === undefined) {
-    const extras = await multiselectGlobalAddonsPrompt(
-      'extra',
-      progress.message(`Add any ${color.bold('extras')}?`),
-      false,
-    );
-
-    for (const extra of extras) {
-      if (extra === 'husky' && !ctx.git) {
-        log.warn('Husky requires git. Skipping.');
-        continue;
-      }
-      ctx.globalAddons.push(extra);
-    }
-  }
-  progress.next();
+  filterToolingByRequirements(ctx);
 
   if (partial?.skipInstall) {
     ctx.skipInstall = true;
@@ -152,6 +135,21 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   progress.next();
 
   return ctx;
+}
+
+function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
+  const filtered = ctx.project.tooling.filter((toolingName) => {
+    const addon = META.project.tooling.options[toolingName];
+    if (!addon) return false;
+
+    if (!isRequirementMet(addon.require, ctx as TemplateContext)) {
+      log.warn(`${toolingName} requires git. Skipping.`);
+      return false;
+    }
+    return true;
+  });
+
+  ctx.project.tooling = filtered;
 }
 
 async function promptAllApps(count: number, projectName: string, progress: Progress): Promise<AppContext[]> {
@@ -191,11 +189,11 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
     process.exit(0);
   }
 
-  const addons = await multiselectAddonsPrompt(
+  const libraries = await multiselectLibrariesPrompt(
     stackName,
-    progress.message(`Add ${color.bold(metaStack.label)} modules to ${color.bold(appName)}?`),
+    progress.message(`Add ${color.bold(metaStack.label)} libraries to ${color.bold(appName)}?`),
     false,
   );
 
-  return { appName, stackName, addons };
+  return { appName, stackName, libraries };
 }
