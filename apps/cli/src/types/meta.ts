@@ -1,15 +1,12 @@
 // ABOUTME: Type definitions for META configuration
-// ABOUTME: Unified addon system with discriminated destination types
+// ABOUTME: Unified addon system with mono scope for monorepo destination
 
 export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start';
 export type AddonType = 'module' | 'orm' | 'database' | 'extra';
 export type RepoType = 'single' | 'turborepo';
+export type MonoScope = 'app' | 'pkg' | 'root';
 
-// Discriminated union for destination - package requires name
-export type AddonDestination =
-  | { target: 'app' }
-  | { target: 'package'; name: string; singlePath?: string }
-  | { target: 'root' };
+export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
 
 export interface AddonSupport {
   stacks?: StackName[] | 'all';
@@ -28,7 +25,7 @@ export interface MetaAddon {
   label: string;
   hint?: string;
   support?: AddonSupport;
-  destination?: AddonDestination;
+  mono?: AddonMono;
   packageJson?: PackageJsonConfig;
 }
 
