@@ -22,10 +22,10 @@ describe('META.addons validation', () => {
     }
   });
 
-  test('package destinations have required name', () => {
+  test('pkg mono scopes have required name', () => {
     for (const [name, addon] of Object.entries(META.addons)) {
-      if (addon.destination?.target === 'package') {
-        expect(addon.destination.name, `${name} package destination needs name`).toBeDefined();
+      if (addon.mono?.scope === 'pkg') {
+        expect(addon.mono.name, `${name} pkg mono needs name`).toBeDefined();
       }
     }
   });
