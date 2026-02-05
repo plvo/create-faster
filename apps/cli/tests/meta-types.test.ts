@@ -41,6 +41,24 @@ describe('MetaAddon types', () => {
     };
     expect(addon.support?.stacks).toBe('all');
   });
+
+  test('MetaAddon require can specify git dependency', () => {
+    const addon: MetaAddon = {
+      label: 'Git Hooks',
+      require: { git: true },
+    };
+    expect(addon.require?.git).toBe(true);
+  });
+
+  test('MetaAddon require can specify orm dependencies', () => {
+    const addon: MetaAddon = {
+      label: 'Auth Library',
+      support: { stacks: ['nextjs'] },
+      require: { orm: ['drizzle', 'prisma'] },
+    };
+    expect(addon.require?.orm).toContain('drizzle');
+    expect(addon.require?.orm).toContain('prisma');
+  });
 });
 
 describe('MetaProjectCategory types', () => {

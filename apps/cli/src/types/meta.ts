@@ -9,7 +9,15 @@ export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { sc
 
 export interface AddonSupport {
   stacks?: StackName[] | 'all';
-  require?: string[];
+}
+
+// Mirrors ProjectContext keys but with string[] for "one of these" semantics
+export interface AddonRequire {
+  git?: true;
+  database?: string[];
+  orm?: string[];
+  tooling?: string[];
+  libraries?: string[];
 }
 
 export interface PackageJsonConfig {
@@ -23,7 +31,7 @@ export interface MetaAddon {
   label: string;
   hint?: string;
   support?: AddonSupport;
-  require?: { git?: boolean };
+  require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
 }

@@ -104,7 +104,7 @@ export const META: Meta = {
   libraries: {
     shadcn: {
       label: 'shadcn/ui',
-      hint: 'A set of beautifully designed components',
+      hint: 'A set of beautifully designed components that you can customize, extend, and build on',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
@@ -129,7 +129,7 @@ export const META: Meta = {
     },
     'next-themes': {
       label: 'Next Themes',
-      hint: 'Theme management for Next.js',
+      hint: 'A library for managing themes in Next.js',
       support: { stacks: ['nextjs'] },
       packageJson: {
         dependencies: {
@@ -161,8 +161,9 @@ export const META: Meta = {
     },
     'better-auth': {
       label: 'Better Auth',
-      hint: 'Comprehensive authentication framework',
-      support: { stacks: ['nextjs'], require: ['drizzle', 'prisma'] },
+      hint: 'The most comprehensive authentication framework for TypeScript',
+      support: { stacks: ['nextjs'] },
+      require: { orm: ['drizzle', 'prisma'] },
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
@@ -176,7 +177,7 @@ export const META: Meta = {
     },
     'tanstack-query': {
       label: 'TanStack Query',
-      hint: 'Powerful asynchronous state management',
+      hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
       support: { stacks: 'all' },
       packageJson: {
         dependencies: {
@@ -186,7 +187,7 @@ export const META: Meta = {
     },
     'tanstack-devtools': {
       label: 'TanStack Devtools',
-      hint: 'Devtools panel for TanStack libraries',
+      hint: 'Devtools panel for TanStack libraries and other custom devtools',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
@@ -197,7 +198,7 @@ export const META: Meta = {
     },
     'react-hook-form': {
       label: 'React Hook Form',
-      hint: 'Performant form validation',
+      hint: 'Performant, flexible and extensible forms with easy-to-use validation',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
@@ -208,7 +209,7 @@ export const META: Meta = {
     },
     'tanstack-form': {
       label: 'TanStack Form',
-      hint: 'Headless form library',
+      hint: 'Headless UI for building performant and type-safe forms',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
@@ -218,7 +219,7 @@ export const META: Meta = {
     },
     nativewind: {
       label: 'NativeWind',
-      hint: 'Tailwind CSS for React Native',
+      hint: 'A library for styling React Native applications with Tailwind CSS',
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
