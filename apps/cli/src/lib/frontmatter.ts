@@ -68,6 +68,15 @@ export function parseFrontmatter(rawContent: string): ParsedTemplate {
   };
 }
 
+export function readFrontmatterFile(filepath: string): ParsedTemplate {
+  const { data, content } = matter.read(filepath);
+
+  return {
+    data: data as TemplateFrontmatter,
+    content,
+  };
+}
+
 export function shouldSkipTemplate(only: string | undefined, ctx: TemplateContext): boolean {
   if (!only) return false;
 

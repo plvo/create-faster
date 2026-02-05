@@ -2,8 +2,17 @@
 // ABOUTME: Tests YAML frontmatter extraction, validation, and stack suffix detection
 
 import { describe, expect, test } from 'bun:test';
-import { parseFrontmatter, parseStackSuffix, removeFrontmatter, shouldSkipTemplate } from '../src/lib/frontmatter';
+import { join } from 'node:path';
+import {
+  parseFrontmatter,
+  parseStackSuffix,
+  readFrontmatterFile,
+  removeFrontmatter,
+  shouldSkipTemplate,
+} from '../src/lib/frontmatter';
 import type { TemplateContext } from '../src/types/ctx';
+
+const TEMPLATES_DIR = join(import.meta.dir, '../templates');
 
 describe('parseFrontmatter', () => {
   test('parses path field', () => {
@@ -98,6 +107,26 @@ describe('removeFrontmatter', () => {
   test('handles empty frontmatter', () => {
     const content = '---\n---\nrest of file';
     expect(removeFrontmatter(content)).toBe('rest of file');
+  });
+});
+
+describe('readFrontmatterFile', () => {
+  test('reads and parses frontmatter from file', () => {
+    const filepath = join(TEMPLATES_DIR, 'addons/drizzle/tsconfig.json.hbs');
+    const result = readFrontmatterFile(filepath);
+    expect(result.data.only).toBe('mono');
+    expect(result.content).toContain('"extends"');
+  });
+
+  test('reads file without frontmatter', () => {
+    const filepath = join(TEMPLATES_DIR, 'stack/nextjs/src/app/page.tsx.hbs');
+    const result = readFrontmatterFile(filepath);
+    expect(result.data).toEqual({});
+    expect(result.content).toContain('export default function');
+  });
+
+  test('throws on non-existent file', () => {
+    expect(() => readFrontmatterFile('/nonexistent/file.hbs')).toThrow();
   });
 });
 

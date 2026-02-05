@@ -1,7 +1,6 @@
 // ABOUTME: Resolves template files to destination paths
 // ABOUTME: Uses frontmatter and META mono config for path resolution
 
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { isAddonCompatible } from '@/lib/addon-utils';
@@ -10,7 +9,7 @@ import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, StackName } from '@/types/meta';
 import { scanDirectory, transformFilename } from './file-writer';
 import type { TemplateFrontmatter } from './frontmatter';
-import { parseFrontmatter, parseStackSuffix, shouldSkipTemplate } from './frontmatter';
+import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
 
 const VALID_STACKS = Object.keys(META.stacks);
 
@@ -52,8 +51,7 @@ export function resolveStackDestination(relativePath: string, ctx: TemplateConte
 
 function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; only: string | undefined } {
   try {
-    const raw = readFileSync(source, 'utf-8');
-    const parsed = parseFrontmatter(raw);
+    const parsed = readFrontmatterFile(source);
     return { frontmatter: parsed.data, only: parsed.data.only };
   } catch {
     return { frontmatter: {}, only: undefined };
