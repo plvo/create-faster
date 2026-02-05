@@ -6,7 +6,13 @@ import type { StackName } from './meta';
 export interface AppContext {
   appName: string;
   stackName: StackName;
-  addons: string[];
+  libraries: string[];
+}
+
+export interface ProjectContext {
+  database?: string;
+  orm?: string;
+  tooling: string[];
 }
 
 export type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;
@@ -15,7 +21,7 @@ export interface TemplateContext {
   projectName: string;
   repo: 'single' | 'turborepo';
   apps: AppContext[];
-  globalAddons: string[];
+  project: ProjectContext;
   git: boolean;
   pm?: PackageManager;
   skipInstall?: boolean;
