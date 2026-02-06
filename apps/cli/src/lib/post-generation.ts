@@ -7,7 +7,7 @@ import type { TemplateContext } from '@/types/ctx';
 const execAsync = promisify(exec);
 
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<void> {
-  if (ctx.pm) {
+  if (ctx.pm && !ctx.skipInstall) {
     const s = spinner();
     try {
       s.start(`Installing dependencies with ${ctx.pm}...`);

@@ -1,0 +1,34 @@
+---
+mono:
+  scope: pkg
+---
+import { defineConfig } from 'drizzle-kit';
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+export default defineConfig({
+  {{#if (isMono)}}
+  schema: './src/schema.ts',
+  {{else}}
+  schema: './src/lib/db/schema.ts',
+  {{/if}}
+  out: './drizzle',
+  {{#if (has "database" "postgres")}}
+  dialect: 'postgresql',
+  {{/if}}
+  {{#if (has "database" "mysql")}}
+  dialect: 'mysql',
+  {{/if}}
+  dbCredentials: {
+    {{#if (has "database" "postgres")}}
+    url: process.env.DATABASE_URL,
+    {{/if}}
+    {{#if (has "database" "mysql")}}
+    url: process.env.DATABASE_URL,
+    {{/if}}
+  },
+  verbose: true,
+  strict: true,
+});

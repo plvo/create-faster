@@ -3,9 +3,9 @@ import { Text, View } from 'react-native';
 
 export default function AppFooter() {
   return (
-    <View{{#if (hasModule "nativewind")}} className='bg-black p-4'{{/if}}>
-      <Text{{#if (hasModule "nativewind")}} className='text-white text-center text-sm'{{/if}}>
-        Made with ❤️ <Text{{#if (hasModule "nativewind")}} className='text-slate-400'{{/if}}> {new Date().getFullYear()}</Text>
+    <View{{#if (hasLibrary "nativewind")}} className='bg-black p-4'{{/if}}>
+      <Text{{#if (hasLibrary "nativewind")}} className='text-white text-center text-sm'{{/if}}>
+        Made with ❤️ <Text{{#if (hasLibrary "nativewind")}} className='text-slate-400'{{/if}}> {new Date().getFullYear()}</Text>
       </Text>
     </View>
   );

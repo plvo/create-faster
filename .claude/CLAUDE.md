@@ -14,7 +14,7 @@ CLI tool that generates full-stack projects with:
 - Multi-app support (automatic turborepo for 2+ apps)
 - Modular system (Next.js: 9 modules, Expo: 1 module, Hono: 1 module)
 - Package manager selection (bun/pnpm/npm + auto-install)
-- Template engine with magic comments for conditional rendering
+- Template engine with YAML frontmatter for path resolution and filtering
 - **Auto-generated CLI command**: Copy-paste ready command to recreate projects
 
 ## Architecture
@@ -28,7 +28,7 @@ templates/       # Handlebars templates
 ```
 
 ### CLI Flow
-1. Parse CLI flags (if provided) → 2. ASCII intro → 3. Interactive prompts (skipped if flags provided) → 4. Validation → 5. Template resolution → 6. Handlebars rendering → 7. File generation → 8. Post-hooks (install deps, git init) → 9. Summary display with auto-generated CLI command
+1. Parse CLI flags (if provided) → 2. ASCII intro → 3. Interactive prompts (skipped if flags provided) → 4. Validation → 5. Template resolution → 6. File generation (package.json + .env.example + Handlebars templates) → 7. Post-hooks (install deps, git init) → 8. Summary display with auto-generated CLI command
 
 ### Tech Stack
 - **Runtime**: Bun 1.2.23
@@ -56,8 +56,11 @@ apps/cli/src/
 │   ├── schema.ts            # Zod validation
 │   ├── template-resolver.ts # Template discovery & path mapping
 │   ├── template-processor.ts # Template rendering
-│   ├── magic-comments.ts    # Conditional rendering directives
-│   ├── handlebars-utils.ts  # Custom Handlebars helpers
+│   ├── frontmatter.ts       # YAML frontmatter parsing (gray-matter)
+│   ├── handlebars.ts        # Custom Handlebars helpers
+│   ├── env-generator.ts     # Programmatic .env.example generation
+│   ├── addon-utils.ts       # Library/addon compatibility helpers
+│   ├── package-json-generator.ts # Programmatic package.json generation
 │   ├── file-generator.ts    # File generation orchestration
 │   ├── file-writer.ts       # File writing operations
 │   └── post-generation.ts   # Post-gen hooks (install, git)
@@ -70,23 +73,29 @@ apps/cli/src/
 ## Core Files
 
 ### __meta__.ts
-Single source of truth for all stacks and modules:
-- `META.stacks`: Unified app and server stacks (Next.js, Expo, Hono) with `type: 'app' | 'server'` field
-- Each stack has `label`, `hint`, `type`, `scope`, optional `requires`, and optional `modules`
-- `META.database`, `META.orm`, `META.extras`, `META.repo`
-- Category-level `requires` (e.g., orm requires database)
-- Stack-level `requires` (e.g., husky requires git)
+Single source of truth for all stacks, libraries, and project addons:
+- `META.stacks`: App and server stacks (Next.js, Expo, Hono, TanStack Start) with `type: 'app' | 'server'` field
+- `META.libraries`: Per-app addons (shadcn, better-auth, etc.) with support/require/mono/packageJson/envs
+- `META.project`: Project-level categories (database, orm, tooling) with prompt config and options
+- `META.repo`: Repository types (single, turborepo)
+- Addons declare `packageJson` for dependencies and `envs` for environment variables
+- Category-level `require` (e.g., orm requires database)
+- Addon-level `require` (e.g., husky requires git, better-auth requires orm)
 
 ### types/meta.ts
-- `MetaStack`: Stack metadata (label, hint, type: 'app' | 'server', scope, requires, modules)
-- `MetaModules`: Grouped modules (UI & Styling, Features, etc.)
-- `StackName`: Type alias for `keyof Meta['stacks']`
-- `Category`: 'orm' | 'database' | 'extras' | 'repo' (no longer includes 'app' | 'server')
+- `StackName`: `'nextjs' | 'expo' | 'hono' | 'tanstack-start'`
+- `MonoScope`: `'app' | 'pkg' | 'root'`
+- `EnvScope`: `'app' | 'root' | { pkg: string }` — env var target location
+- `EnvVar`: `{ value: string; monoScope: EnvScope[] }` — env variable declaration
+- `MetaAddon`: Addon metadata (label, hint, support, require, mono, packageJson, envs)
+- `MetaProjectCategory`: Project category with prompt config and options
+- `MetaStack`: Stack metadata (type, label, hint, packageJson)
 
 ### types/ctx.ts
-- `AppContext`: { appName, stackName, modules } - Simplified flat structure
-- `TemplateContext`: Full context with projectName, repo type, apps[], orm, database, git, pm, extras
-- `PackageManager`: 'bun' | 'npm' | 'pnpm' | undefined
+- `AppContext`: `{ appName, stackName, libraries }`
+- `ProjectContext`: `{ database?, orm?, tooling[] }`
+- `TemplateContext`: Full context with projectName, repo, apps[], project, git, pm
+- `PackageManager`: `'bun' | 'npm' | 'pnpm' | undefined`
 
 ### flags.ts
 CLI flags parser using Commander:
@@ -124,25 +133,34 @@ Summary and CLI command generation:
 
 ### lib/template-resolver.ts
 - Scans templates with fast-glob
-- `processModules()`: Unified module processing for apps & servers
-- `scanModuleTemplates()`: Dynamic scope detection from magic comments
-- Maps source → destination paths (app/package/root scope)
+- `resolveAddonDestination()`: Path resolution using frontmatter + META mono config
+- `parseStackSuffix()`: Detects `file.ext.{stack}.hbs` naming convention
+- Maps source → destination paths (app/pkg/root scope)
 
-### lib/magic-comments.ts
-First-line directives for conditional rendering:
-- `@repo:turborepo|single|!single`
-- `@scope:app|package|root`
-- `@if:key`, `@require:key`
-- Multi-condition support
+### lib/frontmatter.ts
+YAML frontmatter parsing using gray-matter:
+- `parseFrontmatter()`: Extracts frontmatter data and content
+- `shouldSkipTemplate()`: Checks `only: mono|single` filter
+- `removeFrontmatter()`: Strips frontmatter before rendering
+- `parseStackSuffix()`: Stack-specific template detection
 
-### lib/handlebars-utils.ts
+### lib/handlebars.ts
 Custom helpers:
-- Logical: `eq`, `ne`, `and`, `or`, `includes`
-- Stack: `isAppStack(app)`, `isServerStack(app)` - Check stack type
-- Modules: `hasModule(moduleName)`, `moduleEnabled(moduleName)` - Check app modules
-- Repo: `isTurborepo()`, `isSingleRepo()`
-- Context: `hasContext(key)`, `hasAnyStack(stackName)` - Check if any app uses stack
-- Utils: `app(name)`, `appPort(name)`, `kebabCase`, `pascalCase`, `databaseUrl()`
+- Logical: `eq`, `ne`, `and`, `or`
+- Repo: `isMono()` - Check if turborepo
+- Libraries: `hasLibrary(name)` - Check if current app has library
+- Project: `has(category, value)` - Check database/orm/tooling/stack
+- Context: `hasContext(key)` - Check if key exists in context
+- Utils: `appPort(name)` - Get port for app (3000 + index)
+
+### lib/env-generator.ts
+Programmatic `.env.example` file generation:
+- `collectEnvFiles(ctx)`: Collects envs from META, resolves scopes to paths, returns `{ destination, content }[]`
+- `collectEnvGroups(ctx)`: Returns `{ path, vars[] }[]` for README rendering
+- Resolves `{{projectName}}` and `{{appPort}}` placeholders in env values
+- Scope resolution: `{ pkg: 'db' }` → `packages/db/.env.example`, `'app'` → `apps/{appName}/.env.example`
+- Library envs: only apps with that library. Project addon envs: all apps.
+- Single repos: all scopes collapse to root `.env.example`, deduped by key
 
 ### lib/post-generation.ts
 - Dependency installation: Runs `${ctx.pm} install` (5min timeout, graceful errors)
@@ -181,13 +199,14 @@ Custom helpers:
 - Complete Expo support (full templates + assets)
 - Enhanced Next.js templates (error pages, app providers, custom hooks)
 - Better Auth integration (user/account/session tables for Prisma & Drizzle)
-- Magic comments system (@repo:, @scope:, @if:, @require:, negation, multi-condition)
+- Frontmatter system (YAML-based path resolution, repo filtering, stack suffixes)
 - Context-aware filtering (category & stack requires, progressive context building)
 - Template resolution with module support
 - Scope-aware path mapping (app/package/root + dynamic override)
 - File generation with Handlebars rendering
 - Post-generation hooks with graceful error handling
 - Template naming: `__` prefix for special files
+- **Programmatic env generation**: Env vars declared in META, `.env.example` files generated per scope (pkg/app/root)
 
 ### 🚧 In Progress
 - More Hono templates & middleware
@@ -206,19 +225,18 @@ Custom helpers:
 ### Structure
 ```
 templates/
-├── app/{framework}/        # Next.js, Expo
-├── server/{framework}/     # Hono
-├── modules/{framework}/    # Framework-specific modules
-├── orm/{provider}/         # Prisma, Drizzle
-├── database/{provider}/    # PostgreSQL, MySQL configs
-├── extras/{tool}/          # Biome, Husky
-└── repo/{type}/            # Single, Turborepo configs
+├── stack/{framework}/       # Next.js, Expo, Hono, TanStack Start
+├── libraries/{library}/     # Per-app library templates
+├── project/orm/{provider}/  # Prisma, Drizzle
+├── project/tooling/{tool}/  # Biome, Husky
+└── repo/{type}/             # Single, Turborepo configs
 ```
 
 ### File Naming
 - Template files: `filename.extension.hbs`
-- Special files: `__gitignore.hbs` → `.gitignore`, `__env.example.hbs` → `.env.example`, `__npmrc.hbs` → `.npmrc`
-- Transformation automatic
+- Special files: `__gitignore.hbs` → `.gitignore`, `__npmrc.hbs` → `.npmrc`
+- Stack-specific: `file.ext.{stack}.hbs` (e.g., `tailwind.config.ts.nextjs.hbs`)
+- `.env.example` files are generated programmatically (not templates)
 
 ### Handlebars Context
 - `{{projectName}}`, `{{appName}}`, `{{repo}}`
@@ -226,22 +244,31 @@ templates/
 - `{{orm}}`, `{{database}}`, `{{git}}`, `{{pm}}`, `{{extras}}`
 - Access stack metadata: `{{#with (app "myapp")}}{{stackName}}{{/with}}`
 
-### Magic Comments
-First-line directives:
-- `@repo:turborepo|single|!single` - Control rendering by repo type
-- `@scope:app|package|root` - Override file placement
-- `@if:key` / `@require:key` - Conditional rendering
-- Multiple: `{{!-- @repo:turborepo @scope:package --}}`
+### Frontmatter
+YAML frontmatter for per-file configuration:
+```yaml
+---
+path: src/lib/db/schema.ts    # Output path for single repo
+mono:
+  scope: app | pkg | root     # Monorepo scope (overrides META)
+  path: schema.ts             # Monorepo path (relative to scope)
+only: mono | single           # Repo type filter
+---
+```
 
 ### Scope Mapping
 - `app` → `apps/{appName}/` (turborepo) or root (single)
 - `package` → `packages/{packageName}/` (turborepo only)
 - `root` → project root
 
-### Module Scope Resolution
-1. `@scope:` magic comment → use that
-2. Else turborepo + `packageName` → `packages/{packageName}/`
-3. Else → app scope
+### Path Resolution Algorithm
+1. Parse frontmatter (if present)
+2. Filter by `only` (skip if repo type doesn't match)
+3. Single repo: use `frontmatter.path` or file-based path
+4. Monorepo: use `frontmatter.mono.scope` or META `mono.scope` or default `app`
+   - `app` → `apps/{appName}/`
+   - `pkg` → `packages/{META.mono.name}/`
+   - `root` → project root
 
 ## Code Conventions
 
@@ -386,11 +413,11 @@ This allows easy reproduction of the exact same project setup.
 ### Add Stack
 1. Add to `META` in `__meta__.ts`
 2. Create `templates/{category}/{stack}/` directory
-3. Add `.hbs` files with magic comments
+3. Add `.hbs` files with frontmatter if needed
 4. Test with `bun run dev:cli`
 
 ### Add Module
 1. Add to `META.{framework}.stacks.{name}.modules` in `__meta__.ts`
 2. Create `templates/modules/{framework}/{module}/` directory
-3. Add magic comments for scope override if needed
+3. Add frontmatter for path/scope override if needed
 4. Test module selection in CLI

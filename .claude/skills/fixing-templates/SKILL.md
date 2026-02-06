@@ -31,7 +31,7 @@ Do NOT use for:
 
 **Problem:**
 ```handlebars
-"start": "next start {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
+"start": "next start {{#if (isMono)}}--port {{appPort appName}}{{/if}}",
 ```
 
 When condition is false, renders:
@@ -41,7 +41,7 @@ When condition is false, renders:
 
 **Fix:**
 ```handlebars
-"start": "next start{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
+"start": "next start{{#if (isMono)}} --port {{appPort appName}}{{/if}}",
 ```
 
 Space moved INSIDE conditional.
@@ -164,7 +164,7 @@ DO fix:
 
 ```bash
 # Find all instances
-grep -rn ' {{#if (eq repo "turborepo")}}' templates/
+grep -rn ' {{#if (isMono)}}' templates/
 
 # Fix each one:
 # Before: "start": "next start {{#if...}}
@@ -231,12 +231,12 @@ Create/update template guidelines:
 
 **Before:**
 ```handlebars
-"dev": "vite dev {{#if (eq repo "turborepo")}}--port {{appPort appName}}{{/if}}",
+"dev": "vite dev {{#if (isMono)}}--port {{appPort appName}}{{/if}}",
 ```
 
 **After:**
 ```handlebars
-"dev": "vite dev{{#if (eq repo "turborepo")}} --port {{appPort appName}}{{/if}}",
+"dev": "vite dev{{#if (isMono)}} --port {{appPort appName}}{{/if}}",
 ```
 
 **Applied to:** All package.json templates with port conditionals.

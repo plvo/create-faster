@@ -1,15 +1,8 @@
 import { basename, join } from 'node:path';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import {
-  copyBinaryFile,
-  isBinaryFile,
-  readFileContent,
-  removeHbsExtension,
-  transformSpecialFilename,
-  writeFileContent,
-} from './file-writer';
+import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, writeFileContent } from './file-writer';
+import { removeFrontmatter } from './frontmatter';
 import { renderTemplate } from './handlebars';
-import { extractFirstLine, formatMagicComments, parseMagicComments, shouldSkipTemplate } from './magic-comments';
 
 interface ProcessResult {
   success: boolean;
@@ -34,7 +27,7 @@ export async function processTemplate(
 
   try {
     const filename = basename(destination);
-    const transformedFilename = transformSpecialFilename(removeHbsExtension(filename));
+    const transformedFilename = transformFilename(filename);
     const finalDestination = join(projectPath, destination.replace(filename, transformedFilename));
 
     const isHbsTemplate = source.endsWith('.hbs');
@@ -45,23 +38,10 @@ export async function processTemplate(
       return { success: true, destination: finalDestination };
     }
 
-    const content = await readFileContent(source);
+    let content = await readFileContent(source);
 
     if (isHbsTemplate) {
-      const firstLine = extractFirstLine(content);
-      const magicComments = parseMagicComments(firstLine);
-
-      if (shouldSkipTemplate(magicComments, context)) {
-        return {
-          success: true,
-          destination: finalDestination,
-          skipped: true,
-          reason: `Magic comment: ${formatMagicComments(magicComments)}`,
-        };
-      }
-    }
-
-    if (isHbsTemplate) {
+      content = removeFrontmatter(content);
       let enrichedContext: TemplateContext | (TemplateContext & Record<string, unknown>) = context;
 
       const pathParts = destination.split('/');

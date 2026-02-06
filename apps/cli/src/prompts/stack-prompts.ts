@@ -1,14 +1,17 @@
+// ABOUTME: Custom prompts for stack and library selection
+// ABOUTME: Uses META.project for declarative prompt configuration
+
 import { isCancel, SelectPrompt } from '@clack/core';
-import { cancel, groupMultiselect, type Option } from '@clack/prompts';
+import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
-import { META } from '@/__meta__';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isLibraryCompatible } from '@/lib/addon-utils';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
-import type { MetaModules } from '@/types/meta';
+import type { MetaProjectCategory, StackName } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({
     options: Object.entries(META.stacks)
-      // Sort by type to group app stacks together and server stacks together
       .sort(([, a], [, b]) => {
         if (a.type === b.type) return 0;
         return a.type === 'app' ? -1 : 1;
@@ -50,24 +53,29 @@ export async function selectStackPrompt(message: string): Promise<string> {
   return result;
 }
 
-export async function multiselectModulesPrompt(
-  modules: MetaModules,
+export async function multiselectLibrariesPrompt(
+  stackName: StackName,
   message: string,
   required: boolean,
 ): Promise<string[]> {
-  const groupedOptions: Record<string, Option<string>[]> = {};
+  const compatibleLibraries = Object.entries(META.libraries)
+    .filter(([, lib]) => isLibraryCompatible(lib, stackName))
+    .map(([name]) => name);
 
-  for (const [category, categoryModules] of Object.entries(modules)) {
-    groupedOptions[category] = Object.entries(categoryModules).map(([moduleName, meta]) => ({
-      value: moduleName,
-      label: meta.label,
-      hint: meta.hint,
-    }));
-  }
-
-  if (Object.keys(groupedOptions).length === 0) {
+  if (compatibleLibraries.length === 0) {
     return [];
   }
+
+  const groupedOptions: Record<string, Option<string>[]> = {
+    Libraries: compatibleLibraries.map((libraryName) => {
+      const library = META.libraries[libraryName]!;
+      return {
+        value: libraryName,
+        label: library.label,
+        hint: library.hint,
+      };
+    }),
+  };
 
   const result = await groupMultiselect({
     options: groupedOptions,
@@ -82,4 +90,65 @@ export async function multiselectModulesPrompt(
   }
 
   return result;
+}
+
+export async function promptProjectCategorySingle(category: MetaProjectCategory): Promise<string | undefined> {
+  const options: { value: string | undefined; label: string; hint?: string }[] = [
+    { value: undefined, label: 'None', hint: 'Skip this option' },
+    ...Object.entries(category.options).map(([name, addon]) => ({
+      value: name,
+      label: addon.label,
+      hint: addon.hint,
+    })),
+  ];
+
+  const result = await select({
+    message: category.prompt,
+    options,
+  });
+
+  if (isCancel(result)) {
+    cancel('👋 Bye');
+    process.exit(0);
+  }
+
+  return result;
+}
+
+export async function promptProjectCategoryMulti(
+  category: MetaProjectCategory,
+  categoryName: string,
+): Promise<string[]> {
+  const groupLabel = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+
+  const groupedOptions: Record<string, Option<string>[]> = {
+    [groupLabel]: Object.entries(category.options).map(([name, addon]) => ({
+      value: name,
+      label: addon.label,
+      hint: addon.hint,
+    })),
+  };
+
+  const result = await groupMultiselect({
+    options: groupedOptions,
+    message: category.prompt,
+    required: false,
+    selectableGroups: false,
+  });
+
+  if (isCancel(result)) {
+    cancel('👋 Bye');
+    process.exit(0);
+  }
+
+  return result;
+}
+
+export async function promptProjectCategory(categoryName: ProjectCategoryName): Promise<string | string[] | undefined> {
+  const category = META.project[categoryName];
+
+  if (category.selection === 'single') {
+    return promptProjectCategorySingle(category);
+  }
+  return promptProjectCategoryMulti(category, categoryName);
 }

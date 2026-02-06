@@ -1,4 +1,4 @@
-{{#if (hasModule "mdx")}}
+{{#if (hasLibrary "mdx")}}
 import createMDX from '@next/mdx';
 {{/if}}
 import type { NextConfig } from 'next';
@@ -8,9 +8,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
-  {{#if (eq repo "turborepo")}}
+  {{#if (isMono)}}
   transpilePackages: [
-    {{#if (hasModule "shadcn")}}
+    {{#if (hasLibrary "shadcn")}}
     "@repo/ui",
     {{/if}}
     {{#if (eq hasContext "orm")}}
@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
       '.jsx',
       '.mjs',
       '.cjs',
-      {{#if (hasModule "mdx")}}
+      {{#if (hasLibrary "mdx")}}
       '.mdx',
       '.md',
       {{/if}}
@@ -52,14 +52,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-{{#if (hasModule "mdx")}}
+{{#if (hasLibrary "mdx")}}
 const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
   options: {}
 });
 {{/if}}
 
-{{#if (hasModule "mdx")}}
+{{#if (hasLibrary "mdx")}}
 export default withMDX(withBundleAnalyzer(nextConfig));
 {{else}}
 export default withBundleAnalyzer(nextConfig);

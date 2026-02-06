@@ -1,0 +1,32 @@
+---
+mono:
+  scope: app
+---
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    {{#if (isMono)}}
+    "css": "@repo/ui/base.css",
+    {{else}}
+    "css": "src/styles/globals.css",
+    {{/if}}
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "hooks": "@/hooks",
+    "lib": "@/lib",
+    {{#if (isMono)}}
+    "utils": "@repo/ui/lib/utils",
+    "ui": "@repo/ui"
+    {{else}}
+    "utils": "src/lib/utils"
+    {{/if}}
+  }
+}

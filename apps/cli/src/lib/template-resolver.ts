@@ -1,234 +1,199 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import fg from 'fast-glob';
-import { META } from '@/__meta__';
+// ABOUTME: Resolves template files to destination paths
+// ABOUTME: Uses frontmatter and META mono config for libraries and project addons
+
+import { join } from 'node:path';
+import { META, type ProjectCategoryName } from '@/__meta__';
+import { isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { Category, Scope } from '@/types/meta';
-import { transformSpecialFilename } from './file-writer';
-import { extractFirstLine, parseMagicComments, shouldSkipTemplate } from './magic-comments';
+import type { MetaAddon, StackName } from '@/types/meta';
+import { scanDirectory, transformFilename } from './file-writer';
+import type { TemplateFrontmatter } from './frontmatter';
+import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
 
-function scanTemplates(category: Category, stack: string): string[] {
-  const dir = path.join(TEMPLATES_DIR, category, stack);
-  return fg.sync('**/*', { cwd: dir });
-}
+const VALID_STACKS = Object.keys(META.stacks);
 
-function scanModuleTemplates(framework: string, moduleName: string): string[] {
-  const dir = path.join(TEMPLATES_DIR, 'modules', framework, moduleName);
-  return fg.sync('**/*', { cwd: dir });
-}
-
-function resolveDestination(
+export function resolveLibraryDestination(
   relativePath: string,
-  appName: string,
-  scope: Scope,
+  library: MetaAddon,
   ctx: TemplateContext,
-  packageName?: string,
+  appName: string,
+  frontmatter: TemplateFrontmatter,
 ): string {
-  let cleanPath = relativePath.replace('.hbs', '');
+  const isTurborepo = ctx.repo === 'turborepo';
 
-  cleanPath = transformSpecialFilename(cleanPath);
-
-  if (ctx.repo === 'single') {
-    return cleanPath;
+  if (!isTurborepo) {
+    return frontmatter.path ?? relativePath;
   }
+
+  const scope = frontmatter.mono?.scope ?? library.mono?.scope ?? 'app';
+  const filePath = frontmatter.mono?.path ?? relativePath;
 
   switch (scope) {
-    case 'app':
-      return `apps/${appName}/${cleanPath}`;
-    case 'package': {
-      const pkgName = packageName || META.orm?.packageName || 'shared';
-      return `packages/${pkgName}/${cleanPath}`;
-    }
     case 'root':
-      return cleanPath;
+      return filePath;
+    case 'pkg': {
+      const name = library.mono?.scope === 'pkg' ? library.mono.name : 'unknown';
+      return `packages/${name}/${filePath}`;
+    }
+    case 'app':
+    default:
+      return `apps/${appName}/${filePath}`;
   }
 }
 
-function getTemplatesForStack(
-  category: Category,
-  stack: string,
+export function resolveProjectAddonDestination(
+  relativePath: string,
+  addon: MetaAddon,
+  ctx: TemplateContext,
+  frontmatter: TemplateFrontmatter,
+): string {
+  const isTurborepo = ctx.repo === 'turborepo';
+
+  if (!isTurborepo) {
+    return frontmatter.path ?? relativePath;
+  }
+
+  const scope = frontmatter.mono?.scope ?? addon.mono?.scope ?? 'root';
+  const filePath = frontmatter.mono?.path ?? relativePath;
+
+  switch (scope) {
+    case 'pkg': {
+      const name = addon.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
+      return `packages/${name}/${filePath}`;
+    }
+    case 'app':
+      return `apps/${ctx.apps[0]?.appName ?? ctx.projectName}/${filePath}`;
+    case 'root':
+    default:
+      return filePath;
+  }
+}
+
+export function resolveStackDestination(relativePath: string, ctx: TemplateContext, appName: string): string {
+  const isTurborepo = ctx.repo === 'turborepo';
+  return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
+}
+
+function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; only: string | undefined } {
+  try {
+    const parsed = readFrontmatterFile(source);
+    return { frontmatter: parsed.data, only: parsed.data.only };
+  } catch {
+    return { frontmatter: {}, only: undefined };
+  }
+}
+
+function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: TemplateContext): TemplateFile[] {
+  const stackDir = join(TEMPLATES_DIR, 'stack', stackName);
+  const files = scanDirectory(stackDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(stackDir, file);
+    const { only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
+    const transformedFilename = transformFilename(file);
+    const destination = resolveStackDestination(transformedFilename, ctx, appName);
+    templates.push({ source, destination });
+  }
+
+  return templates;
+}
+
+function resolveTemplatesForLibrary(
+  libraryName: string,
   appName: string,
   ctx: TemplateContext,
-  packageName?: string,
-): Array<TemplateFile> {
-  const categoryMeta = META[category];
+  stackName: StackName,
+): TemplateFile[] {
+  const library = META.libraries[libraryName];
+  if (!library) return [];
 
-  if (!categoryMeta || !categoryMeta.stacks[stack]) {
-    return [];
+  const libraryDir = join(TEMPLATES_DIR, 'libraries', libraryName);
+  const files = scanDirectory(libraryDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(libraryDir, file);
+
+    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
+    if (fileSuffix && fileSuffix !== stackName) continue;
+
+    const { frontmatter, only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
+    const transformedPath = transformFilename(cleanFilename);
+    const destination = resolveLibraryDestination(transformedPath, library, ctx, appName, frontmatter);
+    templates.push({ source, destination });
   }
 
-  try {
-    const files = scanTemplates(category, stack);
-    const scope = categoryMeta.scope;
-
-    return files
-      .map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, category, stack, file);
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-
-          if (shouldSkipTemplate(magicComments, ctx)) {
-            return null;
-          }
-
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
-
-          return {
-            source: path.join(TEMPLATES_DIR, category, stack, file),
-            destination: resolveDestination(file, appName, finalScope, ctx, packageName),
-          };
-        } catch {
-          return {
-            source: path.join(TEMPLATES_DIR, category, stack, file),
-            destination: resolveDestination(file, appName, scope, ctx, packageName),
-          };
-        }
-      })
-      .filter((t): t is TemplateFile => t !== null);
-  } catch {
-    return [];
-  }
+  return templates;
 }
 
-function getTemplatesForStackType(stackName: string, appName: string, ctx: TemplateContext): Array<TemplateFile> {
-  const stackMeta = META.stacks[stackName];
-  if (!stackMeta) return [];
-
-  const scope = stackMeta.scope;
-
-  try {
-    const dir = path.join(TEMPLATES_DIR, 'stack', stackName);
-    const files = fg.sync('**/*', { cwd: dir });
-
-    return files
-      .map((file) => {
-        const fullPath = path.join(dir, file);
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-
-          if (shouldSkipTemplate(magicComments, ctx)) {
-            return null;
-          }
-
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-          const finalScope = scopeComment ? (scopeComment.values[0] as Scope) : scope;
-
-          return {
-            source: fullPath,
-            destination: resolveDestination(file, appName, finalScope, ctx),
-          };
-        } catch {
-          return {
-            source: fullPath,
-            destination: resolveDestination(file, appName, scope, ctx),
-          };
-        }
-      })
-      .filter((t): t is TemplateFile => t !== null);
-  } catch {
-    return [];
-  }
-}
-
-function processModules(
-  stackName: string,
-  modules: string[] | undefined,
-  appName: string,
+function resolveTemplatesForProjectAddon(
+  category: ProjectCategoryName,
+  addonName: string,
   ctx: TemplateContext,
-): Array<TemplateFile> {
-  if (!modules || modules.length === 0) return [];
+): TemplateFile[] {
+  const addon = META.project[category]?.options[addonName];
+  if (!addon) return [];
 
-  const result: Array<TemplateFile> = [];
-  const stackModules = META.stacks[stackName]?.modules;
-  if (!stackModules) return [];
+  const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
+  const files = scanDirectory(addonDir);
+  const templates: TemplateFile[] = [];
 
-  for (const moduleName of modules) {
-    let moduleMeta: (typeof stackModules)[string][string] | undefined;
-    for (const categoryModules of Object.values(stackModules)) {
-      if (categoryModules[moduleName]) {
-        moduleMeta = categoryModules[moduleName];
-        break;
-      }
-    }
-    if (!moduleMeta) continue;
+  for (const file of files) {
+    const source = join(addonDir, file);
 
-    try {
-      const files = scanModuleTemplates(stackName, moduleName);
+    const { frontmatter, only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
 
-      const moduleTemplates = files.map((file) => {
-        const fullPath = path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file);
-
-        let scope: Scope;
-        let targetName: string;
-        let packageNameOverride: string | undefined;
-
-        try {
-          const content = readFileSync(fullPath, 'utf8');
-          const firstLine = extractFirstLine(content);
-          const magicComments = parseMagicComments(firstLine);
-          const scopeComment = magicComments.find((c) => c.type === 'scope');
-
-          if (scopeComment) {
-            scope = scopeComment.values[0] as Scope;
-            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-            packageNameOverride = scope === 'package' ? moduleMeta.packageName : undefined;
-          } else {
-            scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-            targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-            packageNameOverride = moduleMeta.packageName;
-          }
-        } catch {
-          scope = ctx.repo === 'turborepo' && moduleMeta.packageName ? 'package' : 'app';
-          targetName = scope === 'package' && moduleMeta.packageName ? moduleMeta.packageName : appName;
-          packageNameOverride = moduleMeta.packageName;
-        }
-
-        return {
-          source: path.join(TEMPLATES_DIR, 'modules', stackName, moduleName, file),
-          destination: resolveDestination(file, targetName, scope, ctx, packageNameOverride),
-        };
-      });
-
-      result.push(...moduleTemplates);
-    } catch {
-      // Module templates not found, skip silently
-    }
+    const transformedPath = transformFilename(file);
+    const destination = resolveProjectAddonDestination(transformedPath, addon, ctx, frontmatter);
+    templates.push({ source, destination });
   }
 
-  return result;
+  return templates;
 }
 
-export function getAllTemplatesForContext(ctx: TemplateContext): Array<TemplateFile> {
-  const result: Array<TemplateFile> = [];
+function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
+  const repoDir = join(TEMPLATES_DIR, 'repo', ctx.repo);
+  const files = scanDirectory(repoDir);
 
-  result.push(...getTemplatesForStack('repo', ctx.repo, '', ctx));
+  return files.map((file) => {
+    const source = join(repoDir, file);
+    const transformedPath = transformFilename(file);
+    return { source, destination: transformedPath };
+  });
+}
+
+export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
+  const templates: TemplateFile[] = [];
+
+  templates.push(...resolveTemplatesForRepo(ctx));
 
   for (const app of ctx.apps) {
-    result.push(...getTemplatesForStackType(app.stackName, app.appName, ctx));
-    result.push(...processModules(app.stackName, app.modules, app.appName, ctx));
-  }
+    templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx));
 
-  if (ctx.orm) {
-    result.push(...getTemplatesForStack('orm', ctx.orm, 'db', ctx));
-  }
-
-  if (ctx.database) {
-    result.push(...getTemplatesForStack('database', ctx.database, '', ctx));
-  }
-
-  if (ctx.extras) {
-    for (const extra of ctx.extras) {
-      result.push(...getTemplatesForStack('extras', extra, '', ctx));
+    for (const libraryName of app.libraries) {
+      const library = META.libraries[libraryName];
+      if (library && isLibraryCompatible(library, app.stackName)) {
+        templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName));
+      }
     }
   }
 
-  return result;
+  if (ctx.project.database) {
+    templates.push(...resolveTemplatesForProjectAddon('database', ctx.project.database, ctx));
+  }
+  if (ctx.project.orm) {
+    templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
+  }
+  for (const tooling of ctx.project.tooling) {
+    templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));
+  }
+
+  return templates;
 }

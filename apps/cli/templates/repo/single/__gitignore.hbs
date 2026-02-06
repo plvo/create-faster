@@ -21,7 +21,7 @@ coverage
 # Vercel
 .vercel
 
-{{#if (hasAnyStack "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 # Next.js
 .next/
 next-env.d.ts
@@ -43,7 +43,7 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-{{#if (hasAnyStack "expo")}}
+{{#if (has "stack" "expo")}}
 # Expo
 .expo/
 dist/

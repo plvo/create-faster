@@ -1,0 +1,110 @@
+---
+mono:
+  scope: pkg
+  path: src/auth.ts
+---
+{{#if (has "orm" "drizzle")}}
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+{{/if}}
+{{#if (has "orm" "prisma")}}
+import { prisma } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+{{/if}}
+import { betterAuth } from 'better-auth';
+{{#if (has "stack" "nextjs")}}
+import { nextCookies } from 'better-auth/next-js';
+{{/if}}
+
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+export const auth = betterAuth({
+  {{#if (has "orm" "drizzle")}}
+  database: drizzleAdapter(db, {
+    {{#if (has "database" "postgres")}}
+    provider: 'pg',
+    {{/if}}
+    {{#if (has "database" "mysql")}}
+    provider: 'mysql',
+    {{/if}}
+    usePlural: false,
+    schema: {
+      user: userTable,
+      account: userAccountTable,
+      session: userSessionTable,
+      verification: userVerificationTable,
+    },
+  }),
+  {{/if}}
+  {{#if (has "orm" "prisma")}}
+  database: prismaAdapter(prisma, {
+    {{#if (has "database" "postgres")}}
+    provider: 'postgresql',
+    {{/if}}
+    {{#if (has "database" "mysql")}}
+    provider: 'mysql',
+    {{/if}}
+    usePlural: false,
+  }),
+  {{/if}}
+
+  plugins: [{{#if (has "stack" "nextjs")}}nextCookies(){{/if}}],
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 6,
+    revokeSessionsOnPasswordReset: true,
+  },
+  // verbose for explicitly setting the model name
+  user: {
+    modelName: 'user',
+    fields: {
+      name: 'username',
+      email: 'email',
+      emailVerified: 'emailVerified',
+      image: 'avatarUrl',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  session: {
+    modelName: 'session',
+    fields: {
+      userId: 'userId',
+      token: 'token',
+      expiresAt: 'expiresAt',
+      ipAddress: 'ipAddress',
+      userAgent: 'userAgent',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+    expiresIn: 15 * DAY,
+  },
+  account: {
+    modelName: 'account',
+    fields: {
+      userId: 'userId',
+      accountId: 'accountId',
+      providerId: 'providerId',
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken',
+      accessTokenExpiresAt: 'accessTokenExpiresAt',
+      refreshTokenExpiresAt: 'refreshTokenExpiresAt',
+      scope: 'scope',
+      idToken: 'idToken',
+      password: 'password',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  verification: {
+    modelName: 'verification',
+    fields: {
+      identifier: 'identifier',
+      value: 'value',
+      expiresAt: 'expiresAt',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+});
