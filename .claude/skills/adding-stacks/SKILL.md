@@ -20,8 +20,21 @@ Use this skill when:
 
 Do NOT use for:
 - Fixing existing templates (use fixing-templates skill)
-- Updating dependencies (use updating-dependencies skill)
-- Adding modules to existing stacks
+- Adding libraries to existing stacks
+- Updating dependency versions
+
+## Architecture Context
+
+Adding a stack is **data-driven**. Most CLI code operates generically on META configuration. Only 2-3 source files need changes. Everything else is template creation.
+
+**What does NOT change** when adding a stack (17+ files are generic):
+- `cli.ts`, `flags.ts`, `index.ts` - iterate META entries
+- `template-resolver.ts` - scans `templates/stack/{stackName}/`
+- `package-json-generator.ts` - merges from `META.stacks[stackName].packageJson`
+- `env-generator.ts` - collects envs from META
+- `handlebars.ts` - generic helpers
+- `addon-utils.ts` - generic compatibility checks
+- All prompts, TUI, summary code
 
 ## The Systematic Process
 
@@ -31,23 +44,23 @@ digraph adding_stack {
     "Create reference project" [shape=box];
     "Understand structure" [shape=box];
     "Identify all dependencies" [shape=box];
+    "Add to META + types" [shape=box];
     "Create templates" [shape=box];
     "Test generation" [shape=box];
     "Verify functional?" [shape=diamond];
     "Fix issues" [shape=box];
-    "Add to META" [shape=box];
     "Done" [shape=doublecircle];
 
     "Start" -> "Create reference project";
     "Create reference project" -> "Understand structure";
     "Understand structure" -> "Identify all dependencies";
-    "Identify all dependencies" -> "Create templates";
+    "Identify all dependencies" -> "Add to META + types";
+    "Add to META + types" -> "Create templates";
     "Create templates" -> "Test generation";
     "Test generation" -> "Verify functional?";
-    "Verify functional?" -> "Add to META" [label="yes"];
+    "Verify functional?" -> "Done" [label="yes"];
     "Verify functional?" -> "Fix issues" [label="no"];
     "Fix issues" -> "Test generation";
-    "Add to META" -> "Done";
 }
 ```
 
@@ -85,190 +98,185 @@ Research the framework's unique characteristics:
 4. **Entry points:** Where does code start?
 5. **Config files:** What's required vs optional?
 
-**Check official docs:**
-- Getting Started guide
-- Project Structure docs
-- Configuration reference
-
-**DO NOT assume similarity to other frameworks.** Each has unique patterns.
+**Check official docs. DO NOT assume similarity to other frameworks.**
 
 ### Step 3: Identify ALL Dependencies
 
-Create comprehensive dependency checklist from reference project:
-
-**Core Dependencies:**
-- [ ] Framework runtime packages
-- [ ] Router library (if separate)
-- [ ] Build tool (vite, webpack, etc.)
-- [ ] Server runtime (if needed)
-
-**Dev Dependencies:**
-- [ ] TypeScript types
-- [ ] Build plugins
-- [ ] Dev tools
-- [ ] Linters/formatters (if included by default)
-
-**Common Mistakes:**
-- Missing build plugins (critical!)
-- Wrong package versions
-- Missing peer dependencies
-- Incorrect package names
-
-**Verification:** Compare your list to reference package.json line-by-line.
+Create comprehensive dependency checklist from reference project's package.json.
 
 **CRITICAL:** Copy version numbers EXACTLY as they appear in reference project. Do NOT:
 - "Improve" to latest versions
 - Guess at version numbers
 - Use different versions across related packages
-- Example: If reference has `^1.132.0`, use `^1.132.0` NOT `^1.134.13`
 
-### Step 4: Create Template Structure
+### Step 4: Add to Types and META
 
-Map reference project to create-faster structure:
+**Only 2-3 source files need code changes:**
+
+#### a. Add to `StackName` union (`types/meta.ts`)
+
+```typescript
+export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start' | 'newstack';
+```
+
+All downstream types derive from `StackName` automatically.
+
+#### b. Add stack entry to META (`__meta__.ts`)
+
+Dependencies and scripts are declared in META, NOT in template files. Package.json is generated programmatically by `package-json-generator.ts`.
+
+```typescript
+newstack: {
+  type: 'app' | 'server',
+  label: 'Framework Name',
+  hint: 'Short description',
+  packageJson: {
+    dependencies: {
+      'framework-core': '^1.0.0',
+    },
+    devDependencies: {
+      typescript: '^5',
+      '@types/node': '^20',
+    },
+    scripts: {
+      dev: 'framework dev --port {{port}}',
+      build: 'framework build',
+      start: 'framework start --port {{port}}',
+    },
+  },
+},
+```
+
+**Scripts with `{{port}}`:** The `package-json-generator.ts` resolves these placeholders:
+- Turborepo: `{{port}}` → `3000 + appIndex` (e.g., `--port 3001`)
+- Single repo: the `--port {{port}}` portion is stripped entirely
+
+**There is NO `package.json.hbs` template file.** Package.json is 100% programmatic.
+
+#### c. Add file extensions to KNOWN_EXTENSIONS (if needed, `lib/frontmatter.ts`)
+
+If the framework uses a non-standard file extension (e.g., `.svelte`, `.vue`, `.astro`), add it to `KNOWN_EXTENSIONS` in `frontmatter.ts`. This prevents the stack suffix parser from misidentifying file extensions as stack names.
+
+### Step 5: Create Template Structure
+
+Templates go in `templates/stack/{stackname}/`. Only non-generated files need templates.
 
 ```
-templates/stack/[stackname]/
-  package.json.hbs          # Dependencies + scripts
-  [config].config.ts.hbs    # Vite, Next, etc.
+templates/stack/{stackname}/
+  {config}.config.ts.hbs    # Vite, Next, etc.
   tsconfig.json.hbs         # TypeScript config
   src/                      # Source code structure
-    [entry-point].tsx.hbs   # Main entry
+    {entry-point}.tsx.hbs   # Main entry
     routes/                 # Routing (if file-based)
-      __root.tsx.hbs
-      index.tsx.hbs
     components/             # Shared components
   public/                   # Static assets (if needed)
 ```
 
-**For each template file:**
+**Files you do NOT create as templates:**
+- `package.json` — generated programmatically from META `packageJson`
+- `.env.example` — generated programmatically from META `envs`
 
-1. **Add magic comments if needed:**
-   ```handlebars
-   {{!-- @repo:turborepo --}}
-   {{!-- @scope:app --}}
+**For each template file, you can use:**
+
+1. **YAML frontmatter** for path resolution and filtering:
+   ```yaml
+   ---
+   only: mono          # Only generate in turborepo mode
+   mono:
+     scope: app        # Where in monorepo (app|pkg|root)
+     path: config.ts   # Override output path
+   ---
    ```
 
-2. **Add Handlebars conditionals:**
+2. **Handlebars conditionals** for runtime behavior:
    ```handlebars
    {{#if (isMono)}}
-   "@repo/config": "*",
+   "extends": "@repo/config/ts/base.json",
    {{/if}}
    ```
 
-3. **Handle ORM/database integration:**
-   ```handlebars
-   {{#if (eq orm "drizzle")}}
-   "drizzle-orm": "^0.38.3",
-   {{/if}}
+3. **Stack-specific file suffix** for library templates:
+   ```
+   route.ts.nextjs.hbs → only included when stack is nextjs
    ```
 
-**Copy working code from reference project, adapt with Handlebars.**
+**Available Handlebars helpers:**
+- `isMono` — check if turborepo
+- `hasLibrary "name"` — check if current app has library
+- `has "category" "value"` — check database/orm/tooling
+- `hasContext "key"` — check if key exists in context
+- `appPort appName` — get port for app (3000 + index)
+- `eq`, `ne`, `and`, `or` — logical operators
 
-### Step 5: Test Template Generation
+### Step 6: Update Library Compatibility (if needed)
+
+Check existing libraries in `META.libraries`. Libraries with `support: { stacks: 'all' }` will automatically be available for the new stack. Verify this makes sense (e.g., React libraries shouldn't be available for non-React frameworks).
+
+If a library with `stacks: 'all'` doesn't make sense for the new stack, change it to an explicit stack list:
+```typescript
+support: { stacks: ['nextjs', 'tanstack-start'] },  // React-only
+```
+
+### Step 7: Test Template Generation
 
 **DO NOT assume templates work. Verify.**
 
 1. Test generation in single repo mode:
    ```bash
-   cd /tmp
-   bun create-faster test-single --stack [stackname]
+   cd /tmp && bun run dev:cli
+   # Or: bunx create-faster test-single --app test-single:{stackname}
    ```
 
 2. Verify generated files:
-   ```bash
-   tree test-single/
-   cat test-single/package.json
-   ```
+   - All template files present
+   - `package.json` has correct dependencies (from META)
+   - No extra/missing files
 
 3. Test build works:
    ```bash
-   cd test-single
-   bun install
-   bun run dev  # Should start without errors
+   cd test-single && bun install && bun run dev
    ```
 
 4. Test in turborepo mode:
    ```bash
-   cd /tmp
-   bun create-faster test-turbo \
-     --app web:[stackname] \
+   bunx create-faster test-turbo \
+     --app web:{stackname} \
      --app api:hono
    ```
 
-**If ANY errors:** Fix templates, regenerate, re-test. Repeat until clean.
+5. Verify turborepo specifics:
+   - Files in `apps/{appName}/`
+   - `tsconfig.json` extends `@repo/config/ts/base.json`
+   - Scripts have port numbers
 
-### Step 6: Add to META
-
-Only after templates are verified working:
-
-```typescript
-// apps/cli/src/__meta__.ts
-META.stacks['stackname'] = {
-  type: 'app' | 'server',
-  scope: 'app',
-  label: 'Framework Name',
-  hint: 'Short description',
-  modules: {
-    'Category Name': {
-      'module-id': {
-        label: 'Module Label',
-        hint: 'What it does',
-        packageName: 'optional-package-name',
-      },
-    },
-  },
-}
-```
-
-**Choosing modules:**
-- Research popular ecosystem libraries
-- Check community templates for common patterns
-- Add 2-5 essential modules (not all possible)
-- Can expand later
-
-### Step 7: Test with Modules
-
-If you added modules, test them:
-
-1. Generate with module enabled:
-   ```bash
-   bun create-faster test-module \
-     --stack [stackname]:[module-id]
-   ```
-
-2. Verify module templates rendered correctly
-
-3. Test build with module active
+**If ANY errors:** Fix templates/META, regenerate, re-test.
 
 ## Checklist - All Steps Required
-
-Before considering task complete:
 
 - [ ] Created reference project with official CLI
 - [ ] Inspected all files (package.json, configs, source)
 - [ ] Understood framework-specific patterns
-- [ ] Created complete template structure (not just configs)
-- [ ] Added ALL dependencies from reference
-- [ ] Added ALL config files from reference
-- [ ] Created source file templates (entry, routes, components)
+- [ ] Added to `StackName` union in `types/meta.ts`
+- [ ] Added META entry with `packageJson` (dependencies + scripts)
+- [ ] Added file extension to `KNOWN_EXTENSIONS` (if applicable)
+- [ ] Created template directory under `templates/stack/{stackname}/`
+- [ ] Created ALL source file templates (entry, routes, components)
+- [ ] Did NOT create `package.json.hbs` (it's programmatic)
+- [ ] Did NOT create `.env.example.hbs` (it's programmatic)
+- [ ] Used YAML frontmatter where needed (not magic comments)
 - [ ] Tested generation in single repo mode
 - [ ] Tested generation in turborepo mode
 - [ ] Verified dev server starts
 - [ ] Verified build completes
-- [ ] Added to __meta__.ts with appropriate modules
-- [ ] Tested module generation (if modules added)
+- [ ] Checked library compatibility (no React libs for non-React stacks)
 
 ## Special Filename Handling
 
 **create-faster naming conventions:**
 - `__filename` → `.filename` (for dotfiles like `.gitignore`, `.env`)
 - To create files that literally start with `__`, use triple underscore:
-  - `___root.tsx.hbs` → `__root.tsx` ✅
-  - `__root.tsx.hbs` → `.root.tsx` ❌
-
-**Examples:**
-- TanStack Start: `___root.tsx.hbs` (needs literal `__root.tsx`)
-- Next.js App Router: No issue (uses `app/` directory, not `__` files)
+  - `___root.tsx.hbs` → `__root.tsx`
+  - `__root.tsx.hbs` → `.root.tsx` (WRONG)
 
 ## Common Rationalizations - STOP
 
@@ -278,10 +286,10 @@ Before considering task complete:
 | "Config files are enough" | Without source files, nothing runs. |
 | "I know this framework" | Create reference anyway. Starters evolve. |
 | "I'll add source later" | Templates must be complete NOW. |
+| "I need a package.json.hbs" | Package.json is generated programmatically from META. No template file. |
+| "I'll use magic comments" | Magic comments were removed. Use YAML frontmatter. |
 | "Close enough, it'll probably work" | Probably = definitely broken. Test it. |
-| "Just package.json for now" | Incomplete = non-functional. Do it right. |
 | "I can skip testing" | Untested templates = broken templates. |
-| "Vinxi and Vite are the same" | Assumptions like this cause failures. Verify. |
 | "Triple underscore? That's weird" | Naming edge case from testing. Use it or file breaks. |
 
 ## Red Flags - You're About to Fail
@@ -289,41 +297,24 @@ Before considering task complete:
 **STOP immediately if you think:**
 - "I'll just look at [other stack] first"
 - "Config files should be enough to start"
-- "I can add [critical part] later"
+- "I need to create a package.json template"
+- "I'll use @dest: or @scope: magic comments"
+- "The env template goes in templates/"
+- "I'll add modules inside the stack directory"
 - "It's probably similar to [other framework]"
-- "I don't need to test, it should work"
 
 These thoughts = baseline failure pattern. Follow the process.
 
-## Quick Reference - File Checklist
+## Quick Reference
 
-**Minimum required files:**
-- ✅ package.json.hbs (complete dependencies)
-- ✅ Config file(s) (vite.config, next.config, etc.)
-- ✅ tsconfig.json.hbs
-- ✅ Entry point (main.tsx, app.tsx, etc.)
-- ✅ At least one route/page
-- ✅ Basic component structure (if framework uses components)
-- ✅ public/ directory (if framework needs it)
-
-**If ANY missing:** Templates incomplete. Keep working.
-
-## Real-World Impact
-
-**Without this skill (baseline):**
-- 20 minutes → broken templates
-- Missing 10+ dependencies
-- Zero source files
-- Would not run at all
-
-**With this skill:**
-- 30-40 minutes → functional templates
-- All dependencies present
-- Complete source structure
-- Verified working build
-
-**Extra 10-20 minutes = difference between broken and working.**
-
-## Example: Adding TanStack Start
-
-Reference the baseline test in `/tmp/baseline-adding-tanstack-start.md` to see all the mistakes this skill prevents.
+| What | Where | How |
+|------|-------|-----|
+| Stack definition | `META.stacks` in `__meta__.ts` | `type`, `label`, `hint`, `packageJson` |
+| Type union | `StackName` in `types/meta.ts` | Add new literal |
+| Template files | `templates/stack/{stackname}/` | `.hbs` files with optional frontmatter |
+| Package.json | Programmatic from META | `package-json-generator.ts` |
+| Env vars | Declared in META `envs` | `env-generator.ts` |
+| Libraries | `META.libraries` (separate) | Check `support.stacks` compatibility |
+| File extensions | `KNOWN_EXTENSIONS` in `frontmatter.ts` | Add if non-standard |
+| Frontmatter | YAML at top of `.hbs` file | `path`, `mono`, `only` fields |
+| Helpers | `handlebars.ts` | `isMono`, `hasLibrary`, `has`, `hasContext`, `appPort` |
