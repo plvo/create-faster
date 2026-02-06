@@ -21,7 +21,8 @@ Use this skill when:
 - Standardizing template patterns
 
 Do NOT use for:
-- Adding new stacks (use adding-stacks skill)
+- Adding new content (use `adding-templates` skill)
+- Extracting from external projects (use `extracting-templates` skill)
 - Updating dependency versions
 - Changing template logic/functionality
 
