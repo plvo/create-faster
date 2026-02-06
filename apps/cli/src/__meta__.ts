@@ -188,6 +188,21 @@ export const META: Meta = {
         },
       ],
     },
+    trpc: {
+      label: 'tRPC',
+      hint: 'End-to-end typesafe APIs',
+      support: { stacks: ['nextjs'] },
+      packageJson: {
+        dependencies: {
+          '@trpc/client': '^11.8.1',
+          '@trpc/server': '^11.8.1',
+          '@trpc/tanstack-react-query': '^11.8.1',
+          'server-only': '^0.0.1',
+          superjson: '^2.2.6',
+          zod: '^4.2.1',
+        },
+      },
+    },
     'tanstack-query': {
       label: 'TanStack Query',
       hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
