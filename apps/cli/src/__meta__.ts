@@ -177,6 +177,16 @@ export const META: Meta = {
           './types': './src/types.ts',
         },
       },
+      envs: [
+        {
+          value: 'BETTER_AUTH_SECRET= # generate with: openssl rand -base64 32',
+          monoScope: [{ pkg: 'auth' }, 'app'],
+        },
+        {
+          value: 'BETTER_AUTH_URL=http://localhost:{{appPort}}',
+          monoScope: ['app'],
+        },
+      ],
     },
     'tanstack-query': {
       label: 'TanStack Query',
@@ -262,6 +272,13 @@ export const META: Meta = {
               '@types/pg': '^8.11.10',
             },
           },
+          envs: [
+            {
+              value:
+                'DATABASE_URL="postgresql://postgres:password@localhost:5432/{{projectName}}" # Local Docker PostgreSQL',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
         },
         mysql: {
           label: 'MySQL',
@@ -272,6 +289,12 @@ export const META: Meta = {
               mysql2: '^3.11.5',
             },
           },
+          envs: [
+            {
+              value: 'DATABASE_URL="mysql://mysql:password@localhost:3306/{{projectName}}" # Local Docker MySQL',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
         },
       },
     },
