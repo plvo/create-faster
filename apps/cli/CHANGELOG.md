@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/plvo/create-faster/compare/create-faster-v1.5.0...create-faster-v2.0.0) (2026-02-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** --addon flag replaced with --database/--orm/--tooling
+
+### Refactor
+
+* **cli:** template system ([#63](https://github.com/plvo/create-faster/issues/63)) ([2c98fc0](https://github.com/plvo/create-faster/commit/2c98fc0dce660fb24c80e11286c11dba432ff12e))
+
 ## [1.5.0](https://github.com/plvo/create-faster/compare/create-faster-v1.4.1...create-faster-v1.5.0) (2026-02-02)
 
 
