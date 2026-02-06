@@ -42,16 +42,6 @@ export function registerHandlebarsHelpers(): void {
     const index = root.apps?.findIndex((app: AppContext) => app.appName === appName) ?? -1;
     return index === -1 ? 3000 : 3000 + index;
   });
-
-  Handlebars.registerHelper('databaseUrl', function (this: TemplateContext) {
-    if (this.project?.database === 'postgres') {
-      return `postgresql://postgres:password@localhost:5432/postgres-${this.projectName}`;
-    }
-    if (this.project?.database === 'mysql') {
-      return `mysql://mysql:password@localhost:3306/mysql-${this.projectName}`;
-    }
-    return null;
-  });
 }
 
 export function renderTemplate(templateContent: string, context: TemplateContext): string {

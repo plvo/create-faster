@@ -166,25 +166,4 @@ describe('Handlebars helpers', () => {
       expect(template({ apps: [{ appName: 'web' }] })).toBe('3000');
     });
   });
-
-  describe('databaseUrl', () => {
-    test('returns postgres URL', () => {
-      const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ project: { database: 'postgres', tooling: [] }, projectName: 'test' })).toBe(
-        'postgresql://postgres:password@localhost:5432/postgres-test',
-      );
-    });
-
-    test('returns mysql URL', () => {
-      const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ project: { database: 'mysql', tooling: [] }, projectName: 'test' })).toBe(
-        'mysql://mysql:password@localhost:3306/mysql-test',
-      );
-    });
-
-    test('returns empty for no database', () => {
-      const template = Handlebars.compile('{{databaseUrl}}');
-      expect(template({ project: { tooling: [] }, projectName: 'test' })).toBe('');
-    });
-  });
 });
