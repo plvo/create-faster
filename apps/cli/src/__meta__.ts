@@ -299,9 +299,7 @@ export const META: Meta = {
               'db:seed': 'bun run scripts/seed.ts',
             },
             exports: {
-              '.': './index.ts',
-              './schema': './schema.ts',
-              './types': './types.ts',
+              '.': './src/index.ts',
             },
           },
         },
@@ -324,7 +322,7 @@ export const META: Meta = {
               'db:seed': 'bun run scripts/seed.ts',
             },
             exports: {
-              '.': './index.ts',
+              '.': './src/index.ts',
             },
           },
         },
