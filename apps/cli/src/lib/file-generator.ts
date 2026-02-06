@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import { collectEnvFiles } from './env-generator';
+import { collectEnvFiles, collectEnvGroups } from './env-generator';
 import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars';
 import { generateAllPackageJsons } from './package-json-generator';
@@ -99,6 +99,9 @@ export async function generateProjectFiles(
   }
 
   // 3. Process Handlebars templates
+  const envGroups = collectEnvGroups(context);
+  const enrichedContext = { ...context, envGroups };
+
   const s = spinner();
   const totalFiles = packageJsons.length + envFiles.length + templates.length;
   s.start(`Generating ${totalFiles} files...`);
@@ -109,7 +112,7 @@ export async function generateProjectFiles(
     const progress = `[${processed}/${totalFiles}]`;
     s.message(`${progress} ${template.destination}`);
 
-    const processResult = await processTemplate(template, context, projectPath);
+    const processResult = await processTemplate(template, enrichedContext, projectPath);
     allResults.push(processResult);
   }
 
