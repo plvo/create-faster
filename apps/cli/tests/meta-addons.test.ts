@@ -60,3 +60,47 @@ describe('META.stacks validation', () => {
     expect(META.stacks.hono).toBeDefined();
   });
 });
+
+describe('META env vars', () => {
+  test('postgres declares DATABASE_URL with pkg and app scope', () => {
+    const postgres = META.project.database.options.postgres;
+    expect(postgres.envs).toBeDefined();
+    expect(postgres.envs).toHaveLength(1);
+    expect(postgres.envs![0].value).toContain('DATABASE_URL');
+    expect(postgres.envs![0].value).toContain('postgresql://');
+    expect(postgres.envs![0].monoScope).toContainEqual({ pkg: 'db' });
+    expect(postgres.envs![0].monoScope).toContain('app');
+  });
+
+  test('mysql declares DATABASE_URL with pkg and app scope', () => {
+    const mysql = META.project.database.options.mysql;
+    expect(mysql.envs).toBeDefined();
+    expect(mysql.envs).toHaveLength(1);
+    expect(mysql.envs![0].value).toContain('DATABASE_URL');
+    expect(mysql.envs![0].value).toContain('mysql://');
+    expect(mysql.envs![0].monoScope).toContainEqual({ pkg: 'db' });
+    expect(mysql.envs![0].monoScope).toContain('app');
+  });
+
+  test('better-auth declares BETTER_AUTH_SECRET and BETTER_AUTH_URL', () => {
+    const auth = META.libraries['better-auth'];
+    expect(auth.envs).toBeDefined();
+    expect(auth.envs).toHaveLength(2);
+
+    const secret = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_SECRET'));
+    expect(secret).toBeDefined();
+    expect(secret!.monoScope).toContainEqual({ pkg: 'auth' });
+    expect(secret!.monoScope).toContain('app');
+
+    const url = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_URL'));
+    expect(url).toBeDefined();
+    expect(url!.value).toContain('{{appPort}}');
+    expect(url!.monoScope).toContain('app');
+  });
+
+  test('addons without env vars have no envs field', () => {
+    expect(META.libraries.shadcn.envs).toBeUndefined();
+    expect(META.libraries['tanstack-query'].envs).toBeUndefined();
+    expect(META.project.tooling.options.biome.envs).toBeUndefined();
+  });
+});

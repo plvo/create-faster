@@ -53,14 +53,20 @@ Install dependencies:
 {{#if pm}}{{pm}} install{{else}}npm install{{/if}}
 ```
 
-{{#if database}}
-Set up the database:
+{{#if envGroups.length}}
+Set up environment variables:
 
 ```bash
-# Create .env file in the root with database credentials
-cp .env.example .env
+{{#each envGroups}}
+cp {{path}}.example {{path}}
+{{/each}}
+```
 
-# Run migrations
+{{/if}}
+{{#if database}}
+Run database migrations:
+
+```bash
 {{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
 ```
 
@@ -95,6 +101,19 @@ Start all applications in development mode:
 - `check` - Run both linting and formatting
 {{/if}}
 
+{{#if envGroups.length}}
+## Environment Variables
+
+Copy each `.env.example` to `.env` and configure:
+
+{{#each envGroups}}
+### `{{path}}`
+{{#each vars}}
+- `{{this}}`
+{{/each}}
+
+{{/each}}
+{{/if}}
 ## Learn More
 
 - [create-faster documentation](https://github.com/plvo/create-faster)
