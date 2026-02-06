@@ -23,6 +23,21 @@ Do NOT use for:
 - General framework tutorials (link to official docs)
 - Module documentation (separate workflow)
 
+## Architecture Context
+
+**Where things live:**
+- Stack templates: `templates/stack/{framework}/`
+- Library templates: `templates/libraries/{library}/`
+- Project addon templates: `templates/project/{category}/{name}/`
+- Dependencies/scripts: `META.stacks[name].packageJson` in `__meta__.ts` (NOT in templates)
+- Env vars: `META.libraries[name].envs` and `META.project.*.options.*.envs` (NOT in templates)
+- Library compatibility: `META.libraries[name].support.stacks`
+- Documentation site: `apps/www/content/docs/`
+
+**Package.json is programmatic.** Scripts and dependencies are declared in META, not in template files. To verify what a stack provides, check `META.stacks[name].packageJson` in `__meta__.ts`.
+
+**Env vars are programmatic.** Check `envs` fields in META addons, not template files.
+
 ## Structure Template
 
 ```markdown
@@ -83,45 +98,42 @@ packages/name/
 - Turborepo vs single repo differences
 ```
 
-## RED FLAGS - You're Documenting Wrong
-
-**STOP if you write:**
-- `# Stack Name` title (title in frontmatter already renders as H1)
-- Changed description style (keep original framework presentation)
-- Categorized module sections ("UI & Styling", "Data Fetching")
-- "Why use X?" explanations (that's official docs' job)
-- Generic framework features (link to docs instead)
-- Framework-agnostic options as stack features (Biome, git, etc.)
-- Optional features presented as defaults (Turbopack is optional, not default)
-- Default framework configs everyone uses (TypeScript strict, etc.)
-- Module descriptions without technical changes
-- Bullet lists of dependencies without file structure
-
-**These mean:** Refocus on what create-faster adds, not what the framework does.
-
 ## Documentation Workflow
 
-### Step 1: Analyze Templates
+### Step 1: Analyze META for Dependencies and Scripts
 
-**CRITICAL: Templates are the source of truth. Verify every file reference.**
+**CRITICAL: META is the source of truth for dependencies and scripts, not template files.**
+
+```bash
+# Check META for stack's packageJson
+grep -A 30 "'stackname'" apps/cli/src/__meta__.ts
+
+# Check what libraries support this stack
+grep -B 2 -A 5 "stacks:.*'stackname'" apps/cli/src/__meta__.ts
+# Also check for stacks: 'all' (available to every stack)
+grep -A 2 "stacks: 'all'" apps/cli/src/__meta__.ts
+```
+
+### Step 2: Analyze Template Files
 
 ```bash
 # Find all template files for stack
 ls -la apps/cli/templates/stack/{stackname}/
 
-# Check modules (not all stacks have modules directories)
-ls -la apps/cli/templates/modules/{framework}/
+# Check library templates
+ls -la apps/cli/templates/libraries/
 
 # Verify specific files mentioned in docs
 find apps/cli/templates -name "filename.hbs"
 
-# Check package.json for scripts
-grep "script-name" apps/cli/templates/stack/{stackname}/package.json.hbs
+# Check for frontmatter (only/mono filters)
+grep -l '^---' apps/cli/templates/stack/{stackname}/*.hbs
+head -5 apps/cli/templates/stack/{stackname}/*.hbs
 ```
 
-Document EXACTLY what files we create/modify. Cross-reference every claim with actual template files.
+Document EXACTLY what files we create/modify. Cross-reference every claim with actual template files AND META.
 
-### Step 2: Structure Document
+### Step 3: Structure Document
 
 **Frontmatter (YAML):**
 - `title`: Stack name
@@ -143,47 +155,62 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 4. Tree structure showing files
 5. Integration notes if applicable
 
-### Step 3: Focus on Technical Changes
+### Step 4: Focus on Technical Changes
 
 **DO document:**
 - Files we create (verifiable in `apps/cli/templates/`)
-  - Example: `apps/cli/templates/modules/nextjs/shadcn/src/lib/utils.ts.hbs`
-  - Example: `apps/cli/templates/stack/nextjs/src/hooks/use-mobile.ts.hbs`
-- Files we modify (verifiable in `apps/cli/templates/`)
-  - Example: `apps/cli/templates/stack/nextjs/next.config.ts.hbs` (MDX support)
+- Files we modify (verifiable in templates with conditionals)
 - Custom utilities (functions in template files)
-  - Example: `cn()` function in utils.ts
-  - Example: `useIsMobile()` hook in use-mobile.ts
-- Custom scripts with clear purpose (in package.json templates)
-  - Example: `build:analyze` in `apps/cli/templates/stack/nextjs/package.json.hbs`
-  - Example: `start:inspect` in `apps/cli/templates/stack/nextjs/package.json.hbs`
-- Turborepo package structure (conditional based on repo type)
-- Integration configs (ORM adapters, database providers)
+- Scripts from META `packageJson.scripts` (with their purpose)
+- Dependencies from META `packageJson.dependencies`
+- Turborepo vs single repo differences (check frontmatter `only: mono` filters)
+- Env vars from META `envs` fields (with scope resolution)
 
 **DON'T document:**
 - What the framework/module does (official docs)
 - Generic "benefits" or "why use"
 - Basic usage examples (they have tutorials)
 - Framework-agnostic options (Biome, git - user chooses)
-- Optional features as defaults (Turbopack is optional)
+- Optional features as defaults
 - Standard configs everyone uses (TypeScript strict)
+- Dependencies not in META (verify!)
+- Scripts not in META (verify!)
 
-### Step 4: Mini Configs Emphasis
+### Step 5: Verify Every Claim
 
-**Highlight create-faster value:**
-- Pre-configured optimizations
-- Utilities you'd repeatedly create
-- Scripts that speed up dev workflow
-- Patterns to avoid repetition
+**MANDATORY verification before publishing:**
 
-**Example:**
-```markdown
-**Development Scripts:**
-- `build:analyze` - Bundle size analysis with @next/bundle-analyzer
-- `start:inspect` - Debug mode with Node inspector
+```bash
+# Verify scripts exist in META
+grep "scripts:" -A 10 apps/cli/src/__meta__.ts | grep stackname
 
-*Why these?* Common debugging/optimization tasks made one command.
+# Verify dependencies exist in META
+grep "dependencies:" -A 10 apps/cli/src/__meta__.ts | grep stackname
+
+# Verify template files exist
+ls apps/cli/templates/stack/{stackname}/
+
+# Verify library compatibility
+grep "'stackname'" apps/cli/src/__meta__.ts
 ```
+
+Every script, dependency, and file reference MUST be verified against the codebase. Existing docs have had factual errors (wrong script commands, nonexistent dependencies).
+
+## RED FLAGS - You're Documenting Wrong
+
+**STOP if you write:**
+- `# Stack Name` title (title in frontmatter already renders as H1)
+- Changed description style (keep original framework presentation)
+- Categorized module sections ("UI & Styling", "Data Fetching")
+- "Why use X?" explanations (that's official docs' job)
+- Generic framework features (link to docs instead)
+- Framework-agnostic options as stack features (Biome, git, etc.)
+- Optional features presented as defaults
+- Default framework configs everyone uses (TypeScript strict, etc.)
+- Dependencies not verified in META (e.g., claiming `@hono/zod-validator` when it's not in META)
+- Scripts not verified in META (e.g., claiming `build` script when only `dev` and `start` exist)
+
+**These mean:** Refocus on what create-faster adds, not what the framework does. And VERIFY against code.
 
 ## Common Mistakes
 
@@ -195,6 +222,9 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 | Missing "What we add" | Required section at top |
 | Verbose descriptions | Technical changes only |
 | No official doc link | MANDATORY at top |
+| Unverified dependencies | Check `META.stacks[name].packageJson` |
+| Unverified scripts | Check `META.stacks[name].packageJson.scripts` |
+| Checking package.json.hbs | Package.json is programmatic, check META instead |
 
 ## Rationalization Table
 
@@ -207,10 +237,8 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 | "More detail is better" | Technical changes only. Avoid bloat. |
 | "Should explain benefits" | Features = official docs. Our additions = us. |
 | "Biome/git are part of stack" | Framework-agnostic options. Not stack-specific. |
-| "Turbopack is default" | It's optional. Don't claim as default. |
-| "TypeScript strict is our addition" | Everyone uses strict. Not worth mentioning. |
-| "Tree structure is extra work" | Shows exactly what we create. Essential. |
-| "Integration notes aren't needed" | ORM/database combos need explanation. |
+| "I saw it in the old docs" | Old docs had errors. Verify against META and templates. |
+| "The package.json template has it" | There IS no package.json template. It's programmatic from META. |
 
 ## Template Checklist
 
@@ -226,32 +254,17 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 - [ ] NO framework-agnostic options (Biome, git, etc.)
 - [ ] NO optional features claimed as defaults
 - [ ] NO standard configs everyone uses
-- [ ] Modules section (flat, no categories like "UI & Styling")
+- [ ] Modules section (flat, no categories)
 - [ ] Each module has link to official docs
 - [ ] Each module shows files added/modified with tree structure
 - [ ] Technical changes focus on OUR additions
 - [ ] Turborepo differences noted where applicable
 - [ ] Integration notes for ORM/database modules
-- [ ] No "Why use X?" sections
-- [ ] No framework feature explanations
 
 **Verification (MANDATORY):**
+- [ ] Every script verified in `META.stacks[name].packageJson.scripts`
+- [ ] Every dependency verified in `META.stacks[name].packageJson.dependencies`
 - [ ] Every file reference verified in `apps/cli/templates/`
-- [ ] Every script reference verified in package.json.hbs
-- [ ] Every utility function verified in template source
-- [ ] Error page references checked against actual templates
-- [ ] Module structure verified (some use inline conditionals, not separate files)
-
-## Real-World Impact
-
-**Without this skill:**
-- 20 minutes → Verbose doc mixing framework features + our additions
-- Categories make finding modules harder
-- Missing technical details about files created
-- No clarity on what create-faster actually adds
-
-**With this skill:**
-- 10 minutes → Clean doc focused on technical changes
-- Flat module list, easy to scan
-- Clear file structures showing our additions
-- Highlights mini configs and optimizations
+- [ ] Library compatibility verified in `META.libraries[name].support`
+- [ ] Env vars verified in META `envs` fields (if documented)
+- [ ] Frontmatter filters checked (e.g., `only: mono` means turborepo-only)
