@@ -170,8 +170,10 @@ export const META: Meta = {
           'better-auth': '^1.4.10',
         },
         exports: {
-          '.': './src/index.ts',
-          './client': './src/client.ts',
+          './route-nextjs': './src/route-nextjs.ts',
+          './auth': './src/auth.ts',
+          './auth-client': './src/auth-client.ts',
+          './types': './src/types.ts',
         },
       },
     },

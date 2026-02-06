@@ -8,5 +8,5 @@ import { auth } from '@/lib/auth/auth';
 
 export const { GET, POST } = toNextJsHandler(auth.handler);
 {{else}}
-export { GET, POST } from '@repo/auth/route';
+export { GET, POST } from '@repo/auth/route-nextjs';
 {{/if}}
