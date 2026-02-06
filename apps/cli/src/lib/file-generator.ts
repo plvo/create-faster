@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import { collectEnvFiles } from './env-generator';
 import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars';
 import { generateAllPackageJsons } from './package-json-generator';
@@ -78,12 +79,31 @@ export async function generateProjectFiles(
     }
   }
 
-  // 2. Process templates
+  // 2. Generate .env.example files (programmatic)
+  const envFiles = collectEnvFiles(context);
+
+  for (const { destination, content } of envFiles) {
+    const fullPath = join(projectPath, destination);
+
+    try {
+      await mkdir(dirname(fullPath), { recursive: true });
+      await writeFile(fullPath, content);
+      allResults.push({ success: true, destination });
+    } catch (error) {
+      allResults.push({
+        success: false,
+        destination,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  // 3. Process Handlebars templates
   const s = spinner();
-  const totalFiles = packageJsons.length + templates.length;
+  const totalFiles = packageJsons.length + envFiles.length + templates.length;
   s.start(`Generating ${totalFiles} files...`);
 
-  let processed = packageJsons.length;
+  let processed = packageJsons.length + envFiles.length;
   for (const template of templates) {
     processed++;
     const progress = `[${processed}/${totalFiles}]`;
@@ -93,7 +113,7 @@ export async function generateProjectFiles(
     allResults.push(processResult);
   }
 
-  // 3. Compile results
+  // 4. Compile results
   for (const r of allResults) {
     if (r.success) {
       result.generated.push(r.destination);
