@@ -8,7 +8,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig: NextConfig = {
-  {{#if (eq repo "turborepo")}}
+  {{#if (isMono)}}
   transpilePackages: [
     {{#if (hasLibrary "shadcn")}}
     "@repo/ui",

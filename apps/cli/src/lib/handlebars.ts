@@ -10,7 +10,7 @@ export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
   Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some((v) => Boolean(v)));
 
-  Handlebars.registerHelper('isTurborepo', function (this: TemplateContext) {
+  Handlebars.registerHelper('isMono', function (this: TemplateContext) {
     return this.repo === 'turborepo';
   });
 

@@ -2,7 +2,7 @@
 mono:
   scope: root
 ---
-{{#if (eq repo "turborepo")}}
+{{#if (isMono)}}
 import { db, postTable, userTable } from '@repo/db';
 {{else}}
 import { db, postTable, userTable } from '../src/lib/db';

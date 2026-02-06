@@ -1,7 +1,7 @@
 ---
 path: src/lib/db/index.ts
 ---
-{{#if (eq repo "turborepo")}}
+{{#if (isMono)}}
 import { PrismaClient } from '../generated/prisma';
 {{else}}
 import { PrismaClient } from '@prisma/client';
@@ -17,7 +17,7 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-{{#if (eq repo "turborepo")}}
+{{#if (isMono)}}
 export * from '../generated/prisma';
 {{else}}
 export * from '@prisma/client';

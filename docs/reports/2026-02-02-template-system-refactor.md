@@ -236,7 +236,7 @@ Reduced from 16 helpers to 9 essential ones:
 | `ne` | Inequality check | `{{#if (ne repo "single")}}` |
 | `and` | Logical AND | `{{#if (and orm database)}}` |
 | `or` | Logical OR | `{{#if (or a b)}}` |
-| `isTurborepo` | Check repo type | `{{#if (isTurborepo)}}` |
+| `isTurborepo` | Check repo type | `{{#if (isMono)}}` |
 | `has` | Generic check | `{{#if (has "module" "shadcn")}}` |
 | `hasContext` | Check context key | `{{#if (hasContext "orm")}}` |
 | `appPort` | Get app port | `{{appPort "web"}}` → 3000 |

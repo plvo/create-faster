@@ -150,7 +150,7 @@ templates/stack/[stackname]/
 
 2. **Add Handlebars conditionals:**
    ```handlebars
-   {{#if (eq repo "turborepo")}}
+   {{#if (isMono)}}
    "@repo/config": "*",
    {{/if}}
    ```

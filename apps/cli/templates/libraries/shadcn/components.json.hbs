@@ -9,7 +9,7 @@ mono:
   "tsx": true,
   "tailwind": {
     "config": "",
-    {{#if (eq repo "turborepo")}}
+    {{#if (isMono)}}
     "css": "@repo/ui/base.css",
     {{else}}
     "css": "src/styles/globals.css",
@@ -22,7 +22,7 @@ mono:
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-    {{#if (eq repo "turborepo")}}
+    {{#if (isMono)}}
     "utils": "@repo/ui/lib/utils",
     "ui": "@repo/ui"
     {{else}}

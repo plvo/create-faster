@@ -2,7 +2,7 @@
 mono:
   scope: root
 ---
-{{#if (eq repo "turborepo")}}
+{{#if (isMono)}}
 import { prisma } from '@repo/db';
 {{else}}
 import { prisma } from '../src/lib/db';

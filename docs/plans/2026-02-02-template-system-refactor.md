@@ -182,7 +182,7 @@ orm: {
 | `ne` | `{{#if (ne foo 'bar')}}` |
 | `and` | `{{#if (and a b c)}}` |
 | `or` | `{{#if (or a b)}}` |
-| `isTurborepo` | `{{#if (isTurborepo)}}` |
+| `isTurborepo` | `{{#if (isMono)}}` |
 | `has` | `{{#if (has 'database' 'postgres')}}` |
 
 The `has` helper is generic and replaces `hasModule`, `hasExtra`, `isPostgres`, etc.
@@ -2204,12 +2204,12 @@ describe('Handlebars helpers', () => {
 
   describe('isTurborepo', () => {
     test('returns true for turborepo', () => {
-      const template = Handlebars.compile('{{#if (isTurborepo)}}yes{{else}}no{{/if}}');
+      const template = Handlebars.compile('{{#if (isMono)}}yes{{else}}no{{/if}}');
       expect(template({ repo: 'turborepo' })).toBe('yes');
     });
 
     test('returns false for single', () => {
-      const template = Handlebars.compile('{{#if (isTurborepo)}}yes{{else}}no{{/if}}');
+      const template = Handlebars.compile('{{#if (isMono)}}yes{{else}}no{{/if}}');
       expect(template({ repo: 'single' })).toBe('no');
     });
   });

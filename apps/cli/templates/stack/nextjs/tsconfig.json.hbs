@@ -1,4 +1,7 @@
 {
+  {{#if (isMono)}}
+  "extends": "@repo/config/ts/nextjs.json",
+  {{/if}}
   "compilerOptions": {
     {{#if (eq repo "single")}}
     "target": "ES2017",
@@ -22,8 +25,10 @@
     ],
     {{/if}}
     "paths": {
-      {{#if (eq repo "turborepo")}}
+      {{#if (isMono)}}
+      {{#if (hasLibrary "shadcn")}}
       "@repo/ui/*": ["../../packages/ui/src/*"],
+      {{/if}}
       {{/if}}
       "@/*": ["./src/*"],
       "#/*": ["./*"]

@@ -4,15 +4,26 @@ mono:
   path: src/auth.ts
 ---
 {{#if (has "orm" "drizzle")}}
+{{#if (isMono)}}
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@repo/db';
+{{else}}
 import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
+{{/if}}
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 {{/if}}
+
 {{#if (has "orm" "prisma")}}
+{{#if (isMono)}}
+import { prisma } from '@repo/db';
+{{else}}
 import { prisma } from '@/lib/db';
+{{/if}}
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 {{/if}}
 import { betterAuth } from 'better-auth';
+{{#if (has "stack" "nextjs")}}
 import { nextCookies } from 'better-auth/next-js';
+{{/if}}
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
@@ -47,7 +58,7 @@ export const auth = betterAuth({
   }),
   {{/if}}
 
-  plugins: [nextCookies()],
+  plugins: [{{#if (has "stack" "nextjs")}}nextCookies(){{/if}}],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,

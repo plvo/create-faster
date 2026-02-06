@@ -9,7 +9,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  {{#if (eq repo "turborepo")}}
+  {{#if (isMono)}}
   schema: './src/schema.ts',
   {{else}}
   schema: './src/lib/db/schema.ts',

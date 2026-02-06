@@ -8,7 +8,7 @@ import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
   server: {
-    port: {{#if (eq repo "turborepo")}}{{appPort appName}}{{else}}3000{{/if}},
+    port: {{#if (isMono)}}{{appPort appName}}{{else}}3000{{/if}},
   },
   plugins: [
     devtools(),

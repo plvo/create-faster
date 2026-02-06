@@ -61,12 +61,12 @@ describe('Handlebars helpers', () => {
 
   describe('isTurborepo', () => {
     test('returns true for turborepo', () => {
-      const template = Handlebars.compile('{{#if (isTurborepo)}}yes{{else}}no{{/if}}');
+      const template = Handlebars.compile('{{#if (isMono)}}yes{{else}}no{{/if}}');
       expect(template({ repo: 'turborepo' })).toBe('yes');
     });
 
     test('returns false for single', () => {
-      const template = Handlebars.compile('{{#if (isTurborepo)}}yes{{else}}no{{/if}}');
+      const template = Handlebars.compile('{{#if (isMono)}}yes{{else}}no{{/if}}');
       expect(template({ repo: 'single' })).toBe('no');
     });
   });
