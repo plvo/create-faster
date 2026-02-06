@@ -7,6 +7,13 @@ export type MonoScope = 'app' | 'pkg' | 'root';
 
 export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
 
+export type EnvScope = 'app' | 'root' | { pkg: string };
+
+export interface EnvVar {
+  value: string;
+  monoScope: EnvScope[];
+}
+
 export interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
@@ -34,6 +41,7 @@ export interface MetaAddon {
   require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+  envs?: EnvVar[];
 }
 
 export interface MetaProjectCategory {

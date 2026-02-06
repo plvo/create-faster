@@ -2,7 +2,7 @@
 // ABOUTME: Ensures MetaAddon and MetaProjectCategory types are correct
 
 import { describe, expect, test } from 'bun:test';
-import type { AddonMono, MetaAddon, MetaProjectCategory, StackName } from '../src/types/meta';
+import type { AddonMono, EnvScope, EnvVar, MetaAddon, MetaProjectCategory, StackName } from '../src/types/meta';
 
 describe('MetaAddon types', () => {
   test('MetaAddon has required fields', () => {
@@ -58,6 +58,34 @@ describe('MetaAddon types', () => {
     };
     expect(addon.require?.orm).toContain('drizzle');
     expect(addon.require?.orm).toContain('prisma');
+  });
+
+  test('MetaAddon can declare env vars with monoScope', () => {
+    const addon: MetaAddon = {
+      label: 'PostgreSQL',
+      envs: [{ value: 'DATABASE_URL="postgresql://localhost:5432/mydb"', monoScope: [{ pkg: 'db' }, 'app'] }],
+    };
+    expect(addon.envs).toHaveLength(1);
+    expect(addon.envs![0].value).toContain('DATABASE_URL');
+    expect(addon.envs![0].monoScope).toContain('app');
+  });
+
+  test('EnvScope supports root, app, and pkg with name', () => {
+    const rootScope: EnvScope = 'root';
+    const appScope: EnvScope = 'app';
+    const pkgScope: EnvScope = { pkg: 'db' };
+
+    expect(rootScope).toBe('root');
+    expect(appScope).toBe('app');
+    expect(pkgScope).toEqual({ pkg: 'db' });
+  });
+
+  test('EnvVar monoScope can target multiple locations', () => {
+    const envVar: EnvVar = {
+      value: 'BETTER_AUTH_SECRET= # generate with: openssl rand -base64 32',
+      monoScope: [{ pkg: 'auth' }, 'app'],
+    };
+    expect(envVar.monoScope).toHaveLength(2);
   });
 });
 
