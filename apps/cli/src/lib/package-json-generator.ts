@@ -85,6 +85,26 @@ function getProjectAddonPackageName(addon: MetaAddon): string | null {
   return null;
 }
 
+function filterInternalDeps(
+  deps: Record<string, string> | undefined,
+  existingPackages: Set<string>,
+): Record<string, string> | undefined {
+  if (!deps) return undefined;
+
+  const filtered: Record<string, string> = {};
+  for (const [key, value] of Object.entries(deps)) {
+    if (key.startsWith('@repo/')) {
+      const pkgName = key.replace('@repo/', '');
+      if (existingPackages.has(pkgName)) {
+        filtered[key] = value;
+      }
+    } else {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
+}
+
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
@@ -141,6 +161,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
+  if (isTurborepo) {
+    merged.devDependencies = {
+      ...merged.devDependencies,
+      '@repo/config': '*',
+    };
+  }
+
   let scripts = merged.scripts ?? {};
   if (isTurborepo) {
     scripts = resolveScriptPorts(scripts, port);
@@ -162,7 +189,16 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   return { path, content: pkg };
 }
 
-export function generatePackagePackageJson(packageName: string, config: PackageJsonConfig): GeneratedPackageJson {
+export function generatePackagePackageJson(
+  packageName: string,
+  config: PackageJsonConfig,
+  existingPackages: Set<string>,
+): GeneratedPackageJson {
+  const devDeps = { ...config.devDependencies, '@repo/config': '*' };
+
+  const filteredDeps = filterInternalDeps(config.dependencies, existingPackages);
+  const filteredDevDeps = filterInternalDeps(devDeps, existingPackages);
+
   const pkg: PackageJson = {
     name: `@repo/${packageName}`,
     version: '0.0.0',
@@ -170,8 +206,8 @@ export function generatePackagePackageJson(packageName: string, config: PackageJ
     type: 'module',
     exports: config.exports,
     scripts: config.scripts ? sortObjectKeys(config.scripts) : undefined,
-    dependencies: config.dependencies ? sortObjectKeys(config.dependencies) : undefined,
-    devDependencies: config.devDependencies ? sortObjectKeys(config.devDependencies) : undefined,
+    dependencies: filteredDeps ? sortObjectKeys(filteredDeps) : undefined,
+    devDependencies: filteredDevDeps ? sortObjectKeys(filteredDevDeps) : undefined,
   };
 
   const cleanPkg = Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
@@ -264,8 +300,13 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
+    const existingPackages = new Set<string>(['config']);
+    for (const name of extractedPackages.keys()) {
+      existingPackages.add(name);
+    }
+
     for (const [name, config] of extractedPackages) {
-      results.push(generatePackagePackageJson(name, config));
+      results.push(generatePackagePackageJson(name, config, existingPackages));
     }
   } else {
     const firstApp = ctx.apps[0];

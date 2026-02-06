@@ -1,11 +1,7 @@
 ---
 path: src/lib/db/index.ts
 ---
-{{#if (isMono)}}
-import { PrismaClient } from '../generated/prisma';
-{{else}}
-import { PrismaClient } from '@prisma/client';
-{{/if}}
+import { PrismaClient } from {{#if (isMono)}}'../generated/prisma'{{else}}'@prisma/client'{{/if}};
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -17,11 +13,7 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-{{#if (isMono)}}
-export * from '../generated/prisma';
-{{else}}
-export * from '@prisma/client';
-{{/if}}
+export * from {{#if (isMono)}}'../generated/prisma'{{else}}'@prisma/client'{{/if}};
 
 // Type helpers
 export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;

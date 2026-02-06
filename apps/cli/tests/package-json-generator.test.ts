@@ -134,3 +134,89 @@ describe('generateAllPackageJsons', () => {
     expect(results[0].path).toBe('package.json');
   });
 });
+
+describe('internal @repo/* dependencies (turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['shadcn', 'better-auth'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    git: true,
+  };
+
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  test('all packages have @repo/config as devDependency', () => {
+    const results = generateAllPackageJsons(ctx);
+
+    const ui = findByPath(results, 'packages/ui/package.json');
+    const db = findByPath(results, 'packages/db/package.json');
+    const auth = findByPath(results, 'packages/auth/package.json');
+
+    expect(ui?.content.devDependencies?.['@repo/config']).toBe('*');
+    expect(db?.content.devDependencies?.['@repo/config']).toBe('*');
+    expect(auth?.content.devDependencies?.['@repo/config']).toBe('*');
+  });
+
+  test('all apps have @repo/config as devDependency', () => {
+    const results = generateAllPackageJsons(ctx);
+
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.['@repo/config']).toBe('*');
+    expect(api?.content.devDependencies?.['@repo/config']).toBe('*');
+  });
+
+  test('root package.json does NOT have @repo/config', () => {
+    const results = generateAllPackageJsons(ctx);
+    const root = findByPath(results, 'package.json');
+
+    expect(root?.content.devDependencies?.['@repo/config']).toBeUndefined();
+    expect(root?.content.dependencies?.['@repo/config']).toBeUndefined();
+  });
+
+  test('@repo/auth has @repo/db when ORM selected', () => {
+    const results = generateAllPackageJsons(ctx);
+    const auth = findByPath(results, 'packages/auth/package.json');
+
+    expect(auth?.content.dependencies?.['@repo/db']).toBe('*');
+  });
+
+  test('@repo/auth does NOT have @repo/db when no ORM selected', () => {
+    const ctxNoOrm: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { tooling: [] },
+      git: true,
+    };
+
+    const results = generateAllPackageJsons(ctxNoOrm);
+    const auth = findByPath(results, 'packages/auth/package.json');
+
+    expect(auth?.content.dependencies?.['@repo/db']).toBeUndefined();
+  });
+
+  test('single repo has no @repo/* dependencies', () => {
+    const singleCtx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+      git: true,
+    };
+
+    const results = generateAllPackageJsons(singleCtx);
+    const pkg = results[0];
+    const allDeps = { ...pkg.content.dependencies, ...pkg.content.devDependencies };
+    const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
+
+    expect(repoRefs).toEqual([]);
+  });
+});

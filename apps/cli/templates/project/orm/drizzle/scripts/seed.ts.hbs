@@ -2,12 +2,7 @@
 mono:
   scope: root
 ---
-{{#if (isMono)}}
-import { db, postTable, userTable } from '@repo/db';
-{{else}}
-import { db, postTable, userTable } from '../src/lib/db';
-{{/if}}
-
+import { db, postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
 
 async function seed() {
   console.log('🌱 Seeding database...');

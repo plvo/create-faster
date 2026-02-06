@@ -168,6 +168,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           'better-auth': '^1.4.10',
+          '@repo/db': '*',
         },
         exports: {
           './route-nextjs': './src/route-nextjs.ts',

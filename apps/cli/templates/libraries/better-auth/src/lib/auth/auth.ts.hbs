@@ -4,20 +4,11 @@ mono:
   path: src/auth.ts
 ---
 {{#if (has "orm" "drizzle")}}
-{{#if (isMono)}}
-import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@repo/db';
-{{else}}
-import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
-{{/if}}
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 {{/if}}
-
 {{#if (has "orm" "prisma")}}
-{{#if (isMono)}}
-import { prisma } from '@repo/db';
-{{else}}
-import { prisma } from '@/lib/db';
-{{/if}}
+import { prisma } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 {{/if}}
 import { betterAuth } from 'better-auth';
