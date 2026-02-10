@@ -1,5 +1,15 @@
+---
+path: src/trpc/routers/hello.ts
+mono:
+  scope: pkg
+  path: src/router/hello.ts
+---
 import { z } from 'zod';
+{{#if (isMono)}}
+import { publicProcedure, router } from '../trpc';
+{{else}}
 import { publicProcedure, router } from '@/trpc/init';
+{{/if}}
 
 export const helloRouter = router({
   greet: publicProcedure

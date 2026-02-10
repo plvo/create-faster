@@ -1,6 +1,10 @@
+---
+mono:
+  scope: app
+---
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import superjson from 'superjson';
-import type { AppRouter } from '@/trpc/routers/_app';
+import type { AppRouter } from {{#if (isMono)}}'@repo/api'{{else}}'@/trpc/routers/_app'{{/if}};
 
 function getUrl() {
   const base = (() => {

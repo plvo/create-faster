@@ -1,3 +1,7 @@
+---
+mono:
+  scope: app
+---
 import 'server-only';
 
 {{#if (hasLibrary "tanstack-query")}}
@@ -5,13 +9,22 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
 import { cache } from 'react';
 import { makeQueryClient } from '@/trpc/query-client';
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+import { appRouter, createTRPCContext } from '@repo/api';
+{{else}}
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
+{{/if}}
 
 const getQueryClient = cache(makeQueryClient);
 
 export const trpc = createTRPCOptionsProxy({
+{{#if (isMono)}}
+  ctx: async () => createTRPCContext({ headers: await headers() }),
+{{else}}
   ctx: createTRPCContext,
+{{/if}}
   router: appRouter,
   queryClient: getQueryClient,
 });
@@ -31,8 +44,17 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptio
   }
 }
 {{else}}
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+import { appRouter, createTRPCContext } from '@repo/api';
+
+export const trpc = appRouter.createCaller(async () =>
+  createTRPCContext({ headers: await headers() }),
+);
+{{else}}
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 
 export const trpc = appRouter.createCaller(createTRPCContext);
+{{/if}}
 {{/if}}
