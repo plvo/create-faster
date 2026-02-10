@@ -87,6 +87,22 @@ describe('Handlebars helpers', () => {
       };
       expect(template(ctx)).toBe('no');
     });
+
+    test('falls back to checking all apps when libraries is not enriched', () => {
+      const template = Handlebars.compile('{{#if (hasLibrary "trpc")}}yes{{else}}no{{/if}}');
+      const ctx: Partial<EnrichedTemplateContext> = {
+        apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc', 'tanstack-query'] }],
+      };
+      expect(template(ctx)).toBe('yes');
+    });
+
+    test('falls back returns false when no app has the library', () => {
+      const template = Handlebars.compile('{{#if (hasLibrary "trpc")}}yes{{else}}no{{/if}}');
+      const ctx: Partial<EnrichedTemplateContext> = {
+        apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }],
+      };
+      expect(template(ctx)).toBe('no');
+    });
   });
 
   describe('has', () => {

@@ -1,0 +1,1576 @@
+
+╭─── Claude Code v2.1.38 ──────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back pelavo!                │ started                 │
+│                                                    │ Run /init to create a … │
+│                       ▐▛███▜▌                      │ ─────────────────────── │
+│                      ▝▜█████▛▘                     │ Recent activity         │
+│                        ▘▘ ▝▝                       │ No recent activity      │
+│                                                    │                         │
+│     Opus 4.6 · Claude Max · plvdev@proton.me's     │                         │
+│     Organization                                   │                         │
+│              ~/.lab/create-faster-trpc             │                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+❯   /extracting-templates                                                   
+                                                                            
+    Extract tRPC from the project at /home/ttecim/.lab/agence-nuisibles-crm 
+   and add it as a new library to                                           
+    create-faster.                                                          
+                                                                            
+    Context:                                                                
+    - The CRM project uses tRPC v11 with Next.js App Router                 
+    - It integrates with TanStack Query (@trpc/tanstack-react-query),       
+  Better Auth (session in tRPC context),                                    
+    and Drizzle (db in context)                                             
+    - Core files are in src/trpc/ (trpc.ts, router.ts, query-client.ts,     
+  query-providers.tsx, server.tsx) +                                        
+    API route at src/app/api/trpc/[trpc]/route.ts                           
+                                                                            
+    Requirements:                                                           
+    - tRPC MUST work standalone (vanilla @trpc/client) without              
+  tanstack-query                                                            
+    - The TanStack Query integration (@trpc/tanstack-react-query) is        
+  OPTIONAL — only when user selects both                                    
+    trpc AND tanstack-query                                                 
+    - Same for better-auth integration — optional, conditional on           
+  hasLibrary                                                                
+    - Research via context7 is mandatory before writing any template        
+    - Decide whether tRPC should be a turborepo package or app-scoped       
+  (research turborepo + tRPC docs first)                                    
+                                                                            
+    Follow the extracting-templates skill process step by step.             
+
+● I'll invoke the extracting-templates skill first.
+
+● Skill(extracting-templates)
+  ⎿  Successfully loaded skill
+
+❯ Base directory for this skill:                                            
+  /home/ttecim/.lab/create-faster-trpc/.claude/skills/extracting-templates  
+                                                                            
+  # Extracting Templates from External Projects                             
+                                                                            
+  ## Overview                                                               
+                                                                            
+  Extract a library or feature implementation from a real project and       
+  convert it into generic, production-ready create-faster templates. The    
+  external project is a **starting point for understanding the use case**,  
+  not a source to copy from.                                                
+                                                                            
+  **Core principle:** Understand the library deeply through docs and real   
+  usage, then write generic templates. Never copy-paste from a project.     
+                                                                            
+  ## When to Use                                                            
+                                                                            
+  Use this skill when:                                                      
+  - You have a working implementation in an external project and want to    
+  make it a create-faster addon                                             
+  - The user says "I used X in this project, let's add it to create-faster" 
+  - Converting project-specific code into generic templates                 
+                                                                            
+  Do NOT use for:                                                           
+  - Adding templates without an external reference project (use             
+  `adding-templates` skill directly)                                        
+  - Fixing existing templates (use `fixing-templates` skill)                
+                                                                            
+  ## The Process                                                            
+                                                                            
+  ```dot                                                                    
+  digraph extracting {                                                      
+      node [fontsize=11];                                                   
+      edge [fontsize=9];                                                    
+                                                                            
+      "Start" [shape=doublecircle];                                         
+      "Locate files" [shape=box];                                           
+      "Understand implementation" [shape=box];                              
+      "Map cross-lib integrations" [shape=box];                             
+      "Research library docs\n(context7)" [shape=box];                      
+      "Research monorepo patterns\n(context7)" [shape=box];                 
+      "Confident in understanding?" [shape=diamond];                        
+      "Design META entry" [shape=box];                                      
+      "Genericize templates" [shape=box];                                   
+      "Hand off to\nadding-templates" [shape=box];                          
+      "Done" [shape=doublecircle];                                          
+                                                                            
+      "Start" -> "Locate files";                                            
+      "Locate files" -> "Understand implementation";                        
+      "Understand implementation" -> "Map cross-lib integrations";          
+      "Map cross-lib integrations" -> "Research library docs\n(context7)";  
+      "Research library docs\n(context7)" -> "Research monorepo             
+  patterns\n(context7)";                                                    
+      "Research monorepo patterns\n(context7)" -> "Confident in             
+  understanding?";                                                          
+      "Confident in understanding?" -> "Design META entry" [label="yes"];   
+      "Confident in understanding?" -> "Research library docs\n(context7)"  
+  [label="no — re-read docs"];                                              
+      "Design META entry" -> "Genericize templates";                        
+      "Genericize templates" -> "Hand off to\nadding-templates";            
+      "Hand off to\nadding-templates" -> "Done";                            
+  }                                                                         
+  ```                                                                       
+                                                                            
+  ### Phase 1: Locate                                                       
+                                                                            
+  Find all files related to the feature in the external project.            
+                                                                            
+  1. User tells you: project path + what to extract                         
+  2. Search the project for related files:                                  
+     - Grep for import statements referencing the library                   
+     - Check `package.json` for related dependencies and versions           
+     - Map the complete file tree for the feature                           
+                                                                            
+  **Output:** A file list with each file's role.                            
+                                                                            
+  Example for tRPC:                                                         
+  ```                                                                       
+  src/trpc/trpc.ts              → Server init, context, procedures          
+  src/trpc/router.ts            → Root router combining domain routers      
+  src/trpc/query-client.ts      → QueryClient factory                       
+  src/trpc/query-providers.tsx   → Client provider setup                    
+  src/trpc/server.tsx           → RSC proxy + HydrateClient                 
+  src/app/api/trpc/[trpc]/route.ts → API catch-all route                    
+  ```                                                                       
+                                                                            
+  ### Phase 2: Understand                                                   
+                                                                            
+  Read each file and classify every piece of code:                          
+                                                                            
+  | Classification | Action |                                               
+  |---------------|--------|                                                
+  | Library boilerplate | Keep — this is the generic setup |                
+  | Integration with other libs | Keep conditionally — Handlebars `{{#if    
+  (hasLibrary "x")}}` |                                                     
+  | Business logic | Strip — domain routers, custom procedures, specific    
+  schemas |                                                                 
+  | Project-specific config | Generalize — hardcoded URLs, app names, ports 
+   |                                                                        
+                                                                            
+  **Critical questions to answer:**                                         
+  - What does the library need at minimum to work?                          
+  - What's added when integrating with other libraries? (e.g., tRPC +       
+  TanStack Query = `@trpc/tanstack-react-query`)                            
+  - What's purely this project's business logic?                            
+                                                                            
+  ### Phase 3: Map Cross-Library Integrations                               
+                                                                            
+  Identify how the library connects with other libraries already in         
+  create-faster.                                                            
+                                                                            
+  For each integration found, document:                                     
+  1. **Which library** it integrates with                                   
+  2. **What changes** — additional imports, config, providers, files        
+  3. **Is it optional** — does the library work without this integration?   
+                                                                            
+  **CRITICAL: `require` vs conditional.** The `require` field in META means 
+   "cannot function at all without this." Use it ONLY for hard              
+  dependencies. If the library CAN work standalone — even with reduced      
+  functionality — the integration is **optional** and goes in Handlebars    
+  conditionals, NOT in `require`.                                           
+                                                                            
+  **The test:** Can a user install ONLY this library and get a working (if  
+  basic) setup? If yes → no `require`. The richer integration is a bonus    
+  when both are selected.                                                   
+                                                                            
+  Example — how to classify:                                                
+  ```                                                                       
+  tRPC alone              → works: vanilla @trpc/client, direct calls       
+     → NO require                                                           
+  tRPC + tanstack-query   → better: hooks, SSR, caching via                 
+  @trpc/tanstack-react-query → conditional                                  
+  tRPC + better-auth      → better: protected procedures with auth context  
+     → conditional                                                          
+  better-auth alone       → BROKEN without database: cannot store sessions  
+     → require: { orm: [...] }                                              
+  ```                                                                       
+                                                                            
+  The first row is the **standalone test**. If it works, everything else is 
+   conditional. Only `better-auth` truly requires another addon (it         
+  physically cannot work without a database).                               
+                                                                            
+  Each optional combination becomes a Handlebars conditional path in        
+  templates. Each hard dependency becomes a `require` field in META.        
+                                                                            
+  ### Phase 4: Research Library Docs (context7) — MANDATORY                 
+                                                                            
+  **DO NOT skip this. DO NOT assume the external project's implementation   
+  is correct or complete.**                                                 
+                                                                            
+  The external project is ONE implementation. The library docs are the      
+  source of truth.                                                          
+                                                                            
+  Use context7 to read:                                                     
+  1. **Official setup guide** — what's the recommended way to set up this   
+  library?                                                                  
+  2. **Framework integration guide** — how does it integrate with Next.js,  
+  TanStack Start, etc.?                                                     
+  3. **Integration with other libs** — official docs for tRPC + React       
+  Query, tRPC + auth, etc.                                                  
+  4. **API reference** — understand every function/type the templates will  
+  use                                                                       
+  5. **Standalone usage** — how does the library work WITHOUT optional      
+  integrations?                                                             
+                                                                            
+  **What to verify against docs:**                                          
+  - Are the imports correct and up-to-date?                                 
+  - Is the configuration pattern the recommended one?                       
+  - Are there newer/better APIs than what the project uses?                 
+  - What's the minimum viable setup vs full-featured setup?                 
+  - **What packages are needed for standalone vs integrated usage?**        
+                                                                            
+  **What to look for that the project might miss:**                         
+  - SSR/RSC integration patterns (the project might not use them fully)     
+  - Type export patterns (for monorepo sharing)                             
+  - Error handling best practices                                           
+  - Performance considerations (batching, dehydration, prefetching)         
+                                                                            
+  **Output requirement:** Document specific findings from docs. Don't just  
+  say "verified." For each research point, write:                           
+  - What the docs say (with the specific pattern/API)                       
+  - How it differs from the external project (if at all)                    
+  - What this means for the templates                                       
+                                                                            
+  Example:                                                                  
+  ```                                                                       
+  Finding: tRPC docs show vanilla client setup with just @trpc/client +     
+  httpBatchLink.                                                            
+           No React Query needed. The @trpc/tanstack-react-query package is 
+   a separate                                                               
+           optional integration.                                            
+  Differs: External project ONLY uses the React Query integration.          
+  Impact:  Templates need a standalone path (vanilla client) AND an         
+  integration path                                                          
+           (when tanstack-query is also selected).                          
+  ```                                                                       
+                                                                            
+  ### Phase 5: Research Monorepo Patterns (context7) — MANDATORY            
+                                                                            
+  Before deciding the META `mono` scope, research whether the library       
+  should be a shared turborepo package.                                     
+                                                                            
+  **Use context7 to check:**                                                
+  1. **Library docs** — does it have a monorepo/turborepo guide?            
+  2. **Turborepo docs** — shared packages patterns, internal packages       
+  3. **Type sharing** — can/should type exports be shared across apps?      
+                                                                            
+  **Decision criteria:**                                                    
+                                                                            
+  | Question | If yes → package | If no → app-scoped |                      
+  |----------|-----------------|-------------------|                        
+  | Do multiple apps consume this library's types? | `packages/{name}/` |   
+  stays in app |                                                            
+  | Does the library have server + client that can be separated? | shared   
+  package | stays in app |                                                  
+  | Is there an official monorepo pattern? | follow it | default to         
+  app-scoped |                                                              
+  | Does the library's state need to be shared across apps? | shared        
+  package | stays in app |                                                  
+                                                                            
+  **Document your decision with reasoning.** Don't just pick one — explain  
+  why.                                                                      
+                                                                            
+  Examples:                                                                 
+  - `better-auth` → package (`packages/auth/`) because auth logic is        
+  shared, multiple apps verify sessions                                     
+  - `shadcn` → package (`packages/ui/`) because components are shared       
+  across apps                                                               
+  - `tanstack-query` → app-scoped because it's a client-side concern        
+  per-app                                                                   
+  - `drizzle` → package (`packages/db/`) because schema and client are      
+  shared                                                                    
+                                                                            
+  ### Phase 6: Design META Entry                                            
+                                                                            
+  **Before designing the entry, read `apps/cli/src/types/meta.ts`** to      
+  verify the available fields and their types. Don't guess what             
+  `AddonRequire`, `AddonSupport`, `AddonMono`, `PackageJsonConfig`, or      
+  `EnvVar` accept — read the actual type definitions.                       
+                                                                            
+  Based on all research, design the complete META entry. The `MetaAddon`    
+  interface defines available fields:                                       
+                                                                            
+  ```typescript                                                             
+  {                                                                         
+    label: string,           // Display name                                
+    hint: string,            // Description shown in CLI                    
+    support: {                                                              
+      stacks: StackName[] | 'all'  // Which stacks support this             
+    },                                                                      
+    require?: AddonRequire,  // Hard dependencies ONLY — read Phase 3       
+  carefully                                                                 
+    mono?: AddonMono,        // Turborepo package config                    
+    packageJson: PackageJsonConfig,                                         
+    envs?: EnvVar[],                                                        
+  }                                                                         
+  ```                                                                       
+                                                                            
+  **`require` field rules (from Phase 3):**                                 
+  - `require` = "physically cannot work without this"                       
+  - If the library works standalone → no `require`. Use Handlebars          
+  conditionals for optional integrations.                                   
+  - If the external project uses the library WITH another lib, that doesn't 
+   mean it REQUIRES it.                                                     
+                                                                            
+  **Dependency versions:** Use the versions from the external project's     
+  `package.json` as a starting point, then verify against library docs for  
+  latest stable.                                                            
+                                                                            
+  **Standalone dependencies:** The META `packageJson.dependencies` must     
+  include ONLY what's needed for the standalone setup. Dependencies for     
+  optional integrations are already declared by those other libraries' META 
+   entries. When both are selected, `package-json-generator.ts` merges them 
+   automatically.                                                           
+                                                                            
+  ### Phase 7: Genericize Templates                                         
+                                                                            
+  Transform the external project's files into Handlebars templates:         
+                                                                            
+  1. **Strip business logic** — remove domain-specific routers, schemas,    
+  procedures                                                                
+  2. **Add Handlebars conditionals** — for each cross-library integration   
+  3. **Add monorepo awareness** — `{{#if (isMono)}}` for import paths       
+  4. **Add frontmatter** — for path resolution and scope                    
+  5. **Generalize config** — replace hardcoded values with template         
+  variables                                                                 
+                                                                            
+  **Template quality checklist per file:**                                  
+  - [ ] No business logic remains                                           
+  - [ ] All cross-library integrations are conditional                      
+  - [ ] Import paths handle mono vs single                                  
+  - [ ] Frontmatter specifies correct scope                                 
+  - [ ] Stack-specific suffix if file is stack-dependent                    
+  - [ ] Code follows library's recommended patterns (from docs, not just    
+  the project)                                                              
+                                                                            
+  ### Phase 8: Implement                                                    
+                                                                            
+  Hand off to the `adding-templates` skill for:                             
+  - Adding the META entry                                                   
+  - Creating template files                                                 
+  - Modifying existing templates for cross-library conditionals             
+  - Testing all combinations                                                
+                                                                            
+  ## Checklist                                                              
+                                                                            
+  ### Research (before writing ANY template)                                
+  - [ ] Located all related files in external project                       
+  - [ ] Read and understood each file's purpose                             
+  - [ ] Mapped all cross-library integrations with optional/required        
+  classification                                                            
+  - [ ] Read library docs via context7 (setup, integration, API,            
+  **standalone usage**)                                                     
+  - [ ] Documented specific context7 findings (not just "verified")         
+  - [ ] Read monorepo/turborepo docs via context7                           
+  - [ ] Decided mono scope with documented reasoning                        
+  - [ ] Read `types/meta.ts` to verify META field types                     
+  - [ ] Designed META entry — `require` only for hard dependencies, not     
+  "nice to have"                                                            
+  - [ ] META `dependencies` include ONLY standalone packages (no            
+  integration-specific deps)                                                
+                                                                            
+  ### Extraction (after research is complete)                               
+  - [ ] Classified each code section (boilerplate / integration / business  
+  / project-specific)                                                       
+  - [ ] Stripped all business logic                                         
+  - [ ] Added Handlebars conditionals for optional integrations             
+  - [ ] Used only existing Handlebars helpers (`isMono`, `hasLibrary`,      
+  `has`, `hasContext`, `eq`, `ne`, `and`, `or`)                             
+  - [ ] Added monorepo-aware import paths                                   
+  - [ ] Added YAML frontmatter                                              
+  - [ ] Verified template code against library docs (not just project code) 
+  - [ ] Handed off to `adding-templates` for implementation                 
+                                                                            
+  ## Common Rationalizations — STOP                                         
+                                                                            
+  | Excuse | Reality |                                                      
+  |--------|---------|                                                      
+  | "The project code works, just templatize it" | Project code may be      
+  outdated, suboptimal, or missing features. Check docs. |                  
+  | "I know this library" | Docs evolve. Check context7 for current best    
+  practices. |                                                              
+  | "Monorepo decision is obvious" | Check turborepo docs + library docs.   
+  Document reasoning. |                                                     
+  | "Skip context7, I'll use the project as reference" | The project is ONE 
+   implementation. Docs are the source of truth. |                          
+  | "Business logic is minimal, keep it" | ANY business logic in templates  
+  is wrong. Strip it all. |                                                 
+  | "This integration is always used together" | If it's optional, make it  
+  conditional. User decides. |                                              
+  | "I'll figure out monorepo later" | Mono scope affects META entry,       
+  template paths, and import patterns. Decide first. |                      
+  | "It requires X because the project uses X" | The project chose to use   
+  X. That doesn't mean the library needs it. Check standalone docs. |       
+  | "Poor DX without X, so I'll make it required" | Reduced DX is the       
+  user's choice. `require` means "broken without." Standalone must work. |  
+  | "I verified against docs" | Saying "verified" without specific findings 
+   is the same as not checking. Document what you found. |                  
+  | "The types probably support this field" | Read `types/meta.ts`. Don't   
+  guess what `AddonRequire` accepts. |                                      
+                                                                            
+  ## Red Flags — You're About to Fail                                       
+                                                                            
+  **STOP immediately if you:**                                              
+  - Start writing templates before reading library docs via context7        
+  - Copy a file from the project without understanding every line           
+  - Assume two libraries are always used together without checking          
+  - Skip the monorepo research                                              
+  - Don't document why you chose app-scoped vs package-scoped               
+  - Start modifying existing templates without mapping all integration      
+  points first                                                              
+  - Put a library in `require` because the external project uses both       
+  together                                                                  
+  - Say "verified" without writing what the docs actually say               
+  - Design a META entry without reading `types/meta.ts` first               
+  - Include integration-specific packages in the standalone META            
+  `dependencies`                                                            
+                                                                            
+  These shortcuts produce templates that work for ONE project setup but     
+  break for others.                                                         
+                                                                            
+                                                                            
+  ARGUMENTS: Extract tRPC from the project at                               
+  /home/ttecim/.lab/agence-nuisibles-crm and add it as a new library to     
+  create-faster.                                                            
+                                                                            
+  Context:                                                                  
+  - The CRM project uses tRPC v11 with Next.js App Router                   
+  - It integrates with TanStack Query (@trpc/tanstack-react-query), Better  
+  Auth (session in tRPC context), and Drizzle (db in context)               
+  - Core files are in src/trpc/ (trpc.ts, router.ts, query-client.ts,       
+  query-providers.tsx, server.tsx) + API route at                           
+  src/app/api/trpc/[trpc]/route.ts                                          
+                                                                            
+  Requirements:                                                             
+  - tRPC MUST work standalone (vanilla @trpc/client) without tanstack-query 
+  - The TanStack Query integration (@trpc/tanstack-react-query) is OPTIONAL 
+   — only when user selects both trpc AND tanstack-query                    
+  - Same for better-auth integration — optional, conditional on hasLibrary  
+  - Research via context7 is mandatory before writing any template          
+  - Decide whether tRPC should be a turborepo package or app-scoped         
+  (research turborepo + tRPC docs first)                                    
+
+● Alright Pelavo, let's follow the extracting-templates process step by step.
+  Starting with Phase 1: Locate.
+
+  Phase 1: Locate
+
+  Let me find all tRPC-related files in the CRM project.
+
+● Explore(Locate tRPC files in CRM project)
+  ⎿  Done (22 tool uses · 97.8k tokens · 32s)
+
+● Good. Now let me read the core infrastructure files to understand the
+  implementation.
+
+  Phase 2: Understand
+
+● Read 6 files (ctrl+o to expand)
+
+● Good. Now let me also check the existing create-faster codebase to understand
+  the META structure and types.
+
+● Read 2 files (ctrl+o to expand)
+
+● Now let me set up task tracking for this work, then proceed to Phase 2
+  classification and Phase 3 (cross-library mapping).
+
+● Phase 2: Understand — Code Classification
+
+  Here's the classification of each file:
+
+  src/trpc/trpc.ts — Server init, context, procedures
+  Code: initTRPC, superjson transformer
+  Classification: Library boilerplate — keep
+  ────────────────────────────────────────
+  Code: createContext with FetchCreateContextFnOptions
+  Classification: Library boilerplate — keep
+  ────────────────────────────────────────
+  Code: createRSCContext with cache() + headers()
+  Classification: Library boilerplate — keep (Next.js RSC pattern)
+  ────────────────────────────────────────
+  Code: auth.api.getSession(...) in context
+  Classification: Integration: better-auth — conditional on
+    hasLibrary("better-auth")
+  ────────────────────────────────────────
+  Code: db in context
+  Classification: Integration: ORM — conditional on has("orm", ...)
+  ────────────────────────────────────────
+  Code: publicProcedure with logging middleware
+  Classification: Library boilerplate — keep (simplified)
+  ────────────────────────────────────────
+  Code: protectedProcedure + role-based procedures
+  Classification: Business logic — strip. Template should have publicProcedure +
+
+    one simple protectedProcedure example when auth is present
+  ────────────────────────────────────────
+  Code: French error messages
+  Classification: Project-specific — generalize to English
+  ────────────────────────────────────────
+  Code: ProtectedContext, TechnicianContext, AdminContext types
+  Classification: Business logic — strip role-specific types
+  src/trpc/router.ts — Root router
+  Code: router({...}) + AppRouter type export
+  Classification: Library boilerplate — keep (with example router)
+  ────────────────────────────────────────
+  Code: inferRouterInputs, inferRouterOutputs
+  Classification: Library boilerplate — keep
+  ────────────────────────────────────────
+  Code: All domain router imports + aggregation
+  Classification: Business logic — strip, replace with example
+  ────────────────────────────────────────
+  Code: caller = appRouter.createCaller(createRSCContext)
+  Classification: Library boilerplate — keep (RSC caller)
+  src/trpc/query-client.ts — QueryClient factory (TanStack Query integration)
+  Code: Entire file
+  Classification: Integration: tanstack-query — only include when both trpc AND
+    tanstack-query selected
+  src/trpc/query-providers.tsx — Client providers (TanStack Query integration)
+  Code: createTRPCContext, TRPCProvider, useTRPC
+  Classification: Integration: tanstack-query — only when both selected
+  ────────────────────────────────────────
+  Code: QueryClientProvider
+  Classification: Integration: tanstack-query
+  ────────────────────────────────────────
+  Code: TanStackDevtools + ReactQueryDevtoolsPanel
+  Classification: Integration: tanstack-devtools — conditional
+  ────────────────────────────────────────
+  Code: httpBatchLink + createTRPCClient
+  Classification: Library boilerplate — tRPC client setup (but in this file only
+
+    for tanstack-query path)
+  ────────────────────────────────────────
+  Code: NEXT_PUBLIC_APP_URL hardcoded
+  Classification: Project-specific — generalize
+  src/trpc/server.tsx — RSC helpers (TanStack Query integration)
+  Code: createTRPCOptionsProxy
+  Classification: Integration: tanstack-query — RSC prefetching only with
+    TanStack Query
+  ────────────────────────────────────────
+  Code: HydrateClient, prefetch helpers
+  Classification: Integration: tanstack-query
+  src/app/api/trpc/[trpc]/route.ts — API route handler
+  ┌──────────────────────────────┬─────────────────────────────────────────┐
+  │             Code             │             Classification              │
+  ├──────────────────────────────┼─────────────────────────────────────────┤
+  │ fetchRequestHandler          │ Library boilerplate — keep              │
+  ├──────────────────────────────┼─────────────────────────────────────────┤
+  │ Endpoint path, error handler │ Library boilerplate — keep (generalize) │
+  └──────────────────────────────┴─────────────────────────────────────────┘
+  Phase 3: Cross-Library Integration Map
+  Integration: tanstack-query
+  What changes: Adds query-client.ts, query-providers.tsx, server.tsx (RSC
+    helpers), changes client setup to use @trpc/tanstack-react-query
+  Optional?: YES — tRPC works standalone with vanilla @trpc/client
+  Notes: When standalone: use createTRPCClient directly, no providers needed
+  ────────────────────────────────────────
+  Integration: tanstack-devtools
+  What changes: Adds devtools to query-providers.tsx
+  Optional?: YES — only relevant when tanstack-query is also present
+  Notes: Nested conditional: needs both tanstack-query AND tanstack-devtools
+  ────────────────────────────────────────
+  Integration: better-auth
+  What changes: Adds auth.api.getSession() to tRPC context, enables
+    protectedProcedure
+  Optional?: YES — tRPC works without auth (public procedures only)
+  Notes: When standalone: context has no session, only publicProcedure
+  ────────────────────────────────────────
+  Integration: ORM (drizzle/prisma)
+  What changes: Adds db to tRPC context
+  Optional?: YES — tRPC can work without DB in context
+  Notes: When standalone: context has no db
+  Standalone test: Can a user select ONLY tRPC and get a working setup?
+  - YES: @trpc/client + @trpc/server → vanilla client with httpBatchLink, public
+   procedures, API route handler. No React Query, no auth, no DB needed.
+
+  Conclusion: NO require field needed. All integrations are optional
+  conditionals.
+
+● Phase 4: Research tRPC v11 Docs via context7
+
+  Let me research tRPC docs thoroughly — setup, standalone client, Next.js
+  integration, and TanStack Query integration.
+
+● plugin:context7:context7 - resolve-library-id (MCP)(libraryName: "trpc",
+                                                     query: "tRPC v11 setup
+                                                     Next.js App Router
+                                                     standalone client TanStack
+                                                     Query integration RSC
+                                                     server components")
+  ⎿  Available Libraries:
+
+     Each result includes:
+     … +31 lines (ctrl+o to expand)
+
+● Let me query the tRPC docs for standalone setup, Next.js integration, and
+  TanStack Query integration. I'll use both the repo docs and website docs.
+
+● plugin:context7:context7 - query-docs (MCP)(libraryId: "/websites/trpc_io",
+                                             query: "tRPC v11 Next.js App Router
+                                              setup with standalone vanilla
+                                             client without React Query, and
+                                             also the TanStack React Query
+                                             integration setup with server
+                                             components RSC. Show both paths:
+                                             vanilla @trpc/client and
+                                             @trpc/tanstack-react-query")
+  ⎿  ### Set up tRPC Client without React Context (TypeScript)
+
+     Source: https://trpc.io/docs/client/tanstack-react-query/setup
+     … +88 lines (ctrl+o to expand)
+
+● Good findings. Now let me research the standalone vanilla client (without
+  React Query).
+
+● plugin:context7:context7 - query-docs (MCP)(libraryId: "/trpc/trpc", query:
+                                             "tRPC vanilla client setup without
+                                             React Query using @trpc/client
+                                             createTRPCClient httpBatchLink. How
+                                              to use tRPC standalone in Next.js
+                                             without tanstack-react-query. Also
+                                             show initTRPC context setup and
+                                             fetchRequestHandler for Next.js API
+                                              route")
+  ⎿  ### Initialize Vanilla tRPC Client with HTTP Batch Link (TypeScript)
+
+     Source: https://github.com/trpc/trpc/blob/main/www/docs/client/react/i
+     … +63 lines (ctrl+o to expand)
+
+● Now let me get the tRPC + TanStack React Query v5 integration specifics for
+  v11.
+
+● plugin:context7:context7 - query-docs (MCP)(libraryId: "/websites/trpc_io",
+                                             query: "tRPC v11
+                                             @trpc/tanstack-react-query setup
+                                             createTRPCContext useTRPC
+                                             makeQueryClient with superjson
+                                             transformer. Show the new v11 API
+                                             with createTRPCContext instead of
+                                             createTRPCReact. Also show initTRPC
+                                              server setup with context and
+                                             superjson")
+  ⎿  ### Initialize tRPC Backend and Create Router (TypeScript)
+
+     Source: https://trpc.io/docs/client/react/server-components
+     … +118 lines (ctrl+o to expand)
+
+● Excellent research. Let me document the key findings before moving to Phase 5.
+
+  Phase 4 Findings — tRPC v11 Docs
+
+  Finding 1: Two distinct API paths exist
+  - @trpc/tanstack-react-query (v11 new API): Uses createTRPCContext() → exports
+   TRPCProvider, useTRPC, useTRPCClient. This is the CRM project's approach.
+  - @trpc/react-query (older API): Uses createTRPCReact(). Still documented but
+  the tanstack-react-query path is newer/recommended for v11.
+  - Vanilla @trpc/client: Uses createTRPCClient() with httpBatchLink. No React
+  Query needed at all.
+
+  Finding 2: Standalone vanilla client is simple
+  import { createTRPCClient, httpBatchLink } from '@trpc/client';
+  const client = createTRPCClient<AppRouter>({
+    links: [httpBatchLink({ url: '/api/trpc' })],
+  });
+  const result = await client.someRouter.someQuery.query();
+  No providers, no React Query, no context needed. Just direct calls.
+
+  Finding 3: RSC setup differs between paths
+  - With TanStack Query: createTRPCOptionsProxy({ ctx, router, queryClient }) +
+  HydrationBoundary
+  - Without TanStack Query: appRouter.createCaller(context) — direct server-side
+   calls via caller
+
+  Finding 4: CRM project follows the docs closely
+  - query-providers.tsx matches the @trpc/tanstack-react-query pattern almost
+  exactly
+  - server.tsx matches the RSC pattern with createTRPCOptionsProxy
+  - query-client.ts matches the recommended makeQueryClient factory
+  - The CRM uses superjson transformer which is optional per docs
+
+  Finding 5: getUrl() helper in docs
+  The docs show a getUrl() helper that handles browser/server/Vercel URL
+  detection. The CRM project hardcodes NEXT_PUBLIC_APP_URL instead. The docs'
+  approach is more generic — we should use it.
+
+  Finding 6: Packages needed
+  - Standalone: @trpc/server + @trpc/client + superjson
+  - With TanStack Query: adds @trpc/tanstack-react-query (tanstack-query META
+  already declares @tanstack/react-query)
+
+  Now Phase 5 — monorepo research.
+
+● Phase 5: Research Monorepo Patterns
+
+● plugin:context7:context7 - resolve-library-id (MCP)(libraryName: "turborepo",
+                                                     query: "turborepo shared
+                                                     packages monorepo internal
+                                                     packages setup tRPC shared
+                                                     across apps")
+  ⎿  Available Libraries:
+
+     Each result includes:
+     … +32 lines (ctrl+o to expand)
+
+● plugin:context7:context7 - query-docs (MCP)(libraryId: "/websites/trpc_io",
+                                             query: "tRPC monorepo turborepo
+                                             setup shared packages. How to
+                                             structure tRPC in a monorepo with
+                                             multiple apps sharing the same
+                                             router. Should tRPC be a shared
+                                             package or app-scoped?")
+  ⎿  ### Merge Routers with Child Routers in tRPC (TypeScript)
+
+     Source: https://trpc.io/docs/v10/server/merging-routers
+     … +97 lines (ctrl+o to expand)
+
+● The tRPC docs don't show a specific monorepo/turborepo pattern. Let me check
+  turborepo docs for internal packages.
+
+● plugin:context7:context7 - query-docs (MCP)(libraryId: "/websites/turborepo",
+                                             query: "internal packages shared
+                                             between apps. How to create shared
+                                             packages in turborepo that multiple
+                                              apps consume. Best practices for
+                                             sharing code like API types between
+                                              apps.")
+  ⎿  ### Create an Internal Package > Best practices for Internal Packages
+     > Application Packages do not contain shared code
+     … +39 lines (ctrl+o to expand)
+
+● Good. Now I have enough to make the monorepo decision.
+
+  Phase 5 Findings — Monorepo Decision
+  Question: Do multiple apps consume tRPC's types?
+  Answer: It depends. AppRouter type is consumed by the client. In a monorepo,
+  if
+     a separate API server uses tRPC and a frontend app consumes it, the
+    types need sharing. But tRPC is typically app-scoped — the router lives
+     in the app that serves it.
+  Conclusion: Lean app-scoped
+  ────────────────────────────────────────
+  Question: Does tRPC have server+client that can be separated?
+  Answer: The server (router, procedures) and client (hooks/vanilla client) are
+    in the same app in most setups. The API route is in the Next.js app.
+  Conclusion: App-scoped
+  ────────────────────────────────────────
+  Question: Official monorepo pattern?
+  Answer: No. tRPC docs don't have a dedicated monorepo/turborepo guide. All
+    examples show src/trpc/ within a single app.
+  Conclusion: App-scoped
+  ────────────────────────────────────────
+  Question: State shared across apps?
+  Answer: No. Each app has its own tRPC client pointing to its own (or a shared)
+
+    API.
+  Conclusion: App-scoped
+  Decision: App-scoped (mono: { scope: 'app' })
+
+  Reasoning:
+  1. tRPC docs show all files (init.ts, router.ts, server.tsx, query-client.ts,
+  query-providers.tsx) inside a single app's src/trpc/ directory
+  2. The API route handler (/api/trpc/[trpc]/route.ts) MUST live in the Next.js
+  app
+  3. The router + procedures are tightly coupled to the app's business logic
+  4. Unlike better-auth (shared auth verification) or drizzle (shared schema),
+  tRPC routers are inherently app-specific
+  5. Turborepo docs say "one purpose per package" — tRPC would be an awkward
+  package since it combines server setup + client setup + API route, all of
+  which belong in the app
+
+  If someone has a Hono backend and a Next.js frontend sharing tRPC types —
+  that's a valid pattern, but it's an advanced use case that users would
+  customize. The template should cover the common case: tRPC within a single
+  Next.js app.
+
+● Phase 6: Design META Entry
+
+  Let me check the CRM project's package.json for exact versions first.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Now let me also check what tanstack-query already declares in its META entry
+  so I don't duplicate.
+
+  Looking at the META: tanstack-query declares @tanstack/react-query: ^5.90.0 as
+   its dependency. The tRPC TanStack Query integration package
+  (@trpc/tanstack-react-query) bridges these. When both are selected, the
+  @tanstack/react-query comes from the tanstack-query META entry, and
+  @trpc/tanstack-react-query would need to come from... where?
+
+  This is a key design question. The @trpc/tanstack-react-query package is
+  needed ONLY when both trpc and tanstack-query are selected. Options:
+
+  1. Put it in tRPC's META packageJson — but then it's always installed even
+  when tanstack-query isn't selected
+  2. Handle it conditionally in package-json-generator.ts — but that breaks the
+  declarative META pattern
+
+  Let me check how the package-json-generator works for conditional
+  dependencies.
+
+● Read 1 file (ctrl+o to expand)
+
+● I see — for app-scoped libraries (no mono or mono: { scope: 'app' }), the
+  dependencies are merged directly into the app's package.json via
+  generateAppPackageJson. The @trpc/tanstack-react-query bridge package
+  question:
+
+  Since tRPC is app-scoped, its packageJson.dependencies go into the app's
+  package.json. The bridge package @trpc/tanstack-react-query is only needed
+  when both libraries are selected. But META doesn't support conditional
+  dependencies — each library declares its own deps.
+
+  The cleanest solution: put @trpc/tanstack-react-query in tRPC's dependencies.
+  If tanstack-query isn't selected, the bridge package is unused but harmless
+  (it's a small package, tree-shaken away). The templates simply won't import
+  from it.
+
+  Actually wait — that's wasteful. Let me reconsider. Looking at the existing
+  pattern: better-auth requires orm and declares @repo/db: '*'. But that's a
+  hard requirement. For tRPC + tanstack-query which is optional...
+
+  The pragmatic answer: @trpc/tanstack-react-query only makes sense with
+  @tanstack/react-query. Including it unconditionally in tRPC's deps means
+  installing an unused package when tanstack-query isn't selected. That's not
+  great.
+
+  But there's no mechanism in META for conditional deps. And modifying
+  package-json-generator.ts to support conditional cross-library deps is scope
+  creep for this task.
+
+  Pelavo, I want to flag a design question before proceeding:
+
+  The @trpc/tanstack-react-query bridge package is needed only when both trpc
+  and tanstack-query are selected. There's no META mechanism for conditional
+  cross-library dependencies. Two options:
+
+  1. Include @trpc/tanstack-react-query unconditionally in tRPC's META deps —
+  simple, slightly wasteful (~unused dep when tanstack-query isn't selected),
+  but the templates won't import from it so it's dead code that tree-shaking
+  handles. This is the approach I'd recommend for now.
+  2. Add conditional dependency support to META/package-json-generator — correct
+   but scope creep. We'd need something like conditionalDeps: { 
+  'tanstack-query': { '@trpc/tanstack-react-query': '^11.8.1' } }.
+
+  I'd go with option 1 for simplicity. The unused dep is ~30KB and completely
+  harmless. We can always add conditional dep support later if more libraries
+  need it. Thoughts?
+
+✻ Cogitated for 3m 38s
+
+❯ 1 
+
+● Good, option 1 it is. Let me now finish designing the META entry and
+  templates.
+
+  Let me first check how the template resolver handles conditional file
+  inclusion — I need to understand if I can conditionally include/exclude files
+  based on other libraries.
+
+● Read 1 file (ctrl+o to expand)
+
+● Let me check how the template processor handles empty rendered content — this
+  matters for conditionally entire files.
+
+● Read 2 files (ctrl+o to expand)
+
+● Let me check the file naming transformation — I need to understand how _app.ts
+   in routers would be handled.
+
+● Read 1 file (ctrl+o to expand)
+
+● I need to understand the empty-file situation better. Let me check if any
+  existing templates use full-file conditionals, and also look at the existing
+  template structure for reference.
+
+● Searched for 4 patterns, read 2 files (ctrl+o to expand)
+
+● Let me look at existing templates that use cross-library conditionals —
+  especially app-providers.tsx and layout.tsx.
+
+● Read 2 files (ctrl+o to expand)
+
+● Let me check the available Handlebars helpers.
+
+● Read 1 file (ctrl+o to expand)
+
+● Let me also check the context types for how to test if an ORM is selected.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good. I have all the information I need. Let me also look at one more existing
+   template to understand frontmatter patterns for library templates.
+
+● Read 2 files (ctrl+o to expand)
+
+● Now I have the full picture. Let me complete the Phase 6-7 design.
+
+  Phase 6: META Entry Design
+
+  trpc: {
+    label: 'tRPC',
+    hint: 'End-to-end typesafe APIs',
+    support: { stacks: ['nextjs'] },
+    packageJson: {
+      dependencies: {
+        '@trpc/client': '^11.8.1',
+        '@trpc/server': '^11.8.1',
+        '@trpc/tanstack-react-query': '^11.8.1',
+        superjson: '^2.2.6',
+      },
+    },
+  },
+
+  - No require — works standalone with vanilla client
+  - No mono — app-scoped (tRPC lives in the app that serves it)
+  - No envs — no env vars needed
+  - @trpc/tanstack-react-query included unconditionally (per our decision)
+
+  Phase 7: Template File Design
+
+  8 template files in templates/libraries/trpc/:
+  #: 1
+  File: src/trpc/init.ts.hbs
+  When active: Always
+  Purpose: Server init, context, procedures
+  ────────────────────────────────────────
+  #: 2
+  File: src/trpc/routers/_app.ts.hbs
+  When active: Always
+  Purpose: Root router, AppRouter type, caller
+  ────────────────────────────────────────
+  #: 3
+  File: src/trpc/routers/hello.ts.hbs
+  When active: Always
+  Purpose: Example router
+  ────────────────────────────────────────
+  #: 4
+  File: src/trpc/client.ts.hbs
+  When active: Always
+  Purpose: Vanilla client (useful in all cases)
+  ────────────────────────────────────────
+  #: 5
+  File: src/trpc/server.tsx.hbs
+  When active: Always (adaptive)
+  Purpose: RSC: createCaller standalone, createTRPCOptionsProxy with TQ
+  ────────────────────────────────────────
+  #: 6
+  File: src/trpc/query-client.ts.hbs
+  When active: TQ only
+  Purpose: makeQueryClient factory
+  ────────────────────────────────────────
+  #: 7
+  File: src/trpc/providers.tsx.hbs
+  When active: TQ only
+  Purpose: TRPCReactProvider + QueryClientProvider
+  ────────────────────────────────────────
+  #: 8
+  File: src/app/api/trpc/[trpc]/route.ts.hbs
+  When active: Always
+  Purpose: Next.js API route handler
+  Files 6 & 7 are wrapped entirely in {{#if (hasLibrary "tanstack-query")}}.
+  Renders empty when TQ isn't selected.
+
+  Existing template modification: app-providers.tsx.hbs — when trpc +
+  tanstack-query, use TRPCReactProvider instead of bare QueryClientProvider.
+
+  Infrastructure change needed: template-processor.ts — skip writing files with
+  empty/whitespace-only rendered content (3-line change, prevents empty files
+  for conditional templates).
+
+  Cross-library conditionals inside templates:
+  - {{#if (hasLibrary "better-auth")}} — session in context, protectedProcedure
+  - {{#if project.orm}} — db in context
+  - {{#if (hasLibrary "tanstack-query")}} — RSC options proxy, query-client,
+  providers
+  - {{#if (hasLibrary "tanstack-devtools")}} — devtools in providers (nested
+  under TQ check)
+
+● Phase 8: Implementation
+
+  Let me now implement this step by step. First, the infrastructure change, then
+   META, then templates.
+
+  Step 1: Skip empty rendered templates in template-processor.ts
+
+● Read 1 file (ctrl+o to expand)
+
+● Update(apps/cli/src/lib/template-processor.ts)
+  ⎿  Added 3 lines
+      58        }
+      59  
+      60        const rendered = renderTemplate(content, enrichedContext)
+          ;
+      61 +      if (!rendered.trim()) {                                  
+      62 +        return { success: true, destination: finalDestination, 
+         +skipped: true, reason: 'empty content' };                      
+      63 +      }                                                        
+      64        await writeFileContent(finalDestination, rendered);
+      65        return { success: true, destination: finalDestination };
+      66      }
+
+● Step 2: Add tRPC to META
+
+● Update(apps/cli/src/__meta__.ts)
+  ⎿  Added 13 lines
+      188          },
+      189        ],
+      190      },
+      191 +    trpc: {                                                   
+      192 +      label: 'tRPC',                                          
+      193 +      hint: 'End-to-end typesafe APIs',                       
+      194 +      support: { stacks: ['nextjs'] },                        
+      195 +      packageJson: {                                          
+      196 +        dependencies: {                                       
+      197 +          '@trpc/client': '^11.8.1',                          
+      198 +          '@trpc/server': '^11.8.1',                          
+      199 +          '@trpc/tanstack-react-query': '^11.8.1',            
+      200 +          superjson: '^2.2.6',                                
+      201 +        },                                                    
+      202 +      },                                                      
+      203 +    },                                                        
+      204      'tanstack-query': {
+      205        label: 'TanStack Query',
+      206        hint: 'Powerful asynchronous state management, server-st
+           ate utilities and data fetching',
+
+● Step 3: Create template files
+
+  Now let me create all 8 template files. Let me first ensure the directories
+  exist.
+
+● Bash(mkdir -p /home/ttecim/.lab/create-faster-trpc/apps/cli/templates/librarie
+      s/trpc/src/trpc/routers && mkdir -p
+      /home/ttecim/.lab/create-faster-trpc/apps/cli/templ…)
+  ⎿  (No output)
+
+● Now let me write all 8 template files.
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/init.ts.hbs)
+  ⎿  Wrote 54 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/init.ts.hbs
+      1 {{#if (hasLibrary "better-auth")}}
+      2 import { headers } from 'next/headers';
+      3 import { auth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/
+        lib/auth/auth'{{/if}};
+      4 {{/if}}
+      5 {{#if project.orm}}
+      6 import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{
+        /if}};
+      7 {{/if}}
+      8 import { initTRPC, TRPCError } from '@trpc/server';
+      9 import superjson from 'superjson';
+     … +44 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/routers/_app.ts.hbs)
+  ⎿  Wrote 12 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/routers/_app.ts.hbs
+       1 import type { inferRouterInputs, inferRouterOutputs } from '@trp
+         c/server';
+       2 import { router } from '@/trpc/init';
+       3 import { helloRouter } from './hello';
+       4 
+       5 export const appRouter = router({
+       6   hello: helloRouter,
+       7 });
+       8 
+       9 export type AppRouter = typeof appRouter;
+      10 export type RouterInput = inferRouterInputs<AppRouter>;
+     … +2 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/routers/hello.ts.hbs)
+  ⎿  Wrote 11 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/routers/hello.ts.hbs
+       1 import { z } from 'zod';
+       2 import { publicProcedure, router } from '@/trpc/init';
+       3 
+       4 export const helloRouter = router({
+       5   greet: publicProcedure
+       6     .input(z.object({ name: z.string().min(1) }))
+       7     .query(({ input }) => {
+       8       return { greeting: `Hello, ${input.name}!` };
+       9     }),
+      10 });
+     … +1 line (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/client.ts.hbs)
+  ⎿  Wrote 22 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/client.ts.hbs
+       1 import { createTRPCClient, httpBatchLink } from '@trpc/client';
+       2 import superjson from 'superjson';
+       3 import type { AppRouter } from '@/trpc/routers/_app';
+       4 
+       5 function getUrl() {
+       6   const base = (() => {
+       7     if (typeof window !== 'undefined') return '';
+       8     if (process.env.VERCEL_URL) return `https://${process.env.VE
+         RCEL_URL}`;
+       9     return 'http://localhost:3000';
+      10   })();
+     … +12 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/server.tsx.hbs)
+  ⎿  Wrote 39 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/server.tsx.hbs
+      1 import 'server-only';
+      2 
+      3 {{#if (hasLibrary "tanstack-query")}}
+      4 import { dehydrate, HydrationBoundary } from '@tanstack/react-que
+        ry';
+      5 import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@t
+        rpc/tanstack-react-query';
+      6 import { cache } from 'react';
+      7 import { makeQueryClient } from '@/trpc/query-client';
+      8 import { appRouter } from '@/trpc/routers/_app';
+      9 import { createTRPCContext } from '@/trpc/init';
+     … +29 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/query-client.ts.hbs)
+  ⎿  Wrote 23 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/query-client.ts.hbs
+       1 {{#if (hasLibrary "tanstack-query")}}
+       2 import { defaultShouldDehydrateQuery, QueryClient } from '@tanst
+         ack/react-query';
+       3 import superjson from 'superjson';
+       4 
+       5 export function makeQueryClient() {
+       6   return new QueryClient({
+       7     defaultOptions: {
+       8       queries: {
+       9         staleTime: 1000 * 30, // 30 seconds
+      10       },
+     … +13 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/trpc/providers.tsx.hbs)
+  ⎿  Wrote 57 lines to
+     apps/cli/templates/libraries/trpc/src/trpc/providers.tsx.hbs
+       1 {{#if (hasLibrary "tanstack-query")}}
+       2 'use client';
+       3 
+       4 import type { QueryClient } from '@tanstack/react-query';
+       5 import { QueryClientProvider } from '@tanstack/react-query';
+       6 import { createTRPCClient, httpBatchLink } from '@trpc/client';
+       7 import { createTRPCContext } from '@trpc/tanstack-react-query';
+       8 import { useState } from 'react';
+       9 import superjson from 'superjson';
+      10 import { makeQueryClient } from '@/trpc/query-client';
+     … +47 lines (ctrl+o to expand)
+
+● Write(apps/cli/templates/libraries/trpc/src/app/api/trpc/[trpc]/route.ts.hbs)
+  ⎿  Wrote 24 lines to
+     apps/cli/templates/libraries/trpc/src/app/api/trpc/[trpc]/route.ts.hbs
+       1 import { fetchRequestHandler } from '@trpc/server/adapters/fetch
+         ';
+       2 import { appRouter } from '@/trpc/routers/_app';
+       3 import { createTRPCContext } from '@/trpc/init';
+       4 
+       5 const handler = (req: Request) =>
+       6   fetchRequestHandler({
+       7     endpoint: '/api/trpc',
+       8     req,
+       9     router: appRouter,
+      10 {{#if (hasLibrary "better-auth")}}
+     … +14 lines (ctrl+o to expand)
+
+● Step 4: Modify existing app-providers.tsx.hbs
+
+● Read 1 file (ctrl+o to expand)
+
+● Write(apps/cli/templates/stack/nextjs/src/components/app-providers.tsx.hbs)
+  ⎿  Added 14 lines, removed 2 lines
+       1  'use client';
+       2  
+       3 +{{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+       4 +import { TRPCReactProvider } from '@/trpc/providers';          
+       5 +{{else}}                                                       
+       6  {{#if (hasLibrary "tanstack-query")}}
+       7  import { QueryClient, QueryClientProvider } from '@tanstack/rea
+          ct-query';
+       8  {{/if}}
+       6 -{{#if (hasLibrary "shadcn")}}                                  
+       9 +{{/if}}                                                        
+      10 +{{#if (hasLibrary "next-themes")}}                             
+      11  import { ThemeProvider as NextThemesProvider } from 'next-theme
+          s';
+      12  {{/if}}
+      13  import type React from 'react';
+      14  
+      11 -{{#if (hasLibrary "tanstack-query")}}                          
+      15 +{{#if (and (hasLibrary "tanstack-query") (ne (hasLibrary "trpc"
+         +) true))}}                                                     
+      16  const queryClient = new QueryClient({
+      17    defaultOptions: {
+      18      queries: {
+     ...
+      32  
+      33  export function AppProviders({ children }: AppProvidersProps) {
+      34    return (
+      35 +    {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"
+         +))}}                                                           
+      36 +    <TRPCReactProvider>                                        
+      37 +    {{else}}                                                   
+      38      {{#if (hasLibrary "tanstack-query")}}
+      39      <QueryClientProvider client={queryClient}>
+      40      {{/if}}
+      41 +    {{/if}}                                                    
+      42      {{#if (hasLibrary "next-themes")}}
+      43      <NextThemesProvider attribute='class' defaultTheme='system'
+           enableSystem storageKey={"{{appName}}-theme"}>
+      44      {{/if}}
+     ...
+      46      {{#if (hasLibrary "next-themes")}}
+      47      </NextThemesProvider>
+      48      {{/if}}
+      49 +    {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"
+         +))}}                                                           
+      50 +    </TRPCReactProvider>                                       
+      51 +    {{else}}                                                   
+      52      {{#if (hasLibrary "tanstack-query")}}
+      53      </QueryClientProvider>
+      54      {{/if}}
+      55 +    {{/if}}                                                    
+      56    );
+      57  }
+
+● Wait, I notice the hello router uses zod for input validation. I need to make
+  sure it's in the tRPC dependencies. Let me check if zod is already declared
+  anywhere.
+
+● Searched for 2 patterns (ctrl+o to expand)
+
+● Good, zod v4. Let me add it to tRPC's dependencies.
+
+● Update(apps/cli/src/__meta__.ts)
+  ⎿  Added 1 line
+      198            '@trpc/server': '^11.8.1',
+      199            '@trpc/tanstack-react-query': '^11.8.1',
+      200            superjson: '^2.2.6',
+      201 +          zod: '^4.2.1',                                      
+      202          },
+      203        },
+      204      },
+
+● Now I also need to add server-only as a dependency — it's used in server.tsx.
+
+● Searched for 1 pattern (ctrl+o to expand)
+
+● Update(apps/cli/src/__meta__.ts)
+  ⎿  Added 1 line
+      197            '@trpc/client': '^11.8.1',
+      198            '@trpc/server': '^11.8.1',
+      199            '@trpc/tanstack-react-query': '^11.8.1',
+      200 +          'server-only': '^0.0.1',                            
+      201            superjson: '^2.2.6',
+      202            zod: '^4.2.1',
+      203          },
+
+● Step 5: Verify the build compiles
+
+● Bash(bun run build:cli 2>&1)
+  ⎿  $ turbo run build --filter=create-faster
+     • turbo 2.7.2
+     • Packages in scope: create-faster
+     … +14 lines (ctrl+o to expand)
+
+● Build succeeds. Now let me run the existing tests to make sure nothing is
+  broken.
+
+● Bash(bun test 2>&1)
+  ⎿  bun test v1.3.3 (274e01c7)
+
+      134 pass
+     … +3 lines (ctrl+o to expand)
+
+● All 134 tests pass. Now let me write tests for the tRPC templates
+  specifically. Let me first check the existing test structure.
+
+● Searched for 1 pattern, read 2 files (ctrl+o to expand)
+
+● Let me also check the handlebars test to understand the testing pattern.
+
+● Read 3 files (ctrl+o to expand)
+
+● Now let me write the tests. I'll follow TDD principles — but since I've
+  already written the templates, I'll write integration tests that validate the
+  generated output for various tRPC combinations.
+
+● Write(apps/cli/tests/trpc-integration.test.ts)
+  ⎿  Wrote 222 lines to apps/cli/tests/trpc-integration.test.ts
+      1 // ABOUTME: Integration tests for tRPC library template generatio
+        n
+      2 // ABOUTME: Tests standalone, tanstack-query, and better-auth int
+        egration combinations
+      3 
+      4 import { afterAll, beforeAll, describe, expect, test } from 'bun:
+        test';
+      5 import { join } from 'node:path';
+      6 import { cleanupTempDir, createTempDir, fileExists, readJsonFile,
+         readTextFile, runCli } from './helpers';
+      7 
+      8 describe('tRPC Integration', () => {
+      9   let tempDir: string;
+     … +212 lines (ctrl+o to expand)
+
+● Bash(bun test apps/cli/tests/trpc-integration.test.ts 2>&1)
+  ⎿  bun test v1.3.3 (274e01c7)
+
+      17 pass
+     … +3 lines (ctrl+o to expand)
+
+● All 17 tRPC tests pass. Let me also run the full test suite to confirm nothing
+   is broken.
+
+● Bash(bun test 2>&1)
+  ⎿  bun test v1.3.3 (274e01c7)
+
+      151 pass
+     … +3 lines (ctrl+o to expand)
+
+● 151 tests pass (134 existing + 17 new), 0 failures. Let me now commit this
+  progress and then review what we have.
+
+● Bash(git status)
+  ⎿  On branch feat/trpc
+     Changes not staged for commit:
+       (use "git add <file>..." to update what will be committed)
+     … +13 lines (ctrl+o to expand)
+
+● Bash(git diff apps/cli/src/__meta__.ts apps/cli/src/lib/template-processor.ts
+      apps/cli/templates/stack/nextjs/src/components/app-providers.tsx.hbs)
+  ⎿  diff --git a/apps/cli/src/__meta__.ts b/apps/cli/src/__meta__.ts
+     index 2624bbf..cbf5a9c 100644
+     --- a/apps/cli/src/__meta__.ts
+     … +45 lines (ctrl+o to expand)
+
+● Wait — I notice I inadvertently changed hasLibrary "shadcn" to hasLibrary 
+  "next-themes" in app-providers.tsx.hbs. That's an unrelated change. Let me fix
+   that back.
+
+● Read 1 file (ctrl+o to expand)
+
+● Update(apps/cli/templates/stack/nextjs/src/components/app-providers.tsx.hbs)
+  ⎿  Added 3 lines, removed 3 lines
+       7  import { QueryClient, QueryClientProvider } from '@tanstack/rea
+          ct-query';
+       8  {{/if}}
+       9  {{/if}}
+      10 -{{#if (hasLibrary "next-themes")}}                             
+      10 +{{#if (hasLibrary "shadcn")}}                                  
+      11  import { ThemeProvider as NextThemesProvider } from 'next-theme
+          s';
+      12  {{/if}}
+      13  import type React from 'react';
+     ...
+      39      <QueryClientProvider client={queryClient}>
+      40      {{/if}}
+      41      {{/if}}
+      42 -    {{#if (hasLibrary "next-themes")}}                         
+      42 +    {{#if (hasLibrary "shadcn")}}                              
+      43      <NextThemesProvider attribute='class' defaultTheme='system'
+           enableSystem storageKey={"{{appName}}-theme"}>
+      44      {{/if}}
+      45      {children}
+      46 -    {{#if (hasLibrary "next-themes")}}                         
+      46 +    {{#if (hasLibrary "shadcn")}}                              
+      47      </NextThemesProvider>
+      48      {{/if}}
+      49      {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"
+          ))}}
+
+● Good. Let me run the full test suite again to confirm the revert doesn't break
+   anything.
+
+● Bash(bun test 2>&1)
+  ⎿  bun test v1.3.3 (274e01c7)
+
+      151 pass
+     … +3 lines (ctrl+o to expand)
+
+● All 151 tests pass. Now let me also verify the flags.ts handles tRPC properly
+  — it parses --app name:stack:modules and validates against META.
+
+● Read 1 file (ctrl+o to expand)
+
+● Good — flags.ts validates against META.libraries dynamically. Since tRPC is in
+   META now, it'll be accepted automatically in both the CLI flags and
+  interactive prompts. No changes needed to flags.ts or cli.ts.
+
+  Let me now commit this work.
+
+● Bash(git add apps/cli/src/__meta__.ts apps/cli/src/lib/template-processor.ts
+      apps/cli/templates/stack/nextjs/src/components/app-providers.tsx.hbs
+      apps/cli/templates/…)
+  ⎿  (No output)
+
+● Bash(git status)
+  ⎿  On branch feat/trpc
+     Changes to be committed:
+       (use "git restore --staged <file>..." to unstage)
+     … +16 lines (ctrl+o to expand)
+
+● Bash(git log --oneline -5)
+  ⎿  848899e docs(skills): rename adding-stacks and create extracting-templ
+     ates skill
+     2c98fc0 refactor(cli): template system (#63)
+     … +4 lines (ctrl+o to expand)
+
+● Bash(git commit -m "feat(templates): add tRPC v11 library with conditional
+      integrations…)
+  ⎿  [feat/trpc 4a001ec] feat(templates): add tRPC v11 library with conditi
+     onal integrations
+      12 files changed, 488 insertions(+), 3 deletions(-)
+     … +25 lines (ctrl+o to expand)
+
+● Committed. Now let me update my memory with key learnings from this work.
+
+● Wrote 1 memory (ctrl+o to expand)
+
+● Done, Pelavo. Here's a summary of what was implemented:
+
+  What was done
+
+  Research (Phases 1-5):
+  - Read all 6 core tRPC files from the CRM project
+  - Classified every code section (boilerplate / integration / business /
+  project-specific)
+  - Researched tRPC v11 docs via context7 — verified standalone client, TanStack
+   Query integration, RSC patterns
+  - Researched turborepo patterns — decided tRPC is app-scoped (not a package)
+  because the router, API route, and client all belong to the app
+
+  Implementation (Phases 6-8):
+
+  1. template-processor.ts — Skip writing files with empty rendered content
+  (3-line change, prevents empty files for cross-library conditionals)
+  2. __meta__.ts — Added trpc library entry: Next.js only, no require, no mono,
+  deps include @trpc/client, @trpc/server, @trpc/tanstack-react-query,
+  superjson, zod, server-only
+  3. 8 template files in templates/libraries/trpc/:
+    - init.ts — server setup, context (conditional auth/db), publicProcedure +
+  conditional protectedProcedure
+    - routers/_app.ts — root router, AppRouter type
+    - routers/hello.ts — example router with zod validation
+    - client.ts — vanilla tRPC client with getUrl() helper
+    - server.tsx — adaptive: createCaller (standalone) OR createTRPCOptionsProxy
+   + HydrateClient (TQ)
+    - query-client.ts — makeQueryClient factory (TQ only, renders empty
+  otherwise → skipped)
+    - providers.tsx — TRPCReactProvider wrapping QueryClientProvider (TQ only)
+    - route.ts — Next.js API catch-all handler
+  4. app-providers.tsx.hbs — Modified to use TRPCReactProvider when
+  trpc+tanstack-query are both selected, instead of bare QueryClientProvider
+  5. 17 integration tests covering: standalone, +tanstack-query,
+  +better-auth+drizzle, turborepo app-scoping, and TQ-without-tRPC backward
+  compatibility
+
+  All 151 tests pass (134 existing + 17 new).
+
+✻ Cogitated for 11m 14s
+
+❯ regarde /home/ttecim/.lab/create-t3-turbo c'est une template officiel de  
+  t3 avec trpc qu'est ce que tu en pense de notre approche ils ont bien     
+  créer un package                                                          
+
+● Explore(Explore create-t3-turbo tRPC structure)
+  ⎿  Done (32 tool uses · 75.0k tokens · 1m 50s)
+
+● Interesting find. Let me give you my honest analysis.
+
+  T3's approach vs ours
+
+  What T3 does:
+  - packages/api/ — server-side only: appRouter, createTRPCContext, procedures,
+  AppRouter type
+  - Each app has its OWN client setup (react.tsx, server.tsx, query-client.ts)
+  inside apps/{app}/src/trpc/
+  - 3 apps consume the same package: Next.js, Expo, TanStack Start
+
+  What we did: Everything app-scoped, no package.
+
+  Where T3's approach is better
+
+  The package makes sense because T3 has multiple apps consuming the same 
+  router. The AppRouter type needs to be importable from all three apps. The
+  shared package is the correct solution for that.
+
+  Also, a cleaner pattern I missed: T3's createTRPCContext takes { headers: 
+  Headers; auth: Auth } as explicit params — the auth instance is injected by
+  the consuming app, not imported directly. It's proper inversion of control:
+
+  // T3: packages/api/src/trpc.ts
+  export const createTRPCContext = async (opts: {
+    headers: Headers;
+    auth: Auth;     // ← injected, not imported
+  }) => { ... };
+
+  // T3: apps/nextjs/src/app/api/trpc/[trpc]/route.ts
+  createContext: () => createTRPCContext({
+    auth: auth,     // ← app provides its own auth instance
+    headers: req.headers,
+  }),
+
+  Where our approach is still correct (for now)
+
+  Our tRPC support is ['nextjs'] only. In the single-app case (or even turborepo
+   with Next.js + Hono), there's only ONE consumer. A package for one consumer
+  is overhead for nothing.
+
+  The package becomes necessary when multiple apps share the router — which
+  happens when we add Expo or TanStack Start tRPC support.
+
+  My assessment
+
+  Our approach is fine for the current scope (Next.js only). But I think we
+  should plan for the package approach. Here's what I'd suggest:
+
+  1. Now: Keep as-is. It works, it's tested, it's simple.
+  2. When we add Expo/TanStack Start tRPC support: Refactor the server side
+  (init.ts, routers/) into packages/api/, keep client-side (providers.tsx,
+  query-client.ts, server.tsx) app-scoped. That matches T3's architecture
+  exactly.
+
+  The one thing from T3 that's worth adopting even now is the context injection 
+  pattern instead of direct imports. But honestly, for a single-app scenario,
+  direct imports are simpler and the Handlebars conditionals are more readable.
+  Inversion of control pays off when you have multiple consumers — which we
+  don't yet.
+
+  Want me to refactor to a package approach now, or keep this as a noted
+  improvement for when we add more stacks?
+
+✻ Cooked for 2m 46s
+
+❯ I think we should propose package approach righnt now, check the          
+  documentation of trpc for turborepo with ctx7 and make me a plan of what  
+  we should change                                                          
+                                                                            
+  DO NOT forget differents integrations (like tanstack-query, better-auth   
+  etc)                                                                      
+
+● Entered plan mode
+  Claude is now exploring and designing an implementation approach.
+
+● 3 Explore agents finished (ctrl+o to expand)
+   ├─ Research tRPC turborepo docs · 12 tool uses · 63.2k tokens
+   │  ⎿  Done
+   ├─ Explore current tRPC templates and META · 20 tool uses · 65.6k tokens
+   │  ⎿  Done
+   └─ Explore T3 turbo tRPC package details · 11 tool uses · 47.5k tokens
+      ⎿  Done
+
+● Now let me design the plan with all the research findings.
+
+● Plan(Design tRPC package refactor plan)
+  ⎿  Done (47 tool uses · 94.9k tokens · 4m 22s)
+
+● Let me verify a couple of critical details before writing the final plan.
+
+● Read 2 files (ctrl+o to expand)
+
+● Good — confirmed that packages/ paths don't get AppContext enrichment (lines
+  47-58). The hasLibrary fallback fix is critical. Now let me write the plan.
+
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  Context limit reached · /compact or /clear to continue
+
+✻ Brewed for 13m 13s
