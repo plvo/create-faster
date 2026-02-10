@@ -220,3 +220,72 @@ describe('internal @repo/* dependencies (turborepo)', () => {
     expect(repoRefs).toEqual([]);
   });
 });
+
+describe('appPackageJson for pkg-scoped libraries', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  test('turborepo: app gets @repo/api + appPackageJson deps', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc', 'tanstack-query'] }],
+      project: { tooling: [] },
+      git: true,
+    };
+
+    const results = generateAllPackageJsons(ctx);
+    const app = findByPath(results, 'apps/web/package.json');
+
+    expect(app?.content.dependencies?.['@repo/api']).toBe('*');
+    expect(app?.content.dependencies?.['@trpc/client']).toBeDefined();
+    expect(app?.content.dependencies?.['@trpc/tanstack-react-query']).toBeDefined();
+    expect(app?.content.dependencies?.['server-only']).toBeDefined();
+    // Server-side deps should NOT be in the app
+    expect(app?.content.dependencies?.['@trpc/server']).toBeUndefined();
+    expect(app?.content.dependencies?.zod).toBeUndefined();
+  });
+
+  test('turborepo: packages/api gets server-side deps', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc', 'tanstack-query'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+    };
+
+    const results = generateAllPackageJsons(ctx);
+    const api = findByPath(results, 'packages/api/package.json');
+
+    expect(api).toBeDefined();
+    expect(api?.content.dependencies?.['@trpc/server']).toBeDefined();
+    expect(api?.content.dependencies?.superjson).toBeDefined();
+    expect(api?.content.dependencies?.zod).toBeDefined();
+    expect(api?.content.dependencies?.['@repo/db']).toBe('*');
+  });
+
+  test('single repo: merges both packageJson and appPackageJson into app', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['trpc', 'tanstack-query'] }],
+      project: { tooling: [] },
+      git: true,
+    };
+
+    const results = generateAllPackageJsons(ctx);
+    const pkg = results[0];
+
+    // Both server and client deps merged flat
+    expect(pkg.content.dependencies?.['@trpc/server']).toBeDefined();
+    expect(pkg.content.dependencies?.['@trpc/client']).toBeDefined();
+    expect(pkg.content.dependencies?.superjson).toBeDefined();
+    expect(pkg.content.dependencies?.zod).toBeDefined();
+    // No @repo/* refs
+    const allDeps = { ...pkg.content.dependencies, ...pkg.content.devDependencies };
+    const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
+    expect(repoRefs).toEqual([]);
+  });
+});

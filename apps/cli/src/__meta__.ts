@@ -192,14 +192,25 @@ export const META: Meta = {
       label: 'tRPC',
       hint: 'End-to-end typesafe APIs',
       support: { stacks: ['nextjs'] },
+      mono: { scope: 'pkg', name: 'api' },
       packageJson: {
         dependencies: {
-          '@trpc/client': '^11.8.1',
+          '@repo/auth': '*',
+          '@repo/db': '*',
           '@trpc/server': '^11.8.1',
+          superjson: '^2.2.6',
+          zod: '^4.2.1',
+        },
+        exports: {
+          '.': './src/index.ts',
+        },
+      },
+      appPackageJson: {
+        dependencies: {
+          '@trpc/client': '^11.8.1',
           '@trpc/tanstack-react-query': '^11.8.1',
           'server-only': '^0.0.1',
           superjson: '^2.2.6',
-          zod: '^4.2.1',
         },
       },
     },
