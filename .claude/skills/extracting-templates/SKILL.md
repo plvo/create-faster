@@ -216,6 +216,8 @@ Based on all research, design the complete META entry. The `MetaAddon` interface
 
 ### Phase 7: Genericize Templates
 
+**Before writing templates, read the `adding-templates` skill** for template authoring conventions (frontmatter, helpers, naming, scope mapping). That skill is the reference for HOW to write templates. This phase focuses on WHAT to extract.
+
 Transform the external project's files into Handlebars templates:
 
 1. **Strip business logic** — remove domain-specific routers, schemas, procedures
@@ -223,13 +225,14 @@ Transform the external project's files into Handlebars templates:
 3. **Add monorepo awareness** — `{{#if (isMono)}}` for import paths
 4. **Add frontmatter** — for path resolution and scope
 5. **Generalize config** — replace hardcoded values with template variables
+6. **Use stack-specific suffixes** — files that only apply to one framework use `file.ext.{stack}.hbs` naming (e.g., `route.ts.nextjs.hbs` for a Next.js API route). This is how the template resolver filters files per stack — without the suffix, the file generates for ALL stacks.
 
 **Template quality checklist per file:**
 - [ ] No business logic remains
 - [ ] All cross-library integrations are conditional
 - [ ] Import paths handle mono vs single
 - [ ] Frontmatter specifies correct scope
-- [ ] Stack-specific suffix if file is stack-dependent
+- [ ] Stack-specific suffix on files that target one framework (e.g., API routes, RSC utilities)
 - [ ] Code follows library's recommended patterns (from docs, not just the project)
 
 ### Phase 8: Implement
