@@ -70,32 +70,13 @@ Beyond the official setup, we include:
 - Default framework features (TypeScript, build tools)
 - Optional features as if they're default
 
-## Modules
+## Compatible Modules
 
-### Module Name
+List modules available for this stack with links to their standalone pages.
 
-*[→ Module Documentation](https://...)*
+→ [shadcn/ui](/docs/modules/ui/shadcn) · [Next Themes](/docs/modules/ui/next-themes) · ...
 
-**Technical changes:**
-
-Files added:
-\`\`\`
-src/
-├── path/to/
-│   └── file.tsx        # Description
-└── config.json         # Description
-
-# Turborepo only:
-packages/name/
-└── package.json        # Description
-\`\`\`
-
-**Modified files:**
-- `file.tsx` - What changed and why
-
-**Integration notes:**
-- How it works with ORM/database/etc.
-- Turborepo vs single repo differences
+Module documentation lives in `modules/{category}/`. Do NOT document modules inline.
 ```
 
 ## Documentation Workflow
@@ -143,17 +124,13 @@ Document EXACTLY what files we create/modify. Cross-reference every claim with a
 1. Brief explicit description (what you get as result)
 2. Link to official docs (MANDATORY, `→` syntax)
 3. "What create-faster adds" section
-4. Modules (flat list, no categories)
+4. "Compatible Modules" section with links to standalone module pages
 
 **CRITICAL - Don't add `# Title`:**
 Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 
-**For each module:**
-1. Title (### Module Name)
-2. Link to module docs
-3. Technical changes (files added/modified)
-4. Tree structure showing files
-5. Integration notes if applicable
+**For compatible modules:**
+Link to standalone module pages in `modules/{category}/`. Do NOT document modules inline on stack pages. Use `documenting-module` skill for module documentation.
 
 ### Step 4: Focus on Technical Changes
 
@@ -201,7 +178,7 @@ Every script, dependency, and file reference MUST be verified against the codeba
 **STOP if you write:**
 - `# Stack Name` title (title in frontmatter already renders as H1)
 - Changed description style (keep original framework presentation)
-- Categorized module sections ("UI & Styling", "Data Fetching")
+- Inline module documentation (modules have their own pages)
 - "Why use X?" explanations (that's official docs' job)
 - Generic framework features (link to docs instead)
 - Framework-agnostic options as stack features (Biome, git, etc.)
@@ -216,7 +193,7 @@ Every script, dependency, and file reference MUST be verified against the codeba
 
 | Mistake | Fix |
 |---------|-----|
-| Categorizing modules | Flat list with ### Module Name |
+| Documenting modules inline | Link to standalone module pages in `modules/{category}/` |
 | Explaining framework features | Link to official docs, focus on our additions |
 | No file structure | Show tree with files created |
 | Missing "What we add" | Required section at top |
@@ -232,7 +209,7 @@ Every script, dependency, and file reference MUST be verified against the codeba
 |--------|---------|
 | "Need H1 title for clarity" | Frontmatter title renders as H1. Don't duplicate. |
 | "Better description style" | Keep original framework presentation style. |
-| "Categories help organization" | Flat structure is clearer, user can Ctrl+F |
+| "Should document modules here too" | Modules have their own pages. Link, don't duplicate. |
 | "Need context about framework" | Official docs exist. Link to them. |
 | "More detail is better" | Technical changes only. Avoid bloat. |
 | "Should explain benefits" | Features = official docs. Our additions = us. |
@@ -254,12 +231,11 @@ Every script, dependency, and file reference MUST be verified against the codeba
 - [ ] NO framework-agnostic options (Biome, git, etc.)
 - [ ] NO optional features claimed as defaults
 - [ ] NO standard configs everyone uses
-- [ ] Modules section (flat, no categories)
-- [ ] Each module has link to official docs
-- [ ] Each module shows files added/modified with tree structure
+- [ ] "Compatible Modules" section with links to standalone module pages
+- [ ] NO inline module documentation (modules live in `modules/{category}/`)
 - [ ] Technical changes focus on OUR additions
 - [ ] Turborepo differences noted where applicable
-- [ ] Integration notes for ORM/database modules
+- [ ] Integration notes for ORM/database
 
 **Verification (MANDATORY):**
 - [ ] Every script verified in `META.stacks[name].packageJson.scripts`
