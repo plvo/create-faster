@@ -48,7 +48,9 @@
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "publish:test:verdaccio": "bun publish --registry http://localhost:4873",
     "publish:test:start": "bun run build && bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
-    "test": "bun test"
+    "test": "bun test",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration"
   },
   "dependencies": {
     "@clack/core": "^0.5.0",

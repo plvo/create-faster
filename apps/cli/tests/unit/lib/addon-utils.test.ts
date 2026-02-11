@@ -2,9 +2,9 @@
 // ABOUTME: Tests compatibility checking for libraries and requirement validation
 
 import { describe, expect, test } from 'bun:test';
-import { META } from '../src/__meta__';
-import { getProjectAddon, isLibraryCompatible, isRequirementMet } from '../src/lib/addon-utils';
-import type { TemplateContext } from '../src/types/ctx';
+import { META } from '@/__meta__';
+import { getProjectAddon, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import type { TemplateContext } from '@/types/ctx';
 
 describe('isLibraryCompatible', () => {
   test('shadcn is compatible with nextjs', () => {
