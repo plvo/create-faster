@@ -1,0 +1,31 @@
+---
+title: AWS Lambda
+description: Serverless deployment adapter for Hono with Lambda-compatible handler export.
+---
+
+<Stacks names="hono" />
+<Dependencies packages="@hono/aws-lambda" />
+
+[→ AWS Lambda Documentation](https://aws.amazon.com/lambda)
+
+## What create-faster adds
+
+Modified files:
+- `src/index.ts` - Conditionally exports Lambda handler instead of raw app
+
+**When enabled:**
+```typescript
+import { handle } from 'hono/aws-lambda';
+import app from './app';
+
+export const handler = handle(app);  // Lambda entry point
+```
+
+**When disabled:**
+```typescript
+import app from './app';
+
+export default app;  // Standard Node.js server
+```
+
+The `handle` adapter transforms Lambda events to Hono requests and Hono responses to Lambda responses. The `handler` export is the Lambda function entry point.

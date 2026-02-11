@@ -3,10 +3,6 @@ title: Expo
 description: Expo is a platform for building native mobile applications using React Native with a superior developer experience.
 ---
 
-## Presentation
-
-Production-ready React Native app with Expo Router, authentication scaffolding, and pre-configured assets.
-
 [→ Expo Documentation](https://expo.dev)
 
 ## What create-faster adds
@@ -20,9 +16,8 @@ Beyond the official setup, we include:
 - Font loading setup with Inter typeface
 
 **Development Scripts:**
-- `start:android` / `start:ios` / `start:web` - Platform-specific development with cache clear
-- `prebuild:android` / `prebuild:ios` - Native project generation with clean flag
-- `build:eas:android` / `build:eas:ios` - EAS Build production profiles
+- `start` - Start Expo development server
+- `android` / `ios` / `web` - Platform-specific development
 
 **Pre-configured Assets:**
 - App icon, adaptive icon, splash screen
@@ -58,29 +53,6 @@ assets/
 app.config.ts               # Expo configuration with plugins
 ```
 
-## Modules
+## Compatible Modules
 
-### NativeWind
-
-*[→ NativeWind Documentation](https://nativewind.dev)*
-
-Tailwind CSS for React Native. Write utility-first styling with the same classes you use on the web.
-
-**Technical changes:**
-
-Files created:
-```
-metro.config.js            # Metro bundler with NativeWind transformer
-tailwind.config.js         # Tailwind config with NativeWind preset
-nativewind-env.d.ts        # TypeScript types for className prop
-src/styles/globals.css     # Tailwind directives entry point
-```
-
-**Dependencies added:**
-- `nativewind` (v4.1.23)
-- `tailwindcss` (v3.3.2) - dev dependency
-
-**Configuration details:**
-- Metro config uses `withNativeWind()` wrapper with `globals.css` input
-- Tailwind scans `./src/**/*.{js,jsx,ts,tsx}` for classes
-- NativeWind preset provides React Native-compatible utilities
+<Modules names="nativewind" />

@@ -3,64 +3,97 @@ title: Biome
 description: Biome is a fast, all-in-one toolchain for formatting, linting, and more - built in Rust for maximum performance.
 ---
 
-## Presentation
-
-Pre-configured Biome formatter and linter with project-specific rules, import sorting, and sensible defaults for TypeScript/React projects.
+<Dependencies dev="@biomejs/biome" />
 
 [→ Biome Documentation](https://biomejs.dev)
 
 ## What create-faster adds
 
-Beyond the official setup, we include:
-
-**Opinionated Configuration:**
-- Single quotes for JS/TS and JSX
-- 2-space indentation, 120 character line width
-- Semicolons always required
-- Trailing commas everywhere (except JSON)
-- LF line endings (Unix-style)
-
-**Automatic Import Sorting:**
-- Enabled via `assist.actions.source.organizeImports`
-
-**Relaxed Linter Rules:**
-- `noExplicitAny` off - Allows `any` type when needed
-- `noConsole` off - Allows `console.log` for debugging
-- `noArrayIndexKey` off - Allows array indices as React keys
-- `noForEach` off - Allows `.forEach()` loops
-- `useKeyWithClickEvents` off - Accessibility rule disabled
-- `noStaticElementInteractions` off - Accessibility rule disabled
-- `noUnusedVariables` info level - Warnings instead of errors
-
-**Smart Exclusions:**
-- Framework build directories (`.next/`, `.turbo/`, `dist/`, `out/`)
-- Generated code (`generated/`, `node_modules/`)
-- Git hooks (`.husky/`)
-- CSS files (handled by framework)
+**Scripts added to `package.json`:**
+- `format` — `biome format --write .`
+- `lint` — `biome lint`
 
 File created:
 ```
 biome.json                  # Complete Biome configuration
 ```
 
-**Configuration Highlights:**
-- VCS integration with Git and `.gitignore` support
-- Default branch: `main`
-- Format-with-errors disabled (fail-safe)
-- Recommended linter rules as base
-- JSON spec-compliant formatting (no trailing commas)
+### biome.json
 
-**Excluded Paths:**
-```
-apps/app/src/app/init/**/*
-packages/ui/src/components/**/*
-packages/ui/src/styles/**/*
-**/*.css
-**/.next/**/*
-**/node_modules/**/*
-**/.husky/**/*
-**/dist/**/*
-**/out/**/*
-**/generated/**/*
-**/.turbo/**/*
+```json title="biome.json"
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+  "root": true,
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!apps/app/src/app/init/**/*",
+      "!packages/ui/src/components/**/*",
+      "!packages/ui/src/styles/**/*",
+      "!**/*.css",
+      "!**/.next/**/*",
+      "!**/node_modules/**/*",
+      "!**/.husky/**/*",
+      "!**/dist/**/*",
+      "!**/out/**/*",
+      "!**/generated/**/*",
+      "!**/.turbo/**/*"
+    ]
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "lineEnding": "lf",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "bracketSameLine": false,
+      "bracketSpacing": true,
+      "jsxQuoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "noConsole": { "level": "off", "options": { "allow": ["log"] } }
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": {
+          "level": "info",
+          "fix": "unsafe"
+        }
+      },
+      "complexity": {
+        "noForEach": "off"
+      },
+      "style": {}
+    }
+  }
+}
 ```

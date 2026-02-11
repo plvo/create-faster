@@ -1,0 +1,4 @@
+{
+  "title": "Modules",
+  "pages": ["ui", "content", "auth", "api", "data-fetching", "forms", "deploy"]
+}

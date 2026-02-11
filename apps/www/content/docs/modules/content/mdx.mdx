@@ -1,0 +1,120 @@
+---
+title: MDX
+description: Pre-configured MDX support with frontmatter parsing, custom components, and dynamic routing.
+---
+
+<Stacks names="nextjs" />
+<Dependencies packages="@mdx-js/loader,@mdx-js/react,@next/mdx,next-mdx-remote" dev="@types/mdx" />
+
+[→ MDX Documentation](https://mdxjs.com)
+
+## What create-faster adds
+
+Files added:
+```
+src/
+├── lib/
+│   └── mdx.ts                  # parseFrontmatter() utility
+├── mdx-components.tsx          # Custom MDX component mappings
+├── styles/
+│   └── mdx.css                 # MDX-specific styling
+└── app/[...mdxExampleSlug]/
+    └── page.tsx                # Dynamic MDX route example
+
+contents/
+├── home.mdx                    # Example content
+└── cool.mdx                    # Example content
+```
+
+**Modified files:**
+- `next.config.ts` - Adds MDX support with `createMDX` and `.mdx`/`.md` extensions
+
+### mdx.ts
+
+Frontmatter parsing utility:
+
+```ts title="src/lib/mdx.ts"
+export type MdxFrontmatter = {
+  title: string;
+  summary: string;
+  publishedAt: string;
+  imageUrl?: string;
+};
+
+export type ParsedFrontmatterReturn = {
+  metadata: Partial<MdxFrontmatter>;
+  content: string;
+};
+
+export function parseFrontmatter(fileContent: string): ParsedFrontmatterReturn {
+  const frontmatterRegex = /---\s*([\s\S]*?)\s*---/;
+  const match = frontmatterRegex.exec(fileContent);
+  const frontMatterBlock = match![1];
+  const content = fileContent.replace(frontmatterRegex, '').trim();
+  const frontMatterLines = frontMatterBlock.trim().split('\n');
+  const metadata: Partial<MdxFrontmatter> = {};
+
+  frontMatterLines.forEach((line) => {
+    const [key, ...valueArr] = line.split(': ');
+    let value = valueArr.join(': ').trim();
+    value = value.replace(/^['"](.*)['"]$/, '$1');
+    metadata[key.trim() as keyof MdxFrontmatter] = value;
+  });
+
+  return { metadata, content };
+}
+```
+
+### page.tsx
+
+Dynamic MDX route with metadata generation:
+
+```tsx title="src/app/[...mdxExampleSlug]/page.tsx"
+import fs from 'node:fs';
+import path from 'node:path';
+import { notFound } from 'next/navigation';
+import { MDXRemote } from 'next-mdx-remote/rsc';
+import { parseFrontmatter } from '@/lib/mdx';
+import { mdxComponents } from '@/mdx-components';
+
+interface PageProps {
+  params: Promise<{ mdxExampleSlug: string[] }>;
+}
+
+export const generateMetadata = async ({ params }: PageProps) => {
+  const { mdxExampleSlug } = await params;
+  if (mdxExampleSlug === undefined) return undefined;
+
+  const fileContent = getFileContent(mdxExampleSlug);
+  if (fileContent === null) return notFound();
+
+  const { metadata } = parseFrontmatter(fileContent);
+  return { title: metadata.title, description: metadata.summary };
+};
+
+export default async function Page({ params }: PageProps) {
+  const { mdxExampleSlug } = await params;
+  const fileContent = getFileContent(mdxExampleSlug);
+  if (fileContent === null) return notFound();
+
+  const { metadata, content: mdxContent } = parseFrontmatter(fileContent);
+
+  return (
+    <main className='max-w-[650px] mx-auto px-4 py-4 md:py-8'>
+      <MDXRemote source={mdxContent} components={mdxComponents} />
+      <pre>
+        <code>{JSON.stringify({ metadata }, null, 2)}</code>
+      </pre>
+    </main>
+  );
+}
+
+function getFileContent(slug: string[]): string | null {
+  const contentPath = slug === undefined
+    ? path.join(process.cwd(), 'contents', 'home.mdx')
+    : path.join(process.cwd(), 'contents', `${slug[0]}.mdx`);
+
+  if (!fs.existsSync(contentPath)) return null;
+  return fs.readFileSync(contentPath, 'utf-8');
+}
+```

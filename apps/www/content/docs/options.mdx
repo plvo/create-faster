@@ -1,12 +1,10 @@
 ---
 title: CLI Options
-description: Complete reference for CLI flags and non-interactive mode
+description: The CLI supports flags for non-interactive automation and reproducibility. Use flags to skip prompts and create projects with predefined configurations.
 icon: Option
 ---
 
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
-
-The CLI supports flags for non-interactive automation and reproducibility. Use flags to skip prompts and create projects with predefined configurations.
 
 ## Non-Interactive Mode
 
@@ -33,11 +31,11 @@ The first argument specifies the project name. If omitted, the CLI prompts for i
 bunx create-faster my-saas
 ```
 
-### `--app <name:stack:modules>`
+### `--app <name:stack:libraries>`
 
 Define an application to create. Repeatable for multi-app projects.
 
-**Format**: `name:stack` or `name:stack:module1,module2`
+**Format**: `name:stack` or `name:stack:library1,library2`
 
 **Examples**:
 ```bash
@@ -45,6 +43,7 @@ Define an application to create. Repeatable for multi-app projects.
 --app web:nextjs:shadcn,tanstack-query
 --app mobile:expo:nativewind
 --app api:hono
+--app web:tanstack-start:shadcn
 ```
 
 Use multiple `--app` flags for multi-app monorepos:
@@ -77,13 +76,14 @@ Select an ORM. Requires `--database` to be specified.
 --database postgres --orm drizzle
 ```
 
-### `--git`
+### `--git` / `--no-git`
 
-Initialize a Git repository after generation.
+Initialize a Git repository after generation, or explicitly skip it.
 
 **Example**:
 ```bash
 --git
+--no-git
 ```
 
 ### `--pm <manager>`
@@ -99,15 +99,24 @@ Select a package manager for dependency installation.
 
 If omitted, the CLI prompts for installation preferences.
 
-### `--extras <items>`
+### `--no-install`
 
-Add development tools as a comma-separated list.
+Skip dependency installation entirely.
+
+**Example**:
+```bash
+--no-install
+```
+
+### `--tooling <name>`
+
+Add a development tool. Repeatable for multiple tools.
 
 **Options**: `biome`, `husky`
 
 **Example**:
 ```bash
---extras biome,husky
+--tooling biome --tooling husky
 ```
 
 **Note**: `husky` requires `--git` to be specified.
@@ -128,10 +137,10 @@ bunx create-faster myapp --database postgres --orm drizzle
 **Husky requires Git**:
 ```bash
 # ❌ Invalid - Husky without git
-bunx create-faster myapp --extras husky
+bunx create-faster myapp --tooling husky
 
 # ✓ Valid
-bunx create-faster myapp --git --extras husky
+bunx create-faster myapp --git --tooling husky
 ```
 
 **Unique app names** (multi-app only):
@@ -156,7 +165,8 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm bun \
-      --extras biome,husky
+      --tooling biome \
+      --tooling husky
     ```
   </Tab>
   <Tab value="npm">
@@ -167,7 +177,8 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm npm \
-      --extras biome,husky
+      --tooling biome \
+      --tooling husky
     ```
   </Tab>
   <Tab value="pnpm">
@@ -178,7 +189,8 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm pnpm \
-      --extras biome,husky
+      --tooling biome \
+      --tooling husky
     ```
   </Tab>
 </Tabs>
@@ -194,7 +206,8 @@ bunx create-faster my-saas \
   --orm drizzle \
   --git \
   --pm bun \
-  --extras biome,husky
+  --tooling biome \
+  --tooling husky
 ```
 
 This creates:
@@ -229,7 +242,7 @@ bunx create-faster my-saas \
 This pre-fills the project with a Next.js app and PostgreSQL, then prompts for:
 - ORM selection
 - Git initialization
-- Extras
+- Tooling
 - Package manager
 
 ## Auto-Generated Command
@@ -247,7 +260,8 @@ After project generation, create-faster displays a copy-paste ready command refl
 │    --orm drizzle \
 │    --git \
 │    --pm bun \
-│    --extras biome,husky
+│    --tooling biome \
+│    --tooling husky
 │
 └
 ```

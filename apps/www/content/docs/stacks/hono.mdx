@@ -3,10 +3,6 @@ title: Hono
 description: Hono is an ultra-fast, edge-first web framework for building APIs and web services with TypeScript.
 ---
 
-## Presentation
-
-Production-ready Hono API server with middleware (CORS, logger, timeout), error handling, health check endpoint, and optional AWS Lambda deployment.
-
 [→ Hono Documentation](https://hono.dev)
 
 ## What create-faster adds
@@ -17,7 +13,6 @@ Beyond the official setup, we include:
 - Logger middleware for request logging
 - Timeout middleware (15s default)
 - CORS middleware with wildcard origin and standard headers
-- Zod validator for request validation
 
 **API Structure:**
 - Health check endpoint (`/health/:id`) with JSON response
@@ -26,9 +21,8 @@ Beyond the official setup, we include:
 - Separation of concerns: `app.ts` (routes) and `index.ts` (entry point)
 
 **Development Scripts:**
-- `dev` - Watch mode with hot reload (`bun run --watch`)
-- `start` - Production server
-- `build` - Compile to single ESM file with Bun
+- `dev` - Hot reload development server (`bun run --hot`)
+- `start` - Production server (`bun run src/index.ts`)
 
 **Error Handling:**
 - Global error handler with stack traces in development
@@ -46,49 +40,11 @@ package.json                # Dependencies and scripts
 tsconfig.json               # TypeScript configuration
 ```
 
-**Dependencies:**
-- `hono` - Core framework
-- `@hono/node-server` - Node.js adapter
-- `@hono/zod-validator` - Zod validation middleware
-
 **Integration notes:**
 - ORM integration: When Drizzle or Prisma is selected, database packages are included
 - Turborepo: Uses `@repo/db` package for shared database logic
 - Single repo: Includes database dependencies directly
 
-## Modules
+## Compatible Modules
 
-### AWS Lambda
-
-*[→ AWS Lambda Documentation](https://aws.amazon.com/lambda)*
-
-**Technical changes:**
-
-Modified files:
-- `src/index.ts` - Conditionally exports Lambda handler instead of raw app
-
-**When enabled:**
-```typescript
-import { handle } from 'hono/aws-lambda';
-import app from './app';
-
-export const handler = handle(app);  // Lambda entry point
-```
-
-**When disabled:**
-```typescript
-import app from './app';
-
-export default app;  // Standard Node.js server
-```
-
-**What it does:**
-- Imports `handle` adapter from `hono/aws-lambda`
-- Wraps Hono app in Lambda-compatible handler
-- Transforms Lambda events → Hono requests
-- Transforms Hono responses → Lambda responses
-
-**Deployment:**
-- Use this module when deploying to AWS Lambda
-- The `handler` export is the Lambda function entry point
-- No additional configuration files needed
+<Modules names="aws-lambda" />

@@ -3,9 +3,7 @@ title: Prisma
 description: Prisma is a next-generation ORM with an intuitive data model, automated migrations, and powerful type safety.
 ---
 
-## Presentation
-
-Auto-generated type-safe database client with Prisma, including schema with User/Post models, Better Auth tables, migrations, and seeding scripts.
+<Dependencies packages="@prisma/client" dev="prisma" />
 
 [→ Prisma Documentation](https://www.prisma.io)
 
@@ -15,31 +13,12 @@ Auto-generated type-safe database client with Prisma, including schema with User
 
 Beyond the official setup, we include:
 
-**Pre-configured Schema:**
-- User and Post models with relations (`onDelete: Cascade`)
-- Better Auth models (Session, Account, Verification) when auth module selected
-- UUID primary keys, unique constraints, timestamps
-
 **Development Scripts:**
 - `db:generate` - Generate Prisma Client from schema
-- `db:pull` - Introspect database and update schema
+- `db:migrate` - Create and apply migrations
 - `db:push` - Push schema to database (dev)
 - `db:studio` - Launch Prisma Studio visual editor
 - `db:seed` - Populate database with sample data
-
-**Prisma Client Setup:**
-- Singleton pattern with global caching (prevents hot-reload issues)
-- Environment-aware logging (verbose in dev, errors-only in prod)
-- Custom output path in Turborepo (`../generated/prisma`)
-
-**Type Helpers:**
-- `UserWithPosts`, `PostWithAuthor` - Relation includes
-- Better Auth types when module selected
-
-**Seed Script:**
-- Sample Users (Alice, Bob) and Posts
-- Demonstrates `.create()`, `.createMany()`, relations
-- Proper cleanup with `$disconnect()`
 
 Files created (Turborepo):
 ```
@@ -71,13 +50,210 @@ scripts/
 .env.example                # DATABASE_URL template
 ```
 
-**Database Schema:**
-- `User`: id, username (unique), email (unique), emailVerified, avatarUrl, phone, firstName, lastName, createdAt, updatedAt
-- `Post`: id, title, content, published, authorId (FK to User), createdAt, updatedAt
-- `Session` (if Better Auth): id, userId, token (unique), expiresAt, ipAddress, userAgent, timestamps
-- `Account` (if Better Auth): id, userId, accountId, providerId, tokens, scope, idToken, password, timestamps
-- `Verification` (if Better Auth): id, identifier, value, expiresAt, timestamps
+### schema.prisma
 
-**Dependencies:**
-- `@prisma/client` - Auto-generated database client
-- `prisma` (dev) - Migrations and introspection CLI
+Database schema with User and Post models. Shown here with PostgreSQL:
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma" // turborepo only
+}
+
+datasource db {
+  provider = "postgresql" // or "mysql" based on database selection
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  avatarUrl     String?  @map("avatar_url") @db.Text
+
+  phone         String?
+  firstName     String?  @map("first_name")
+  lastName      String?  @map("last_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  posts         Post[]
+
+  @@map("users")
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  published Boolean  @default(false)
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+}
+```
+
+**With Better Auth**, the schema adds Session, Account, and Verification models:
+
+```prisma title="prisma/schema.prisma (Better Auth additions)"
+model User {
+  // ... base fields
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                      String    @id
+  userId                  String    @map("user_id")
+  accountId               String    @map("account_id")
+  providerId              String    @map("provider_id")
+  accessToken             String?   @map("access_token") @db.Text
+  refreshToken            String?   @map("refresh_token") @db.Text
+  accessTokenExpiresAt    DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt   DateTime? @map("refresh_token_expires_at")
+  scope                   String?
+  idToken                 String?   @map("id_token") @db.Text
+  password                String?
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("verifications")
+}
+```
+
+### index.ts
+
+PrismaClient singleton with global caching to prevent hot-reload issues:
+
+```ts title="src/index.ts"
+import { PrismaClient } from '../generated/prisma'; // or '@prisma/client' in single repo
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+export * from '../generated/prisma'; // or '@prisma/client' in single repo
+
+export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
+export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
+export type UserWithPosts = Awaited<
+  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
+>;
+export type PostWithAuthor = Awaited<
+  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
+>;
+```
+
+**With Better Auth**, additional type helpers are exported:
+
+```ts title="src/index.ts (Better Auth additions)"
+export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
+export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
+export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+```
+
+### seed.ts
+
+Seed script with sample data using `.create()` and `.createMany()`:
+
+```ts title="scripts/seed.ts"
+import { prisma } from '@repo/db'; // or '../src/lib/db' in single repo
+
+async function seed() {
+  console.log('🌱 Seeding database...');
+
+  await prisma.post.deleteMany();
+  await prisma.user.deleteMany();
+
+  const alice = await prisma.user.create({
+    data: {
+      name: 'Alice Johnson',
+      email: 'alice@example.com',
+      bio: 'Software engineer and open source enthusiast',
+    },
+  });
+
+  const bob = await prisma.user.create({
+    data: {
+      name: 'Bob Smith',
+      email: 'bob@example.com',
+      bio: 'Tech writer and developer advocate',
+    },
+  });
+
+  await prisma.post.createMany({
+    data: [
+      {
+        title: 'Getting Started with Prisma',
+        content: 'Prisma is a next-generation ORM...',
+        published: true,
+        authorId: alice.id,
+      },
+      {
+        title: 'Building Modern APIs',
+        content: 'Modern API development requires...',
+        published: true,
+        authorId: alice.id,
+      },
+      {
+        title: 'Draft: Upcoming Features',
+        content: 'This is a draft post...',
+        published: false,
+        authorId: bob.id,
+      },
+    ],
+  });
+
+  console.log('🎉 Seeding completed!');
+}
+
+seed()
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+```

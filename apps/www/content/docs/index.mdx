@@ -76,7 +76,7 @@ npm create faster
 
 The interactive CLI walks you through:
 - Project and app naming
-- Stack selection (Next.js, Expo, Hono)
+- Stack selection (Next.js, TanStack Start, Expo, Hono)
 - Module configuration (UI libraries, authentication, data fetching, etc.)
 - Database and ORM setup
 - Development tools (Biome, Git, Husky)
@@ -95,7 +95,8 @@ bunx create-faster my-saas \
   --orm drizzle \
   --git \
   --pm bun \
-  --extras biome,husky
+  --tooling biome \
+  --tooling husky
 ```
 
 After each project generation, create-faster displays a copy-paste ready command to recreate the exact configuration.
