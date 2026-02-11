@@ -105,6 +105,7 @@ export const META: Meta = {
     shadcn: {
       label: 'shadcn/ui',
       hint: 'A set of beautifully designed components that you can customize, extend, and build on',
+      category: 'UI',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
@@ -130,6 +131,7 @@ export const META: Meta = {
     'next-themes': {
       label: 'Next Themes',
       hint: 'A library for managing themes in Next.js',
+      category: 'UI',
       support: { stacks: ['nextjs'] },
       packageJson: {
         dependencies: {
@@ -140,6 +142,7 @@ export const META: Meta = {
     mdx: {
       label: 'MDX',
       hint: 'Markdown-based content',
+      category: 'Content',
       support: { stacks: ['nextjs'] },
       packageJson: {
         dependencies: {
@@ -156,12 +159,14 @@ export const META: Meta = {
     pwa: {
       label: 'PWA',
       hint: 'Progressive Web App support',
+      category: 'Content',
       support: { stacks: ['nextjs'] },
       packageJson: {},
     },
     'better-auth': {
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
+      category: 'Auth',
       support: { stacks: ['nextjs'] },
       require: { orm: ['drizzle', 'prisma'] },
       mono: { scope: 'pkg', name: 'auth' },
@@ -191,6 +196,7 @@ export const META: Meta = {
     trpc: {
       label: 'tRPC',
       hint: 'End-to-end typesafe APIs',
+      category: 'API',
       support: { stacks: ['nextjs'] },
       mono: { scope: 'pkg', name: 'api' },
       packageJson: {
@@ -217,6 +223,7 @@ export const META: Meta = {
     'tanstack-query': {
       label: 'TanStack Query',
       hint: 'Powerful asynchronous state management, server-state utilities and data fetching',
+      category: 'Data Fetching',
       support: { stacks: 'all' },
       packageJson: {
         dependencies: {
@@ -227,6 +234,7 @@ export const META: Meta = {
     'tanstack-devtools': {
       label: 'TanStack Devtools',
       hint: 'Devtools panel for TanStack libraries and other custom devtools',
+      category: 'Data Fetching',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
@@ -238,6 +246,7 @@ export const META: Meta = {
     'react-hook-form': {
       label: 'React Hook Form',
       hint: 'Performant, flexible and extensible forms with easy-to-use validation',
+      category: 'Forms',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
@@ -249,6 +258,7 @@ export const META: Meta = {
     'tanstack-form': {
       label: 'TanStack Form',
       hint: 'Headless UI for building performant and type-safe forms',
+      category: 'Forms',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
@@ -259,6 +269,7 @@ export const META: Meta = {
     nativewind: {
       label: 'NativeWind',
       hint: 'A library for styling React Native applications with Tailwind CSS',
+      category: 'UI',
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
@@ -272,6 +283,7 @@ export const META: Meta = {
     'aws-lambda': {
       label: 'AWS Lambda',
       hint: 'Serverless deployment for Hono',
+      category: 'Deploy',
       support: { stacks: ['hono'] },
       packageJson: {
         dependencies: {

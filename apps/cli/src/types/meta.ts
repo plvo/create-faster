@@ -37,6 +37,7 @@ export interface PackageJsonConfig {
 export interface MetaAddon {
   label: string;
   hint?: string;
+  category?: string;
   support?: AddonSupport;
   require?: AddonRequire;
   mono?: AddonMono;

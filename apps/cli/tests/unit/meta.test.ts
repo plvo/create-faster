@@ -11,6 +11,13 @@ describe('META.libraries validation', () => {
     }
   });
 
+  test('all libraries have a category', () => {
+    for (const [name, lib] of Object.entries(META.libraries)) {
+      expect(lib.category, `${name} should have a category`).toBeDefined();
+      expect(typeof lib.category, `${name} category should be a string`).toBe('string');
+    }
+  });
+
   test('libraries with pkg mono have name', () => {
     for (const [name, lib] of Object.entries(META.libraries)) {
       if (lib.mono?.scope === 'pkg') {

@@ -2,7 +2,7 @@
 // ABOUTME: Ensures MetaAddon and MetaProjectCategory types are correct
 
 import { describe, expect, test } from 'bun:test';
-import type { AddonMono, EnvScope, EnvVar, MetaAddon, MetaProjectCategory, StackName } from '@/types/meta';
+import type { EnvScope, EnvVar, MetaAddon, MetaProjectCategory } from '@/types/meta';
 
 describe('MetaAddon types', () => {
   test('MetaAddon has required fields', () => {
@@ -48,6 +48,14 @@ describe('MetaAddon types', () => {
       require: { git: true },
     };
     expect(addon.require?.git).toBe(true);
+  });
+
+  test('MetaAddon can have a category', () => {
+    const addon: MetaAddon = {
+      label: 'UI Library',
+      category: 'UI',
+    };
+    expect(addon.category).toBe('UI');
   });
 
   test('MetaAddon require can specify orm dependencies', () => {

@@ -66,16 +66,16 @@ export async function multiselectLibrariesPrompt(
     return [];
   }
 
-  const groupedOptions: Record<string, Option<string>[]> = {
-    Libraries: compatibleLibraries.map((libraryName) => {
-      const library = META.libraries[libraryName]!;
-      return {
-        value: libraryName,
-        label: library.label,
-        hint: library.hint,
-      };
-    }),
-  };
+  const groupedOptions: Record<string, Option<string>[]> = {};
+  for (const libraryName of compatibleLibraries) {
+    const library = META.libraries[libraryName]!;
+    const group = library.category ?? 'Other';
+    (groupedOptions[group] ??= []).push({
+      value: libraryName,
+      label: library.label,
+      hint: library.hint,
+    });
+  }
 
   const result = await groupMultiselect({
     options: groupedOptions,
