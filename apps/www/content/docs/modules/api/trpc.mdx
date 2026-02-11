@@ -3,13 +3,9 @@ title: tRPC
 description: Pre-configured tRPC v11 with end-to-end typesafe API routes, context creation, and optional TanStack Query integration.
 ---
 
-## Presentation
-
-End-to-end typesafe APIs with automatic context creation, ORM integration, and optional TanStack Query support.
-
 [→ tRPC Documentation](https://trpc.io)
 
-**Supported stacks:** Next.js
+<Stacks names="nextjs" />
 
 ## What create-faster adds
 
@@ -40,11 +36,7 @@ packages/api/
 └── tsconfig.json
 ```
 
-**Package dependencies:**
-- `@trpc/server`, `superjson`, `zod`
-
-**App dependencies:**
-- `@trpc/client`, `@trpc/tanstack-react-query`, `server-only`, `superjson`
+<Dependencies packages="@trpc/server,@trpc/client,@trpc/tanstack-react-query,superjson,zod,server-only" />
 
 ### init.ts
 

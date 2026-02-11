@@ -3,13 +3,9 @@ title: shadcn/ui
 description: Pre-configured shadcn/ui components with Tailwind CSS, Radix UI primitives, and shared package setup for monorepos.
 ---
 
-## Presentation
-
-Beautifully designed components built on Radix UI primitives with Tailwind CSS styling.
-
 [→ shadcn/ui Documentation](https://ui.shadcn.com)
 
-**Supported stacks:** Next.js, TanStack Start
+<Stacks names="nextjs,tanstack-start" />
 
 ## What create-faster adds
 
@@ -33,9 +29,7 @@ packages/ui/
 └── postcss.config.mjs
 ```
 
-**Dependencies:**
-- `radix-ui`, `class-variance-authority`, `clsx`, `cmdk`, `vaul`, `tailwind-merge`
-- `@tailwindcss/postcss` (dev)
+<Dependencies packages="radix-ui,class-variance-authority,clsx,cmdk,vaul,tailwind-merge" dev="@tailwindcss/postcss" />
 
 ### utils.ts
 

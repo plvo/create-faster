@@ -3,13 +3,9 @@ title: Better Auth
 description: Pre-configured authentication with ORM adapter integration, API routes, and shared auth package for monorepos.
 ---
 
-## Presentation
-
-Authentication framework with automatic ORM adapter configuration and API route setup.
-
 [→ Better Auth Documentation](https://better-auth.com)
 
-**Supported stacks:** Next.js
+<Stacks names="nextjs" />
 
 **Requirements:** Database + ORM (Drizzle or Prisma)
 
@@ -35,8 +31,7 @@ packages/auth/
 └── tsconfig.json
 ```
 
-**Dependencies:**
-- `better-auth`, `@repo/db` (turborepo)
+<Dependencies packages="better-auth" />
 
 **Environment variables:**
 - `BETTER_AUTH_SECRET` - Auth secret key (scoped to auth package + app)

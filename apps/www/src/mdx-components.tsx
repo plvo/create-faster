@@ -2,6 +2,8 @@ import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
 import { ChangelogContent } from './components/changelog-content';
 import { CliDemo } from './components/cli-demo';
+import { Dependencies } from './components/dependencies';
+import { Stacks } from './components/stacks';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
@@ -11,5 +13,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     h2: ({ ...props }: React.ComponentPropsWithoutRef<'h2'>) => <h2 className='font-bluunext' {...props} />,
     ChangelogContent,
     CliDemo,
+    Dependencies,
+    Stacks,
   };
 }
