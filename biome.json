@@ -11,7 +11,7 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!apps/app/src/app/init/**/*",
+      "!apps/www/.source/**/*",
       "!packages/ui/src/components/**/*",
       "!packages/ui/src/styles/**/*",
       "!**/*.css",

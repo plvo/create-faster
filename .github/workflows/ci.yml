@@ -30,9 +30,20 @@ jobs:
       - name: "📦 Install Dependencies"
         run: bun install
 
+      - name: "🔍 Lint & Format"
+        run: bun run check
+
       - name: "🏗️ Build Check"
         id: build
-        run: ls && bun run build
+        run: bun run build:cli
+
+      - name: "🧪 Unit Tests"
+        working-directory: apps/cli
+        run: bun run test:unit
+
+      - name: "🔗 Integration Tests"
+        working-directory: apps/cli
+        run: bun run test:integration
 
       - name: "💾 Cache Build Artifacts"
         if: github.ref == 'refs/heads/main'

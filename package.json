@@ -15,7 +15,7 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "biome check --write .",
+    "check": "biome check",
     "check:unused": "knip",
     "clean": "rimraf  \"**/.turbo\" \"**/node_modules\" \"**/.next\" \"**/bun.lock\" \"**/package-lock.json\" \"**/pnpm-lock.yaml\" \"**/dist\" \"**/generated\"",
     "format": "biome format --write .",
