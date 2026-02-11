@@ -35,13 +35,16 @@ export function Dependencies({ packages, dev }: { packages?: string; dev?: strin
   if (deps.length === 0 && devDeps.length === 0) return null;
 
   return (
-    <div className='not-prose flex flex-wrap gap-1.5 my-3'>
-      {deps.map((name) => (
-        <Badge key={name} name={name} />
-      ))}
-      {devDeps.map((name) => (
-        <Badge key={name} name={name} dev />
-      ))}
+    <div className='not-prose my-3'>
+      <span className='text-xs font-medium text-fd-muted-foreground mb-1.5 block'>Dependencies</span>
+      <div className='flex flex-wrap gap-1.5'>
+        {deps.map((name) => (
+          <Badge key={name} name={name} />
+        ))}
+        {devDeps.map((name) => (
+          <Badge key={name} name={name} dev />
+        ))}
+      </div>
     </div>
   );
 }

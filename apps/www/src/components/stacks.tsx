@@ -12,21 +12,24 @@ export function Stacks({ names }: { names: string }) {
   const stacks = names.split(',').map((s) => s.trim());
 
   return (
-    <div className='not-prose flex flex-wrap gap-1.5 my-3'>
-      {stacks.map((id) => {
-        const meta = STACK_META[id];
-        if (!meta) return null;
+    <div className='not-prose my-3'>
+      <span className='text-xs font-medium text-fd-muted-foreground mb-1.5 block'>Supported frameworks</span>
+      <div className='flex flex-wrap gap-1.5'>
+        {stacks.map((id) => {
+          const meta = STACK_META[id];
+          if (!meta) return null;
 
-        return (
-          <Link
-            key={id}
-            href={meta.href}
-            className='inline-flex items-center gap-1.5 rounded-md border border-fd-border bg-fd-secondary/50 px-2.5 py-1 text-xs font-medium text-fd-secondary-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground hover:border-fd-ring'
-          >
-            {meta.label}
-          </Link>
-        );
-      })}
+          return (
+            <Link
+              key={id}
+              href={meta.href}
+              className='inline-flex items-center gap-1.5 rounded-md border border-fd-border bg-fd-secondary/50 px-2.5 py-1 text-xs font-medium text-fd-secondary-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground hover:border-fd-ring'
+            >
+              {meta.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
