@@ -1,6 +1,3 @@
-// ABOUTME: Unit tests for Handlebars helpers
-// ABOUTME: Tests helpers for libraries and project context
-
 import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
 import { registerHandlebarsHelpers } from '@/lib/handlebars';

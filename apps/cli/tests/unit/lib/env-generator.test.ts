@@ -1,6 +1,3 @@
-// ABOUTME: Tests for programmatic .env.example file generation
-// ABOUTME: Validates env collection, scope resolution, and deduplication
-
 import { describe, expect, test } from 'bun:test';
 import { collectEnvFiles, collectEnvGroups } from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';

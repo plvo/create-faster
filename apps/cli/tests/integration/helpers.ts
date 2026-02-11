@@ -1,6 +1,3 @@
-// ABOUTME: Test utilities for CLI integration tests
-// ABOUTME: Provides functions to run CLI, create temp directories, and assert file contents
-
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

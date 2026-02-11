@@ -12,7 +12,7 @@ CLI tool that generates full-stack projects with:
 - **Interactive & Non-interactive modes**: Full interactive prompts or CLI flags for automation
 - Interactive prompts with custom TUI (ASCII art, section headers, grouped multiselect)
 - Multi-app support (automatic turborepo for 2+ apps)
-- Modular system (Next.js: 9 modules, Expo: 1 module, Hono: 1 module)
+- Modular system (Next.js: 10 modules, Expo: 1 module, Hono: 1 module)
 - Package manager selection (bun/pnpm/npm + auto-install)
 - Template engine with YAML frontmatter for path resolution and filtering
 - **Auto-generated CLI command**: Copy-paste ready command to recreate projects
@@ -50,7 +50,7 @@ apps/cli/src/
 │   └── ctx.ts               # Context types (AppContext, TemplateContext)
 ├── prompts/
 │   ├── base-prompts.ts      # Context-aware prompt wrappers
-│   └── stack-prompts.ts     # Custom stack selection with sections
+│   └── stack-prompts.ts     # Custom stack selection with sections, library category grouping
 ├── lib/
 │   ├── constants.ts         # ASCII art, version, paths
 │   ├── schema.ts            # Zod validation
@@ -75,7 +75,7 @@ apps/cli/src/
 ### __meta__.ts
 Single source of truth for all stacks, libraries, and project addons:
 - `META.stacks`: App and server stacks (Next.js, Expo, Hono, TanStack Start) with `type: 'app' | 'server'` field
-- `META.libraries`: Per-app addons (shadcn, better-auth, etc.) with support/require/mono/packageJson/envs
+- `META.libraries`: Per-app addons (shadcn, better-auth, etc.) with category/support/require/mono/packageJson/envs
 - `META.project`: Project-level categories (database, orm, tooling) with prompt config and options
 - `META.repo`: Repository types (single, turborepo)
 - Addons declare `packageJson` for dependencies and `envs` for environment variables
@@ -87,7 +87,7 @@ Single source of truth for all stacks, libraries, and project addons:
 - `MonoScope`: `'app' | 'pkg' | 'root'`
 - `EnvScope`: `'app' | 'root' | { pkg: string }` — env var target location
 - `EnvVar`: `{ value: string; monoScope: EnvScope[] }` — env variable declaration
-- `MetaAddon`: Addon metadata (label, hint, support, require, mono, packageJson, envs)
+- `MetaAddon`: Addon metadata (label, hint, category, support, require, mono, packageJson, envs)
 - `MetaProjectCategory`: Project category with prompt config and options
 - `MetaStack`: Stack metadata (type, label, hint, packageJson)
 
@@ -170,9 +170,11 @@ Programmatic `.env.example` file generation:
 ## Supported Stacks
 
 ### Frameworks & Modules
-- **Next.js**: 9 modules (shadcn/ui, next-themes, mdx, pwa, better-auth, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form)
+- **Next.js**: 10 modules (shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form)
 - **Expo**: 1 module (nativewind)
 - **Hono**: 1 module (aws-lambda)
+
+Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy).
 
 ### Data Layer
 - **Database**: PostgreSQL, MySQL
@@ -210,7 +212,7 @@ Programmatic `.env.example` file generation:
 
 ### 🚧 In Progress
 - More Hono templates & middleware
-- More modules (tRPC, i18n, Storybook)
+- More modules (i18n, Storybook)
 - Enhanced error handling & rollback
 
 ### 📋 Planned

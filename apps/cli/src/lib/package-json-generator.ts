@@ -1,6 +1,3 @@
-// ABOUTME: Programmatic generation of package.json files
-// ABOUTME: Merges dependencies from META for libraries and project addons
-
 import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';

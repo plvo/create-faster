@@ -1,6 +1,3 @@
-// ABOUTME: Single source of truth for all stacks, libraries, and project addons
-// ABOUTME: Libraries are per-app, project categories are project-level with prompt config
-
 import type { Meta } from '@/types/meta';
 
 export const META: Meta = {

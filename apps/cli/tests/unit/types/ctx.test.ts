@@ -1,6 +1,3 @@
-// ABOUTME: Type tests for template context
-// ABOUTME: Ensures AppContext and TemplateContext have correct structure
-
 import { describe, expect, test } from 'bun:test';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 

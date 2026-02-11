@@ -195,6 +195,7 @@ Based on all research, design the complete META entry. The `MetaAddon` interface
 {
   label: string,           // Display name
   hint: string,            // Description shown in CLI
+  category: string,        // Prompt group (UI, Content, Auth, API, Data Fetching, Forms, Deploy)
   support: {
     stacks: StackName[] | 'all'  // Which stacks support this
   },

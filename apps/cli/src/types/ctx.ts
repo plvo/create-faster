@@ -1,6 +1,3 @@
-// ABOUTME: Context types for template rendering and CLI flow
-// ABOUTME: AppContext for per-app config, TemplateContext for full generation
-
 import type { StackName } from './meta';
 
 export interface AppContext {

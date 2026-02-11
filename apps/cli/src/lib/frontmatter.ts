@@ -1,6 +1,3 @@
-// ABOUTME: Parses YAML frontmatter from template files using gray-matter
-// ABOUTME: Handles path resolution config, repo filtering, and stack suffix detection
-
 import matter from 'gray-matter';
 import type { TemplateContext } from '@/types/ctx';
 import type { MonoScope } from '@/types/meta';

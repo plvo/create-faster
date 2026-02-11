@@ -1,6 +1,3 @@
-// ABOUTME: Tests for template path resolution with frontmatter
-// ABOUTME: Tests destination resolution for libraries and project addons
-
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import type { TemplateFrontmatter } from '@/lib/frontmatter';

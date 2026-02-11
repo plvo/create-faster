@@ -1,6 +1,3 @@
-// ABOUTME: Orchestrates project file generation
-// ABOUTME: Combines package.json generation and template processing
-
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { note, spinner } from '@clack/prompts';

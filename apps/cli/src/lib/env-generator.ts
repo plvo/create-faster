@@ -1,6 +1,3 @@
-// ABOUTME: Programmatic generation of .env.example files from META declarations
-// ABOUTME: Collects env vars from addons, resolves scope to file paths, dedupes
-
 import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';

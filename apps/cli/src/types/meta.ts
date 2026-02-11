@@ -1,6 +1,3 @@
-// ABOUTME: Type definitions for META configuration
-// ABOUTME: Declarative project addons with libraries and project categories
-
 export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start';
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';

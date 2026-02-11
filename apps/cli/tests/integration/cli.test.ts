@@ -1,6 +1,3 @@
-// ABOUTME: End-to-end tests for CLI project generation
-// ABOUTME: Tests both single repo and turborepo with libraries and project config
-
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, runCli } from './helpers';

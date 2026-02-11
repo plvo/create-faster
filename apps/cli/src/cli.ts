@@ -1,6 +1,3 @@
-// ABOUTME: Main CLI flow with interactive prompts
-// ABOUTME: Collects project config and returns TemplateContext
-
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';

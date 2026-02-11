@@ -1,6 +1,3 @@
-// ABOUTME: Resolves template files to destination paths
-// ABOUTME: Uses frontmatter and META mono config for libraries and project addons
-
 import { join } from 'node:path';
 import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';

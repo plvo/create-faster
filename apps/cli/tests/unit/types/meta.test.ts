@@ -1,6 +1,3 @@
-// ABOUTME: Type tests for declarative project addons
-// ABOUTME: Ensures MetaAddon and MetaProjectCategory types are correct
-
 import { describe, expect, test } from 'bun:test';
 import type { EnvScope, EnvVar, MetaAddon, MetaProjectCategory } from '@/types/meta';
 

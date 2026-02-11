@@ -1,6 +1,3 @@
-// ABOUTME: Tests for addon utility functions
-// ABOUTME: Tests compatibility checking for libraries and requirement validation
-
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { getProjectAddon, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';

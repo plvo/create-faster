@@ -1,6 +1,3 @@
-// ABOUTME: Custom prompts for stack and library selection
-// ABOUTME: Uses META.project for declarative prompt configuration
-
 import { isCancel, SelectPrompt } from '@clack/core';
 import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
