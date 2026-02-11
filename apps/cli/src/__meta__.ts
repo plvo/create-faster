@@ -282,11 +282,7 @@ export const META: Meta = {
       hint: 'Serverless deployment for Hono',
       category: 'Deploy',
       support: { stacks: ['hono'] },
-      packageJson: {
-        dependencies: {
-          '@hono/aws-lambda': '^1.0.0',
-        },
-      },
+      packageJson: {},
     },
   },
 
@@ -310,7 +306,7 @@ export const META: Meta = {
           envs: [
             {
               value:
-                'DATABASE_URL="postgresql://postgres:password@localhost:5432/{{projectName}}" # Local Docker PostgreSQL',
+                'DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres-{{projectName}}" # Local Docker PostgreSQL',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],
@@ -326,7 +322,7 @@ export const META: Meta = {
           },
           envs: [
             {
-              value: 'DATABASE_URL="mysql://mysql:password@localhost:3306/{{projectName}}" # Local Docker MySQL',
+              value: 'DATABASE_URL="mysql://mysql:password@localhost:3306/mysql-{{projectName}}" # Local Docker MySQL',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],

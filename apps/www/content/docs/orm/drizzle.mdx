@@ -3,6 +3,8 @@ title: Drizzle
 description: Drizzle ORM is a lightweight, TypeScript-first ORM with zero overhead and SQL-like syntax for maximum type safety.
 ---
 
+<Dependencies packages="drizzle-orm,pg" dev="drizzle-kit,@types/pg" />
+
 [→ Drizzle ORM Documentation](https://orm.drizzle.team)
 
 **Requires:** Database (PostgreSQL or MySQL)
@@ -11,26 +13,12 @@ description: Drizzle ORM is a lightweight, TypeScript-first ORM with zero overhe
 
 Beyond the official setup, we include:
 
-**Pre-configured Schema:**
-- User and Post models with relations
-- Better Auth tables (Session, Account, Verification) when auth module selected
-- UUID primary keys, timestamps, foreign keys
-
 **Development Scripts:**
 - `db:generate` - Generate SQL migrations from schema
 - `db:migrate` - Run pending migrations
 - `db:push` - Push schema to database (dev)
 - `db:studio` - Launch Drizzle Studio visual browser
 - `db:seed` - Populate database with sample data
-
-**Drizzle Kit Configuration:**
-- Pre-configured `drizzle.config.ts` with dialect detection
-- Verbose and strict mode enabled
-- Schema path auto-configured based on repo type
-
-**Seed Script:**
-- Sample Users (Alice, Bob) and Posts
-- Demonstrates relations and `.returning()`
 
 Files created (Turborepo):
 ```
@@ -61,15 +49,229 @@ drizzle.config.ts           # Drizzle Kit config
 .env.example                # DATABASE_URL template
 ```
 
-**Database Schema:**
-- `User`: id, username, email, emailVerified, avatarUrl, phone, firstName, lastName, createdAt, updatedAt
-- `Post`: id, title, content, published, authorId (FK to User), createdAt, updatedAt
-- `Session` (if Better Auth): id, userId, token, expiresAt, ipAddress, userAgent, timestamps
-- `Account` (if Better Auth): id, userId, accountId, providerId, tokens, scope, password, timestamps
-- `Verification` (if Better Auth): id, identifier, value, expiresAt, timestamps
+### drizzle.config.ts
 
-**Dependencies:**
-- `drizzle-orm` - ORM library
-- `pg` or `mysql2` - Database driver
-- `drizzle-kit` (dev) - Migrations CLI
-- `@types/pg` or `@types/mysql2` (dev) - TypeScript types
+Drizzle Kit configuration with auto-detected dialect and schema path:
+
+```ts title="drizzle.config.ts"
+import { defineConfig } from 'drizzle-kit';
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+export default defineConfig({
+  schema: './src/schema.ts', // './src/lib/db/schema.ts' in single repo
+  out: './drizzle',
+  dialect: 'postgresql', // or 'mysql' based on database selection
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+  verbose: true,
+  strict: true,
+});
+```
+
+### index.ts
+
+Database connection instance with SSL config. Shown here with PostgreSQL:
+
+```ts title="src/index.ts"
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from './schema';
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+export const db = drizzle({
+  schema,
+  connection: {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production',
+  },
+});
+
+export * from 'drizzle-orm';
+export * from './schema';
+export * from './types';
+```
+
+Adapts automatically based on database selection:
+- **PostgreSQL**: `drizzle-orm/node-postgres`
+- **MySQL**: `drizzle-orm/mysql2`
+
+### schema.ts
+
+Database schema with User and Post models. Shown here with PostgreSQL:
+
+```ts title="src/schema.ts"
+import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+const timeColumns = {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+};
+
+export const userTable = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  username: varchar('username', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  avatarUrl: text('avatar_url'),
+  phone: varchar('phone', { length: 255 }),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
+  ...timeColumns,
+});
+
+export const postTable = pgTable('posts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  published: varchar('published', { length: 10 }).notNull().default('false'),
+  authorId: uuid('author_id').notNull().references(() => userTable.id, { onDelete: 'cascade' }),
+  ...timeColumns,
+});
+
+export const userTableRelations = relations(userTable, ({ many }) => ({
+  posts: many(postTable),
+}));
+
+export const postsRelations = relations(postTable, ({ one }) => ({
+  author: one(userTable, {
+    fields: [postTable.authorId],
+    references: [userTable.id],
+  }),
+}));
+```
+
+**With Better Auth**, the schema adds Session, Account, and Verification tables:
+
+```ts title="src/schema.ts (Better Auth additions)"
+export const userSessionTable = pgTable('user_sessions', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ipAddress: varchar('ip_address', { length: 255 }),
+  userAgent: varchar('user_agent', { length: 255 }),
+  ...timeColumns,
+});
+
+export const userAccountTable = pgTable('user_accounts', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => userTable.id),
+  accountId: varchar('account_id', { length: 255 }).notNull(),
+  providerId: varchar('provider_id', { length: 255 }).notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: varchar('scope', { length: 255 }),
+  idToken: text('id_token'),
+  password: varchar('password', { length: 255 }),
+  ...timeColumns,
+});
+
+export const userVerificationTable = pgTable('user_verifications', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  identifier: varchar('identifier', { length: 255 }).notNull(),
+  value: varchar('value', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ...timeColumns,
+});
+```
+
+### types.ts
+
+Inferred TypeScript types from the schema:
+
+```ts title="src/types.ts"
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type { postTable, userTable } from './schema';
+
+export type User = InferSelectModel<typeof userTable>;
+export type NewUser = InferInsertModel<typeof userTable>;
+
+export type Post = InferSelectModel<typeof postTable>;
+export type NewPost = InferInsertModel<typeof postTable>;
+
+export type UserWithPosts = User & { posts: Post[] };
+export type PostWithAuthor = Post & { author: User };
+```
+
+**With Better Auth**, additional types are exported:
+
+```ts title="src/types.ts (Better Auth additions)"
+import type { userAccountTable, userSessionTable, userVerificationTable } from './schema';
+
+export type UserWithRelations = User & {
+  accounts: UserAccount[];
+  sessions: UserSession[];
+};
+
+export type UserAccount = InferSelectModel<typeof userAccountTable>;
+export type UserSession = InferSelectModel<typeof userSessionTable>;
+export type UserVerification = InferSelectModel<typeof userVerificationTable>;
+```
+
+### seed.ts
+
+Seed script with sample data using `.returning()`:
+
+```ts title="scripts/seed.ts"
+import { db, postTable, userTable } from '@repo/db'; // or '../src/lib/db' in single repo
+
+async function seed() {
+  console.log('🌱 Seeding database...');
+
+  await db.delete(postTable);
+  await db.delete(userTable);
+
+  const [alice, bob] = await db
+    .insert(userTable)
+    .values([
+      { username: 'alice', email: 'alice@example.com' },
+      { username: 'bob', email: 'bob@example.com' },
+    ])
+    .returning();
+
+  await db.insert(postTable).values([
+    {
+      title: 'Getting Started with Drizzle ORM',
+      content: 'Drizzle ORM is a TypeScript-first ORM...',
+      published: 'true',
+      authorId: alice.id,
+    },
+    {
+      title: 'Building Modern APIs',
+      content: 'Modern API development requires...',
+      published: 'true',
+      authorId: alice.id,
+    },
+    {
+      title: 'Draft: Upcoming Features',
+      content: 'This is a draft post...',
+      published: 'false',
+      authorId: bob.id,
+    },
+  ]);
+
+  console.log('🎉 Seeding completed!');
+}
+
+seed()
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(() => {
+    process.exit(0);
+  });
+```

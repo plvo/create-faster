@@ -88,6 +88,7 @@ Choose the framework for each app. Stacks are organized by type:
 │
 ├ Web / Mobile App
 │  ● Next.js (React framework with SSR)
+│  ○ TanStack Start (Full-stack React framework)
 │  ○ Expo (React Native framework)
 │
 └ Server / API
@@ -103,16 +104,19 @@ After selecting a stack, choose optional modules to include. Available modules d
 ```bash
 ◇  Do you want to add any Next.js modules to web?
 │
-│  UI & Styling
+│  UI
 │  ◻ shadcn/ui
 │  ◻ Next Themes
 │
-│  Features
+│  Content
 │  ◻ MDX
 │  ◻ PWA
 │
-│  Authentication
+│  Auth
 │  ◻ Better Auth
+│
+│  API
+│  ◻ tRPC
 │
 │  Data Fetching
 │  ◻ TanStack Query
@@ -299,7 +303,7 @@ bunx create-faster my-app \
   --orm drizzle \
   --git \
   --pm bun \
-  --extras biome
+  --tooling biome
 ```
 
 The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.

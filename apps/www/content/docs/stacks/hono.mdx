@@ -13,7 +13,6 @@ Beyond the official setup, we include:
 - Logger middleware for request logging
 - Timeout middleware (15s default)
 - CORS middleware with wildcard origin and standard headers
-- Zod validator for request validation
 
 **API Structure:**
 - Health check endpoint (`/health/:id`) with JSON response
@@ -22,9 +21,8 @@ Beyond the official setup, we include:
 - Separation of concerns: `app.ts` (routes) and `index.ts` (entry point)
 
 **Development Scripts:**
-- `dev` - Watch mode with hot reload (`bun run --watch`)
-- `start` - Production server
-- `build` - Compile to single ESM file with Bun
+- `dev` - Hot reload development server (`bun run --hot`)
+- `start` - Production server (`bun run src/index.ts`)
 
 **Error Handling:**
 - Global error handler with stack traces in development
@@ -41,11 +39,6 @@ src/
 package.json                # Dependencies and scripts
 tsconfig.json               # TypeScript configuration
 ```
-
-**Dependencies:**
-- `hono` - Core framework
-- `@hono/node-server` - Node.js adapter
-- `@hono/zod-validator` - Zod validation middleware
 
 **Integration notes:**
 - ORM integration: When Drizzle or Prisma is selected, database packages are included
