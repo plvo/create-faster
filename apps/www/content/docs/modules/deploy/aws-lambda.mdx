@@ -3,18 +3,15 @@ title: AWS Lambda
 description: Serverless deployment adapter for Hono with Lambda-compatible handler export.
 ---
 
-## Presentation
+<Stacks names="hono" />
+<Dependencies packages="@hono/aws-lambda" />
 
 [→ AWS Lambda Documentation](https://aws.amazon.com/lambda)
-
-<Stacks names="hono" />
 
 ## What create-faster adds
 
 Modified files:
 - `src/index.ts` - Conditionally exports Lambda handler instead of raw app
-
-<Dependencies packages="@hono/aws-lambda" />
 
 **When enabled:**
 ```typescript
