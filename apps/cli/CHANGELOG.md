@@ -1,5 +1,38 @@
 # Changelog
 
+## [2.0.0](https://github.com/plvo/create-faster/compare/create-faster-v1.5.0...create-faster-v2.0.0) (2026-02-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** --addon flag replaced with --database/--orm/--tooling
+
+### Features
+
+* **prompts:** group library selection by category ([#72](https://github.com/plvo/create-faster/issues/72)) ([664fbc4](https://github.com/plvo/create-faster/commit/664fbc4dd8f99d55a814b74fea1ef1f45e2262d9))
+* **templates:** add tRPC v11 library ([#69](https://github.com/plvo/create-faster/issues/69)) ([faae68e](https://github.com/plvo/create-faster/commit/faae68e8db12baff2b387da8d22952bf377825c2))
+
+
+### Refactor
+
+* **cli:** template system ([#63](https://github.com/plvo/create-faster/issues/63)) ([2c98fc0](https://github.com/plvo/create-faster/commit/2c98fc0dce660fb24c80e11286c11dba432ff12e))
+* **tests:** organize test files into unit/ and integration/ ([#70](https://github.com/plvo/create-faster/issues/70)) ([e3761f2](https://github.com/plvo/create-faster/commit/e3761f2a23640d5d5064535ca71bbafcf346dc60))
+
+
+### Documentation
+
+* **www:** reorganize modules sidebar & enrich doc pages ([#73](https://github.com/plvo/create-faster/issues/73)) ([cb08b2b](https://github.com/plvo/create-faster/commit/cb08b2b7eeffe00090ca5c473af9e5b8585ce6db))
+
+
+### Tests
+
+* integration scripts for selective execution. ([e3761f2](https://github.com/plvo/create-faster/commit/e3761f2a23640d5d5064535ca71bbafcf346dc60))
+
+
+### CI
+
+* **tests:** add lint, unit and integration test steps to CI ([#71](https://github.com/plvo/create-faster/issues/71)) ([33c681d](https://github.com/plvo/create-faster/commit/33c681d863b2b2f87be6d8e884d1ba79c2c7c012))
+
 ## [1.5.0](https://github.com/plvo/create-faster/compare/create-faster-v1.4.1...create-faster-v1.5.0) (2026-02-02)
 
 
