@@ -262,6 +262,80 @@ describe('tRPC Integration', () => {
     });
   });
 
+  describe('Turborepo: tRPC standalone (no TanStack Query)', () => {
+    const projectName = 'test-trpc-turbo-standalone';
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = join(tempDir, projectName);
+      const result = await runCli(
+        [projectName, '--app', 'web:nextjs:trpc', '--app', 'api:hono', '--no-git', '--no-install'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+    });
+
+    test('server-side files are in packages/api/', async () => {
+      expect(await fileExists(join(projectPath, 'packages/api/src/trpc.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/api/src/root.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/api/src/router/hello.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/api/src/index.ts'))).toBe(true);
+    });
+
+    test('client-side files are in apps/web/', async () => {
+      expect(await fileExists(join(projectPath, 'apps/web/src/trpc/client.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/web/src/trpc/server.tsx'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/web/src/app/api/trpc/[trpc]/route.ts'))).toBe(true);
+    });
+
+    test('does NOT generate tanstack-query files', async () => {
+      expect(await fileExists(join(projectPath, 'apps/web/src/trpc/query-client.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'apps/web/src/trpc/providers.tsx'))).toBe(false);
+    });
+
+    test('server.tsx uses createCaller (not createTRPCOptionsProxy)', async () => {
+      const content = await readTextFile(join(projectPath, 'apps/web/src/trpc/server.tsx'));
+      expect(content).toContain('createCaller');
+      expect(content).not.toContain('createTRPCOptionsProxy');
+      expect(content).not.toContain('HydrateClient');
+    });
+
+    test('server.tsx passes headers to createTRPCContext in mono mode', async () => {
+      const content = await readTextFile(join(projectPath, 'apps/web/src/trpc/server.tsx'));
+      expect(content).toContain('headers');
+      expect(content).toContain("from '@repo/api'");
+    });
+
+    test('route.ts passes headers to createTRPCContext', async () => {
+      const content = await readTextFile(join(projectPath, 'apps/web/src/app/api/trpc/[trpc]/route.ts'));
+      expect(content).toContain('headers: req.headers');
+      expect(content).toContain("from '@repo/api'");
+    });
+
+    test('packages/api/package.json has no @repo/auth or @repo/db', async () => {
+      const pkg = await readJsonFile<{
+        dependencies: Record<string, string>;
+      }>(join(projectPath, 'packages/api/package.json'));
+      expect(pkg.dependencies['@repo/auth']).toBeUndefined();
+      expect(pkg.dependencies['@repo/db']).toBeUndefined();
+      expect(pkg.dependencies['@trpc/server']).toBeDefined();
+    });
+
+    test('init.ts has no auth or db imports', async () => {
+      const content = await readTextFile(join(projectPath, 'packages/api/src/trpc.ts'));
+      expect(content).not.toContain('@repo/auth');
+      expect(content).not.toContain('@repo/db');
+      expect(content).not.toContain('protectedProcedure');
+      expect(content).toContain('publicProcedure');
+    });
+
+    test('barrel index.ts does not export protectedProcedure', async () => {
+      const content = await readTextFile(join(projectPath, 'packages/api/src/index.ts'));
+      expect(content).not.toContain('protectedProcedure');
+      expect(content).toContain('publicProcedure');
+    });
+  });
+
   describe('Turborepo: tRPC + Better Auth + ORM', () => {
     const projectName = 'test-trpc-turbo-auth';
     let projectPath: string;
