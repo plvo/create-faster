@@ -21,7 +21,7 @@ export async function cleanupTempDir(dir: string): Promise<void> {
 }
 
 export async function runCli(args: string[], cwd: string): Promise<CliResult> {
-  const cliPath = join(import.meta.dir, '../src/index.ts');
+  const cliPath = join(import.meta.dir, '../../src/index.ts');
 
   try {
     const result = await $`bun run ${cliPath} ${args}`.cwd(cwd).quiet();

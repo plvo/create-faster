@@ -2,7 +2,7 @@
 // ABOUTME: Ensures MetaAddon and MetaProjectCategory types are correct
 
 import { describe, expect, test } from 'bun:test';
-import type { AddonMono, EnvScope, EnvVar, MetaAddon, MetaProjectCategory, StackName } from '../src/types/meta';
+import type { AddonMono, EnvScope, EnvVar, MetaAddon, MetaProjectCategory, StackName } from '@/types/meta';
 
 describe('MetaAddon types', () => {
   test('MetaAddon has required fields', () => {

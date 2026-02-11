@@ -9,10 +9,10 @@ import {
   readFrontmatterFile,
   removeFrontmatter,
   shouldSkipTemplate,
-} from '../src/lib/frontmatter';
-import type { TemplateContext } from '../src/types/ctx';
+} from '@/lib/frontmatter';
+import type { TemplateContext } from '@/types/ctx';
 
-const TEMPLATES_DIR = join(import.meta.dir, '../templates');
+const TEMPLATES_DIR = join(import.meta.dir, '../../../templates');
 
 describe('parseFrontmatter', () => {
   test('parses path field', () => {

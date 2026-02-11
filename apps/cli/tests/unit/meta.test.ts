@@ -2,7 +2,7 @@
 // ABOUTME: Ensures libraries and project categories are correctly structured
 
 import { describe, expect, test } from 'bun:test';
-import { META } from '../src/__meta__';
+import { META } from '@/__meta__';
 
 describe('META.libraries validation', () => {
   test('all libraries have label', () => {

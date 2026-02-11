@@ -3,8 +3,8 @@
 
 import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
-import { registerHandlebarsHelpers } from '../src/lib/handlebars';
-import type { EnrichedTemplateContext } from '../src/types/ctx';
+import { registerHandlebarsHelpers } from '@/lib/handlebars';
+import type { EnrichedTemplateContext } from '@/types/ctx';
 
 describe('Handlebars helpers', () => {
   beforeAll(() => {

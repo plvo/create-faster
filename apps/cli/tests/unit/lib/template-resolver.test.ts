@@ -2,10 +2,10 @@
 // ABOUTME: Tests destination resolution for libraries and project addons
 
 import { describe, expect, test } from 'bun:test';
-import { META } from '../src/__meta__';
-import type { TemplateFrontmatter } from '../src/lib/frontmatter';
-import { resolveLibraryDestination, resolveProjectAddonDestination } from '../src/lib/template-resolver';
-import type { TemplateContext } from '../src/types/ctx';
+import { META } from '@/__meta__';
+import type { TemplateFrontmatter } from '@/lib/frontmatter';
+import { resolveLibraryDestination, resolveProjectAddonDestination } from '@/lib/template-resolver';
+import type { TemplateContext } from '@/types/ctx';
 
 describe('resolveLibraryDestination', () => {
   const turborepoCtx: TemplateContext = {
