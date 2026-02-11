@@ -1,0 +1,33 @@
+---
+title: NativeWind
+description: Pre-configured Tailwind CSS for React Native with Metro bundler integration and TypeScript support.
+---
+
+## Presentation
+
+Tailwind CSS for React Native. Write utility-first styling with the same classes you use on the web.
+
+[→ NativeWind Documentation](https://nativewind.dev)
+
+**Supported stacks:** Expo
+
+## What create-faster adds
+
+**Technical changes:**
+
+Files added:
+```
+metro.config.js            # Metro bundler with NativeWind transformer
+tailwind.config.js         # Tailwind config with NativeWind preset
+nativewind-env.d.ts        # TypeScript types for className prop
+src/styles/globals.css     # Tailwind directives entry point
+```
+
+**Dependencies:**
+- `nativewind`
+- `tailwindcss` (dev)
+
+**Configuration:**
+- Metro config uses `withNativeWind()` wrapper with `globals.css` input
+- Tailwind scans `./src/**/*.{js,jsx,ts,tsx}` for classes
+- NativeWind preset provides React Native-compatible utilities

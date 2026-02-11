@@ -1,0 +1,69 @@
+---
+title: tRPC
+description: Pre-configured tRPC v11 with end-to-end typesafe API routes, context creation, and optional TanStack Query integration.
+---
+
+## Presentation
+
+End-to-end typesafe APIs with automatic context creation, ORM integration, and optional TanStack Query support.
+
+[→ tRPC Documentation](https://trpc.io)
+
+**Supported stacks:** Next.js
+
+## What create-faster adds
+
+**Technical changes:**
+
+Files added:
+```
+src/trpc/
+├── init.ts              # createTRPCContext() + procedure definitions
+├── client.ts            # Standalone tRPC client with httpBatchLink
+├── server.tsx           # Server-side utilities (RSC caller or Query proxy)
+├── query-client.ts      # QueryClient factory (if TanStack Query)
+├── providers.tsx        # TRPCReactProvider (if TanStack Query)
+└── routers/
+    ├── _app.ts          # Root router combining all routers
+    └── hello.ts         # Example router with Zod validation
+
+src/app/api/trpc/
+└── [trpc]/route.ts      # Fetch adapter API handler
+
+# Turborepo only:
+packages/api/
+├── src/
+│   ├── index.ts         # Public exports
+│   ├── trpc.ts          # Context + procedures
+│   ├── root.ts          # Root router
+│   └── router/
+│       └── hello.ts     # Example router
+├── package.json         # @repo/api
+└── tsconfig.json
+```
+
+**Package dependencies:**
+- `@trpc/server`, `superjson`, `zod` (API package)
+
+**App dependencies:**
+- `@trpc/client`, `@trpc/tanstack-react-query`, `server-only`, `superjson`
+
+**Context creation:**
+- Automatically includes `db` instance if ORM is selected
+- Automatically includes `session` if Better Auth is installed
+- Provides `protectedProcedure` middleware (requires auth) alongside `publicProcedure`
+
+**TanStack Query integration:**
+When TanStack Query is also selected:
+- `query-client.ts` - QueryClient factory with RSC dehydration support
+- `providers.tsx` - `TRPCReactProvider` wrapping QueryClientProvider
+- `server.tsx` - `createTRPCOptionsProxy` for RSC queries, `HydrateClient` and `prefetch` helpers
+
+Without TanStack Query:
+- `server.tsx` - Direct `appRouter.createCaller()` for server-side procedure calls
+
+**Turborepo mode:**
+Creates `@repo/api` package depending on `@repo/db` and `@repo/auth`. App imports from `@repo/api`.
+
+**Single repo mode:**
+All files live under `src/trpc/` with `@/` import aliases.

@@ -1,0 +1,35 @@
+---
+title: MDX
+description: Pre-configured MDX support with frontmatter parsing, custom components, and dynamic routing.
+---
+
+## Presentation
+
+Markdown-based content with JSX component support, frontmatter parsing, and dynamic routing.
+
+[→ MDX Documentation](https://mdxjs.com)
+
+**Supported stacks:** Next.js
+
+## What create-faster adds
+
+**Technical changes:**
+
+Files added:
+```
+src/
+├── lib/
+│   └── mdx.ts                  # parseFrontmatter() utility
+├── mdx-components.tsx          # Custom MDX component mappings
+├── styles/
+│   └── mdx.css                 # MDX-specific styling
+└── app/[...mdxExampleSlug]/
+    └── page.tsx                # Dynamic MDX route example
+```
+
+**Modified files:**
+- `next.config.ts` - Adds MDX support with `createMDX` and `.mdx`/`.md` extensions
+
+**Dependencies:**
+- `@mdx-js/loader`, `@mdx-js/react`, `@next/mdx`, `next-mdx-remote`
+- `@types/mdx` (dev)

@@ -56,39 +56,6 @@ tsconfig.json               # TypeScript configuration
 - Turborepo: Uses `@repo/db` package for shared database logic
 - Single repo: Includes database dependencies directly
 
-## Modules
+## Compatible Modules
 
-### AWS Lambda
-
-*[→ AWS Lambda Documentation](https://aws.amazon.com/lambda)*
-
-**Technical changes:**
-
-Modified files:
-- `src/index.ts` - Conditionally exports Lambda handler instead of raw app
-
-**When enabled:**
-```typescript
-import { handle } from 'hono/aws-lambda';
-import app from './app';
-
-export const handler = handle(app);  // Lambda entry point
-```
-
-**When disabled:**
-```typescript
-import app from './app';
-
-export default app;  // Standard Node.js server
-```
-
-**What it does:**
-- Imports `handle` adapter from `hono/aws-lambda`
-- Wraps Hono app in Lambda-compatible handler
-- Transforms Lambda events → Hono requests
-- Transforms Hono responses → Lambda responses
-
-**Deployment:**
-- Use this module when deploying to AWS Lambda
-- The `handler` export is the Lambda function entry point
-- No additional configuration files needed
+→ [AWS Lambda](/docs/modules/deploy/aws-lambda)

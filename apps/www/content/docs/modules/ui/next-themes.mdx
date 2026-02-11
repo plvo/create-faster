@@ -1,0 +1,26 @@
+---
+title: Next Themes
+description: Pre-configured theme provider with system preference support and persistent theme selection.
+---
+
+## Presentation
+
+Theme management for Next.js with system preference detection and persistent storage.
+
+[→ next-themes Documentation](https://github.com/pacocoursey/next-themes)
+
+**Supported stacks:** Next.js
+
+## What create-faster adds
+
+**Technical changes:**
+
+Modified files:
+- `src/components/app-providers.tsx` - Wraps app with `NextThemesProvider`
+
+**Dependencies:**
+- `next-themes`
+
+**Configuration:**
+- `enableSystem: true` - Respects system theme preference
+- `storageKey: '{appName}-theme'` - Persists theme choice

@@ -1,0 +1,55 @@
+---
+title: Better Auth
+description: Pre-configured authentication with ORM adapter integration, API routes, and shared auth package for monorepos.
+---
+
+## Presentation
+
+Authentication framework with automatic ORM adapter configuration and API route setup.
+
+[→ Better Auth Documentation](https://better-auth.com)
+
+**Supported stacks:** Next.js
+
+**Requirements:** Database + ORM (Drizzle or Prisma)
+
+## What create-faster adds
+
+**Technical changes:**
+
+Files added:
+```
+src/
+├── lib/auth/
+│   ├── auth.ts              # Server auth config
+│   └── auth-client.ts       # Client auth helpers
+└── app/api/auth/[...all]/
+    └── route.ts             # Auth API handler
+
+# Turborepo only:
+packages/auth/
+├── src/
+│   ├── auth.ts
+│   ├── auth-client.ts
+│   ├── route.ts
+│   └── types.ts
+├── package.json             # @repo/auth
+└── tsconfig.json
+```
+
+**Dependencies:**
+- `better-auth`, `@repo/db` (turborepo)
+
+**Environment variables:**
+- `BETTER_AUTH_SECRET` - Auth secret key (scoped to auth package + app)
+- `BETTER_AUTH_URL` - Auth URL (scoped to app)
+
+**ORM integration:**
+Automatically configures adapter based on selection:
+- **Drizzle**: `drizzleAdapter` with provider-specific config (pg/mysql)
+- **Prisma**: `prismaAdapter` with provider config (postgresql/mysql)
+
+Maps to database tables: `user`, `account`, `session`, `verification`
+
+**Turborepo mode:**
+Creates `@repo/auth` package, depends on `@repo/db` for database access.

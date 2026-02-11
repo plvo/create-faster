@@ -1,0 +1,43 @@
+---
+title: shadcn/ui
+description: Pre-configured shadcn/ui components with Tailwind CSS, Radix UI primitives, and shared package setup for monorepos.
+---
+
+## Presentation
+
+Beautifully designed components built on Radix UI primitives with Tailwind CSS styling.
+
+[→ shadcn/ui Documentation](https://ui.shadcn.com)
+
+**Supported stacks:** Next.js, TanStack Start
+
+## What create-faster adds
+
+**Technical changes:**
+
+Files added:
+```
+src/
+├── components/ui/
+│   └── button.tsx        # Example component with variants
+├── lib/
+│   └── utils.ts          # cn() helper for Tailwind classes
+└── styles/
+    └── globals.css       # Tailwind setup
+
+components.json           # shadcn CLI configuration
+postcss.config.mjs        # PostCSS config for Tailwind
+
+# Turborepo only:
+packages/ui/
+├── src/components/ui/
+├── package.json          # @repo/ui with exports
+└── postcss.config.mjs
+```
+
+**Dependencies:**
+- `radix-ui`, `class-variance-authority`, `clsx`, `cmdk`, `vaul`, `tailwind-merge`
+- `@tailwindcss/postcss` (dev)
+
+**Turborepo mode:**
+Creates `@repo/ui` package with shared components accessible via `@repo/ui` imports.
