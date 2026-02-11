@@ -15,8 +15,6 @@ Authentication framework with automatic ORM adapter configuration and API route 
 
 ## What create-faster adds
 
-**Technical changes:**
-
 Files added:
 ```
 src/
@@ -44,12 +42,88 @@ packages/auth/
 - `BETTER_AUTH_SECRET` - Auth secret key (scoped to auth package + app)
 - `BETTER_AUTH_URL` - Auth URL (scoped to app)
 
-**ORM integration:**
-Automatically configures adapter based on selection:
-- **Drizzle**: `drizzleAdapter` with provider-specific config (pg/mysql)
-- **Prisma**: `prismaAdapter` with provider config (postgresql/mysql)
+### auth.ts
 
-Maps to database tables: `user`, `account`, `session`, `verification`
+Server-side auth configuration with ORM adapter. Shown here with Drizzle + PostgreSQL:
+
+```ts title="src/lib/auth/auth.ts"
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
+
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    usePlural: false,
+    schema: {
+      user: userTable,
+      account: userAccountTable,
+      session: userSessionTable,
+      verification: userVerificationTable,
+    },
+  }),
+
+  plugins: [nextCookies()],
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 6,
+    revokeSessionsOnPasswordReset: true,
+  },
+  user: {
+    modelName: 'user',
+    fields: {
+      name: 'username',
+      email: 'email',
+      emailVerified: 'emailVerified',
+      image: 'avatarUrl',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  session: {
+    modelName: 'session',
+    expiresIn: 15 * DAY,
+  },
+  account: { modelName: 'account' },
+  verification: { modelName: 'verification' },
+});
+```
+
+Adapts automatically based on ORM and database selection:
+- **Drizzle**: Uses `drizzleAdapter` with `pg` or `mysql` provider
+- **Prisma**: Uses `prismaAdapter` with `postgresql` or `mysql` provider
+
+### auth-client.ts
+
+Client-side auth helpers with type inference:
+
+```ts title="src/lib/auth/auth-client.ts"
+import { inferAdditionalFields } from 'better-auth/client/plugins';
+import { createAuthClient } from 'better-auth/react';
+import type { auth } from './auth';
+
+export const authClient = createAuthClient({
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+  plugins: [inferAdditionalFields<typeof auth>()],
+});
+```
+
+### route.ts
+
+Next.js API route handler:
+
+```ts title="src/app/api/auth/[...all]/route.ts"
+import { toNextJsHandler } from 'better-auth/next-js';
+import { auth } from '@/lib/auth/auth';
+
+export const { GET, POST } = toNextJsHandler(auth.handler);
+```
+
+In turborepo mode, the app re-exports from `@repo/auth/route-nextjs` instead.
 
 **Turborepo mode:**
-Creates `@repo/auth` package, depends on `@repo/db` for database access.
+Creates `@repo/auth` package depending on `@repo/db` for database access. Auth config lives in the package, app imports handlers.

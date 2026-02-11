@@ -13,8 +13,6 @@ Tailwind CSS for React Native. Write utility-first styling with the same classes
 
 ## What create-faster adds
 
-**Technical changes:**
-
 Files added:
 ```
 metro.config.js            # Metro bundler with NativeWind transformer
@@ -27,7 +25,33 @@ src/styles/globals.css     # Tailwind directives entry point
 - `nativewind`
 - `tailwindcss` (dev)
 
-**Configuration:**
-- Metro config uses `withNativeWind()` wrapper with `globals.css` input
-- Tailwind scans `./src/**/*.{js,jsx,ts,tsx}` for classes
-- NativeWind preset provides React Native-compatible utilities
+### metro.config.js
+
+Metro bundler configured with NativeWind:
+
+```js title="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = withNativeWind(config, { input: './src/styles/globals.css' });
+```
+
+### tailwind.config.js
+
+Tailwind CSS configured with NativeWind preset:
+
+```js title="tailwind.config.js"
+const { nativewindPreset } = require('nativewind/tailwind/preset');
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+  presets: [nativewindPreset],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+```

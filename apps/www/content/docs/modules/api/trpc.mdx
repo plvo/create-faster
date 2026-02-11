@@ -13,8 +13,6 @@ End-to-end typesafe APIs with automatic context creation, ORM integration, and o
 
 ## What create-faster adds
 
-**Technical changes:**
-
 Files added:
 ```
 src/trpc/
@@ -43,27 +41,141 @@ packages/api/
 ```
 
 **Package dependencies:**
-- `@trpc/server`, `superjson`, `zod` (API package)
+- `@trpc/server`, `superjson`, `zod`
 
 **App dependencies:**
 - `@trpc/client`, `@trpc/tanstack-react-query`, `server-only`, `superjson`
 
-**Context creation:**
-- Automatically includes `db` instance if ORM is selected
-- Automatically includes `session` if Better Auth is installed
-- Provides `protectedProcedure` middleware (requires auth) alongside `publicProcedure`
+### init.ts
 
-**TanStack Query integration:**
-When TanStack Query is also selected:
-- `query-client.ts` - QueryClient factory with RSC dehydration support
-- `providers.tsx` - `TRPCReactProvider` wrapping QueryClientProvider
-- `server.tsx` - `createTRPCOptionsProxy` for RSC queries, `HydrateClient` and `prefetch` helpers
+Context creation and procedure definitions. Automatically includes `db` if ORM is selected, and `session` + `protectedProcedure` if Better Auth is installed:
 
-Without TanStack Query:
-- `server.tsx` - Direct `appRouter.createCaller()` for server-side procedure calls
+```ts title="src/trpc/init.ts"
+import { db } from '@/lib/db';
+import { initTRPC, TRPCError } from '@trpc/server';
+import superjson from 'superjson';
+
+export async function createTRPCContext() {
+  return {
+    db,
+  };
+}
+
+type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
+
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+```
+
+With Better Auth, the context includes `session` and a `protectedProcedure` middleware is exported:
+
+```ts
+export const protectedProcedure = publicProcedure.use(async (opts) => {
+  if (!opts.ctx.session?.user) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You must be logged in to access this resource',
+    });
+  }
+
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      session: opts.ctx.session,
+      user: opts.ctx.session.user,
+    },
+  });
+});
+```
+
+### routers/hello.ts
+
+Example router with Zod validation:
+
+```ts title="src/trpc/routers/hello.ts"
+import { z } from 'zod';
+import { publicProcedure, router } from '@/trpc/init';
+
+export const helloRouter = router({
+  greet: publicProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .query(({ input }) => {
+      return { greeting: `Hello, ${input.name}!` };
+    }),
+});
+```
+
+### routers/\_app.ts
+
+Root router combining all routers with type exports:
+
+```ts title="src/trpc/routers/_app.ts"
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+import { router } from '@/trpc/init';
+import { helloRouter } from './hello';
+
+export const appRouter = router({
+  hello: helloRouter,
+});
+
+export type AppRouter = typeof appRouter;
+export type RouterInput = inferRouterInputs<AppRouter>;
+export type RouterOutput = inferRouterOutputs<AppRouter>;
+```
+
+### server.tsx
+
+Server-side utilities for RSC. Behavior depends on whether TanStack Query is selected:
+
+**With TanStack Query** — provides `createTRPCOptionsProxy` for RSC queries with hydration:
+
+```tsx title="src/trpc/server.tsx"
+import 'server-only';
+import type React from 'react';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import { cache } from 'react';
+import { makeQueryClient } from '@/trpc/query-client';
+import { appRouter } from '@/trpc/routers/_app';
+import { createTRPCContext } from '@/trpc/init';
+
+const getQueryClient = cache(makeQueryClient);
+
+export const trpc = createTRPCOptionsProxy({
+  ctx: createTRPCContext,
+  router: appRouter,
+  queryClient: getQueryClient,
+});
+
+export function HydrateClient(props: { children: React.ReactNode }) {
+  const queryClient = getQueryClient();
+  const state = dehydrate(queryClient);
+  return <HydrationBoundary state={state}>{props.children}</HydrationBoundary>;
+}
+
+export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
+  const queryClient = getQueryClient();
+  if (queryOptions.queryKey[1]?.type === 'infinite') {
+    void queryClient.prefetchInfiniteQuery(queryOptions as any);
+  } else {
+    void queryClient.prefetchQuery(queryOptions);
+  }
+}
+```
+
+**Without TanStack Query** — provides a direct caller for server-side procedure calls:
+
+```ts title="src/trpc/server.tsx"
+import 'server-only';
+import { appRouter } from '@/trpc/routers/_app';
+import { createTRPCContext } from '@/trpc/init';
+
+export const trpc = appRouter.createCaller(createTRPCContext);
+```
 
 **Turborepo mode:**
-Creates `@repo/api` package depending on `@repo/db` and `@repo/auth`. App imports from `@repo/api`.
-
-**Single repo mode:**
-All files live under `src/trpc/` with `@/` import aliases.
+Creates `@repo/api` package depending on `@repo/db` and `@repo/auth`. App imports from `@repo/api`. All `@/trpc` imports become `@repo/api` imports.
