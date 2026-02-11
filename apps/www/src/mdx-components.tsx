@@ -10,7 +10,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...defaultMdxComponents,
     ...components,
     h1: ({ ...props }: React.ComponentPropsWithoutRef<'h1'>) => <h1 className='font-bluunext' {...props} />,
-    h2: ({ ...props }: React.ComponentPropsWithoutRef<'h2'>) => <h2 className='font-bluunext' {...props} />,
+    h2: ({ ...props }: React.ComponentPropsWithoutRef<'h2'>) => <h2 className='font-bluunext mb-2' {...props} />,
     ChangelogContent,
     CliDemo,
     Dependencies,
