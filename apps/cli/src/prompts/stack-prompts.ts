@@ -68,9 +68,11 @@ export async function multiselectLibrariesPrompt(
 
   const groupedOptions: Record<string, Option<string>[]> = {};
   for (const libraryName of compatibleLibraries) {
-    const library = META.libraries[libraryName]!;
+    const library = META.libraries[libraryName];
+    if (!library) continue;
     const group = library.category ?? 'Other';
-    (groupedOptions[group] ??= []).push({
+    if (!groupedOptions[group]) groupedOptions[group] = [];
+    groupedOptions[group].push({
       value: libraryName,
       label: library.label,
       hint: library.hint,
