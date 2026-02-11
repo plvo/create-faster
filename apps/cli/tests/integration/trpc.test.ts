@@ -1,6 +1,3 @@
-// ABOUTME: Integration tests for tRPC library template generation
-// ABOUTME: Tests standalone, tanstack-query, and better-auth integration combinations
-
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';

@@ -1,6 +1,3 @@
-// ABOUTME: Custom prompts for stack and library selection
-// ABOUTME: Uses META.project for declarative prompt configuration
-
 import { isCancel, SelectPrompt } from '@clack/core';
 import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
@@ -66,16 +63,18 @@ export async function multiselectLibrariesPrompt(
     return [];
   }
 
-  const groupedOptions: Record<string, Option<string>[]> = {
-    Libraries: compatibleLibraries.map((libraryName) => {
-      const library = META.libraries[libraryName]!;
-      return {
-        value: libraryName,
-        label: library.label,
-        hint: library.hint,
-      };
-    }),
-  };
+  const groupedOptions: Record<string, Option<string>[]> = {};
+  for (const libraryName of compatibleLibraries) {
+    const library = META.libraries[libraryName];
+    if (!library) continue;
+    const group = library.category ?? 'Other';
+    if (!groupedOptions[group]) groupedOptions[group] = [];
+    groupedOptions[group].push({
+      value: libraryName,
+      label: library.label,
+      hint: library.hint,
+    });
+  }
 
   const result = await groupMultiselect({
     options: groupedOptions,

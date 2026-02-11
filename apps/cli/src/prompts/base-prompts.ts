@@ -1,6 +1,3 @@
-// ABOUTME: Base prompt wrappers with cancellation handling
-// ABOUTME: Provides type-safe prompt functions
-
 import {
   type ConfirmOptions,
   cancel,

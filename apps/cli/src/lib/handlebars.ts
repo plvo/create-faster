@@ -1,6 +1,3 @@
-// ABOUTME: Handlebars template engine setup with custom helpers
-// ABOUTME: Provides helpers for libraries and project context
-
 import Handlebars from 'handlebars';
 import type { AppContext, EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
 

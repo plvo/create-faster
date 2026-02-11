@@ -1,6 +1,4 @@
-// ABOUTME: CLI flags parser for non-interactive mode
 /** biome-ignore-all lint/style/noNonNullAssertion: <We know the project is defined> */
-// ABOUTME: Parses --app and project category flags into TemplateContext
 
 import { Command } from 'commander';
 import color from 'picocolors';

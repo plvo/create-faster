@@ -1,6 +1,3 @@
-// ABOUTME: Unit tests for template frontmatter parsing
-// ABOUTME: Tests YAML frontmatter extraction, validation, and stack suffix detection
-
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import {

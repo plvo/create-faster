@@ -1,6 +1,3 @@
-// ABOUTME: Summary display and CLI command generation
-// ABOUTME: Shows project structure and recreate command with libraries and project config
-
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';

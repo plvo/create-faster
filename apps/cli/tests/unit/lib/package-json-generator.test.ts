@@ -1,6 +1,3 @@
-// ABOUTME: Tests for programmatic package.json generation
-// ABOUTME: Tests merge logic with libraries and project addons
-
 import { describe, expect, test } from 'bun:test';
 import { generateAllPackageJsons, generateAppPackageJson, mergePackageJsonConfigs } from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';

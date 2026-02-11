@@ -1,6 +1,3 @@
-// ABOUTME: Helper functions for working with libraries and project addons
-// ABOUTME: Compatibility checking and requirement validation
-
 import { META, type ProjectCategoryName } from '@/__meta__';
 import type { TemplateContext } from '@/types/ctx';
 import type { AddonRequire, MetaAddon, StackName } from '@/types/meta';

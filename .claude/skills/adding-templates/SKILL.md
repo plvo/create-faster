@@ -113,6 +113,7 @@ support: { stacks: ['nextjs', 'tanstack-start'] },  // React-only
 newlib: {
   label: 'Library Name',
   hint: 'Short description',
+  category: 'UI',  // Groups in interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy)
   support: { stacks: ['nextjs', 'tanstack-start'] },
   // Optional: require other addons
   require: { orm: ['drizzle', 'prisma'] },
@@ -131,6 +132,7 @@ newlib: {
 ```
 
 **Key fields:**
+- `category` — prompt group name (UI, Content, Auth, API, Data Fetching, Forms, Deploy)
 - `support.stacks` — which stacks can use this library (`'all'` or explicit list)
 - `require` — dependencies on other addons (e.g., better-auth requires orm)
 - `mono` — if set, library gets its own `packages/{name}/` in turborepo
@@ -292,7 +294,7 @@ adapter.ts.hono.hbs → only for Hono apps
 - [ ] Verified dev/build works
 
 ### Library
-- [ ] Added META entry in `META.libraries` with support/require/mono/packageJson/envs
+- [ ] Added META entry in `META.libraries` with category/support/require/mono/packageJson/envs
 - [ ] Created `templates/libraries/{name}/` with template files
 - [ ] Modified existing stack templates for cross-library conditionals
 - [ ] Used stack-specific suffix where needed (`.nextjs.hbs`)
@@ -320,7 +322,7 @@ adapter.ts.hono.hbs → only for Hono apps
 | What | Where | How |
 |------|-------|-----|
 | Stack definition | `META.stacks` | `type`, `label`, `hint`, `packageJson` |
-| Library definition | `META.libraries` | `label`, `hint`, `support`, `require`, `mono`, `packageJson`, `envs` |
+| Library definition | `META.libraries` | `label`, `hint`, `category`, `support`, `require`, `mono`, `packageJson`, `envs` |
 | Project addon | `META.project.{cat}.options` | `label`, `hint`, `mono`, `packageJson`, `envs` |
 | Type union | `StackName` in `types/meta.ts` | Add new literal |
 | Stack templates | `templates/stack/{name}/` | `.hbs` files |

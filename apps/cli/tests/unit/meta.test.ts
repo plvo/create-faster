@@ -1,6 +1,3 @@
-// ABOUTME: Validation tests for META with declarative project addons
-// ABOUTME: Ensures libraries and project categories are correctly structured
-
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 
@@ -8,6 +5,13 @@ describe('META.libraries validation', () => {
   test('all libraries have label', () => {
     for (const [name, lib] of Object.entries(META.libraries)) {
       expect(lib.label, `${name} should have label`).toBeDefined();
+    }
+  });
+
+  test('all libraries have a category', () => {
+    for (const [name, lib] of Object.entries(META.libraries)) {
+      expect(lib.category, `${name} should have a category`).toBeDefined();
+      expect(typeof lib.category, `${name} category should be a string`).toBe('string');
     }
   });
 
