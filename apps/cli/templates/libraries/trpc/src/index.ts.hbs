@@ -1,0 +1,8 @@
+---
+only: mono
+mono:
+  scope: pkg
+  path: src/index.ts
+---
+export { appRouter, type AppRouter, type RouterInput, type RouterOutput } from './root';
+export { createTRPCContext, publicProcedure{{#if (hasLibrary "better-auth")}}, protectedProcedure{{/if}} } from './trpc';

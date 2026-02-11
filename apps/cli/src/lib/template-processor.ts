@@ -58,6 +58,9 @@ export async function processTemplate(
       }
 
       const rendered = renderTemplate(content, enrichedContext);
+      if (!rendered.trim()) {
+        return { success: true, destination: finalDestination, skipped: true, reason: 'empty content' };
+      }
       await writeFileContent(finalDestination, rendered);
       return { success: true, destination: finalDestination };
     }

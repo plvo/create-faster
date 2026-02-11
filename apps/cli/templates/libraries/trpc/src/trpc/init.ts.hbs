@@ -1,0 +1,80 @@
+---
+path: src/trpc/init.ts
+mono:
+  scope: pkg
+  path: src/trpc.ts
+---
+{{#if (hasLibrary "better-auth")}}
+{{#if (isMono)}}
+import { auth } from '@repo/auth/auth';
+{{else}}
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth/auth';
+{{/if}}
+{{/if}}
+{{#if project.orm}}
+import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{/if}}
+import { initTRPC, TRPCError } from '@trpc/server';
+import superjson from 'superjson';
+
+{{#if (isMono)}}
+export async function createTRPCContext(opts: { headers: Headers }) {
+{{#if (hasLibrary "better-auth")}}
+  const session = await auth.api.getSession({ headers: opts.headers });
+
+{{/if}}
+  return {
+{{#if (hasLibrary "better-auth")}}
+    session,
+{{/if}}
+{{#if project.orm}}
+    db,
+{{/if}}
+  };
+}
+{{else}}
+export async function createTRPCContext({{#if (hasLibrary "better-auth")}}opts?: { headers: Headers }{{/if}}) {
+{{#if (hasLibrary "better-auth")}}
+  const requestHeaders = opts?.headers ?? await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
+
+{{/if}}
+  return {
+{{#if (hasLibrary "better-auth")}}
+    session,
+{{/if}}
+{{#if project.orm}}
+    db,
+{{/if}}
+  };
+}
+{{/if}}
+
+type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
+
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+{{#if (hasLibrary "better-auth")}}
+
+export const protectedProcedure = publicProcedure.use(async (opts) => {
+  if (!opts.ctx.session?.user) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You must be logged in to access this resource',
+    });
+  }
+
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      session: opts.ctx.session,
+      user: opts.ctx.session.user,
+    },
+  });
+});
+{{/if}}

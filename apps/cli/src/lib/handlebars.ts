@@ -15,7 +15,10 @@ export function registerHandlebarsHelpers(): void {
   });
 
   Handlebars.registerHelper('hasLibrary', function (this: EnrichedTemplateContext, name: string) {
-    return Array.isArray(this.libraries) && this.libraries.includes(name);
+    if (Array.isArray(this.libraries)) {
+      return this.libraries.includes(name);
+    }
+    return Array.isArray(this.apps) && this.apps.some((app) => app.libraries.includes(name));
   });
 
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {

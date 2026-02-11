@@ -41,6 +41,7 @@ export interface MetaAddon {
   require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+  appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
 }
 

@@ -1,0 +1,22 @@
+---
+path: src/trpc/routers/_app.ts
+mono:
+  scope: pkg
+  path: src/root.ts
+---
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+{{#if (isMono)}}
+import { router } from './trpc';
+import { helloRouter } from './router/hello';
+{{else}}
+import { router } from '@/trpc/init';
+import { helloRouter } from './hello';
+{{/if}}
+
+export const appRouter = router({
+  hello: helloRouter,
+});
+
+export type AppRouter = typeof appRouter;
+export type RouterInput = inferRouterInputs<AppRouter>;
+export type RouterOutput = inferRouterOutputs<AppRouter>;

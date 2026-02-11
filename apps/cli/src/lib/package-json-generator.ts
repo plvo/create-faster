@@ -85,6 +85,10 @@ function getProjectAddonPackageName(addon: MetaAddon): string | null {
   return null;
 }
 
+function stripInternalDeps(deps: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(deps).filter(([key]) => !key.startsWith('@repo/')));
+}
+
 function filterInternalDeps(
   deps: Record<string, string> | undefined,
   existingPackages: Set<string>,
@@ -123,8 +127,11 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
         ...merged.dependencies,
         [`@repo/${packageName}`]: '*',
       };
+      if (library.appPackageJson) {
+        merged = mergePackageJsonConfigs(merged, library.appPackageJson);
+      }
     } else {
-      merged = mergePackageJsonConfigs(merged, library.packageJson);
+      merged = mergePackageJsonConfigs(merged, library.packageJson, library.appPackageJson);
     }
   }
 
@@ -175,13 +182,21 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     scripts = removePortPlaceholders(scripts);
   }
 
+  let dependencies = merged.dependencies ?? {};
+  let devDependencies = merged.devDependencies ?? {};
+
+  if (!isTurborepo) {
+    dependencies = stripInternalDeps(dependencies);
+    devDependencies = stripInternalDeps(devDependencies);
+  }
+
   const pkg: PackageJson = {
     name: isTurborepo ? app.appName : ctx.projectName,
     version: '0.1.0',
     private: true,
     scripts: sortObjectKeys(scripts),
-    dependencies: sortObjectKeys(merged.dependencies ?? {}),
-    devDependencies: sortObjectKeys(merged.devDependencies ?? {}),
+    dependencies: sortObjectKeys(dependencies),
+    devDependencies: sortObjectKeys(devDependencies),
   };
 
   const path = isTurborepo ? `apps/${app.appName}/package.json` : 'package.json';

@@ -1,0 +1,69 @@
+---
+mono:
+  scope: app
+---
+import 'server-only';
+
+/**
+ * Used to query inside RSC components with some helper functions.
+ */
+
+{{#if (hasLibrary "tanstack-query")}}
+import type React from 'react';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import { cache } from 'react';
+import { makeQueryClient } from '@/trpc/query-client';
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+import { appRouter, createTRPCContext } from '@repo/api';
+{{else}}
+import { appRouter } from '@/trpc/routers/_app';
+import { createTRPCContext } from '@/trpc/init';
+{{/if}}
+
+// IMPORTANT: Create a stable getter for the query client that
+//            will return the same client during the same request.
+const getQueryClient = cache(makeQueryClient);
+
+export const trpc = createTRPCOptionsProxy({
+{{#if (isMono)}}
+  ctx: async () => createTRPCContext({ headers: await headers() }),
+{{else}}
+  ctx: createTRPCContext,
+{{/if}}
+  router: appRouter,
+  queryClient: getQueryClient,
+});
+
+// Helpers for RSC
+
+export function HydrateClient(props: { children: React.ReactNode }) {
+  const queryClient = getQueryClient();
+  const state = dehydrate(queryClient);
+  return <HydrationBoundary state={state}>{props.children}</HydrationBoundary>;
+}
+
+export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
+  const queryClient = getQueryClient();
+  if (queryOptions.queryKey[1]?.type === 'infinite') {
+    void queryClient.prefetchInfiniteQuery(queryOptions as any);
+  } else {
+    void queryClient.prefetchQuery(queryOptions);
+  }
+}
+{{else}}
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+import { appRouter, createTRPCContext } from '@repo/api';
+
+export const trpc = appRouter.createCaller(async () =>
+  createTRPCContext({ headers: await headers() }),
+);
+{{else}}
+import { appRouter } from '@/trpc/routers/_app';
+import { createTRPCContext } from '@/trpc/init';
+
+export const trpc = appRouter.createCaller(createTRPCContext);
+{{/if}}
+{{/if}}
