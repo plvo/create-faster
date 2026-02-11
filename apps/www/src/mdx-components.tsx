@@ -3,6 +3,7 @@ import type { MDXComponents } from 'mdx/types';
 import { ChangelogContent } from './components/changelog-content';
 import { CliDemo } from './components/cli-demo';
 import { Dependencies } from './components/dependencies';
+import { Modules } from './components/modules';
 import { Stacks } from './components/stacks';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -14,6 +15,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ChangelogContent,
     CliDemo,
     Dependencies,
+    Modules,
     Stacks,
   };
 }
