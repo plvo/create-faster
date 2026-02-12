@@ -6,11 +6,12 @@ Visit https://create.plvo.dev/docs for more details.
 
 ## Key Features
 
-- **Multiple frameworks**: Next.js, Expo, Hono
+- **Multiple frameworks**: Next.js, Expo, TanStack Start, Hono
 - **Automatic monorepo**: Turborepo configuration for 2+ apps
 - **Modular system**: 11+ optional modules (shadcn/ui, Better Auth, TanStack Query, MDX, PWA, etc.)
 - **Database support**: PostgreSQL, MySQL with Prisma or Drizzle ORM
-- **Developer tools**: Biome formatter/linter, Husky git hooks
+- **Linters**: Biome or ESLint with stack-specific configs
+- **Developer tools**: Husky git hooks
 - **Dual modes**: Interactive prompts or CLI flags for automation
 - **Type-safe**: Full TypeScript support with strict configuration
 - **Auto-generated CLI commands**: Copy-paste ready command to recreate projects
@@ -37,9 +38,10 @@ bunx create-faster myapp \
   --app myapp:nextjs:shadcn,tanstack-query \
   --database postgres \
   --orm drizzle \
+  --linter biome \
+  --tooling husky \
   --git \
-  --pm bun \
-  --extras biome,husky
+  --pm bun
 ```
 
 ### Multi-App Monorepo
@@ -53,9 +55,10 @@ bunx create-faster mysaas \
   --app api:hono \
   --database postgres \
   --orm drizzle \
+  --linter eslint \
+  --tooling husky \
   --git \
-  --pm bun \
-  --extras biome,husky
+  --pm bun
 ```
 
 
