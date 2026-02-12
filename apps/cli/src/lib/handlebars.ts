@@ -1,5 +1,5 @@
 import Handlebars from 'handlebars';
-import type { AppContext, EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -19,19 +19,19 @@ export function registerHandlebarsHelpers(): void {
   });
 
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
-    switch (category) {
-      case 'database':
-        return this.project?.database === value;
-      case 'orm':
-        return this.project?.orm === value;
-      case 'linter':
-        return this.project?.linter === value;
-      case 'tooling':
-        return Array.isArray(this.project?.tooling) && this.project.tooling.includes(value);
-      case 'stack':
-        return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === value);
-      default:
-        return false;
+    if (category === 'stack') {
+      return this.apps.some((app) => app.stackName === value);
+    }
+
+    if (!(category in this.project)) {
+      return false;
+    }
+
+    const categoryValue = this.project[category as keyof ProjectContext];
+    if (Array.isArray(categoryValue)) {
+      return categoryValue.includes(value);
+    } else {
+      return categoryValue === value;
     }
   });
 
