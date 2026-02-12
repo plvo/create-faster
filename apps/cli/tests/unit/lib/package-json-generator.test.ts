@@ -449,6 +449,15 @@ describe('generateRootPackageJson', () => {
     expect(result.content.scripts?.check).toBeDefined();
   });
 
+  test('biome does not overwrite turbo lint script', () => {
+    const ctxBiome: TemplateContext = {
+      ...ctx,
+      project: { linter: 'biome', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxBiome);
+    expect(result.content.scripts?.lint).toBe('turbo lint');
+  });
+
   test('does NOT include eslint deps at root when linter is eslint', () => {
     const ctxEslint: TemplateContext = {
       ...ctx,

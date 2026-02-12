@@ -294,7 +294,11 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
         devDependencies = { ...devDependencies, ...linterAddon.packageJson.devDependencies };
       }
       if (linterAddon.packageJson.scripts) {
-        Object.assign(scripts, linterAddon.packageJson.scripts);
+        for (const [name, cmd] of Object.entries(linterAddon.packageJson.scripts)) {
+          if (!(name in scripts)) {
+            scripts[name] = cmd;
+          }
+        }
       }
     }
   }
