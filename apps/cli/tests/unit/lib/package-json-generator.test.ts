@@ -282,3 +282,112 @@ describe('appPackageJson for pkg-scoped libraries', () => {
     expect(repoRefs).toEqual([]);
   });
 });
+
+describe('ESLint linter (turborepo)', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { linter: 'eslint', tooling: [] },
+    git: true,
+  };
+
+  test('generates eslint-config shared package', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg).toBeDefined();
+    expect(eslintPkg?.content.name).toBe('@repo/eslint-config');
+  });
+
+  test('eslint-config package has all devDependencies', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg?.content.devDependencies?.eslint).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['@eslint/js']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['typescript-eslint']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.globals).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+  });
+
+  test('eslint-config package has exports', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg?.content.exports?.['./base']).toBe('./base.js');
+    expect(eslintPkg?.content.exports?.['./next']).toBe('./next.js');
+    expect(eslintPkg?.content.exports?.['./server']).toBe('./server.js');
+  });
+
+  test('apps reference @repo/eslint-config', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+    expect(api?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+  });
+
+  test('apps have lint script from appPackageJson', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.scripts?.lint).toBe('eslint .');
+    expect(api?.content.scripts?.lint).toBe('eslint .');
+  });
+
+  test('root package.json does NOT have eslint devDependencies', () => {
+    const results = generateAllPackageJsons(ctx);
+    const root = findByPath(results, 'package.json');
+
+    expect(root?.content.devDependencies?.eslint).toBeUndefined();
+    expect(root?.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+});
+
+describe('ESLint linter (single repo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint-single',
+    repo: 'single',
+    apps: [{ appName: 'test-eslint-single', stackName: 'nextjs', libraries: [] }],
+    project: { linter: 'eslint', tooling: [] },
+    git: true,
+  };
+
+  test('includes all eslint deps directly in package.json', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+
+    expect(result.content.devDependencies?.eslint).toBeDefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
+    expect(result.content.devDependencies?.['typescript-eslint']).toBeDefined();
+    expect(result.content.devDependencies?.globals).toBeDefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeDefined();
+    expect(result.content.devDependencies?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('includes lint script', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.lint).toBe('eslint .');
+  });
+
+  test('does not have @repo/eslint-config reference', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.['@repo/eslint-config']).toBeUndefined();
+  });
+
+  test('does not generate eslint-config package', () => {
+    const results = generateAllPackageJsons(ctx);
+    expect(results).toHaveLength(1);
+    expect(results[0].path).toBe('package.json');
+  });
+});

@@ -102,4 +102,23 @@ describe('resolveProjectAddonDestination', () => {
     const result = resolveProjectAddonDestination('drizzle.config.ts', addon, turborepoCtx, fm);
     expect(result).toBe('drizzle.config.ts');
   });
+
+  test('eslint addon goes to packages/eslint-config in turborepo', () => {
+    const addon = META.project.linter.options.eslint;
+    const result = resolveProjectAddonDestination('base.js', addon, turborepoCtx, {});
+    expect(result).toBe('packages/eslint-config/base.js');
+  });
+
+  test('eslint addon uses frontmatter mono path in turborepo', () => {
+    const addon = META.project.linter.options.eslint;
+    const fm: TemplateFrontmatter = { mono: { scope: 'pkg', path: 'next.js' } };
+    const result = resolveProjectAddonDestination('next.js', addon, turborepoCtx, fm);
+    expect(result).toBe('packages/eslint-config/next.js');
+  });
+
+  test('eslint addon uses file-based path in single repo', () => {
+    const addon = META.project.linter.options.eslint;
+    const result = resolveProjectAddonDestination('base.js', addon, singleCtx, {});
+    expect(result).toBe('base.js');
+  });
 });

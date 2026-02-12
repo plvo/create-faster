@@ -51,6 +51,45 @@ describe('META.project validation', () => {
     expect(META.project.linter.options.eslint).toBeDefined();
   });
 
+  test('eslint has pkg-scoped mono with eslint-config name', () => {
+    const eslint = META.project.linter.options.eslint;
+    expect(eslint.mono?.scope).toBe('pkg');
+    if (eslint.mono?.scope === 'pkg') {
+      expect(eslint.mono.name).toBe('eslint-config');
+    }
+  });
+
+  test('eslint has all expected devDependencies', () => {
+    const eslint = META.project.linter.options.eslint;
+    const devDeps = eslint.packageJson?.devDependencies;
+    expect(devDeps?.eslint).toBeDefined();
+    expect(devDeps?.['@eslint/js']).toBeDefined();
+    expect(devDeps?.['typescript-eslint']).toBeDefined();
+    expect(devDeps?.globals).toBeDefined();
+    expect(devDeps?.['eslint-plugin-react']).toBeDefined();
+    expect(devDeps?.['eslint-plugin-react-hooks']).toBeDefined();
+    expect(devDeps?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('eslint has shared config exports', () => {
+    const exports = META.project.linter.options.eslint.packageJson?.exports;
+    expect(exports?.['./base']).toBeDefined();
+    expect(exports?.['./next']).toBeDefined();
+    expect(exports?.['./react']).toBeDefined();
+    expect(exports?.['./react-native']).toBeDefined();
+    expect(exports?.['./server']).toBeDefined();
+  });
+
+  test('eslint has appPackageJson with lint script', () => {
+    const eslint = META.project.linter.options.eslint;
+    expect(eslint.appPackageJson?.scripts?.lint).toBe('eslint .');
+  });
+
+  test('biome has root-scoped mono', () => {
+    const biome = META.project.linter.options.biome;
+    expect(biome.mono?.scope).toBe('root');
+  });
+
   test('tooling category is multi-select', () => {
     expect(META.project.tooling).toBeDefined();
     expect(META.project.tooling.selection).toBe('multi');
