@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { generateAllPackageJsons, generateAppPackageJson, mergePackageJsonConfigs } from '@/lib/package-json-generator';
+import {
+  generateAllPackageJsons,
+  generateAppPackageJson,
+  generateRootPackageJson,
+  getPackageManager,
+  mergePackageJsonConfigs,
+} from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('mergePackageJsonConfigs', () => {
@@ -389,5 +395,108 @@ describe('ESLint linter (single repo)', () => {
     const results = generateAllPackageJsons(ctx);
     expect(results).toHaveLength(1);
     expect(results[0].path).toBe('package.json');
+  });
+});
+
+describe('getPackageManager', () => {
+  test('returns bun@<version> format', () => {
+    const result = getPackageManager('bun');
+    expect(result).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('returns npm@<version> format', () => {
+    const result = getPackageManager('npm');
+    expect(result).toMatch(/^npm@\d+\.\d+\.\d+/);
+  });
+});
+
+describe('generateRootPackageJson', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-root',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('includes packageManager field', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.packageManager).toBeDefined();
+    expect(result.content.packageManager).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('defaults to npm when pm is undefined', () => {
+    const ctxNoPm: TemplateContext = { ...ctx, pm: undefined };
+    const result = generateRootPackageJson(ctxNoPm);
+    expect(result.content.packageManager).toMatch(/^npm@\d+\.\d+\.\d+/);
+  });
+
+  test('includes turbo scripts', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.dev).toBe('turbo dev');
+    expect(result.content.scripts?.build).toBe('turbo build');
+  });
+
+  test('includes biome scripts and deps when linter is biome', () => {
+    const ctxBiome: TemplateContext = {
+      ...ctx,
+      project: { linter: 'biome', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxBiome);
+    expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
+    expect(result.content.scripts?.format).toBeDefined();
+    expect(result.content.scripts?.check).toBeDefined();
+  });
+
+  test('does NOT include eslint deps at root when linter is eslint', () => {
+    const ctxEslint: TemplateContext = {
+      ...ctx,
+      project: { linter: 'eslint', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxEslint);
+    expect(result.content.devDependencies?.eslint).toBeUndefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+});
+
+describe('packageManager in single repo', () => {
+  test('includes packageManager when pm is set', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: 'bun',
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('omits packageManager when pm is undefined', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: undefined,
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toBeUndefined();
+  });
+
+  test('does not add packageManager to turborepo app package.json', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-turbo',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: 'bun',
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toBeUndefined();
   });
 });

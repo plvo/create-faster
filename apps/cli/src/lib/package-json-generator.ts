@@ -1,6 +1,7 @@
+import { execSync } from 'node:child_process';
 import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
-import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
 
 export interface PackageJson {
@@ -8,6 +9,7 @@ export interface PackageJson {
   version: string;
   private?: boolean;
   type?: string;
+  packageManager?: string;
   workspaces?: string[];
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
@@ -206,10 +208,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     devDependencies = stripInternalDeps(devDependencies);
   }
 
+  const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
+
   const pkg: PackageJson = {
     name: isTurborepo ? app.appName : ctx.projectName,
     version: '0.1.0',
     private: true,
+    packageManager,
     scripts: sortObjectKeys(scripts),
     dependencies: sortObjectKeys(dependencies),
     devDependencies: sortObjectKeys(devDependencies),
@@ -249,6 +254,11 @@ export function generatePackagePackageJson(
   };
 }
 
+export function getPackageManager(pm: NonNullable<PackageManager>): string {
+  const pmVersion = execSync(`${pm} --version`, { stdio: 'pipe' }).toString().trim();
+  return `${pm}@${pmVersion}`;
+}
+
 export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
@@ -260,6 +270,8 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   let devDependencies: Record<string, string> = {
     turbo: '^2.4.0',
   };
+
+  const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
   // Add tooling to root package.json
   for (const toolingName of ctx.project.tooling) {
@@ -291,6 +303,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     name: ctx.projectName,
     version: '0.0.0',
     private: true,
+    packageManager,
     workspaces: ['apps/*', 'packages/*'],
     scripts: sortObjectKeys(scripts),
     devDependencies: sortObjectKeys(devDependencies),
