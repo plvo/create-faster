@@ -382,9 +382,9 @@ export const META: Meta = {
         },
       },
     },
-    tooling: {
-      prompt: 'Add any extras?',
-      selection: 'multi',
+    linter: {
+      prompt: 'Choose a linter?',
+      selection: 'single',
       options: {
         biome: {
           label: 'Biome',
@@ -397,9 +397,44 @@ export const META: Meta = {
             scripts: {
               format: 'biome format --write .',
               lint: 'biome lint',
+              check: 'biome check --fix .',
             },
           },
         },
+        eslint: {
+          label: 'ESLint',
+          hint: 'Most popular JavaScript linter',
+          mono: { scope: 'pkg', name: 'eslint-config' },
+          packageJson: {
+            devDependencies: {
+              eslint: '^9',
+              '@eslint/js': '^9',
+              'typescript-eslint': '^8',
+              globals: '^16',
+              'eslint-plugin-react': '^7',
+              'eslint-plugin-react-hooks': '^5',
+              '@next/eslint-plugin-next': '^15',
+            },
+            exports: {
+              './base': './base.js',
+              './next': './next.js',
+              './react': './react.js',
+              './react-native': './react-native.js',
+              './server': './server.js',
+            },
+          },
+          appPackageJson: {
+            scripts: {
+              lint: 'eslint .',
+            },
+          },
+        },
+      },
+    },
+    tooling: {
+      prompt: 'Add any extras?',
+      selection: 'multi',
+      options: {
         husky: {
           label: 'Husky',
           hint: 'Git hooks',
