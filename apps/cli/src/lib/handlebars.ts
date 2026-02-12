@@ -24,6 +24,8 @@ export function registerHandlebarsHelpers(): void {
         return this.project?.database === value;
       case 'orm':
         return this.project?.orm === value;
+      case 'linter':
+        return this.project?.linter === value;
       case 'tooling':
         return Array.isArray(this.project?.tooling) && this.project.tooling.includes(value);
       case 'stack':
