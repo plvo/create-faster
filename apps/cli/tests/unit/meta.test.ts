@@ -44,11 +44,17 @@ describe('META.project validation', () => {
     expect(META.project.orm.options.prisma).toBeDefined();
   });
 
-  test('linter category is single-select', () => {
+  test('linter category is single-select with all options', () => {
     expect(META.project.linter).toBeDefined();
     expect(META.project.linter.selection).toBe('single');
     expect(META.project.linter.options.biome).toBeDefined();
+    expect(META.project.linter.options['eslint-prettier']).toBeDefined();
     expect(META.project.linter.options.eslint).toBeDefined();
+    expect(META.project.linter.options.prettier).toBeDefined();
+  });
+
+  test('linter prompt reflects broader code quality scope', () => {
+    expect(META.project.linter.prompt).toBe('Code quality tools?');
   });
 
   test('eslint has pkg-scoped mono with eslint-config name', () => {
@@ -88,6 +94,32 @@ describe('META.project validation', () => {
   test('biome has root-scoped mono', () => {
     const biome = META.project.linter.options.biome;
     expect(biome.mono?.scope).toBe('root');
+  });
+
+  test('prettier has root-scoped mono with formatter deps', () => {
+    const prettier = META.project.linter.options.prettier;
+    expect(prettier.mono?.scope).toBe('root');
+    expect(prettier.packageJson?.devDependencies?.prettier).toBeDefined();
+    expect(prettier.packageJson?.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
+    expect(prettier.packageJson?.scripts?.format).toContain('prettier');
+    expect(prettier.packageJson?.scripts?.['format:check']).toContain('prettier');
+  });
+
+  test('eslint-prettier composes eslint and prettier', () => {
+    const eslintPrettier = META.project.linter.options['eslint-prettier'];
+    expect(eslintPrettier.compose).toEqual(['eslint', 'prettier']);
+    expect(eslintPrettier.mono?.scope).toBe('pkg');
+    if (eslintPrettier.mono?.scope === 'pkg') {
+      expect(eslintPrettier.mono.name).toBe('eslint-config');
+    }
+    expect(eslintPrettier.packageJson?.devDependencies?.['eslint-config-prettier']).toBeDefined();
+  });
+
+  test('eslint-prettier compose references exist as linter options', () => {
+    const eslintPrettier = META.project.linter.options['eslint-prettier'];
+    for (const ref of eslintPrettier.compose ?? []) {
+      expect(META.project.linter.options[ref], `compose ref '${ref}' should exist`).toBeDefined();
+    }
   });
 
   test('tooling category is multi-select', () => {

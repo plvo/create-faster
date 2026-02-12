@@ -35,6 +35,7 @@ export interface MetaAddon {
   label: string;
   hint?: string;
   category?: string;
+  compose?: string[];
   support?: AddonSupport;
   require?: AddonRequire;
   mono?: AddonMono;

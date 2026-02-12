@@ -10,6 +10,12 @@ import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './fro
 
 const VALID_STACKS = Object.keys(META.stacks);
 
+export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
+  const addon = META.project[category].options[addonName];
+  if (addon?.compose) return addon.compose;
+  return [addonName];
+}
+
 export function resolveLibraryDestination(
   relativePath: string,
   library: MetaAddon,
@@ -226,8 +232,11 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
     templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
   }
   if (ctx.project.linter) {
-    templates.push(...resolveTemplatesForProjectAddon('linter', ctx.project.linter, ctx));
-    templates.push(...resolveStackSpecificAddonTemplatesForApps('linter', ctx.project.linter, ctx.apps, ctx));
+    const addonNames = resolveAddonNames('linter', ctx.project.linter);
+    for (const name of addonNames) {
+      templates.push(...resolveTemplatesForProjectAddon('linter', name, ctx));
+      templates.push(...resolveStackSpecificAddonTemplatesForApps('linter', name, ctx.apps, ctx));
+    }
   }
   for (const tooling of ctx.project.tooling) {
     templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));

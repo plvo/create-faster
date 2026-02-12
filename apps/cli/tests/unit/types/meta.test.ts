@@ -55,6 +55,15 @@ describe('MetaAddon types', () => {
     expect(addon.category).toBe('UI');
   });
 
+  test('MetaAddon can declare compose for composite addons', () => {
+    const addon: MetaAddon = {
+      label: 'ESLint + Prettier',
+      compose: ['eslint', 'prettier'],
+      mono: { scope: 'pkg', name: 'eslint-config' },
+    };
+    expect(addon.compose).toEqual(['eslint', 'prettier']);
+  });
+
   test('MetaAddon require can specify orm dependencies', () => {
     const addon: MetaAddon = {
       label: 'Auth Library',

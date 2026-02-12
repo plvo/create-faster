@@ -383,7 +383,7 @@ export const META: Meta = {
       },
     },
     linter: {
-      prompt: 'Choose a linter?',
+      prompt: 'Code quality tools?',
       selection: 'single',
       options: {
         biome: {
@@ -398,6 +398,17 @@ export const META: Meta = {
               format: 'biome format --write .',
               lint: 'biome lint',
               check: 'biome check --fix .',
+            },
+          },
+        },
+        'eslint-prettier': {
+          label: 'ESLint + Prettier',
+          hint: 'Lint with ESLint, format with Prettier',
+          compose: ['eslint', 'prettier'],
+          mono: { scope: 'pkg', name: 'eslint-config' },
+          packageJson: {
+            devDependencies: {
+              'eslint-config-prettier': '^10.1.8',
             },
           },
         },
@@ -426,6 +437,21 @@ export const META: Meta = {
           appPackageJson: {
             scripts: {
               lint: 'eslint .',
+            },
+          },
+        },
+        prettier: {
+          label: 'Prettier',
+          hint: 'Opinionated code formatter (no linter)',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              prettier: '^3.8.1',
+              'prettier-plugin-tailwindcss': '^0.7.2',
+            },
+            scripts: {
+              format: 'prettier --write .',
+              'format:check': 'prettier --check .',
             },
           },
         },
