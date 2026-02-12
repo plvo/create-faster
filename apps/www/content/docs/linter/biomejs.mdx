@@ -1,6 +1,6 @@
 ---
 title: Biome
-description: Biome is a fast, all-in-one toolchain for formatting, linting, and more - built in Rust for maximum performance.
+description: What create-faster sets up when you choose Biome as your linter.
 ---
 
 <Dependencies dev="@biomejs/biome" />
@@ -12,17 +12,20 @@ description: Biome is a fast, all-in-one toolchain for formatting, linting, and 
 **Scripts added to `package.json`:**
 - `format` — `biome format --write .`
 - `lint` — `biome lint`
+- `check` — `biome check --fix .`
 
 File created:
 ```
 biome.json                  # Complete Biome configuration
 ```
 
+**Turborepo mode:** `biome.json` is placed at the project root and applies to all apps.
+
 ### biome.json
 
 ```json title="biome.json"
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "root": true,
   "vcs": {
     "enabled": false,
@@ -34,9 +37,6 @@ biome.json                  # Complete Biome configuration
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!apps/app/src/app/init/**/*",
-      "!packages/ui/src/components/**/*",
-      "!packages/ui/src/styles/**/*",
       "!**/*.css",
       "!**/.next/**/*",
       "!**/node_modules/**/*",

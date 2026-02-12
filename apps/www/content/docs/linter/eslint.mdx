@@ -1,0 +1,62 @@
+---
+title: ESLint
+description: What create-faster sets up when you choose ESLint as your linter.
+---
+
+<Dependencies dev="eslint,@eslint/js,typescript-eslint,globals,eslint-plugin-react,eslint-plugin-react-hooks,@next/eslint-plugin-next" />
+
+[→ ESLint Documentation](https://eslint.org)
+
+## What create-faster adds
+
+**Script added to each app's `package.json`:**
+- `lint` — `eslint .`
+
+Each app gets a stack-specific `eslint.config.mjs` with the right plugins and ignores for its framework.
+
+### Stack configurations
+
+| Stack | Config preset | Plugins |
+|-------|--------------|---------|
+| Next.js | `next` | `eslint-plugin-react`, `eslint-plugin-react-hooks`, `@next/eslint-plugin-next` |
+| Expo | `react-native` | `eslint-plugin-react`, `eslint-plugin-react-hooks` |
+| TanStack Start | `react` | `eslint-plugin-react`, `eslint-plugin-react-hooks` |
+| Hono | `server` | None (Node.js globals only) |
+
+All configs extend `@eslint/js` recommended + `typescript-eslint` recommended as a base.
+
+### Single repo
+
+In a single-repo project, `eslint.config.mjs` contains inline rules with all plugins configured directly:
+
+```
+eslint.config.mjs              # Stack-specific flat config
+```
+
+### Turborepo
+
+In a turborepo, create-faster generates a shared `@repo/eslint-config` package with composable presets. Each app imports from it:
+
+```
+packages/eslint-config/
+├── package.json               # Exports all presets
+├── base.js                    # @eslint/js + typescript-eslint
+├── next.js                    # base + React + Next.js rules
+├── react.js                   # base + React rules
+├── react-native.js            # base + React + Expo ignores
+└── server.js                  # base + Node.js globals
+
+apps/web/
+└── eslint.config.mjs          # import { nextConfig } from "@repo/eslint-config/next"
+
+apps/api/
+└── eslint.config.mjs          # import { serverConfig } from "@repo/eslint-config/server"
+```
+
+Each app's `eslint.config.mjs` is a one-liner that re-exports the shared preset:
+
+```js title="apps/web/eslint.config.mjs"
+import { nextConfig } from "@repo/eslint-config/next";
+
+export default nextConfig;
+```
