@@ -76,7 +76,7 @@ apps/cli/src/
 Single source of truth for all stacks, libraries, and project addons:
 - `META.stacks`: App and server stacks (Next.js, Expo, Hono, TanStack Start) with `type: 'app' | 'server'` field
 - `META.libraries`: Per-app addons (shadcn, better-auth, etc.) with category/support/require/mono/packageJson/envs
-- `META.project`: Project-level categories (database, orm, tooling) with prompt config and options
+- `META.project`: Project-level categories (database, orm, linter, tooling) with prompt config and options
 - `META.repo`: Repository types (single, turborepo)
 - Addons declare `packageJson` for dependencies and `envs` for environment variables
 - Category-level `require` (e.g., orm requires database)
@@ -93,7 +93,7 @@ Single source of truth for all stacks, libraries, and project addons:
 
 ### types/ctx.ts
 - `AppContext`: `{ appName, stackName, libraries }`
-- `ProjectContext`: `{ database?, orm?, tooling[] }`
+- `ProjectContext`: `{ database?, orm?, linter?, tooling[] }`
 - `TemplateContext`: Full context with projectName, repo, apps[], project, git, pm
 - `PackageManager`: `'bun' | 'npm' | 'pnpm' | undefined`
 
@@ -149,7 +149,7 @@ Custom helpers:
 - Logical: `eq`, `ne`, `and`, `or`
 - Repo: `isMono()` - Check if turborepo
 - Libraries: `hasLibrary(name)` - Check if current app has library
-- Project: `has(category, value)` - Check database/orm/tooling/stack
+- Project: `has(category, value)` - Check database/orm/linter/tooling/stack
 - Context: `hasContext(key)` - Check if key exists in context
 - Utils: `appPort(name)` - Get port for app (3000 + index)
 
@@ -181,7 +181,8 @@ Libraries are grouped by category in the interactive prompt (UI, Content, Auth, 
 - **ORM**: Prisma, Drizzle (both with Better Auth integration)
 
 ### Dev Tools
-- **Extras**: Biome (linter/formatter), Git, Husky (requires git)
+- **Linter**: Biome, ESLint (single selection)
+- **Extras**: Husky (requires git)
 - **Repo**: Single or Turborepo (auto-determined by app count)
 
 ## Current Status
@@ -230,7 +231,8 @@ templates/
 ├── stack/{framework}/       # Next.js, Expo, Hono, TanStack Start
 ├── libraries/{library}/     # Per-app library templates
 ├── project/orm/{provider}/  # Prisma, Drizzle
-├── project/tooling/{tool}/  # Biome, Husky
+├── project/linter/{linter}/ # Biome, ESLint
+├── project/tooling/{tool}/  # Husky
 └── repo/{type}/             # Single, Turborepo configs
 ```
 
@@ -342,9 +344,10 @@ bunx create-faster myapp \
   --app myapp:nextjs:shadcn,mdx \
   --database postgres \
   --orm drizzle \
+  --linter biome \
+  --tooling husky \
   --git \
-  --pm bun \
-  --extras biome,husky
+  --pm bun
 ```
 
 **Multi-app (Turborepo):**
@@ -355,9 +358,10 @@ bunx create-faster mysaas \
   --app api:hono \
   --database postgres \
   --orm drizzle \
+  --linter eslint \
+  --tooling husky \
   --git \
-  --pm bun \
-  --extras biome,husky
+  --pm bun
 ```
 
 **Mixed mode (partial flags):**
@@ -365,7 +369,7 @@ bunx create-faster mysaas \
 bunx create-faster myapp \
   --app myapp:nextjs:shadcn \
   --database postgres
-# Will prompt for missing options (ORM, git, pm, extras)
+# Will prompt for missing options (ORM, linter, git, pm, tooling)
 ```
 
 ### Available Flags
@@ -381,13 +385,16 @@ bunx create-faster myapp \
 - `--orm <name>`: ORM provider (requires database)
   - Options: `prisma`, `drizzle`
 
+- `--linter <name>`: Linter
+  - Options: `biome`, `eslint`
+
+- `--tooling <name>`: Add tooling (repeatable)
+  - Options: `husky` (requires git)
+
 - `--git`: Initialize git repository
 
 - `--pm <manager>`: Package manager
   - Options: `bun`, `npm`, `pnpm`
-
-- `--extras <items>`: Comma-separated extras
-  - Options: `biome`, `husky` (husky requires git)
 
 ### Auto-Generated Command
 
@@ -401,9 +408,10 @@ After project creation, a copy-paste ready command is displayed:
 │    --app mobile:expo:nativewind \
 │    --database postgres \
 │    --orm drizzle \
+│    --linter biome \
+│    --tooling husky \
 │    --git \
-│    --pm bun \
-│    --extras biome,husky
+│    --pm bun
 │
 └
 ```
