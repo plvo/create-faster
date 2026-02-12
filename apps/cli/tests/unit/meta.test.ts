@@ -44,16 +44,22 @@ describe('META.project validation', () => {
     expect(META.project.orm.options.prisma).toBeDefined();
   });
 
+  test('linter category is single-select', () => {
+    expect(META.project.linter).toBeDefined();
+    expect(META.project.linter.selection).toBe('single');
+    expect(META.project.linter.options.biome).toBeDefined();
+    expect(META.project.linter.options.eslint).toBeDefined();
+  });
+
   test('tooling category is multi-select', () => {
     expect(META.project.tooling).toBeDefined();
     expect(META.project.tooling.selection).toBe('multi');
-    expect(META.project.tooling.options.biome).toBeDefined();
     expect(META.project.tooling.options.husky).toBeDefined();
   });
 
-  test('project category order is database, orm, tooling', () => {
+  test('project category order is database, orm, linter, tooling', () => {
     const keys = Object.keys(META.project);
-    expect(keys).toEqual(['database', 'orm', 'tooling']);
+    expect(keys).toEqual(['database', 'orm', 'linter', 'tooling']);
   });
 });
 
@@ -105,6 +111,6 @@ describe('META env vars', () => {
   test('addons without env vars have no envs field', () => {
     expect(META.libraries.shadcn.envs).toBeUndefined();
     expect(META.libraries['tanstack-query'].envs).toBeUndefined();
-    expect(META.project.tooling.options.biome.envs).toBeUndefined();
+    expect(META.project.linter.options.biome.envs).toBeUndefined();
   });
 });

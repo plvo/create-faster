@@ -9,7 +9,7 @@ describe('resolveLibraryDestination', () => {
     projectName: 'test',
     repo: 'turborepo',
     apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -17,7 +17,7 @@ describe('resolveLibraryDestination', () => {
     projectName: 'test',
     repo: 'single',
     apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -90,8 +90,8 @@ describe('resolveProjectAddonDestination', () => {
     expect(result).toBe('src/lib/db/schema.ts');
   });
 
-  test('tooling addon goes to root', () => {
-    const addon = META.project.tooling.options.biome;
+  test('linter addon goes to root', () => {
+    const addon = META.project.linter.options.biome;
     const result = resolveProjectAddonDestination('biome.json', addon, turborepoCtx, {});
     expect(result).toBe('biome.json');
   });

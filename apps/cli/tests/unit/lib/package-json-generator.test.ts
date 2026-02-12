@@ -60,7 +60,7 @@ describe('generateAppPackageJson (single repo)', () => {
     projectName: 'test-single',
     repo: 'single',
     apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -83,7 +83,7 @@ describe('generateAppPackageJson (single repo)', () => {
     expect(result.content.scripts?.['db:generate']).toBeDefined();
   });
 
-  test('includes tooling extras', () => {
+  test('includes linter dependencies', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
     expect(result.content.scripts?.format).toBeDefined();
@@ -136,7 +136,7 @@ describe('internal @repo/* dependencies (turborepo)', () => {
       { appName: 'web', stackName: 'nextjs', libraries: ['shadcn', 'better-auth'] },
       { appName: 'api', stackName: 'hono', libraries: [] },
     ],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -201,7 +201,7 @@ describe('internal @repo/* dependencies (turborepo)', () => {
       projectName: 'test-single',
       repo: 'single',
       apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
-      project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
       git: true,
     };
 

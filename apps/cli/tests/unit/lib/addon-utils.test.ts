@@ -35,8 +35,8 @@ describe('getProjectAddon', () => {
     expect(addon?.label).toBe('Drizzle');
   });
 
-  test('gets addon from tooling category', () => {
-    const addon = getProjectAddon('tooling', 'biome');
+  test('gets addon from linter category', () => {
+    const addon = getProjectAddon('linter', 'biome');
     expect(addon?.label).toBe('Biome');
   });
 
