@@ -77,6 +77,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
     const parts: string[] = [];
     if (ctx.project.database) parts.push(`database: ${ctx.project.database}`);
     if (ctx.project.orm) parts.push(`orm: ${ctx.project.orm}`);
+    if (ctx.project.linter) parts.push(`linter: ${ctx.project.linter}`);
     if (ctx.project.tooling.length > 0) parts.push(`tooling: ${ctx.project.tooling.join(', ')}`);
     if (parts.length > 0) {
       log.info(`${color.green('✓')} Using project config: ${parts.join(', ')}`);
@@ -96,6 +97,9 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
           break;
         case 'orm':
           ctx.project.orm = result as string | undefined;
+          break;
+        case 'linter':
+          ctx.project.linter = result as string | undefined;
           break;
         case 'tooling':
           ctx.project.tooling = (result as string[]) ?? [];

@@ -44,16 +44,61 @@ describe('META.project validation', () => {
     expect(META.project.orm.options.prisma).toBeDefined();
   });
 
+  test('linter category is single-select', () => {
+    expect(META.project.linter).toBeDefined();
+    expect(META.project.linter.selection).toBe('single');
+    expect(META.project.linter.options.biome).toBeDefined();
+    expect(META.project.linter.options.eslint).toBeDefined();
+  });
+
+  test('eslint has pkg-scoped mono with eslint-config name', () => {
+    const eslint = META.project.linter.options.eslint;
+    expect(eslint.mono?.scope).toBe('pkg');
+    if (eslint.mono?.scope === 'pkg') {
+      expect(eslint.mono.name).toBe('eslint-config');
+    }
+  });
+
+  test('eslint has all expected devDependencies', () => {
+    const eslint = META.project.linter.options.eslint;
+    const devDeps = eslint.packageJson?.devDependencies;
+    expect(devDeps?.eslint).toBeDefined();
+    expect(devDeps?.['@eslint/js']).toBeDefined();
+    expect(devDeps?.['typescript-eslint']).toBeDefined();
+    expect(devDeps?.globals).toBeDefined();
+    expect(devDeps?.['eslint-plugin-react']).toBeDefined();
+    expect(devDeps?.['eslint-plugin-react-hooks']).toBeDefined();
+    expect(devDeps?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('eslint has shared config exports', () => {
+    const exports = META.project.linter.options.eslint.packageJson?.exports;
+    expect(exports?.['./base']).toBeDefined();
+    expect(exports?.['./next']).toBeDefined();
+    expect(exports?.['./react']).toBeDefined();
+    expect(exports?.['./react-native']).toBeDefined();
+    expect(exports?.['./server']).toBeDefined();
+  });
+
+  test('eslint has appPackageJson with lint script', () => {
+    const eslint = META.project.linter.options.eslint;
+    expect(eslint.appPackageJson?.scripts?.lint).toBe('eslint .');
+  });
+
+  test('biome has root-scoped mono', () => {
+    const biome = META.project.linter.options.biome;
+    expect(biome.mono?.scope).toBe('root');
+  });
+
   test('tooling category is multi-select', () => {
     expect(META.project.tooling).toBeDefined();
     expect(META.project.tooling.selection).toBe('multi');
-    expect(META.project.tooling.options.biome).toBeDefined();
     expect(META.project.tooling.options.husky).toBeDefined();
   });
 
-  test('project category order is database, orm, tooling', () => {
+  test('project category order is database, orm, linter, tooling', () => {
     const keys = Object.keys(META.project);
-    expect(keys).toEqual(['database', 'orm', 'tooling']);
+    expect(keys).toEqual(['database', 'orm', 'linter', 'tooling']);
   });
 });
 
@@ -105,6 +150,6 @@ describe('META env vars', () => {
   test('addons without env vars have no envs field', () => {
     expect(META.libraries.shadcn.envs).toBeUndefined();
     expect(META.libraries['tanstack-query'].envs).toBeUndefined();
-    expect(META.project.tooling.options.biome.envs).toBeUndefined();
+    expect(META.project.linter.options.biome.envs).toBeUndefined();
   });
 });

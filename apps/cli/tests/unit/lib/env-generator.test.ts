@@ -13,7 +13,8 @@ function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext 
     project: {
       database: 'postgres',
       orm: 'drizzle',
-      tooling: ['biome'],
+      linter: 'biome',
+      tooling: [],
     },
     git: true,
     pm: 'bun',
@@ -108,7 +109,7 @@ describe('collectEnvFiles', () => {
 
   test('returns empty array when no addons have envs', () => {
     const ctx = makeContext({
-      project: { tooling: ['biome'] },
+      project: { linter: 'biome', tooling: [] },
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
     });
     const files = collectEnvFiles(ctx);

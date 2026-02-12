@@ -23,8 +23,10 @@
     "---ORMS---",
     "orm/drizzle",
     "orm/prisma",
+    "---LINTERS---",
+    "linter/biomejs",
+    "linter/eslint",
     "---EXTRAS---",
-    "extras/biomejs",
     "extras/husky"
   ]
 }

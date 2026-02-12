@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { generateAllPackageJsons, generateAppPackageJson, mergePackageJsonConfigs } from '@/lib/package-json-generator';
+import {
+  generateAllPackageJsons,
+  generateAppPackageJson,
+  generateRootPackageJson,
+  getPackageManager,
+  mergePackageJsonConfigs,
+} from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('mergePackageJsonConfigs', () => {
@@ -60,7 +66,7 @@ describe('generateAppPackageJson (single repo)', () => {
     projectName: 'test-single',
     repo: 'single',
     apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -83,7 +89,7 @@ describe('generateAppPackageJson (single repo)', () => {
     expect(result.content.scripts?.['db:generate']).toBeDefined();
   });
 
-  test('includes tooling extras', () => {
+  test('includes linter dependencies', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
     expect(result.content.scripts?.format).toBeDefined();
@@ -136,7 +142,7 @@ describe('internal @repo/* dependencies (turborepo)', () => {
       { appName: 'web', stackName: 'nextjs', libraries: ['shadcn', 'better-auth'] },
       { appName: 'api', stackName: 'hono', libraries: [] },
     ],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -201,7 +207,7 @@ describe('internal @repo/* dependencies (turborepo)', () => {
       projectName: 'test-single',
       repo: 'single',
       apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: ['shadcn'] }],
-      project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
       git: true,
     };
 
@@ -280,5 +286,226 @@ describe('appPackageJson for pkg-scoped libraries', () => {
     const allDeps = { ...pkg.content.dependencies, ...pkg.content.devDependencies };
     const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
     expect(repoRefs).toEqual([]);
+  });
+});
+
+describe('ESLint linter (turborepo)', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { linter: 'eslint', tooling: [] },
+    git: true,
+  };
+
+  test('generates eslint-config shared package', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg).toBeDefined();
+    expect(eslintPkg?.content.name).toBe('@repo/eslint-config');
+  });
+
+  test('eslint-config package has all devDependencies', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg?.content.devDependencies?.eslint).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['@eslint/js']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['typescript-eslint']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.globals).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+  });
+
+  test('eslint-config package has exports', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg?.content.exports?.['./base']).toBe('./base.js');
+    expect(eslintPkg?.content.exports?.['./next']).toBe('./next.js');
+    expect(eslintPkg?.content.exports?.['./server']).toBe('./server.js');
+  });
+
+  test('apps reference @repo/eslint-config', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+    expect(api?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+  });
+
+  test('apps have lint script from appPackageJson', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.scripts?.lint).toBe('eslint .');
+    expect(api?.content.scripts?.lint).toBe('eslint .');
+  });
+
+  test('root package.json does NOT have eslint devDependencies', () => {
+    const results = generateAllPackageJsons(ctx);
+    const root = findByPath(results, 'package.json');
+
+    expect(root?.content.devDependencies?.eslint).toBeUndefined();
+    expect(root?.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+});
+
+describe('ESLint linter (single repo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint-single',
+    repo: 'single',
+    apps: [{ appName: 'test-eslint-single', stackName: 'nextjs', libraries: [] }],
+    project: { linter: 'eslint', tooling: [] },
+    git: true,
+  };
+
+  test('includes all eslint deps directly in package.json', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+
+    expect(result.content.devDependencies?.eslint).toBeDefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
+    expect(result.content.devDependencies?.['typescript-eslint']).toBeDefined();
+    expect(result.content.devDependencies?.globals).toBeDefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeDefined();
+    expect(result.content.devDependencies?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('includes lint script', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.lint).toBe('eslint .');
+  });
+
+  test('does not have @repo/eslint-config reference', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.['@repo/eslint-config']).toBeUndefined();
+  });
+
+  test('does not generate eslint-config package', () => {
+    const results = generateAllPackageJsons(ctx);
+    expect(results).toHaveLength(1);
+    expect(results[0].path).toBe('package.json');
+  });
+});
+
+describe('getPackageManager', () => {
+  test('returns bun@<version> format', () => {
+    const result = getPackageManager('bun');
+    expect(result).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('returns npm@<version> format', () => {
+    const result = getPackageManager('npm');
+    expect(result).toMatch(/^npm@\d+\.\d+\.\d+/);
+  });
+});
+
+describe('generateRootPackageJson', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-root',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('includes packageManager field', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.packageManager).toBeDefined();
+    expect(result.content.packageManager).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('defaults to npm when pm is undefined', () => {
+    const ctxNoPm: TemplateContext = { ...ctx, pm: undefined };
+    const result = generateRootPackageJson(ctxNoPm);
+    expect(result.content.packageManager).toMatch(/^npm@\d+\.\d+\.\d+/);
+  });
+
+  test('includes turbo scripts', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.dev).toBe('turbo dev');
+    expect(result.content.scripts?.build).toBe('turbo build');
+  });
+
+  test('includes biome scripts and deps when linter is biome', () => {
+    const ctxBiome: TemplateContext = {
+      ...ctx,
+      project: { linter: 'biome', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxBiome);
+    expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
+    expect(result.content.scripts?.format).toBeDefined();
+    expect(result.content.scripts?.check).toBeDefined();
+  });
+
+  test('biome overwrites turbo lint with biome lint at root', () => {
+    const ctxBiome: TemplateContext = {
+      ...ctx,
+      project: { linter: 'biome', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxBiome);
+    expect(result.content.scripts?.lint).toBe('biome lint');
+  });
+
+  test('does NOT include eslint deps at root when linter is eslint', () => {
+    const ctxEslint: TemplateContext = {
+      ...ctx,
+      project: { linter: 'eslint', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxEslint);
+    expect(result.content.devDependencies?.eslint).toBeUndefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+});
+
+describe('packageManager in single repo', () => {
+  test('includes packageManager when pm is set', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: 'bun',
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toMatch(/^bun@\d+\.\d+\.\d+/);
+  });
+
+  test('omits packageManager when pm is undefined', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-single',
+      repo: 'single',
+      apps: [{ appName: 'test-single', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: undefined,
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toBeUndefined();
+  });
+
+  test('does not add packageManager to turborepo app package.json', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-turbo',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+      pm: 'bun',
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.packageManager).toBeUndefined();
   });
 });

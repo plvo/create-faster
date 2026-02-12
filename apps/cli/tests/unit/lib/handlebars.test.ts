@@ -115,10 +115,16 @@ describe('Handlebars helpers', () => {
       expect(template({ project: { orm: 'prisma', tooling: [] } })).toBe('no');
     });
 
+    test('checks linter value', () => {
+      const template = Handlebars.compile('{{#if (has "linter" "biome")}}yes{{else}}no{{/if}}');
+      expect(template({ project: { linter: 'biome', tooling: [] } })).toBe('yes');
+      expect(template({ project: { linter: 'eslint', tooling: [] } })).toBe('no');
+    });
+
     test('checks tooling array', () => {
-      const template = Handlebars.compile('{{#if (has "tooling" "biome")}}yes{{else}}no{{/if}}');
-      expect(template({ project: { tooling: ['biome', 'husky'] } })).toBe('yes');
-      expect(template({ project: { tooling: ['husky'] } })).toBe('no');
+      const template = Handlebars.compile('{{#if (has "tooling" "husky")}}yes{{else}}no{{/if}}');
+      expect(template({ project: { tooling: ['husky'] } })).toBe('yes');
+      expect(template({ project: { tooling: [] } })).toBe('no');
     });
 
     test('checks stack existence in apps', () => {

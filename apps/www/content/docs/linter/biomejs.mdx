@@ -1,5 +1,31 @@
+---
+title: Biome
+description: One toolchain for your web project — format, lint, and more in a fraction of a second.
+---
+
+<Dependencies dev="@biomejs/biome" />
+
+[→ Biome Documentation](https://biomejs.dev)
+
+## What create-faster adds
+
+**Scripts added to `package.json`:**
+- `format` — `biome format --write .`
+- `lint` — `biome lint`
+- `check` — `biome check --fix .`
+
+File created:
+```
+biome.json                  # Complete Biome configuration
+```
+
+**Turborepo mode:** `biome.json` is placed at the project root and applies to all apps.
+
+### biome.json
+
+```json title="biome.json"
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "root": true,
   "vcs": {
     "enabled": false,
@@ -11,9 +37,6 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!apps/app/src/app/init/**/*",
-      "!packages/ui/src/components/**/*",
-      "!packages/ui/src/styles/**/*",
       "!**/*.css",
       "!**/.next/**/*",
       "!**/node_modules/**/*",
@@ -73,3 +96,4 @@
     }
   }
 }
+```

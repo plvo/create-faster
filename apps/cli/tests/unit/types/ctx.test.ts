@@ -17,11 +17,12 @@ describe('ProjectContext types', () => {
     const project: ProjectContext = {
       database: 'postgres',
       orm: 'drizzle',
-      tooling: ['biome', 'husky'],
+      linter: 'biome',
+      tooling: ['husky'],
     };
     expect(project.database).toBe('postgres');
     expect(project.orm).toBe('drizzle');
-    expect(project.tooling).toContain('biome');
+    expect(project.linter).toBe('biome');
   });
 
   test('ProjectContext database and orm are optional', () => {

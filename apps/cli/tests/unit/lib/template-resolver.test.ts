@@ -9,7 +9,7 @@ describe('resolveLibraryDestination', () => {
     projectName: 'test',
     repo: 'turborepo',
     apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -17,7 +17,7 @@ describe('resolveLibraryDestination', () => {
     projectName: 'test',
     repo: 'single',
     apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['shadcn'] }],
-    project: { database: 'postgres', orm: 'drizzle', tooling: ['biome'] },
+    project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
     git: true,
   };
 
@@ -90,8 +90,8 @@ describe('resolveProjectAddonDestination', () => {
     expect(result).toBe('src/lib/db/schema.ts');
   });
 
-  test('tooling addon goes to root', () => {
-    const addon = META.project.tooling.options.biome;
+  test('linter addon goes to root', () => {
+    const addon = META.project.linter.options.biome;
     const result = resolveProjectAddonDestination('biome.json', addon, turborepoCtx, {});
     expect(result).toBe('biome.json');
   });
@@ -101,5 +101,24 @@ describe('resolveProjectAddonDestination', () => {
     const fm: TemplateFrontmatter = { mono: { scope: 'root' } };
     const result = resolveProjectAddonDestination('drizzle.config.ts', addon, turborepoCtx, fm);
     expect(result).toBe('drizzle.config.ts');
+  });
+
+  test('eslint addon goes to packages/eslint-config in turborepo', () => {
+    const addon = META.project.linter.options.eslint;
+    const result = resolveProjectAddonDestination('base.js', addon, turborepoCtx, {});
+    expect(result).toBe('packages/eslint-config/base.js');
+  });
+
+  test('eslint addon uses frontmatter mono path in turborepo', () => {
+    const addon = META.project.linter.options.eslint;
+    const fm: TemplateFrontmatter = { mono: { scope: 'pkg', path: 'next.js' } };
+    const result = resolveProjectAddonDestination('next.js', addon, turborepoCtx, fm);
+    expect(result).toBe('packages/eslint-config/next.js');
+  });
+
+  test('eslint addon uses file-based path in single repo', () => {
+    const addon = META.project.linter.options.eslint;
+    const result = resolveProjectAddonDestination('base.js', addon, singleCtx, {});
+    expect(result).toBe('base.js');
   });
 });

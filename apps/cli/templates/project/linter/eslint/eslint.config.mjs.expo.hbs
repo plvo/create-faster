@@ -1,0 +1,41 @@
+{{#if (isMono)}}
+import { reactNativeConfig } from "@repo/eslint-config/react-native";
+
+export default reactNativeConfig;
+{{else}}
+import { defineConfig, globalIgnores } from "eslint/config";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import pluginReact from "eslint-plugin-react";
+import pluginReactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
+
+export default defineConfig([
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  globalIgnores([".expo/**", "android/**", "ios/**", "node_modules/**"]),
+  {
+    ...pluginReact.configs.flat.recommended,
+    languageOptions: {
+      ...pluginReact.configs.flat.recommended.languageOptions,
+      globals: {
+        ...globals.browser,
+        ...globals.serviceworker,
+      },
+    },
+  },
+  pluginReact.configs.flat["jsx-runtime"],
+  {
+    plugins: {
+      "react-hooks": pluginReactHooks,
+    },
+    settings: {
+      react: { version: "detect" },
+    },
+    rules: {
+      ...pluginReactHooks.configs.recommended.rules,
+      "react/react-in-jsx-scope": "off",
+    },
+  },
+]);
+{{/if}}

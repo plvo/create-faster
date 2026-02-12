@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 describe('CLI Integration', () => {
   let tempDir: string;
@@ -169,6 +169,130 @@ describe('CLI Integration', () => {
       expect(dbPkg.name).toBe('@repo/db');
       expect(dbPkg.dependencies['drizzle-orm']).toBeDefined();
       expect(dbPkg.dependencies.pg).toBeDefined();
+    });
+  });
+
+  describe('ESLint linter', () => {
+    test('generates ESLint config for single repo', async () => {
+      const projectName = 'test-eslint-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs`, '--linter', 'eslint', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      expect(await fileExists(join(projectPath, 'eslint.config.mjs'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages'))).toBe(false);
+
+      const config = await readTextFile(join(projectPath, 'eslint.config.mjs'));
+      expect(config).toContain('defineConfig');
+      expect(config).toContain('pluginNext');
+      expect(config).not.toContain('@repo/eslint-config');
+
+      const pkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(pkg.devDependencies.eslint).toBeDefined();
+      expect(pkg.devDependencies['@eslint/js']).toBeDefined();
+      expect(pkg.devDependencies['typescript-eslint']).toBeDefined();
+      expect(pkg.devDependencies['eslint-plugin-react']).toBeDefined();
+      expect(pkg.devDependencies['@next/eslint-plugin-next']).toBeDefined();
+      expect(pkg.scripts.lint).toBe('eslint .');
+    });
+
+    test('generates ESLint shared config for turborepo', async () => {
+      const projectName = 'test-eslint-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', 'web:nextjs', '--app', 'api:hono', '--linter', 'eslint', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      // Shared eslint-config package
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/package.json'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/base.js'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/next.js'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/server.js'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/react.js'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'packages/eslint-config/react-native.js'))).toBe(true);
+
+      const eslintPkg = await readJsonFile<{
+        name: string;
+        exports: Record<string, string>;
+        devDependencies: Record<string, string>;
+      }>(join(projectPath, 'packages/eslint-config/package.json'));
+      expect(eslintPkg.name).toBe('@repo/eslint-config');
+      expect(eslintPkg.exports['./base']).toBe('./base.js');
+      expect(eslintPkg.exports['./next']).toBe('./next.js');
+      expect(eslintPkg.devDependencies.eslint).toBeDefined();
+
+      // Per-app thin configs
+      const webConfig = await readTextFile(join(projectPath, 'apps/web/eslint.config.mjs'));
+      expect(webConfig).toContain('nextConfig');
+      expect(webConfig).toContain('@repo/eslint-config/next');
+
+      const apiConfig = await readTextFile(join(projectPath, 'apps/api/eslint.config.mjs'));
+      expect(apiConfig).toContain('serverConfig');
+      expect(apiConfig).toContain('@repo/eslint-config/server');
+
+      // App package.jsons reference shared config
+      const webPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'apps/web/package.json'));
+      expect(webPkg.devDependencies['@repo/eslint-config']).toBe('*');
+      expect(webPkg.scripts.lint).toBe('eslint .');
+
+      // Root does NOT have eslint deps
+      const rootPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(rootPkg.devDependencies.eslint).toBeUndefined();
+    });
+
+    test('generates correct ESLint config per stack in turborepo', async () => {
+      const projectName = 'test-eslint-stacks';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          'web:nextjs',
+          '--app',
+          'mobile:expo',
+          '--app',
+          'api:hono',
+          '--app',
+          'start:tanstack-start',
+          '--linter',
+          'eslint',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const webConfig = await readTextFile(join(projectPath, 'apps/web/eslint.config.mjs'));
+      expect(webConfig).toContain('nextConfig');
+
+      const mobileConfig = await readTextFile(join(projectPath, 'apps/mobile/eslint.config.mjs'));
+      expect(mobileConfig).toContain('reactNativeConfig');
+
+      const apiConfig = await readTextFile(join(projectPath, 'apps/api/eslint.config.mjs'));
+      expect(apiConfig).toContain('serverConfig');
+
+      const startConfig = await readTextFile(join(projectPath, 'apps/start/eslint.config.mjs'));
+      expect(startConfig).toContain('reactConfig');
     });
   });
 });
