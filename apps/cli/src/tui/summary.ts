@@ -1,7 +1,7 @@
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import type { TemplateContext } from '@/types/ctx';
+import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
   let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
@@ -11,20 +11,14 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
     flagsCommand += ` --app ${app.appName}:${app.stackName}${librariesStr}`;
   }
 
-  if (ctx.project.database) {
-    flagsCommand += ` --database ${ctx.project.database}`;
-  }
-
-  if (ctx.project.orm) {
-    flagsCommand += ` --orm ${ctx.project.orm}`;
-  }
-
-  if (ctx.project.linter) {
-    flagsCommand += ` --linter ${ctx.project.linter}`;
-  }
-
-  for (const toolingName of ctx.project.tooling) {
-    flagsCommand += ` --tooling ${toolingName}`;
+  for (const projectKey of Object.keys(ctx.project) as (keyof ProjectContext)[]) {
+    if (Array.isArray(ctx.project[projectKey])) {
+      for (const value of ctx.project[projectKey]) {
+        flagsCommand += ` --${projectKey} ${value}`;
+      }
+    } else {
+      flagsCommand += ` --${projectKey} ${ctx.project[projectKey]}`;
+    }
   }
 
   if (ctx.git) {
@@ -91,9 +85,12 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
-  if (ctx.project.linter === 'biome') configs.push('Biome');
-  if (ctx.project.linter === 'eslint') configs.push('ESLint');
-  if (ctx.project.tooling.includes('husky')) configs.push('Husky');
+  if (ctx.project.linter) {
+    configs.push(META.project.linter.options[ctx.project.linter]?.label ?? ctx.project.linter);
+  }
+  for (const name of ctx.project.tooling) {
+    configs.push(META.project.tooling.options[name]?.label ?? name);
+  }
 
   if (configs.length > 0) {
     lines.push(`└─ ⚙️  ${color.dim(configs.join(', '))}`);
