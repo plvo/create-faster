@@ -144,11 +144,47 @@ function resolveTemplatesForProjectAddon(
   for (const file of files) {
     const source = join(addonDir, file);
 
+    const { stackName: fileSuffix } = parseStackSuffix(file, VALID_STACKS);
+    if (fileSuffix) continue;
+
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(file);
     const destination = resolveProjectAddonDestination(transformedPath, addon, ctx, frontmatter);
+    templates.push({ source, destination });
+  }
+
+  return templates;
+}
+
+function resolveStackSpecificAddonTemplates(
+  category: ProjectCategoryName,
+  addonName: string,
+  appName: string,
+  stackName: StackName,
+  ctx: TemplateContext,
+): TemplateFile[] {
+  const addon = META.project[category]?.options[addonName];
+  if (!addon) return [];
+
+  const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
+  const files = scanDirectory(addonDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(addonDir, file);
+
+    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
+    if (!fileSuffix) continue;
+    if (fileSuffix !== stackName) continue;
+
+    const { only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
+    const transformedPath = transformFilename(cleanFilename);
+    const isTurborepo = ctx.repo === 'turborepo';
+    const destination = isTurborepo ? `apps/${appName}/${transformedPath}` : transformedPath;
     templates.push({ source, destination });
   }
 
@@ -187,6 +223,14 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
   }
   if (ctx.project.orm) {
     templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
+  }
+  if (ctx.project.linter) {
+    templates.push(...resolveTemplatesForProjectAddon('linter', ctx.project.linter, ctx));
+    for (const app of ctx.apps) {
+      templates.push(
+        ...resolveStackSpecificAddonTemplates('linter', ctx.project.linter, app.appName, app.stackName, ctx),
+      );
+    }
   }
   for (const tooling of ctx.project.tooling) {
     templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));
