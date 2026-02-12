@@ -13,6 +13,7 @@ interface ParsedFlags {
   app?: string[];
   database?: string;
   orm?: string;
+  linter?: string;
   tooling?: string[];
   git?: boolean;
   pm?: string;
@@ -24,6 +25,7 @@ export function parseFlags(): Partial<TemplateContext> {
 
   const ormNames = Object.keys(META.project.orm.options).join(', ');
   const dbNames = Object.keys(META.project.database.options).join(', ');
+  const linterNames = Object.keys(META.project.linter.options).join(', ');
   const toolingNames = Object.keys(META.project.tooling.options).join(', ');
   const libraryNames = Object.keys(META.libraries).join(', ');
 
@@ -38,6 +40,7 @@ export function parseFlags(): Partial<TemplateContext> {
     .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect, [])
     .option('--database <name>', `Database provider (${dbNames})`)
     .option('--orm <name>', `ORM provider (${ormNames})`)
+    .option('--linter <name>', `Linter (${linterNames})`)
     .option('--tooling <name>', 'Add tooling (repeatable)', collect, [])
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
@@ -59,6 +62,7 @@ ${color.bold('Examples:')}
   ${color.gray('Available libraries:')} ${libraryNames}
   ${color.gray('Available ORMs:')} ${ormNames}
   ${color.gray('Available databases:')} ${dbNames}
+  ${color.gray('Available linters:')} ${linterNames}
   ${color.gray('Available tooling:')} ${toolingNames}
 `,
     )
@@ -84,7 +88,7 @@ ${color.bold('Examples:')}
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
-  const hasProjectFlags = flags.database || flags.orm || (flags.tooling && flags.tooling.length > 0);
+  const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);
   if (hasProjectFlags) {
     partial.project = { tooling: [] };
   }
@@ -106,6 +110,17 @@ ${color.bold('Examples:')}
       process.exit(1);
     }
     partial.project!.orm = flags.orm;
+  }
+
+  if (flags.linter) {
+    if (!META.project.linter.options[flags.linter]) {
+      printError(
+        `Invalid linter '${flags.linter}'`,
+        `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
+      );
+      process.exit(1);
+    }
+    partial.project!.linter = flags.linter;
   }
 
   if (flags.tooling && flags.tooling.length > 0) {
