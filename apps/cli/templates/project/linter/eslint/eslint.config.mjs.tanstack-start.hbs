@@ -9,6 +9,9 @@ import tseslint from "typescript-eslint";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
+{{#if (has 'linter' 'eslint-prettier')}}
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+{{/if}}
 
 export default defineConfig([
   js.configs.recommended,
@@ -36,5 +39,8 @@ export default defineConfig([
       "react/react-in-jsx-scope": "off",
     },
   },
+{{#if (has 'linter' 'eslint-prettier')}}
+  eslintConfigPrettier,
+{{/if}}
 ]);
 {{/if}}

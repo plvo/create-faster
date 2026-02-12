@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { META } from '@/__meta__';
+import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
@@ -82,6 +82,23 @@ function getProjectAddonPackageName(addon: MetaAddon): string | null {
     return addon.mono.name;
   }
   return null;
+}
+
+function resolveCompositeAddons(
+  category: ProjectCategoryName,
+  addonName: string,
+): { name: string; addon: MetaAddon }[] {
+  const addon = META.project[category].options[addonName];
+  if (!addon) return [];
+  if (!addon.compose) return [{ name: addonName, addon }];
+
+  const parts: { name: string; addon: MetaAddon }[] = [];
+  for (const name of addon.compose) {
+    const composed = META.project[category].options[name];
+    if (composed) parts.push({ name, addon: composed });
+  }
+  parts.push({ name: addonName, addon });
+  return parts;
 }
 
 function stripInternalDeps(deps: Record<string, string>): Record<string, string> {
@@ -167,21 +184,21 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  // Process linter addon
+  // Process linter addon (with composite expansion)
   if (ctx.project.linter) {
-    const linterAddon = META.project.linter.options[ctx.project.linter];
-    if (linterAddon) {
-      const packageName = getProjectAddonPackageName(linterAddon);
+    const parts = resolveCompositeAddons('linter', ctx.project.linter);
+    for (const { addon } of parts) {
+      const packageName = getProjectAddonPackageName(addon);
       if (packageName && isTurborepo) {
         merged.devDependencies = {
           ...merged.devDependencies,
           [`@repo/${packageName}`]: '*',
         };
-        if (linterAddon.appPackageJson) {
-          merged = mergePackageJsonConfigs(merged, linterAddon.appPackageJson);
+        if (addon.appPackageJson) {
+          merged = mergePackageJsonConfigs(merged, addon.appPackageJson);
         }
       } else if (!isTurborepo) {
-        merged = mergePackageJsonConfigs(merged, linterAddon.packageJson, linterAddon.appPackageJson);
+        merged = mergePackageJsonConfigs(merged, addon.packageJson, addon.appPackageJson);
       }
     }
   }
@@ -286,15 +303,17 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     }
   }
 
-  // Add root-scoped linter to root package.json (biome)
+  // Add root-scoped linter deps to root package.json (with composite expansion)
   if (ctx.project.linter) {
-    const linterAddon = META.project.linter.options[ctx.project.linter];
-    if (linterAddon?.mono?.scope === 'root' && linterAddon.packageJson) {
-      if (linterAddon.packageJson.devDependencies) {
-        devDependencies = { ...devDependencies, ...linterAddon.packageJson.devDependencies };
-      }
-      if (linterAddon.packageJson.scripts) {
-        Object.assign(scripts, linterAddon.packageJson.scripts);
+    const parts = resolveCompositeAddons('linter', ctx.project.linter);
+    for (const { addon } of parts) {
+      if (addon.mono?.scope === 'root' && addon.packageJson) {
+        if (addon.packageJson.devDependencies) {
+          devDependencies = { ...devDependencies, ...addon.packageJson.devDependencies };
+        }
+        if (addon.packageJson.scripts) {
+          Object.assign(scripts, addon.packageJson.scripts);
+        }
       }
     }
   }
@@ -338,12 +357,19 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
-    // Collect linter package (eslint-config)
+    // Collect linter packages (with composite expansion)
     if (ctx.project.linter) {
-      const linterAddon = META.project.linter.options[ctx.project.linter];
-      if (linterAddon?.mono?.scope === 'pkg') {
-        const pkgName = linterAddon.mono.name;
-        extractedPackages.set(pkgName, linterAddon.packageJson ?? {});
+      const parts = resolveCompositeAddons('linter', ctx.project.linter);
+      for (const { addon } of parts) {
+        if (addon.mono?.scope === 'pkg') {
+          const pkgName = addon.mono.name;
+          const existing = extractedPackages.get(pkgName);
+          if (existing) {
+            extractedPackages.set(pkgName, mergePackageJsonConfigs(existing, addon.packageJson ?? {}));
+          } else {
+            extractedPackages.set(pkgName, addon.packageJson ?? {});
+          }
+        }
       }
     }
 
