@@ -1,0 +1,19 @@
+---
+only: mono
+mono:
+  scope: pkg
+  path: server.js
+---
+import globals from "globals";
+import { baseConfig } from "./base.js";
+
+export const serverConfig = [
+  ...baseConfig,
+  {
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+];
