@@ -19,6 +19,10 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
     flagsCommand += ` --orm ${ctx.project.orm}`;
   }
 
+  if (ctx.project.linter) {
+    flagsCommand += ` --linter ${ctx.project.linter}`;
+  }
+
   for (const toolingName of ctx.project.tooling) {
     flagsCommand += ` --tooling ${toolingName}`;
   }
@@ -87,7 +91,8 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
-  if (ctx.project.tooling.includes('biome')) configs.push('Biome');
+  if (ctx.project.linter === 'biome') configs.push('Biome');
+  if (ctx.project.linter === 'eslint') configs.push('ESLint');
   if (ctx.project.tooling.includes('husky')) configs.push('Husky');
 
   if (configs.length > 0) {
