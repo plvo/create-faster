@@ -165,6 +165,25 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
+  // Process linter addon
+  if (ctx.project.linter) {
+    const linterAddon = META.project.linter.options[ctx.project.linter];
+    if (linterAddon) {
+      const packageName = getProjectAddonPackageName(linterAddon);
+      if (packageName && isTurborepo) {
+        merged.devDependencies = {
+          ...merged.devDependencies,
+          [`@repo/${packageName}`]: '*',
+        };
+        if (linterAddon.appPackageJson) {
+          merged = mergePackageJsonConfigs(merged, linterAddon.appPackageJson);
+        }
+      } else if (!isTurborepo) {
+        merged = mergePackageJsonConfigs(merged, linterAddon.packageJson, linterAddon.appPackageJson);
+      }
+    }
+  }
+
   if (isTurborepo) {
     merged.devDependencies = {
       ...merged.devDependencies,
@@ -255,6 +274,19 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     }
   }
 
+  // Add root-scoped linter to root package.json (biome)
+  if (ctx.project.linter) {
+    const linterAddon = META.project.linter.options[ctx.project.linter];
+    if (linterAddon?.mono?.scope === 'root' && linterAddon.packageJson) {
+      if (linterAddon.packageJson.devDependencies) {
+        devDependencies = { ...devDependencies, ...linterAddon.packageJson.devDependencies };
+      }
+      if (linterAddon.packageJson.scripts) {
+        Object.assign(scripts, linterAddon.packageJson.scripts);
+      }
+    }
+  }
+
   const pkg: PackageJson = {
     name: ctx.projectName,
     version: '0.0.0',
@@ -290,6 +322,15 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
             extractedPackages.set(pkgName, library.packageJson ?? {});
           }
         }
+      }
+    }
+
+    // Collect linter package (eslint-config)
+    if (ctx.project.linter) {
+      const linterAddon = META.project.linter.options[ctx.project.linter];
+      if (linterAddon?.mono?.scope === 'pkg') {
+        const pkgName = linterAddon.mono.name;
+        extractedPackages.set(pkgName, linterAddon.packageJson ?? {});
       }
     }
 
