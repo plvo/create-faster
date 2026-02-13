@@ -26,7 +26,7 @@ function AppContent() {
 
   if (!loaded) {
     return (
-      <GestureHandlerRootView style=\{\{ flex: 1 \}\}>
+      <GestureHandlerRootView style=\{{ flex: 1 }}>
         <View{{#if (hasLibrary "nativewind")}} className='flex-1 bg-blue-600 justify-center items-center'{{/if}}>
           <ActivityIndicator size='large' color='white' />
           <Text{{#if (hasLibrary "nativewind")}} className='text-white text-lg mt-4 font-bold'{{/if}}>Initialization...</Text>
@@ -38,8 +38,8 @@ function AppContent() {
   const isAuthenticated = true;
 
   return (
-    <GestureHandlerRootView style=\{\{ flex: 1 \}\}>
-      <Stack screenOptions=\{\{ headerShown: false \}\}>
+    <GestureHandlerRootView style=\{{ flex: 1 }}>
+      <Stack screenOptions=\{{ headerShown: false }}>
         <Stack.Protected guard={isAuthenticated}>
           <Stack.Screen name='index' />
           {/* You can add other screens here like: <Stack.Screen name='profile' /> */}

@@ -17,7 +17,7 @@ import eslintConfigPrettier from "eslint-config-prettier/flat";
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "next.config.*"]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
