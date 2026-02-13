@@ -351,6 +351,15 @@ describe('ESLint linter (turborepo)', () => {
     expect(api?.content.scripts?.lint).toBe('eslint .');
   });
 
+  test('apps have eslint as direct devDependency', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.eslint).toBeDefined();
+    expect(api?.content.devDependencies?.eslint).toBeDefined();
+  });
+
   test('root package.json does NOT have eslint devDependencies', () => {
     const results = generateAllPackageJsons(ctx);
     const root = findByPath(results, 'package.json');

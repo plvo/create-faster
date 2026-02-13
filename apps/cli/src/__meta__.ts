@@ -435,6 +435,9 @@ export const META: Meta = {
             },
           },
           appPackageJson: {
+            devDependencies: {
+              eslint: '^9.22.0',
+            },
             scripts: {
               lint: 'eslint .',
             },
