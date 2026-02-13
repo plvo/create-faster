@@ -421,10 +421,6 @@ describe('Prettier linter (single repo)', () => {
 });
 
 describe('Prettier linter (turborepo)', () => {
-  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
-    return results.find((r) => r.path === path);
-  }
-
   const ctx: TemplateContext = {
     projectName: 'test-prettier-turbo',
     repo: 'turborepo',
