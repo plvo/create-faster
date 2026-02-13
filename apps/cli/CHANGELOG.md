@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/plvo/create-faster/compare/create-faster-v1.6.0...create-faster-v1.7.0) (2026-02-13)
+
+
+### Features
+
+* **linter:** add Prettier and integration with ESLint ([#76](https://github.com/plvo/create-faster/issues/76)) ([e974132](https://github.com/plvo/create-faster/commit/e974132853f32d3f58283d7bb846b581482b4166))
+* separate linter category and add ESLint support ([#74](https://github.com/plvo/create-faster/issues/74)) ([e5b0236](https://github.com/plvo/create-faster/commit/e5b0236f9d7ebb02d61e5e6353b6d8758c6f0995))
+
+
+### Bug Fixes
+
+* **templates/turborepo:** turbo task configuration for lint and clean ([#77](https://github.com/plvo/create-faster/issues/77)) ([1cfc2cb](https://github.com/plvo/create-faster/commit/1cfc2cb2dd2851bf7a55604aacd734812c07b28a))
+
 ## [1.6.0](https://github.com/plvo/create-faster/compare/create-faster-v1.5.0...create-faster-v1.6.0) (2026-02-11)
 
 
