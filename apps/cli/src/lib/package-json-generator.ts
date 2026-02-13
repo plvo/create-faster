@@ -280,11 +280,11 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
     build: 'turbo build',
-    lint: 'turbo lint',
-    clean: 'turbo clean',
+    clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
   };
 
   let devDependencies: Record<string, string> = {
+    rimraf: '^6.0.1',
     turbo: '^2.4.0',
   };
 
@@ -306,6 +306,8 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   // Add root-scoped linter deps to root package.json (with composite expansion)
   if (ctx.project.linter) {
     const parts = resolveCompositeAddons('linter', ctx.project.linter);
+    let hasAppLintScript = false;
+
     for (const { addon } of parts) {
       if (addon.mono?.scope === 'root' && addon.packageJson) {
         if (addon.packageJson.devDependencies) {
@@ -315,6 +317,13 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
           Object.assign(scripts, addon.packageJson.scripts);
         }
       }
+      if (addon.appPackageJson?.scripts?.lint) {
+        hasAppLintScript = true;
+      }
+    }
+
+    if (hasAppLintScript) {
+      scripts.lint = 'turbo lint';
     }
   }
 
