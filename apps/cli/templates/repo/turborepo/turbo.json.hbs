@@ -23,6 +23,7 @@
     "start": {
       "cache": false,
       "persistent": true
-    },
+    }{{#if (or (has "linter" "eslint") (has "linter" "eslint-prettier"))}},
+    "lint": {}{{/if}}
   }
 }
