@@ -418,8 +418,8 @@ export const META: Meta = {
           mono: { scope: 'pkg', name: 'eslint-config' },
           packageJson: {
             devDependencies: {
-              eslint: '^10.0.0',
-              '@eslint/js': '^10.0.1',
+              eslint: '^9.22.0',
+              '@eslint/js': '^9.22.0',
               'typescript-eslint': '^8.55.0',
               globals: '^17.3.0',
               'eslint-plugin-react': '^7.37.5',
