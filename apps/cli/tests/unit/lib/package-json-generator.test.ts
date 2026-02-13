@@ -351,6 +351,15 @@ describe('ESLint linter (turborepo)', () => {
     expect(api?.content.scripts?.lint).toBe('eslint .');
   });
 
+  test('apps have eslint as direct devDependency', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.eslint).toBeDefined();
+    expect(api?.content.devDependencies?.eslint).toBeDefined();
+  });
+
   test('root package.json does NOT have eslint devDependencies', () => {
     const results = generateAllPackageJsons(ctx);
     const root = findByPath(results, 'package.json');
@@ -605,6 +614,49 @@ describe('generateRootPackageJson', () => {
     const result = generateRootPackageJson(ctxEslint);
     expect(result.content.devDependencies?.eslint).toBeUndefined();
     expect(result.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+
+  test('clean script uses rimraf (not turbo task)', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.clean).toContain('rimraf');
+    expect(result.content.scripts?.clean).not.toBe('turbo clean');
+  });
+
+  test('includes rimraf as devDependency', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.devDependencies?.rimraf).toBeDefined();
+  });
+
+  test('lint is turbo lint when linter is eslint', () => {
+    const ctxEslint: TemplateContext = {
+      ...ctx,
+      project: { linter: 'eslint', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxEslint);
+    expect(result.content.scripts?.lint).toBe('turbo lint');
+  });
+
+  test('lint is turbo lint when linter is eslint-prettier', () => {
+    const ctxEslintPrettier: TemplateContext = {
+      ...ctx,
+      project: { linter: 'eslint-prettier', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxEslintPrettier);
+    expect(result.content.scripts?.lint).toBe('turbo lint');
+  });
+
+  test('no turbo lint when linter is prettier only', () => {
+    const ctxPrettier: TemplateContext = {
+      ...ctx,
+      project: { linter: 'prettier', tooling: [] },
+    };
+    const result = generateRootPackageJson(ctxPrettier);
+    expect(result.content.scripts?.lint).toBeUndefined();
+  });
+
+  test('no lint script when no linter selected', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.lint).toBeUndefined();
   });
 });
 
