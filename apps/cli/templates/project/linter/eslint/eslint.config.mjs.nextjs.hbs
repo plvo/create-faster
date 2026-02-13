@@ -10,11 +10,14 @@ import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginNext from "@next/eslint-plugin-next";
 import globals from "globals";
+{{#if (has 'linter' 'eslint-prettier')}}
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+{{/if}}
 
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "next.config.*"]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
@@ -47,5 +50,8 @@ export default defineConfig([
       "react/react-in-jsx-scope": "off",
     },
   },
+{{#if (has 'linter' 'eslint-prettier')}}
+  eslintConfigPrettier,
+{{/if}}
 ]);
 {{/if}}

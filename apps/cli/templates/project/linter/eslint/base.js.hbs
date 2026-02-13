@@ -6,6 +6,9 @@ mono:
 ---
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+{{#if (has 'linter' 'eslint-prettier')}}
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+{{/if}}
 
 export const baseConfig = [
   js.configs.recommended,
@@ -13,4 +16,7 @@ export const baseConfig = [
   {
     ignores: ["dist/**", "node_modules/**"],
   },
+{{#if (has 'linter' 'eslint-prettier')}}
+  eslintConfigPrettier,
+{{/if}}
 ];

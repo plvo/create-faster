@@ -295,4 +295,191 @@ describe('CLI Integration', () => {
       expect(startConfig).toContain('reactConfig');
     });
   });
+
+  describe('Prettier', () => {
+    test('generates Prettier config for single repo', async () => {
+      const projectName = 'test-prettier-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs`, '--linter', 'prettier', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      expect(await fileExists(join(projectPath, '.prettierrc'))).toBe(true);
+      expect(await fileExists(join(projectPath, '.prettierignore'))).toBe(true);
+
+      const prettierrc = await readTextFile(join(projectPath, '.prettierrc'));
+      expect(prettierrc).toContain('prettier-plugin-tailwindcss');
+      expect(prettierrc).toContain('"singleQuote": true');
+
+      const pkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(pkg.devDependencies.prettier).toBeDefined();
+      expect(pkg.devDependencies['prettier-plugin-tailwindcss']).toBeDefined();
+      expect(pkg.scripts.format).toContain('prettier');
+      expect(pkg.scripts['format:check']).toContain('prettier');
+
+      // No ESLint files should exist
+      expect(await fileExists(join(projectPath, 'eslint.config.mjs'))).toBe(false);
+    });
+
+    test('generates Prettier config for turborepo', async () => {
+      const projectName = 'test-prettier-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', 'web:nextjs', '--app', 'api:hono', '--linter', 'prettier', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      // Prettier configs at root
+      expect(await fileExists(join(projectPath, '.prettierrc'))).toBe(true);
+      expect(await fileExists(join(projectPath, '.prettierignore'))).toBe(true);
+
+      // Root package.json has prettier deps and scripts
+      const rootPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(rootPkg.devDependencies.prettier).toBeDefined();
+      expect(rootPkg.devDependencies['prettier-plugin-tailwindcss']).toBeDefined();
+      expect(rootPkg.scripts.format).toContain('prettier');
+
+      // No eslint-config package should exist
+      expect(await fileExists(join(projectPath, 'packages/eslint-config'))).toBe(false);
+    });
+  });
+
+  describe('ESLint + Prettier', () => {
+    test('generates combined config for single repo', async () => {
+      const projectName = 'test-eslint-prettier-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs`, '--linter', 'eslint-prettier', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      // ESLint config with prettier integration
+      expect(await fileExists(join(projectPath, 'eslint.config.mjs'))).toBe(true);
+      const eslintConfig = await readTextFile(join(projectPath, 'eslint.config.mjs'));
+      expect(eslintConfig).toContain('eslintConfigPrettier');
+      expect(eslintConfig).toContain('eslint-config-prettier/flat');
+
+      // Prettier configs
+      expect(await fileExists(join(projectPath, '.prettierrc'))).toBe(true);
+      expect(await fileExists(join(projectPath, '.prettierignore'))).toBe(true);
+
+      // All deps in single package.json
+      const pkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(pkg.devDependencies.eslint).toBeDefined();
+      expect(pkg.devDependencies.prettier).toBeDefined();
+      expect(pkg.devDependencies['eslint-config-prettier']).toBeDefined();
+      expect(pkg.scripts.lint).toBe('eslint .');
+      expect(pkg.scripts.format).toContain('prettier');
+    });
+
+    test('generates combined config for turborepo', async () => {
+      const projectName = 'test-eslint-prettier-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          'web:nextjs',
+          '--app',
+          'api:hono',
+          '--linter',
+          'eslint-prettier',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      // Shared eslint-config with eslint-config-prettier dep
+      const eslintPkg = await readJsonFile<{
+        name: string;
+        devDependencies: Record<string, string>;
+      }>(join(projectPath, 'packages/eslint-config/package.json'));
+      expect(eslintPkg.name).toBe('@repo/eslint-config');
+      expect(eslintPkg.devDependencies.eslint).toBeDefined();
+      expect(eslintPkg.devDependencies['eslint-config-prettier']).toBeDefined();
+
+      // base.js has eslint-config-prettier integration
+      const baseJs = await readTextFile(join(projectPath, 'packages/eslint-config/base.js'));
+      expect(baseJs).toContain('eslintConfigPrettier');
+      expect(baseJs).toContain('eslint-config-prettier/flat');
+
+      // Prettier configs at root
+      expect(await fileExists(join(projectPath, '.prettierrc'))).toBe(true);
+      expect(await fileExists(join(projectPath, '.prettierignore'))).toBe(true);
+
+      // Root has prettier deps + scripts
+      const rootPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(rootPkg.devDependencies.prettier).toBeDefined();
+      expect(rootPkg.devDependencies['prettier-plugin-tailwindcss']).toBeDefined();
+      expect(rootPkg.scripts.format).toContain('prettier');
+
+      // Root does NOT have eslint deps
+      expect(rootPkg.devDependencies.eslint).toBeUndefined();
+
+      // Apps reference shared config
+      const webPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'apps/web/package.json'));
+      expect(webPkg.devDependencies['@repo/eslint-config']).toBe('*');
+      expect(webPkg.scripts.lint).toBe('eslint .');
+    });
+
+    test('ESLint configs do NOT have prettier import in turborepo (handled by base.js)', async () => {
+      const projectName = 'test-eslint-prettier-stacks';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          'web:nextjs',
+          '--app',
+          'api:hono',
+          '--linter',
+          'eslint-prettier',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      // Per-app configs in turborepo are thin wrappers — no prettier import
+      const webConfig = await readTextFile(join(projectPath, 'apps/web/eslint.config.mjs'));
+      expect(webConfig).toContain('nextConfig');
+      expect(webConfig).not.toContain('eslintConfigPrettier');
+
+      const apiConfig = await readTextFile(join(projectPath, 'apps/api/eslint.config.mjs'));
+      expect(apiConfig).toContain('serverConfig');
+      expect(apiConfig).not.toContain('eslintConfigPrettier');
+    });
+  });
 });

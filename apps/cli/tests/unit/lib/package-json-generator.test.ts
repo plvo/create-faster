@@ -398,6 +398,145 @@ describe('ESLint linter (single repo)', () => {
   });
 });
 
+describe('Prettier linter (single repo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-prettier-single',
+    repo: 'single',
+    apps: [{ appName: 'test-prettier-single', stackName: 'nextjs', libraries: [] }],
+    project: { linter: 'prettier', tooling: [] },
+    git: true,
+  };
+
+  test('includes prettier devDependencies', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.prettier).toBeDefined();
+    expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
+  });
+
+  test('includes format scripts', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.format).toContain('prettier');
+    expect(result.content.scripts?.['format:check']).toContain('prettier');
+  });
+});
+
+describe('Prettier linter (turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-prettier-turbo',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { linter: 'prettier', tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('root package.json has prettier deps and scripts', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.devDependencies?.prettier).toBeDefined();
+    expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
+    expect(result.content.scripts?.format).toContain('prettier');
+    expect(result.content.scripts?.['format:check']).toContain('prettier');
+  });
+
+  test('does not generate a prettier package', () => {
+    const results = generateAllPackageJsons(ctx);
+    const paths = results.map((r) => r.path);
+    expect(paths).not.toContain('packages/prettier/package.json');
+  });
+});
+
+describe('ESLint + Prettier composite (single repo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint-prettier-single',
+    repo: 'single',
+    apps: [{ appName: 'test-eslint-prettier-single', stackName: 'nextjs', libraries: [] }],
+    project: { linter: 'eslint-prettier', tooling: [] },
+    git: true,
+  };
+
+  test('includes all eslint deps', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.eslint).toBeDefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
+    expect(result.content.devDependencies?.['typescript-eslint']).toBeDefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+  });
+
+  test('includes prettier deps', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.prettier).toBeDefined();
+    expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
+  });
+
+  test('includes eslint-config-prettier', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.['eslint-config-prettier']).toBeDefined();
+  });
+
+  test('includes both lint and format scripts', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.lint).toBe('eslint .');
+    expect(result.content.scripts?.format).toContain('prettier');
+    expect(result.content.scripts?.['format:check']).toContain('prettier');
+  });
+});
+
+describe('ESLint + Prettier composite (turborepo)', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  const ctx: TemplateContext = {
+    projectName: 'test-eslint-prettier-turbo',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { linter: 'eslint-prettier', tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('generates eslint-config package with eslint + eslint-config-prettier deps', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg).toBeDefined();
+    expect(eslintPkg?.content.name).toBe('@repo/eslint-config');
+    expect(eslintPkg?.content.devDependencies?.eslint).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['eslint-config-prettier']).toBeDefined();
+  });
+
+  test('root package.json has prettier deps and scripts', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.devDependencies?.prettier).toBeDefined();
+    expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
+    expect(result.content.scripts?.format).toContain('prettier');
+    expect(result.content.scripts?.['format:check']).toContain('prettier');
+  });
+
+  test('root does NOT have eslint deps', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.devDependencies?.eslint).toBeUndefined();
+    expect(result.content.devDependencies?.['@eslint/js']).toBeUndefined();
+  });
+
+  test('apps reference @repo/eslint-config and have lint script', () => {
+    const results = generateAllPackageJsons(ctx);
+    const web = findByPath(results, 'apps/web/package.json');
+    const api = findByPath(results, 'apps/api/package.json');
+
+    expect(web?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+    expect(api?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
+    expect(web?.content.scripts?.lint).toBe('eslint .');
+    expect(api?.content.scripts?.lint).toBe('eslint .');
+  });
+});
+
 describe('getPackageManager', () => {
   test('returns bun@<version> format', () => {
     const result = getPackageManager('bun');

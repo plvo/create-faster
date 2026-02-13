@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import type { TemplateFrontmatter } from '@/lib/frontmatter';
-import { resolveLibraryDestination, resolveProjectAddonDestination } from '@/lib/template-resolver';
+import { resolveAddonNames, resolveLibraryDestination, resolveProjectAddonDestination } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('resolveLibraryDestination', () => {
@@ -52,6 +52,24 @@ describe('resolveLibraryDestination', () => {
       {},
     );
     expect(result).toBe('apps/web/providers/query-provider.tsx');
+  });
+});
+
+describe('resolveAddonNames', () => {
+  test('returns addon name as-is when no compose', () => {
+    expect(resolveAddonNames('linter', 'eslint')).toEqual(['eslint']);
+  });
+
+  test('returns addon name as-is for biome', () => {
+    expect(resolveAddonNames('linter', 'biome')).toEqual(['biome']);
+  });
+
+  test('expands compose array for eslint-prettier', () => {
+    expect(resolveAddonNames('linter', 'eslint-prettier')).toEqual(['eslint', 'prettier']);
+  });
+
+  test('returns addon name as-is for prettier', () => {
+    expect(resolveAddonNames('linter', 'prettier')).toEqual(['prettier']);
   });
 });
 

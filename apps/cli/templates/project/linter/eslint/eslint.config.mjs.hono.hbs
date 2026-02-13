@@ -7,6 +7,9 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import globals from "globals";
+{{#if (has 'linter' 'eslint-prettier')}}
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+{{/if}}
 
 export default defineConfig([
   js.configs.recommended,
@@ -19,5 +22,8 @@ export default defineConfig([
       },
     },
   },
+{{#if (has 'linter' 'eslint-prettier')}}
+  eslintConfigPrettier,
+{{/if}}
 ]);
 {{/if}}
