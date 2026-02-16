@@ -25,6 +25,7 @@ function createDb() {
 {{#if (has "database" "mysql")}}
   return drizzle({
     schema,
+    mode: 'default',
     connection: process.env.DATABASE_URL,
   });
 {{/if}}
