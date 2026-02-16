@@ -7,6 +7,7 @@
     "apps/cli": {
       "component": "create-faster",
       "release-type": "node",
+      "versioning": "always-bump-patch",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
