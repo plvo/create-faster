@@ -35,18 +35,10 @@ function AppContent() {
     );
   }
 
-  const isAuthenticated = true;
-
   return (
     <GestureHandlerRootView style=\{{ flex: 1 }}>
       <Stack screenOptions=\{{ headerShown: false }}>
-        <Stack.Protected guard={isAuthenticated}>
-          <Stack.Screen name='index' />
-          {/* You can add other screens here like: <Stack.Screen name='profile' /> */}
-        </Stack.Protected>
-        <Stack.Protected guard={!isAuthenticated}>
-          <Stack.Screen name='activation' />
-        </Stack.Protected>
+        <Stack.Screen name='index' />
       </Stack>
 
       <AppFooter />

@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 {{#if (hasLibrary "better-auth")}}
 import { headers } from 'next/headers';
+{{#if (isMono)}}
+import { auth } from '@repo/auth/auth';
+{{else}}
 import { auth } from '@/lib/auth/auth';
+{{/if}}
 {{/if}}
 
 export default async function proxy(request: NextRequest) {

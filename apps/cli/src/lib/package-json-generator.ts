@@ -232,6 +232,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     name: isTurborepo ? app.appName : ctx.projectName,
     version: '0.1.0',
     private: true,
+    type: stack.moduleType,
     packageManager,
     scripts: sortObjectKeys(scripts),
     dependencies: sortObjectKeys(dependencies),

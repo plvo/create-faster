@@ -1,8 +1,7 @@
----
-only: mono
----
 {
+  {{#if (isMono)}}
   "extends": "@repo/config/ts/base.json",
+  {{/if}}
   "compilerOptions": {
     "lib": ["ESNext"],
     "target": "ESNext",

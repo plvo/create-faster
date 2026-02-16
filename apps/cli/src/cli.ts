@@ -122,11 +122,17 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
 
   filterToolingByRequirements(ctx);
 
+  if (partial?.pm !== undefined) {
+    ctx.pm = partial.pm;
+  }
+
   if (partial?.skipInstall) {
     ctx.skipInstall = true;
     log.info(`${color.green('✓')} Skipping dependency installation`);
+    if (partial.pm) {
+      log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
+    }
   } else if (partial?.pm !== undefined) {
-    ctx.pm = partial.pm;
     log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
   } else {
     ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {

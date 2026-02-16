@@ -55,6 +55,7 @@ export interface MetaStack {
   type: 'app' | 'server';
   label: string;
   hint?: string;
+  moduleType?: 'module';
   packageJson: PackageJsonConfig;
 }
 
