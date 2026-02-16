@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     {{#if (hasLibrary "shadcn")}}
     "@repo/ui",
     {{/if}}
-    {{#if (eq hasContext "orm")}}
+    {{#if (hasContext "orm")}}
     "@repo/db",
     {{/if}}
   ],

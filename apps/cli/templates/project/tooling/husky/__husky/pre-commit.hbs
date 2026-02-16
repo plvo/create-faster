@@ -14,6 +14,6 @@ detect_package_manager() {
 
 PACKAGE_MANAGER=$(detect_package_manager)
 
-{{#if (eq extras "biome")}}
+{{#if (has "linter" "biome")}}
 $PACKAGE_MANAGER run format
 {{/if}}

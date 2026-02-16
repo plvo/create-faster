@@ -42,7 +42,12 @@ export const userTableRelations = relations(userTable, ({ many }) => ({
 
 {{#if (hasLibrary "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
+{{#if (has "database" "postgres")}}
 export const userSessionTable = pgTable('user_sessions', {
+{{/if}}
+{{#if (has "database" "mysql")}}
+export const userSessionTable = mysqlTable('user_sessions', {
+{{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
   userId: varchar('user_id', { length: 255 })
     .notNull()
@@ -63,7 +68,12 @@ export const userSessionTableRelations = relations(userSessionTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#account
+{{#if (has "database" "postgres")}}
 export const userAccountTable = pgTable('user_accounts', {
+{{/if}}
+{{#if (has "database" "mysql")}}
+export const userAccountTable = mysqlTable('user_accounts', {
+{{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
   userId: varchar('user_id', { length: 255 })
     .notNull()
@@ -88,7 +98,12 @@ export const userAccountTableRelations = relations(userAccountTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#verification
+{{#if (has "database" "postgres")}}
 export const userVerificationTable = pgTable('user_verifications', {
+{{/if}}
+{{#if (has "database" "mysql")}}
+export const userVerificationTable = mysqlTable('user_verifications', {
+{{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
   identifier: varchar('identifier', { length: 255 }).notNull(),
   value: varchar('value', { length: 255 }).notNull(),
