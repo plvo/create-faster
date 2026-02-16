@@ -362,6 +362,7 @@ export const META: Meta = {
               'drizzle-orm': '^0.38.3',
             },
             devDependencies: {
+              '@types/node': '^22',
               'drizzle-kit': '^0.30.1',
             },
             scripts: {
