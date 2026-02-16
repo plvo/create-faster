@@ -13,6 +13,7 @@ function createDb() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
+{{#if (has "database" "postgres")}}
   return drizzle({
     schema,
     connection: {
@@ -20,6 +21,13 @@ function createDb() {
       ssl: process.env.NODE_ENV === 'production',
     },
   });
+{{/if}}
+{{#if (has "database" "mysql")}}
+  return drizzle({
+    schema,
+    connection: process.env.DATABASE_URL,
+  });
+{{/if}}
 }
 
 let _db: ReturnType<typeof createDb> | undefined;

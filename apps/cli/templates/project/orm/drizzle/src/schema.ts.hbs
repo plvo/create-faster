@@ -5,7 +5,7 @@ path: src/lib/db/schema.ts
 import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
 {{#if (has "database" "mysql")}}
-import { mysqlTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/mysql-core';
+import { mysqlTable, boolean, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
 import { relations } from 'drizzle-orm';
 
@@ -20,7 +20,12 @@ export const userTable = pgTable('users', {
 {{#if (has "database" "mysql")}}
 export const userTable = mysqlTable('users', {
 {{/if}}
+{{#if (has "database" "postgres")}}
   id: uuid('id').defaultRandom().primaryKey(),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+{{/if}}
   username: varchar('username', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -118,11 +123,21 @@ export const postTable = pgTable('posts', {
 {{#if (has "database" "mysql")}}
 export const postTable = mysqlTable('posts', {
 {{/if}}
+{{#if (has "database" "postgres")}}
   id: uuid('id').defaultRandom().primaryKey(),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+{{/if}}
   title: varchar('title', { length: 255 }).notNull(),
   content: text('content').notNull(),
   published: varchar('published', { length: 10 }).notNull().default('false'),
+{{#if (has "database" "postgres")}}
   authorId: uuid('author_id').notNull().references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  authorId: varchar('author_id', { length: 36 }).notNull().references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
   ...timeColumns,
 });
 

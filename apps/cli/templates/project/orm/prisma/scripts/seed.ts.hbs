@@ -14,17 +14,15 @@ async function seed() {
   // Create users
   const alice = await prisma.user.create({
     data: {
-      name: 'Alice Johnson',
+      username: 'alice',
       email: 'alice@example.com',
-      bio: 'Software engineer and open source enthusiast',
     },
   });
 
   const bob = await prisma.user.create({
     data: {
-      name: 'Bob Smith',
+      username: 'bob',
       email: 'bob@example.com',
-      bio: 'Tech writer and developer advocate',
     },
   });
 
