@@ -1,5 +1,6 @@
+/// <reference types="vite/client" />
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import appCss from '../styles.css?url'
 
@@ -24,10 +25,10 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: RootComponent,
+  shellComponent: RootDocument,
 })
 
-function RootComponent() {
+function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>
@@ -39,12 +40,11 @@ function RootComponent() {
             <h1 className="text-4xl font-bold mb-4">{{appName}}</h1>
             <p className="text-gray-400 mb-8">Built with TanStack Start</p>
             <hr className="border-gray-700 mb-8" />
-            {/* Router outlet */}
-            <div id="root"></div>
+            {children}
           </main>
         </div>
+        <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-        <TanStackRouterDevtoolsPanel />
       </body>
     </html>
   )

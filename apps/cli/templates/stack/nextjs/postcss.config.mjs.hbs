@@ -1,9 +1,9 @@
-{{#if (eq repo "single")}}
+{{#if (and (isMono) (hasLibrary "shadcn"))}}
+export { default } from '@repo/ui/postcss.config.mjs';
+{{else}}
 const config = {
   plugins: ["@tailwindcss/postcss"],
   };
 
 export default config;
-{{else}}
-export { default } from '@repo/ui/postcss.config.mjs';
 {{/if}}
