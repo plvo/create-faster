@@ -7,7 +7,7 @@ import { TRPCReactProvider } from '@/trpc/providers';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 {{/if}}
 {{/if}}
-{{#if (hasLibrary "shadcn")}}
+{{#if (hasLibrary "next-themes")}}
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 {{/if}}
 import type React from 'react';
@@ -39,11 +39,11 @@ export function AppProviders({ children }: AppProvidersProps) {
     <QueryClientProvider client={queryClient}>
     {{/if}}
     {{/if}}
-    {{#if (hasLibrary "shadcn")}}
+    {{#if (hasLibrary "next-themes")}}
     <NextThemesProvider attribute='class' defaultTheme='system' enableSystem storageKey={"{{appName}}-theme"}>
     {{/if}}
     {children}
-    {{#if (hasLibrary "shadcn")}}
+    {{#if (hasLibrary "next-themes")}}
     </NextThemesProvider>
     {{/if}}
     {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}

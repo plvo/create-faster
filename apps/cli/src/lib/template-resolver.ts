@@ -39,7 +39,6 @@ export function resolveLibraryDestination(
       const name = library.mono?.scope === 'pkg' ? library.mono.name : 'unknown';
       return `packages/${name}/${filePath}`;
     }
-    case 'app':
     default:
       return `apps/${appName}/${filePath}`;
   }
@@ -67,7 +66,6 @@ export function resolveProjectAddonDestination(
     }
     case 'app':
       return `apps/${ctx.apps[0]?.appName ?? ctx.projectName}/${filePath}`;
-    case 'root':
     default:
       return filePath;
   }
