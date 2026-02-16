@@ -546,6 +546,36 @@ describe('ESLint + Prettier composite (turborepo)', () => {
   });
 });
 
+describe('syncpack (turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-syncpack',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('includes syncpack as devDependency', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.devDependencies?.syncpack).toBeDefined();
+  });
+
+  test('includes versions:list and versions:fix scripts', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.['versions:list']).toBe('syncpack list-mismatches');
+    expect(result.content.scripts?.['versions:fix']).toBe('syncpack fix');
+  });
+
+  test('includes syncpack config with local packages excluded', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.syncpack).toEqual({
+      dependencyTypes: ['!local'],
+      lintFormatting: false,
+    });
+  });
+});
+
 describe('getPackageManager', () => {
   test('returns bun@<version> format', () => {
     const result = getPackageManager('bun');

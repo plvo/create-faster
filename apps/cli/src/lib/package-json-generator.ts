@@ -15,6 +15,7 @@ export interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   exports?: Record<string, string>;
+  syncpack?: Record<string, unknown>;
 }
 
 export interface GeneratedPackageJson {
@@ -281,10 +282,13 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     dev: 'turbo dev',
     build: 'turbo build',
     clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
+    'versions:list': 'syncpack list-mismatches',
+    'versions:fix': 'syncpack fix',
   };
 
   let devDependencies: Record<string, string> = {
     rimraf: '^6.0.1',
+    syncpack: '^13.0.0',
     turbo: '^2.4.0',
   };
 
@@ -335,6 +339,10 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     workspaces: ['apps/*', 'packages/*'],
     scripts: sortObjectKeys(scripts),
     devDependencies: sortObjectKeys(devDependencies),
+    syncpack: {
+      dependencyTypes: ['!local'],
+      lintFormatting: false,
+    },
   };
 
   return { path: 'package.json', content: pkg };
