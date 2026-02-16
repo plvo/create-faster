@@ -1,7 +1,7 @@
 import { $ } from 'bun';
 
-export { cleanupTempDir, createTempDir, fileExists, runCli } from '../integration/helpers';
 export type { CliResult } from '../integration/helpers';
+export { cleanupTempDir, createTempDir, fileExists, runCli } from '../integration/helpers';
 
 export interface CommandResult {
   exitCode: number;
