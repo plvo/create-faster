@@ -388,6 +388,7 @@ export const META: Meta = {
               prisma: '^6.13.0',
             },
             scripts: {
+              postinstall: 'prisma generate',
               'db:generate': 'prisma generate',
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',

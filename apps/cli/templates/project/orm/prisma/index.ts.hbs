@@ -18,12 +18,6 @@ export * from {{#if (isMono)}}'../generated/prisma'{{else}}'@prisma/client'{{/if
 // Type helpers
 export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
 export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
-export type UserWithPosts = Awaited<
-  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
->;
-export type PostWithAuthor = Awaited<
-  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
->;
 
 {{#if (hasLibrary "better-auth")}}
 // Auth types
