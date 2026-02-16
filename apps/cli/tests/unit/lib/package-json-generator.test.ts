@@ -239,10 +239,9 @@ describe('appPackageJson for pkg-scoped libraries', () => {
 
     expect(app?.content.dependencies?.['@repo/api']).toBe('*');
     expect(app?.content.dependencies?.['@trpc/client']).toBeDefined();
+    expect(app?.content.dependencies?.['@trpc/server']).toBeDefined();
     expect(app?.content.dependencies?.['@trpc/tanstack-react-query']).toBeDefined();
     expect(app?.content.dependencies?.['server-only']).toBeDefined();
-    // Server-side deps should NOT be in the app
-    expect(app?.content.dependencies?.['@trpc/server']).toBeUndefined();
     expect(app?.content.dependencies?.zod).toBeUndefined();
   });
 
