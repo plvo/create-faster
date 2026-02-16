@@ -43,20 +43,20 @@ describe('tanstack-start-loaded', () => {
   );
 
   test(
-    'type-checks',
-    async () => {
-      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
-      expect(result.exitCode).toBe(0);
-    },
-    TIMEOUT_TYPECHECK,
-  );
-
-  test(
     'builds',
     async () => {
       const result = await runCommand(['bun', 'run', 'build'], projectDir);
       expect(result.exitCode).toBe(0);
     },
     TIMEOUT_BUILD,
+  );
+
+  test(
+    'type-checks',
+    async () => {
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_TYPECHECK,
   );
 });
