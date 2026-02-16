@@ -43,8 +43,7 @@ function extractImportedPackages(content: string): Set<string> {
   const patterns = [/\bfrom\s+['"]([^'"]+)['"]/g, /\bimport\s+['"]([^'"]+)['"]/g];
 
   for (const regex of patterns) {
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(content)) !== null) {
+    for (const match of content.matchAll(regex)) {
       const importPath = match[1];
 
       if (

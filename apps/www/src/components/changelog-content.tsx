@@ -27,7 +27,7 @@ export async function ChangelogContent({
     const markdown = await response.text();
 
     return <MDXRemote source={markdown.split('Changelog')[1]} />;
-  } catch (error) {
+  } catch {
     return (
       <div className='rounded-lg border border-red-500/20 bg-red-500/10 p-4'>
         <p className='text-sm text-red-500'>
