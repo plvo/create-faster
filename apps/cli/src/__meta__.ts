@@ -37,9 +37,15 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           expo: '~52.0.0',
+          'expo-dev-client': '~5.0.0',
+          'expo-font': '~13.0.0',
+          'expo-router': '~4.0.0',
+          'expo-splash-screen': '~0.29.0',
           'expo-status-bar': '~2.0.0',
           react: '^18.3.1',
           'react-native': '0.76.5',
+          'react-native-gesture-handler': '~2.20.0',
+          'react-native-safe-area-context': '~4.12.0',
         },
         devDependencies: {
           typescript: '^5.3.0',
@@ -78,7 +84,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           '@tanstack/react-router': '^1.95.1',
-          '@tanstack/start': '^1.95.1',
+          '@tanstack/react-start': '^1.95.1',
           react: '^19.2.3',
           'react-dom': '^19.2.3',
           vinxi: '^0.5.1',
@@ -87,7 +93,13 @@ export const META: Meta = {
           typescript: '^5',
           '@types/react': '^19.2.3',
           '@types/react-dom': '^19.2.3',
+          '@tanstack/devtools-vite': '^0.7.0',
+          '@tanstack/react-router-devtools': '^1.95.1',
+          '@tailwindcss/vite': '^4.1.10',
+          '@vitejs/plugin-react': '^5.1.4',
+          tailwindcss: '^4.1.10',
           vite: '^6.0.0',
+          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           dev: 'vinxi dev --port {{port}}',
@@ -107,15 +119,18 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
         dependencies: {
+          '@radix-ui/react-slot': '^1.2.4',
           'radix-ui': '^1.4.2',
           'class-variance-authority': '^0.7.1',
           clsx: '^2.1.1',
           cmdk: '^1.1.1',
+          react: '^19.2.3',
           vaul: '^1.1.2',
           'tailwind-merge': '^3.3.1',
         },
         devDependencies: {
           '@tailwindcss/postcss': '^4.1.10',
+          '@types/react': '^19.2.3',
         },
         exports: {
           './': './src/components/',
