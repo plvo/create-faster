@@ -385,6 +385,7 @@ export const META: Meta = {
               '@prisma/client': '^6.13.0',
             },
             devDependencies: {
+              '@types/node': '^22',
               prisma: '^6.13.0',
             },
             scripts: {
