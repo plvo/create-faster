@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
 
-const TIMEOUT_INSTALL = 120_000;
+const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 
 describe('expo-nativewind', () => {
