@@ -29,6 +29,7 @@ export interface PackageJsonConfig {
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
   exports?: Record<string, string>;
+  [key: string]: any;
 }
 
 export interface MetaAddon {

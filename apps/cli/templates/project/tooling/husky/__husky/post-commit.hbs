@@ -1,9 +1,0 @@
-#!/bin/sh
-
-if ! git diff --quiet; then
-  echo "Changes detected after formatting, adding them to the commit..."
-  git add .
-  git commit --amend --no-edit --no-verify
-else
-  echo "No changes detected, skipping git amend."
-fi

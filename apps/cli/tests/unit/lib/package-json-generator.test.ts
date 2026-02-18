@@ -729,3 +729,93 @@ describe('packageManager in single repo', () => {
     expect(result.content.packageManager).toBeUndefined();
   });
 });
+
+describe('Husky lint-staged (single repo)', () => {
+  function makeSingleCtx(linter?: string): TemplateContext {
+    return {
+      projectName: 'test-husky',
+      repo: 'single',
+      apps: [{ appName: 'test-husky', stackName: 'nextjs', libraries: [] }],
+      project: { linter, tooling: ['husky'] },
+      git: true,
+    };
+  }
+
+  test('biome: lint-staged has only biome command', () => {
+    const result = generateAppPackageJson(makeSingleCtx('biome').apps[0], makeSingleCtx('biome'), 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['biome check --write --unsafe --no-errors-on-unmatched']);
+  });
+
+  test('eslint: lint-staged has only eslint command', () => {
+    const ctx = makeSingleCtx('eslint');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['eslint --fix']);
+  });
+
+  test('prettier: lint-staged has only prettier command', () => {
+    const ctx = makeSingleCtx('prettier');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['prettier --write']);
+  });
+
+  test('eslint-prettier: lint-staged has both eslint and prettier commands', () => {
+    const ctx = makeSingleCtx('eslint-prettier');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['eslint --fix', 'prettier --write']);
+  });
+
+  test('no linter: no lint-staged key in output', () => {
+    const ctx = makeSingleCtx();
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content['lint-staged']).toBeUndefined();
+  });
+});
+
+describe('Husky lint-staged (turborepo)', () => {
+  function makeTurboCtx(linter?: string): TemplateContext {
+    return {
+      projectName: 'test-husky-turbo',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { linter, tooling: ['husky'] },
+      git: true,
+      pm: 'bun',
+    };
+  }
+
+  test('biome: root package.json has lint-staged with biome command', () => {
+    const ctx = makeTurboCtx('biome');
+    const result = generateRootPackageJson(ctx);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['biome check --write --unsafe --no-errors-on-unmatched']);
+  });
+
+  test('eslint-prettier: root has both commands', () => {
+    const ctx = makeTurboCtx('eslint-prettier');
+    const result = generateRootPackageJson(ctx);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['eslint --fix', 'prettier --write']);
+  });
+
+  test('no linter: no lint-staged key in root output', () => {
+    const ctx = makeTurboCtx();
+    const result = generateRootPackageJson(ctx);
+    expect(result.content['lint-staged']).toBeUndefined();
+  });
+});
