@@ -359,6 +359,10 @@ export const META: Meta = {
           hint: 'Lightweight TypeScript ORM',
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
+            main: './dist/index.js',
+            module: './dist/index.mjs',
+            types: './dist/index.d.ts',
+            files: ['dist/**'],
             dependencies: {
               'drizzle-orm': '^0.38.3',
             },
