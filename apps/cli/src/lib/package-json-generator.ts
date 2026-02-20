@@ -257,6 +257,14 @@ export function generatePackagePackageJson(
     devDependencies: sortObjectKeys(devDeps),
   };
 
+  const extraForPkg: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(resolved)) {
+    if (!MERGE_KEYS.has(key)) {
+      extraForPkg[key] = value as unknown;
+    }
+  }
+  spreadExtraKeys(pkg, extraForPkg);
+
   const cleanPkg = Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
 
   return {
