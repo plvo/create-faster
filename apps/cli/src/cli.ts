@@ -155,7 +155,11 @@ function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
     if (!addon) return false;
 
     if (!isRequirementMet(addon.require, ctx as TemplateContext)) {
-      log.warn(`${toolingName} requires git. Skipping.`);
+      const missing: string[] = [];
+      if (addon.require?.git && !ctx.git) missing.push('git');
+      if (addon.require?.linter && !ctx.project.linter) missing.push('a linter');
+      const reason = missing.length > 0 ? missing.join(' and ') : 'unmet requirements';
+      log.warn(`${toolingName} requires ${reason}. Skipping.`);
       return false;
     }
     return true;
