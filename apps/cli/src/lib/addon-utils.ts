@@ -19,6 +19,11 @@ export function isRequirementMet(require: AddonRequire | undefined, ctx: Templat
 
   if (require.git && !ctx.git) return false;
 
+  if (require.linter) {
+    if (!ctx.project.linter) return false;
+    if (Array.isArray(require.linter) && !require.linter.includes(ctx.project.linter)) return false;
+  }
+
   if (require.database && (!ctx.project.database || !require.database.includes(ctx.project.database))) {
     return false;
   }

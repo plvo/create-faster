@@ -94,4 +94,36 @@ describe('isRequirementMet', () => {
     expect(isRequirementMet({ libraries: ['shadcn'] }, ctxWithLib)).toBe(true);
     expect(isRequirementMet({ libraries: ['mdx'] }, ctxWithLib)).toBe(false);
   });
+
+  test('linter: true is satisfied when any linter is selected', () => {
+    const ctxBiome = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
+    const ctxEslint = { ...baseCtx, project: { linter: 'eslint', tooling: [] } };
+    expect(isRequirementMet({ linter: true }, ctxBiome)).toBe(true);
+    expect(isRequirementMet({ linter: true }, ctxEslint)).toBe(true);
+  });
+
+  test('linter: true fails when no linter is selected', () => {
+    expect(isRequirementMet({ linter: true }, baseCtx)).toBe(false);
+  });
+
+  test('linter: string[] is satisfied when the exact linter matches', () => {
+    const ctxBiome = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
+    expect(isRequirementMet({ linter: ['biome'] }, ctxBiome)).toBe(true);
+    expect(isRequirementMet({ linter: ['eslint'] }, ctxBiome)).toBe(false);
+  });
+
+  test('husky require is satisfied with git + linter', () => {
+    const ctx = { ...baseCtx, git: true, project: { linter: 'biome', tooling: [] } };
+    expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(true);
+  });
+
+  test('husky require fails when git is present but linter is missing', () => {
+    const ctx = { ...baseCtx, git: true };
+    expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(false);
+  });
+
+  test('husky require fails when linter is present but git is missing', () => {
+    const ctx = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
+    expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(false);
+  });
 });

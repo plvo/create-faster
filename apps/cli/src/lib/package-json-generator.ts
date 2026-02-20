@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
+import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
 
@@ -16,11 +17,22 @@ export interface PackageJson {
   devDependencies?: Record<string, string>;
   exports?: Record<string, string>;
   syncpack?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface GeneratedPackageJson {
   path: string;
   content: PackageJson;
+}
+
+const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
+
+function spreadExtraKeys(pkg: PackageJson, extras: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(extras)) {
+    if (value !== undefined) {
+      pkg[key] = value;
+    }
+  }
 }
 
 export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
@@ -29,17 +41,15 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
   for (const config of configs) {
     if (!config) continue;
 
-    if (config.dependencies) {
-      result.dependencies = { ...result.dependencies, ...config.dependencies };
-    }
-    if (config.devDependencies) {
-      result.devDependencies = { ...result.devDependencies, ...config.devDependencies };
-    }
-    if (config.scripts) {
-      result.scripts = { ...result.scripts, ...config.scripts };
-    }
-    if (config.exports) {
-      result.exports = { ...result.exports, ...config.exports };
+    for (const [key, value] of Object.entries(config)) {
+      if (MERGE_KEYS.has(key)) {
+        result[key] = {
+          ...(result[key] as Record<string, string> | undefined),
+          ...(value as Record<string, string>),
+        };
+      } else {
+        result[key] = value;
+      }
     }
   }
 
@@ -180,7 +190,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     for (const toolingName of ctx.project.tooling) {
       const toolingAddon = META.project.tooling.options[toolingName];
       if (toolingAddon) {
-        merged = mergePackageJsonConfigs(merged, toolingAddon.packageJson);
+        merged = mergePackageJsonConfigs(merged, resolveConditionals(toolingAddon.packageJson, ctx));
       }
     }
   }
@@ -239,6 +249,14 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     devDependencies: sortObjectKeys(devDependencies),
   };
 
+  const extraForApp: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(merged)) {
+    if (!MERGE_KEYS.has(key)) {
+      extraForApp[key] = value as unknown;
+    }
+  }
+  spreadExtraKeys(pkg, extraForApp);
+
   const path = isTurborepo ? `apps/${app.appName}/package.json` : 'package.json';
 
   return { path, content: pkg };
@@ -296,14 +314,21 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
   // Add tooling to root package.json
+  const extraConfig: PackageJsonConfig = {};
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
     if (toolingAddon?.packageJson) {
-      if (toolingAddon.packageJson.devDependencies) {
-        devDependencies = { ...devDependencies, ...toolingAddon.packageJson.devDependencies };
+      const resolved = resolveConditionals(toolingAddon.packageJson, ctx);
+      if (resolved.devDependencies) {
+        devDependencies = { ...devDependencies, ...resolved.devDependencies };
       }
-      if (toolingAddon.packageJson.scripts) {
-        Object.assign(scripts, toolingAddon.packageJson.scripts);
+      if (resolved.scripts) {
+        Object.assign(scripts, resolved.scripts);
+      }
+      for (const [key, value] of Object.entries(resolved)) {
+        if (!MERGE_KEYS.has(key)) {
+          extraConfig[key] = value;
+        }
       }
     }
   }
@@ -345,6 +370,8 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
       lintFormatting: false,
     },
   };
+
+  spreadExtraKeys(pkg, extraConfig);
 
   return { path: 'package.json', content: pkg };
 }

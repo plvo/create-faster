@@ -248,6 +248,11 @@ function validateContext(partial: Partial<TemplateContext>): void {
     process.exit(1);
   }
 
+  if (project.tooling.includes('husky') && !project.linter) {
+    printError('Husky requires a linter', 'Add --linter biome or --linter eslint');
+    process.exit(1);
+  }
+
   if (partial.apps && partial.apps.length > 1) {
     const names = partial.apps.map((app) => app.appName);
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);

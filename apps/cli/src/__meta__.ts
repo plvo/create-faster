@@ -1,3 +1,4 @@
+import { $when } from '@/lib/when';
 import type { Meta } from '@/types/meta';
 
 export const META: Meta = {
@@ -489,14 +490,22 @@ export const META: Meta = {
         husky: {
           label: 'Husky',
           hint: 'Git hooks',
-          require: { git: true },
+          require: { linter: true },
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
               husky: '^9',
+              'lint-staged': '^16',
             },
             scripts: {
               prepare: 'husky',
+            },
+            'lint-staged': {
+              '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}': [
+                $when({ linter: 'biome' }, 'biome check --write --unsafe --no-errors-on-unmatched'),
+                $when({ linter: 'eslint' }, 'eslint --fix'),
+                $when({ linter: 'prettier' }, 'prettier --write'),
+              ],
             },
           },
         },

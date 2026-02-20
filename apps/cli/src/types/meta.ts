@@ -18,6 +18,7 @@ export interface AddonSupport {
 // Mirrors ProjectContext keys but with string[] for "one of these" semantics
 export interface AddonRequire {
   git?: true;
+  linter?: true | string[];
   database?: string[];
   orm?: string[];
   tooling?: string[];
@@ -29,6 +30,7 @@ export interface PackageJsonConfig {
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
   exports?: Record<string, string>;
+  [key: string]: any;
 }
 
 export interface MetaAddon {
