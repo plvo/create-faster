@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.6.1](https://github.com/plvo/create-faster/compare/create-faster-v1.6.0...create-faster-v1.6.1) (2026-02-20)
+
+
+### Features
+
+* **linter:** add Prettier and integration with ESLint ([#76](https://github.com/plvo/create-faster/issues/76)) ([e974132](https://github.com/plvo/create-faster/commit/e974132853f32d3f58283d7bb846b581482b4166))
+* **meta:** extend $when with stack/library/repo/bool matchers ([#83](https://github.com/plvo/create-faster/issues/83)) ([4a1a188](https://github.com/plvo/create-faster/commit/4a1a18880ec1dfab7955de4dced9f50342e48ae8))
+* separate linter category and add ESLint support ([#74](https://github.com/plvo/create-faster/issues/74)) ([e5b0236](https://github.com/plvo/create-faster/commit/e5b0236f9d7ebb02d61e5e6353b6d8758c6f0995))
+* **tooling:** integrate lint-staged to husky ([#82](https://github.com/plvo/create-faster/issues/82)) ([f1b7fd7](https://github.com/plvo/create-faster/commit/f1b7fd719b59bd46363aa622bbc12119c979e1f6))
+* **turborepo:** add syncpack for dependency version consistency ([#80](https://github.com/plvo/create-faster/issues/80)) ([49ead64](https://github.com/plvo/create-faster/commit/49ead64f55e601be1d8c88d7d10240d01cb4002d))
+
+
+### Bug Fixes
+
+* **templates/turborepo:** turbo task configuration for lint and clean ([#77](https://github.com/plvo/create-faster/issues/77)) ([1cfc2cb](https://github.com/plvo/create-faster/commit/1cfc2cb2dd2851bf7a55604aacd734812c07b28a))
+* **templates:** add missing deps and static validation test ([#79](https://github.com/plvo/create-faster/issues/79)) ([97650a0](https://github.com/plvo/create-faster/commit/97650a02632e8f7256bdee280196a81df93f4790))
+
+
+### Tests
+
+* **e2e:** tests for generated projects, fix 19 template bugs ([#81](https://github.com/plvo/create-faster/issues/81)) ([c81d6fc](https://github.com/plvo/create-faster/commit/c81d6fcc908f96deb8af910c4a474a3d5309b225))
+
 ## [1.6.0](https://github.com/plvo/create-faster/compare/create-faster-v1.5.0...create-faster-v1.6.0) (2026-02-11)
 
 
