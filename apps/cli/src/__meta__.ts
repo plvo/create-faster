@@ -12,7 +12,6 @@ export const META: Meta = {
           next: '^16.1.1',
           react: '^19.2.3',
           'react-dom': '^19.2.3',
-          'lucide-react': '^0.487.0',
           'tw-animate-css': '^1.3.4',
         },
         devDependencies: {
@@ -127,6 +126,7 @@ export const META: Meta = {
           'class-variance-authority': '^0.7.1',
           clsx: '^2.1.1',
           cmdk: '^1.1.1',
+          'lucide-react': '^0.487.0',
           react: '^19.2.3',
           vaul: '^1.1.2',
           'tailwind-merge': '^3.3.1',
@@ -189,7 +189,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           'better-auth': '^1.4.10',
-          '@repo/db': '*',
+          '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         exports: {
           './route-nextjs': './src/route-nextjs.ts',
@@ -217,8 +217,8 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'api' },
       packageJson: {
         dependencies: {
-          '@repo/auth': '*',
-          '@repo/db': '*',
+          '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
+          '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
           '@trpc/server': '^11.8.1',
           superjson: '^2.2.6',
           zod: '^4.2.1',
@@ -445,9 +445,9 @@ export const META: Meta = {
               '@eslint/js': '^9.22.0',
               'typescript-eslint': '^8.55.0',
               globals: '^17.3.0',
-              'eslint-plugin-react': '^7.37.5',
-              'eslint-plugin-react-hooks': '^7.0.1',
-              '@next/eslint-plugin-next': '^16.1.6',
+              'eslint-plugin-react': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.37.5'),
+              'eslint-plugin-react-hooks': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.0.1'),
+              '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.1.6'),
             },
             exports: {
               './base': './base.js',

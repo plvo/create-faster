@@ -312,7 +312,7 @@ describe('ESLint linter (turborepo)', () => {
     expect(eslintPkg?.content.name).toBe('@repo/eslint-config');
   });
 
-  test('eslint-config package has all devDependencies', () => {
+  test('eslint-config package has base devDependencies', () => {
     const results = generateAllPackageJsons(ctx);
     const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
 
@@ -320,7 +320,31 @@ describe('ESLint linter (turborepo)', () => {
     expect(eslintPkg?.content.devDependencies?.['@eslint/js']).toBeDefined();
     expect(eslintPkg?.content.devDependencies?.['typescript-eslint']).toBeDefined();
     expect(eslintPkg?.content.devDependencies?.globals).toBeDefined();
+  });
+
+  test('eslint-config includes react plugins when nextjs app is present', () => {
+    const results = generateAllPackageJsons(ctx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
     expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react-hooks']).toBeDefined();
+    expect(eslintPkg?.content.devDependencies?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('eslint-config excludes react and next plugins when only hono app', () => {
+    const honoOnlyCtx: TemplateContext = {
+      projectName: 'test-hono-eslint',
+      repo: 'turborepo',
+      apps: [{ appName: 'api', stackName: 'hono', libraries: [] }],
+      project: { linter: 'eslint', tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(honoOnlyCtx);
+    const eslintPkg = findByPath(results, 'packages/eslint-config/package.json');
+
+    expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react']).toBeUndefined();
+    expect(eslintPkg?.content.devDependencies?.['eslint-plugin-react-hooks']).toBeUndefined();
+    expect(eslintPkg?.content.devDependencies?.['@next/eslint-plugin-next']).toBeUndefined();
   });
 
   test('eslint-config package has exports', () => {
@@ -377,16 +401,36 @@ describe('ESLint linter (single repo)', () => {
     git: true,
   };
 
-  test('includes all eslint deps directly in package.json', () => {
+  test('includes base eslint deps directly in package.json', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
 
     expect(result.content.devDependencies?.eslint).toBeDefined();
     expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
     expect(result.content.devDependencies?.['typescript-eslint']).toBeDefined();
     expect(result.content.devDependencies?.globals).toBeDefined();
+  });
+
+  test('includes react and next plugins for nextjs stack', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+
     expect(result.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
     expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeDefined();
     expect(result.content.devDependencies?.['@next/eslint-plugin-next']).toBeDefined();
+  });
+
+  test('excludes react and next plugins for hono stack', () => {
+    const honoCtx: TemplateContext = {
+      projectName: 'test-hono-eslint-single',
+      repo: 'single',
+      apps: [{ appName: 'test-hono-eslint-single', stackName: 'hono', libraries: [] }],
+      project: { linter: 'eslint', tooling: [] },
+      git: true,
+    };
+    const result = generateAppPackageJson(honoCtx.apps[0], honoCtx, 0);
+
+    expect(result.content.devDependencies?.['eslint-plugin-react']).toBeUndefined();
+    expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeUndefined();
+    expect(result.content.devDependencies?.['@next/eslint-plugin-next']).toBeUndefined();
   });
 
   test('includes lint script', () => {
@@ -542,6 +586,104 @@ describe('ESLint + Prettier composite (turborepo)', () => {
     expect(api?.content.devDependencies?.['@repo/eslint-config']).toBe('*');
     expect(web?.content.scripts?.lint).toBe('eslint .');
     expect(api?.content.scripts?.lint).toBe('eslint .');
+  });
+});
+
+describe('lucide-react conditional on shadcn', () => {
+  test('nextjs without shadcn does NOT have lucide-react', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: true,
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.dependencies?.['lucide-react']).toBeUndefined();
+  });
+
+  test('nextjs with shadcn has lucide-react', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['shadcn'] }],
+      project: { tooling: [] },
+      git: true,
+    };
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.dependencies?.['lucide-react']).toBeDefined();
+  });
+});
+
+describe('@repo/* deps via $when (turborepo)', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  test('better-auth: @repo/db present in turborepo with orm', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(ctx);
+    const auth = findByPath(results, 'packages/auth/package.json');
+    expect(auth?.content.dependencies?.['@repo/db']).toBe('*');
+  });
+
+  test('better-auth: @repo/db absent in turborepo without orm', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(ctx);
+    const auth = findByPath(results, 'packages/auth/package.json');
+    expect(auth?.content.dependencies?.['@repo/db']).toBeUndefined();
+  });
+
+  test('better-auth: no @repo/* in single repo', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(ctx);
+    const allDeps = { ...results[0].content.dependencies, ...results[0].content.devDependencies };
+    const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
+    expect(repoRefs).toEqual([]);
+  });
+
+  test('trpc: @repo/auth present in turborepo when better-auth selected', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc', 'better-auth'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(ctx);
+    const api = findByPath(results, 'packages/api/package.json');
+    expect(api?.content.dependencies?.['@repo/auth']).toBe('*');
+  });
+
+  test('trpc: @repo/auth absent in turborepo without better-auth', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc'] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+    };
+    const results = generateAllPackageJsons(ctx);
+    const api = findByPath(results, 'packages/api/package.json');
+    expect(api?.content.dependencies?.['@repo/auth']).toBeUndefined();
   });
 });
 
