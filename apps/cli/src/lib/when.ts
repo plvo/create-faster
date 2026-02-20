@@ -54,14 +54,6 @@ export function resolveConditionals<T>(data: T, ctx: TemplateContext): T {
   return data;
 }
 
-function expandSelection(category: string, selected: string): string[] {
-  // Lazy import to break circular dependency with __meta__.ts
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { META } = require('@/__meta__') as typeof import('@/__meta__');
-  const addon = META.project[category as keyof typeof META.project]?.options[selected];
-  return (addon as { compose?: string[] } | undefined)?.compose ?? [selected];
-}
-
 function includesAny(haystack: string[], needles: string | string[]): boolean {
   const arr = Array.isArray(needles) ? needles : [needles];
   return arr.some((n) => haystack.includes(n));
@@ -98,10 +90,7 @@ function matches(match: WhenItem['match'], ctx: TemplateContext): boolean {
 
     if (!raw) return false;
 
-    const actuals = Array.isArray(raw)
-      ? raw.flatMap((v) => expandSelection(key, v))
-      : expandSelection(key, raw as string);
-
+    const actuals = Array.isArray(raw) ? raw : [raw as string];
     if (!includesAny(actuals, expected as string | string[])) return false;
   }
   return true;

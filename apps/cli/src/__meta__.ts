@@ -503,8 +503,8 @@ export const META: Meta = {
             'lint-staged': {
               '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}': [
                 $when({ linter: 'biome' }, 'biome check --write --unsafe --no-errors-on-unmatched'),
-                $when({ linter: 'eslint' }, 'eslint --fix'),
-                $when({ linter: 'prettier' }, 'prettier --write'),
+                $when({ linter: ['eslint', 'eslint-prettier'] }, 'eslint --fix'),
+                $when({ linter: ['prettier', 'eslint-prettier'] }, 'prettier --write'),
               ],
             },
           },

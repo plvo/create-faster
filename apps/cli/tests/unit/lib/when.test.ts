@@ -91,15 +91,24 @@ describe('resolveConditionals', () => {
   });
 });
 
-describe('compose expansion', () => {
-  test('eslint-prettier composes to eslint + prettier', () => {
+describe('composite linter matching via array conditions', () => {
+  test('eslint-prettier matches both eslint and prettier array conditions', () => {
     const data = [
       $when({ linter: 'biome' }, 'biome check'),
-      $when({ linter: 'eslint' }, 'eslint --fix'),
-      $when({ linter: 'prettier' }, 'prettier --write'),
+      $when({ linter: ['eslint', 'eslint-prettier'] }, 'eslint --fix'),
+      $when({ linter: ['prettier', 'eslint-prettier'] }, 'prettier --write'),
     ];
     const ctx = makeCtx({ linter: 'eslint-prettier' });
     expect(resolveConditionals(data, ctx)).toEqual(['eslint --fix', 'prettier --write']);
+  });
+
+  test('eslint only matches eslint condition, not prettier', () => {
+    const data = [
+      $when({ linter: ['eslint', 'eslint-prettier'] }, 'eslint --fix'),
+      $when({ linter: ['prettier', 'eslint-prettier'] }, 'prettier --write'),
+    ];
+    const ctx = makeCtx({ linter: 'eslint' });
+    expect(resolveConditionals(data, ctx)).toEqual(['eslint --fix']);
   });
 });
 

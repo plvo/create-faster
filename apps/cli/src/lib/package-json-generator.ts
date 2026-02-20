@@ -35,6 +35,10 @@ function spreadExtraKeys(pkg: PackageJson, extras: Record<string, unknown>): voi
   }
 }
 
+function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
+  return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
+}
+
 export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   const result: PackageJsonConfig = {};
 
@@ -117,7 +121,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
 
-  let merged = mergePackageJsonConfigs(resolveConditionals(stack.packageJson, ctx));
+  let merged = mergeResolved(ctx, stack.packageJson);
 
   // Process per-app libraries
   for (const libraryName of app.libraries) {
@@ -131,14 +135,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
         [`@repo/${packageName}`]: '*',
       };
       if (library.appPackageJson) {
-        merged = mergePackageJsonConfigs(merged, resolveConditionals(library.appPackageJson, ctx));
+        merged = mergeResolved(ctx, merged, library.appPackageJson);
       }
     } else {
-      merged = mergePackageJsonConfigs(
-        merged,
-        resolveConditionals(library.packageJson, ctx),
-        resolveConditionals(library.appPackageJson, ctx),
-      );
+      merged = mergeResolved(ctx, merged, library.packageJson, library.appPackageJson);
     }
   }
 
@@ -153,7 +153,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
           [`@repo/${packageName}`]: '*',
         };
       } else {
-        merged = mergePackageJsonConfigs(merged, resolveConditionals(ormAddon.packageJson, ctx));
+        merged = mergeResolved(ctx, merged, ormAddon.packageJson);
       }
     }
   }
@@ -161,7 +161,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   if (ctx.project.database && !isTurborepo) {
     const dbAddon = META.project.database.options[ctx.project.database];
     if (dbAddon) {
-      merged = mergePackageJsonConfigs(merged, resolveConditionals(dbAddon.packageJson, ctx));
+      merged = mergeResolved(ctx, merged, dbAddon.packageJson);
     }
   }
 
@@ -170,7 +170,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     for (const toolingName of ctx.project.tooling) {
       const toolingAddon = META.project.tooling.options[toolingName];
       if (toolingAddon) {
-        merged = mergePackageJsonConfigs(merged, resolveConditionals(toolingAddon.packageJson, ctx));
+        merged = mergeResolved(ctx, merged, toolingAddon.packageJson);
       }
     }
   }
@@ -186,14 +186,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
           [`@repo/${packageName}`]: '*',
         };
         if (addon.appPackageJson) {
-          merged = mergePackageJsonConfigs(merged, resolveConditionals(addon.appPackageJson, ctx));
+          merged = mergeResolved(ctx, merged, addon.appPackageJson);
         }
       } else if (!isTurborepo) {
-        merged = mergePackageJsonConfigs(
-          merged,
-          resolveConditionals(addon.packageJson, ctx),
-          resolveConditionals(addon.appPackageJson, ctx),
-        );
+        merged = mergeResolved(ctx, merged, addon.packageJson, addon.appPackageJson);
       }
     }
   }
@@ -246,7 +242,7 @@ export function generatePackagePackageJson(
   config: PackageJsonConfig,
   ctx: TemplateContext,
 ): GeneratedPackageJson {
-  const resolved = resolveConditionals(config, ctx);
+  const resolved = mergeResolved(ctx, config);
   const deps = resolved.dependencies;
   const devDeps = { ...resolved.devDependencies, '@repo/config': '*' };
 
@@ -296,7 +292,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
     if (toolingAddon?.packageJson) {
-      const resolved = resolveConditionals(toolingAddon.packageJson, ctx);
+      const resolved = mergeResolved(ctx, toolingAddon.packageJson);
       if (resolved.devDependencies) {
         devDependencies = { ...devDependencies, ...resolved.devDependencies };
       }
@@ -318,7 +314,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
 
     for (const { addon } of parts) {
       if (addon.mono?.scope === 'root' && addon.packageJson) {
-        const resolved = resolveConditionals(addon.packageJson, ctx);
+        const resolved = mergeResolved(ctx, addon.packageJson);
         if (resolved.devDependencies) {
           devDependencies = { ...devDependencies, ...resolved.devDependencies };
         }
