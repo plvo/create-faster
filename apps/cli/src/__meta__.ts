@@ -359,10 +359,10 @@ export const META: Meta = {
           hint: 'Lightweight TypeScript ORM',
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
-            main: './dist/index.js',
-            module: './dist/index.mjs',
-            types: './dist/index.d.ts',
-            files: ['dist/**'],
+            main: $when({ repo: 'turborepo' }, './dist/index.js'),
+            module: $when({ repo: 'turborepo' }, './dist/index.mjs'),
+            types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
+            files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
               'drizzle-orm': '^0.38.3',
             },
@@ -402,6 +402,7 @@ export const META: Meta = {
               'db:studio': 'prisma studio',
               'db:seed': 'bun run scripts/seed.ts',
             },
+            types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
               '.': './src/index.ts',
             },
