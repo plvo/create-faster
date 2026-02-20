@@ -1,11 +1,17 @@
-import { META, type ProjectCategoryName } from '@/__meta__';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
+import type { StackName } from '@/types/meta';
 
 const TAG = Symbol('when');
 
+type MatchValue = string | string[] | true;
+
 interface WhenItem<T = unknown> {
   [TAG]: true;
-  match: Partial<Record<keyof ProjectContext, string>>;
+  match: Partial<Record<keyof ProjectContext, MatchValue>> & {
+    stack?: StackName | StackName[];
+    library?: string | string[];
+    repo?: 'single' | 'turborepo';
+  };
   value: T;
 }
 
@@ -48,23 +54,44 @@ export function resolveConditionals<T>(data: T, ctx: TemplateContext): T {
   return data;
 }
 
-function expandSelection(category: string, selected: string): string[] {
-  const addon = META.project[category as ProjectCategoryName]?.options[selected];
-  return addon?.compose ?? [selected];
+function includesAny(haystack: string[], needles: string | string[]): boolean {
+  const arr = Array.isArray(needles) ? needles : [needles];
+  return arr.some((n) => haystack.includes(n));
 }
 
 function matches(match: WhenItem['match'], ctx: TemplateContext): boolean {
-  for (const [category, expected] of Object.entries(match)) {
-    if (!expected) continue;
+  for (const [key, expected] of Object.entries(match)) {
+    if (expected === undefined) continue;
 
-    const raw = ctx.project[category as keyof ProjectContext];
+    if (key === 'repo') {
+      if (ctx.repo !== expected) return false;
+      continue;
+    }
+
+    if (key === 'stack') {
+      const stacks = ctx.apps.map((a) => a.stackName);
+      if (!includesAny(stacks, expected as StackName | StackName[])) return false;
+      continue;
+    }
+
+    if (key === 'library') {
+      const libs = ctx.apps.flatMap((a) => a.libraries);
+      if (!includesAny(libs, expected as string | string[])) return false;
+      continue;
+    }
+
+    // ProjectContext key
+    const raw = ctx.project[key as keyof ProjectContext];
+
+    if (expected === true) {
+      if (!raw) return false;
+      continue;
+    }
+
     if (!raw) return false;
 
-    const actuals = Array.isArray(raw)
-      ? raw.flatMap((v) => expandSelection(category, v))
-      : expandSelection(category, raw);
-
-    if (!actuals.includes(expected)) return false;
+    const actuals = Array.isArray(raw) ? raw : [raw as string];
+    if (!includesAny(actuals, expected as string | string[])) return false;
   }
   return true;
 }

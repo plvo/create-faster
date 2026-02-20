@@ -35,6 +35,10 @@ function spreadExtraKeys(pkg: PackageJson, extras: Record<string, unknown>): voi
   }
 }
 
+function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
+  return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
+}
+
 export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   const result: PackageJsonConfig = {};
 
@@ -112,36 +116,12 @@ function resolveCompositeAddons(
   return parts;
 }
 
-function stripInternalDeps(deps: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(deps).filter(([key]) => !key.startsWith('@repo/')));
-}
-
-function filterInternalDeps(
-  deps: Record<string, string> | undefined,
-  existingPackages: Set<string>,
-): Record<string, string> | undefined {
-  if (!deps) return undefined;
-
-  const filtered: Record<string, string> = {};
-  for (const [key, value] of Object.entries(deps)) {
-    if (key.startsWith('@repo/')) {
-      const pkgName = key.replace('@repo/', '');
-      if (existingPackages.has(pkgName)) {
-        filtered[key] = value;
-      }
-    } else {
-      filtered[key] = value;
-    }
-  }
-  return filtered;
-}
-
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
 
-  let merged = mergePackageJsonConfigs(stack.packageJson);
+  let merged = mergeResolved(ctx, stack.packageJson);
 
   // Process per-app libraries
   for (const libraryName of app.libraries) {
@@ -155,10 +135,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
         [`@repo/${packageName}`]: '*',
       };
       if (library.appPackageJson) {
-        merged = mergePackageJsonConfigs(merged, library.appPackageJson);
+        merged = mergeResolved(ctx, merged, library.appPackageJson);
       }
     } else {
-      merged = mergePackageJsonConfigs(merged, library.packageJson, library.appPackageJson);
+      merged = mergeResolved(ctx, merged, library.packageJson, library.appPackageJson);
     }
   }
 
@@ -173,7 +153,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
           [`@repo/${packageName}`]: '*',
         };
       } else {
-        merged = mergePackageJsonConfigs(merged, ormAddon.packageJson);
+        merged = mergeResolved(ctx, merged, ormAddon.packageJson);
       }
     }
   }
@@ -181,7 +161,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   if (ctx.project.database && !isTurborepo) {
     const dbAddon = META.project.database.options[ctx.project.database];
     if (dbAddon) {
-      merged = mergePackageJsonConfigs(merged, dbAddon.packageJson);
+      merged = mergeResolved(ctx, merged, dbAddon.packageJson);
     }
   }
 
@@ -190,7 +170,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     for (const toolingName of ctx.project.tooling) {
       const toolingAddon = META.project.tooling.options[toolingName];
       if (toolingAddon) {
-        merged = mergePackageJsonConfigs(merged, resolveConditionals(toolingAddon.packageJson, ctx));
+        merged = mergeResolved(ctx, merged, toolingAddon.packageJson);
       }
     }
   }
@@ -206,10 +186,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
           [`@repo/${packageName}`]: '*',
         };
         if (addon.appPackageJson) {
-          merged = mergePackageJsonConfigs(merged, addon.appPackageJson);
+          merged = mergeResolved(ctx, merged, addon.appPackageJson);
         }
       } else if (!isTurborepo) {
-        merged = mergePackageJsonConfigs(merged, addon.packageJson, addon.appPackageJson);
+        merged = mergeResolved(ctx, merged, addon.packageJson, addon.appPackageJson);
       }
     }
   }
@@ -228,13 +208,8 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     scripts = removePortPlaceholders(scripts);
   }
 
-  let dependencies = merged.dependencies ?? {};
-  let devDependencies = merged.devDependencies ?? {};
-
-  if (!isTurborepo) {
-    dependencies = stripInternalDeps(dependencies);
-    devDependencies = stripInternalDeps(devDependencies);
-  }
+  const dependencies = merged.dependencies ?? {};
+  const devDependencies = merged.devDependencies ?? {};
 
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
 
@@ -265,22 +240,21 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 export function generatePackagePackageJson(
   packageName: string,
   config: PackageJsonConfig,
-  existingPackages: Set<string>,
+  ctx: TemplateContext,
 ): GeneratedPackageJson {
-  const devDeps = { ...config.devDependencies, '@repo/config': '*' };
-
-  const filteredDeps = filterInternalDeps(config.dependencies, existingPackages);
-  const filteredDevDeps = filterInternalDeps(devDeps, existingPackages);
+  const resolved = mergeResolved(ctx, config);
+  const deps = resolved.dependencies;
+  const devDeps = { ...resolved.devDependencies, '@repo/config': '*' };
 
   const pkg: PackageJson = {
     name: `@repo/${packageName}`,
     version: '0.0.0',
     private: true,
     type: 'module',
-    exports: config.exports,
-    scripts: config.scripts ? sortObjectKeys(config.scripts) : undefined,
-    dependencies: filteredDeps ? sortObjectKeys(filteredDeps) : undefined,
-    devDependencies: filteredDevDeps ? sortObjectKeys(filteredDevDeps) : undefined,
+    exports: resolved.exports,
+    scripts: resolved.scripts ? sortObjectKeys(resolved.scripts) : undefined,
+    dependencies: deps ? sortObjectKeys(deps) : undefined,
+    devDependencies: sortObjectKeys(devDeps),
   };
 
   const cleanPkg = Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
@@ -318,7 +292,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
     if (toolingAddon?.packageJson) {
-      const resolved = resolveConditionals(toolingAddon.packageJson, ctx);
+      const resolved = mergeResolved(ctx, toolingAddon.packageJson);
       if (resolved.devDependencies) {
         devDependencies = { ...devDependencies, ...resolved.devDependencies };
       }
@@ -340,11 +314,12 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
 
     for (const { addon } of parts) {
       if (addon.mono?.scope === 'root' && addon.packageJson) {
-        if (addon.packageJson.devDependencies) {
-          devDependencies = { ...devDependencies, ...addon.packageJson.devDependencies };
+        const resolved = mergeResolved(ctx, addon.packageJson);
+        if (resolved.devDependencies) {
+          devDependencies = { ...devDependencies, ...resolved.devDependencies };
         }
-        if (addon.packageJson.scripts) {
-          Object.assign(scripts, addon.packageJson.scripts);
+        if (resolved.scripts) {
+          Object.assign(scripts, resolved.scripts);
         }
       }
       if (addon.appPackageJson?.scripts?.lint) {
@@ -437,13 +412,8 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
-    const existingPackages = new Set<string>(['config']);
-    for (const name of extractedPackages.keys()) {
-      existingPackages.add(name);
-    }
-
     for (const [name, config] of extractedPackages) {
-      results.push(generatePackagePackageJson(name, config, existingPackages));
+      results.push(generatePackagePackageJson(name, config, ctx));
     }
   } else {
     const firstApp = ctx.apps[0];
