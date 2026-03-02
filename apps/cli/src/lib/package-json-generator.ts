@@ -27,12 +27,14 @@ export interface GeneratedPackageJson {
 
 const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
 
-function spreadExtraKeys(pkg: PackageJson, extras: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(extras)) {
-    if (value !== undefined) {
-      pkg[key] = value;
-    }
+function spreadExtraKeys(pkg: PackageJson, config: PackageJsonConfig): void {
+  for (const [key, value] of Object.entries(config)) {
+    if (!MERGE_KEYS.has(key) && value !== undefined) pkg[key] = value;
   }
+}
+
+function cleanUndefined(pkg: PackageJson): PackageJson {
+  return Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
 }
 
 function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
@@ -60,18 +62,12 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
   return result;
 }
 
-function resolveScriptPorts(scripts: Record<string, string>, port: number): Record<string, string> {
+function processScriptPorts(scripts: Record<string, string>, port?: number): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(scripts)) {
-    resolved[key] = value.replace(/\{\{port\}\}/g, String(port));
-  }
-  return resolved;
-}
-
-function removePortPlaceholders(scripts: Record<string, string>): Record<string, string> {
-  const resolved: Record<string, string> = {};
-  for (const [key, value] of Object.entries(scripts)) {
-    resolved[key] = value.replace(/\s*--port\s*\{\{port\}\}/g, '');
+    resolved[key] = port
+      ? value.replace(/\{\{port\}\}/g, String(port))
+      : value.replace(/\s*--port\s*\{\{port\}\}/g, '');
   }
   return resolved;
 }
@@ -84,19 +80,19 @@ function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
   return sorted;
 }
 
-function getLibraryPackageName(libraryName: string): string | null {
-  const library = META.libraries[libraryName];
-  if (library?.mono?.scope === 'pkg') {
-    return library.mono.name;
-  }
-  return null;
+function getMonoPackageName(addon: MetaAddon): string | null {
+  return addon.mono?.scope === 'pkg' ? addon.mono.name : null;
 }
 
-function getProjectAddonPackageName(addon: MetaAddon): string | null {
-  if (addon.mono?.scope === 'pkg') {
-    return addon.mono.name;
-  }
-  return null;
+function addRepoRef(
+  config: PackageJsonConfig,
+  addon: MetaAddon,
+  depType: 'dependencies' | 'devDependencies' = 'dependencies',
+): boolean {
+  const name = getMonoPackageName(addon);
+  if (!name) return false;
+  config[depType] = { ...(config[depType] as Record<string, string>), [`@repo/${name}`]: '*' };
+  return true;
 }
 
 function resolveCompositeAddons(
@@ -123,17 +119,11 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   let merged = mergeResolved(ctx, stack.packageJson);
 
-  // Process per-app libraries
   for (const libraryName of app.libraries) {
     const library = META.libraries[libraryName];
     if (!library || !isLibraryCompatible(library, app.stackName)) continue;
 
-    const packageName = getLibraryPackageName(libraryName);
-    if (packageName && isTurborepo) {
-      merged.dependencies = {
-        ...merged.dependencies,
-        [`@repo/${packageName}`]: '*',
-      };
+    if (isTurborepo && addRepoRef(merged, library)) {
       if (library.appPackageJson) {
         merged = mergeResolved(ctx, merged, library.appPackageJson);
       }
@@ -142,17 +132,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  // Process project addons (database, orm)
   if (ctx.project.orm) {
     const ormAddon = META.project.orm.options[ctx.project.orm];
     if (ormAddon) {
-      const packageName = getProjectAddonPackageName(ormAddon);
-      if (packageName && isTurborepo) {
-        merged.dependencies = {
-          ...merged.dependencies,
-          [`@repo/${packageName}`]: '*',
-        };
-      } else {
+      if (!(isTurborepo && addRepoRef(merged, ormAddon))) {
         merged = mergeResolved(ctx, merged, ormAddon.packageJson);
       }
     }
@@ -165,7 +148,6 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  // Process tooling (always goes to root in turborepo, or app in single)
   if (!isTurborepo) {
     for (const toolingName of ctx.project.tooling) {
       const toolingAddon = META.project.tooling.options[toolingName];
@@ -175,16 +157,10 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  // Process linter addon (with composite expansion)
   if (ctx.project.linter) {
     const parts = resolveCompositeAddons('linter', ctx.project.linter);
     for (const { addon } of parts) {
-      const packageName = getProjectAddonPackageName(addon);
-      if (packageName && isTurborepo) {
-        merged.devDependencies = {
-          ...merged.devDependencies,
-          [`@repo/${packageName}`]: '*',
-        };
+      if (isTurborepo && addRepoRef(merged, addon, 'devDependencies')) {
         if (addon.appPackageJson) {
           merged = mergeResolved(ctx, merged, addon.appPackageJson);
         }
@@ -201,16 +177,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     };
   }
 
-  let scripts = merged.scripts ?? {};
-  if (isTurborepo) {
-    scripts = resolveScriptPorts(scripts, port);
-  } else {
-    scripts = removePortPlaceholders(scripts);
-  }
-
-  const dependencies = merged.dependencies ?? {};
-  const devDependencies = merged.devDependencies ?? {};
-
+  const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
 
   const pkg: PackageJson = {
@@ -220,21 +187,15 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     type: stack.moduleType,
     packageManager,
     scripts: sortObjectKeys(scripts),
-    dependencies: sortObjectKeys(dependencies),
-    devDependencies: sortObjectKeys(devDependencies),
+    dependencies: sortObjectKeys(merged.dependencies ?? {}),
+    devDependencies: sortObjectKeys(merged.devDependencies ?? {}),
   };
 
-  const extraForApp: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(merged)) {
-    if (!MERGE_KEYS.has(key)) {
-      extraForApp[key] = value as unknown;
-    }
-  }
-  spreadExtraKeys(pkg, extraForApp);
+  spreadExtraKeys(pkg, merged);
 
   const path = isTurborepo ? `apps/${app.appName}/package.json` : 'package.json';
 
-  return { path, content: pkg };
+  return { path, content: cleanUndefined(pkg) };
 }
 
 export function generatePackagePackageJson(
@@ -257,11 +218,11 @@ export function generatePackagePackageJson(
     devDependencies: sortObjectKeys(devDeps),
   };
 
-  const cleanPkg = Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
+  spreadExtraKeys(pkg, resolved);
 
   return {
     path: `packages/${packageName}/package.json`,
-    content: cleanPkg,
+    content: cleanUndefined(pkg),
   };
 }
 
@@ -287,50 +248,26 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
 
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
-  // Add tooling to root package.json
-  const extraConfig: PackageJsonConfig = {};
+  const rootConfigs: PackageJsonConfig[] = [];
+
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
-    if (toolingAddon?.packageJson) {
-      const resolved = mergeResolved(ctx, toolingAddon.packageJson);
-      if (resolved.devDependencies) {
-        devDependencies = { ...devDependencies, ...resolved.devDependencies };
-      }
-      if (resolved.scripts) {
-        Object.assign(scripts, resolved.scripts);
-      }
-      for (const [key, value] of Object.entries(resolved)) {
-        if (!MERGE_KEYS.has(key)) {
-          extraConfig[key] = value;
-        }
-      }
-    }
+    if (toolingAddon?.packageJson) rootConfigs.push(toolingAddon.packageJson);
   }
 
-  // Add root-scoped linter deps to root package.json (with composite expansion)
+  let hasAppLintScript = false;
   if (ctx.project.linter) {
     const parts = resolveCompositeAddons('linter', ctx.project.linter);
-    let hasAppLintScript = false;
-
     for (const { addon } of parts) {
-      if (addon.mono?.scope === 'root' && addon.packageJson) {
-        const resolved = mergeResolved(ctx, addon.packageJson);
-        if (resolved.devDependencies) {
-          devDependencies = { ...devDependencies, ...resolved.devDependencies };
-        }
-        if (resolved.scripts) {
-          Object.assign(scripts, resolved.scripts);
-        }
-      }
-      if (addon.appPackageJson?.scripts?.lint) {
-        hasAppLintScript = true;
-      }
-    }
-
-    if (hasAppLintScript) {
-      scripts.lint = 'turbo lint';
+      if (addon.mono?.scope === 'root' && addon.packageJson) rootConfigs.push(addon.packageJson);
+      if (addon.appPackageJson?.scripts?.lint) hasAppLintScript = true;
     }
   }
+
+  const merged = mergeResolved(ctx, ...rootConfigs);
+  devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
+  Object.assign(scripts, merged.scripts ?? {});
+  if (hasAppLintScript) scripts.lint = 'turbo lint';
 
   const pkg: PackageJson = {
     name: ctx.projectName,
@@ -346,9 +283,9 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     },
   };
 
-  spreadExtraKeys(pkg, extraConfig);
+  spreadExtraKeys(pkg, merged);
 
-  return { path: 'package.json', content: pkg };
+  return { path: 'package.json', content: cleanUndefined(pkg) };
 }
 
 export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJson[] {
@@ -364,7 +301,6 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
 
     const extractedPackages = new Map<string, PackageJsonConfig>();
 
-    // Collect library packages
     for (const app of ctx.apps) {
       for (const libraryName of app.libraries) {
         const library = META.libraries[libraryName];
@@ -377,7 +313,6 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
-    // Collect linter packages (with composite expansion)
     if (ctx.project.linter) {
       const parts = resolveCompositeAddons('linter', ctx.project.linter);
       for (const { addon } of parts) {
@@ -393,14 +328,12 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
-    // Collect ORM package with database deps merged
     if (ctx.project.orm) {
       const ormAddon = META.project.orm.options[ctx.project.orm];
       if (ormAddon?.mono?.scope === 'pkg') {
         const pkgName = ormAddon.mono.name;
         let config = ormAddon.packageJson ?? {};
 
-        // Merge database dependencies into ORM package
         if (ctx.project.database) {
           const dbAddon = META.project.database.options[ctx.project.database];
           if (dbAddon?.packageJson) {
