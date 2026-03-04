@@ -6,7 +6,7 @@ import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
-import { cli } from './cli';
+import { blueprintCli, cli } from './cli';
 import { parseFlags } from './flags';
 
 async function main() {
@@ -17,7 +17,7 @@ async function main() {
   intro(INTRO_MESSAGE);
 
   try {
-    const config = await cli(partial);
+    const config = partial.blueprint ? await blueprintCli(partial.blueprint, partial) : await cli(partial);
 
     const isTurborepo = config.apps.length > 1;
 
