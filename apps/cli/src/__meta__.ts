@@ -530,6 +530,8 @@ export const META: Meta = {
       },
     },
   },
+
+  blueprints: {},
 } as const satisfies Meta;
 
 export type ProjectCategoryName = keyof typeof META.project;

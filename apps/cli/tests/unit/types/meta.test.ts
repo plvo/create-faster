@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { META } from '@/__meta__';
 import type { EnvScope, EnvVar, MetaAddon, MetaProjectCategory } from '@/types/meta';
 
 describe('MetaAddon types', () => {
@@ -100,6 +101,13 @@ describe('MetaAddon types', () => {
       monoScope: [{ pkg: 'auth' }, 'app'],
     };
     expect(envVar.monoScope).toHaveLength(2);
+  });
+});
+
+describe('META.blueprints validation', () => {
+  test('blueprints section exists', () => {
+    expect(META.blueprints).toBeDefined();
+    expect(typeof META.blueprints).toBe('object');
   });
 });
 

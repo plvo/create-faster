@@ -73,6 +73,17 @@ export interface MetaProject {
   tooling: MetaProjectCategory;
 }
 
+export interface MetaBlueprint {
+  label: string;
+  hint: string;
+  context: {
+    apps: { appName: string; stackName: StackName; libraries: string[] }[];
+    project: { database?: string; orm?: string; linter?: string; tooling: string[] };
+  };
+  packageJson?: PackageJsonConfig;
+  envs?: EnvVar[];
+}
+
 export interface Meta {
   stacks: Record<StackName, MetaStack>;
   libraries: Record<string, MetaAddon>;
@@ -80,4 +91,5 @@ export interface Meta {
   repo: {
     stacks: Record<RepoType, MetaRepoStack>;
   };
+  blueprints: Record<string, MetaBlueprint>;
 }
