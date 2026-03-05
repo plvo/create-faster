@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { intro, log, outro } from '@clack/prompts';
+import { cancel, intro, isCancel, log, outro, select } from '@clack/prompts';
+import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
@@ -17,7 +18,51 @@ async function main() {
   intro(INTRO_MESSAGE);
 
   try {
-    const config = partial.blueprint ? await blueprintCli(partial.blueprint, partial) : await cli(partial);
+    let config: Omit<TemplateContext, 'repo'>;
+
+    if (partial.blueprint) {
+      config = await blueprintCli(partial.blueprint, partial);
+    } else {
+      const hasFlags = Object.keys(partial).length > 0;
+      const hasBlueprints = Object.keys(META.blueprints).length > 0;
+
+      if (!hasFlags && hasBlueprints) {
+        const mode = await select({
+          message: 'What would you like to create?',
+          options: [
+            { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
+            { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },
+          ],
+        });
+
+        if (isCancel(mode)) {
+          cancel('👋 Bye');
+          process.exit(0);
+        }
+
+        if (mode === 'blueprint') {
+          const blueprintName = await select({
+            message: 'Choose a template:',
+            options: Object.entries(META.blueprints).map(([name, bp]) => ({
+              value: name,
+              label: bp.label,
+              hint: bp.hint,
+            })),
+          });
+
+          if (isCancel(blueprintName)) {
+            cancel('👋 Bye');
+            process.exit(0);
+          }
+
+          config = await blueprintCli(blueprintName as string, partial);
+        } else {
+          config = await cli(partial);
+        }
+      } else {
+        config = await cli(partial);
+      }
+    }
 
     const isTurborepo = config.apps.length > 1;
 

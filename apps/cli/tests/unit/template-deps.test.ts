@@ -34,6 +34,10 @@ function collectAllDeclaredPackages(): Set<string> {
     }
   }
 
+  for (const blueprint of Object.values(META.blueprints)) {
+    addDeps(blueprint.packageJson);
+  }
+
   return packages;
 }
 
