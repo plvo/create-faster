@@ -78,6 +78,7 @@ Single source of truth for all stacks, libraries, and project addons:
 - `META.libraries`: Per-app addons (shadcn, better-auth, etc.) with category/support/require/mono/packageJson/envs
 - `META.project`: Project-level categories (database, orm, linter, tooling) with prompt config and options
 - `META.repo`: Repository types (single, turborepo)
+- `META.blueprints`: Pre-composed project templates with preset context, deps, and envs
 - Addons declare `packageJson` for dependencies and `envs` for environment variables
 - Category-level `require` (e.g., orm requires database)
 - Addon-level `require` (e.g., husky requires git, better-auth requires orm)
@@ -89,12 +90,13 @@ Single source of truth for all stacks, libraries, and project addons:
 - `EnvVar`: `{ value: string; monoScope: EnvScope[] }` — env variable declaration
 - `MetaAddon`: Addon metadata (label, hint, category, support, require, mono, packageJson, envs)
 - `MetaProjectCategory`: Project category with prompt config and options
+- `MetaBlueprint`: Blueprint metadata (label, hint, context, packageJson, envs)
 - `MetaStack`: Stack metadata (type, label, hint, packageJson)
 
 ### types/ctx.ts
 - `AppContext`: `{ appName, stackName, libraries }`
 - `ProjectContext`: `{ database?, orm?, linter?, tooling[] }`
-- `TemplateContext`: Full context with projectName, repo, apps[], project, git, pm
+- `TemplateContext`: Full context with projectName, repo, apps[], project, git, pm, blueprint?
 - `PackageManager`: `'bun' | 'npm' | 'pnpm' | undefined`
 
 ### flags.ts
@@ -210,6 +212,11 @@ Libraries are grouped by category in the interactive prompt (UI, Content, Auth, 
 - Post-generation hooks with graceful error handling
 - Template naming: `__` prefix for special files
 - **Programmatic env generation**: Env vars declared in META, `.env.example` files generated per scope (pkg/app/root)
+- **Blueprints**: Pre-composed project templates with preset stacks/libs/addons + application code
+  - `--blueprint` CLI flag with mutual exclusion against composition flags
+  - Interactive "template vs custom" prompt when blueprints exist
+  - Blueprint template resolution with override semantics (blueprint files win over structural)
+  - Dashboard blueprint: Next.js + shadcn + better-auth + tanstack-query + drizzle + postgres
 
 ### 🚧 In Progress
 - More Hono templates & middleware
@@ -233,6 +240,7 @@ templates/
 ├── project/orm/{provider}/  # Prisma, Drizzle
 ├── project/linter/{linter}/ # Biome, ESLint
 ├── project/tooling/{tool}/  # Husky
+├── blueprints/{blueprint}/   # Blueprint application code (override semantics)
 └── repo/{type}/             # Single, Turborepo configs
 ```
 
@@ -374,6 +382,10 @@ bunx create-faster myapp \
 
 ### Available Flags
 
+- `--blueprint <name>`: Use a blueprint template (mutually exclusive with --app/--database/--orm/--linter/--tooling)
+  - Example: `--blueprint dashboard`
+  - Blueprints define full project composition (apps, libraries, project config)
+
 - `--app <name:stack:modules>`: Add app (repeatable for multi-app)
   - Format: `name:stack` or `name:stack:module1,module2`
   - Example: `--app web:nextjs:shadcn,mdx`
@@ -431,3 +443,10 @@ This allows easy reproduction of the exact same project setup.
 2. Create `templates/modules/{framework}/{module}/` directory
 3. Add frontmatter for path/scope override if needed
 4. Test module selection in CLI
+
+### Add Blueprint
+1. Add entry to `META.blueprints` in `__meta__.ts` with label, hint, context (apps + project), optional packageJson and envs
+2. Create `templates/blueprints/{blueprint-name}/` directory with `.hbs` template files
+3. Blueprint templates override structural templates with the same destination path
+4. Use frontmatter for path/scope configuration (same as libraries)
+5. Test with `bun run dev:cli` and `--blueprint {name}` flag

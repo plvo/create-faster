@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import type { TemplateFrontmatter } from '@/lib/frontmatter';
-import { resolveAddonNames, resolveLibraryDestination, resolveProjectAddonDestination } from '@/lib/template-resolver';
+import {
+  getAllTemplatesForContext,
+  resolveAddonNames,
+  resolveLibraryDestination,
+  resolveProjectAddonDestination,
+} from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('resolveLibraryDestination', () => {
@@ -138,5 +143,38 @@ describe('resolveProjectAddonDestination', () => {
     const addon = META.project.linter.options.eslint;
     const result = resolveProjectAddonDestination('base.js', addon, singleCtx, {});
     expect(result).toBe('base.js');
+  });
+});
+
+describe('blueprint template resolution', () => {
+  test('getAllTemplatesForContext works with blueprint set', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['shadcn', 'better-auth', 'tanstack-query'] }],
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
+      git: false,
+      blueprint: 'dashboard',
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    expect(templates).toBeDefined();
+    expect(Array.isArray(templates)).toBe(true);
+  });
+
+  test('blueprint templates have no duplicate destinations', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint: 'dashboard',
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const destinations = templates.map((t) => t.destination);
+    const unique = new Set(destinations);
+    expect(unique.size).toBe(destinations.length);
   });
 });

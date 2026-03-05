@@ -530,6 +530,39 @@ export const META: Meta = {
       },
     },
   },
+
+  blueprints: {
+    dashboard: {
+      label: 'Dashboard',
+      hint: 'Internal CRM-style dashboard with auth, sidebar, and admin panel',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'better-auth', 'tanstack-query'],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+          linter: 'biome',
+          tooling: [],
+        },
+      },
+      packageJson: {
+        dependencies: {
+          recharts: '^2.15.0',
+        },
+      },
+      envs: [
+        {
+          value: 'ADMIN_EMAIL=admin@example.com',
+          monoScope: ['app'],
+        },
+      ],
+    },
+  },
 } as const satisfies Meta;
 
 export type ProjectCategoryName = keyof typeof META.project;

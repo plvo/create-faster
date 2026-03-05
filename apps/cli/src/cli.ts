@@ -149,6 +149,82 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   return ctx;
 }
 
+export async function blueprintCli(
+  blueprintName: string,
+  partial?: Partial<TemplateContext>,
+): Promise<Omit<TemplateContext, 'repo'>> {
+  const blueprint = META.blueprints[blueprintName];
+  if (!blueprint) {
+    cancel(`Blueprint "${blueprintName}" not found`);
+    process.exit(1);
+  }
+
+  const progress = new Progress(['Project', 'Install']);
+
+  const ctx: Omit<TemplateContext, 'repo'> = {
+    projectName: '',
+    apps: blueprint.context.apps.map((app) => ({ ...app })),
+    project: { ...blueprint.context.project },
+    git: false,
+    blueprint: blueprintName,
+  };
+
+  if (partial?.projectName) {
+    ctx.projectName = partial.projectName;
+    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
+    const fullPath = join(process.cwd(), partial.projectName);
+    if (existsSync(fullPath)) {
+      cancel(`Directory "${partial.projectName}" already exists.`);
+      process.exit(1);
+    }
+  } else {
+    ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
+      placeholder: 'my-app',
+      initialValue: 'my-app',
+      validate: (value) => {
+        const trimmed = value.trim();
+        if (!trimmed) return 'Project name is required';
+        const fullPath = join(process.cwd(), trimmed);
+        if (existsSync(fullPath)) {
+          return `Directory "${trimmed}" already exists.`;
+        }
+      },
+    });
+  }
+
+  log.info(`${color.green('✓')} Using blueprint: ${color.bold(blueprint.label)}`);
+  log.info(
+    `${color.gray('  Stack:')} ${ctx.apps.map((a) => `${a.appName} (${META.stacks[a.stackName as StackName]?.label})`).join(', ')}`,
+  );
+  progress.next();
+
+  if (partial?.git !== undefined) {
+    ctx.git = partial.git;
+  } else {
+    ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
+      initialValue: true,
+    });
+  }
+
+  if (partial?.skipInstall) {
+    ctx.skipInstall = true;
+  } else if (partial?.pm !== undefined) {
+    ctx.pm = partial.pm;
+  } else {
+    ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
+      options: [
+        { label: 'Install with bun', value: 'bun' },
+        { label: 'Install with pnpm', value: 'pnpm' },
+        { label: 'Install with npm', value: 'npm' },
+        { label: 'Skip installation', value: undefined },
+      ],
+    });
+  }
+  progress.next();
+
+  return ctx;
+}
+
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
   const filtered = ctx.project.tooling.filter((toolingName) => {
     const addon = META.project.tooling.options[toolingName];

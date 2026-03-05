@@ -207,6 +207,51 @@ function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
   });
 }
 
+function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContext): TemplateFile[] {
+  const blueprintDir = join(TEMPLATES_DIR, 'blueprints', blueprintName);
+  const files = scanDirectory(blueprintDir);
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
+    const source = join(blueprintDir, file);
+
+    const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
+    if (fileSuffix) {
+      const hasStack = ctx.apps.some((app) => app.stackName === fileSuffix);
+      if (!hasStack) continue;
+    }
+
+    const { frontmatter, only } = readFrontmatter(source);
+    if (shouldSkipTemplate(only, ctx)) continue;
+
+    const transformedPath = transformFilename(fileSuffix ? cleanFilename : file);
+    const isTurborepo = ctx.repo === 'turborepo';
+
+    let destination: string;
+    if (!isTurborepo) {
+      destination = frontmatter.path ?? transformedPath;
+    } else {
+      const scope = frontmatter.mono?.scope ?? 'app';
+      const filePath = frontmatter.mono?.path ?? transformedPath;
+
+      switch (scope) {
+        case 'root':
+          destination = filePath;
+          break;
+        default: {
+          const appName = ctx.apps[0]?.appName ?? ctx.projectName;
+          destination = `apps/${appName}/${filePath}`;
+          break;
+        }
+      }
+    }
+
+    templates.push({ source, destination });
+  }
+
+  return templates;
+}
+
 export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
   const templates: TemplateFile[] = [];
 
@@ -238,6 +283,13 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
   }
   for (const tooling of ctx.project.tooling) {
     templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));
+  }
+
+  if (ctx.blueprint) {
+    const blueprintTemplates = resolveTemplatesForBlueprint(ctx.blueprint, ctx);
+    const blueprintDestinations = new Set(blueprintTemplates.map((t) => t.destination));
+    const filtered = templates.filter((t) => !blueprintDestinations.has(t.destination));
+    return [...filtered, ...blueprintTemplates];
   }
 
   return templates;

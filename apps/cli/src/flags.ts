@@ -11,6 +11,7 @@ import type { StackName } from '@/types/meta';
 interface ParsedFlags {
   projectName?: string;
   app?: string[];
+  blueprint?: string;
   database?: string;
   orm?: string;
   linter?: string;
@@ -38,6 +39,10 @@ export function parseFlags(): Partial<TemplateContext> {
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
     .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect, [])
+    .option(
+      '--blueprint <name>',
+      `Use a blueprint template (${Object.keys(META.blueprints).join(', ') || 'none available'})`,
+    )
     .option('--database <name>', `Database provider (${dbNames})`)
     .option('--orm <name>', `ORM provider (${ormNames})`)
     .option('--linter <name>', `Linter (${linterNames})`)
@@ -57,6 +62,9 @@ ${color.bold('Examples:')}
   ${color.gray('Multi apps (turborepo):')}
     $ ${color.blue('npx create-faster myapp')} --app web:nextjs:shadcn --app mobile:expo:nativewind
     $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --database postgres --orm drizzle
+
+  ${color.gray('Blueprint:')}
+    $ ${color.blue('npx create-faster myapp')} --blueprint dashboard
 
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
   ${color.gray('Available libraries:')} ${libraryNames}
@@ -86,6 +94,33 @@ ${color.bold('Examples:')}
 
   if (flags.app && flags.app.length > 0) {
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
+  }
+
+  if (flags.blueprint) {
+    const blueprint = META.blueprints[flags.blueprint];
+    if (!blueprint) {
+      printError(
+        `Invalid blueprint '${flags.blueprint}'`,
+        `Available blueprints: ${Object.keys(META.blueprints).join(', ') || 'none'}`,
+      );
+      process.exit(1);
+    }
+
+    const conflicting = ['app', 'database', 'orm', 'linter', 'tooling'].filter((f) => {
+      const val = flags[f as keyof ParsedFlags];
+      return val !== undefined && (!Array.isArray(val) || val.length > 0);
+    });
+    if (conflicting.length > 0) {
+      printError(
+        `--blueprint cannot be combined with --${conflicting[0]}`,
+        'Blueprint defines the full project composition',
+      );
+      process.exit(1);
+    }
+
+    partial.blueprint = flags.blueprint;
+    partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
+    partial.project = { ...blueprint.context.project };
   }
 
   const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);

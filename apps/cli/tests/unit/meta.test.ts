@@ -185,3 +185,31 @@ describe('META env vars', () => {
     expect(META.project.linter.options.biome.envs).toBeUndefined();
   });
 });
+
+describe('META.blueprints.dashboard', () => {
+  test('dashboard blueprint is defined', () => {
+    expect(META.blueprints.dashboard).toBeDefined();
+  });
+
+  test('dashboard has valid context', () => {
+    const bp = META.blueprints.dashboard;
+    expect(bp.context.apps.length).toBeGreaterThan(0);
+    expect(bp.context.apps[0].stackName).toBe('nextjs');
+    expect(bp.context.apps[0].libraries).toContain('shadcn');
+    expect(bp.context.apps[0].libraries).toContain('better-auth');
+  });
+
+  test('dashboard libraries exist and are compatible with their stack', () => {
+    const bp = META.blueprints.dashboard;
+    for (const app of bp.context.apps) {
+      for (const lib of app.libraries) {
+        const library = META.libraries[lib];
+        expect(library, `library ${lib} must exist in META`).toBeDefined();
+        const stacks = library.support?.stacks;
+        if (stacks && stacks !== 'all') {
+          expect(stacks, `library ${lib} must support ${app.stackName}`).toContain(app.stackName);
+        }
+      }
+    }
+  });
+});

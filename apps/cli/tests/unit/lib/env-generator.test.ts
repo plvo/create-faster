@@ -140,3 +140,21 @@ describe('collectEnvGroups', () => {
     expect(groups[0].path).toBe('.env');
   });
 });
+
+describe('blueprint env generation', () => {
+  test('collects blueprint env vars into .env.example', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-bp',
+      repo: 'single',
+      apps: [{ appName: 'test-bp', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint: 'dashboard',
+    };
+
+    const files = collectEnvFiles(ctx);
+    expect(files.length).toBeGreaterThan(0);
+    const envContent = files[0].content;
+    expect(envContent).toContain('ADMIN_EMAIL');
+  });
+});

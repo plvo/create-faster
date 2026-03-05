@@ -23,6 +23,7 @@ export interface TemplateContext {
   git: boolean;
   pm?: PackageManager;
   skipInstall?: boolean;
+  blueprint?: string;
 }
 
 export interface TemplateFile {
