@@ -5,11 +5,11 @@ mono:
 ---
 {{#if (has "orm" "drizzle")}}
 import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 {{/if}}
 {{#if (has "orm" "prisma")}}
 import { prisma } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
-import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { prismaAdapter } from '@better-auth/prisma-adapter';
 {{/if}}
 import { betterAuth } from 'better-auth';
 {{#if (has "stack" "nextjs")}}

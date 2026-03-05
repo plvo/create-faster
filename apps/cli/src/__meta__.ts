@@ -188,7 +188,9 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
-          'better-auth': '^1.4.10',
+          'better-auth': '^1.5.3',
+          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, '^1.5.3'),
+          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.5.3'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         exports: {
@@ -364,11 +366,11 @@ export const META: Meta = {
             types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
             files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
-              'drizzle-orm': '^0.38.3',
+              'drizzle-orm': '^0.45.1',
             },
             devDependencies: {
               '@types/node': '^22',
-              'drizzle-kit': '^0.30.1',
+              'drizzle-kit': '^0.31.9',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
