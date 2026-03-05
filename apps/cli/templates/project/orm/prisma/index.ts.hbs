@@ -3,19 +3,37 @@ path: src/lib/db/index.ts
 mono:
   path: src/index.ts
 ---
-import { PrismaClient } from {{#if (isMono)}}'../generated/prisma'{{else}}'@prisma/client'{{/if}};
+{{#if (has "database" "postgres")}}
+import { PrismaPg } from '@prisma/adapter-pg';
+{{/if}}
+{{#if (has "database" "mysql")}}
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+{{/if}}
+import { PrismaClient } from '{{#if (isMono)}}../generated/prisma{{else}}../../../generated/prisma{{/if}}';
+
+{{#if (has "database" "postgres")}}
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+{{/if}}
+{{#if (has "database" "mysql")}}
+const url = new URL(process.env.DATABASE_URL!);
+const adapter = new PrismaMariaDb({
+  host: url.hostname,
+  port: Number(url.port),
+  user: url.username,
+  password: url.password,
+  database: url.pathname.slice(1),
+});
+{{/if}}
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-export * from {{#if (isMono)}}'../generated/prisma'{{else}}'@prisma/client'{{/if}};
+export * from '{{#if (isMono)}}../generated/prisma{{else}}../../../generated/prisma{{/if}}';
 
 // Type helpers
 export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
