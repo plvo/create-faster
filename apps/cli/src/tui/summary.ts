@@ -6,18 +6,22 @@ import type { ProjectContext, TemplateContext } from '@/types/ctx';
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
   let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
 
-  for (const app of ctx.apps) {
-    const librariesStr = app.libraries.length > 0 ? `:${app.libraries.join(',')}` : '';
-    flagsCommand += ` --app ${app.appName}:${app.stackName}${librariesStr}`;
-  }
+  if (ctx.blueprint) {
+    flagsCommand += ` --blueprint ${ctx.blueprint}`;
+  } else {
+    for (const app of ctx.apps) {
+      const librariesStr = app.libraries.length > 0 ? `:${app.libraries.join(',')}` : '';
+      flagsCommand += ` --app ${app.appName}:${app.stackName}${librariesStr}`;
+    }
 
-  for (const projectKey of Object.keys(ctx.project) as (keyof ProjectContext)[]) {
-    if (Array.isArray(ctx.project[projectKey])) {
-      for (const value of ctx.project[projectKey]) {
-        flagsCommand += ` --${projectKey} ${value}`;
+    for (const projectKey of Object.keys(ctx.project) as (keyof ProjectContext)[]) {
+      if (Array.isArray(ctx.project[projectKey])) {
+        for (const value of ctx.project[projectKey]) {
+          flagsCommand += ` --${projectKey} ${value}`;
+        }
+      } else {
+        flagsCommand += ` --${projectKey} ${ctx.project[projectKey]}`;
       }
-    } else {
-      flagsCommand += ` --${projectKey} ${ctx.project[projectKey]}`;
     }
   }
 
