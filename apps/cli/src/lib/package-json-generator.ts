@@ -170,6 +170,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
+  if (ctx.blueprint) {
+    const blueprint = META.blueprints[ctx.blueprint];
+    if (blueprint?.packageJson) {
+      merged = mergeResolved(ctx, merged, blueprint.packageJson);
+    }
+  }
+
   if (isTurborepo) {
     merged.devDependencies = {
       ...merged.devDependencies,

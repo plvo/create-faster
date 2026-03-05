@@ -71,6 +71,17 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
     }
   }
 
+  if (ctx.blueprint) {
+    const blueprint = META.blueprints[ctx.blueprint];
+    if (blueprint?.envs) {
+      for (const env of blueprint.envs) {
+        for (const scope of env.monoScope) {
+          envs.push({ value: env.value, scope, source: 'project' });
+        }
+      }
+    }
+  }
+
   return envs;
 }
 

@@ -140,3 +140,19 @@ describe('collectEnvGroups', () => {
     expect(groups[0].path).toBe('.env');
   });
 });
+
+describe('blueprint env generation', () => {
+  test('does not crash with blueprint set and no blueprint envs', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-bp',
+      repo: 'single',
+      apps: [{ appName: 'test-bp', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint: 'dashboard',
+    };
+
+    const files = collectEnvFiles(ctx);
+    expect(Array.isArray(files)).toBe(true);
+  });
+});

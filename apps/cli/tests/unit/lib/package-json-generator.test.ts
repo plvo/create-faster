@@ -961,3 +961,19 @@ describe('Husky lint-staged (turborepo)', () => {
     expect(result.content['lint-staged']).toBeUndefined();
   });
 });
+
+describe('blueprint package.json generation', () => {
+  test('does not crash with blueprint set and no blueprint deps', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-bp',
+      repo: 'single',
+      apps: [{ appName: 'test-bp', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint: 'dashboard',
+    };
+
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.dependencies).toBeDefined();
+  });
+});
