@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { cancel, intro, isCancel, log, outro, select } from '@clack/prompts';
+import { intro, log, outro } from '@clack/prompts';
 import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
@@ -9,6 +9,7 @@ import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 import { blueprintCli, cli } from './cli';
 import { parseFlags } from './flags';
+import { promptSelect } from './prompts/base-prompts';
 
 async function main() {
   const partial = parseFlags();
@@ -28,22 +29,15 @@ async function main() {
       const hasBlueprints = Object.keys(META.blueprints).length > 0;
 
       if (!hasCompositionFlags && hasBlueprints) {
-        const mode = await select({
-          message: 'What would you like to create?',
+        const mode = await promptSelect<string>(undefined, 'What would you like to create?', partial, {
           options: [
             { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
             { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },
           ],
         });
 
-        if (isCancel(mode)) {
-          cancel('👋 Bye');
-          process.exit(0);
-        }
-
         if (mode === 'blueprint') {
-          const blueprintName = await select({
-            message: 'Choose a template:',
+          const blueprintName = await promptSelect<string>(undefined, 'Choose a template:', partial, {
             options: Object.entries(META.blueprints).map(([name, bp]) => ({
               value: name,
               label: bp.label,
@@ -51,12 +45,7 @@ async function main() {
             })),
           });
 
-          if (isCancel(blueprintName)) {
-            cancel('👋 Bye');
-            process.exit(0);
-          }
-
-          config = await blueprintCli(blueprintName as string, partial);
+          config = await blueprintCli(blueprintName, partial);
         } else {
           config = await cli(partial);
         }
