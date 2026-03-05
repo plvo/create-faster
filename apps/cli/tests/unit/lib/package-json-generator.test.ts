@@ -963,7 +963,7 @@ describe('Husky lint-staged (turborepo)', () => {
 });
 
 describe('blueprint package.json generation', () => {
-  test('does not crash with blueprint set and no blueprint deps', () => {
+  test('merges blueprint dependencies into app package.json', () => {
     const ctx: TemplateContext = {
       projectName: 'test-bp',
       repo: 'single',
@@ -974,6 +974,6 @@ describe('blueprint package.json generation', () => {
     };
 
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    expect(result.content.dependencies).toBeDefined();
+    expect(result.content.dependencies?.recharts).toBeDefined();
   });
 });

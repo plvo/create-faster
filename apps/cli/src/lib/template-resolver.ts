@@ -238,11 +238,6 @@ function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContex
         case 'root':
           destination = filePath;
           break;
-        case 'pkg': {
-          const pkgName = frontmatter.mono?.name ?? 'unknown';
-          destination = `packages/${pkgName}/${filePath}`;
-          break;
-        }
         default: {
           const appName = ctx.apps[0]?.appName ?? ctx.projectName;
           destination = `apps/${appName}/${filePath}`;

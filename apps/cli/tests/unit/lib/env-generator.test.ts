@@ -142,7 +142,7 @@ describe('collectEnvGroups', () => {
 });
 
 describe('blueprint env generation', () => {
-  test('does not crash with blueprint set and no blueprint envs', () => {
+  test('collects blueprint env vars into .env.example', () => {
     const ctx: TemplateContext = {
       projectName: 'test-bp',
       repo: 'single',
@@ -153,6 +153,8 @@ describe('blueprint env generation', () => {
     };
 
     const files = collectEnvFiles(ctx);
-    expect(Array.isArray(files)).toBe(true);
+    expect(files.length).toBeGreaterThan(0);
+    const envContent = files[0].content;
+    expect(envContent).toContain('ADMIN_EMAIL');
   });
 });

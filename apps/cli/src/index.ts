@@ -23,10 +23,11 @@ async function main() {
     if (partial.blueprint) {
       config = await blueprintCli(partial.blueprint, partial);
     } else {
-      const hasFlags = Object.keys(partial).length > 0;
+      const hasCompositionFlags =
+        'apps' in partial || 'project' in partial || 'git' in partial || 'pm' in partial || 'skipInstall' in partial;
       const hasBlueprints = Object.keys(META.blueprints).length > 0;
 
-      if (!hasFlags && hasBlueprints) {
+      if (!hasCompositionFlags && hasBlueprints) {
         const mode = await select({
           message: 'What would you like to create?',
           options: [
