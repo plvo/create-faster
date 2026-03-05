@@ -364,11 +364,11 @@ export const META: Meta = {
             types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
             files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
-              'drizzle-orm': '^0.38.3',
+              'drizzle-orm': '^0.45.1',
             },
             devDependencies: {
               '@types/node': '^22',
-              'drizzle-kit': '^0.30.1',
+              'drizzle-kit': '^0.31.9',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
