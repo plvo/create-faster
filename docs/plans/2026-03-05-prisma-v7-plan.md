@@ -28,6 +28,7 @@ prisma: {
   mono: { scope: 'pkg', name: 'db' },
   packageJson: {
     dependencies: {
+      '@prisma/client': '^7.0.0',
       '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.0.0'),
       '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.0.0'),
       mariadb: $when({ database: 'mysql' }, '^3.0.0'),
@@ -52,7 +53,7 @@ prisma: {
 ```
 
 Changes from current:
-- Remove `@prisma/client` from dependencies
+- Update `@prisma/client` from `^6.13.0` to `^7.0.0` (kept: v7 generated code still imports `@prisma/client/runtime/*` internally)
 - Remove `postinstall: 'prisma generate'` script
 - Add `@prisma/adapter-pg: ^7.0.0` ($when postgres)
 - Add `@prisma/adapter-mariadb: ^7.0.0` ($when mysql)

@@ -22,7 +22,7 @@ database connectivity.
 | Driver adapters required for all databases | index.ts.hbs rewrite |
 | New `prisma.config.ts` required | New template |
 | `datasource` block loses `url = env("DATABASE_URL")` | schema.prisma.hbs |
-| `@prisma/client` no longer a runtime dependency | META deps |
+| `@prisma/client` stays as runtime dep (generated code imports from `@prisma/client/runtime/*`) | META deps |
 | `postinstall: prisma generate` no longer auto-runs | META scripts |
 | MySQL adapter uses `@prisma/adapter-mariadb` + `mariadb` | META deps |
 | New packages: `@prisma/adapter-pg`, `@prisma/adapter-mariadb` | META deps |
@@ -43,9 +43,7 @@ database connectivity.
 ```
 Update:
   prisma (devDep): ^6.13.0 -> ^7.0.0
-
-Remove:
-  @prisma/client (dep): ^6.13.0
+  @prisma/client (dep): ^6.13.0 -> ^7.0.0  (kept: generated code imports @prisma/client/runtime/*)
 
 Add (conditional):
   @prisma/adapter-pg: ^7.0.0       ($when postgres)
