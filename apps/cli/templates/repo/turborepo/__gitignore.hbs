@@ -33,6 +33,10 @@ build
 dist
 create-faster
 
+{{#if (has "orm" "prisma")}}
+# Prisma
+generated
+{{/if}}
 
 # Debug
 npm-debug.log*
