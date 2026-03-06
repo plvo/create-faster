@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+
+const DUMMY_ENV = 'DATABASE_URL="postgresql://localhost:5432/test"\n';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -32,6 +35,7 @@ describe('nextjs-prisma-postgres', () => {
 
     projectDir = join(tempDir, 'nextjs-prisma-pg');
     installResult = await runCommand(['bun', 'install'], projectDir);
+    await writeFile(join(projectDir, '.env'), DUMMY_ENV);
     const generateResult = await runCommand(['bun', 'run', 'db:generate'], projectDir);
     expect(generateResult.exitCode).toBe(0);
   }, TIMEOUT_INSTALL + 30_000);
@@ -97,6 +101,7 @@ describe('turbo-prisma-mysql', () => {
 
     projectDir = join(tempDir, 'turbo-prisma-mysql');
     installResult = await runCommand(['bun', 'install'], projectDir);
+    await writeFile(join(projectDir, 'packages/db/.env'), DUMMY_ENV);
     const generateResult = await runCommand(['bun', 'run', 'db:generate'], join(projectDir, 'packages/db'));
     expect(generateResult.exitCode).toBe(0);
   }, TIMEOUT_INSTALL + 30_000);

@@ -397,6 +397,7 @@ export const META: Meta = {
             },
             devDependencies: {
               '@types/node': '^22',
+              dotenv: '^16.0.0',
               prisma: '^7.0.0',
             },
             scripts: {
@@ -404,7 +405,7 @@ export const META: Meta = {
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',
               'db:studio': 'prisma studio',
-              'db:seed': 'bun run scripts/seed.ts',
+              'db:seed': 'prisma db seed',
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
