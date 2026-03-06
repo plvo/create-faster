@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.2](https://github.com/plvo/create-faster/compare/create-faster-v1.6.1...create-faster-v1.6.2) (2026-03-06)
+
+
+### Features
+
+* **blueprints:** introduce blueprint system ([#85](https://github.com/plvo/create-faster/issues/85)) ([0b5e8f0](https://github.com/plvo/create-faster/commit/0b5e8f01a854a404f048dddcbd57514678982aab))
+* **lib:** update better-auth v1.5.3 ([#87](https://github.com/plvo/create-faster/issues/87)) ([8caa845](https://github.com/plvo/create-faster/commit/8caa845aed86f943587d80f83060ecb664715a21))
+* **lib:** update Prisma to v7 with driver adapters ([#88](https://github.com/plvo/create-faster/issues/88)) ([1973386](https://github.com/plvo/create-faster/commit/19733865ca56c445fc41d0ac0131a9542c70e7d7))
+
 ## [1.6.1](https://github.com/plvo/create-faster/compare/create-faster-v1.6.0...create-faster-v1.6.1) (2026-03-02)
 
 
