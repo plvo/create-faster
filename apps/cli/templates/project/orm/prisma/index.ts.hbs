@@ -15,13 +15,13 @@ import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 {{/if}}
 {{#if (has "database" "mysql")}}
-const url = new URL(process.env.DATABASE_URL!);
+const _dbUrl = new URL(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
 const adapter = new PrismaMariaDb({
-  host: url.hostname,
-  port: Number(url.port),
-  user: url.username,
-  password: url.password,
-  database: url.pathname.slice(1),
+  host: _dbUrl.hostname,
+  port: Number(_dbUrl.port) || 3306,
+  user: _dbUrl.username,
+  password: _dbUrl.password,
+  database: _dbUrl.pathname.slice(1),
 });
 {{/if}}
 

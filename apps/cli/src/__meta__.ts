@@ -390,6 +390,7 @@ export const META: Meta = {
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
             dependencies: {
+              '@prisma/client': '^7.0.0',
               '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.0.0'),
               '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.0.0'),
               mariadb: $when({ database: 'mysql' }, '^3.0.0'),
