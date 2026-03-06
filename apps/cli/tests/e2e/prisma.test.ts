@@ -32,6 +32,7 @@ describe('nextjs-prisma-postgres', () => {
 
     projectDir = join(tempDir, 'nextjs-prisma-pg');
     installResult = await runCommand(['bun', 'install'], projectDir);
+    await runCommand(['bun', 'run', 'db:generate'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -95,6 +96,7 @@ describe('turbo-prisma-mysql', () => {
 
     projectDir = join(tempDir, 'turbo-prisma-mysql');
     installResult = await runCommand(['bun', 'install'], projectDir);
+    await runCommand(['bun', 'run', 'db:generate'], join(projectDir, 'packages/db'));
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
