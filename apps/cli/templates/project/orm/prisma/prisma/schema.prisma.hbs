@@ -2,10 +2,8 @@
 path: prisma/schema.prisma
 ---
 generator client {
-  provider = "prisma-client-js"
-  {{#if (isMono)}}
+  provider = "prisma-client"
   output   = "../generated/prisma"
-  {{/if}}
 }
 
 datasource db {
@@ -15,7 +13,6 @@ datasource db {
   {{#if (has "database" "mysql")}}
   provider = "mysql"
   {{/if}}
-  url      = env("DATABASE_URL")
 }
 
 model User {
