@@ -1,0 +1,17 @@
+---
+path: src/lib/db/schema.ts
+only: single
+---
+import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+
+const timeColumns = {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+};
+
+export const userTable = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  privyId: varchar('privy_id', { length: 255 }).notNull().unique(),
+  walletAddress: varchar('wallet_address', { length: 42 }),
+  ...timeColumns,
+});

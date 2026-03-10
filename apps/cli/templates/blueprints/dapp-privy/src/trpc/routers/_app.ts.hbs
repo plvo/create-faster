@@ -1,0 +1,17 @@
+---
+path: src/trpc/routers/_app.ts
+only: single
+---
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+import { router } from '@/trpc/init';
+import { helloRouter } from './hello';
+import { userRouter } from './user';
+
+export const appRouter = router({
+  hello: helloRouter,
+  user: userRouter,
+});
+
+export type AppRouter = typeof appRouter;
+export type RouterInput = inferRouterInputs<AppRouter>;
+export type RouterOutput = inferRouterOutputs<AppRouter>;

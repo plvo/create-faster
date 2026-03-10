@@ -1,0 +1,36 @@
+---
+path: src/trpc/routers/user.ts
+only: single
+---
+import { z } from 'zod';
+import { eq } from 'drizzle-orm';
+import { userTable } from '@/lib/db/schema';
+import { protectedProcedure, router } from '@/trpc/init';
+
+export const userRouter = router({
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.privyId, ctx.privyUserId))
+      .limit(1);
+    return user ?? null;
+  }),
+
+  sync: protectedProcedure
+    .input(z.object({ walletAddress: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [user] = await ctx.db
+        .insert(userTable)
+        .values({
+          privyId: ctx.privyUserId,
+          walletAddress: input.walletAddress,
+        })
+        .onConflictDoUpdate({
+          target: userTable.privyId,
+          set: { walletAddress: input.walletAddress, updatedAt: new Date() },
+        })
+        .returning();
+      return user;
+    }),
+});

@@ -1,0 +1,31 @@
+import { type NextRequest, NextResponse } from 'next/server';
+
+const PUBLIC_ROUTES = ['/'];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => pathname === route);
+}
+
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const token = request.cookies.get('privy-token');
+  const isOAuthCallback = request.nextUrl.searchParams.has('privy_oauth_code');
+  const isAuthenticated = Boolean(token);
+
+  console.log(`PROXY "${pathname}" | "${isAuthenticated ? 'authenticated' : 'X'}"`);
+
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (isAuthenticated && isPublicRoute(pathname) && !isOAuthCallback) {
+    return NextResponse.redirect(new URL('/protected', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|manifest.webmanifest|_next/image|.*\\.(?:png|jpg|jpeg|svg|ico|gif|webp|txt|json|xml|css|js|woff|woff2)$).*)'],
+};
