@@ -305,7 +305,7 @@ WagmiProvider → TRPCReactProvider (has QueryClientProvider) → RainbowKitAuth
 - `createAuthenticationAdapter` bridges RainbowKit SIWE flow → better-auth SIWE endpoints
 - `createMessage` stores address/chainId for use in `verify` (RainbowKit's verify only passes message + signature)
 
-**NOTE:** The `authClient.siwe.getNonce()` API is assumed based on better-auth plugin patterns. If this method doesn't exist at runtime, check better-auth SIWE docs for the correct nonce endpoint path (likely `GET /api/auth/siwe/nonce`) and use a direct fetch instead.
+**NOTE:** The correct API is `authClient.siwe.nonce({ walletAddress })` (not `getNonce()`). Uses wagmi's imperative `getAccount(wagmiConfig)` to get the connected wallet address since RainbowKit calls `getNonce` after wallet connection but before `createMessage`.
 
 - [ ] **Step 1: Create the template file**
 
@@ -323,6 +323,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { TRPCReactProvider } from '@/trpc/providers';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
+import { getAccount } from 'wagmi/actions';
 import { createSiweMessage } from 'viem/siwe';
 import { useMemo } from 'react';
 import type React from 'react';
@@ -346,7 +347,8 @@ export function AppProviders({ children }: AppProvidersProps) {
 
     return createAuthenticationAdapter({
       getNonce: async () => {
-        const { data } = await authClient.siwe.getNonce();
+        const account = getAccount(wagmiConfig);
+        const { data } = await authClient.siwe.nonce({ walletAddress: account.address ?? '' });
         return data?.nonce ?? '';
       },
       createMessage: ({ nonce, address, chainId }) => {
@@ -745,10 +747,7 @@ git commit -m "fix(blueprints): dapp-rainbowkit template adjustments from testin
 RainbowKit's `getDefaultConfig` requires a WalletConnect Cloud project ID for WalletConnect-based wallets (QR scanning). This was discovered during implementation research — the design spec originally said "Extra envs: None". The env var `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` has been added to the META entry.
 
 ### better-auth SIWE client API
-The `authClient.siwe.getNonce()` method is assumed based on better-auth's plugin pattern (server plugins expose client methods via `siweClient()`). If this method doesn't exist at runtime, check:
-1. `node_modules/better-auth/client/plugins` for the SIWE client exports
-2. better-auth SIWE docs for the correct nonce endpoint path
-3. Fallback: `fetch('/api/auth/siwe/nonce')` directly
+The correct API is `authClient.siwe.nonce({ walletAddress, chainId? })` — not `getNonce()`. The `walletAddress` parameter is required. Since RainbowKit's `getNonce` callback provides no parameters, we use wagmi's imperative `getAccount(wagmiConfig)` to get the connected wallet address (wallet is always connected by the time SIWE flow starts). `authClient.siwe.verify()` works as expected.
 
 ### Single-repo only
 All blueprint overrides use `only: single` (or no frontmatter, which defaults to both). This matches the dapp-privy pattern. Turborepo support would require additional overrides for package-scoped files.
