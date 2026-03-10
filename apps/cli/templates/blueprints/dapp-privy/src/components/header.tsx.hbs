@@ -1,0 +1,42 @@
+'use client';
+
+import { usePrivy } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
+
+export function Header() {
+  const { ready, authenticated, login, logout } = usePrivy();
+  const { address } = useAccount();
+
+  return (
+    <header className='flex h-14 items-center justify-between border-b px-6'>
+      <h2 className='text-lg font-bold'>{{projectName}}</h2>
+      <div className='flex items-center gap-4'>
+        {authenticated ? (
+          <>
+            {address && (
+              <span className='font-mono text-sm text-muted-foreground'>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </span>
+            )}
+            <button
+              onClick={logout}
+              type='button'
+              className='rounded-md border px-3 py-1.5 text-sm hover:bg-muted'
+            >
+              Disconnect
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={login}
+            type='button'
+            disabled={!ready}
+            className='rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
+          >
+            Connect
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}

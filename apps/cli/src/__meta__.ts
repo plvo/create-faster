@@ -537,6 +537,48 @@ export const META: Meta = {
   },
 
   blueprints: {
+    'dapp-privy': {
+      label: 'dApp (Privy)',
+      hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'next-themes', 'tanstack-query', 'trpc'],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+          linter: 'biome',
+          tooling: [],
+        },
+      },
+      packageJson: {
+        dependencies: {
+          '@privy-io/react-auth': '^3.16.0',
+          '@privy-io/wagmi': '^4.0.2',
+          '@privy-io/server-auth': '^1.32.5',
+          wagmi: '^3.5.0',
+          viem: '^2.47.0',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id',
+          monoScope: ['app'],
+        },
+        {
+          value: 'NEXT_PUBLIC_PRIVY_CLIENT_ID=your-privy-client-id',
+          monoScope: ['app'],
+        },
+        {
+          value: 'PRIVY_APP_SECRET=your-privy-app-secret',
+          monoScope: ['app'],
+        },
+      ],
+    },
     dashboard: {
       label: 'Dashboard',
       hint: 'Internal CRM-style dashboard with auth, sidebar, and admin panel',

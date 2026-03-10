@@ -1,0 +1,61 @@
+---
+path: src/trpc/init.ts
+only: single
+---
+import { PrivyClient } from '@privy-io/server-auth';
+import { db } from '@/lib/db';
+import { initTRPC, TRPCError } from '@trpc/server';
+import superjson from 'superjson';
+
+const privy = new PrivyClient(
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
+  process.env.PRIVY_APP_SECRET!,
+);
+
+function getTokenFromHeaders(headers: Headers): string | undefined {
+  const cookie = headers.get('cookie') ?? '';
+  const match = cookie.match(/privy-token=([^;]+)/);
+  return match?.[1];
+}
+
+export async function createTRPCContext(opts?: { headers?: Headers; req?: Request }) {
+  const headers = opts?.headers ?? opts?.req?.headers;
+  const token = headers ? getTokenFromHeaders(headers) : undefined;
+
+  let privyUserId: string | null = null;
+  if (token) {
+    try {
+      const claims = await privy.verifyAuthToken(token);
+      privyUserId = claims.userId;
+    } catch {
+      // Invalid or expired token
+    }
+  }
+
+  return { db, privyUserId };
+}
+
+type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
+
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+export const protectedProcedure = publicProcedure.use(async (opts) => {
+  if (!opts.ctx.privyUserId) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You must be authenticated to access this resource',
+    });
+  }
+
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      privyUserId: opts.ctx.privyUserId,
+    },
+  });
+});

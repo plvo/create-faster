@@ -1,0 +1,32 @@
+---
+only: single
+---
+import { db, userTable } from '../src/lib/db';
+
+async function seed() {
+  console.log('🌱 Seeding database...');
+
+  await db.delete(userTable);
+
+  const [user] = await db
+    .insert(userTable)
+    .values([
+      {
+        privyId: 'did:privy:example-user-1',
+        walletAddress: '0x0000000000000000000000000000000000000000',
+      },
+    ])
+    .returning();
+
+  console.log(`✅ Created user: ${user.privyId}`);
+  console.log('🎉 Seeding completed!');
+}
+
+seed()
+  .catch((error) => {
+    console.error('❌ Seeding failed:', error);
+    process.exit(1);
+  })
+  .finally(() => {
+    process.exit(0);
+  });
