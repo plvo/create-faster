@@ -11,6 +11,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { TRPCReactProvider } from '@/trpc/providers';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
+import { getAccount } from 'wagmi/actions';
 import { createSiweMessage } from 'viem/siwe';
 import { useMemo } from 'react';
 import type React from 'react';
@@ -34,7 +35,8 @@ export function AppProviders({ children }: AppProvidersProps) {
 
     return createAuthenticationAdapter({
       getNonce: async () => {
-        const { data } = await authClient.siwe.getNonce();
+        const account = getAccount(wagmiConfig);
+        const { data } = await authClient.siwe.nonce({ walletAddress: account.address ?? '' });
         return data?.nonce ?? '';
       },
       createMessage: ({ nonce, address, chainId }) => {
