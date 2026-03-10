@@ -1,4 +1,6 @@
+import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth/auth';
 
 const PUBLIC_ROUTES = ['/'];
 
@@ -9,14 +11,15 @@ function isPublicRoute(pathname: string): boolean {
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const token = request.cookies.get('better-auth.session_token');
-  const isAuthenticated = Boolean(token);
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  if (!isAuthenticated && !isPublicRoute(pathname)) {
+  if (!session && !isPublicRoute(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (isAuthenticated && isPublicRoute(pathname)) {
+  if (session && isPublicRoute(pathname)) {
     return NextResponse.redirect(new URL('/protected', request.url));
   }
 
