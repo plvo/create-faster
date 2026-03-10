@@ -18,7 +18,7 @@ export const userRouter = router({
   }),
 
   sync: protectedProcedure
-    .input(z.object({ walletAddress: z.string().nullable() }))
+    .input(z.object({ walletAddress: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const [user] = await ctx.db
         .insert(userTable)

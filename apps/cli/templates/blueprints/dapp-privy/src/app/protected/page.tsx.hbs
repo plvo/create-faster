@@ -15,7 +15,7 @@ export default function ProtectedPage() {
   const { data: dbUser } = useQuery(trpc.user.me.queryOptions());
 
   useEffect(() => {
-    syncUser({ walletAddress: address ?? null });
+    if (address) syncUser({ walletAddress: address });
   }, [syncUser, address]);
 
   return (
