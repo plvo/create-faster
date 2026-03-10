@@ -592,8 +592,6 @@ export const META: Meta = {
         project: {
           database: 'postgres',
           orm: 'drizzle',
-          linter: 'biome',
-          tooling: [],
         },
       },
       packageJson: {
