@@ -578,6 +578,38 @@ export const META: Meta = {
         },
       ],
     },
+    'dapp-rainbowkit': {
+      label: 'dApp (RainbowKit)',
+      hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'next-themes', 'better-auth', 'tanstack-query', 'trpc'],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+          linter: 'biome',
+          tooling: [],
+        },
+      },
+      packageJson: {
+        dependencies: {
+          '@rainbow-me/rainbowkit': '^2.2.0',
+          wagmi: '^2.19.0',
+          viem: '^2.38.0',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id',
+          monoScope: ['app'],
+        },
+      ],
+    },
     dashboard: {
       label: 'Dashboard',
       hint: 'Internal CRM-style dashboard with auth, sidebar, and admin panel',
