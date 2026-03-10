@@ -159,7 +159,7 @@ export async function blueprintCli(
     process.exit(1);
   }
 
-  const progress = new Progress(['Project', 'Install']);
+  const progress = new Progress(['Project', 'Extras', 'Install']);
 
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
@@ -198,6 +198,25 @@ export async function blueprintCli(
   );
   progress.next();
 
+  if (partial?.project?.linter) {
+    ctx.project.linter = partial.project.linter;
+    log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
+  } else if (!partial || !('project' in partial) || !partial.project?.linter) {
+    const linterResult = await promptProjectCategory('linter');
+    ctx.project.linter = linterResult as string | undefined;
+  }
+
+  if (partial?.project?.tooling && partial.project.tooling.length > 0) {
+    ctx.project.tooling = partial.project.tooling;
+    log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
+  } else if (!partial || !('project' in partial) || partial.project?.tooling === undefined) {
+    if (isProjectCategoryAvailable('tooling', ctx)) {
+      const toolingResult = await promptProjectCategory('tooling');
+      ctx.project.tooling = (toolingResult as string[]) ?? [];
+    }
+  }
+  progress.next();
+
   if (partial?.git !== undefined) {
     ctx.git = partial.git;
   } else {
@@ -205,6 +224,8 @@ export async function blueprintCli(
       initialValue: true,
     });
   }
+
+  filterToolingByRequirements(ctx);
 
   if (partial?.skipInstall) {
     ctx.skipInstall = true;

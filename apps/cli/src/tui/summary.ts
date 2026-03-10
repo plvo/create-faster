@@ -8,6 +8,12 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
+    if (ctx.project.linter) {
+      flagsCommand += ` --linter ${ctx.project.linter}`;
+    }
+    for (const tooling of ctx.project.tooling) {
+      flagsCommand += ` --tooling ${tooling}`;
+    }
   } else {
     for (const app of ctx.apps) {
       const librariesStr = app.libraries.length > 0 ? `:${app.libraries.join(',')}` : '';
