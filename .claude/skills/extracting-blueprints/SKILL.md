@@ -47,9 +47,10 @@ A blueprint is a **complete starter project** that combines:
 interface MetaBlueprint {
   label: string;
   hint: string;
+  category: string;
   context: {
     apps: { appName: string; stackName: StackName; libraries: string[] }[];
-    project: { database?: string; orm?: string; linter?: string; tooling: string[] };
+    project: { database?: string; orm?: string };
   };
   packageJson?: PackageJsonConfig;
   envs?: EnvVar[];
@@ -241,6 +242,7 @@ Based on Phase 4 (composition) and Phase 5 (research):
 'blueprint-name': {
   label: 'Display Name',
   hint: 'One-line description',
+  category: 'Category Name',
   context: {
     apps: [
       {
@@ -252,8 +254,6 @@ Based on Phase 4 (composition) and Phase 5 (research):
     project: {
       database: 'postgres',
       orm: 'drizzle',
-      linter: 'biome',
-      tooling: [],
     },
   },
   packageJson: {
