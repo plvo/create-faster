@@ -1,0 +1,97 @@
+---
+only: single
+---
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { betterAuth } from 'better-auth';
+import { generateRandomString } from 'better-auth/crypto';
+import { nextCookies } from 'better-auth/next-js';
+import { siwe } from 'better-auth/plugins';
+import { verifyMessage } from 'viem';
+
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    usePlural: false,
+    schema: {
+      user: userTable,
+      account: userAccountTable,
+      session: userSessionTable,
+      verification: userVerificationTable,
+    },
+  }),
+
+  plugins: [
+    nextCookies(),
+    siwe({
+      domain: new URL(process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').host,
+      emailDomainName: '{{projectName}}.app',
+      getNonce: async () => generateRandomString(32, 'a-z', 'A-Z', '0-9'),
+      verifyMessage: async ({ message, signature, address }) => {
+        try {
+          return await verifyMessage({
+            address: address as `0x${string}`,
+            message,
+            signature: signature as `0x${string}`,
+          });
+        } catch {
+          return false;
+        }
+      },
+    }),
+  ],
+  user: {
+    modelName: 'user',
+    fields: {
+      name: 'username',
+      email: 'email',
+      emailVerified: 'emailVerified',
+      image: 'avatarUrl',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  session: {
+    modelName: 'session',
+    fields: {
+      userId: 'userId',
+      token: 'token',
+      expiresAt: 'expiresAt',
+      ipAddress: 'ipAddress',
+      userAgent: 'userAgent',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+    expiresIn: 15 * DAY,
+  },
+  account: {
+    modelName: 'account',
+    fields: {
+      userId: 'userId',
+      accountId: 'accountId',
+      providerId: 'providerId',
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken',
+      accessTokenExpiresAt: 'accessTokenExpiresAt',
+      refreshTokenExpiresAt: 'refreshTokenExpiresAt',
+      scope: 'scope',
+      idToken: 'idToken',
+      password: 'password',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  verification: {
+    modelName: 'verification',
+    fields: {
+      identifier: 'identifier',
+      value: 'value',
+      expiresAt: 'expiresAt',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+});
