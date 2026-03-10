@@ -106,68 +106,93 @@ ${color.bold('Examples:')}
       process.exit(1);
     }
 
-    const conflicting = ['app', 'database', 'orm', 'linter', 'tooling'].filter((f) => {
+    const conflicting = ['app', 'database', 'orm'].filter((f) => {
       const val = flags[f as keyof ParsedFlags];
       return val !== undefined && (!Array.isArray(val) || val.length > 0);
     });
     if (conflicting.length > 0) {
       printError(
         `--blueprint cannot be combined with --${conflicting[0]}`,
-        'Blueprint defines the full project composition',
+        'Blueprint defines apps, database, and ORM',
       );
       process.exit(1);
     }
 
     partial.blueprint = flags.blueprint;
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
-    partial.project = { ...blueprint.context.project };
-  }
+    partial.project = { ...blueprint.context.project, tooling: [] } as ProjectContext;
 
-  const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);
-  if (hasProjectFlags) {
-    partial.project = { tooling: [] };
-  }
-
-  if (flags.database) {
-    if (!META.project.database.options[flags.database]) {
-      printError(
-        `Invalid database '${flags.database}'`,
-        `Available databases: ${Object.keys(META.project.database.options).join(', ')}`,
-      );
-      process.exit(1);
-    }
-    partial.project!.database = flags.database;
-  }
-
-  if (flags.orm) {
-    if (!META.project.orm.options[flags.orm]) {
-      printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${Object.keys(META.project.orm.options).join(', ')}`);
-      process.exit(1);
-    }
-    partial.project!.orm = flags.orm;
-  }
-
-  if (flags.linter) {
-    if (!META.project.linter.options[flags.linter]) {
-      printError(
-        `Invalid linter '${flags.linter}'`,
-        `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
-      );
-      process.exit(1);
-    }
-    partial.project!.linter = flags.linter;
-  }
-
-  if (flags.tooling && flags.tooling.length > 0) {
-    for (const toolingName of flags.tooling) {
-      if (!META.project.tooling.options[toolingName]) {
+    if (flags.linter) {
+      if (!META.project.linter.options[flags.linter]) {
         printError(
-          `Invalid tooling '${toolingName}'`,
-          `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
+          `Invalid linter '${flags.linter}'`,
+          `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
         );
         process.exit(1);
       }
-      partial.project!.tooling.push(toolingName);
+      partial.project.linter = flags.linter;
+    }
+
+    if (flags.tooling && flags.tooling.length > 0) {
+      partial.project.tooling = [];
+      for (const toolingName of flags.tooling) {
+        if (!META.project.tooling.options[toolingName]) {
+          printError(
+            `Invalid tooling '${toolingName}'`,
+            `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
+          );
+          process.exit(1);
+        }
+        partial.project.tooling.push(toolingName);
+      }
+    }
+  } else {
+    const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);
+    if (hasProjectFlags) {
+      partial.project = { tooling: [] };
+    }
+
+    if (flags.database) {
+      if (!META.project.database.options[flags.database]) {
+        printError(
+          `Invalid database '${flags.database}'`,
+          `Available databases: ${Object.keys(META.project.database.options).join(', ')}`,
+        );
+        process.exit(1);
+      }
+      partial.project!.database = flags.database;
+    }
+
+    if (flags.orm) {
+      if (!META.project.orm.options[flags.orm]) {
+        printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${Object.keys(META.project.orm.options).join(', ')}`);
+        process.exit(1);
+      }
+      partial.project!.orm = flags.orm;
+    }
+
+    if (flags.linter) {
+      if (!META.project.linter.options[flags.linter]) {
+        printError(
+          `Invalid linter '${flags.linter}'`,
+          `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
+        );
+        process.exit(1);
+      }
+      partial.project!.linter = flags.linter;
+    }
+
+    if (flags.tooling && flags.tooling.length > 0) {
+      for (const toolingName of flags.tooling) {
+        if (!META.project.tooling.options[toolingName]) {
+          printError(
+            `Invalid tooling '${toolingName}'`,
+            `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
+          );
+          process.exit(1);
+        }
+        partial.project!.tooling.push(toolingName);
+      }
     }
   }
 
@@ -278,12 +303,12 @@ function validateContext(partial: Partial<TemplateContext>): void {
     }
   }
 
-  if (project.tooling.includes('husky') && !partial.git) {
+  if (project.tooling?.includes('husky') && !partial.git) {
     printError('Husky requires git', 'Add --git flag');
     process.exit(1);
   }
 
-  if (project.tooling.includes('husky') && !project.linter) {
+  if (project.tooling?.includes('husky') && !project.linter) {
     printError('Husky requires a linter', 'Add --linter biome or --linter eslint');
     process.exit(1);
   }

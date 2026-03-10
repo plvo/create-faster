@@ -540,6 +540,7 @@ export const META: Meta = {
     'dapp-privy': {
       label: 'dApp (Privy)',
       hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
+      category: 'Web3',
       context: {
         apps: [
           {
@@ -551,8 +552,6 @@ export const META: Meta = {
         project: {
           database: 'postgres',
           orm: 'drizzle',
-          linter: 'biome',
-          tooling: [],
         },
       },
       packageJson: {
@@ -582,6 +581,7 @@ export const META: Meta = {
     dashboard: {
       label: 'Dashboard',
       hint: 'Internal CRM-style dashboard with auth, sidebar, and admin panel',
+      category: 'Business',
       context: {
         apps: [
           {
@@ -593,8 +593,6 @@ export const META: Meta = {
         project: {
           database: 'postgres',
           orm: 'drizzle',
-          linter: 'biome',
-          tooling: [],
         },
       },
       packageJson: {

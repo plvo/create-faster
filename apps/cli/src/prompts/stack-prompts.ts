@@ -91,6 +91,49 @@ export async function multiselectLibrariesPrompt(
   return result;
 }
 
+export async function selectBlueprintPrompt(message: string): Promise<string> {
+  const options = Object.entries(META.blueprints)
+    .sort(([, a], [, b]) => a.category.localeCompare(b.category))
+    .map(([key, bp]) => ({
+      value: key,
+      label: bp.label,
+      hint: bp.hint,
+      section: bp.category,
+    }));
+
+  const BlueprintPrompt = new SelectPrompt({
+    options,
+
+    render() {
+      let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${message}`;
+      let currentSection = '';
+
+      this.options.forEach((option, i) => {
+        if (option.section !== currentSection) {
+          currentSection = option.section;
+          output += `\n${S_GRAY_BAR}\n${color.gray(S_CONNECT_LEFT)} ${color.underline(color.bold(currentSection))}`;
+        }
+
+        const isSelected = i === this.cursor;
+        const hint = isSelected && option.hint ? color.dim(`(${option.hint})`) : '';
+
+        output += `\n${S_GRAY_BAR} ${symbol(isSelected ? 'active' : 'submit')} ${option.label} ${hint}`;
+      });
+
+      return output;
+    },
+  });
+
+  const result = await BlueprintPrompt.prompt();
+
+  if (isCancel(result)) {
+    cancel('👋 Bye');
+    process.exit(0);
+  }
+
+  return result;
+}
+
 export async function promptProjectCategorySingle(category: MetaProjectCategory): Promise<string | undefined> {
   const options: { value: string | undefined; label: string; hint?: string }[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
