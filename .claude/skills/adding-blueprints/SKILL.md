@@ -50,9 +50,10 @@ A blueprint is a **complete starter project** that combines:
 interface MetaBlueprint {
   label: string;       // Display name in CLI
   hint: string;        // Description shown during selection
+  category: string;    // Grouping category (e.g. 'Web3', 'Business')
   context: {
     apps: { appName: string; stackName: StackName; libraries: string[] }[];
-    project: { database?: string; orm?: string; linter?: string; tooling: string[] };
+    project: { database?: string; orm?: string };
   };
   packageJson?: PackageJsonConfig;  // Extra deps for the blueprint
   envs?: EnvVar[];                   // Extra env vars
@@ -188,6 +189,7 @@ Impact:  Blueprint templates must use the current `motion` component API.
 'blueprint-name': {
   label: 'Display Name',
   hint: 'One-line description of what this blueprint creates',
+  category: 'Category Name',
   context: {
     apps: [
       {
@@ -199,8 +201,6 @@ Impact:  Blueprint templates must use the current `motion` component API.
     project: {
       database: 'postgres',       // Optional
       orm: 'drizzle',            // Optional
-      linter: 'biome',
-      tooling: [],
     },
   },
   packageJson: {                  // Only blueprint-specific extras
@@ -374,12 +374,12 @@ The blueprint defines one app, but adding a second via the CLI should also work.
 
 | What | Where | How |
 |------|-------|-----|
-| Blueprint definition | `META.blueprints` in `__meta__.ts` | `label`, `hint`, `context`, `packageJson?`, `envs?` |
+| Blueprint definition | `META.blueprints` in `__meta__.ts` | `label`, `hint`, `category`, `context`, `packageJson?`, `envs?` |
 | Blueprint type | `MetaBlueprint` in `types/meta.ts` | Verify fields before designing |
 | Blueprint templates | `templates/blueprints/{name}/` | `.hbs` files, override semantics |
 | Override behavior | `template-resolver.ts` L288-293 | Blueprint destinations replace structural |
 | Template authoring | See `adding-templates` skill | Frontmatter, helpers, stack suffixes |
 | Package.json merge | `package-json-generator.ts` | Blueprint packageJson merged into app |
 | Env generation | `env-generator.ts` | Blueprint envs collected with library/project envs |
-| CLI flag | `--blueprint {name}` | Mutual exclusion with composition flags |
-| Interactive mode | `cli.ts` `blueprintCli()` | Only prompts: project name, git, pm |
+| CLI flag | `--blueprint {name}` | Can combine with `--linter`/`--tooling`; exclusive with `--app`/`--database`/`--orm` |
+| Interactive mode | `cli.ts` `blueprintCli()` | Prompts: project name, linter, tooling, git, pm |

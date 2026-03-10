@@ -201,7 +201,7 @@ export async function blueprintCli(
   if (partial?.project?.linter) {
     ctx.project.linter = partial.project.linter;
     log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
-  } else if (!partial || !('project' in partial) || !partial.project?.linter) {
+  } else if (!partial?.project) {
     const linterResult = await promptProjectCategory('linter');
     ctx.project.linter = linterResult as string | undefined;
   }
@@ -209,7 +209,7 @@ export async function blueprintCli(
   if (partial?.project?.tooling && partial.project.tooling.length > 0) {
     ctx.project.tooling = partial.project.tooling;
     log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
-  } else if (!partial || !('project' in partial) || partial.project?.tooling === undefined) {
+  } else if (!partial?.project) {
     if (isProjectCategoryAvailable('tooling', ctx)) {
       const toolingResult = await promptProjectCategory('tooling');
       ctx.project.tooling = (toolingResult as string[]) ?? [];
