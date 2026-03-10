@@ -90,7 +90,7 @@ Single source of truth for all stacks, libraries, and project addons:
 - `EnvVar`: `{ value: string; monoScope: EnvScope[] }` — env variable declaration
 - `MetaAddon`: Addon metadata (label, hint, category, support, require, mono, packageJson, envs)
 - `MetaProjectCategory`: Project category with prompt config and options
-- `MetaBlueprint`: Blueprint metadata (label, hint, context, packageJson, envs)
+- `MetaBlueprint`: Blueprint metadata (label, hint, category, context, packageJson, envs)
 - `MetaStack`: Stack metadata (type, label, hint, packageJson)
 
 ### types/ctx.ts
@@ -382,9 +382,9 @@ bunx create-faster myapp \
 
 ### Available Flags
 
-- `--blueprint <name>`: Use a blueprint template (mutually exclusive with --app/--database/--orm/--linter/--tooling)
+- `--blueprint <name>`: Use a blueprint template (mutually exclusive with --app/--database/--orm; can combine with --linter/--tooling)
   - Example: `--blueprint dashboard`
-  - Blueprints define full project composition (apps, libraries, project config)
+  - Blueprints define apps, libraries, database, and ORM; linter/tooling are user-chosen
 
 - `--app <name:stack:modules>`: Add app (repeatable for multi-app)
   - Format: `name:stack` or `name:stack:module1,module2`
@@ -445,7 +445,7 @@ This allows easy reproduction of the exact same project setup.
 4. Test module selection in CLI
 
 ### Add Blueprint
-1. Add entry to `META.blueprints` in `__meta__.ts` with label, hint, context (apps + project), optional packageJson and envs
+1. Add entry to `META.blueprints` in `__meta__.ts` with label, hint, category, context (apps + project with database/orm only), optional packageJson and envs
 2. Create `templates/blueprints/{blueprint-name}/` directory with `.hbs` template files
 3. Blueprint templates override structural templates with the same destination path
 4. Use frontmatter for path/scope configuration (same as libraries)
