@@ -1,0 +1,31 @@
+---
+path: src/lib/db/types.ts
+only: single
+---
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type { postTable, userAccountTable, userSessionTable, userTable, userVerificationTable, walletAddressTable } from './schema';
+
+export type User = InferSelectModel<typeof userTable>;
+export type NewUser = InferInsertModel<typeof userTable>;
+
+export type Post = InferSelectModel<typeof postTable>;
+export type NewPost = InferInsertModel<typeof postTable>;
+
+export type UserWithPosts = User & {
+  posts: Post[];
+};
+
+export type PostWithAuthor = Post & {
+  author: User;
+};
+
+export type UserWithRelations = User & {
+  accounts: UserAccount[];
+  sessions: UserSession[];
+  walletAddresses: WalletAddress[];
+};
+
+export type UserAccount = InferSelectModel<typeof userAccountTable>;
+export type UserSession = InferSelectModel<typeof userSessionTable>;
+export type UserVerification = InferSelectModel<typeof userVerificationTable>;
+export type WalletAddress = InferSelectModel<typeof walletAddressTable>;

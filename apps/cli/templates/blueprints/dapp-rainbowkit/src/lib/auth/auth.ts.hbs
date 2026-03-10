@@ -1,7 +1,7 @@
 ---
 only: single
 ---
-import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable, walletAddressTable } from '@/lib/db';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuth } from 'better-auth';
 import { generateRandomString } from 'better-auth/crypto';
@@ -21,6 +21,7 @@ export const auth = betterAuth({
       account: userAccountTable,
       session: userSessionTable,
       verification: userVerificationTable,
+      walletAddress: walletAddressTable,
     },
   }),
 

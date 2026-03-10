@@ -11,10 +11,11 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { TRPCReactProvider } from '@/trpc/providers';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
-import { getAccount } from 'wagmi/actions';
+import { getAccount, getChainId } from 'wagmi/actions';
 import { createSiweMessage } from 'viem/siwe';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type React from 'react';
+import { useMounted } from '@/hooks/use-mounted';
 
 interface AppProvidersProps {
   children: React.ReactNode;
@@ -22,9 +23,7 @@ interface AppProvidersProps {
 
 export function AppProviders({ children }: AppProvidersProps) {
   const { data: session, isPending } = authClient.useSession();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
 
   const authStatus = !mounted || isPending
     ? 'loading'
@@ -39,7 +38,11 @@ export function AppProviders({ children }: AppProvidersProps) {
     return createAuthenticationAdapter({
       getNonce: async () => {
         const account = getAccount(wagmiConfig);
-        const { data } = await authClient.siwe.nonce({ walletAddress: account.address ?? '' });
+        const chainId = getChainId(wagmiConfig);
+        const { data } = await authClient.siwe.nonce({
+          walletAddress: account.address ?? '',
+          chainId,
+        });
         return data?.nonce ?? '';
       },
       createMessage: ({ nonce, address, chainId }) => {
