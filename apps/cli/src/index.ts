@@ -10,6 +10,7 @@ import type { TemplateContext } from '@/types/ctx';
 import { blueprintCli, cli } from './cli';
 import { parseFlags } from './flags';
 import { promptSelect } from './prompts/base-prompts';
+import { selectBlueprintPrompt } from './prompts/stack-prompts';
 
 async function main() {
   const partial = parseFlags();
@@ -37,13 +38,7 @@ async function main() {
         });
 
         if (mode === 'blueprint') {
-          const blueprintName = await promptSelect<string>(undefined, 'Choose a template:', partial, {
-            options: Object.entries(META.blueprints).map(([name, bp]) => ({
-              value: name,
-              label: bp.label,
-              hint: bp.hint,
-            })),
-          });
+          const blueprintName = await selectBlueprintPrompt('Choose a template:');
 
           config = await blueprintCli(blueprintName, partial);
         } else {

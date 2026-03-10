@@ -1,6 +1,31 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 
+describe('META blueprint category grouping', () => {
+  test('blueprints can be grouped by category', () => {
+    const grouped: Record<string, string[]> = {};
+    for (const [name, bp] of Object.entries(META.blueprints)) {
+      if (!grouped[bp.category]) grouped[bp.category] = [];
+      grouped[bp.category].push(name);
+    }
+
+    expect(Object.keys(grouped).length).toBeGreaterThan(0);
+
+    for (const category of Object.keys(grouped)) {
+      expect(category.length).toBeGreaterThan(0);
+      expect(grouped[category].length).toBeGreaterThan(0);
+    }
+  });
+
+  test('dapp-privy is in Web3 category', () => {
+    expect(META.blueprints['dapp-privy'].category).toBe('Web3');
+  });
+
+  test('dashboard is in Business category', () => {
+    expect(META.blueprints.dashboard.category).toBe('Business');
+  });
+});
+
 describe('META blueprint structure validation', () => {
   test('all blueprints have required fields', () => {
     for (const [name, bp] of Object.entries(META.blueprints)) {
