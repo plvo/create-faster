@@ -13,7 +13,7 @@ import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
 import { getAccount } from 'wagmi/actions';
 import { createSiweMessage } from 'viem/siwe';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 
 interface AppProvidersProps {
@@ -22,8 +22,11 @@ interface AppProvidersProps {
 
 export function AppProviders({ children }: AppProvidersProps) {
   const { data: session, isPending } = authClient.useSession();
+  const [mounted, setMounted] = useState(false);
 
-  const authStatus = isPending
+  useEffect(() => setMounted(true), []);
+
+  const authStatus = !mounted || isPending
     ? 'loading'
     : session
       ? 'authenticated'
