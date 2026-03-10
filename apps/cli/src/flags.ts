@@ -106,14 +106,14 @@ ${color.bold('Examples:')}
       process.exit(1);
     }
 
-    const conflicting = ['app', 'database', 'orm', 'linter', 'tooling'].filter((f) => {
+    const conflicting = ['app', 'database', 'orm'].filter((f) => {
       const val = flags[f as keyof ParsedFlags];
       return val !== undefined && (!Array.isArray(val) || val.length > 0);
     });
     if (conflicting.length > 0) {
       printError(
         `--blueprint cannot be combined with --${conflicting[0]}`,
-        'Blueprint defines the full project composition',
+        'Blueprint defines apps, database, and ORM',
       );
       process.exit(1);
     }
@@ -121,6 +121,30 @@ ${color.bold('Examples:')}
     partial.blueprint = flags.blueprint;
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
     partial.project = { ...blueprint.context.project, tooling: [] };
+
+    if (flags.linter) {
+      if (!META.project.linter.options[flags.linter]) {
+        printError(
+          `Invalid linter '${flags.linter}'`,
+          `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
+        );
+        process.exit(1);
+      }
+      partial.project.linter = flags.linter;
+    }
+
+    if (flags.tooling && flags.tooling.length > 0) {
+      for (const toolingName of flags.tooling) {
+        if (!META.project.tooling.options[toolingName]) {
+          printError(
+            `Invalid tooling '${toolingName}'`,
+            `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
+          );
+          process.exit(1);
+        }
+        partial.project.tooling.push(toolingName);
+      }
+    }
   }
 
   const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);

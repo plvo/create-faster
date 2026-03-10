@@ -27,6 +27,50 @@ describe('Blueprint CLI flag', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('cannot be combined');
   });
+
+  test('--blueprint and --database are mutually exclusive', async () => {
+    const result = await runCli(
+      ['test-conflict-db', '--blueprint', 'dashboard', '--database', 'postgres', '--no-install'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('cannot be combined');
+  });
+
+  test('--blueprint and --orm are mutually exclusive', async () => {
+    const result = await runCli(
+      ['test-conflict-orm', '--blueprint', 'dashboard', '--orm', 'drizzle', '--no-install'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('cannot be combined');
+  });
+
+  test('--blueprint can be combined with --linter', async () => {
+    const result = await runCli(
+      ['test-bp-linter', '--blueprint', 'dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+  });
+
+  test('--blueprint can be combined with --tooling', async () => {
+    const result = await runCli(
+      [
+        'test-bp-tooling',
+        '--blueprint',
+        'dashboard',
+        '--linter',
+        'biome',
+        '--tooling',
+        'husky',
+        '--git',
+        '--no-install',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+  });
 });
 
 describe('Blueprint generation - dashboard', () => {
