@@ -54,15 +54,21 @@ export const userSessionTable = pgTable('user_sessions', {
 export const userSessionTable = mysqlTable('user_sessions', {
 {{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
-  userId: varchar('user_id', { length: 255 })
+{{#if (has "database" "postgres")}}
+  userId: uuid('user_id')
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
   token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: varchar('ip_address', { length: 255 }),
   userAgent: varchar('user_agent', { length: 255 }),
   ...timeColumns,
-
 });
 
 export const userSessionTableRelations = relations(userSessionTable, ({ one }) => ({
@@ -80,9 +86,16 @@ export const userAccountTable = pgTable('user_accounts', {
 export const userAccountTable = mysqlTable('user_accounts', {
 {{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
-  userId: varchar('user_id', { length: 255 })
+{{#if (has "database" "postgres")}}
+  userId: uuid('user_id')
     .notNull()
-    .references(() => userTable.id),
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+{{/if}}
   accountId: varchar('account_id', { length: 255 }).notNull(),
   providerId: varchar('provider_id', { length: 255 }).notNull(),
   accessToken: text('access_token'),
