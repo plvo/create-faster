@@ -1,0 +1,28 @@
+import { type NextRequest, NextResponse } from 'next/server';
+
+const PUBLIC_ROUTES = ['/'];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => pathname === route);
+}
+
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const token = request.cookies.get('better-auth.session_token');
+  const isAuthenticated = Boolean(token);
+
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (isAuthenticated && isPublicRoute(pathname)) {
+    return NextResponse.redirect(new URL('/protected', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|manifest.webmanifest|_next/image|.*\\.png$).*)'],
+};
