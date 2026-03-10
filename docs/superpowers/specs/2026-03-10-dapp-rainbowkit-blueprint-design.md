@@ -12,7 +12,7 @@ Web3 dApp blueprint using RainbowKit (open-source wallet connection) + better-au
 | ORM | Drizzle |
 | Linter | Biome |
 | Extra deps (blueprint) | `@rainbow-me/rainbowkit`, `wagmi`, `viem` |
-| Extra envs | None |
+| Extra envs | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (required by RainbowKit for WalletConnect) |
 
 ## Routes
 
@@ -111,11 +111,7 @@ templates/blueprints/dapp-rainbowkit/
 │   │   │   ├── auth.ts.hbs            # Override: add siwe() plugin to better-auth
 │   │   │   └── auth-client.ts.hbs     # Override: add siweClient() plugin
 │   │   └── wagmi.ts.hbs               # Standard wagmi config (mainnet + sepolia)
-│   ├── proxy.ts.hbs                    # Middleware: better-auth session cookie check
-│   └── trpc/
-│       ├── init.ts.hbs                 # Context: auth.api.getSession()
-│       └── routers/
-│           └── user.ts.hbs            # Query user via better-auth session
+│   └── proxy.ts.hbs                    # Middleware: better-auth session cookie check
 ```
 
 ## Key Differences vs dapp-privy
@@ -127,7 +123,7 @@ templates/blueprints/dapp-rainbowkit/
 | Session | `privy-token` cookie, `@privy-io/server-auth` | better-auth session cookie |
 | User storage | Custom `users` table with `privyId` | better-auth native tables |
 | Schema | Custom `schema.ts` override | No schema override needed |
-| tRPC context | Manual `privy-token` parsing | `auth.api.getSession()` |
+| tRPC context | Manual `privy-token` parsing | `auth.api.getSession()` (structural template handles this) |
 | wagmi config | `@privy-io/wagmi` `createConfig()` | Standard `wagmi` `createConfig()` |
 | Env vars | 3 Privy vars | 0 extra (better-auth provides its own) |
 | Extra deps | 5 Privy packages | 3 packages (rainbowkit, wagmi, viem) |
@@ -156,10 +152,16 @@ templates/blueprints/dapp-rainbowkit/
   packageJson: {
     dependencies: {
       '@rainbow-me/rainbowkit': '^2.2.0',
-      wagmi: '^2.14.0',
-      viem: '^2.21.0',
+      wagmi: '^2.19.0',
+      viem: '^2.38.0',
     },
   },
+  envs: [
+    {
+      value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id',
+      monoScope: ['app'],
+    },
+  ],
 },
 ```
 
