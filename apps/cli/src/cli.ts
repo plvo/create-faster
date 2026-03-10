@@ -164,7 +164,7 @@ export async function blueprintCli(
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: blueprint.context.apps.map((app) => ({ ...app })),
-    project: { ...blueprint.context.project },
+    project: { ...blueprint.context.project, tooling: [] },
     git: false,
     blueprint: blueprintName,
   };

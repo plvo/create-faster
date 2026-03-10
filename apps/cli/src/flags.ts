@@ -120,7 +120,7 @@ ${color.bold('Examples:')}
 
     partial.blueprint = flags.blueprint;
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
-    partial.project = { ...blueprint.context.project };
+    partial.project = { ...blueprint.context.project, tooling: [] };
   }
 
   const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);
