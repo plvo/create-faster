@@ -54,6 +54,9 @@ const KNOWN_EXTENSIONS = new Set([
   'woff2',
   'ttf',
   'eot',
+  'tf',
+  'tfvars',
+  'hcl',
 ]);
 
 export function parseFrontmatter(rawContent: string): ParsedTemplate {

@@ -52,6 +52,15 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+{{#if (has "deployment" "terraform")}}
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tflock
+secrets.auto.tfvars
+{{/if}}
+
 {{#if (has "stack" "expo")}}
 # Expo
 .expo/
