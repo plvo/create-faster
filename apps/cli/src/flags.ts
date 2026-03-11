@@ -73,7 +73,7 @@ ${color.bold('Examples:')}
   ${color.gray('Available libraries:')} ${libraryNames}
   ${color.gray('Available ORMs:')} ${ormNames}
   ${color.gray('Available databases:')} ${dbNames}
-  ${color.gray('Available deployment:')} ${deploymentNames}
+  ${color.gray('Available deployments:')} ${deploymentNames}
   ${color.gray('Available linters:')} ${linterNames}
   ${color.gray('Available tooling:')} ${toolingNames}
 `,
@@ -130,7 +130,7 @@ ${color.bold('Examples:')}
       if (!META.project.deployment.options[flags.deployment]) {
         printError(
           `Invalid deployment '${flags.deployment}'`,
-          `Available deployment: ${Object.keys(META.project.deployment.options).join(', ')}`,
+          `Available deployments: ${Object.keys(META.project.deployment.options).join(', ')}`,
         );
         process.exit(1);
       }
@@ -191,7 +191,7 @@ ${color.bold('Examples:')}
       if (!META.project.deployment.options[flags.deployment]) {
         printError(
           `Invalid deployment '${flags.deployment}'`,
-          `Available deployment: ${Object.keys(META.project.deployment.options).join(', ')}`,
+          `Available deployments: ${Object.keys(META.project.deployment.options).join(', ')}`,
         );
         process.exit(1);
       }
