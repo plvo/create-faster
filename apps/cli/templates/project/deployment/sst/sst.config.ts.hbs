@@ -11,18 +11,20 @@ export default $config({
   async run() {
 {{#each apps}}
 {{#if (eq stackName "nextjs")}}
-    const {{appName}} = new sst.aws.Nextjs('{{appName}}');
+    const {{appName}} = new sst.aws.Nextjs('{{appName}}'{{#if (eq ../repo "turborepo")}}, {
+      path: 'apps/{{appName}}/',
+    }{{/if}});
 {{/if}}
 {{#if (eq stackName "hono")}}
     const {{appName}} = new sst.aws.Function('{{appName}}', {
       url: true,
-      handler: '{{#if (isMono)}}apps/{{appName}}/{{/if}}src/index.handler',
+      handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}src/index.handler',
     });
 {{/if}}
 {{#if (eq stackName "tanstack-start")}}
     const {{appName}} = new sst.aws.Function('{{appName}}', {
       url: true,
-      handler: '{{#if (isMono)}}apps/{{appName}}/{{/if}}.output/server/index.handler',
+      handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}.output/server/index.handler',
     });
 {{/if}}
 {{/each}}
