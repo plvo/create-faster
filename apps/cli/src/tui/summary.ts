@@ -8,6 +8,9 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
+    if (ctx.project.deployment) {
+      flagsCommand += ` --deployment ${ctx.project.deployment}`;
+    }
     if (ctx.project.linter) {
       flagsCommand += ` --linter ${ctx.project.linter}`;
     }

@@ -9,6 +9,7 @@ export interface AppContext {
 export interface ProjectContext {
   database?: string;
   orm?: string;
+  deployment?: string;
   linter?: string;
   tooling: string[];
 }

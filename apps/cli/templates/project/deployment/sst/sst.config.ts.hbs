@@ -1,0 +1,38 @@
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: '{{projectName}}',
+      removal: input?.stage === 'production' ? 'retain' : 'remove',
+      home: 'aws',
+    };
+  },
+  async run() {
+{{#each apps}}
+{{#if (eq stackName "nextjs")}}
+    const {{appName}} = new sst.aws.Nextjs('{{appName}}');
+{{/if}}
+{{#if (eq stackName "hono")}}
+    const {{appName}} = new sst.aws.Function('{{appName}}', {
+      url: true,
+      handler: '{{#if (isMono)}}apps/{{appName}}/{{/if}}src/index.handler',
+    });
+{{/if}}
+{{#if (eq stackName "tanstack-start")}}
+    const {{appName}} = new sst.aws.Function('{{appName}}', {
+      url: true,
+      handler: '{{#if (isMono)}}apps/{{appName}}/{{/if}}.output/server/index.handler',
+    });
+{{/if}}
+{{/each}}
+
+    return {
+{{#each apps}}
+{{#if (or (eq stackName "nextjs") (eq stackName "hono") (eq stackName "tanstack-start"))}}
+      {{appName}}: {{appName}}.url,
+{{/if}}
+{{/each}}
+    };
+  },
+});
