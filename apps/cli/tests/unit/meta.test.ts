@@ -135,8 +135,9 @@ describe('META.project validation', () => {
 });
 
 describe('META.stacks validation', () => {
-  test('stacks are unchanged', () => {
+  test('expected stacks exist', () => {
     expect(META.stacks.nextjs).toBeDefined();
+    expect(META.stacks['tanstack-start']).toBeDefined();
     expect(META.stacks.expo).toBeDefined();
     expect(META.stacks.hono).toBeDefined();
     expect(META.stacks.node).toBeDefined();
