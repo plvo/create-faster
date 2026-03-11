@@ -431,6 +431,22 @@ export const META: Meta = {
         },
       },
     },
+    deployment: {
+      prompt: 'Deployment platform?',
+      selection: 'single',
+      options: {
+        sst: {
+          label: 'SST',
+          hint: 'Deploy to AWS with SST Ion',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              sst: '^4.2.7',
+            },
+          },
+        },
+      },
+    },
     linter: {
       prompt: 'Code quality tools?',
       selection: 'single',

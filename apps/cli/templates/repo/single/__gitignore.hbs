@@ -43,6 +43,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+{{#if (has "deployment" "sst")}}
+# SST
+.sst/
+{{/if}}
+
 # Misc
 .DS_Store
 *.pem

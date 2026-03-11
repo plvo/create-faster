@@ -274,6 +274,9 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
   if (ctx.project.orm) {
     templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
   }
+  if (ctx.project.deployment) {
+    templates.push(...resolveTemplatesForProjectAddon('deployment', ctx.project.deployment, ctx));
+  }
   if (ctx.project.linter) {
     const addonNames = resolveAddonNames('linter', ctx.project.linter);
     for (const name of addonNames) {

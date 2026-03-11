@@ -155,6 +155,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
         merged = mergeResolved(ctx, merged, toolingAddon.packageJson);
       }
     }
+
+    if (ctx.project.deployment) {
+      const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
+      if (deploymentAddon) {
+        merged = mergeResolved(ctx, merged, deploymentAddon.packageJson);
+      }
+    }
   }
 
   if (ctx.project.linter) {
@@ -260,6 +267,13 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
     if (toolingAddon?.packageJson) rootConfigs.push(toolingAddon.packageJson);
+  }
+
+  if (ctx.project.deployment) {
+    const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
+    if (deploymentAddon?.mono?.scope === 'root' && deploymentAddon.packageJson) {
+      rootConfigs.push(deploymentAddon.packageJson);
+    }
   }
 
   let hasAppLintScript = false;

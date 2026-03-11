@@ -46,6 +46,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
       const isSelected =
         ctx.project.database === optionName ||
         ctx.project.orm === optionName ||
+        ctx.project.deployment === optionName ||
         ctx.project.tooling.includes(optionName);
 
       if (isSelected && addon.envs) {

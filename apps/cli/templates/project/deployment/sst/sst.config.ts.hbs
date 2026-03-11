@@ -1,0 +1,40 @@
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: '{{projectName}}',
+      removal: input?.stage === 'production' ? 'retain' : 'remove',
+      home: 'aws',
+    };
+  },
+  async run() {
+{{#each apps}}
+{{#if (eq stackName "nextjs")}}
+    const {{camelCase appName}} = new sst.aws.Nextjs('{{appName}}'{{#if (eq ../repo "turborepo")}}, {
+      path: 'apps/{{appName}}/',
+    }{{/if}});
+{{/if}}
+{{#if (eq stackName "hono")}}
+    const {{camelCase appName}} = new sst.aws.Function('{{appName}}', {
+      url: true,
+      handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}src/index.handler',
+    });
+{{/if}}
+{{#if (eq stackName "tanstack-start")}}
+    const {{camelCase appName}} = new sst.aws.Function('{{appName}}', {
+      url: true,
+      handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}.output/server/index.handler',
+    });
+{{/if}}
+{{/each}}
+
+    return {
+{{#each apps}}
+{{#if (or (eq stackName "nextjs") (eq stackName "hono") (eq stackName "tanstack-start"))}}
+      '{{appName}}': {{camelCase appName}}.url,
+{{/if}}
+{{/each}}
+    };
+  },
+});
