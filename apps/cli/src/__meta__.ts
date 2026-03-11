@@ -581,6 +581,7 @@ export const META: Meta = {
     'dapp-rainbowkit': {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
+      category: 'Web3',
       context: {
         apps: [
           {
