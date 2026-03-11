@@ -415,6 +415,27 @@ export const META: Meta = {
         },
       },
     },
+    deployment: {
+      prompt: 'Choose deployment tool?',
+      selection: 'single',
+      options: {
+        sst: {
+          label: 'SST',
+          hint: 'TypeScript-native deployment framework',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              sst: '^4.2.7',
+            },
+          },
+        },
+        terraform: {
+          label: 'Terraform',
+          hint: 'Infrastructure as Code by HashiCorp',
+          mono: { scope: 'root' },
+        },
+      },
+    },
     linter: {
       prompt: 'Code quality tools?',
       selection: 'single',

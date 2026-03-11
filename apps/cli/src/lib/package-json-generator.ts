@@ -149,6 +149,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   }
 
   if (!isTurborepo) {
+    if (ctx.project.deployment) {
+      const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
+      if (deploymentAddon?.packageJson) {
+        merged = mergeResolved(ctx, merged, deploymentAddon.packageJson);
+      }
+    }
+
     for (const toolingName of ctx.project.tooling) {
       const toolingAddon = META.project.tooling.options[toolingName];
       if (toolingAddon) {
@@ -256,6 +263,11 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
   const rootConfigs: PackageJsonConfig[] = [];
+
+  if (ctx.project.deployment) {
+    const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
+    if (deploymentAddon?.packageJson) rootConfigs.push(deploymentAddon.packageJson);
+  }
 
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];

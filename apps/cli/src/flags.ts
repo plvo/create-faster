@@ -14,6 +14,7 @@ interface ParsedFlags {
   blueprint?: string;
   database?: string;
   orm?: string;
+  deployment?: string;
   linter?: string;
   tooling?: string[];
   git?: boolean;
@@ -26,6 +27,7 @@ export function parseFlags(): Partial<TemplateContext> {
 
   const ormNames = Object.keys(META.project.orm.options).join(', ');
   const dbNames = Object.keys(META.project.database.options).join(', ');
+  const deploymentNames = Object.keys(META.project.deployment.options).join(', ');
   const linterNames = Object.keys(META.project.linter.options).join(', ');
   const toolingNames = Object.keys(META.project.tooling.options).join(', ');
   const libraryNames = Object.keys(META.libraries).join(', ');
@@ -45,6 +47,7 @@ export function parseFlags(): Partial<TemplateContext> {
     )
     .option('--database <name>', `Database provider (${dbNames})`)
     .option('--orm <name>', `ORM provider (${ormNames})`)
+    .option('--deployment <name>', `Deployment tool (${deploymentNames})`)
     .option('--linter <name>', `Linter (${linterNames})`)
     .option('--tooling <name>', 'Add tooling (repeatable)', collect, [])
     .option('--git', 'Initialize git repository')
@@ -70,6 +73,7 @@ ${color.bold('Examples:')}
   ${color.gray('Available libraries:')} ${libraryNames}
   ${color.gray('Available ORMs:')} ${ormNames}
   ${color.gray('Available databases:')} ${dbNames}
+  ${color.gray('Available deployment:')} ${deploymentNames}
   ${color.gray('Available linters:')} ${linterNames}
   ${color.gray('Available tooling:')} ${toolingNames}
 `,
@@ -122,6 +126,17 @@ ${color.bold('Examples:')}
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
     partial.project = { ...blueprint.context.project, tooling: [] } as ProjectContext;
 
+    if (flags.deployment) {
+      if (!META.project.deployment.options[flags.deployment]) {
+        printError(
+          `Invalid deployment '${flags.deployment}'`,
+          `Available deployment: ${Object.keys(META.project.deployment.options).join(', ')}`,
+        );
+        process.exit(1);
+      }
+      partial.project.deployment = flags.deployment;
+    }
+
     if (flags.linter) {
       if (!META.project.linter.options[flags.linter]) {
         printError(
@@ -147,7 +162,8 @@ ${color.bold('Examples:')}
       }
     }
   } else {
-    const hasProjectFlags = flags.database || flags.orm || flags.linter || (flags.tooling && flags.tooling.length > 0);
+    const hasProjectFlags =
+      flags.database || flags.orm || flags.deployment || flags.linter || (flags.tooling && flags.tooling.length > 0);
     if (hasProjectFlags) {
       partial.project = { tooling: [] };
     }
@@ -169,6 +185,17 @@ ${color.bold('Examples:')}
         process.exit(1);
       }
       partial.project!.orm = flags.orm;
+    }
+
+    if (flags.deployment) {
+      if (!META.project.deployment.options[flags.deployment]) {
+        printError(
+          `Invalid deployment '${flags.deployment}'`,
+          `Available deployment: ${Object.keys(META.project.deployment.options).join(', ')}`,
+        );
+        process.exit(1);
+      }
+      partial.project!.deployment = flags.deployment;
     }
 
     if (flags.linter) {

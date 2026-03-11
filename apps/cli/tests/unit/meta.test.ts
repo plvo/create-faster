@@ -128,9 +128,9 @@ describe('META.project validation', () => {
     expect(META.project.tooling.options.husky).toBeDefined();
   });
 
-  test('project category order is database, orm, linter, tooling', () => {
+  test('project category order is database, orm, deployment, linter, tooling', () => {
     const keys = Object.keys(META.project);
-    expect(keys).toEqual(['database', 'orm', 'linter', 'tooling']);
+    expect(keys).toEqual(['database', 'orm', 'deployment', 'linter', 'tooling']);
   });
 });
 

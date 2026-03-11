@@ -69,6 +69,7 @@ export interface MetaRepoStack {
 export interface MetaProject {
   database: MetaProjectCategory;
   orm: MetaProjectCategory;
+  deployment: MetaProjectCategory;
   linter: MetaProjectCategory;
   tooling: MetaProjectCategory;
 }

@@ -77,6 +77,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
     const parts: string[] = [];
     if (ctx.project.database) parts.push(`database: ${ctx.project.database}`);
     if (ctx.project.orm) parts.push(`orm: ${ctx.project.orm}`);
+    if (ctx.project.deployment) parts.push(`deployment: ${ctx.project.deployment}`);
     if (ctx.project.linter) parts.push(`linter: ${ctx.project.linter}`);
     if (ctx.project.tooling.length > 0) parts.push(`tooling: ${ctx.project.tooling.join(', ')}`);
     if (parts.length > 0) {
@@ -97,6 +98,9 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
           break;
         case 'orm':
           ctx.project.orm = result as string | undefined;
+          break;
+        case 'deployment':
+          ctx.project.deployment = result as string | undefined;
           break;
         case 'linter':
           ctx.project.linter = result as string | undefined;
@@ -197,6 +201,14 @@ export async function blueprintCli(
     `${color.gray('  Stack:')} ${ctx.apps.map((a) => `${a.appName} (${META.stacks[a.stackName as StackName]?.label})`).join(', ')}`,
   );
   progress.next();
+
+  if (partial?.project?.deployment) {
+    ctx.project.deployment = partial.project.deployment;
+    log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
+  } else if (!partial?.project) {
+    const deploymentResult = await promptProjectCategory('deployment');
+    ctx.project.deployment = deploymentResult as string | undefined;
+  }
 
   if (partial?.project?.linter) {
     ctx.project.linter = partial.project.linter;

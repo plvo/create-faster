@@ -8,6 +8,9 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
+    if (ctx.project.deployment) {
+      flagsCommand += ` --deployment ${ctx.project.deployment}`;
+    }
     if (ctx.project.linter) {
       flagsCommand += ` --linter ${ctx.project.linter}`;
     }
@@ -95,6 +98,9 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
   if (ctx.git) configs.push('Git');
+  if (ctx.project.deployment) {
+    configs.push(META.project.deployment.options[ctx.project.deployment]?.label ?? ctx.project.deployment);
+  }
   if (ctx.project.linter) {
     configs.push(META.project.linter.options[ctx.project.linter]?.label ?? ctx.project.linter);
   }
