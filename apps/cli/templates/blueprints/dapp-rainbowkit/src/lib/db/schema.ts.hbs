@@ -3,7 +3,7 @@ path: src/lib/db/schema.ts
 only: single
 ---
 import { relations } from 'drizzle-orm';
-import { boolean, integer, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, integer, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 const timeColumns = {
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -11,7 +11,7 @@ const timeColumns = {
 };
 
 export const userTable = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: varchar('id', { length: 255 }).primaryKey(),
   username: varchar('username', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -32,7 +32,7 @@ export const userTableRelations = relations(userTable, ({ many }) => ({
 // https://www.better-auth.com/docs/concepts/database#session
 export const userSessionTable = pgTable('user_sessions', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  userId: uuid('user_id')
+  userId: varchar('user_id', { length: 255 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
   token: varchar('token', { length: 255 }).notNull().unique(),
@@ -52,7 +52,7 @@ export const userSessionTableRelations = relations(userSessionTable, ({ one }) =
 // https://www.better-auth.com/docs/concepts/database#account
 export const userAccountTable = pgTable('user_accounts', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  userId: uuid('user_id')
+  userId: varchar('user_id', { length: 255 })
     .notNull()
     .references(() => userTable.id),
   accountId: varchar('account_id', { length: 255 }).notNull(),
@@ -86,7 +86,7 @@ export const userVerificationTable = pgTable('user_verifications', {
 // https://www.better-auth.com/docs/plugins/siwe
 export const walletAddressTable = pgTable('wallet_addresses', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  userId: uuid('user_id')
+  userId: varchar('user_id', { length: 255 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
   address: varchar('address', { length: 42 }).notNull(),
@@ -103,11 +103,11 @@ export const walletAddressTableRelations = relations(walletAddressTable, ({ one 
 }));
 
 export const postTable = pgTable('posts', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: varchar('id', { length: 255 }).primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   content: text('content').notNull(),
   published: varchar('published', { length: 10 }).notNull().default('false'),
-  authorId: uuid('author_id')
+  authorId: varchar('author_id', { length: 255 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
   ...timeColumns,

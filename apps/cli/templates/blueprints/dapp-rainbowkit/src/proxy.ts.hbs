@@ -19,10 +19,6 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (session && isPublicRoute(pathname)) {
-    return NextResponse.redirect(new URL('/protected', request.url));
-  }
-
   return NextResponse.next();
 }
 
