@@ -139,6 +139,24 @@ describe('META.stacks validation', () => {
     expect(META.stacks.nextjs).toBeDefined();
     expect(META.stacks.expo).toBeDefined();
     expect(META.stacks.hono).toBeDefined();
+    expect(META.stacks.node).toBeDefined();
+  });
+
+  test('node stack is a server type with TypeScript deps', () => {
+    const node = META.stacks.node;
+    expect(node.type).toBe('server');
+    expect(node.label).toBe('Node');
+    expect(node.hint).toBe('Plain TypeScript');
+    expect(node.packageJson.devDependencies?.typescript).toBeDefined();
+    expect(node.packageJson.devDependencies?.['@types/node']).toBeDefined();
+    expect(node.packageJson.scripts?.dev).toContain('src/index.ts');
+    expect(node.packageJson.scripts?.start).toContain('src/index.ts');
+  });
+
+  test('node stack has no runtime dependencies', () => {
+    const deps = META.stacks.node.packageJson.dependencies;
+    expect(deps).toBeDefined();
+    expect(Object.keys(deps!)).toHaveLength(0);
   });
 });
 
