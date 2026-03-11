@@ -122,6 +122,13 @@ describe('META.project validation', () => {
     }
   });
 
+  test('deployment category is single-select with sst option', () => {
+    expect(META.project.deployment).toBeDefined();
+    expect(META.project.deployment.selection).toBe('single');
+    expect(META.project.deployment.options.sst).toBeDefined();
+    expect(META.project.deployment.options.sst.packageJson?.devDependencies?.sst).toBeDefined();
+  });
+
   test('tooling category is multi-select', () => {
     expect(META.project.tooling).toBeDefined();
     expect(META.project.tooling.selection).toBe('multi');

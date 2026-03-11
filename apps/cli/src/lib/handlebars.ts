@@ -39,6 +39,10 @@ export function registerHandlebarsHelpers(): void {
     return contextName in this && this[contextName] !== undefined;
   });
 
+  Handlebars.registerHelper('camelCase', (str: string) => {
+    return str.replace(/[-_]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''));
+  });
+
   Handlebars.registerHelper('appPort', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
     const index = root.apps?.findIndex((app: AppContext) => app.appName === appName) ?? -1;

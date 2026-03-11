@@ -80,7 +80,7 @@ export interface MetaBlueprint {
   category: string;
   context: {
     apps: { appName: string; stackName: StackName; libraries: string[] }[];
-    project: { database?: string; orm?: string };
+    project: { database?: string; orm?: string; deployment?: string };
   };
   packageJson?: PackageJsonConfig;
   envs?: EnvVar[];
