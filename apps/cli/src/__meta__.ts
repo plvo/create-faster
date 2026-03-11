@@ -78,6 +78,22 @@ export const META: Meta = {
         },
       },
     },
+    node: {
+      type: 'server',
+      label: 'Node',
+      hint: 'Plain TypeScript',
+      packageJson: {
+        dependencies: {},
+        devDependencies: {
+          typescript: '^5.9.3',
+          '@types/node': '^22',
+        },
+        scripts: {
+          dev: 'bun run --hot src/index.ts',
+          start: 'bun run src/index.ts',
+        },
+      },
+    },
     'tanstack-start': {
       type: 'app',
       label: 'TanStack Start',

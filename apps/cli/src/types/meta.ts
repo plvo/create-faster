@@ -1,4 +1,4 @@
-export type StackName = 'nextjs' | 'expo' | 'hono' | 'tanstack-start';
+export type StackName = 'nextjs' | 'expo' | 'hono' | 'node' | 'tanstack-start';
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
