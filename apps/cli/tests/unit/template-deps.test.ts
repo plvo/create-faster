@@ -97,7 +97,7 @@ describe('Template imports vs META dependencies', () => {
       const relPath = relative(TEMPLATES_DIR, filePath);
 
       for (const pkg of imports) {
-        if (!declaredPackages.has(pkg)) {
+        if (!declaredPackages.has(pkg) && !declaredPackages.has(`@types/${pkg}`)) {
           undeclared.push({ file: relPath, pkg });
         }
       }
