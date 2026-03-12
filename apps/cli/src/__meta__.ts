@@ -445,8 +445,8 @@ export const META: Meta = {
             },
           },
         },
-        terraform: {
-          label: 'Terraform',
+        'terraform-aws': {
+          label: 'Terraform (AWS)',
           hint: 'AWS infrastructure with S3 backend',
           mono: { scope: 'root' },
         },

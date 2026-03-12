@@ -152,7 +152,7 @@ describe('deployment template resolution', () => {
       projectName: 'test',
       repo: 'single',
       apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
-      project: { deployment: 'terraform', tooling: [] },
+      project: { deployment: 'terraform-aws', tooling: [] },
       git: false,
     };
 
@@ -166,7 +166,7 @@ describe('deployment template resolution', () => {
       projectName: 'test',
       repo: 'turborepo',
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
-      project: { deployment: 'terraform', tooling: [] },
+      project: { deployment: 'terraform-aws', tooling: [] },
       git: false,
     };
 
