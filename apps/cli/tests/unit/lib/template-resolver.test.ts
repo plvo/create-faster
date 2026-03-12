@@ -146,6 +146,40 @@ describe('resolveProjectAddonDestination', () => {
   });
 });
 
+describe('deployment template resolution', () => {
+  test('terraform deployment resolves infra/ templates in single repo', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'terraform-aws', tooling: [] },
+      git: false,
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const infraTemplates = templates.filter((t) => t.destination.startsWith('infra/'));
+    expect(infraTemplates.length).toBeGreaterThan(0);
+  });
+
+  test('terraform deployment resolves at repo root in turborepo', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'terraform-aws', tooling: [] },
+      git: false,
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const infraTemplates = templates.filter((t) => t.destination.startsWith('infra/'));
+    expect(infraTemplates.length).toBeGreaterThan(0);
+    for (const t of infraTemplates) {
+      expect(t.destination).not.toMatch(/^apps\//);
+      expect(t.destination).not.toMatch(/^packages\//);
+    }
+  });
+});
+
 describe('blueprint template resolution', () => {
   test('getAllTemplatesForContext works with blueprint set', () => {
     const ctx: TemplateContext = {
