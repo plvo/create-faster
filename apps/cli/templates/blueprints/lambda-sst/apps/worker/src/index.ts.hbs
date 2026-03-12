@@ -1,0 +1,32 @@
+---
+mono:
+  scope: root
+---
+import type { SQSEvent, SQSRecord, SQSBatchResponse, SQSBatchItemFailure } from 'aws-lambda';
+import type { QueueMessage } from '@repo/shared/types';
+
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
+  const failures: SQSBatchItemFailure[] = [];
+
+  for (const record of event.Records) {
+    try {
+      await processMessage(record);
+    } catch (error) {
+      console.error('Failed to process message', { messageId: record.messageId, error });
+      failures.push({ itemIdentifier: record.messageId });
+    }
+  }
+
+  return { batchItemFailures: failures };
+};
+
+async function processMessage(record: SQSRecord): Promise<void> {
+  const message = JSON.parse(record.body) as QueueMessage;
+
+  console.log('Processing message', {
+    type: message.type,
+    traceId: message.traceId,
+  });
+
+  // TODO: Add your message processing logic here
+}

@@ -1,0 +1,45 @@
+---
+mono:
+  scope: root
+---
+variable "rule_name" {
+  type = string
+}
+
+variable "schedule_expression" {
+  type    = string
+  default = "rate(1 hour)"
+}
+
+variable "lambda_function_arn" {
+  type = string
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}
+
+resource "aws_cloudwatch_event_rule" "schedule" {
+  name                = var.rule_name
+  schedule_expression = var.schedule_expression
+  tags                = var.tags
+}
+
+resource "aws_cloudwatch_event_target" "lambda" {
+  rule      = aws_cloudwatch_event_rule.schedule.name
+  target_id = "lambda"
+  arn       = var.lambda_function_arn
+}
+
+resource "aws_lambda_permission" "eventbridge" {
+  statement_id  = "AllowEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_function_arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.schedule.arn
+}
+
+output "rule_arn" {
+  value = aws_cloudwatch_event_rule.schedule.arn
+}

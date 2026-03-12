@@ -1,0 +1,15 @@
+---
+mono:
+  scope: root
+---
+output "api_url" {
+  value = module.api_gateway.api_url
+}
+
+output "queue_url" {
+  value = module.queue.queue_url
+}
+
+output "cron_rule_arn" {
+  value = module.schedule.rule_arn
+}

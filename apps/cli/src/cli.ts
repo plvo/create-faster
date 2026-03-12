@@ -205,7 +205,7 @@ export async function blueprintCli(
   if (partial?.project?.deployment) {
     ctx.project.deployment = partial.project.deployment;
     log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
-  } else if (!partial?.project) {
+  } else if (!partial?.project && !ctx.project.deployment) {
     const deploymentResult = await promptProjectCategory('deployment');
     ctx.project.deployment = deploymentResult as string | undefined;
   }

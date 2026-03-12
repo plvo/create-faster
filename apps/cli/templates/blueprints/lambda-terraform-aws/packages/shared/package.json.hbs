@@ -1,0 +1,18 @@
+---
+mono:
+  scope: root
+---
+{
+  "name": "@repo/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/types.ts"
+  },
+  "devDependencies": {
+    "@repo/config": "*",
+    "@types/aws-lambda": "^8.10.0",
+    "typescript": "^5.9.3"
+  }
+}

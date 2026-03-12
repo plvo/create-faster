@@ -1,0 +1,66 @@
+---
+mono:
+  scope: root
+---
+{{{{raw}}}}
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        type: choice
+        options:
+          - staging
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  TF_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build
+        run: bun run build
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -backend-config=backend/${{ env.TF_ENV }}.hcl
+
+      - name: Terraform Plan
+        working-directory: infra
+        run: terraform plan -var="env=${{ env.TF_ENV }}" -out=plan.tfplan
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: terraform apply plan.tfplan
+{{{{/raw}}}}
