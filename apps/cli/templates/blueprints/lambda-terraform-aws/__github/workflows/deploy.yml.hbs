@@ -14,7 +14,7 @@ on:
         description: Deployment environment
         type: choice
         options:
-          - staging
+          - dev
           - prod
 
 permissions:
@@ -22,16 +22,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
   cancel-in-progress: false
 
 env:
-  TF_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  TF_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
     steps:
       - uses: actions/checkout@v4
 

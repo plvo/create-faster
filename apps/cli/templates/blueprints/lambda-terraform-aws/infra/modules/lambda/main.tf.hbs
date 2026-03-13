@@ -2,44 +2,6 @@
 mono:
   scope: root
 ---
-variable "function_name" {
-  type = string
-}
-
-variable "handler" {
-  type    = string
-  default = "index.handler"
-}
-
-variable "runtime" {
-  type    = string
-  default = "nodejs22.x"
-}
-
-variable "timeout" {
-  type    = number
-  default = 30
-}
-
-variable "memory_size" {
-  type    = number
-  default = 256
-}
-
-variable "source_dir" {
-  type = string
-}
-
-variable "environment_variables" {
-  type    = map(string)
-  default = {}
-}
-
-variable "tags" {
-  type    = map(string)
-  default = {}
-}
-
 resource "aws_iam_role" "lambda" {
   name = "${var.function_name}-role"
 
@@ -86,24 +48,4 @@ resource "aws_lambda_function" "this" {
   }
 
   tags = var.tags
-}
-
-output "function_arn" {
-  value = aws_lambda_function.this.arn
-}
-
-output "function_name" {
-  value = aws_lambda_function.this.function_name
-}
-
-output "invoke_arn" {
-  value = aws_lambda_function.this.invoke_arn
-}
-
-output "role_name" {
-  value = aws_iam_role.lambda.name
-}
-
-output "role_arn" {
-  value = aws_iam_role.lambda.arn
 }

@@ -1,0 +1,41 @@
+---
+mono:
+  scope: root
+---
+variable "function_name" {
+  type = string
+}
+
+variable "handler" {
+  type    = string
+  default = "index.handler"
+}
+
+variable "runtime" {
+  type    = string
+  default = "nodejs22.x"
+}
+
+variable "timeout" {
+  type    = number
+  default = 30
+}
+
+variable "memory_size" {
+  type    = number
+  default = 256
+}
+
+variable "source_dir" {
+  type = string
+}
+
+variable "environment_variables" {
+  type    = map(string)
+  default = {}
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

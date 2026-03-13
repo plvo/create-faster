@@ -1,0 +1,21 @@
+---
+mono:
+  scope: root
+---
+variable "rule_name" {
+  type = string
+}
+
+variable "schedule_expression" {
+  type    = string
+  default = "rate(1 hour)"
+}
+
+variable "lambda_function_arn" {
+  type = string
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}
