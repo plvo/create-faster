@@ -21,28 +21,7 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
     git: false,
   };
 
-  if (partial?.projectName) {
-    ctx.projectName = partial.projectName;
-    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    const fullPath = join(process.cwd(), partial.projectName);
-    if (existsSync(fullPath)) {
-      cancel(`Directory "${partial.projectName}" already exists.`);
-      process.exit(1);
-    }
-  } else {
-    ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
-      placeholder: 'my-app',
-      initialValue: 'my-app',
-      validate: (value) => {
-        const trimmed = value.trim();
-        if (!trimmed) return 'Project name is required';
-        const fullPath = join(process.cwd(), trimmed);
-        if (existsSync(fullPath)) {
-          return `Directory "${trimmed}" already exists.`;
-        }
-      },
-    });
-  }
+  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
   progress.next();
 
   if (partial?.apps && partial.apps.length > 0) {
@@ -173,28 +152,7 @@ export async function blueprintCli(
     blueprint: blueprintName,
   };
 
-  if (partial?.projectName) {
-    ctx.projectName = partial.projectName;
-    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    const fullPath = join(process.cwd(), partial.projectName);
-    if (existsSync(fullPath)) {
-      cancel(`Directory "${partial.projectName}" already exists.`);
-      process.exit(1);
-    }
-  } else {
-    ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
-      placeholder: 'my-app',
-      initialValue: 'my-app',
-      validate: (value) => {
-        const trimmed = value.trim();
-        if (!trimmed) return 'Project name is required';
-        const fullPath = join(process.cwd(), trimmed);
-        if (existsSync(fullPath)) {
-          return `Directory "${trimmed}" already exists.`;
-        }
-      },
-    });
-  }
+  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
 
   log.info(`${color.green('✓')} Using blueprint: ${color.bold(blueprint.label)}`);
   log.info(
@@ -256,6 +214,34 @@ export async function blueprintCli(
   progress.next();
 
   return ctx;
+}
+
+async function promptOrUseProjectName(
+  partial: Partial<TemplateContext> | undefined,
+  message: string,
+): Promise<string> {
+  if (partial?.projectName) {
+    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
+    const fullPath = join(process.cwd(), partial.projectName);
+    if (existsSync(fullPath)) {
+      cancel(`Directory "${partial.projectName}" already exists.`);
+      process.exit(1);
+    }
+    return partial.projectName;
+  }
+
+  return promptText<string>(message, {
+    placeholder: 'my-app',
+    initialValue: 'my-app',
+    validate: (value) => {
+      const trimmed = value.trim();
+      if (!trimmed) return 'Project name is required';
+      const fullPath = join(process.cwd(), trimmed);
+      if (existsSync(fullPath)) {
+        return `Directory "${trimmed}" already exists.`;
+      }
+    },
+  });
 }
 
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
