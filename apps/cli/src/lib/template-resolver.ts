@@ -3,7 +3,7 @@ import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { MetaAddon, StackName } from '@/types/meta';
+import type { MetaAddon, MonoScope, StackName } from '@/types/meta';
 import { scanDirectory, transformFilename } from './file-writer';
 import type { TemplateFrontmatter } from './frontmatter';
 import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
@@ -16,64 +16,42 @@ export function resolveAddonNames(category: ProjectCategoryName, addonName: stri
   return [addonName];
 }
 
-export function resolveLibraryDestination(
-  relativePath: string,
-  library: MetaAddon,
-  ctx: TemplateContext,
-  appName: string,
-  frontmatter: TemplateFrontmatter,
-): string {
-  const isTurborepo = ctx.repo === 'turborepo';
+export interface DestinationParams {
+  relativePath: string;
+  ctx: TemplateContext;
+  frontmatter?: TemplateFrontmatter;
+  addon?: MetaAddon;
+  appName?: string;
+  defaultScope?: MonoScope;
+}
 
-  if (!isTurborepo) {
+export function resolveDestination({
+  relativePath,
+  ctx,
+  frontmatter = {},
+  addon,
+  appName,
+  defaultScope = 'app',
+}: DestinationParams): string {
+  if (ctx.repo !== 'turborepo') {
     return frontmatter.path ?? relativePath;
   }
 
-  const scope = frontmatter.mono?.scope ?? library.mono?.scope ?? 'app';
+  const scope = frontmatter.mono?.scope ?? addon?.mono?.scope ?? defaultScope;
   const filePath = frontmatter.mono?.path ?? relativePath;
 
   switch (scope) {
     case 'root':
       return filePath;
     case 'pkg': {
-      const name = library.mono?.scope === 'pkg' ? library.mono.name : 'unknown';
+      const name = addon?.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
       return `packages/${name}/${filePath}`;
     }
-    default:
-      return `apps/${appName}/${filePath}`;
-  }
-}
-
-export function resolveProjectAddonDestination(
-  relativePath: string,
-  addon: MetaAddon,
-  ctx: TemplateContext,
-  frontmatter: TemplateFrontmatter,
-): string {
-  const isTurborepo = ctx.repo === 'turborepo';
-
-  if (!isTurborepo) {
-    return frontmatter.path ?? relativePath;
-  }
-
-  const scope = frontmatter.mono?.scope ?? addon.mono?.scope ?? 'root';
-  const filePath = frontmatter.mono?.path ?? relativePath;
-
-  switch (scope) {
-    case 'pkg': {
-      const name = addon.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
-      return `packages/${name}/${filePath}`;
+    default: {
+      const resolvedAppName = appName ?? ctx.apps[0]?.appName ?? ctx.projectName;
+      return `apps/${resolvedAppName}/${filePath}`;
     }
-    case 'app':
-      return `apps/${ctx.apps[0]?.appName ?? ctx.projectName}/${filePath}`;
-    default:
-      return filePath;
   }
-}
-
-export function resolveStackDestination(relativePath: string, ctx: TemplateContext, appName: string): string {
-  const isTurborepo = ctx.repo === 'turborepo';
-  return isTurborepo ? `apps/${appName}/${relativePath}` : relativePath;
 }
 
 function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; only: string | undefined } {
@@ -96,7 +74,7 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedFilename = transformFilename(file);
-    const destination = resolveStackDestination(transformedFilename, ctx, appName);
+    const destination = resolveDestination({ relativePath: transformedFilename, ctx, appName });
     templates.push({ source, destination });
   }
 
@@ -126,7 +104,7 @@ function resolveTemplatesForLibrary(
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
-    const destination = resolveLibraryDestination(transformedPath, library, ctx, appName, frontmatter);
+    const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter, addon: library, appName });
     templates.push({ source, destination });
   }
 
@@ -155,7 +133,7 @@ function resolveTemplatesForProjectAddon(
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(file);
-    const destination = resolveProjectAddonDestination(transformedPath, addon, ctx, frontmatter);
+    const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter, addon, defaultScope: 'root' });
     templates.push({ source, destination });
   }
 
@@ -174,7 +152,6 @@ function resolveStackSpecificAddonTemplatesForApps(
   const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
   const files = scanDirectory(addonDir);
   const templates: TemplateFile[] = [];
-  const isTurborepo = ctx.repo === 'turborepo';
 
   for (const file of files) {
     const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
@@ -188,7 +165,7 @@ function resolveStackSpecificAddonTemplatesForApps(
 
     for (const app of apps) {
       if (app.stackName !== fileSuffix) continue;
-      const destination = isTurborepo ? `apps/${app.appName}/${transformedPath}` : transformedPath;
+      const destination = resolveDestination({ relativePath: transformedPath, ctx, appName: app.appName });
       templates.push({ source, destination });
     }
   }
@@ -225,27 +202,7 @@ function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContex
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(fileSuffix ? cleanFilename : file);
-    const isTurborepo = ctx.repo === 'turborepo';
-
-    let destination: string;
-    if (!isTurborepo) {
-      destination = frontmatter.path ?? transformedPath;
-    } else {
-      const scope = frontmatter.mono?.scope ?? 'app';
-      const filePath = frontmatter.mono?.path ?? transformedPath;
-
-      switch (scope) {
-        case 'root':
-          destination = filePath;
-          break;
-        default: {
-          const appName = ctx.apps[0]?.appName ?? ctx.projectName;
-          destination = `apps/${appName}/${filePath}`;
-          break;
-        }
-      }
-    }
-
+    const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter });
     templates.push({ source, destination });
   }
 
