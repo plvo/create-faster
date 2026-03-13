@@ -1,0 +1,14 @@
+---
+mono:
+  scope: root
+---
+import type { ScheduledEvent, Context } from 'aws-lambda';
+
+export const handler = async (event: ScheduledEvent, context: Context): Promise<void> => {
+  console.log('Cron triggered', {
+    time: event.time,
+    requestId: context.awsRequestId,
+  });
+
+  // TODO: Add your scheduled task logic here
+};

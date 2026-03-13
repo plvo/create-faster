@@ -675,6 +675,54 @@ export const META: Meta = {
         },
       ],
     },
+    'lambda-sst': {
+      label: 'Lambda (SST)',
+      hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
+      category: 'AWS',
+      context: {
+        apps: [
+          { appName: 'api', stackName: 'hono', libraries: ['aws-lambda'] },
+          { appName: 'cron', stackName: 'node', libraries: [] },
+          { appName: 'worker', stackName: 'node', libraries: [] },
+        ],
+        project: { deployment: 'sst' },
+      },
+      packageJson: {
+        dependencies: {
+          '@repo/shared': '*',
+        },
+        devDependencies: {
+          '@types/aws-lambda': '^8.10.0',
+        },
+        scripts: {
+          build: 'bun build src/index.ts --outfile dist/index.js --target node',
+        },
+      },
+    },
+    'lambda-terraform-aws': {
+      label: 'Lambda (Terraform)',
+      hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
+      category: 'AWS',
+      context: {
+        apps: [
+          { appName: 'api', stackName: 'hono', libraries: ['aws-lambda'] },
+          { appName: 'cron', stackName: 'node', libraries: [] },
+          { appName: 'worker', stackName: 'node', libraries: [] },
+        ],
+        project: { deployment: 'terraform-aws' },
+      },
+      packageJson: {
+        dependencies: {
+          '@repo/shared': '*',
+        },
+        devDependencies: {
+          '@types/aws-lambda': '^8.10.0',
+        },
+        scripts: {
+          build: 'bun build src/index.ts --outfile dist/index.js --target node',
+        },
+      },
+    },
   },
 } as const satisfies Meta;
 

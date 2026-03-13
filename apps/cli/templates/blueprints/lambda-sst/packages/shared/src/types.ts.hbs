@@ -1,0 +1,10 @@
+---
+mono:
+  scope: root
+---
+export interface QueueMessage<T = unknown> {
+  type: string;
+  payload: T;
+  timestamp: string;
+  traceId: string;
+}

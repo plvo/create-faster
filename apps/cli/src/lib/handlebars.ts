@@ -43,6 +43,10 @@ export function registerHandlebarsHelpers(): void {
     return str.replace(/[-_]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''));
   });
 
+  Handlebars.registerHelper('raw', function (options: Handlebars.HelperOptions) {
+    return options.fn(this);
+  });
+
   Handlebars.registerHelper('appPort', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
     const index = root.apps?.findIndex((app: AppContext) => app.appName === appName) ?? -1;

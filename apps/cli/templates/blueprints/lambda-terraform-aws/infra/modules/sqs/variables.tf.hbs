@@ -1,0 +1,30 @@
+---
+mono:
+  scope: root
+---
+variable "queue_name" {
+  type = string
+}
+
+variable "lambda_function_arn" {
+  type = string
+}
+
+variable "lambda_role_name" {
+  type = string
+}
+
+variable "visibility_timeout" {
+  type    = number
+  default = 90
+}
+
+variable "message_retention_seconds" {
+  type    = number
+  default = 345600 # 4 days
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

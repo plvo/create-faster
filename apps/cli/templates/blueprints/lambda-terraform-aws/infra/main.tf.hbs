@@ -1,0 +1,52 @@
+---
+mono:
+  scope: root
+---
+locals {
+  build_dir = "${path.module}/../apps"
+}
+
+module "api" {
+  source        = "./modules/lambda"
+  function_name = "${local.resource_name}-api"
+  source_dir    = "${local.build_dir}/api/dist"
+  tags          = local.common_tags
+}
+
+module "cron" {
+  source        = "./modules/lambda"
+  function_name = "${local.resource_name}-cron"
+  source_dir    = "${local.build_dir}/cron/dist"
+  tags          = local.common_tags
+}
+
+module "worker" {
+  source        = "./modules/lambda"
+  function_name = "${local.resource_name}-worker"
+  source_dir    = "${local.build_dir}/worker/dist"
+  timeout       = 60
+  tags          = local.common_tags
+}
+
+module "api_gateway" {
+  source               = "./modules/api-gateway"
+  name                 = "${local.resource_name}-api"
+  lambda_invoke_arn    = module.api.invoke_arn
+  lambda_function_name = module.api.function_name
+  tags                 = local.common_tags
+}
+
+module "queue" {
+  source              = "./modules/sqs"
+  queue_name          = "${local.resource_name}-queue"
+  lambda_function_arn = module.worker.function_arn
+  lambda_role_name    = module.worker.role_name
+  tags                = local.common_tags
+}
+
+module "schedule" {
+  source              = "./modules/eventbridge"
+  rule_name           = "${local.resource_name}-cron"
+  lambda_function_arn = module.cron.function_arn
+  tags                = local.common_tags
+}

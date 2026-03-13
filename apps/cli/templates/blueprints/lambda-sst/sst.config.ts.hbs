@@ -1,0 +1,35 @@
+---
+mono:
+  scope: root
+---
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: '{{projectName}}',
+      removal: input?.stage === 'production' ? 'retain' : 'remove',
+      home: 'aws',
+    };
+  },
+  async run() {
+    const queue = new sst.aws.Queue('queue');
+    queue.subscribe({
+      handler: 'apps/worker/src/index.handler',
+      timeout: '30 seconds',
+    });
+
+    const api = new sst.aws.ApiGatewayV2('api');
+    api.route('$default', 'apps/api/src/index.handler');
+
+    new sst.aws.Cron('cron', {
+      function: 'apps/cron/src/index.handler',
+      schedule: 'rate(1 hour)',
+    });
+
+    return {
+      api: api.url,
+      queue: queue.url,
+    };
+  },
+});

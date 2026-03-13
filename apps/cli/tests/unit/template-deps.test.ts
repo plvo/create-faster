@@ -41,12 +41,23 @@ function collectAllDeclaredPackages(): Set<string> {
   return packages;
 }
 
-function extractImportedPackages(content: string): Set<string> {
-  const packages = new Set<string>();
+interface ImportEntry {
+  packageName: string;
+  typeOnly: boolean;
+}
 
-  const patterns = [/\bfrom\s+['"]([^'"]+)['"]/g, /\bimport\s+['"]([^'"]+)['"]/g];
+function extractImportedPackages(content: string): ImportEntry[] {
+  const entries: ImportEntry[] = [];
 
-  for (const regex of patterns) {
+  const patterns = [
+    { regex: /\bimport\s+type\b[^'"]*from\s+['"]([^'"]+)['"]/g, typeOnly: true },
+    { regex: /\bimport\s+(?!type\b)[^'"]*from\s+['"]([^'"]+)['"]/g, typeOnly: false },
+    { regex: /\bimport\s+['"]([^'"]+)['"]/g, typeOnly: false },
+  ];
+
+  const seen = new Set<string>();
+
+  for (const { regex, typeOnly } of patterns) {
     for (const match of content.matchAll(regex)) {
       const importPath = match[1];
 
@@ -66,11 +77,15 @@ function extractImportedPackages(content: string): Set<string> {
         ? importPath.split('/').slice(0, 2).join('/')
         : importPath.split('/')[0];
 
-      packages.add(packageName);
+      const key = `${packageName}:${typeOnly}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      entries.push({ packageName, typeOnly });
     }
   }
 
-  return packages;
+  return entries;
 }
 
 async function getAllTemplateFiles(): Promise<string[]> {
@@ -96,9 +111,12 @@ describe('Template imports vs META dependencies', () => {
       const imports = extractImportedPackages(content);
       const relPath = relative(TEMPLATES_DIR, filePath);
 
-      for (const pkg of imports) {
-        if (!declaredPackages.has(pkg)) {
-          undeclared.push({ file: relPath, pkg });
+      for (const { packageName, typeOnly } of imports) {
+        const hasPkg = declaredPackages.has(packageName);
+        const hasTypes = declaredPackages.has(`@types/${packageName}`);
+
+        if (!hasPkg && !(typeOnly && hasTypes)) {
+          undeclared.push({ file: relPath, pkg: packageName });
         }
       }
     }
@@ -117,8 +135,15 @@ describe('Template imports vs META dependencies', () => {
     for (const filePath of templateFiles) {
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n');
+      let inRawBlock = false;
 
       for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('{{{{raw}}}}')) inRawBlock = true;
+        if (lines[i].includes('{{{{/raw}}}}')) {
+          inRawBlock = false;
+          continue;
+        }
+        if (inRawBlock) continue;
         if (jsxBracesRegex.test(lines[i])) {
           conflicts.push({ file: relative(TEMPLATES_DIR, filePath), line: i + 1, text: lines[i].trim() });
         }

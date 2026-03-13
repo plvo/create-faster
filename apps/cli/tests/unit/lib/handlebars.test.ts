@@ -169,6 +169,18 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('raw', () => {
+    test('preserves inner {{ }} sequences literally', () => {
+      const template = Handlebars.compile('{{{{raw}}}}{{variable}}{{{{/raw}}}}');
+      expect(template({})).toBe('{{variable}}');
+    });
+
+    test('preserves ${{ }} sequences for GitHub Actions workflows', () => {
+      const template = Handlebars.compile('{{{{raw}}}}${{ secrets.TOKEN }}{{{{/raw}}}}');
+      expect(template({})).toBe('${{ secrets.TOKEN }}');
+    });
+  });
+
   describe('appPort', () => {
     test('returns 3000 for first app', () => {
       const template = Handlebars.compile('{{appPort "web"}}');

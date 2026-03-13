@@ -1,0 +1,81 @@
+---
+mono:
+  scope: root
+---
+{{{{raw}}}}
+set working-directory := 'infra'
+
+init env="dev":
+    terraform init -reconfigure -backend-config=backend/{{env}}.hcl -upgrade -input=false
+
+check env="dev":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "=== Terraform Configuration ==="
+    echo "Environment: {{env}}"
+    echo "Directory: $(pwd)"
+    terraform version | head -1
+
+    echo ""
+    echo "=== AWS Configuration ==="
+    if [ -n "${AWS_PROFILE:-}" ]; then
+        echo "AWS_PROFILE: $AWS_PROFILE"
+    else
+        echo "AWS_PROFILE: (not set)"
+    fi
+
+    echo ""
+    echo "=== Backend State ==="
+    if terraform state list &>/dev/null; then
+        RESOURCE_COUNT=$(terraform state list | wc -l)
+        echo "Resources in state: $RESOURCE_COUNT"
+    else
+        echo "Cannot read state (empty or not initialized)"
+    fi
+
+plan env="dev" *args:
+    terraform plan -var="env={{env}}" {{args}}
+
+apply env="dev" *args:
+    terraform apply -var="env={{env}}" {{args}}
+
+destroy env="dev" *args:
+    terraform destroy -var="env={{env}}" {{args}}
+
+fmt:
+    terraform fmt -recursive
+
+validate:
+    terraform validate
+
+output *args:
+    terraform output {{args}}
+
+clean-modules:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ ! -d ".terraform/modules" ]; then
+        echo "No .terraform/modules directory found"
+        exit 0
+    fi
+
+    CLEANED=0
+    PATTERNS=(".git" ".github" ".gitignore" ".gitmodules" "CHANGELOG.md" "LICENSE" "examples" "tests" "test" "Makefile" ".renovaterc" ".dependabot")
+
+    for pattern in "${PATTERNS[@]}"; do
+        while IFS= read -r -d '' file; do
+            echo "Removing: ${file#./}"
+            rm -rf "$file"
+            ((CLEANED++)) || true
+        done < <(find .terraform/modules -name "$pattern" -print0 2>/dev/null)
+    done
+
+    if [ $CLEANED -gt 0 ]; then
+        echo "Cleaned $CLEANED files/directories"
+        du -sh .terraform/modules/ 2>/dev/null | cut -f1 | xargs -I{} echo "Final size: {}"
+    else
+        echo "No files to clean"
+    fi
+{{{{/raw}}}}
