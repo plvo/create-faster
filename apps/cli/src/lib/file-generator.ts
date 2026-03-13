@@ -115,8 +115,7 @@ export async function generateProjectFiles(
 
   // 4. Compile results
   for (const r of allResults) {
-    if (r.success && r.skipped) {
-    } else if (r.success) {
+    if (r.success) {
       result.generated.push(r.destination);
     } else {
       result.failed.push({

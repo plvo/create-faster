@@ -118,7 +118,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   } else if (partial?.pm !== undefined) {
     log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
   } else {
-    ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
+    ctx.pm = await promptSelect(progress.message(`Install dependencies ${color.bold('now')}?`), {
       options: [
         { label: 'Install with bun', value: 'bun' },
         { label: 'Install with pnpm', value: 'pnpm' },
@@ -202,7 +202,7 @@ export async function blueprintCli(
   } else if (partial?.pm !== undefined) {
     ctx.pm = partial.pm;
   } else {
-    ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
+    ctx.pm = await promptSelect(progress.message(`Install dependencies ${color.bold('now')}?`), {
       options: [
         { label: 'Install with bun', value: 'bun' },
         { label: 'Install with pnpm', value: 'pnpm' },
