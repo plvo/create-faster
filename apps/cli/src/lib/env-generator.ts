@@ -107,35 +107,26 @@ function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: str
   return null;
 }
 
+function addToGroup(grouped: Map<string, string[]>, path: string, value: string): void {
+  if (!grouped.has(path)) grouped.set(path, []);
+  grouped.get(path)!.push(value);
+}
+
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
   const grouped = new Map<string, string[]>();
 
   for (const env of envs) {
     if (env.scope === 'app') {
-      if (env.source === 'library') {
-        for (const app of ctx.apps) {
-          if (!app.libraries.includes(env.libraryName!)) continue;
-          const path = resolveScopeToPath('app', ctx, app.appName);
-          if (!path) continue;
-          const resolved = resolveEnvValue(env.value, ctx, app.appName);
-          if (!grouped.has(path)) grouped.set(path, []);
-          grouped.get(path)!.push(resolved);
-        }
-      } else {
-        for (const app of ctx.apps) {
-          const path = resolveScopeToPath('app', ctx, app.appName);
-          if (!path) continue;
-          const resolved = resolveEnvValue(env.value, ctx, app.appName);
-          if (!grouped.has(path)) grouped.set(path, []);
-          grouped.get(path)!.push(resolved);
-        }
+      for (const app of ctx.apps) {
+        if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) continue;
+        const path = resolveScopeToPath('app', ctx, app.appName);
+        if (!path) continue;
+        addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
       }
     } else {
       const path = resolveScopeToPath(env.scope, ctx);
       if (!path) continue;
-      const resolved = resolveEnvValue(env.value, ctx);
-      if (!grouped.has(path)) grouped.set(path, []);
-      grouped.get(path)!.push(resolved);
+      addToGroup(grouped, path, resolveEnvValue(env.value, ctx));
     }
   }
 
