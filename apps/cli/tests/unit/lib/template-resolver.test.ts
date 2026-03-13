@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import type { TemplateFrontmatter } from '@/lib/frontmatter';
 import { getAllTemplatesForContext, resolveAddonNames, resolveDestination } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 

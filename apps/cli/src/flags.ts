@@ -22,9 +22,9 @@ interface ParsedFlags {
   install?: boolean;
 }
 
-function validateOption(label: string, value: string, options: Record<string, unknown>): void {
+function validateOption(label: string, value: string, options: Record<string, unknown>, plural?: string): void {
   if (!options[value]) {
-    printError(`Invalid ${label} '${value}'`, `Available ${label}s: ${Object.keys(options).join(', ')}`);
+    printError(`Invalid ${label} '${value}'`, `Available ${plural ?? `${label}s`}: ${Object.keys(options).join(', ')}`);
     process.exit(1);
   }
 }
@@ -43,7 +43,7 @@ function applyProjectFlags(flags: ParsedFlags, project: ProjectContext): void {
   if (flags.tooling && flags.tooling.length > 0) {
     project.tooling = [];
     for (const toolingName of flags.tooling) {
-      validateOption('tooling', toolingName, META.project.tooling.options);
+      validateOption('tooling', toolingName, META.project.tooling.options, 'tooling');
       project.tooling.push(toolingName);
     }
   }
