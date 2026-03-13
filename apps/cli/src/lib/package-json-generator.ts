@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
+import { cleanUndefined, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
@@ -25,21 +26,11 @@ export interface GeneratedPackageJson {
   content: PackageJson;
 }
 
-const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
-
-function spreadExtraKeys(pkg: PackageJson, config: PackageJsonConfig): void {
-  for (const [key, value] of Object.entries(config)) {
-    if (!MERGE_KEYS.has(key) && value !== undefined) pkg[key] = value;
-  }
-}
-
-function cleanUndefined(pkg: PackageJson): PackageJson {
-  return Object.fromEntries(Object.entries(pkg).filter(([, v]) => v !== undefined)) as PackageJson;
-}
-
 function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
 }
+
+const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
 
 export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   const result: PackageJsonConfig = {};
@@ -62,23 +53,6 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
   return result;
 }
 
-function processScriptPorts(scripts: Record<string, string>, port?: number): Record<string, string> {
-  const resolved: Record<string, string> = {};
-  for (const [key, value] of Object.entries(scripts)) {
-    resolved[key] = port
-      ? value.replace(/\{\{port\}\}/g, String(port))
-      : value.replace(/\s*--port\s*\{\{port\}\}/g, '');
-  }
-  return resolved;
-}
-
-function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
-  const sorted = {} as T;
-  for (const key of Object.keys(obj).sort()) {
-    (sorted as Record<string, unknown>)[key] = obj[key];
-  }
-  return sorted;
-}
 
 function getMonoPackageName(addon: MetaAddon): string | null {
   return addon.mono?.scope === 'pkg' ? addon.mono.name : null;
