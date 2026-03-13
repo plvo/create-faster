@@ -139,7 +139,10 @@ describe('Template imports vs META dependencies', () => {
 
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].includes('{{{{raw}}}}')) inRawBlock = true;
-        if (lines[i].includes('{{{{/raw}}}}')) { inRawBlock = false; continue; }
+        if (lines[i].includes('{{{{/raw}}}}')) {
+          inRawBlock = false;
+          continue;
+        }
         if (inRawBlock) continue;
         if (jsxBracesRegex.test(lines[i])) {
           conflicts.push({ file: relative(TEMPLATES_DIR, filePath), line: i + 1, text: lines[i].trim() });
