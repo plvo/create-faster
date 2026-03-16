@@ -177,10 +177,7 @@ export async function blueprintCli(
   return ctx;
 }
 
-async function promptOrUseProjectName(
-  partial: Partial<TemplateContext> | undefined,
-  message: string,
-): Promise<string> {
+async function promptOrUseProjectName(partial: Partial<TemplateContext> | undefined, message: string): Promise<string> {
   if (partial?.projectName) {
     log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
     const fullPath = join(process.cwd(), partial.projectName);
@@ -205,10 +202,7 @@ async function promptOrUseProjectName(
   });
 }
 
-async function promptOrUseGit(
-  partial: Partial<TemplateContext> | undefined,
-  message: string,
-): Promise<boolean> {
+async function promptOrUseGit(partial: Partial<TemplateContext> | undefined, message: string): Promise<boolean> {
   if (partial?.git !== undefined) {
     if (partial.git) {
       log.info(`${color.green('✓')} Git initialization enabled`);

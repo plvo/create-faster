@@ -104,7 +104,13 @@ function resolveTemplatesForLibrary(
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
-    const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter, addon: library, appName });
+    const destination = resolveDestination({
+      relativePath: transformedPath,
+      ctx,
+      frontmatter,
+      addon: library,
+      appName,
+    });
     templates.push({ source, destination });
   }
 
@@ -133,7 +139,13 @@ function resolveTemplatesForProjectAddon(
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(file);
-    const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter, addon, defaultScope: 'root' });
+    const destination = resolveDestination({
+      relativePath: transformedPath,
+      ctx,
+      frontmatter,
+      addon,
+      defaultScope: 'root',
+    });
     templates.push({ source, destination });
   }
 

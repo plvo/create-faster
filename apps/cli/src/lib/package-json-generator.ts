@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
-import { MERGE_KEYS, cleanUndefined, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
+import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
@@ -50,7 +50,6 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
 
   return result;
 }
-
 
 function getMonoPackageName(addon: MetaAddon): string | null {
   return addon.mono?.scope === 'pkg' ? addon.mono.name : null;

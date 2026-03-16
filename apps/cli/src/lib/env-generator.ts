@@ -109,7 +109,7 @@ function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: str
 
 function addToGroup(grouped: Map<string, string[]>, path: string, value: string): void {
   if (!grouped.has(path)) grouped.set(path, []);
-  grouped.get(path)!.push(value);
+  grouped.get(path)?.push(value);
 }
 
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {

@@ -88,10 +88,7 @@ describe('processScriptPorts', () => {
   });
 
   test('handles multiple scripts', () => {
-    const result = processScriptPorts(
-      { dev: 'next dev --port {{port}}', build: 'next build' },
-      3001,
-    );
+    const result = processScriptPorts({ dev: 'next dev --port {{port}}', build: 'next build' }, 3001);
     expect(result.dev).toBe('next dev --port 3001');
     expect(result.build).toBe('next build');
   });
