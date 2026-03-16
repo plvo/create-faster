@@ -92,41 +92,16 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   }
   progress.next();
 
-  if (partial?.git !== undefined) {
-    ctx.git = partial.git;
-    if (partial.git) {
-      log.info(`${color.green('✓')} Git initialization enabled`);
-    }
-  } else {
-    ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
-      initialValue: true,
-    });
-  }
+  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
   filterToolingByRequirements(ctx);
 
-  if (partial?.pm !== undefined) {
-    ctx.pm = partial.pm;
-  }
-
-  if (partial?.skipInstall) {
-    ctx.skipInstall = true;
-    log.info(`${color.green('✓')} Skipping dependency installation`);
-    if (partial.pm) {
-      log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
-    }
-  } else if (partial?.pm !== undefined) {
-    log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
-  } else {
-    ctx.pm = await promptSelect(progress.message(`Install dependencies ${color.bold('now')}?`), {
-      options: [
-        { label: 'Install with bun', value: 'bun' },
-        { label: 'Install with pnpm', value: 'pnpm' },
-        { label: 'Install with npm', value: 'npm' },
-        { label: 'Skip installation', value: undefined },
-      ],
-    });
-  }
+  const { pm, skipInstall } = await promptOrUsePackageManager(
+    partial,
+    progress.message(`Install dependencies ${color.bold('now')}?`),
+  );
+  ctx.pm = pm;
+  if (skipInstall) ctx.skipInstall = true;
   progress.next();
 
   return ctx;
@@ -187,30 +162,16 @@ export async function blueprintCli(
   }
   progress.next();
 
-  if (partial?.git !== undefined) {
-    ctx.git = partial.git;
-  } else {
-    ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
-      initialValue: true,
-    });
-  }
+  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
   filterToolingByRequirements(ctx);
 
-  if (partial?.skipInstall) {
-    ctx.skipInstall = true;
-  } else if (partial?.pm !== undefined) {
-    ctx.pm = partial.pm;
-  } else {
-    ctx.pm = await promptSelect(progress.message(`Install dependencies ${color.bold('now')}?`), {
-      options: [
-        { label: 'Install with bun', value: 'bun' },
-        { label: 'Install with pnpm', value: 'pnpm' },
-        { label: 'Install with npm', value: 'npm' },
-        { label: 'Skip installation', value: undefined },
-      ],
-    });
-  }
+  const { pm, skipInstall } = await promptOrUsePackageManager(
+    partial,
+    progress.message(`Install dependencies ${color.bold('now')}?`),
+  );
+  ctx.pm = pm;
+  if (skipInstall) ctx.skipInstall = true;
   progress.next();
 
   return ctx;
@@ -242,6 +203,49 @@ async function promptOrUseProjectName(
       }
     },
   });
+}
+
+async function promptOrUseGit(
+  partial: Partial<TemplateContext> | undefined,
+  message: string,
+): Promise<boolean> {
+  if (partial?.git !== undefined) {
+    if (partial.git) {
+      log.info(`${color.green('✓')} Git initialization enabled`);
+    }
+    return partial.git;
+  }
+
+  return promptConfirm(message, { initialValue: true });
+}
+
+async function promptOrUsePackageManager(
+  partial: Partial<TemplateContext> | undefined,
+  message: string,
+): Promise<{ pm?: 'bun' | 'npm' | 'pnpm'; skipInstall?: boolean }> {
+  if (partial?.skipInstall) {
+    log.info(`${color.green('✓')} Skipping dependency installation`);
+    if (partial.pm) {
+      log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
+    }
+    return { pm: partial.pm, skipInstall: true };
+  }
+
+  if (partial?.pm !== undefined) {
+    log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
+    return { pm: partial.pm };
+  }
+
+  const pm = await promptSelect(message, {
+    options: [
+      { label: 'Install with bun', value: 'bun' },
+      { label: 'Install with pnpm', value: 'pnpm' },
+      { label: 'Install with npm', value: 'npm' },
+      { label: 'Skip installation', value: undefined },
+    ],
+  });
+
+  return { pm };
 }
 
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
