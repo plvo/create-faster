@@ -1,0 +1,57 @@
+---
+title: Prettier
+description: Opinionated code formatter with Tailwind CSS class sorting.
+---
+
+<Dependencies dev="prettier,prettier-plugin-tailwindcss" />
+
+[→ Prettier Documentation](https://prettier.io)
+
+## What create-faster adds
+
+**Scripts added to `package.json`:**
+- `format` — `prettier --write .`
+- `format:check` — `prettier --check .`
+
+Files created:
+```
+.prettierrc                 # Prettier configuration
+.prettierignore             # Files excluded from formatting
+```
+
+**Turborepo mode:** Both files are placed at the project root and apply to all apps.
+
+### .prettierrc
+
+```json title=".prettierrc"
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "printWidth": 100,
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindFunctions": ["clsx", "cn"]
+}
+```
+
+Includes `prettier-plugin-tailwindcss` for automatic Tailwind CSS class sorting in `clsx` and `cn` utility calls.
+
+### .prettierignore
+
+Excludes build artifacts, lock files, and framework output directories:
+
+```
+dist
+build
+out
+.next
+.turbo
+coverage
+node_modules
+*.min.js
+*.min.css
+pnpm-lock.yaml
+bun.lock*
+package-lock.json
+```
