@@ -21,7 +21,7 @@ scripts/
 src/
 ├── app/
 │   ├── page.tsx                        # Landing page with connect button
-│   └── (protected)/
+│   └── protected/
 │       ├── layout.tsx                  # Protected layout with cookie check
 │       └── page.tsx                    # Wallet info dashboard
 ├── components/
@@ -44,7 +44,7 @@ src/
 
 - **Privy authentication** with embedded wallet support and cookie-based session persistence
 - **Wagmi integration** configured through Privy's wagmi connector for chain interactions
-- **Protected routes** using a `(protected)` route group with server-side cookie verification
+- **Protected routes** using a `protected` route group with server-side cookie verification
 - **Wallet-user sync** via a tRPC `user.sync` mutation that upserts wallet addresses on login
 - **Custom DB schema** with wallet address fields instead of traditional email/password columns
 - **tRPC context** using Privy's `verifyAuthToken` for server-side token validation

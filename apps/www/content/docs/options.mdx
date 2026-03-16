@@ -46,7 +46,7 @@ bunx create-faster my-dashboard \
   --pm bun
 ```
 
-Blueprints define the stacks, libraries, database, and ORM. You choose the linter, tooling, git, and package manager. See [Blueprints](/docs/blueprints) for details.
+Blueprints define the stacks, libraries, database, ORM, and sometimes deployment. You choose the linter, tooling, git, and package manager. See [Blueprints](/docs/concepts/blueprints) for details.
 
 ### `--app <name:stack:libraries>`
 
@@ -163,7 +163,7 @@ Add a development tool. Repeatable for multiple tools.
 --tooling husky
 ```
 
-**Note**: `husky` requires `--git` to be specified.
+**Note**: `husky` requires `--git` and `--linter` to be specified.
 
 ## Dependency Rules
 

@@ -28,11 +28,11 @@ Do NOT use for:
 
 **Where things live:**
 - Blueprint metadata: `META.blueprints[name]` in `apps/cli/src/__meta__.ts`
-- Blueprint templates: `templates/blueprints/{name}/`
+- Blueprint templates: `apps/cli/apps/cli/templates/blueprints/{name}/`
 - Composition stacks: `META.stacks[stackName]`
 - Composition libraries: `META.libraries[libName]`
 - Composition project addons: `META.project.{category}.options[name]`
-- Documentation pages: `apps/www/content/docs/blueprints/{name}.mdx`
+- Documentation pages: `apps/www/content/docs/blueprints/{category}/{name}.mdx`
 
 **Key concepts:**
 - `context.apps[]` — what stacks and libraries are pre-selected
@@ -138,16 +138,16 @@ grep -A 10 "envs:" apps/cli/src/__meta__.ts | grep -A 8 "'{blueprintname}'"
 
 ```bash
 # List all blueprint template files
-find templates/blueprints/{blueprintname}/ -name "*.hbs" | sort
+find apps/cli/templates/blueprints/{blueprintname}/ -name "*.hbs" | sort
 
 # Check for frontmatter (path/scope overrides)
-grep -l '^---' templates/blueprints/{blueprintname}/**/*.hbs
+grep -l '^---' apps/cli/templates/blueprints/{blueprintname}/**/*.hbs
 
 # Check for stack-specific templates
-ls templates/blueprints/{blueprintname}/**/*.*.hbs
+ls apps/cli/templates/blueprints/{blueprintname}/**/*.*.hbs
 
 # Check for mono/single filtering
-grep 'only:' templates/blueprints/{blueprintname}/**/*.hbs
+grep 'only:' apps/cli/templates/blueprints/{blueprintname}/**/*.hbs
 ```
 
 Document EXACTLY what files the blueprint adds. Cross-reference every claim with actual template files.
@@ -183,7 +183,7 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 **DO document:**
 - The complete starter project description (what you get)
 - Full composition with links to individual stack/module/addon pages
-- Blueprint template files (verified in `templates/blueprints/{name}/`)
+- Blueprint template files (verified in `apps/cli/templates/blueprints/{name}/`)
 - Application features (pages, layouts, components, routes)
 - Key code patterns unique to the blueprint (custom auth flows, special middleware)
 - Extra dependencies from `META.blueprints[name].packageJson`
@@ -209,7 +209,7 @@ Title in frontmatter already renders as H1. Adding `# Title` creates duplicate.
 grep -A 30 "'{blueprintname}'" apps/cli/src/__meta__.ts
 
 # Verify template files exist
-find templates/blueprints/{blueprintname}/ -name "*.hbs" | sort
+find apps/cli/templates/blueprints/{blueprintname}/ -name "*.hbs" | sort
 
 # Verify extra dependencies are in blueprint META (not composition META)
 grep -A 10 "packageJson:" apps/cli/src/__meta__.ts | grep -A 8 "'{blueprintname}'"
@@ -225,37 +225,34 @@ Every composition element, file reference, dependency, and env var MUST be verif
 
 ## Fumadocs Page Placement
 
-Blueprint pages live under `apps/www/content/docs/blueprints/`:
+Blueprint pages live under `apps/www/content/docs/blueprints/{category}/`:
 
 ```
 content/docs/blueprints/
-├── meta.json              # Folder config with category grouping
-├── dashboard.mdx
-├── dapp-privy.mdx
-├── dapp-rainbowkit.mdx
-├── lambda-sst.mdx
-└── lambda-terraform-aws.mdx
+├── meta.json              # Root folder config listing categories
+├── business/
+│   ├── meta.json          # { "title": "Business" }
+│   └── dashboard.mdx
+├── web3/
+│   ├── meta.json          # { "title": "Web3" }
+│   ├── dapp-privy.mdx
+│   └── dapp-rainbowkit.mdx
+└── aws/
+    ├── meta.json          # { "title": "AWS" }
+    ├── lambda-sst.mdx
+    └── lambda-terraform-aws.mdx
 ```
 
-The `meta.json` should group blueprints by category (matching `META.blueprints[name].category`):
+Each category is a subdirectory with its own `meta.json` (like modules). The root `meta.json` lists categories:
 
 ```json
 {
   "title": "Blueprints",
-  "pages": [
-    "---BUSINESS---",
-    "dashboard",
-    "---WEB3---",
-    "dapp-privy",
-    "dapp-rainbowkit",
-    "---AWS---",
-    "lambda-sst",
-    "lambda-terraform-aws"
-  ]
+  "pages": ["business", "web3", "aws"]
 }
 ```
 
-And the root `meta.json` needs a blueprints entry:
+The root docs `meta.json` loads the blueprints folder:
 ```json
 "---BLUEPRINTS---",
 "...blueprints"
@@ -283,7 +280,7 @@ And the root `meta.json` needs a blueprints entry:
 | No file tree | Show blueprint-specific files with tree structure |
 | Documenting structural templates | Only document what the BLUEPRINT adds/overrides |
 | Missing CLI usage | Show `--blueprint {name}` example command |
-| Unverified template files | Check `templates/blueprints/{name}/` |
+| Unverified template files | Check `apps/cli/templates/blueprints/{name}/` |
 | Missing multi-app architecture | Turborepo blueprints need per-app structure |
 
 ## Rationalization Table
@@ -318,7 +315,7 @@ And the root `meta.json` needs a blueprints entry:
 
 **Verification (MANDATORY):**
 - [ ] Composition verified in `META.blueprints[name].context`
-- [ ] Every template file verified in `templates/blueprints/{name}/`
+- [ ] Every template file verified in `apps/cli/templates/blueprints/{name}/`
 - [ ] Extra deps verified in `META.blueprints[name].packageJson`
 - [ ] Extra envs verified in `META.blueprints[name].envs`
 - [ ] Blueprint category verified in `META.blueprints[name].category`

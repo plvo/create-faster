@@ -50,7 +50,7 @@ If blueprints are available, the CLI asks how you want to start:
 │  ○ Custom (choose everything yourself)
 ```
 
-**Blueprint**: Skips app configuration, database, and ORM — the blueprint defines all of those. You proceed directly to linter, tooling, git, and package manager selection.
+**Blueprint**: Skips app configuration, database, and ORM — the blueprint defines all of those. Some blueprints also predefine deployment (e.g., Lambda blueprints). You proceed to deployment (if not predefined), linter, tooling, git, and package manager selection.
 
 **Custom**: Continues with the full configuration flow below.
 
@@ -197,7 +197,7 @@ The ORM package includes:
 Choose an optional deployment platform:
 
 ```bash
-◇  Select a deployment platform?
+◇  Deployment platform?
 │  ● SST
 │  ○ Terraform (AWS)
 │  ○ None
@@ -216,7 +216,7 @@ Choose an optional deployment platform:
 Choose a linter/formatter:
 
 ```bash
-◇  Select a linter?
+◇  Code quality tools?
 │  ● Biome
 │  ○ ESLint + Prettier
 │  ○ ESLint
@@ -250,7 +250,7 @@ If enabled, the CLI runs `git init` after file generation. This is required if y
 Select additional development tools:
 
 ```bash
-◇  Add any tooling?
+◇  Add any extras?
 │  ◻ Husky
 ```
 
