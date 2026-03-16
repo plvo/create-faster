@@ -1,0 +1,75 @@
+---
+title: Lambda (SST)
+description: Serverless monorepo for AWS Lambda using SST Ion. Generates three Lambda functions behind API Gateway, SQS, and EventBridge, with a shared types package and GitHub Actions CI/CD using OIDC authentication.
+---
+
+## Composition
+
+**Apps:**
+- `api` — Hono ([→ docs](/docs/stacks/hono)) + AWS Lambda adapter ([→ docs](/docs/modules/deploy/aws-lambda))
+- `cron` — Node ([→ docs](/docs/stacks/node)), EventBridge scheduled handler
+- `worker` — Node ([→ docs](/docs/stacks/node)), SQS queue consumer
+
+**Shared packages:**
+- `@repo/shared` — Typed message contracts (`QueueMessage`)
+
+**Project addons:**
+- Deployment: SST ([→ docs](/docs/deployment/sst))
+
+## Architecture
+
+```
+sst.config.ts                          # SST Ion config (API Gateway + SQS + EventBridge)
+.github/workflows/deploy.yml           # GitHub Actions with OIDC auth
+apps/
+├── api/src/
+│   ├── app.ts                         # Hono routes and middleware
+│   └── index.ts                       # Lambda handler via @hono/aws-lambda
+├── cron/src/
+│   └── index.ts                       # EventBridge scheduled handler
+└── worker/src/
+    └── index.ts                       # SQS batch consumer with partial failure
+packages/
+└── shared/
+    ├── src/types.ts                   # QueueMessage interface
+    ├── package.json                   # @repo/shared exports
+    └── tsconfig.json
+```
+
+## What's included
+
+**SST Ion configuration** defines the full infrastructure in `sst.config.ts`:
+- `ApiGatewayV2` with a default route pointing to the Hono handler
+- `Queue` with a subscriber Lambda (the worker)
+- `Cron` on a 1-hour schedule triggering the cron handler
+- Stage-aware resource removal (retain in production, remove otherwise)
+
+**SQS worker** with partial batch failure reporting:
+- Processes records individually, collecting failures per `messageId`
+- Returns `batchItemFailures` so only failed messages re-enter the queue
+- Messages are typed as `QueueMessage` from `@repo/shared`
+
+**EventBridge cron handler** receives `ScheduledEvent` with request context logging.
+
+**GitHub Actions deploy workflow:**
+- Triggers on push to `main` or manual dispatch with stage selection (staging/production)
+- OIDC-based AWS credentials (no long-lived keys)
+- Runs lint and build before `sst deploy`
+- Concurrency control per stage
+
+## Extra dependencies
+
+From blueprint `packageJson`:
+- `@repo/shared` — shared types package (workspace dependency)
+- `@types/aws-lambda` — Lambda event type definitions (dev)
+
+Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.js --target node`
+
+## CLI usage
+
+```bash
+bunx create-faster my-lambda \
+  --blueprint lambda-sst \
+  --git \
+  --pm bun
+```

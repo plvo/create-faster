@@ -1,0 +1,85 @@
+---
+title: Terraform (AWS)
+description: Terraform scaffolding for AWS with S3 backend, per-environment configs, and common tagging.
+---
+
+[→ Terraform Documentation](https://developer.hashicorp.com/terraform)
+
+## What create-faster adds
+
+A complete `infra/` directory with AWS provider configuration, S3 remote state backend, and per-environment variable files. No npm dependencies are added -- Terraform is installed separately.
+
+Files created:
+```
+infra/
+├── providers.tf              # AWS provider ~> 6.0, required_version >= 1.10, common tags
+├── backend.tf                # S3 backend declaration
+├── variables.tf              # region, project_name, env (dev/staging/prod validation)
+├── variables.auto.tfvars     # Defaults pre-filled with project name
+├── secrets.auto.tfvars       # Placeholder for sensitive values (gitignored)
+├── outputs.tf                # Empty placeholder for resource outputs
+├── main.tf                   # Empty placeholder for your resources
+└── backend/
+    ├── dev.hcl               # Dev environment S3 backend config
+    └── prod.hcl              # Prod environment S3 backend config
+```
+
+### providers.tf
+
+Configures the AWS provider with:
+- AWS provider `~> 6.0`
+- Terraform `>= 1.10.0` (required for native state locking)
+- `local.resource_name` computed as `{project_name}-{env}`
+- `local.common_tags` applied to all resources via `default_tags` (Project, Env, ManagedBy)
+
+### backend.tf
+
+Declares an empty S3 backend. Configuration is injected at init time via `-backend-config`:
+
+```bash
+terraform init -backend-config=backend/dev.hcl
+```
+
+### variables.tf
+
+Three variables:
+- `region` -- AWS region
+- `project_name` -- used in resource naming and tags
+- `env` -- validated to `dev`, `staging`, or `prod`
+
+### variables.auto.tfvars
+
+Pre-filled with the project name, default region `eu-west-3`, and `env = "dev"`.
+
+### secrets.auto.tfvars
+
+Empty placeholder for sensitive values. Gitignored so secrets never reach the repository.
+
+### backend/ configs
+
+Per-environment S3 backend configs with `use_lockfile = true` (Terraform >= 1.10 native file locking, no DynamoDB table needed). Fill in `<BUCKET_NAME>` and `<AWS_PROFILE_*>` placeholders before first use.
+
+### main.tf
+
+Empty file where you add your infrastructure resources.
+
+### .gitignore
+
+`.terraform/`, `*.tfstate*`, and `secrets.auto.tfvars` are added to `.gitignore`.
+
+## CLI usage
+
+```bash
+bunx create-faster myproject \
+  --app myproject:nextjs \
+  --deployment terraform-aws \
+  --pm bun
+```
+
+Initialize and plan:
+
+```bash
+cd infra
+terraform init -backend-config=backend/dev.hcl
+terraform plan
+```

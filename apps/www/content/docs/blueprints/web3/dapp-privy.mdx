@@ -1,0 +1,78 @@
+---
+title: dApp (Privy)
+description: A Web3 dApp starter using Privy for wallet authentication and user management. Includes wagmi for Ethereum interactions, a tRPC API layer for wallet-user sync, and a Drizzle schema designed for wallet-based accounts.
+---
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), Next Themes ([→ module](/docs/modules/ui/next-themes)), TanStack Query ([→ module](/docs/modules/data-fetching/tanstack-query)), tRPC ([→ module](/docs/modules/api/trpc))
+
+**Project addons:**
+- Database: [→ PostgreSQL](/docs/database/postgresql)
+- ORM: [→ Drizzle](/docs/orm/drizzle)
+
+## Architecture
+
+Blueprint-specific files:
+```
+scripts/
+└── seed.ts                             # Database seed script
+src/
+├── app/
+│   ├── page.tsx                        # Landing page with connect button
+│   └── protected/
+│       ├── layout.tsx                  # Protected layout with cookie check
+│       └── page.tsx                    # Wallet info dashboard
+├── components/
+│   ├── app-providers.tsx               # Privy + wagmi providers
+│   └── header.tsx                      # Header with wallet info
+├── lib/
+│   ├── db/
+│   │   ├── schema.ts                   # Wallet-specific DB schema
+│   │   └── types.ts                    # DB types
+│   └── wagmi.ts                        # Wagmi config
+├── proxy.ts                            # Middleware with PUBLIC_ROUTES
+└── trpc/
+    ├── init.ts                         # tRPC context with verifyAuthToken
+    └── routers/
+        ├── _app.ts                     # Root router
+        └── user.ts                     # User router with sync mutation
+```
+
+## What's included
+
+- **Privy authentication** with embedded wallet support and cookie-based session persistence
+- **Wagmi integration** configured through Privy's wagmi connector for chain interactions
+- **Protected routes** using a `protected` route group with server-side cookie verification
+- **Wallet-user sync** via a tRPC `user.sync` mutation that upserts wallet addresses on login
+- **Custom DB schema** with wallet address fields instead of traditional email/password columns
+- **tRPC context** using Privy's `verifyAuthToken` for server-side token validation
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `@privy-io/react-auth` | Privy React SDK for wallet authentication UI |
+| `@privy-io/wagmi` | Privy wagmi connector for chain interactions |
+| `@privy-io/server-auth` | Server-side token verification |
+| `wagmi` | React hooks for Ethereum |
+| `viem` | TypeScript Ethereum library |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_PRIVY_APP_ID` | Privy application ID (from [Privy dashboard](https://dashboard.privy.io)) |
+| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | Privy client ID |
+| `PRIVY_APP_SECRET` | Server-side Privy secret for token verification |
+
+## CLI usage
+
+```bash
+bunx create-faster my-dapp \
+  --blueprint dapp-privy \
+  --linter biome \
+  --git \
+  --pm bun
+```

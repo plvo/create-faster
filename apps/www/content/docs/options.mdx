@@ -31,11 +31,30 @@ The first argument specifies the project name. If omitted, the CLI prompts for i
 bunx create-faster my-saas
 ```
 
+### `--blueprint <name>`
+
+Use a pre-composed starter project. Mutually exclusive with `--app`, `--database`, and `--orm`.
+
+**Options**: `dashboard`, `dapp-privy`, `dapp-rainbowkit`, `lambda-sst`, `lambda-terraform-aws`
+
+**Example**:
+```bash
+bunx create-faster my-dashboard \
+  --blueprint dashboard \
+  --linter biome \
+  --git \
+  --pm bun
+```
+
+Blueprints define the stacks, libraries, database, ORM, and sometimes deployment. You choose the linter, tooling, git, and package manager. See [Blueprints](/docs/concepts/blueprints) for details.
+
 ### `--app <name:stack:libraries>`
 
 Define an application to create. Repeatable for multi-app projects.
 
 **Format**: `name:stack` or `name:stack:library1,library2`
+
+**Stacks**: `nextjs`, `expo`, `tanstack-start`, `hono`, `node`
 
 **Examples**:
 ```bash
@@ -43,6 +62,7 @@ Define an application to create. Repeatable for multi-app projects.
 --app web:nextjs:shadcn,tanstack-query
 --app mobile:expo:nativewind
 --app api:hono
+--app worker:node
 --app web:tanstack-start:shadcn
 ```
 
@@ -108,22 +128,55 @@ Skip dependency installation entirely.
 --no-install
 ```
 
+### `--linter <name>`
+
+Select a linter/formatter.
+
+**Options**: `biome`, `eslint-prettier`, `eslint`, `prettier`
+
+**Example**:
+```bash
+--linter biome
+```
+
+### `--deployment <name>`
+
+Select a deployment platform.
+
+**Options**: `sst`, `terraform-aws`
+
+**Example**:
+```bash
+--deployment sst
+```
+
+See [SST](/docs/deployment/sst) and [Terraform (AWS)](/docs/deployment/terraform-aws) for details.
+
 ### `--tooling <name>`
 
 Add a development tool. Repeatable for multiple tools.
 
-**Options**: `biome`, `husky`
+**Options**: `husky`
 
 **Example**:
 ```bash
---tooling biome --tooling husky
+--tooling husky
 ```
 
-**Note**: `husky` requires `--git` to be specified.
+**Note**: `husky` requires `--git` and `--linter` to be specified.
 
 ## Dependency Rules
 
 The CLI validates flag combinations to ensure compatibility:
+
+**Blueprint is exclusive**:
+```bash
+# ❌ Invalid - Blueprint with --app, --database, or --orm
+bunx create-faster myapp --blueprint dashboard --app web:nextjs
+
+# ✓ Valid - Blueprint with linter, tooling, git, pm
+bunx create-faster myapp --blueprint dashboard --linter biome --git --pm bun
+```
 
 **ORM requires Database**:
 ```bash
@@ -165,7 +218,7 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm bun \
-      --tooling biome \
+      --linter biome \
       --tooling husky
     ```
   </Tab>
@@ -177,7 +230,7 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm npm \
-      --tooling biome \
+      --linter biome \
       --tooling husky
     ```
   </Tab>
@@ -189,7 +242,7 @@ bunx create-faster myapp --app web:nextjs --app mobile:expo
       --orm drizzle \
       --git \
       --pm pnpm \
-      --tooling biome \
+      --linter biome \
       --tooling husky
     ```
   </Tab>
@@ -206,7 +259,7 @@ bunx create-faster my-saas \
   --orm drizzle \
   --git \
   --pm bun \
-  --tooling biome \
+  --linter biome \
   --tooling husky
 ```
 
@@ -218,6 +271,19 @@ This creates:
 - Automatic Turborepo configuration
 - Git repository with pre-commit hooks
 - Dependencies installed via bun
+
+### Blueprint Project
+
+```bash
+bunx create-faster my-dashboard \
+  --blueprint dashboard \
+  --linter biome \
+  --tooling husky \
+  --git \
+  --pm bun
+```
+
+This creates a complete dashboard application with authentication, sidebar navigation, and charts — without specifying stacks, libraries, or database individually.
 
 ### Minimal Setup
 
@@ -241,8 +307,10 @@ bunx create-faster my-saas \
 
 This pre-fills the project with a Next.js app and PostgreSQL, then prompts for:
 - ORM selection
-- Git initialization
+- Deployment platform
+- Linter selection
 - Tooling
+- Git initialization
 - Package manager
 
 ## Auto-Generated Command
@@ -260,7 +328,7 @@ After project generation, create-faster displays a copy-paste ready command refl
 │    --orm drizzle \
 │    --git \
 │    --pm bun \
-│    --tooling biome \
+│    --linter biome \
 │    --tooling husky
 │
 └

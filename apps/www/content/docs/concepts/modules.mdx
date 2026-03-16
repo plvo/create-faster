@@ -1,0 +1,84 @@
+---
+title: Modules
+description: Modules are opt-in libraries that add functionality to an app — UI components, authentication, APIs, data fetching, and more. Each module is scoped to its supported stacks.
+icon: Puzzle
+---
+
+Modules are optional add-ons that extend an app with pre-configured libraries. When you select a module, create-faster adds the templates, dependencies, environment variables, and configuration files that the library needs.
+
+Each module is scoped to specific stacks. For example, shadcn/ui is available for Next.js and TanStack Start, but not for Hono or Expo.
+
+## Available Modules
+
+### UI
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [shadcn/ui](/docs/modules/ui/shadcn) | Next.js, TanStack Start | Component library built on Radix UI and Tailwind CSS |
+| [Next Themes](/docs/modules/ui/next-themes) | Next.js, TanStack Start | Dark mode and theme switching |
+| [NativeWind](/docs/modules/ui/nativewind) | Expo | Tailwind CSS for React Native |
+
+### Content
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [MDX](/docs/modules/content/mdx) | Next.js | Markdown with JSX components |
+| [PWA](/docs/modules/content/pwa) | Next.js | Progressive Web App with service worker |
+
+### Auth
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [Better Auth](/docs/modules/auth/better-auth) | Next.js | Authentication with ORM adapter, API routes, and session management |
+
+### API
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [tRPC](/docs/modules/api/trpc) | Next.js | End-to-end typesafe API with TanStack Query integration |
+
+### Data Fetching
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [TanStack Query](/docs/modules/data-fetching/tanstack-query) | Next.js, TanStack Start | Server state management with caching and prefetching |
+| [TanStack Devtools](/docs/modules/data-fetching/tanstack-devtools) | Next.js, TanStack Start | Query debugging and inspection panel |
+
+### Forms
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [React Hook Form](/docs/modules/forms/react-hook-form) | Next.js, TanStack Start | Performant form handling with validation |
+| [TanStack Form](/docs/modules/forms/tanstack-form) | Next.js, TanStack Start | Type-safe form state management |
+
+### Deploy
+
+| Module | Stacks | Description |
+|--------|--------|-------------|
+| [AWS Lambda](/docs/modules/deploy/aws-lambda) | Hono | Lambda adapter for serverless deployment |
+
+## How Modules Work
+
+Modules are declared in `META.libraries` — each one specifies:
+- **Supported stacks** — which frameworks it works with
+- **Dependencies** — npm packages added to `package.json`
+- **Templates** — configuration files, setup code, and integration boilerplate
+- **Environment variables** — `.env.example` entries for required secrets/config
+- **Requirements** — other modules or project addons needed (e.g., Better Auth requires an ORM)
+
+In a turborepo, some modules create their own shared package (e.g., `@repo/auth`, `@repo/api`) so multiple apps can import from them.
+
+## CLI Usage
+
+Modules are specified as part of the `--app` flag, after the stack name:
+
+```bash
+# Single app with modules
+bunx create-faster myapp \
+  --app myapp:nextjs:shadcn,better-auth,tanstack-query \
+  --database postgres \
+  --orm drizzle \
+  --pm bun
+```
+
+In interactive mode, modules are presented as a grouped multi-select after stack selection.

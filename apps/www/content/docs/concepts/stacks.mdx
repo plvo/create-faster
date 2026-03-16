@@ -1,0 +1,51 @@
+---
+title: Stacks
+description: Stacks are the base frameworks for each application. They determine the project structure, development scripts, and which modules are available.
+icon: Layers
+---
+
+A stack is the foundation of each application in your project. When you add an app, you choose a stack — this determines the project structure, TypeScript config, development scripts, and which modules can be added on top.
+
+Stacks are split into two types:
+
+**App stacks** — full-featured frameworks for web and mobile applications:
+- [Next.js](/docs/stacks/nextjs) — React framework with SSR, Server Components, and App Router
+- [TanStack Start](/docs/stacks/tanstack-start) — Full-stack React framework with file-based routing
+- [Expo](/docs/stacks/expo) — React Native framework for mobile apps
+
+**Server stacks** — backend runtimes for APIs and background services:
+- [Hono](/docs/stacks/hono) — Ultra-fast web framework with middleware, CORS, and error handling
+- [Node.js](/docs/stacks/node) — Plain TypeScript runtime for workers, cron jobs, and Lambda handlers
+
+## How Stacks Work
+
+Each stack provides:
+- **Templates** — pre-configured project files (entry points, TypeScript config, framework config)
+- **Scripts** — development and build commands declared in `package.json`
+- **Module compatibility** — which libraries can be added (e.g., shadcn is available for Next.js but not Hono)
+
+In a multi-app project, each app can use a different stack. create-faster automatically sets up Turborepo when you have 2+ apps.
+
+## Choosing a Stack
+
+| Need | Stack |
+|------|-------|
+| Web app with SSR | [Next.js](/docs/stacks/nextjs) |
+| Mobile app | [Expo](/docs/stacks/expo) |
+| Full-stack React | [TanStack Start](/docs/stacks/tanstack-start) |
+| REST/GraphQL API | [Hono](/docs/stacks/hono) |
+| Worker, cron, Lambda | [Node.js](/docs/stacks/node) |
+
+## CLI Usage
+
+```bash
+# Single app
+bunx create-faster myapp --app myapp:nextjs --pm bun
+
+# Multi-app with different stacks
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn \
+  --app api:hono \
+  --app worker:node \
+  --pm bun
+```

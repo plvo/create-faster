@@ -1,0 +1,27 @@
+---
+title: ESLint + Prettier
+description: Combined linting with ESLint and formatting with Prettier, using eslint-config-prettier to avoid rule conflicts.
+---
+
+<Dependencies dev="eslint,@eslint/js,typescript-eslint,globals,eslint-plugin-react,eslint-plugin-react-hooks,@next/eslint-plugin-next,prettier,prettier-plugin-tailwindcss,eslint-config-prettier" />
+
+[→ ESLint Documentation](https://eslint.org) · [→ Prettier Documentation](https://prettier.io)
+
+## What create-faster adds
+
+This option composes [ESLint](/docs/linter/eslint) and [Prettier](/docs/linter/prettier) together, adding `eslint-config-prettier` to disable ESLint rules that would conflict with Prettier's formatting.
+
+You get everything from both:
+- ESLint stack-specific configs and lint scripts (see [ESLint](/docs/linter/eslint))
+- Prettier config with Tailwind CSS class sorting (see [Prettier](/docs/linter/prettier))
+- `eslint-config-prettier` to prevent rule conflicts
+
+**Additional dependency:**
+
+| Package | Purpose |
+|---------|---------|
+| `eslint-config-prettier` | Disables ESLint rules that conflict with Prettier |
+
+**Lint-staged integration:** When combined with Husky, both tools run on staged files:
+- `eslint --fix` for linting
+- `prettier --write` for formatting

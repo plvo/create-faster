@@ -1,0 +1,68 @@
+---
+title: SST
+description: SST Ion deploys your applications to AWS with zero-config infrastructure using Pulumi under the hood.
+---
+
+<Dependencies dev="sst" />
+
+[→ SST Documentation](https://sst.dev)
+
+## What create-faster adds
+
+A ready-to-deploy SST Ion configuration with stack-aware resource mapping and TypeScript environment augmentation.
+
+Files created:
+```
+sst.config.ts               # SST Ion configuration with per-app resources
+sst-env.d.ts                # TypeScript augmentation for SST env variables
+```
+
+### sst.config.ts
+
+The configuration maps each app to the appropriate SST component based on its stack:
+
+- **Next.js** apps use `sst.aws.Nextjs` with optimized OpenNext deployment
+- **Hono** apps use `sst.aws.Function` with `url: true`, pointing to `src/index.handler`
+- **TanStack Start** apps use `sst.aws.Function` with `url: true`, pointing to `.output/server/index.handler`
+
+In a turborepo, each app's `path` or `handler` is prefixed with `apps/{appName}/`.
+
+The config includes:
+- Stage-aware removal policy: `retain` in production, `remove` in other stages
+- AWS as the default provider
+- URL outputs for each deployed app
+
+### sst-env.d.ts
+
+Type augmentation file that enables typed access to SST-linked environment variables via `import "sst"`.
+
+### .gitignore
+
+The `.sst/` directory is added to `.gitignore`.
+
+## CLI usage
+
+```bash
+bunx create-faster myproject \
+  --app myproject:nextjs \
+  --deployment sst \
+  --pm bun
+```
+
+Multi-app example:
+
+```bash
+bunx create-faster my-saas \
+  --app web:nextjs:shadcn \
+  --app api:hono \
+  --deployment sst \
+  --database postgres \
+  --orm drizzle \
+  --pm bun
+```
+
+Deploy with:
+
+```bash
+npx sst deploy --stage production
+```
