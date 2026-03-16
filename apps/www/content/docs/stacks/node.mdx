@@ -1,0 +1,43 @@
+---
+title: Node.js
+description: Plain TypeScript server for workers, cron jobs, Lambda handlers, and background processing services.
+---
+
+[→ Node.js Documentation](https://nodejs.org)
+
+## What create-faster adds
+
+Beyond a bare Node.js setup, we include:
+
+**TypeScript Configuration:**
+- ES2022 target with ESNext modules and bundler resolution
+- Strict mode with additional safety checks (`noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`, `noImplicitOverride`)
+- Path alias (`@/*` mapped to `src/*`)
+- Turborepo-aware: extends shared `@repo/config` in monorepo setups
+
+**Development Scripts:**
+- `dev` - Hot reload development server (`bun run --hot`)
+- `start` - Production server (`bun run src/index.ts`)
+
+Files created:
+```
+src/
+└── index.ts                # Entry point
+
+tsconfig.json               # TypeScript configuration
+package.json                # Dependencies and scripts
+```
+
+## Use Cases
+
+Node.js is the simplest server stack -- a clean slate for:
+- Plain TypeScript servers (no web framework)
+- Worker or cron job apps in a turborepo
+- Lambda function handlers
+- Background processing services
+
+For HTTP APIs, consider [Hono](/docs/stacks/hono) instead.
+
+## Compatible Modules
+
+None. Node.js is intentionally minimal with no module system.

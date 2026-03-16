@@ -40,6 +40,26 @@ The CLI validates that no file or directory with this name exists in the current
 
 <Step>
 
+### Blueprint or Custom
+
+If blueprints are available, the CLI asks how you want to start:
+
+```bash
+◇  How do you want to start?
+│  ● Use a blueprint (pre-composed starter project)
+│  ○ Custom (choose everything yourself)
+```
+
+**Blueprint**: Skips app configuration, database, and ORM — the blueprint defines all of those. You proceed directly to linter, tooling, git, and package manager selection.
+
+**Custom**: Continues with the full configuration flow below.
+
+See [Blueprints](/docs/blueprints) for available starter projects.
+
+</Step>
+
+<Step>
+
 ### Application Count
 
 Next, specify how many applications to create:
@@ -93,6 +113,7 @@ Choose the framework for each app. Stacks are organized by type:
 │
 └ Server / API
    ○ Hono (Fast web framework)
+   ○ Node.js (Plain TypeScript server)
 ```
 
 The stack determines the base template and available modules.
@@ -171,6 +192,44 @@ The ORM package includes:
 
 <Step>
 
+### Deployment Platform
+
+Choose an optional deployment platform:
+
+```bash
+◇  Select a deployment platform?
+│  ● SST
+│  ○ Terraform (AWS)
+│  ○ None
+```
+
+**SST**: Generates `sst.config.ts` with stack-aware resource mapping. See [SST](/docs/deployment/sst).
+
+**Terraform (AWS)**: Generates a complete `infra/` directory with AWS provider, S3 backend, and per-environment configs. See [Terraform (AWS)](/docs/deployment/terraform-aws).
+
+</Step>
+
+<Step>
+
+### Linter Selection
+
+Choose a linter/formatter:
+
+```bash
+◇  Select a linter?
+│  ● Biome
+│  ○ ESLint + Prettier
+│  ○ ESLint
+│  ○ Prettier
+│  ○ None
+```
+
+See [Biome](/docs/linter/biomejs) and [ESLint](/docs/linter/eslint) for details.
+
+</Step>
+
+<Step>
+
 ### Git Initialization
 
 Choose whether to initialize a Git repository:
@@ -186,19 +245,16 @@ If enabled, the CLI runs `git init` after file generation. This is required if y
 
 <Step>
 
-### Extras
+### Tooling
 
 Select additional development tools:
 
 ```bash
-◇  Add any extras?
-│  ◻ Biome
+◇  Add any tooling?
 │  ◻ Husky
 ```
 
-**Biome**: Adds unified linting and formatting configuration across all apps.
-
-**Husky**: Configures pre-commit hooks (requires Git to be initialized).
+**Husky**: Configures pre-commit hooks with lint-staged (requires Git and a linter). See [Husky](/docs/extras/husky).
 
 </Step>
 
@@ -303,7 +359,7 @@ bunx create-faster my-app \
   --orm drizzle \
   --git \
   --pm bun \
-  --tooling biome
+  --linter biome
 ```
 
 The auto-generated command allows you to share your exact configuration with team members or reproduce the project setup for testing.

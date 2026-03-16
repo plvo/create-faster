@@ -1,0 +1,14 @@
+{
+  "title": "Blueprints",
+  "pages": [
+    "index",
+    "---BUSINESS---",
+    "dashboard",
+    "---WEB3---",
+    "dapp-privy",
+    "dapp-rainbowkit",
+    "---AWS---",
+    "lambda-sst",
+    "lambda-terraform-aws"
+  ]
+}

@@ -61,6 +61,16 @@ my-saas/
 
 Need a Next.js frontend, an Expo mobile app, and a Hono backend? Simply specify 3 apps and create-faster handles the monorepo orchestration automatically.
 
+## Blueprints
+
+Start with a pre-composed starter project instead of configuring everything from scratch:
+
+```bash
+bunx create-faster my-dashboard --blueprint dashboard --linter biome --git --pm bun
+```
+
+Blueprints generate complete, functional applications — with pages, layouts, components, and routes. Available blueprints include dashboards, Web3 dApps, and serverless Lambda architectures. See [Blueprints](/docs/blueprints) for all options.
+
 ## Two Ways to Create Projects
 
 ### Interactive Mode
@@ -76,10 +86,12 @@ npm create faster
 
 The interactive CLI walks you through:
 - Project and app naming
-- Stack selection (Next.js, TanStack Start, Expo, Hono)
+- Stack selection (Next.js, TanStack Start, Expo, Hono, Node.js)
 - Module configuration (UI libraries, authentication, data fetching, etc.)
 - Database and ORM setup
-- Development tools (Biome, Git, Husky)
+- Deployment platform (SST, Terraform AWS)
+- Linter selection (Biome, ESLint + Prettier, ESLint, Prettier)
+- Development tools (Husky)
 - Dependency installation
 
 ### Non-Interactive Mode
@@ -95,7 +107,7 @@ bunx create-faster my-saas \
   --orm drizzle \
   --git \
   --pm bun \
-  --tooling biome \
+  --linter biome \
   --tooling husky
 ```
 

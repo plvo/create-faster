@@ -1,0 +1,74 @@
+---
+title: dApp (RainbowKit)
+description: Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi
+---
+
+## Presentation
+
+A Web3 dApp starter using RainbowKit for wallet connection and Sign-In with Ethereum (SIWE) for authentication. Combines Better Auth's SIWE plugin with wagmi for a full wallet-based auth flow backed by a persistent database session.
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), Next Themes ([→ module](/docs/modules/ui/next-themes)), Better Auth ([→ module](/docs/modules/auth/better-auth)), TanStack Query ([→ module](/docs/modules/data-fetching/tanstack-query)), tRPC ([→ module](/docs/modules/api/trpc))
+
+**Project addons:**
+- Database: [→ PostgreSQL](/docs/database/postgresql)
+- ORM: [→ Drizzle](/docs/orm/drizzle)
+
+## Architecture
+
+Blueprint-specific files:
+```
+src/
+├── app/
+│   ├── page.tsx                        # Landing page
+│   └── (protected)/
+│       ├── layout.tsx                  # Protected layout
+│       └── page.tsx                    # Protected dashboard
+├── components/
+│   ├── app-providers.tsx               # RainbowKit + wagmi + SIWE providers
+│   └── header.tsx                      # Header component
+├── lib/
+│   ├── auth/
+│   │   ├── auth.ts                     # Better Auth with SIWE plugin
+│   │   └── auth-client.ts             # Auth client with SIWE
+│   ├── db/
+│   │   ├── schema.ts                   # Schema with walletAddress column
+│   │   └── types.ts                    # DB types
+│   └── wagmi.ts                        # Wagmi config
+└── proxy.ts                            # Middleware
+```
+
+## What's included
+
+- **RainbowKit wallet modal** with pre-configured chain support and WalletConnect integration
+- **SIWE authentication** using Better Auth's SIWE plugin for cryptographic wallet verification
+- **Auth + wagmi providers** wired together so wallet connection triggers SIWE sign-in automatically
+- **Protected routes** with server-side session checks via Better Auth
+- **Wallet-aware schema** extending the base Drizzle schema with a `walletAddress` column on the user table
+- **Wagmi config** with chain definitions and WalletConnect transport
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `@rainbow-me/rainbowkit` | Wallet connection modal and UI |
+| `wagmi` | React hooks for Ethereum |
+| `viem` | TypeScript Ethereum library |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID (from [WalletConnect Cloud](https://cloud.walletconnect.com)) |
+
+## CLI usage
+
+```bash
+bunx create-faster my-dapp \
+  --blueprint dapp-rainbowkit \
+  --linter biome \
+  --git \
+  --pm bun
+```

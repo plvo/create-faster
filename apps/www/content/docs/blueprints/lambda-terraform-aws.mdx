@@ -1,0 +1,110 @@
+---
+title: Lambda (Terraform)
+description: AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron
+---
+
+## Presentation
+
+Serverless monorepo for AWS Lambda using Terraform as the infrastructure framework. Same three-function architecture as the SST variant (API Gateway, SQS, EventBridge), but with modular Terraform configurations, S3 remote state, and a `justfile` for local operations. Includes GitHub Actions CI/CD with OIDC authentication.
+
+## Composition
+
+**Apps:**
+- `api` — Hono ([→ docs](/docs/stacks/hono)) + AWS Lambda adapter ([→ docs](/docs/modules/deploy/aws-lambda))
+- `cron` — Node ([→ docs](/docs/stacks/node)), EventBridge scheduled handler
+- `worker` — Node ([→ docs](/docs/stacks/node)), SQS queue consumer
+
+**Shared packages:**
+- `@repo/shared` — Typed message contracts (`QueueMessage`)
+
+**Project addons:**
+- Deployment: Terraform AWS ([→ docs](/docs/deployment/terraform-aws))
+
+## Architecture
+
+```
+infra/
+├── providers.tf                       # AWS provider, required versions, common tags
+├── main.tf                            # Wires all modules together
+├── outputs.tf                         # API URL, queue URL, cron rule ARN
+└── modules/
+    ├── lambda/                        # Reusable Lambda function (IAM, zip, deploy)
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── api-gateway/                   # HTTP API Gateway v2 with Lambda integration
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    ├── sqs/                           # SQS queue with DLQ and Lambda trigger
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   └── outputs.tf
+    └── eventbridge/                   # EventBridge rule with Lambda target
+        ├── main.tf
+        ├── variables.tf
+        └── outputs.tf
+justfile                               # Terraform commands (init, plan, apply, destroy)
+.github/workflows/deploy.yml           # GitHub Actions with OIDC auth
+apps/
+├── api/src/
+│   ├── app.ts                         # Hono routes and middleware
+│   └── index.ts                       # Lambda handler via @hono/aws-lambda
+├── cron/src/
+│   └── index.ts                       # EventBridge scheduled handler
+└── worker/src/
+    └── index.ts                       # SQS batch consumer with partial failure
+packages/
+└── shared/
+    ├── src/types.ts                   # QueueMessage interface
+    ├── package.json                   # @repo/shared exports
+    └── tsconfig.json
+```
+
+## What's included
+
+**Modular Terraform infrastructure** with four reusable modules:
+- **lambda** — IAM role with basic execution policy, zip packaging from `dist/`, configurable timeout and memory
+- **api-gateway** — HTTP API Gateway v2 with `$default` route, auto-deploy stage, and Lambda permission
+- **sqs** — Queue with dead-letter queue (14-day retention, 3 max receives), Lambda event source mapping with batch failure reporting
+- **eventbridge** — CloudWatch Event rule on a cron schedule with Lambda target and invoke permission
+
+All resources are tagged with project name, environment, and `ManagedBy = "terraform"`.
+
+**SQS worker** with partial batch failure reporting:
+- Processes records individually, collecting failures per `messageId`
+- Returns `batchItemFailures` so only failed messages re-enter the queue
+- Messages are typed as `QueueMessage` from `@repo/shared`
+
+**EventBridge cron handler** receives `ScheduledEvent` with request context logging.
+
+**justfile** for local Terraform operations:
+- `just init`, `just plan`, `just apply`, `just destroy` with environment parameter (defaults to `dev`)
+- `just check` — diagnostics (Terraform version, AWS profile, state resource count)
+- `just clean-modules` — removes bloat from `.terraform/modules`
+
+**GitHub Actions deploy workflow:**
+- Triggers on push to `main` or manual dispatch with environment selection (dev/prod)
+- OIDC-based AWS credentials (no long-lived keys)
+- Runs lint, build, then `terraform init`, `plan`, and `apply`
+- Backend config per environment via `-backend-config=backend/{env}.hcl`
+- Concurrency control per environment
+
+**Terraform-specific `.gitignore`** entries for `.terraform/`, state files, and build artifacts.
+
+## Extra dependencies
+
+From blueprint `packageJson`:
+- `@repo/shared` — shared types package (workspace dependency)
+- `@types/aws-lambda` — Lambda event type definitions (dev)
+
+Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.js --target node`
+
+## CLI usage
+
+```bash
+bunx create-faster my-lambda \
+  --blueprint lambda-terraform-aws \
+  --git \
+  --pm bun
+```

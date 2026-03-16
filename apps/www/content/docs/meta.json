@@ -15,8 +15,11 @@
     "stacks/expo",
     "stacks/tanstack-start",
     "stacks/hono",
+    "stacks/node",
     "---MODULES---",
     "...modules",
+    "---BLUEPRINTS---",
+    "...blueprints",
     "---DATABASES---",
     "database/postgresql",
     "database/mysql",
@@ -26,6 +29,9 @@
     "---LINTERS---",
     "linter/biomejs",
     "linter/eslint",
+    "---DEPLOYMENT---",
+    "deployment/sst",
+    "deployment/terraform-aws",
     "---EXTRAS---",
     "extras/husky"
   ]

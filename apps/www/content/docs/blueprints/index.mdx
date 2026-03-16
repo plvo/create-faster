@@ -1,0 +1,80 @@
+---
+title: Blueprints
+description: Pre-composed starter projects that generate complete, functional applications with opinionated architecture and application code.
+icon: Layers
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Blueprints are **complete starter projects** — not just library presets. Each blueprint generates a functional application with pages, layouts, components, and routes that you can run immediately after generation.
+
+When you select a blueprint, the CLI pre-fills the stack, libraries, database, and ORM from the blueprint's composition. You only choose the linter, tooling, git, and package manager.
+
+## Quick Start
+
+<Tabs items={['bun', 'npm', 'pnpm']}>
+  <Tab value="bun">
+    ```bash
+    bunx create-faster my-project --blueprint dashboard --linter biome --git --pm bun
+    ```
+  </Tab>
+  <Tab value="npm">
+    ```bash
+    npx create-faster my-project --blueprint dashboard --linter biome --git --pm npm
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```bash
+    pnpm dlx create-faster my-project --blueprint dashboard --linter biome --git --pm pnpm
+    ```
+  </Tab>
+</Tabs>
+
+In interactive mode, the CLI prompts you to choose between a blueprint or a custom project when blueprints are available:
+
+```bash
+◇  How do you want to start?
+│  ● Use a blueprint (pre-composed starter project)
+│  ○ Custom (choose everything yourself)
+```
+
+## Available Blueprints
+
+### Business
+
+| Blueprint | Description |
+|-----------|-------------|
+| [Dashboard](/docs/blueprints/dashboard) | Internal CRM-style dashboard with auth, sidebar, and admin panel |
+
+### Web3
+
+| Blueprint | Description |
+|-----------|-------------|
+| [dApp (Privy)](/docs/blueprints/dapp-privy) | Web3 dApp with Privy wallet auth, wagmi, and user management |
+| [dApp (RainbowKit)](/docs/blueprints/dapp-rainbowkit) | Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi |
+
+### AWS
+
+| Blueprint | Description |
+|-----------|-------------|
+| [Lambda (SST)](/docs/blueprints/lambda-sst) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
+| [Lambda (Terraform)](/docs/blueprints/lambda-terraform-aws) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
+
+## What You Can Customize
+
+Blueprints define the **application architecture** (stacks, libraries, database, ORM). You choose the **developer experience**:
+
+- `--linter` — Biome, ESLint + Prettier, ESLint, or Prettier
+- `--tooling` — Husky (git hooks with lint-staged)
+- `--git` — Initialize a git repository
+- `--pm` — Package manager (bun, npm, pnpm)
+
+## How Blueprints Work
+
+A blueprint combines:
+1. **A preset composition** — stacks, libraries, and project addons
+2. **Application code** — pages, layouts, components, and routes
+3. **Extra dependencies** — packages specific to the blueprint (e.g., `recharts` for dashboard charts)
+4. **Extra environment variables** — blueprint-specific configuration
+
+Blueprint application code **overrides** the default structural templates. For example, a blueprint's `page.tsx` replaces the stack's default landing page with a functional application page.
