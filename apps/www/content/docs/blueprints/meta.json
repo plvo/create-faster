@@ -1,4 +1,4 @@
 {
   "title": "Blueprints",
-  "pages": ["index", "business", "web3", "aws"]
+  "pages": ["business", "web3", "aws"]
 }
