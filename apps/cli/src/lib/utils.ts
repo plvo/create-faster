@@ -1,4 +1,4 @@
-const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
+export const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
 
 export function spreadExtraKeys(target: Record<string, unknown>, config: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(config)) {

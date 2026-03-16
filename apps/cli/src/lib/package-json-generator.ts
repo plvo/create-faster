@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { META, type ProjectCategoryName } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
-import { cleanUndefined, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
+import { MERGE_KEYS, cleanUndefined, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
@@ -29,8 +29,6 @@ export interface GeneratedPackageJson {
 function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
 }
-
-const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
 
 export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
   const result: PackageJsonConfig = {};
