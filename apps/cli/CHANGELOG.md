@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.6.2](https://github.com/plvo/create-faster/compare/create-faster-v1.6.1...create-faster-v1.6.2) (2026-03-16)
+
+
+### Features
+
+* **blueprints:** add dapp-rainbowkit blueprint with SIWE auth ([#92](https://github.com/plvo/create-faster/issues/92)) ([10498dd](https://github.com/plvo/create-faster/commit/10498dddc96b683fa059e51b4ec23bcc4163fb64))
+* **blueprints:** add lambda-sst and lambda-terraform-aws blueprints ([#100](https://github.com/plvo/create-faster/issues/100)) ([469f17a](https://github.com/plvo/create-faster/commit/469f17a926e6f1e3fee8d010e9b057e3d9f3f5ee))
+* **blueprints:** add Nextjs dApp Privy blueprint ([#89](https://github.com/plvo/create-faster/issues/89)) ([0e9140b](https://github.com/plvo/create-faster/commit/0e9140beb87be24af4a4dd7708beb1c5397478c5))
+* **blueprints:** introduce blueprint system ([#85](https://github.com/plvo/create-faster/issues/85)) ([0b5e8f0](https://github.com/plvo/create-faster/commit/0b5e8f01a854a404f048dddcbd57514678982aab))
+* **blueprints:** separate linter/tooling and group by category ([#90](https://github.com/plvo/create-faster/issues/90)) ([a189e69](https://github.com/plvo/create-faster/commit/a189e697face9781c9e9e18ee1a895c82f1c905b))
+* **deployment:** add SST templates and project option ([#96](https://github.com/plvo/create-faster/issues/96)) ([ff6bf4e](https://github.com/plvo/create-faster/commit/ff6bf4e70e261d6f0702b154f1e91b9f155cb047))
+* **deployment:** add Terraform AWS templates and project option ([#99](https://github.com/plvo/create-faster/issues/99)) ([fe6dc74](https://github.com/plvo/create-faster/commit/fe6dc74c2d4353f68c9559d93b9fa7bcd28bb647))
+* **lib:** update better-auth v1.5.3 ([#87](https://github.com/plvo/create-faster/issues/87)) ([8caa845](https://github.com/plvo/create-faster/commit/8caa845aed86f943587d80f83060ecb664715a21))
+* **lib:** update Prisma to v7 with driver adapters ([#88](https://github.com/plvo/create-faster/issues/88)) ([1973386](https://github.com/plvo/create-faster/commit/19733865ca56c445fc41d0ac0131a9542c70e7d7))
+* **stacks:** add node stack for plain TypeScript projects ([#94](https://github.com/plvo/create-faster/issues/94)) ([1fd45f4](https://github.com/plvo/create-faster/commit/1fd45f49c60d7ca00e23f53b528800adb451d532))
+
+
+### Bug Fixes
+
+* **templates:** add shadcn CSS variables to globals.css ([#93](https://github.com/plvo/create-faster/issues/93)) ([1c608b8](https://github.com/plvo/create-faster/commit/1c608b8bb5a83c52005be6f272d5991d3b3da970))
+* **templates:** fix better-auth schema FK type mismatch for uuid ([#91](https://github.com/plvo/create-faster/issues/91)) ([a858089](https://github.com/plvo/create-faster/commit/a8580896091a3764cd1e7f00197fa1760377803e))
+
+
+### Refactor
+
+* **cli:** improve code quality reduce duplication ([#101](https://github.com/plvo/create-faster/issues/101)) ([1581a78](https://github.com/plvo/create-faster/commit/1581a785ddd2b2f1e63155f9233ffe5b88332ad4))
+
 ## [1.6.1](https://github.com/plvo/create-faster/compare/create-faster-v1.6.0...create-faster-v1.6.1) (2026-03-02)
 
 
