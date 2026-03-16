@@ -21,28 +21,7 @@ export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<Temp
     git: false,
   };
 
-  if (partial?.projectName) {
-    ctx.projectName = partial.projectName;
-    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    const fullPath = join(process.cwd(), partial.projectName);
-    if (existsSync(fullPath)) {
-      cancel(`Directory "${partial.projectName}" already exists.`);
-      process.exit(1);
-    }
-  } else {
-    ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
-      placeholder: 'my-app',
-      initialValue: 'my-app',
-      validate: (value) => {
-        const trimmed = value.trim();
-        if (!trimmed) return 'Project name is required';
-        const fullPath = join(process.cwd(), trimmed);
-        if (existsSync(fullPath)) {
-          return `Directory "${trimmed}" already exists.`;
-        }
-      },
-    });
-  }
+  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
   progress.next();
 
   if (partial?.apps && partial.apps.length > 0) {
@@ -113,41 +92,16 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   }
   progress.next();
 
-  if (partial?.git !== undefined) {
-    ctx.git = partial.git;
-    if (partial.git) {
-      log.info(`${color.green('✓')} Git initialization enabled`);
-    }
-  } else {
-    ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
-      initialValue: true,
-    });
-  }
+  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
   filterToolingByRequirements(ctx);
 
-  if (partial?.pm !== undefined) {
-    ctx.pm = partial.pm;
-  }
-
-  if (partial?.skipInstall) {
-    ctx.skipInstall = true;
-    log.info(`${color.green('✓')} Skipping dependency installation`);
-    if (partial.pm) {
-      log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
-    }
-  } else if (partial?.pm !== undefined) {
-    log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
-  } else {
-    ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
-      options: [
-        { label: 'Install with bun', value: 'bun' },
-        { label: 'Install with pnpm', value: 'pnpm' },
-        { label: 'Install with npm', value: 'npm' },
-        { label: 'Skip installation', value: undefined },
-      ],
-    });
-  }
+  const { pm, skipInstall } = await promptOrUsePackageManager(
+    partial,
+    progress.message(`Install dependencies ${color.bold('now')}?`),
+  );
+  ctx.pm = pm;
+  if (skipInstall) ctx.skipInstall = true;
   progress.next();
 
   return ctx;
@@ -173,28 +127,7 @@ export async function blueprintCli(
     blueprint: blueprintName,
   };
 
-  if (partial?.projectName) {
-    ctx.projectName = partial.projectName;
-    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    const fullPath = join(process.cwd(), partial.projectName);
-    if (existsSync(fullPath)) {
-      cancel(`Directory "${partial.projectName}" already exists.`);
-      process.exit(1);
-    }
-  } else {
-    ctx.projectName = await promptText<string>(progress.message('Name of your project?'), {
-      placeholder: 'my-app',
-      initialValue: 'my-app',
-      validate: (value) => {
-        const trimmed = value.trim();
-        if (!trimmed) return 'Project name is required';
-        const fullPath = join(process.cwd(), trimmed);
-        if (existsSync(fullPath)) {
-          return `Directory "${trimmed}" already exists.`;
-        }
-      },
-    });
-  }
+  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
 
   log.info(`${color.green('✓')} Using blueprint: ${color.bold(blueprint.label)}`);
   log.info(
@@ -229,33 +162,84 @@ export async function blueprintCli(
   }
   progress.next();
 
-  if (partial?.git !== undefined) {
-    ctx.git = partial.git;
-  } else {
-    ctx.git = await promptConfirm(progress.message(`Initialize ${color.bold('Git')}?`), {
-      initialValue: true,
-    });
-  }
+  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
   filterToolingByRequirements(ctx);
 
-  if (partial?.skipInstall) {
-    ctx.skipInstall = true;
-  } else if (partial?.pm !== undefined) {
-    ctx.pm = partial.pm;
-  } else {
-    ctx.pm = await promptSelect(undefined, progress.message(`Install dependencies ${color.bold('now')}?`), ctx, {
-      options: [
-        { label: 'Install with bun', value: 'bun' },
-        { label: 'Install with pnpm', value: 'pnpm' },
-        { label: 'Install with npm', value: 'npm' },
-        { label: 'Skip installation', value: undefined },
-      ],
-    });
-  }
+  const { pm, skipInstall } = await promptOrUsePackageManager(
+    partial,
+    progress.message(`Install dependencies ${color.bold('now')}?`),
+  );
+  ctx.pm = pm;
+  if (skipInstall) ctx.skipInstall = true;
   progress.next();
 
   return ctx;
+}
+
+async function promptOrUseProjectName(partial: Partial<TemplateContext> | undefined, message: string): Promise<string> {
+  if (partial?.projectName) {
+    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
+    const fullPath = join(process.cwd(), partial.projectName);
+    if (existsSync(fullPath)) {
+      cancel(`Directory "${partial.projectName}" already exists.`);
+      process.exit(1);
+    }
+    return partial.projectName;
+  }
+
+  return promptText<string>(message, {
+    placeholder: 'my-app',
+    initialValue: 'my-app',
+    validate: (value) => {
+      const trimmed = value.trim();
+      if (!trimmed) return 'Project name is required';
+      const fullPath = join(process.cwd(), trimmed);
+      if (existsSync(fullPath)) {
+        return `Directory "${trimmed}" already exists.`;
+      }
+    },
+  });
+}
+
+async function promptOrUseGit(partial: Partial<TemplateContext> | undefined, message: string): Promise<boolean> {
+  if (partial?.git !== undefined) {
+    if (partial.git) {
+      log.info(`${color.green('✓')} Git initialization enabled`);
+    }
+    return partial.git;
+  }
+
+  return promptConfirm(message, { initialValue: true });
+}
+
+async function promptOrUsePackageManager(
+  partial: Partial<TemplateContext> | undefined,
+  message: string,
+): Promise<{ pm?: 'bun' | 'npm' | 'pnpm'; skipInstall?: boolean }> {
+  if (partial?.skipInstall) {
+    log.info(`${color.green('✓')} Skipping dependency installation`);
+    if (partial.pm) {
+      log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
+    }
+    return { pm: partial.pm, skipInstall: true };
+  }
+
+  if (partial?.pm !== undefined) {
+    log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
+    return { pm: partial.pm };
+  }
+
+  const pm = await promptSelect(message, {
+    options: [
+      { label: 'Install with bun', value: 'bun' },
+      { label: 'Install with pnpm', value: 'pnpm' },
+      { label: 'Install with npm', value: 'npm' },
+      { label: 'Skip installation', value: undefined },
+    ],
+  });
+
+  return { pm };
 }
 
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {

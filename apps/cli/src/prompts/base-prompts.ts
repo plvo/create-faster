@@ -8,8 +8,6 @@ import {
   type TextOptions,
   text,
 } from '@clack/prompts';
-import type { TemplateContext } from '@/types/ctx';
-
 export async function promptText<T extends string | number = string>(
   message: string,
   options?: Partial<TextOptions>,
@@ -25,9 +23,7 @@ export async function promptText<T extends string | number = string>(
 }
 
 export async function promptSelect<R extends string | undefined>(
-  _category: undefined,
   message: string,
-  _ctx: Partial<TemplateContext>,
   options?: Partial<SelectOptions<string | undefined>>,
 ): Promise<R> {
   const selectOptions = options?.options ?? [];

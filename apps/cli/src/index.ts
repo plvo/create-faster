@@ -30,7 +30,7 @@ async function main() {
       const hasBlueprints = Object.keys(META.blueprints).length > 0;
 
       if (!hasCompositionFlags && hasBlueprints) {
-        const mode = await promptSelect<string>(undefined, 'What would you like to create?', partial, {
+        const mode = await promptSelect<string>('What would you like to create?', {
           options: [
             { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
             { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },

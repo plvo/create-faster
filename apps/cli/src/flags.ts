@@ -22,6 +22,33 @@ interface ParsedFlags {
   install?: boolean;
 }
 
+function validateOption(label: string, value: string, options: Record<string, unknown>, plural?: string): void {
+  if (!options[value]) {
+    printError(`Invalid ${label} '${value}'`, `Available ${plural ?? `${label}s`}: ${Object.keys(options).join(', ')}`);
+    process.exit(1);
+  }
+}
+
+function applyProjectFlags(flags: ParsedFlags, project: ProjectContext): void {
+  if (flags.deployment) {
+    validateOption('deployment', flags.deployment, META.project.deployment.options);
+    project.deployment = flags.deployment;
+  }
+
+  if (flags.linter) {
+    validateOption('linter', flags.linter, META.project.linter.options);
+    project.linter = flags.linter;
+  }
+
+  if (flags.tooling && flags.tooling.length > 0) {
+    project.tooling = [];
+    for (const toolingName of flags.tooling) {
+      validateOption('tooling', toolingName, META.project.tooling.options, 'tooling');
+      project.tooling.push(toolingName);
+    }
+  }
+}
+
 export function parseFlags(): Partial<TemplateContext> {
   const program = new Command();
 
@@ -126,41 +153,7 @@ ${color.bold('Examples:')}
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
     partial.project = { ...blueprint.context.project, tooling: [] } as ProjectContext;
 
-    if (flags.deployment) {
-      if (!META.project.deployment.options[flags.deployment]) {
-        printError(
-          `Invalid deployment '${flags.deployment}'`,
-          `Available deployments: ${Object.keys(META.project.deployment.options).join(', ')}`,
-        );
-        process.exit(1);
-      }
-      partial.project.deployment = flags.deployment;
-    }
-
-    if (flags.linter) {
-      if (!META.project.linter.options[flags.linter]) {
-        printError(
-          `Invalid linter '${flags.linter}'`,
-          `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
-        );
-        process.exit(1);
-      }
-      partial.project.linter = flags.linter;
-    }
-
-    if (flags.tooling && flags.tooling.length > 0) {
-      partial.project.tooling = [];
-      for (const toolingName of flags.tooling) {
-        if (!META.project.tooling.options[toolingName]) {
-          printError(
-            `Invalid tooling '${toolingName}'`,
-            `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
-          );
-          process.exit(1);
-        }
-        partial.project.tooling.push(toolingName);
-      }
-    }
+    applyProjectFlags(flags, partial.project);
   } else {
     const hasProjectFlags =
       flags.database || flags.orm || flags.deployment || flags.linter || (flags.tooling && flags.tooling.length > 0);
@@ -169,58 +162,16 @@ ${color.bold('Examples:')}
     }
 
     if (flags.database) {
-      if (!META.project.database.options[flags.database]) {
-        printError(
-          `Invalid database '${flags.database}'`,
-          `Available databases: ${Object.keys(META.project.database.options).join(', ')}`,
-        );
-        process.exit(1);
-      }
+      validateOption('database', flags.database, META.project.database.options);
       partial.project!.database = flags.database;
     }
 
     if (flags.orm) {
-      if (!META.project.orm.options[flags.orm]) {
-        printError(`Invalid ORM '${flags.orm}'`, `Available ORMs: ${Object.keys(META.project.orm.options).join(', ')}`);
-        process.exit(1);
-      }
+      validateOption('ORM', flags.orm, META.project.orm.options);
       partial.project!.orm = flags.orm;
     }
 
-    if (flags.deployment) {
-      if (!META.project.deployment.options[flags.deployment]) {
-        printError(
-          `Invalid deployment '${flags.deployment}'`,
-          `Available deployments: ${Object.keys(META.project.deployment.options).join(', ')}`,
-        );
-        process.exit(1);
-      }
-      partial.project!.deployment = flags.deployment;
-    }
-
-    if (flags.linter) {
-      if (!META.project.linter.options[flags.linter]) {
-        printError(
-          `Invalid linter '${flags.linter}'`,
-          `Available linters: ${Object.keys(META.project.linter.options).join(', ')}`,
-        );
-        process.exit(1);
-      }
-      partial.project!.linter = flags.linter;
-    }
-
-    if (flags.tooling && flags.tooling.length > 0) {
-      for (const toolingName of flags.tooling) {
-        if (!META.project.tooling.options[toolingName]) {
-          printError(
-            `Invalid tooling '${toolingName}'`,
-            `Available tooling: ${Object.keys(META.project.tooling.options).join(', ')}`,
-          );
-          process.exit(1);
-        }
-        partial.project!.tooling.push(toolingName);
-      }
-    }
+    applyProjectFlags(flags, partial.project!);
   }
 
   if (flags.git !== undefined) {
