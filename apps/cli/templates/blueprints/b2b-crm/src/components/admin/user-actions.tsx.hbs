@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTRPC } from '@/trpc/providers';
-import { authClient } from {{#if (isMono)}}'@repo/auth/client'{{else}}'@/lib/auth/auth-client'{{/if}};
+import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
 
 type User = {
   id: string;

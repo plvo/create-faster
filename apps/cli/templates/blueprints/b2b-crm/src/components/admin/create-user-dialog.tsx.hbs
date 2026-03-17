@@ -2,11 +2,11 @@
 
 import { useForm } from '@tanstack/react-form';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useTRPC } from '@/trpc/providers';
-import { authClient } from {{#if (isMono)}}'@repo/auth/client'{{else}}'@/lib/auth/auth-client'{{/if}};
+import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -26,6 +26,15 @@ export function CreateUserDialog({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onOpenChange(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open, onOpenChange]);
 
   const form = useForm({
     defaultValues: { email: '', password: '', name: '', role: 'manager' as const },
@@ -78,7 +87,6 @@ export function CreateUserDialog({
       <div
         className='fixed inset-0 bg-black/50'
         onClick={() => onOpenChange(false)}
-        onKeyDown={(e) => e.key === 'Escape' && onOpenChange(false)}
       />
       <div className='relative z-50 w-full max-w-md rounded-lg border bg-card p-6 shadow-lg'>
         <div className='mb-4 space-y-1'>

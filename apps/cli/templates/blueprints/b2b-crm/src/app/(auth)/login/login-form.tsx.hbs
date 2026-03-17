@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { z } from 'zod';
 {{#if (isMono)}}
-import { authClient } from '@repo/auth/client';
+import { authClient } from '@repo/auth/auth-client';
 {{else}}
 import { authClient } from '@/lib/auth/auth-client';
 {{/if}}

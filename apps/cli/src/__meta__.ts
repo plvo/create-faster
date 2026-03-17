@@ -755,7 +755,7 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          sonner: 'latest',
+          sonner: '^2.0.7',
         },
       },
     },

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { auth } from {{#if (isMono)}}'@repo/auth'{{else}}'@/lib/auth/auth'{{/if}};
-import { SidebarProvider, SidebarInset } from {{#if (isMono)}}'@repo/ui/components/ui/sidebar'{{else}}'@/components/ui/sidebar'{{/if}};
+import { auth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { AppHeader } from '@/components/navigation/app-header';
 
@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SidebarProvider>
       <AppSidebar session={session} />
       <SidebarInset>
-        <AppHeader />
+        <AppHeader role={session.user.role} />
         <main className='flex-1 p-6'>{children}</main>
       </SidebarInset>
     </SidebarProvider>
