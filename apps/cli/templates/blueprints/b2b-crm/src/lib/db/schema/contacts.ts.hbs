@@ -1,0 +1,57 @@
+---
+path: src/lib/db/schema/contacts.ts
+mono:
+  scope: pkg
+  path: src/schema/contacts.ts
+---
+{{#if (has "database" "postgres")}}
+import { pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+{{/if}}
+{{#if (has "database" "mysql")}}
+import { mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
+{{/if}}
+import { relations } from 'drizzle-orm';
+{{#if (isMono)}}
+import { userTable } from '../schema';
+{{else}}
+import { userTable } from '@/lib/db/schema';
+{{/if}}
+
+const timeColumns = {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+};
+
+{{#if (has "database" "postgres")}}
+export const contactTable = pgTable('contacts', {
+{{/if}}
+{{#if (has "database" "mysql")}}
+export const contactTable = mysqlTable('contacts', {
+{{/if}}
+{{#if (has "database" "postgres")}}
+  id: uuid('id').defaultRandom().primaryKey(),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+{{/if}}
+  firstName: varchar('first_name', { length: 255 }).notNull(),
+  lastName: varchar('last_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 255 }),
+  company: varchar('company', { length: 255 }),
+  notes: text('notes'),
+{{#if (has "database" "postgres")}}
+  createdById: uuid('created_by_id').references(() => userTable.id, { onDelete: 'set null' }),
+{{/if}}
+{{#if (has "database" "mysql")}}
+  createdById: varchar('created_by_id', { length: 36 }).references(() => userTable.id, { onDelete: 'set null' }),
+{{/if}}
+  ...timeColumns,
+});
+
+export const contactTableRelations = relations(contactTable, ({ one }) => ({
+  createdBy: one(userTable, {
+    fields: [contactTable.createdById],
+    references: [userTable.id],
+  }),
+}));
