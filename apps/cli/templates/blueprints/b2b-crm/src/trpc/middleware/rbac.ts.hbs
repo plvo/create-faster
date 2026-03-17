@@ -1,0 +1,24 @@
+---
+mono:
+  scope: pkg
+  path: src/middleware/rbac.ts
+---
+import { TRPCError } from '@trpc/server';
+{{#if (isMono)}}
+import { protectedProcedure } from '../trpc';
+{{else}}
+import { protectedProcedure } from '@/trpc/init';
+{{/if}}
+
+export const adminProcedure = protectedProcedure.use(async (opts) => {
+  if (opts.ctx.session.user.role !== 'admin') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Only admins can access this resource',
+    });
+  }
+
+  return opts.next({ ctx: opts.ctx });
+});
+
+export const managerProcedure = protectedProcedure;

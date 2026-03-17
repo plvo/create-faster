@@ -1,0 +1,30 @@
+---
+mono:
+  scope: pkg
+  path: src/router/user.ts
+---
+{{#if (isMono)}}
+import { eq, userTable } from '@repo/db';
+import { protectedProcedure, router } from '../trpc';
+import { adminProcedure } from '../middleware/rbac';
+{{else}}
+import { eq } from 'drizzle-orm';
+import { userTable } from '@/lib/db/schema';
+import { protectedProcedure, router } from '@/trpc/init';
+import { adminProcedure } from '@/trpc/middleware/rbac';
+{{/if}}
+
+export const userRouter = router({
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, ctx.session.user.id))
+      .limit(1);
+    return user ?? null;
+  }),
+
+  list: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.select().from(userTable);
+  }),
+});
