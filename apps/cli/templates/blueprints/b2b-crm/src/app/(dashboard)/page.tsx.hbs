@@ -1,0 +1,12 @@
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { DashboardClient } from './dashboard.client';
+
+export default async function DashboardPage() {
+  prefetch(trpc.contact.count.queryOptions());
+
+  return (
+    <HydrateClient>
+      <DashboardClient />
+    </HydrateClient>
+  );
+}

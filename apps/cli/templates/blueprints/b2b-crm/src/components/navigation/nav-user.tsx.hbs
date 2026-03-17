@@ -1,0 +1,134 @@
+'use client';
+
+import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
+import React from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { authClient } from {{#if (isMono)}}'@repo/auth/client'{{else}}'@/lib/auth/auth-client'{{/if}};
+
+type Session = {
+  user: {
+    role: string;
+    name: string;
+    email: string;
+  };
+};
+
+{{{{raw}}}}
+export function NavUser({ session }: { session: Session }) {
+  const [showLogout, setShowLogout] = React.useState(false);
+  const { isMobile } = useSidebar();
+  const { resolvedTheme, setTheme } = useTheme();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await authClient.signOut();
+    router.push('/login');
+  };
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const initials = session.user.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size='lg'
+              className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
+            >
+              <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
+                {initials}
+              </div>
+              <div className='grid flex-1 text-left text-sm leading-tight gap-1'>
+                <span className='truncate font-medium'>
+                  {session.user.name} ({session.user.role})
+                </span>
+                <span className='truncate text-xs'>{session.user.email}</span>
+              </div>
+              <ChevronsUpDown className='ml-auto size-4' />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+            side={isMobile ? 'bottom' : 'top'}
+            align='center'
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className='p-0 font-normal'>
+              <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
+                <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
+                  {initials}
+                </div>
+                <div className='grid flex-1 text-left text-sm leading-tight'>
+                  <span className='truncate font-medium'>{session.user.name}</span>
+                  <span className='truncate text-xs'>{session.user.email}</span>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <a href='/profile'>
+                  <UserIcon />
+                  Profile
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleTheme}>
+                {resolvedTheme === 'dark' ? <Sun /> : <Moon />}
+                {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            {showLogout ? (
+              <div className='p-2 space-y-2'>
+                <p className='text-sm text-muted-foreground'>Are you sure?</p>
+                <div className='flex gap-2'>
+                  <button
+                    type='button'
+                    onClick={handleLogout}
+                    className='flex-1 rounded-md bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90'
+                  >
+                    Logout
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => setShowLogout(false)}
+                    className='flex-1 rounded-md border px-2 py-1 text-xs hover:bg-accent'
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <DropdownMenuItem onClick={() => setShowLogout(true)} className='hover:bg-destructive/40'>
+                <LogOut />
+                Logout
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+{{{{/raw}}}}

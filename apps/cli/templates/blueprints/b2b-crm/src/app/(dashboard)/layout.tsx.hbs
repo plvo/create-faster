@@ -1,0 +1,21 @@
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { auth } from {{#if (isMono)}}'@repo/auth'{{else}}'@/lib/auth/auth'{{/if}};
+import { SidebarProvider, SidebarInset } from {{#if (isMono)}}'@repo/ui/components/ui/sidebar'{{else}}'@/components/ui/sidebar'{{/if}};
+import { AppSidebar } from '@/components/navigation/app-sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect('/login');
+
+  return (
+    <SidebarProvider>
+      <AppSidebar session={session} />
+      <SidebarInset>
+        <AppHeader />
+        <main className='flex-1 p-6'>{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
