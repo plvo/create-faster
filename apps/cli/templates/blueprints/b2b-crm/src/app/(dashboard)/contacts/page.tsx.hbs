@@ -1,0 +1,12 @@
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { ContactsClient } from './contacts.client';
+
+export default async function ContactsPage() {
+  prefetch(trpc.contact.list.queryOptions());
+
+  return (
+    <HydrateClient>
+      <ContactsClient />
+    </HydrateClient>
+  );
+}

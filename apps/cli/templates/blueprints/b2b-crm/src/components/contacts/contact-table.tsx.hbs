@@ -1,0 +1,49 @@
+{{{{raw}}}}
+'use client';
+
+import Link from 'next/link';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { useTRPC } from '@/trpc/providers';
+
+export function ContactTable() {
+  const trpc = useTRPC();
+  const { data: contacts } = useSuspenseQuery(trpc.contact.list.queryOptions());
+
+  if (contacts.length === 0) {
+    return (
+      <div className='rounded-lg border bg-card p-8 text-center'>
+        <p className='text-muted-foreground'>No contacts yet. Create your first contact to get started.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='rounded-lg border'>
+      <table className='w-full text-sm'>
+        <thead>
+          <tr className='border-b bg-muted/50'>
+            <th className='px-4 py-3 text-left font-medium'>Name</th>
+            <th className='px-4 py-3 text-left font-medium'>Email</th>
+            <th className='hidden px-4 py-3 text-left font-medium sm:table-cell'>Phone</th>
+            <th className='hidden px-4 py-3 text-left font-medium md:table-cell'>Company</th>
+          </tr>
+        </thead>
+        <tbody>
+          {contacts.map((contact) => (
+            <tr key={contact.id} className='border-b last:border-0 hover:bg-muted/50'>
+              <td className='px-4 py-3'>
+                <Link href={`/contacts/${contact.id}`} className='font-medium text-primary hover:underline'>
+                  {contact.firstName} {contact.lastName}
+                </Link>
+              </td>
+              <td className='px-4 py-3 text-muted-foreground'>{contact.email || '—'}</td>
+              <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>{contact.phone || '—'}</td>
+              <td className='hidden px-4 py-3 text-muted-foreground md:table-cell'>{contact.company || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+{{{{/raw}}}}

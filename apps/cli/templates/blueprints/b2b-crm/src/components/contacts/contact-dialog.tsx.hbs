@@ -1,0 +1,53 @@
+{{{{raw}}}}
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { ContactForm } from '@/components/contacts/contact-form';
+
+interface ContactDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (open) {
+      dialog.showModal();
+    } else {
+      dialog.close();
+    }
+  }, [open]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={() => onOpenChange(false)}
+      className='w-full max-w-lg rounded-lg border bg-background p-0 shadow-lg backdrop:bg-black/50'
+    >
+      <div className='p-6'>
+        <div className='mb-4 flex items-center justify-between'>
+          <h2 className='text-lg font-semibold'>New Contact</h2>
+          <button
+            type='button'
+            onClick={() => onOpenChange(false)}
+            className='inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground'
+          >
+            ✕
+          </button>
+        </div>
+        {open && (
+          <ContactForm
+            mode='create'
+            onSuccess={() => onOpenChange(false)}
+          />
+        )}
+      </div>
+    </dialog>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,12 @@
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { ProfileClient } from './profile.client';
+
+export default async function ProfilePage() {
+  prefetch(trpc.user.me.queryOptions());
+
+  return (
+    <HydrateClient>
+      <ProfileClient />
+    </HydrateClient>
+  );
+}

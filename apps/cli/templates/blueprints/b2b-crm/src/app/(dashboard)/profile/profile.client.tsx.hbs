@@ -1,0 +1,228 @@
+'use client';
+
+import { useForm } from '@tanstack/react-form';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { useTheme } from 'next-themes';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useTRPC } from '@/trpc/providers';
+import { authClient } from {{#if (isMono)}}'@repo/auth/client'{{else}}'@/lib/auth/auth-client'{{/if}};
+
+const nameSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+});
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+{{{{raw}}}}
+export function ProfileClient() {
+  const trpc = useTRPC();
+  const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
+  const { theme, setTheme } = useTheme();
+  const [nameLoading, setNameLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const nameForm = useForm({
+    defaultValues: { name: user?.name || '' },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = nameSchema.safeParse(value);
+        if (!result.success) {
+          return {
+            fields: { name: result.error.flatten().fieldErrors.name?.[0] },
+          };
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setNameLoading(true);
+      try {
+        const res = await authClient.updateUser({ name: value.name });
+        if (res.error) {
+          toast.error('Failed to update name');
+          return;
+        }
+        toast.success('Name updated');
+      } catch {
+        toast.error('Failed to update name');
+      } finally {
+        setNameLoading(false);
+      }
+    },
+  });
+
+  const passwordForm = useForm({
+    defaultValues: { currentPassword: '', newPassword: '' },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = passwordSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors = result.error.flatten().fieldErrors;
+          return {
+            fields: {
+              currentPassword: fieldErrors.currentPassword?.[0],
+              newPassword: fieldErrors.newPassword?.[0],
+            },
+          };
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setPasswordLoading(true);
+      try {
+        const res = await authClient.changePassword({
+          currentPassword: value.currentPassword,
+          newPassword: value.newPassword,
+          revokeOtherSessions: true,
+        });
+        if (res.error) {
+          toast.error('Failed to change password');
+          return;
+        }
+        toast.success('Password changed');
+        passwordForm.reset();
+      } catch {
+        toast.error('Failed to change password');
+      } finally {
+        setPasswordLoading(false);
+      }
+    },
+  });
+
+  return (
+    <div className='space-y-8 max-w-2xl'>
+      <h1 className='text-3xl font-bold'>Profile</h1>
+
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <h2 className='text-lg font-semibold'>Account</h2>
+        <div className='text-sm text-muted-foreground'>
+          {user?.email}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            nameForm.handleSubmit();
+          }}
+          className='space-y-4'
+        >
+          <nameForm.Field
+            name='name'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='name' className='text-sm font-medium leading-none'>
+                  Name
+                </label>
+                <input
+                  id='name'
+                  type='text'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+                {field.state.meta.errors?.[0] && (
+                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+                )}
+              </div>
+            )}
+          />
+          <button
+            type='submit'
+            disabled={nameLoading}
+            className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
+          >
+            {nameLoading ? 'Saving...' : 'Save name'}
+          </button>
+        </form>
+      </section>
+
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <h2 className='text-lg font-semibold'>Theme</h2>
+        <div className='flex gap-2'>
+          {(['light', 'dark', 'system'] as const).map((t) => (
+            <button
+              key={t}
+              type='button'
+              onClick={() => setTheme(t)}
+              className={`inline-flex h-9 items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent ${
+                theme === t ? 'border-primary bg-accent' : 'border-input'
+              }`}
+            >
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <h2 className='text-lg font-semibold'>Change password</h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            passwordForm.handleSubmit();
+          }}
+          className='space-y-4'
+        >
+          <passwordForm.Field
+            name='currentPassword'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='currentPassword' className='text-sm font-medium leading-none'>
+                  Current password
+                </label>
+                <input
+                  id='currentPassword'
+                  type='password'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+                {field.state.meta.errors?.[0] && (
+                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+                )}
+              </div>
+            )}
+          />
+          <passwordForm.Field
+            name='newPassword'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='newPassword' className='text-sm font-medium leading-none'>
+                  New password
+                </label>
+                <input
+                  id='newPassword'
+                  type='password'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+                {field.state.meta.errors?.[0] && (
+                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+                )}
+              </div>
+            )}
+          />
+          <button
+            type='submit'
+            disabled={passwordLoading}
+            className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
+          >
+            {passwordLoading ? 'Changing...' : 'Change password'}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+{{{{/raw}}}}

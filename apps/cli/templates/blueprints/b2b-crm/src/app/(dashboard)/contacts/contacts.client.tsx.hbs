@@ -1,0 +1,28 @@
+{{{{raw}}}}
+'use client';
+
+import { useState } from 'react';
+import { ContactTable } from '@/components/contacts/contact-table';
+import { ContactDialog } from '@/components/contacts/contact-dialog';
+
+export function ContactsClient() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-3xl font-bold'>Contacts</h1>
+        <button
+          type='button'
+          onClick={() => setDialogOpen(true)}
+          className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90'
+        >
+          New Contact
+        </button>
+      </div>
+      <ContactTable />
+      <ContactDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </div>
+  );
+}
+{{{{/raw}}}}

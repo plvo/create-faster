@@ -1,0 +1,136 @@
+{{{{raw}}}}
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTRPC } from '@/trpc/providers';
+import { ContactForm } from '@/components/contacts/contact-form';
+import Link from 'next/link';
+
+export function ContactDetail({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const { data: contact } = useSuspenseQuery(trpc.contact.getById.queryOptions({ id }));
+
+  const deleteContact = useMutation(
+    trpc.contact.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
+        router.push('/contacts');
+      },
+    }),
+  );
+
+  if (!contact) {
+    return (
+      <div className='space-y-4'>
+        <p className='text-muted-foreground'>Contact not found.</p>
+        <Link href='/contacts' className='text-sm text-primary underline'>
+          Back to contacts
+        </Link>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className='space-y-6'>
+        <div className='flex items-center gap-4'>
+          <button
+            type='button'
+            onClick={() => setEditing(false)}
+            className='text-sm text-muted-foreground hover:text-foreground'
+          >
+            ← Cancel
+          </button>
+          <h1 className='text-3xl font-bold'>Edit Contact</h1>
+        </div>
+        <ContactForm
+          mode='edit'
+          contact={contact}
+          onSuccess={() => {
+            setEditing(false);
+            queryClient.invalidateQueries({ queryKey: trpc.contact.getById.queryKey({ id }) });
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-4'>
+          <Link href='/contacts' className='text-sm text-muted-foreground hover:text-foreground'>
+            ← Contacts
+          </Link>
+          <h1 className='text-3xl font-bold'>
+            {contact.firstName} {contact.lastName}
+          </h1>
+        </div>
+        <div className='flex gap-2'>
+          <button
+            type='button'
+            onClick={() => setEditing(true)}
+            className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
+          >
+            Edit
+          </button>
+          {confirmDelete ? (
+            <div className='flex gap-2'>
+              <button
+                type='button'
+                onClick={() => deleteContact.mutate({ id })}
+                disabled={deleteContact.isPending}
+                className='inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50'
+              >
+                {deleteContact.isPending ? 'Deleting...' : 'Confirm'}
+              </button>
+              <button
+                type='button'
+                onClick={() => setConfirmDelete(false)}
+                className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type='button'
+              onClick={() => setConfirmDelete(true)}
+              className='inline-flex h-9 items-center justify-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground'
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+      <div className='rounded-lg border bg-card p-6'>
+        <dl className='grid gap-4 sm:grid-cols-2'>
+          <div>
+            <dt className='text-sm font-medium text-muted-foreground'>Email</dt>
+            <dd className='mt-1 text-sm'>{contact.email || '—'}</dd>
+          </div>
+          <div>
+            <dt className='text-sm font-medium text-muted-foreground'>Phone</dt>
+            <dd className='mt-1 text-sm'>{contact.phone || '—'}</dd>
+          </div>
+          <div>
+            <dt className='text-sm font-medium text-muted-foreground'>Company</dt>
+            <dd className='mt-1 text-sm'>{contact.company || '—'}</dd>
+          </div>
+          <div className='sm:col-span-2'>
+            <dt className='text-sm font-medium text-muted-foreground'>Notes</dt>
+            <dd className='mt-1 whitespace-pre-wrap text-sm'>{contact.notes || '—'}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}
