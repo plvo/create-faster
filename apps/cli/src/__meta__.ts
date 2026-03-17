@@ -723,6 +723,42 @@ export const META: Meta = {
         },
       },
     },
+    'b2b-crm': {
+      label: 'B2B CRM',
+      hint: 'CRM/ERP base with auth, RBAC, admin panel, and example CRUD',
+      category: 'Business',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: [
+              'shadcn',
+              'better-auth',
+              'trpc',
+              'tanstack-query',
+              'tanstack-devtools',
+              'tanstack-form',
+              'next-themes',
+            ],
+          },
+          {
+            appName: 'batch',
+            stackName: 'node',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          sonner: 'latest',
+        },
+      },
+    },
   },
 } as const satisfies Meta;
 
