@@ -6,7 +6,7 @@ mono:
   path: src/schema.ts
 ---
 {{#if (has "database" "postgres")}}
-import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, boolean, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { mysqlTable, boolean, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
@@ -24,12 +24,7 @@ export const userTable = pgTable('users', {
 {{#if (has "database" "mysql")}}
 export const userTable = mysqlTable('users', {
 {{/if}}
-{{#if (has "database" "postgres")}}
-  id: uuid('id').defaultRandom().primaryKey(),
-{{/if}}
-{{#if (has "database" "mysql")}}
   id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
-{{/if}}
   username: varchar('username', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -64,16 +59,9 @@ export const userSessionTable = pgTable('user_sessions', {
 export const userSessionTable = mysqlTable('user_sessions', {
 {{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
-{{#if (has "database" "postgres")}}
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
-{{#if (has "database" "mysql")}}
   userId: varchar('user_id', { length: 36 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
   token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: varchar('ip_address', { length: 255 }),
@@ -96,16 +84,9 @@ export const userAccountTable = pgTable('user_accounts', {
 export const userAccountTable = mysqlTable('user_accounts', {
 {{/if}}
   id: varchar('id', { length: 255 }).primaryKey(),
-{{#if (has "database" "postgres")}}
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
-{{#if (has "database" "mysql")}}
   userId: varchar('user_id', { length: 36 })
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
   accountId: varchar('account_id', { length: 255 }).notNull(),
   providerId: varchar('provider_id', { length: 255 }).notNull(),
   accessToken: text('access_token'),
@@ -146,21 +127,11 @@ export const postTable = pgTable('posts', {
 {{#if (has "database" "mysql")}}
 export const postTable = mysqlTable('posts', {
 {{/if}}
-{{#if (has "database" "postgres")}}
-  id: uuid('id').defaultRandom().primaryKey(),
-{{/if}}
-{{#if (has "database" "mysql")}}
   id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
-{{/if}}
   title: varchar('title', { length: 255 }).notNull(),
   content: text('content').notNull(),
   published: varchar('published', { length: 10 }).notNull().default('false'),
-{{#if (has "database" "postgres")}}
-  authorId: uuid('author_id').notNull().references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
-{{#if (has "database" "mysql")}}
   authorId: varchar('author_id', { length: 36 }).notNull().references(() => userTable.id, { onDelete: 'cascade' }),
-{{/if}}
   ...timeColumns,
 });
 
@@ -177,24 +148,14 @@ export const contactTable = pgTable('contacts', {
 {{#if (has "database" "mysql")}}
 export const contactTable = mysqlTable('contacts', {
 {{/if}}
-{{#if (has "database" "postgres")}}
-  id: uuid('id').defaultRandom().primaryKey(),
-{{/if}}
-{{#if (has "database" "mysql")}}
   id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
-{{/if}}
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 255 }),
   company: varchar('company', { length: 255 }),
   notes: text('notes'),
-{{#if (has "database" "postgres")}}
-  createdById: uuid('created_by_id').references(() => userTable.id, { onDelete: 'set null' }),
-{{/if}}
-{{#if (has "database" "mysql")}}
   createdById: varchar('created_by_id', { length: 36 }).references(() => userTable.id, { onDelete: 'set null' }),
-{{/if}}
   ...timeColumns,
 });
 
