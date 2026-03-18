@@ -1,6 +1,6 @@
+import type { Session } from '@repo/auth/types';
 import { LayoutDashboard } from 'lucide-react';
 import type * as React from 'react';
-{{#if (isMono)}}
 import {
   Sidebar,
   SidebarContent,
@@ -9,26 +9,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
 } from '@repo/ui/components/ui/sidebar';
-{{else}}
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-} from '@/components/ui/sidebar';
-{{/if}}
 import { NavUser } from './nav-user';
 import { SidebarLinks } from './sidebar-links';
-
-type Session = {
-  user: {
-    role: string;
-    name: string;
-    email: string;
-  };
-};
 
 {{{{raw}}}}
 export function AppSidebar({ session, ...props }: React.ComponentProps<typeof Sidebar> & { session: Session }) {
@@ -52,7 +34,7 @@ export function AppSidebar({ session, ...props }: React.ComponentProps<typeof Si
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarLinks role={session.user.role} />
+        <SidebarLinks role={session.user.role!} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser session={session} />

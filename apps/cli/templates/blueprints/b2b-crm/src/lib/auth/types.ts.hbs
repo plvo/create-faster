@@ -5,6 +5,6 @@ mono:
   path: src/types.ts
 path: src/lib/auth/types.ts
 ---
-import type { auth } from {{#if (isMono)}}'./auth'{{else}}'@/lib/auth/auth'{{/if}};
+import type { auth } from './auth';
 
 export type Session = typeof auth.$Infer.Session;

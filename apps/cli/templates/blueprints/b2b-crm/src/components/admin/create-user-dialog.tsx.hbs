@@ -6,13 +6,13 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useTRPC } from '@/trpc/providers';
-import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
+import { authClient } from '@repo/auth/auth-client';
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
-  role: z.enum(['admin', 'manager']),
+  role: z.enum(['admin', 'user']),
 });
 
 {{{{raw}}}}
@@ -37,7 +37,7 @@ export function CreateUserDialog({
   }, [open, onOpenChange]);
 
   const form = useForm({
-    defaultValues: { email: '', password: '', name: '', role: 'manager' as const },
+    defaultValues: { email: '', password: '', name: '', role: 'user' as 'admin' | 'user' },
     validators: {
       onSubmit: ({ value }) => {
         const result = createUserSchema.safeParse(value);
@@ -176,11 +176,11 @@ export function CreateUserDialog({
                 <select
                   id='create-role'
                   value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value as 'admin' | 'manager')}
+                  onChange={(e) => field.handleChange(e.target.value as 'admin' | 'user')}
                   onBlur={field.handleBlur}
                   className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
                 >
-                  <option value='manager'>Manager</option>
+                  <option value='user'>User</option>
                   <option value='admin'>Admin</option>
                 </select>
                 {field.state.meta.errors?.[0] && (

@@ -35,6 +35,11 @@ export const userTable = mysqlTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   avatarUrl: text('avatar_url'),
 
+  role: varchar('role', { length: 255 }).notNull().default('user'),
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
+
   phone: varchar('phone', { length: 255 }),
   firstName: varchar('first_name', { length: 255 }),
   lastName: varchar('last_name', { length: 255 }),

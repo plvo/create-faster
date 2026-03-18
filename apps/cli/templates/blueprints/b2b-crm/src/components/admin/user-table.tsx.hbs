@@ -24,7 +24,7 @@ export function UserTable() {
         <tbody>
           {users.map((user) => (
             <tr key={user.id} className='border-b last:border-0'>
-              <td className='px-4 py-3'>{user.name}</td>
+              <td className='px-4 py-3'>{user.username}</td>
               <td className='px-4 py-3 text-muted-foreground'>{user.email}</td>
               <td className='px-4 py-3'>
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

@@ -1,8 +1,8 @@
 'use client';
 
+import type { Session } from '@repo/auth/types';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-{{#if (isMono)}}
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -10,22 +10,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-{{else}}
-import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar';
-{{/if}}
-import { ADMIN_ROUTES, MANAGER_ROUTES, type RouteProps } from '@/lib/constants';
+import { ADMIN_ROUTES, USER_ROUTES, type RouteProps } from '@/lib/constants';
 {{{{raw}}}}
 
-export function SidebarLinks({ role }: { role: string }) {
+export function SidebarLinks({ role }: { role: Session['user']['role'] }) {
   const pathname = usePathname();
 
-  const pages = role === 'admin' ? ADMIN_ROUTES : MANAGER_ROUTES;
+  const pages = role === 'admin' ? ADMIN_ROUTES : USER_ROUTES;
 
   const grouplessPages = pages.filter((item) => !item.category);
 

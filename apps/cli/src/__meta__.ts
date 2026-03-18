@@ -760,6 +760,16 @@ export const META: Meta = {
           zod: '^4.2.1',
         },
       },
+      rootPackageJson: {
+        scripts: {
+          'db:push': 'turbo db:push',
+          'db:generate': 'turbo db:generate',
+          'db:migrate': 'turbo db:migrate',
+          'db:studio': 'turbo db:studio',
+          'db:seed': 'bun scripts/seed.ts',
+          start: 'turbo start',
+        },
+      },
     },
   },
 } as const satisfies Meta;

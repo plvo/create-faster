@@ -6,15 +6,9 @@ mono:
   path: src/root.ts
 ---
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
-{{#if (isMono)}}
 import { router } from './trpc';
 import { userRouter } from './router/user';
 import { contactRouter } from './router/contact';
-{{else}}
-import { router } from '@/trpc/init';
-import { userRouter } from './user';
-import { contactRouter } from './contact';
-{{/if}}
 
 export const appRouter = router({
   user: userRouter,

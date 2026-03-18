@@ -256,6 +256,11 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     }
   }
 
+  if (ctx.blueprint) {
+    const blueprint = META.blueprints[ctx.blueprint];
+    if (blueprint?.rootPackageJson) rootConfigs.push(blueprint.rootPackageJson);
+  }
+
   const merged = mergeResolved(ctx, ...rootConfigs);
   devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
   Object.assign(scripts, merged.scripts ?? {});

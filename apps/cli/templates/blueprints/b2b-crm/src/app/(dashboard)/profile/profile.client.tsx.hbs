@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useTRPC } from '@/trpc/providers';
-import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
+import { authClient } from '@repo/auth/auth-client';
 
 const nameSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -27,7 +27,7 @@ export function ProfileClient() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   const nameForm = useForm({
-    defaultValues: { name: user?.name || '' },
+    defaultValues: { name: user?.username || '' },
     validators: {
       onSubmit: ({ value }) => {
         const result = nameSchema.safeParse(value);

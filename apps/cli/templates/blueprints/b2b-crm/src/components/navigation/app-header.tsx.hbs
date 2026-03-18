@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
-{{#if (isMono)}}
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,19 +13,7 @@ import {
 } from '@repo/ui/components/ui/breadcrumb';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarTrigger } from '@repo/ui/components/ui/sidebar';
-{{else}}
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { Separator } from '@/components/ui/separator';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-{{/if}}
-import { ADMIN_ROUTES, MANAGER_ROUTES, type RouteProps } from '@/lib/constants';
+import { ADMIN_ROUTES, USER_ROUTES, type RouteProps } from '@/lib/constants';
 {{{{raw}}}}
 
 function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
@@ -39,7 +26,7 @@ function formatSegment(segment: string): string {
 
 export function AppHeader({ role }: { role: string }) {
   const pathname = usePathname();
-  const routes = role === 'admin' ? ADMIN_ROUTES : MANAGER_ROUTES;
+  const routes = role === 'admin' ? ADMIN_ROUTES : USER_ROUTES;
   const segments = pathname.split('/').filter(Boolean);
 
   const breadcrumbs = segments.map((segment, index) => {

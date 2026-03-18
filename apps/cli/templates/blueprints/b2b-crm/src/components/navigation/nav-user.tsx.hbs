@@ -4,7 +4,6 @@ import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import React from 'react';
-{{#if (isMono)}}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,27 +14,8 @@ import {
   DropdownMenuTrigger,
 } from '@repo/ui/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
-{{else}}
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
-{{/if}}
-import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
-
-type Session = {
-  user: {
-    role: string;
-    name: string;
-    email: string;
-  };
-};
+import type { Session } from '@repo/auth/types';
+import { authClient } from '@repo/auth/auth-client';
 
 {{{{raw}}}}
 export function NavUser({ session }: { session: Session }) {

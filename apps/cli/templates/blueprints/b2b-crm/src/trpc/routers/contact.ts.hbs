@@ -5,16 +5,9 @@ mono:
   path: src/router/contact.ts
 ---
 import { z } from 'zod';
-{{#if (isMono)}}
 import { contactTable, desc, eq, count as dbCount } from '@repo/db';
 import { router } from '../trpc';
-import { managerProcedure } from '../middleware/rbac';
-{{else}}
-import { desc, eq, count as dbCount } from 'drizzle-orm';
-import { contactTable } from '@/lib/db/schema';
-import { router } from '@/trpc/init';
-import { managerProcedure } from '@/trpc/middleware/rbac';
-{{/if}}
+import { userProcedure } from '../middleware/rbac';
 
 const contactInput = z.object({
   firstName: z.string().min(1),
@@ -26,14 +19,14 @@ const contactInput = z.object({
 });
 
 export const contactRouter = router({
-  list: managerProcedure.query(async ({ ctx }) => {
+  list: userProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select()
       .from(contactTable)
       .orderBy(desc(contactTable.createdAt));
   }),
 
-  getById: managerProcedure
+  getById: userProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -44,7 +37,7 @@ export const contactRouter = router({
       return contact ?? null;
     }),
 
-  create: managerProcedure
+  create: userProcedure
     .input(contactInput)
     .mutation(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -54,7 +47,7 @@ export const contactRouter = router({
       return contact;
     }),
 
-  update: managerProcedure
+  update: userProcedure
     .input(z.object({ id: z.string(), data: contactInput.partial() }))
     .mutation(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -65,7 +58,7 @@ export const contactRouter = router({
       return contact;
     }),
 
-  delete: managerProcedure
+  delete: userProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
@@ -73,7 +66,7 @@ export const contactRouter = router({
         .where(eq(contactTable.id, input.id));
     }),
 
-  count: managerProcedure.query(async ({ ctx }) => {
+  count: userProcedure.query(async ({ ctx }) => {
     const [result] = await ctx.db
       .select({ count: dbCount() })
       .from(contactTable);

@@ -19,7 +19,7 @@ type ContactValues = z.infer<typeof contactSchema>;
 
 interface ContactFormProps {
   mode: 'create' | 'edit';
-  contact?: { id: string } & { [K in keyof ContactValues]: ContactValues[K] | null };
+  contact?: { id: string } & Record<string, unknown>;
   onSuccess?: () => void;
 }
 
@@ -56,12 +56,12 @@ export function ContactForm({ mode, contact, onSuccess }: ContactFormProps) {
   const form = useForm({
     defaultValues: mode === 'edit' && contact
       ? {
-          firstName: contact.firstName,
-          lastName: contact.lastName,
-          email: contact.email ?? '',
-          phone: contact.phone ?? '',
-          company: contact.company ?? '',
-          notes: contact.notes ?? '',
+          firstName: String(contact.firstName ?? ''),
+          lastName: String(contact.lastName ?? ''),
+          email: String(contact.email ?? ''),
+          phone: String(contact.phone ?? ''),
+          company: String(contact.company ?? ''),
+          notes: String(contact.notes ?? ''),
         }
       : EMPTY_VALUES,
     validators: {
