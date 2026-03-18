@@ -19,7 +19,7 @@
     },
     "apps/cli": {
       "name": "create-faster",
-      "version": "1.6.1",
+      "version": "1.6.2",
       "bin": {
         "create-faster": "./dist/index.js",
       },

@@ -44,7 +44,7 @@ export function resolveDestination({
     case 'root':
       return filePath;
     case 'pkg': {
-      const name = addon?.mono?.scope === 'pkg' ? addon.mono.name : 'unknown';
+      const name = frontmatter.mono?.name ?? (addon?.mono?.scope === 'pkg' ? addon.mono.name : 'unknown');
       return `packages/${name}/${filePath}`;
     }
     default: {

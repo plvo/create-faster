@@ -1,9 +1,20 @@
-{{{{raw}}}}
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
+{{#if (isMono)}}
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@repo/ui/components/ui/breadcrumb';
+import { Separator } from '@repo/ui/components/ui/separator';
+import { SidebarTrigger } from '@repo/ui/components/ui/sidebar';
+{{else}}
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,7 +25,9 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+{{/if}}
 import { ADMIN_ROUTES, MANAGER_ROUTES, type RouteProps } from '@/lib/constants';
+{{{{raw}}}}
 
 function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
   return routes.find((route) => route.url === url)?.title;

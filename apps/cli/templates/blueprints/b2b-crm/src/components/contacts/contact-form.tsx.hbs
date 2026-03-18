@@ -19,7 +19,7 @@ type ContactValues = z.infer<typeof contactSchema>;
 
 interface ContactFormProps {
   mode: 'create' | 'edit';
-  contact?: { id: string } & ContactValues;
+  contact?: { id: string } & { [K in keyof ContactValues]: ContactValues[K] | null };
   onSuccess?: () => void;
 }
 

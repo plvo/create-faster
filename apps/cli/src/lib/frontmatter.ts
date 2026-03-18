@@ -6,6 +6,7 @@ export interface TemplateFrontmatter {
   path?: string;
   mono?: {
     scope?: MonoScope;
+    name?: string;
     path?: string;
   };
   only?: 'mono' | 'single';

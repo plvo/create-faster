@@ -4,6 +4,18 @@ import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import React from 'react';
+{{#if (isMono)}}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@repo/ui/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
+{{else}}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+{{/if}}
 import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
 
 type Session = {

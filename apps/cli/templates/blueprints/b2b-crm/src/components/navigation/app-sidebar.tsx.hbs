@@ -1,5 +1,15 @@
 import { LayoutDashboard } from 'lucide-react';
 import type * as React from 'react';
+{{#if (isMono)}}
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+} from '@repo/ui/components/ui/sidebar';
+{{else}}
 import {
   Sidebar,
   SidebarContent,
@@ -8,6 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
+{{/if}}
 import { NavUser } from './nav-user';
 import { SidebarLinks } from './sidebar-links';
 

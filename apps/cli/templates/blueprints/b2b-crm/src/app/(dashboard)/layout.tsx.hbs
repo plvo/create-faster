@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from {{#if (isMono)}}'@repo/ui/components/ui/sidebar'{{else}}'@/components/ui/sidebar'{{/if}};
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { AppHeader } from '@/components/navigation/app-header';
 

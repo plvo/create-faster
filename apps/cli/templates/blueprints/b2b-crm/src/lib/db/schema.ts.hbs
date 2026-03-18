@@ -1,5 +1,9 @@
 ---
 path: src/lib/db/schema.ts
+mono:
+  scope: pkg
+  name: db
+  path: src/schema.ts
 ---
 {{#if (has "database" "postgres")}}
 import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';

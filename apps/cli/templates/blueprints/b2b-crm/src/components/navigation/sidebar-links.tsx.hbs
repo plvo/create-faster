@@ -1,8 +1,16 @@
-{{{{raw}}}}
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+{{#if (isMono)}}
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@repo/ui/components/ui/sidebar';
+{{else}}
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -10,7 +18,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+{{/if}}
 import { ADMIN_ROUTES, MANAGER_ROUTES, type RouteProps } from '@/lib/constants';
+{{{{raw}}}}
 
 export function SidebarLinks({ role }: { role: string }) {
   const pathname = usePathname();

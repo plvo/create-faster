@@ -4,6 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+{{#if (isMono)}}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@repo/ui/components/ui/dropdown-menu';
+{{else}}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+{{/if}}
 import { useTRPC } from '@/trpc/providers';
 import { authClient } from {{#if (isMono)}}'@repo/auth/auth-client'{{else}}'@/lib/auth/auth-client'{{/if}};
 
