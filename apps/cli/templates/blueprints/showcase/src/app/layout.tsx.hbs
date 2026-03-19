@@ -55,13 +55,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang='en' className='scroll-smooth' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <AppProviders>
           <OrganizationJsonLd />
           <WebSiteJsonLd />
           <Header />
-          <main>{children}</main>
+          <main className='snap-y snap-proximity'>{children}</main>
           <Footer />
           {{#if (hasLibrary "tanstack-devtools")}}
           {process.env.NODE_ENV === 'development' && (
