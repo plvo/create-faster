@@ -27,6 +27,7 @@ export async function createTRPCContext(opts: { headers: Headers }) {
   return {
 {{#if (hasLibrary "better-auth")}}
     session,
+    headers: opts.headers,
 {{/if}}
 {{#if project.orm}}
     db,
@@ -43,6 +44,7 @@ export async function createTRPCContext({{#if (hasLibrary "better-auth")}}opts?:
   return {
 {{#if (hasLibrary "better-auth")}}
     session,
+    headers: requestHeaders,
 {{/if}}
 {{#if project.orm}}
     db,

@@ -1,0 +1,58 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/session.ts
+---
+import { z } from 'zod';
+import { auth } from '@repo/auth/auth';
+import { protectedProcedure, router } from '../trpc';
+
+export const sessionRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const result = await auth.api.listUserSessions({
+      headers: ctx.headers,
+      body: { userId: ctx.session.user.id },
+    });
+
+    const currentToken = ctx.session.session.token;
+    const sessions = Array.isArray(result) ? result : (result as Record<string, unknown>).sessions as typeof result ?? [];
+
+    return sessions.map((s) => ({
+      token: s.token,
+      isCurrent: s.token === currentToken,
+      ipAddress: s.ipAddress,
+      userAgent: s.userAgent,
+      createdAt: s.createdAt,
+      expiresAt: s.expiresAt,
+    }));
+  }),
+
+  revoke: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await auth.api.revokeSession({
+        headers: ctx.headers,
+        body: { token: input.token },
+      });
+    }),
+
+  revokeOthers: protectedProcedure.mutation(async ({ ctx }) => {
+    const result = await auth.api.listUserSessions({
+      headers: ctx.headers,
+      body: { userId: ctx.session.user.id },
+    });
+
+    const currentToken = ctx.session.session.token;
+    const sessions = Array.isArray(result) ? result : (result as Record<string, unknown>).sessions as typeof result ?? [];
+
+    await Promise.all(
+      sessions
+        .filter((s) => s.token !== currentToken)
+        .map((s) => auth.api.revokeSession({
+          headers: ctx.headers,
+          body: { token: s.token },
+        })),
+    );
+  }),
+});

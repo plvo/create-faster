@@ -1,13 +1,19 @@
 'use client';
 
 import { useForm } from '@tanstack/react-form';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { Monitor, Smartphone, Globe, Trash2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Button } from '@repo/ui/components/ui/button';
+import { QueryBoundary } from '@/components/query-boundary';
 import { useTRPC } from '@/trpc/providers';
 import { authClient } from '@repo/auth/auth-client';
+
+const TABS = ['Account', 'Security', 'Sessions', 'Preferences'] as const;
+type Tab = (typeof TABS)[number];
 
 const nameSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -20,27 +26,55 @@ const passwordSchema = z.object({
 
 {{{{raw}}}}
 export function ProfileClient() {
+  const [activeTab, setActiveTab] = useState<Tab>('Account');
+
+  return (
+    <div className='max-w-2xl space-y-6'>
+      <h1 className='text-3xl font-bold'>Profile</h1>
+
+      <nav className='flex gap-1 border-b'>
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            type='button'
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === 'Account' && <AccountTab />}
+      {activeTab === 'Security' && <SecurityTab />}
+      {activeTab === 'Sessions' && <QueryBoundary loadingFallback={<p className='text-sm text-muted-foreground p-6'>Loading sessions...</p>}><SessionsTab /></QueryBoundary>}
+      {activeTab === 'Preferences' && <PreferencesTab />}
+    </div>
+  );
+}
+
+function AccountTab() {
   const trpc = useTRPC();
   const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
-  const { theme, setTheme } = useTheme();
-  const [nameLoading, setNameLoading] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const nameForm = useForm({
+  const form = useForm({
     defaultValues: { name: user?.username || '' },
     validators: {
       onSubmit: ({ value }) => {
         const result = nameSchema.safeParse(value);
         if (!result.success) {
-          return {
-            fields: { name: result.error.flatten().fieldErrors.name?.[0] },
-          };
+          return { fields: { name: result.error.flatten().fieldErrors.name?.[0] } };
         }
         return undefined;
       },
     },
     onSubmit: async ({ value }) => {
-      setNameLoading(true);
+      setLoading(true);
       try {
         const res = await authClient.updateUser({ name: value.name });
         if (res.error) {
@@ -51,12 +85,78 @@ export function ProfileClient() {
       } catch {
         toast.error('Failed to update name');
       } finally {
-        setNameLoading(false);
+        setLoading(false);
       }
     },
   });
 
-  const passwordForm = useForm({
+  return (
+    <div className='space-y-6'>
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <div>
+          <h2 className='text-lg font-semibold'>Account information</h2>
+          <p className='text-sm text-muted-foreground'>Your account details.</p>
+        </div>
+
+        <div className='space-y-3'>
+          <div>
+            <span className='text-sm font-medium'>Email</span>
+            <p className='text-sm text-muted-foreground'>{user?.email}</p>
+          </div>
+          <div>
+            <span className='text-sm font-medium'>Role</span>
+            <p className='text-sm text-muted-foreground capitalize'>{user?.role}</p>
+          </div>
+          <div>
+            <span className='text-sm font-medium'>Joined</span>
+            <p className='text-sm text-muted-foreground'>
+              {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className='space-y-4 pt-4 border-t'
+        >
+          <form.Field
+            name='name'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='name' className='text-sm font-medium leading-none'>
+                  Display name
+                </label>
+                <input
+                  id='name'
+                  type='text'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+                {field.state.meta.errors?.[0] && (
+                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+                )}
+              </div>
+            )}
+          />
+          <Button type='submit' disabled={loading}>
+            {loading ? 'Saving...' : 'Save'}
+          </Button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function SecurityTab() {
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm({
     defaultValues: { currentPassword: '', newPassword: '' },
     validators: {
       onSubmit: ({ value }) => {
@@ -74,7 +174,7 @@ export function ProfileClient() {
       },
     },
     onSubmit: async ({ value }) => {
-      setPasswordLoading(true);
+      setLoading(true);
       try {
         const res = await authClient.changePassword({
           currentPassword: value.currentPassword,
@@ -86,143 +186,206 @@ export function ProfileClient() {
           return;
         }
         toast.success('Password changed');
-        passwordForm.reset();
+        form.reset();
       } catch {
         toast.error('Failed to change password');
       } finally {
-        setPasswordLoading(false);
+        setLoading(false);
       }
     },
   });
 
   return (
-    <div className='space-y-8 max-w-2xl'>
-      <h1 className='text-3xl font-bold'>Profile</h1>
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change password</h2>
+        <p className='text-sm text-muted-foreground'>Update your password. This will revoke all other sessions.</p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className='space-y-4'
+      >
+        <form.Field
+          name='currentPassword'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='currentPassword' className='text-sm font-medium leading-none'>
+                Current password
+              </label>
+              <input
+                id='currentPassword'
+                type='password'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <form.Field
+          name='newPassword'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='newPassword' className='text-sm font-medium leading-none'>
+                New password
+              </label>
+              <input
+                id='newPassword'
+                type='password'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <Button type='submit' disabled={loading}>
+          {loading ? 'Changing...' : 'Change password'}
+        </Button>
+      </form>
+    </section>
+  );
+}
 
-      <section className='rounded-lg border bg-card p-6 space-y-4'>
-        <h2 className='text-lg font-semibold'>Account</h2>
-        <div className='text-sm text-muted-foreground'>
-          {user?.email}
+function getDeviceIcon(userAgent: string | null) {
+  if (!userAgent) return Globe;
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) return Smartphone;
+  return Monitor;
+}
+
+function parseUserAgent(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  if (userAgent.includes('Chrome')) return 'Chrome';
+  if (userAgent.includes('Firefox')) return 'Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  if (userAgent.includes('Edge')) return 'Edge';
+  return 'Unknown browser';
+}
+
+function SessionsTab() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: sessions } = useSuspenseQuery(trpc.session.list.queryOptions());
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: trpc.session.list.queryKey() });
+
+  const revokeMutation = useMutation(
+    trpc.session.revoke.mutationOptions({
+      onSuccess: () => { toast.success('Session revoked'); invalidate(); },
+      onError: () => toast.error('Failed to revoke session'),
+    }),
+  );
+
+  const revokeOthersMutation = useMutation(
+    trpc.session.revokeOthers.mutationOptions({
+      onSuccess: () => { toast.success('All other sessions revoked'); invalidate(); },
+      onError: () => toast.error('Failed to revoke sessions'),
+    }),
+  );
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-lg font-semibold'>Active sessions</h2>
+          <p className='text-sm text-muted-foreground'>Manage your active sessions across devices.</p>
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            nameForm.handleSubmit();
-          }}
-          className='space-y-4'
-        >
-          <nameForm.Field
-            name='name'
-            children={(field) => (
-              <div className='space-y-2'>
-                <label htmlFor='name' className='text-sm font-medium leading-none'>
-                  Name
-                </label>
-                <input
-                  id='name'
-                  type='text'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-                />
-                {field.state.meta.errors?.[0] && (
-                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-                )}
-              </div>
-            )}
-          />
-          <button
-            type='submit'
-            disabled={nameLoading}
-            className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
+        {sessions.some((s) => !s.isCurrent) && (
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => revokeOthersMutation.mutate()}
+            disabled={revokeOthersMutation.isPending}
           >
-            {nameLoading ? 'Saving...' : 'Save name'}
-          </button>
-        </form>
-      </section>
+            {revokeOthersMutation.isPending ? 'Revoking...' : 'Revoke all others'}
+          </Button>
+        )}
+      </div>
 
-      <section className='rounded-lg border bg-card p-6 space-y-4'>
-        <h2 className='text-lg font-semibold'>Theme</h2>
+      <div className='space-y-3'>
+        {sessions.map((session) => {
+          const DeviceIcon = getDeviceIcon(session.userAgent);
+          return (
+            <div
+              key={session.token}
+              className='flex items-center justify-between rounded-lg border p-4'
+            >
+              <div className='flex items-center gap-3'>
+                <DeviceIcon className='size-5 text-muted-foreground' />
+                <div>
+                  <p className='text-sm font-medium'>
+                    {parseUserAgent(session.userAgent)}
+                    {session.isCurrent && (
+                      <span className='ml-2 text-xs text-primary font-normal'>(current)</span>
+                    )}
+                  </p>
+                  <p className='text-xs text-muted-foreground'>
+                    {session.ipAddress ?? 'Unknown IP'} · Created{' '}
+                    {new Date(session.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+              {!session.isCurrent && (
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => revokeMutation.mutate({ token: session.token })}
+                  disabled={revokeMutation.isPending}
+                >
+                  <Trash2 className='size-4 text-destructive' />
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PreferencesTab() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Preferences</h2>
+        <p className='text-sm text-muted-foreground'>Customize your experience.</p>
+      </div>
+      <div className='space-y-2'>
+        <span className='text-sm font-medium'>Theme</span>
         <div className='flex gap-2'>
           {(['light', 'dark', 'system'] as const).map((t) => (
-            <button
+            <Button
               key={t}
-              type='button'
+              variant={theme === t ? 'default' : 'outline'}
+              size='sm'
               onClick={() => setTheme(t)}
-              className={`inline-flex h-9 items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent ${
-                theme === t ? 'border-primary bg-accent' : 'border-input'
-              }`}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
+            </Button>
           ))}
         </div>
-      </section>
-
-      <section className='rounded-lg border bg-card p-6 space-y-4'>
-        <h2 className='text-lg font-semibold'>Change password</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            passwordForm.handleSubmit();
-          }}
-          className='space-y-4'
-        >
-          <passwordForm.Field
-            name='currentPassword'
-            children={(field) => (
-              <div className='space-y-2'>
-                <label htmlFor='currentPassword' className='text-sm font-medium leading-none'>
-                  Current password
-                </label>
-                <input
-                  id='currentPassword'
-                  type='password'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-                />
-                {field.state.meta.errors?.[0] && (
-                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-                )}
-              </div>
-            )}
-          />
-          <passwordForm.Field
-            name='newPassword'
-            children={(field) => (
-              <div className='space-y-2'>
-                <label htmlFor='newPassword' className='text-sm font-medium leading-none'>
-                  New password
-                </label>
-                <input
-                  id='newPassword'
-                  type='password'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-                />
-                {field.state.meta.errors?.[0] && (
-                  <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-                )}
-              </div>
-            )}
-          />
-          <button
-            type='submit'
-            disabled={passwordLoading}
-            className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
-          >
-            {passwordLoading ? 'Changing...' : 'Change password'}
-          </button>
-        </form>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 {{{{/raw}}}}
