@@ -9,7 +9,7 @@ export interface TemplateFrontmatter {
     name?: string;
     path?: string;
   };
-  only?: 'mono' | 'single';
+  only?: 'mono' | 'single' | 'no-blueprint';
 }
 
 export interface ParsedTemplate {
