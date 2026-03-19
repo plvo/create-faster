@@ -68,13 +68,14 @@ src/
 │   ├── contacts/                         # Contact dialog, form, table
 │   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
-│   ├── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
-│   └── ui/                               # Sidebar, breadcrumb, dropdown-menu, sheet, tooltip, etc.
+│   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── lib/
 │   └── constants.ts                      # Route definitions (admin vs user routes)
 └── styles/
     └── globals.css                       # @import base.css + slide animations
 ```
+
+Additional shadcn UI components (sidebar, breadcrumb, dropdown-menu, sheet, tooltip, skeleton, input, separator) are generated into `packages/ui/` and imported via `@repo/ui/components/ui/...`.
 
 ### API package (packages/api)
 
@@ -135,6 +136,8 @@ Reusable component wrapping `Suspense` + `ErrorBoundary` + `QueryErrorResetBound
 Creates two users via better-auth's admin API:
 - `admin@example.com` / `password` (role: admin)
 - `user@example.com` / `password` (role: user)
+
+> **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
 
 ## Extra dependencies
 
