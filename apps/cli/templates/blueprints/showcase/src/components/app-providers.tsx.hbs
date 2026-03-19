@@ -1,0 +1,63 @@
+'use client';
+
+import { PostHogProvider } from '@posthog/next';
+{{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+import { TRPCReactProvider } from '@/trpc/providers';
+{{else}}
+{{#if (hasLibrary "tanstack-query")}}
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+{{/if}}
+{{/if}}
+{{#if (hasLibrary "next-themes")}}
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
+{{/if}}
+import type React from 'react';
+
+{{#if (and (hasLibrary "tanstack-query") (ne (hasLibrary "trpc") true))}}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+    },
+  },
+});
+{{/if}}
+
+interface AppProvidersProps {
+  children: React.ReactNode;
+}
+
+export function AppProviders({ children }: AppProvidersProps) {
+  return (
+    <PostHogProvider
+      apiKey={process.env.NEXT_PUBLIC_POSTHOG_KEY!}
+      clientOptions=\{{ api_host: '/ingest' }}
+    >
+    {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+    <TRPCReactProvider>
+    {{else}}
+    {{#if (hasLibrary "tanstack-query")}}
+    <QueryClientProvider client={queryClient}>
+    {{/if}}
+    {{/if}}
+    {{#if (hasLibrary "next-themes")}}
+    <NextThemesProvider attribute='class' defaultTheme='system' enableSystem storageKey={"{{appName}}-theme"}>
+    {{/if}}
+    {children}
+    {{#if (hasLibrary "next-themes")}}
+    </NextThemesProvider>
+    {{/if}}
+    {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+    </TRPCReactProvider>
+    {{else}}
+    {{#if (hasLibrary "tanstack-query")}}
+    </QueryClientProvider>
+    {{/if}}
+    {{/if}}
+    </PostHogProvider>
+  );
+}

@@ -1,0 +1,13 @@
+import { type NextRequest, NextResponse } from 'next/server';
+import { postHogMiddleware } from '@posthog/next';
+
+export default async function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+  return postHogMiddleware({ proxy: true, response })(request);
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
+};
