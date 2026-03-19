@@ -9,6 +9,7 @@ export interface BlogPost {
   title: string;
   summary: string;
   publishedAt: string;
+  author?: string;
   imageUrl?: string;
 }
 
@@ -27,6 +28,7 @@ export function getAllPosts(): BlogPost[] {
         title: metadata.title ?? file.replace('.mdx', ''),
         summary: metadata.summary ?? '',
         publishedAt: metadata.publishedAt ?? '',
+        author: (metadata as Record<string, string>).author,
         imageUrl: metadata.imageUrl,
       };
     })
@@ -46,6 +48,7 @@ export function getPost(slug: string): { metadata: BlogPost; content: string } |
       title: metadata.title ?? slug,
       summary: metadata.summary ?? '',
       publishedAt: metadata.publishedAt ?? '',
+      author: (metadata as Record<string, string>).author,
       imageUrl: metadata.imageUrl,
     },
     content,

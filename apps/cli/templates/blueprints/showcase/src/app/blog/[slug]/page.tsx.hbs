@@ -44,6 +44,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         description={post.metadata.summary}
         publishedAt={post.metadata.publishedAt}
         url={`/blog/${slug}`}
+        author={post.metadata.author}
         imageUrl={post.metadata.imageUrl}
       />
 
@@ -55,13 +56,21 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
 
       <header className="mb-8">
-        <time dateTime={post.metadata.publishedAt} className="text-sm text-muted-foreground">
-          {new Date(post.metadata.publishedAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </time>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <time dateTime={post.metadata.publishedAt}>
+            {new Date(post.metadata.publishedAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </time>
+          {post.metadata.author && (
+            <>
+              <span>&middot;</span>
+              <span>{post.metadata.author}</span>
+            </>
+          )}
+        </div>
         <h1 className="mt-2 text-4xl font-bold tracking-tight">{post.metadata.title}</h1>
         <p className="mt-4 text-lg text-muted-foreground">{post.metadata.summary}</p>
       </header>

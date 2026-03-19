@@ -15,6 +15,7 @@ interface ArticleProps {
   description: string;
   publishedAt: string;
   url: string;
+  author?: string;
   imageUrl?: string;
 }
 
@@ -91,7 +92,7 @@ export function FaqJsonLd({ items }: { items: FaqItem[] }) {
   );
 }
 
-export function ArticleJsonLd({ title, description, publishedAt, url, imageUrl }: ArticleProps) {
+export function ArticleJsonLd({ title, description, publishedAt, url, author, imageUrl }: ArticleProps) {
   return (
     <JsonLdScript
       data=\{{
@@ -102,10 +103,9 @@ export function ArticleJsonLd({ title, description, publishedAt, url, imageUrl }
         datePublished: publishedAt,
         url: `${siteConfig.url}${url}`,
         ...(imageUrl ? { image: `${siteConfig.url}${imageUrl}` } : {}),
-        author: {
-          '@type': 'Organization',
-          name: siteConfig.name,
-        },
+        author: author
+          ? { '@type': 'Person', name: author }
+          : { '@type': 'Organization', name: siteConfig.name },
         publisher: {
           '@type': 'Organization',
           name: siteConfig.name,
