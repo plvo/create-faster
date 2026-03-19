@@ -1,0 +1,72 @@
+import { notFound } from 'next/navigation';
+import { MDXRemote } from 'next-mdx-remote/rsc';
+import { mdxComponents } from '@/mdx-components';
+import { getAllPosts, getPost } from '@/lib/blog';
+import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+import { ArticleJsonLd } from '@/components/seo/json-ld';
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  return getAllPosts().map((post) => ({ slug: post.slug }));
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { slug } = await params;
+  const post = getPost(slug);
+
+  if (!post) return {};
+
+  return {
+    title: post.metadata.title,
+    description: post.metadata.summary,
+    openGraph: {
+      title: post.metadata.title,
+      description: post.metadata.summary,
+      type: 'article',
+      publishedTime: post.metadata.publishedAt,
+    },
+  };
+}
+
+export default async function BlogPostPage({ params }: PageProps) {
+  const { slug } = await params;
+  const post = getPost(slug);
+
+  if (!post) notFound();
+
+  return (
+    <article className="container mx-auto px-4 py-12 max-w-3xl">
+      <ArticleJsonLd
+        title={post.metadata.title}
+        description={post.metadata.summary}
+        publishedAt={post.metadata.publishedAt}
+        url={`/blog/${slug}`}
+        imageUrl={post.metadata.imageUrl}
+      />
+
+      <Breadcrumbs
+        items={[
+          { name: 'Blog', href: '/blog' },
+          { name: post.metadata.title, href: `/blog/${slug}` },
+        ]}
+      />
+
+      <header className="mb-8">
+        <time dateTime={post.metadata.publishedAt} className="text-sm text-muted-foreground">
+          {new Date(post.metadata.publishedAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </time>
+        <h1 className="mt-2 text-4xl font-bold tracking-tight">{post.metadata.title}</h1>
+        <p className="mt-4 text-lg text-muted-foreground">{post.metadata.summary}</p>
+      </header>
+
+      <MDXRemote source={post.content} components={mdxComponents} />
+    </article>
+  );
+}

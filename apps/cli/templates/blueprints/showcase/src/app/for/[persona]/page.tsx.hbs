@@ -1,0 +1,86 @@
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+{{#if (isMono)}}
+import { Button } from '@repo/ui/components/button';
+{{else}}
+import { Button } from '@/components/ui/button';
+{{/if}}
+import { getPersona, getAllPersonaSlugs } from '@/lib/personas';
+import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+import { FaqJsonLd } from '@/components/seo/json-ld';
+
+interface PageProps {
+  params: Promise<{ persona: string }>;
+}
+
+export function generateStaticParams() {
+  return getAllPersonaSlugs().map((persona) => ({ persona }));
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { persona: slug } = await params;
+  const persona = getPersona(slug);
+
+  if (!persona) return {};
+
+  return {
+    title: persona.title,
+    description: persona.description,
+  };
+}
+
+export default async function PersonaPage({ params }: PageProps) {
+  const { persona: slug } = await params;
+  const persona = getPersona(slug);
+
+  if (!persona) notFound();
+
+  return (
+    <div className="container mx-auto px-4 py-12">
+      <Breadcrumbs items={[{ name: persona.title, href: `/for/${slug}` }]} />
+
+      <section className="text-center max-w-3xl mx-auto">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{persona.headline}</h1>
+        <p className="mt-6 text-lg text-muted-foreground">{persona.description}</p>
+        <div className="mt-8">
+          <Button asChild size="lg">
+            <Link href="/contact">Get Started</Link>
+          </Button>
+        </div>
+      </section>
+
+      <section className="mt-20 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        {persona.benefits.map((benefit) => (
+          <div key={benefit.title} className="rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">{benefit.title}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{benefit.description}</p>
+          </div>
+        ))}
+      </section>
+
+      {persona.faq.length > 0 && (
+        <section className="mt-20 max-w-3xl mx-auto">
+          <FaqJsonLd items={persona.faq} />
+          <h2 className="text-2xl font-bold tracking-tight text-center mb-8">
+            Frequently asked questions
+          </h2>
+          <div className="space-y-4">
+            {persona.faq.map((item) => (
+              <details key={item.question} className="group rounded-lg border bg-background p-6">
+                <summary className="cursor-pointer font-semibold list-none flex items-center justify-between">
+                  {item.question}
+                  <span className="ml-2 text-muted-foreground group-open:rotate-180 transition-transform">
+                    &#9662;
+                  </span>
+                </summary>
+                <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

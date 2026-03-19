@@ -1,0 +1,65 @@
+import type { Metadata } from 'next';
+{{#if (isMono)}}
+import { Button } from '@repo/ui/components/button';
+{{else}}
+import { Button } from '@/components/ui/button';
+{{/if}}
+import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+
+export const metadata: Metadata = {
+  title: 'Contact',
+  description: 'Get in touch with our team for a free flock assessment and consultation.',
+};
+
+export default function ContactPage() {
+  return (
+    <div className="container mx-auto px-4 py-12 max-w-xl">
+      <Breadcrumbs items={[{ name: 'Contact', href: '/contact' }]} />
+
+      <h1 className="text-4xl font-bold tracking-tight">Get in touch</h1>
+      <p className="mt-4 text-muted-foreground">
+        Interested in upgrading your communication infrastructure? Fill out the form below and
+        we will send a pigeon with our response.
+      </p>
+
+      <form className="mt-8 space-y-6" action="#" method="POST">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium mb-2">Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            required
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Your name"
+          />
+        </div>
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium mb-2">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder="you@company.com"
+          />
+        </div>
+        <div>
+          <label htmlFor="message" className="block text-sm font-medium mb-2">Message</label>
+          <textarea
+            id="message"
+            name="message"
+            required
+            rows={5}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
+            placeholder="Tell us about your messaging needs..."
+          />
+        </div>
+        <Button type="submit" size="lg" className="w-full">
+          Send Message
+        </Button>
+      </form>
+    </div>
+  );
+}
