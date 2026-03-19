@@ -4,21 +4,52 @@ mono:
   name: api
   path: src/router/user.ts
 ---
+import { z } from 'zod';
 import { eq, userTable } from '@repo/db';
+import { auth } from '@repo/auth/auth';
+import { generatePassword } from '@repo/auth/password';
 import { protectedProcedure, router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 
+const editUserInput = z.object({
+  id: z.string(),
+  username: z.string().min(1),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+});
+
 export const userRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
-    const [user] = await ctx.db
-      .select()
-      .from(userTable)
-      .where(eq(userTable.id, ctx.session.user.id))
-      .limit(1);
+    const [user] = await ctx.db.select().from(userTable).where(eq(userTable.id, ctx.session.user.id)).limit(1);
     return user ?? null;
   }),
 
   list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(userTable);
+  }),
+
+  getById: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const [user] = await ctx.db.select().from(userTable).where(eq(userTable.id, input.id)).limit(1);
+    return user ?? null;
+  }),
+
+  edit: adminProcedure.input(editUserInput).mutation(async ({ ctx, input }) => {
+    const { id, ...data } = input;
+    const [user] = await ctx.db
+      .update(userTable)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userTable.id, id))
+      .returning();
+    return user;
+  }),
+
+  generatePassword: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    const password = generatePassword();
+    await auth.api.setUserPassword({
+      headers: ctx.headers,
+      body: { userId: input.id, newPassword: password },
+    });
+    return { password };
   }),
 });

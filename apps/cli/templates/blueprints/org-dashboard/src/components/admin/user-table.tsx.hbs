@@ -1,6 +1,7 @@
 'use client';
 
 import { useSuspenseQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useTRPC } from '@/trpc/providers';
 import { UserActions } from './user-actions';
 
@@ -23,24 +24,30 @@ export function UserTable() {
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id} className='border-b last:border-0'>
-              <td className='px-4 py-3'>{user.username}</td>
+            <tr key={user.id} className='border-b last:border-0 hover:bg-muted/30 transition-colors'>
+              <td className='px-4 py-3'>
+                <Link href={`/admin/users/${user.id}`} className='hover:underline font-medium'>
+                  {user.username}
+                </Link>
+              </td>
               <td className='px-4 py-3 text-muted-foreground'>{user.email}</td>
               <td className='px-4 py-3'>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                  user.role === 'admin'
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
                   {user.role}
                 </span>
               </td>
               <td className='px-4 py-3'>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                  user.banned
-                    ? 'bg-destructive/10 text-destructive'
-                    : 'bg-green-500/10 text-green-700 dark:text-green-400'
-                }`}>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    user.banned
+                      ? 'bg-destructive/10 text-destructive'
+                      : 'bg-green-500/10 text-green-700 dark:text-green-400'
+                  }`}
+                >
                   {user.banned ? 'Banned' : 'Active'}
                 </span>
               </td>

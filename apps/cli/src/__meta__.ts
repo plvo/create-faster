@@ -215,6 +215,7 @@ export const META: Meta = {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './types': './src/types.ts',
+          './password': './src/password.ts',
         },
       },
       envs: [
