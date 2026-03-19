@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
+import { Providers } from '@/components/providers';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/json-ld';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -56,20 +57,22 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
-        <OrganizationJsonLd />
-        <WebSiteJsonLd />
-        <Header />
-        <main>{children}</main>
-        <Footer />
-        {{#if (hasLibrary "tanstack-devtools")}}
-        {process.env.NODE_ENV === 'development' && (
-          <TanStackDevtools
-            config=\{{ position: 'top-left' }}
-            eventBusConfig=\{{ connectToServerBus: true }}
-            plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
-          />
-        )}
-        {{/if}}
+        <Providers>
+          <OrganizationJsonLd />
+          <WebSiteJsonLd />
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          {{#if (hasLibrary "tanstack-devtools")}}
+          {process.env.NODE_ENV === 'development' && (
+            <TanStackDevtools
+              config=\{{ position: 'top-left' }}
+              eventBusConfig=\{{ connectToServerBus: true }}
+              plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
+            />
+          )}
+          {{/if}}
+        </Providers>
       </body>
     </html>
   );

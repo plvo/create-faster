@@ -794,6 +794,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           'posthog-js': '^1.262.0',
+          '@c15t/nextjs': '^1.8.5',
           motion: '^12.26.0',
         },
       },
