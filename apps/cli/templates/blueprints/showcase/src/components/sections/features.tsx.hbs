@@ -1,0 +1,57 @@
+const features = [
+  {
+    title: 'Zero-Downtime Delivery',
+    description:
+      'Pigeons fly through storms, power outages, and DDoS attacks. When every other channel goes down, your messages still get through.',
+  },
+  {
+    title: 'Real-Time Flock Tracking',
+    description:
+      'GPS-tagged pigeons with live dashboard. Track every message from loft to destination with sub-meter accuracy.',
+  },
+  {
+    title: 'Air-Gapped Security',
+    description:
+      'No servers to breach. No packets to intercept. Messages travel on encrypted microfilm inside tamper-evident capsules.',
+  },
+  {
+    title: 'Global Relay Network',
+    description:
+      'Pigeon relay stations across 47 countries. Long-distance messages are seamlessly handed off between trained flocks.',
+  },
+  {
+    title: 'Automated Loft Integration',
+    description:
+      'Smart lofts with automated feeding, health monitoring, and message capsule loading. Plug into your existing infrastructure.',
+  },
+  {
+    title: 'Enterprise SLA',
+    description:
+      'Dedicated flock, 24/7 avian support team, and guaranteed delivery windows. Because your board expects nothing less.',
+  },
+];
+
+export function Features() {
+  return (
+    <section id="features" className="py-20 bg-muted/30">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Why teams choose PigeonPost
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+            Built for organizations that demand reliability, security, and the gentle cooing of a well-trained homing pigeon.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature) => (
+            <div key={feature.title} className="rounded-lg border bg-background p-6">
+              <h3 className="text-lg font-semibold">{feature.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
