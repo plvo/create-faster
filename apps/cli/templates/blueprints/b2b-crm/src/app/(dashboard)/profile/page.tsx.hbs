@@ -1,12 +1,15 @@
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { QueryBoundary } from '@/components/query-boundary';
 import { ProfileClient } from './profile.client';
 
 export default async function ProfilePage() {
-  prefetch(trpc.user.me.queryOptions());
+  void prefetch(trpc.user.me.queryOptions());
 
   return (
     <HydrateClient>
-      <ProfileClient />
+      <QueryBoundary>
+        <ProfileClient />
+      </QueryBoundary>
     </HydrateClient>
   );
 }

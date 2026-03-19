@@ -757,6 +757,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           'lucide-react': '^0.487.0',
+          'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
           zod: '^4.2.1',
         },

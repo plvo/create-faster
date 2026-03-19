@@ -1,0 +1,52 @@
+{{{{raw}}}}
+'use client';
+
+import { QueryErrorResetBoundary } from '@tanstack/react-query';
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import * as React from 'react';
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import { Button } from '@repo/ui/components/ui/button';
+
+interface QueryBoundaryProps {
+  children: React.ReactNode;
+  loadingFallback?: React.ReactNode;
+  errorFallback?: (props: FallbackProps) => React.ReactNode;
+}
+
+export function QueryBoundary({
+  children,
+  loadingFallback = 'Loading...',
+  errorFallback,
+}: QueryBoundaryProps) {
+  return (
+    <QueryErrorResetBoundary>
+      {({ reset }) => (
+        <ErrorBoundary
+          onReset={reset}
+          fallbackRender={(props) =>
+            errorFallback ? errorFallback(props) : <DefaultErrorFallback {...props} />
+          }
+        >
+          <React.Suspense fallback={loadingFallback}>{children}</React.Suspense>
+        </ErrorBoundary>
+      )}
+    </QueryErrorResetBoundary>
+  );
+}
+
+function DefaultErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div className='p-6 rounded-lg border border-destructive/30 bg-destructive/5 flex flex-col items-center justify-center space-y-4 text-center'>
+      <AlertTriangle className='text-destructive size-12' />
+      <div>
+        <h3 className='text-lg font-semibold mb-2'>Something went wrong</h3>
+        <p className='text-muted-foreground'>{error.message || 'Unexpected error'}</p>
+      </div>
+      <Button onClick={resetErrorBoundary} variant='outline' className='gap-2'>
+        <RefreshCcw className='size-4' />
+        Retry
+      </Button>
+    </div>
+  );
+}
+{{{{/raw}}}}

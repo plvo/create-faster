@@ -1,12 +1,15 @@
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { QueryBoundary } from '@/components/query-boundary';
 import { DashboardClient } from './dashboard.client';
 
 export default async function DashboardPage() {
-  prefetch(trpc.contact.count.queryOptions());
+  void prefetch(trpc.contact.count.queryOptions());
 
   return (
     <HydrateClient>
-      <DashboardClient />
+      <QueryBoundary>
+        <DashboardClient />
+      </QueryBoundary>
     </HydrateClient>
   );
 }
