@@ -1,16 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 {{#if (isMono)}}
 import { Button } from '@repo/ui/components/button';
 {{else}}
 import { Button } from '@/components/ui/button';
 {{/if}}
 import { siteConfig } from '@/lib/data/site-config';
+import { useActiveSection } from '@/hooks/use-active-section';
+
+const homepageAnchors = [
+  { label: 'Features', id: 'features' },
+  { label: 'Testimonials', id: 'testimonials' },
+  { label: 'FAQ', id: 'faq' },
+];
+
+const sectionIds = homepageAnchors.map((a) => a.id);
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isHomepage = pathname === '/';
+  const activeSection = useActiveSection(sectionIds);
+
+  const anchors = useMemo(
+    () => homepageAnchors.map((a) => ({
+      ...a,
+      href: isHomepage ? `#${a.id}` : `/#${a.id}`,
+    })),
+    [isHomepage],
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,7 +41,16 @@ export function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
-          {siteConfig.navLinks.map((link) => (
+          {anchors.map((link) => (
+            <a
+              key={link.id}
+              href={link.href}
+              className={`text-sm transition-colors ${activeSection === link.id ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {link.label}
+            </a>
+          ))}
+          {siteConfig.navLinks.filter((l) => l.href.startsWith('/')).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -52,7 +82,17 @@ export function Header() {
 
       {mobileOpen && (
         <nav className="md:hidden border-t px-4 py-4 space-y-3">
-          {siteConfig.navLinks.map((link) => (
+          {anchors.map((link) => (
+            <a
+              key={link.id}
+              href={link.href}
+              className={`block text-sm ${activeSection === link.id ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setMobileOpen(false)}
+            >
+              {link.label}
+            </a>
+          ))}
+          {siteConfig.navLinks.filter((l) => l.href.startsWith('/')).map((link) => (
             <Link
               key={link.href}
               href={link.href}
