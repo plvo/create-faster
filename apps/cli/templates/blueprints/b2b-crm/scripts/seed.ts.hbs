@@ -7,30 +7,25 @@ import { auth } from '@repo/auth/auth';
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  const admin = await auth.api.signUpEmail({
+  const admin = await auth.api.createUser({
     body: {
       email: 'admin@example.com',
       password: 'password',
       name: 'Admin',
+      role: 'admin',
     },
   });
+  console.log(`✅ Created admin: ${admin.email}`);
 
-  if (admin.user) {
-    await auth.api.setRole({ body: { userId: admin.user.id, role: 'admin' } });
-    console.log('✅ Created admin user (admin@example.com / password)');
-  }
-
-  const user = await auth.api.signUpEmail({
+  const user = await auth.api.createUser({
     body: {
       email: 'user@example.com',
       password: 'password',
       name: 'User',
+      role: 'user',
     },
   });
-
-  if (user.user) {
-    console.log('✅ Created regular user (user@example.com / password)');
-  }
+  console.log(`✅ Created user: ${user.email}`);
 
   console.log('🎉 Seeding completed!');
 }

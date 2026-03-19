@@ -153,6 +153,7 @@ export const META: Meta = {
         },
         exports: {
           './': './src/components/',
+          './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
           './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
@@ -761,6 +762,9 @@ export const META: Meta = {
         },
       },
       rootPackageJson: {
+        dependencies: {
+          '@repo/auth': '*',
+        },
         scripts: {
           'db:push': 'turbo db:push',
           'db:generate': 'turbo db:generate',
