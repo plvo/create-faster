@@ -1,0 +1,32 @@
+export const siteConfig = {
+  name: '{{projectName}}',
+  description: 'Carrier pigeon logistics for the modern enterprise. Deliver messages at the speed of bird.',
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+  ogImage: '/og.png',
+  navLinks: [
+    { label: 'Features', href: '/#features' },
+    { label: 'Blog', href: '/blog' },
+    { label: 'About', href: '/about' },
+    { label: 'Contact', href: '/contact' },
+  ],
+  footerLinks: {
+    product: [
+      { label: 'Features', href: '/#features' },
+      { label: 'For Logistics Teams', href: '/for/logistics-teams' },
+      { label: 'For Bird Enthusiasts', href: '/for/bird-enthusiasts' },
+      { label: 'For Enterprise', href: '/for/enterprise' },
+    ],
+    company: [
+      { label: 'About', href: '/about' },
+      { label: 'Blog', href: '/blog' },
+      { label: 'Contact', href: '/contact' },
+    ],
+  },
+  social: {
+    twitter: 'https://x.com/pigeonpost',
+    github: 'https://github.com/pigeonpost',
+    linkedin: 'https://linkedin.com/company/pigeonpost',
+  },
+};
+
+export type SiteConfig = typeof siteConfig;
