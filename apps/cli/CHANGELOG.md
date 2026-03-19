@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.3](https://github.com/plvo/create-faster/compare/create-faster-v1.6.2...create-faster-v1.6.3) (2026-03-19)
+
+
+### Features
+
+* **blueprints:** add the org-dashboard blueprint ([#103](https://github.com/plvo/create-faster/issues/103)) ([2cc1a19](https://github.com/plvo/create-faster/commit/2cc1a193feb8e8c6e7c42ad3de9472a078bc7d01))
+* **blueprint:** SEO/GEO-optimized SaaS landing page ([#104](https://github.com/plvo/create-faster/issues/104)) ([5989bc9](https://github.com/plvo/create-faster/commit/5989bc9b13230d88dc890ebf910c8d36d5d36cb6))
+
+
+### Miscellaneous
+
+* remove deprecated dashboard blueprint ([#108](https://github.com/plvo/create-faster/issues/108)) ([da83510](https://github.com/plvo/create-faster/commit/da83510d79ddd21691b5eb706bb826e57a171ff4))
+
 ## [1.6.2](https://github.com/plvo/create-faster/compare/create-faster-v1.6.1...create-faster-v1.6.2) (2026-03-16)
 
 
