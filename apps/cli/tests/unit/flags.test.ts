@@ -21,8 +21,8 @@ describe('META blueprint category grouping', () => {
     expect(META.blueprints['dapp-privy'].category).toBe('Web3');
   });
 
-  test('dashboard is in Business category', () => {
-    expect(META.blueprints.dashboard.category).toBe('Business');
+  test('org-dashboard is in Business category', () => {
+    expect(META.blueprints['org-dashboard'].category).toBe('Business');
   });
 });
 
