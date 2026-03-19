@@ -648,35 +648,6 @@ export const META: Meta = {
         },
       ],
     },
-    dashboard: {
-      label: 'Dashboard',
-      hint: 'Internal CRM-style dashboard with auth, sidebar, and admin panel',
-      category: 'Business',
-      context: {
-        apps: [
-          {
-            appName: 'web',
-            stackName: 'nextjs',
-            libraries: ['shadcn', 'better-auth', 'tanstack-query'],
-          },
-        ],
-        project: {
-          database: 'postgres',
-          orm: 'drizzle',
-        },
-      },
-      packageJson: {
-        dependencies: {
-          recharts: '^2.15.0',
-        },
-      },
-      envs: [
-        {
-          value: 'ADMIN_EMAIL=admin@example.com',
-          monoScope: ['app'],
-        },
-      ],
-    },
     'lambda-sst': {
       label: 'Lambda (SST)',
       hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',

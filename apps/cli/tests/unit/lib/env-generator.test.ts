@@ -145,16 +145,31 @@ describe('blueprint env generation', () => {
   test('collects blueprint env vars into .env.example', () => {
     const ctx: TemplateContext = {
       projectName: 'test-bp',
-      repo: 'single',
-      apps: [{ appName: 'test-bp', stackName: 'nextjs', libraries: [] }],
-      project: { tooling: [] },
+      repo: 'turborepo',
+      apps: [
+        {
+          appName: 'web',
+          stackName: 'nextjs',
+          libraries: [
+            'shadcn',
+            'better-auth',
+            'trpc',
+            'tanstack-query',
+            'tanstack-devtools',
+            'tanstack-form',
+            'next-themes',
+          ],
+        },
+        { appName: 'batch', stackName: 'node', libraries: [] },
+      ],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'dashboard',
+      blueprint: 'org-dashboard',
     };
 
     const files = collectEnvFiles(ctx);
     expect(files.length).toBeGreaterThan(0);
-    const envContent = files[0].content;
-    expect(envContent).toContain('ADMIN_EMAIL');
+    const webEnv = files.find((f) => f.destination.includes('web'));
+    expect(webEnv?.content).toContain('BETTER_AUTH_SECRET');
   });
 });

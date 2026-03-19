@@ -21,7 +21,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --app are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict', '--blueprint', 'dashboard', '--app', 'web:nextjs', '--no-install'],
+      ['test-conflict', '--blueprint', 'org-dashboard', '--app', 'web:nextjs', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -30,7 +30,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --database are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict-db', '--blueprint', 'dashboard', '--database', 'postgres', '--no-install'],
+      ['test-conflict-db', '--blueprint', 'org-dashboard', '--database', 'postgres', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -39,7 +39,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --orm are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict-orm', '--blueprint', 'dashboard', '--orm', 'drizzle', '--no-install'],
+      ['test-conflict-orm', '--blueprint', 'org-dashboard', '--orm', 'drizzle', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -48,7 +48,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint can be combined with --linter', async () => {
     const result = await runCli(
-      ['test-bp-linter', '--blueprint', 'dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-linter', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
@@ -59,7 +59,7 @@ describe('Blueprint CLI flag', () => {
       [
         'test-bp-tooling',
         '--blueprint',
-        'dashboard',
+        'org-dashboard',
         '--linter',
         'biome',
         '--tooling',
@@ -73,7 +73,7 @@ describe('Blueprint CLI flag', () => {
   });
 });
 
-describe('Blueprint generation - dashboard', () => {
+describe('Blueprint generation - org-dashboard', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -84,9 +84,9 @@ describe('Blueprint generation - dashboard', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('generates project with --blueprint dashboard', async () => {
+  test('generates project with --blueprint org-dashboard', async () => {
     const result = await runCli(
-      ['test-dashboard', '--blueprint', 'dashboard', '--linter', 'biome', '--no-install', '--git'],
+      ['test-dashboard', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--git'],
       tempDir,
     );
 
@@ -95,30 +95,31 @@ describe('Blueprint generation - dashboard', () => {
     const projectPath = join(tempDir, 'test-dashboard');
 
     expect(await fileExists(join(projectPath, 'package.json'))).toBe(true);
-    expect(await fileExists(join(projectPath, '.env.example'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/.env.example'))).toBe(true);
 
-    const pkg = await readJsonFile<{ dependencies: Record<string, string> }>(join(projectPath, 'package.json'));
-    expect(pkg.dependencies.recharts).toBeDefined();
-    expect(pkg.dependencies.next).toBeDefined();
+    const webPkg = await readJsonFile<{ dependencies: Record<string, string> }>(
+      join(projectPath, 'apps/web/package.json'),
+    );
+    expect(webPkg.dependencies.sonner).toBeDefined();
 
-    expect(await fileExists(join(projectPath, 'src/app/(dashboard)/page.tsx'))).toBe(true);
-    expect(await fileExists(join(projectPath, 'src/components/sidebar.tsx'))).toBe(true);
-    expect(await fileExists(join(projectPath, 'src/components/header.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/app-sidebar.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/app-header.tsx'))).toBe(true);
   });
 
-  test('env file includes blueprint envs', async () => {
+  test('env file includes better-auth envs', async () => {
     const projectPath = join(tempDir, 'test-dashboard');
-    const envContent = await readTextFile(join(projectPath, '.env.example'));
-    expect(envContent).toContain('ADMIN_EMAIL');
+    const envContent = await readTextFile(join(projectPath, 'apps/web/.env.example'));
+    expect(envContent).toContain('BETTER_AUTH_SECRET');
   });
 
   test('output shows --blueprint in recreate command', async () => {
     const result = await runCli(
-      ['test-bp-cmd', '--blueprint', 'dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-cmd', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint dashboard');
+    expect(result.stdout).toContain('--blueprint org-dashboard');
   });
 
   test('blueprint with --linter includes linter config', async () => {
@@ -129,18 +130,18 @@ describe('Blueprint generation - dashboard', () => {
 
   test('blueprint recreate command includes linter flag', async () => {
     const result = await runCli(
-      ['test-bp-linter-cmd', '--blueprint', 'dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-linter-cmd', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint dashboard');
+    expect(result.stdout).toContain('--blueprint org-dashboard');
     expect(result.stdout).toContain('--linter biome');
   });
 
-  test('blueprint page.tsx overrides default Next.js page', async () => {
+  test('dashboard layout redirects unauthenticated users to login', async () => {
     const projectPath = join(tempDir, 'test-dashboard');
-    const pageContent = await readTextFile(join(projectPath, 'src/app/page.tsx'));
-    expect(pageContent).toContain('redirect');
-    expect(pageContent).toContain('/dashboard');
+    const layoutContent = await readTextFile(join(projectPath, 'apps/web/src/app/(dashboard)/layout.tsx'));
+    expect(layoutContent).toContain('redirect');
+    expect(layoutContent).toContain('/login');
   });
 });

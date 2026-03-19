@@ -254,11 +254,26 @@ describe('blueprint template resolution', () => {
   test('getAllTemplatesForContext works with blueprint set', () => {
     const ctx: TemplateContext = {
       projectName: 'test',
-      repo: 'single',
-      apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['shadcn', 'better-auth', 'tanstack-query'] }],
-      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
+      repo: 'turborepo',
+      apps: [
+        {
+          appName: 'web',
+          stackName: 'nextjs',
+          libraries: [
+            'shadcn',
+            'better-auth',
+            'trpc',
+            'tanstack-query',
+            'tanstack-devtools',
+            'tanstack-form',
+            'next-themes',
+          ],
+        },
+        { appName: 'batch', stackName: 'node', libraries: [] },
+      ],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'dashboard',
+      blueprint: 'org-dashboard',
     };
 
     const templates = getAllTemplatesForContext(ctx);
@@ -269,11 +284,26 @@ describe('blueprint template resolution', () => {
   test('blueprint templates have no duplicate destinations', () => {
     const ctx: TemplateContext = {
       projectName: 'test',
-      repo: 'single',
-      apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
-      project: { tooling: [] },
+      repo: 'turborepo',
+      apps: [
+        {
+          appName: 'web',
+          stackName: 'nextjs',
+          libraries: [
+            'shadcn',
+            'better-auth',
+            'trpc',
+            'tanstack-query',
+            'tanstack-devtools',
+            'tanstack-form',
+            'next-themes',
+          ],
+        },
+        { appName: 'batch', stackName: 'node', libraries: [] },
+      ],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'dashboard',
+      blueprint: 'org-dashboard',
     };
 
     const templates = getAllTemplatesForContext(ctx);
