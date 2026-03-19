@@ -1,0 +1,247 @@
+{{{{raw}}}}
+'use client';
+
+import { useForm } from '@tanstack/react-form';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTRPC } from '@/trpc/providers';
+import { z } from 'zod';
+
+const contactSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type ContactValues = z.infer<typeof contactSchema>;
+
+interface ContactFormProps {
+  mode: 'create' | 'edit';
+  contact?: { id: string } & Record<string, unknown>;
+  onSuccess?: () => void;
+}
+
+const EMPTY_VALUES: ContactValues = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  company: '',
+  notes: '',
+};
+
+export function ContactForm({ mode, contact, onSuccess }: ContactFormProps) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  const createContact = useMutation(
+    trpc.contact.create.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
+        queryClient.invalidateQueries({ queryKey: trpc.contact.count.queryKey() });
+      },
+    }),
+  );
+
+  const updateContact = useMutation(
+    trpc.contact.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
+      },
+    }),
+  );
+
+  const form = useForm({
+    defaultValues: mode === 'edit' && contact
+      ? {
+          firstName: String(contact.firstName ?? ''),
+          lastName: String(contact.lastName ?? ''),
+          email: String(contact.email ?? ''),
+          phone: String(contact.phone ?? ''),
+          company: String(contact.company ?? ''),
+          notes: String(contact.notes ?? ''),
+        }
+      : EMPTY_VALUES,
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = contactSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors = result.error.flatten().fieldErrors;
+          return {
+            fields: {
+              firstName: fieldErrors.firstName?.[0],
+              lastName: fieldErrors.lastName?.[0],
+              email: fieldErrors.email?.[0],
+            },
+          };
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      const data = {
+        ...value,
+        email: value.email || undefined,
+        phone: value.phone || undefined,
+        company: value.company || undefined,
+        notes: value.notes || undefined,
+      };
+
+      if (mode === 'edit' && contact) {
+        await updateContact.mutateAsync({ id: contact.id, data });
+      } else {
+        await createContact.mutateAsync(data);
+      }
+      onSuccess?.();
+    },
+  });
+
+  const isPending = createContact.isPending || updateContact.isPending;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        form.handleSubmit();
+      }}
+      className='space-y-4'
+    >
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <form.Field
+          name='firstName'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='firstName' className='text-sm font-medium leading-none'>
+                First Name *
+              </label>
+              <input
+                id='firstName'
+                type='text'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <form.Field
+          name='lastName'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='lastName' className='text-sm font-medium leading-none'>
+                Last Name *
+              </label>
+              <input
+                id='lastName'
+                type='text'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <form.Field
+          name='email'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='email' className='text-sm font-medium leading-none'>
+                Email
+              </label>
+              <input
+                id='email'
+                type='email'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <form.Field
+          name='phone'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='phone' className='text-sm font-medium leading-none'>
+                Phone
+              </label>
+              <input
+                id='phone'
+                type='tel'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+            </div>
+          )}
+        />
+      </div>
+      <form.Field
+        name='company'
+        children={(field) => (
+          <div className='space-y-2'>
+            <label htmlFor='company' className='text-sm font-medium leading-none'>
+              Company
+            </label>
+            <input
+              id='company'
+              type='text'
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+            />
+          </div>
+        )}
+      />
+      <form.Field
+        name='notes'
+        children={(field) => (
+          <div className='space-y-2'>
+            <label htmlFor='notes' className='text-sm font-medium leading-none'>
+              Notes
+            </label>
+            <textarea
+              id='notes'
+              rows={3}
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              className='flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+            />
+          </div>
+        )}
+      />
+      <div className='flex justify-end'>
+        <button
+          type='submit'
+          disabled={isPending}
+          className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
+        >
+          {isPending
+            ? mode === 'edit' ? 'Saving...' : 'Creating...'
+            : mode === 'edit' ? 'Save Changes' : 'Create Contact'}
+        </button>
+      </div>
+    </form>
+  );
+}
+{{{{/raw}}}}

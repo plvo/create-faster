@@ -1,0 +1,45 @@
+import type { Session } from '@repo/auth/types';
+import { LayoutDashboard } from 'lucide-react';
+import type * as React from 'react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+} from '@repo/ui/components/ui/sidebar';
+import { NavUser } from './nav-user';
+import { SidebarLinks } from './sidebar-links';
+
+{{{{raw}}}}
+export function AppSidebar({ session, ...props }: React.ComponentProps<typeof Sidebar> & { session: Session }) {
+  return (
+    <Sidebar collapsible='icon' variant='sidebar' {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuButton
+            size='lg'
+            className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
+          >
+            <div className='bg-sidebar-accent text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg'>
+              <LayoutDashboard className='size-4' />
+            </div>
+            <div className='grid flex-1 text-left text-sm leading-tight'>
+{{{{/raw}}}}
+              <span className='truncate font-medium text-lg'>{{projectName}}</span>
+{{{{raw}}}}
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarLinks role={session.user.role!} />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser session={session} />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+{{{{/raw}}}}

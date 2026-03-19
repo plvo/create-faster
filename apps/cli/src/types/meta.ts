@@ -83,6 +83,7 @@ export interface MetaBlueprint {
     project: { database?: string; orm?: string; deployment?: string };
   };
   packageJson?: PackageJsonConfig;
+  rootPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
 }
 

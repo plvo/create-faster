@@ -1,0 +1,43 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/session.ts
+---
+import { z } from 'zod';
+import { and, eq, gt, ne, userSessionTable } from '@repo/db';
+import { protectedProcedure, router } from '../trpc';
+
+export const sessionRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const sessions = await ctx.db
+      .select()
+      .from(userSessionTable)
+      .where(and(eq(userSessionTable.userId, ctx.session.user.id), gt(userSessionTable.expiresAt, new Date())));
+
+    const currentToken = ctx.session.session.token;
+
+    return sessions.map((s) => ({
+      token: s.token,
+      isCurrent: s.token === currentToken,
+      ipAddress: s.ipAddress,
+      userAgent: s.userAgent,
+      createdAt: s.createdAt,
+      expiresAt: s.expiresAt,
+    }));
+  }),
+
+  revoke: protectedProcedure.input(z.object({ token: z.string() })).mutation(async ({ ctx, input }) => {
+    await ctx.db
+      .delete(userSessionTable)
+      .where(and(eq(userSessionTable.token, input.token), eq(userSessionTable.userId, ctx.session.user.id)));
+  }),
+
+  revokeOthers: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .delete(userSessionTable)
+      .where(
+        and(eq(userSessionTable.userId, ctx.session.user.id), ne(userSessionTable.token, ctx.session.session.token)),
+      );
+  }),
+});

@@ -153,6 +153,7 @@ export const META: Meta = {
         },
         exports: {
           './': './src/components/',
+          './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
           './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
@@ -214,6 +215,7 @@ export const META: Meta = {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './types': './src/types.ts',
+          './password': './src/password.ts',
         },
       },
       envs: [
@@ -720,6 +722,58 @@ export const META: Meta = {
         },
         scripts: {
           build: 'bun build src/index.ts --outfile dist/index.js --target node',
+        },
+      },
+    },
+    'org-dashboard': {
+      label: 'Org Dashboard',
+      hint: 'Dashboard with auth, RBAC, admin panel, and example CRUD',
+      category: 'Business',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: [
+              'shadcn',
+              'better-auth',
+              'trpc',
+              'tanstack-query',
+              'tanstack-devtools',
+              'tanstack-form',
+              'next-themes',
+            ],
+          },
+          {
+            appName: 'batch',
+            stackName: 'node',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          'lucide-react': '^0.487.0',
+          'react-error-boundary': '^5.0.0',
+          sonner: '^2.0.7',
+          zod: '^4.2.1',
+        },
+      },
+      rootPackageJson: {
+        dependencies: {
+          '@repo/auth': '*',
+        },
+        scripts: {
+          'db:push': 'turbo db:push',
+          'db:generate': 'turbo db:generate',
+          'db:migrate': 'turbo db:migrate',
+          'db:studio': 'turbo db:studio',
+          'db:seed': 'bun scripts/seed.ts',
+          start: 'turbo start',
         },
       },
     },

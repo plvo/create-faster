@@ -1,0 +1,34 @@
+'use client';
+
+import { useTheme } from 'next-themes';
+import { Button } from '@repo/ui/components/ui/button';
+
+{{{{raw}}}}
+export function Preferences() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Preferences</h2>
+        <p className='text-sm text-muted-foreground'>Customize your experience.</p>
+      </div>
+      <div className='space-y-2'>
+        <span className='text-sm font-medium'>Theme</span>
+        <div className='flex gap-2'>
+          {(['light', 'dark', 'system'] as const).map((t) => (
+            <Button
+              key={t}
+              variant={theme === t ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => setTheme(t)}
+            >
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+{{{{/raw}}}}

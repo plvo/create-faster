@@ -1,0 +1,25 @@
+interface BatchEvent {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
+export async function handler(event: BatchEvent): Promise<void> {
+  console.log(`Processing batch event: ${event.type}`);
+
+  switch (event.type) {
+    case 'example':
+      await processExample(event.payload);
+      break;
+    default:
+      console.warn(`Unknown event type: ${event.type}`);
+  }
+}
+
+async function processExample(payload: Record<string, unknown>): Promise<void> {
+  console.log('Processing example batch job', payload);
+}
+
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) {
+  handler({ type: 'example', payload: {} });
+}

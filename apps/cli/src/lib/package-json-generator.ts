@@ -256,7 +256,13 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     }
   }
 
+  if (ctx.blueprint) {
+    const blueprint = META.blueprints[ctx.blueprint];
+    if (blueprint?.rootPackageJson) rootConfigs.push(blueprint.rootPackageJson);
+  }
+
   const merged = mergeResolved(ctx, ...rootConfigs);
+  const dependencies: Record<string, string> = { ...(merged.dependencies ?? {}) };
   devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
   Object.assign(scripts, merged.scripts ?? {});
   if (hasAppLintScript) scripts.lint = 'turbo lint';
@@ -268,6 +274,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     packageManager,
     workspaces: ['apps/*', 'packages/*'],
     scripts: sortObjectKeys(scripts),
+    dependencies: Object.keys(dependencies).length > 0 ? sortObjectKeys(dependencies) : undefined,
     devDependencies: sortObjectKeys(devDependencies),
     syncpack: {
       dependencyTypes: ['!local'],

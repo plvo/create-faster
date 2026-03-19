@@ -1,0 +1,75 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/contact.ts
+---
+import { z } from 'zod';
+import { contactTable, desc, eq, count as dbCount } from '@repo/db';
+import { router } from '../trpc';
+import { userProcedure } from '../middleware/rbac';
+
+const contactInput = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const contactRouter = router({
+  list: userProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(contactTable)
+      .orderBy(desc(contactTable.createdAt));
+  }),
+
+  getById: userProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [contact] = await ctx.db
+        .select()
+        .from(contactTable)
+        .where(eq(contactTable.id, input.id))
+        .limit(1);
+      return contact ?? null;
+    }),
+
+  create: userProcedure
+    .input(contactInput)
+    .mutation(async ({ ctx, input }) => {
+      const [contact] = await ctx.db
+        .insert(contactTable)
+        .values({ ...input, createdById: ctx.session.user.id })
+        .returning();
+      return contact;
+    }),
+
+  update: userProcedure
+    .input(z.object({ id: z.string(), data: contactInput.partial() }))
+    .mutation(async ({ ctx, input }) => {
+      const [contact] = await ctx.db
+        .update(contactTable)
+        .set({ ...input.data, updatedAt: new Date() })
+        .where(eq(contactTable.id, input.id))
+        .returning();
+      return contact;
+    }),
+
+  delete: userProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(contactTable)
+        .where(eq(contactTable.id, input.id));
+    }),
+
+  count: userProcedure.query(async ({ ctx }) => {
+    const [result] = await ctx.db
+      .select({ count: dbCount() })
+      .from(contactTable);
+    return result?.count ?? 0;
+  }),
+});

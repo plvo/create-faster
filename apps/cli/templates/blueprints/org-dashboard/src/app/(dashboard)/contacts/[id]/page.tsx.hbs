@@ -1,0 +1,20 @@
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { QueryBoundary } from '@/components/query-boundary';
+import { ContactDetail } from './contact.client';
+
+export default async function ContactDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  void prefetch(trpc.contact.getById.queryOptions({ id }));
+
+  return (
+    <HydrateClient>
+      <QueryBoundary>
+        <ContactDetail id={id} />
+      </QueryBoundary>
+    </HydrateClient>
+  );
+}

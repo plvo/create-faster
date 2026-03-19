@@ -1,0 +1,260 @@
+{{{{raw}}}}
+'use client';
+
+import { useForm } from '@tanstack/react-form';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { ArrowLeft, Copy, KeyRound, Check } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@repo/ui/components/ui/button';
+import { useTRPC } from '@/trpc/providers';
+
+export function UserDetail({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: user } = useSuspenseQuery(trpc.user.getById.queryOptions({ id }));
+  const [pending, startTransition] = useTransition();
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generatePasswordMutation = useMutation(
+    trpc.user.generatePassword.mutationOptions({
+      onSuccess: ({ password }) => {
+        setGeneratedPassword(password);
+        setCopied(false);
+        toast.success('Password generated');
+      },
+      onError: () => toast.error('Failed to generate password'),
+    }),
+  );
+
+  const copyPassword = async () => {
+    if (!generatedPassword) return;
+    await navigator.clipboard.writeText(generatedPassword);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const form = useForm({
+    defaultValues: {
+      username: user?.username || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      phone: user?.phone || '',
+    },
+    onSubmit: ({ value }) => {
+      startTransition(async () => {
+        try {
+          const trpcClient = trpc.user.edit;
+          await queryClient.fetchQuery({
+            queryKey: trpcClient.queryKey(),
+            queryFn: () => null,
+          });
+        } catch {
+          // ignore
+        }
+      });
+    },
+  });
+
+  const editMutation = useMutation(
+    trpc.user.edit.mutationOptions({
+      onSuccess: () => {
+        toast.success('User updated');
+        queryClient.invalidateQueries({ queryKey: trpc.user.getById.queryKey({ id }) });
+        queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
+      },
+      onError: () => toast.error('Failed to update user'),
+    }),
+  );
+
+  if (!user) {
+    return <p className='text-muted-foreground'>User not found.</p>;
+  }
+
+  return (
+    <div className='max-w-2xl space-y-6'>
+      <div className='flex items-center gap-3'>
+        <Link href='/admin/users' className='text-muted-foreground hover:text-foreground'>
+          <ArrowLeft className='size-5' />
+        </Link>
+        <h1 className='text-3xl font-bold'>{user.username}</h1>
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          {user.role}
+        </span>
+        {user.banned && (
+          <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/10 text-destructive'>
+            Banned
+          </span>
+        )}
+      </div>
+
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <div>
+          <h2 className='text-lg font-semibold'>User information</h2>
+          <p className='text-sm text-muted-foreground'>View and edit user details.</p>
+        </div>
+
+        <div className='space-y-3'>
+          <div>
+            <span className='text-sm font-medium'>Email</span>
+            <p className='text-sm text-muted-foreground'>{user.email}</p>
+          </div>
+          <div>
+            <span className='text-sm font-medium'>Joined</span>
+            <p className='text-sm text-muted-foreground'>
+              {new Date(user.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const values = form.state.values;
+            editMutation.mutate({
+              id,
+              username: values.username,
+              firstName: values.firstName || undefined,
+              lastName: values.lastName || undefined,
+              phone: values.phone || undefined,
+            });
+          }}
+          className='space-y-4 pt-4 border-t'
+        >
+          <div className='grid grid-cols-2 gap-4'>
+            <form.Field
+              name='firstName'
+              children={(field) => (
+                <div className='space-y-2'>
+                  <label htmlFor='firstName' className='text-sm font-medium leading-none'>
+                    First name
+                  </label>
+                  <input
+                    id='firstName'
+                    type='text'
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                  />
+                </div>
+              )}
+            />
+            <form.Field
+              name='lastName'
+              children={(field) => (
+                <div className='space-y-2'>
+                  <label htmlFor='lastName' className='text-sm font-medium leading-none'>
+                    Last name
+                  </label>
+                  <input
+                    id='lastName'
+                    type='text'
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                  />
+                </div>
+              )}
+            />
+          </div>
+          <form.Field
+            name='username'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='username' className='text-sm font-medium leading-none'>
+                  Username
+                </label>
+                <input
+                  id='username'
+                  type='text'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+              </div>
+            )}
+          />
+          <form.Field
+            name='phone'
+            children={(field) => (
+              <div className='space-y-2'>
+                <label htmlFor='phone' className='text-sm font-medium leading-none'>
+                  Phone
+                </label>
+                <input
+                  id='phone'
+                  type='tel'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                />
+              </div>
+            )}
+          />
+          <Button type='submit' disabled={editMutation.isPending}>
+            {editMutation.isPending ? 'Saving...' : 'Save changes'}
+          </Button>
+        </form>
+      </section>
+
+      <section className='rounded-lg border bg-card p-6 space-y-4'>
+        <div>
+          <h2 className='text-lg font-semibold'>Password</h2>
+          <p className='text-sm text-muted-foreground'>
+            Generate a one-time password for this user. It will only be visible once.
+          </p>
+        </div>
+
+        {generatedPassword ? (
+          <div className='space-y-3'>
+            <div className='flex gap-2'>
+              <input
+                type='text'
+                readOnly
+                value={generatedPassword}
+                className='flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm font-mono'
+              />
+              <Button variant='outline' size='icon' onClick={copyPassword}>
+                {copied ? <Check className='size-4 text-green-500' /> : <Copy className='size-4' />}
+              </Button>
+            </div>
+            <p className='text-xs text-warning-foreground bg-warning/10 rounded-md px-3 py-2'>
+              Copy this password now. You won't be able to see it again.
+            </p>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => generatePasswordMutation.mutate({ id })}
+              disabled={generatePasswordMutation.isPending}
+            >
+              <KeyRound className='size-4' />
+              {generatePasswordMutation.isPending ? 'Generating...' : 'Regenerate'}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant='outline'
+            onClick={() => generatePasswordMutation.mutate({ id })}
+            disabled={generatePasswordMutation.isPending}
+          >
+            <KeyRound className='size-4' />
+            {generatePasswordMutation.isPending ? 'Generating...' : 'Generate password'}
+          </Button>
+        )}
+      </section>
+    </div>
+  );
+}
+{{{{/raw}}}}

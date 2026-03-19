@@ -18,7 +18,21 @@
     "start": {
       "cache": false,
       "persistent": true
-    }{{#if (or (has "linter" "eslint") (has "linter" "eslint-prettier"))}},
+    }{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
+    "db:push": {
+      "cache": false
+    },
+    "db:generate": {},
+    "db:migrate": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    }{{/if}}{{#if (or (has "linter" "eslint") (has "linter" "eslint-prettier"))}},
     "lint": {}{{/if}}
   }
 }

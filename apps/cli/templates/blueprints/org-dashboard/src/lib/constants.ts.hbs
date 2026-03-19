@@ -1,0 +1,20 @@
+import type { LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Users, Shield } from 'lucide-react';
+
+export interface RouteProps {
+  url: string;
+  title: string;
+  icon?: LucideIcon;
+  category?: string;
+}
+
+export const ADMIN_ROUTES: RouteProps[] = [
+  { url: '/', title: 'Dashboard', icon: LayoutDashboard },
+  { url: '/contacts', title: 'Contacts', icon: Users },
+  { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration' },
+];
+
+export const USER_ROUTES: RouteProps[] = [
+  { url: '/', title: 'Dashboard', icon: LayoutDashboard },
+  { url: '/contacts', title: 'Contacts', icon: Users },
+];

@@ -6,6 +6,7 @@ export interface TemplateFrontmatter {
   path?: string;
   mono?: {
     scope?: MonoScope;
+    name?: string;
     path?: string;
   };
   only?: 'mono' | 'single';
@@ -82,6 +83,7 @@ export function shouldSkipTemplate(only: string | undefined, ctx: TemplateContex
 
   if (only === 'mono') return ctx.repo !== 'turborepo';
   if (only === 'single') return ctx.repo !== 'single';
+  if (only === 'no-blueprint') return !!ctx.blueprint;
 
   return false;
 }

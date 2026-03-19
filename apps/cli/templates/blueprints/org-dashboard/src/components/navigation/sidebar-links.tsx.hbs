@@ -1,0 +1,79 @@
+'use client';
+
+import type { Session } from '@repo/auth/types';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@repo/ui/components/ui/sidebar';
+import { ADMIN_ROUTES, USER_ROUTES, type RouteProps } from '@/lib/constants';
+{{{{raw}}}}
+
+export function SidebarLinks({ role }: { role: Session['user']['role'] }) {
+  const pathname = usePathname();
+
+  const pages = role === 'admin' ? ADMIN_ROUTES : USER_ROUTES;
+
+  const grouplessPages = pages.filter((item) => !item.category);
+
+  const groupedPages: Record<string, RouteProps[]> = pages.reduce(
+    (acc, item) => {
+      if (!item.category) return acc;
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    },
+    {} as Record<string, RouteProps[]>,
+  );
+
+  return (
+    <>
+      <SidebarGroup>
+        <SidebarMenu>
+          {grouplessPages.map((item) => (
+            <SidebarMenuItem key={item.url}>
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title || item.url}
+                isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
+              >
+                <Link href={item.url}>
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+      {Object.entries(groupedPages).map(([category, items]) => (
+        <SidebarGroup key={category}>
+          <SidebarGroupLabel>{category}</SidebarGroupLabel>
+          <SidebarMenu>
+            {items.map((item) => (
+              <SidebarMenuItem key={item.url}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title || item.url}
+                  isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
+                >
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      ))}
+    </>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,21 @@
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { auth } from '@repo/auth/auth';
+import { SidebarProvider, SidebarInset } from '@repo/ui/components/ui/sidebar';
+import { AppSidebar } from '@/components/navigation/app-sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session || !session.user.role) redirect('/login');
+
+  return (
+    <SidebarProvider defaultOpen>
+      <AppSidebar session={session} />
+      <SidebarInset>
+        <AppHeader role={session.user.role} />
+        <main className='flex-1 p-6'>{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

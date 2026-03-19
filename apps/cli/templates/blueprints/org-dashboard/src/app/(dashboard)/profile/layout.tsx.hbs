@@ -1,0 +1,27 @@
+{{{{raw}}}}
+import { ViewTransition } from 'react';
+import { ProfileTabNav } from '@/components/profile/tab-nav';
+
+export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className='max-w-2xl space-y-6'>
+      <h1 className='text-3xl font-bold'>Profile</h1>
+      <ProfileTabNav />
+      <ViewTransition
+        enter={{
+          default: 'none',
+          'slide-forward': 'animate-slide-from-right',
+          'slide-backward': 'animate-slide-from-left',
+        }}
+        exit={{
+          default: 'none',
+          'slide-forward': 'animate-slide-to-left',
+          'slide-backward': 'animate-slide-to-right',
+        }}
+      >
+        {children}
+      </ViewTransition>
+    </div>
+  );
+}
+{{{{/raw}}}}

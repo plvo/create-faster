@@ -1,4 +1,7 @@
 {{#if (hasLibrary "shadcn")}}
+{{#if (isMono)}}
+@import "@repo/ui/base.css";
+{{else}}
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -130,6 +133,7 @@
     @apply bg-background text-foreground;
   }
 }
+{{/if}}
 {{else}}
 @import "tailwindcss";
 

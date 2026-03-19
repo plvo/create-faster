@@ -1,0 +1,121 @@
+'use client';
+
+import { useQueryClient } from '@tanstack/react-query';
+import { MoreHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@repo/ui/components/ui/dropdown-menu';
+import { useTRPC } from '@/trpc/providers';
+import { authClient } from '@repo/auth/auth-client';
+
+type User = {
+  id: string;
+  username: string;
+  role: string;
+  banned: boolean | null;
+};
+
+{{{{raw}}}}
+export function UserActions({ user }: { user: User }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(false);
+
+  const invalidateUsers = () => {
+    queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
+  };
+
+  const handleBan = async () => {
+    setLoading(true);
+    try {
+      const res = await authClient.admin.banUser({ userId: user.id, banReason: 'Banned by admin' });
+      if (res.error) {
+        toast.error(res.error.message ?? 'Failed to ban user');
+        return;
+      }
+      toast.success(`${user.username} has been banned`);
+      invalidateUsers();
+    } catch {
+      toast.error('Failed to ban user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnban = async () => {
+    setLoading(true);
+    try {
+      const res = await authClient.admin.unbanUser({ userId: user.id });
+      if (res.error) {
+        toast.error(res.error.message ?? 'Failed to unban user');
+        return;
+      }
+      toast.success(`${user.username} has been unbanned`);
+      invalidateUsers();
+    } catch {
+      toast.error('Failed to unban user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetRole = async (role: 'admin' | 'user') => {
+    setLoading(true);
+    try {
+      const res = await authClient.admin.setRole({ userId: user.id, role });
+      if (res.error) {
+        toast.error(res.error.message ?? 'Failed to update role');
+        return;
+      }
+      toast.success(`${user.username} is now ${role}`);
+      invalidateUsers();
+    } catch {
+      toast.error('Failed to update role');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type='button'
+          disabled={loading}
+          className='inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent disabled:opacity-50'
+        >
+          <MoreHorizontal className='h-4 w-4' />
+          <span className='sr-only'>Actions</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end'>
+        {user.role === 'user' ? (
+          <DropdownMenuItem onClick={() => handleSetRole('admin')}>
+            Promote to Admin
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={() => handleSetRole('user')}>
+            Demote to Manager
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        {user.banned ? (
+          <DropdownMenuItem onClick={handleUnban}>
+            Unban User
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={handleBan} className='text-destructive focus:text-destructive'>
+            Ban User
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+{{{{/raw}}}}

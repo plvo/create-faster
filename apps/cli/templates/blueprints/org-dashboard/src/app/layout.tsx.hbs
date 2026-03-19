@@ -1,0 +1,55 @@
+import type { Metadata } from 'next';
+import '@/styles/globals.css';
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+import localFont from 'next/font/local';
+import { Toaster } from 'sonner';
+import { AppProviders } from '@/components/app-providers';
+
+{{{{raw}}}}
+const geistSans = localFont({
+  src: '../styles/fonts/geist-sans-vf.woff',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+});
+
+const geistMono = localFont({
+  src: '../styles/fonts/geist-mono-vf.woff',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+});
+{{{{/raw}}}}
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | {{projectName}}',
+    default: 'Home | {{projectName}}',
+  },
+  description: '{{projectName}} - Initialized with https://github.com/plvo/create-faster',
+};
+
+{{{{raw}}}}
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang='en' suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+        <AppProviders>
+          {children}
+          <Toaster richColors />
+          {process.env.NODE_ENV === 'development' && (
+            <TanStackDevtools
+              config={{ position: 'top-left' }}
+              eventBusConfig={{ connectToServerBus: true }}
+              plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
+            />
+          )}
+        </AppProviders>
+      </body>
+    </html>
+  );
+}
+{{{{/raw}}}}

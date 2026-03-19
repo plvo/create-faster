@@ -1,0 +1,10 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/types.ts
+path: src/lib/auth/types.ts
+---
+import type { auth } from './auth';
+
+export type Session = typeof auth.$Infer.Session;
