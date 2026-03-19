@@ -724,9 +724,9 @@ export const META: Meta = {
         },
       },
     },
-    'b2b-crm': {
-      label: 'B2B CRM',
-      hint: 'CRM/ERP base with auth, RBAC, admin panel, and example CRUD',
+    'org-dashboard': {
+      label: 'Org Dashboard',
+      hint: 'Dashboard with auth, RBAC, admin panel, and example CRUD',
       category: 'Business',
       context: {
         apps: [
