@@ -1,0 +1,60 @@
+const testimonials = [
+  {
+    quote: 'We switched from Slack to PigeonPost and our message delivery rate went from 99.1% to 99.7%. Plus, the office loves the pigeons.',
+    author: 'Sarah Chen',
+    role: 'VP of Operations',
+    company: 'AcmeLogistics',
+  },
+  {
+    quote: 'When our data center went down for 6 hours, PigeonPost was the only communication channel that kept working. The board was impressed.',
+    author: 'Marcus Webb',
+    role: 'CTO',
+    company: 'SecureComm Inc.',
+  },
+  {
+    quote: 'Our compliance team finally stopped worrying about message interception. Hard to hack a bird.',
+    author: 'Priya Patel',
+    role: 'Head of Security',
+    company: 'FinanceFirst',
+  },
+];
+
+const logos = ['AcmeLogistics', 'SecureComm', 'FinanceFirst', 'BirdWatch Global', 'NestCorp'];
+
+export function SocialProof() {
+  return (
+    <section id="testimonials" className="scroll-mt-20 py-20">
+      <div className="container mx-auto px-4">
+        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center mb-4">
+          What our clients say
+        </h2>
+        <p className="text-center text-sm text-muted-foreground mb-8">
+          Trusted by forward-thinking teams worldwide
+        </p>
+        <div className="flex flex-wrap justify-center gap-8 mb-16">
+          {logos.map((logo) => (
+            <span key={logo} className="text-muted-foreground/50 font-semibold text-lg">
+              {logo}
+            </span>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {testimonials.map((testimonial) => (
+            <blockquote key={testimonial.author} className="rounded-lg border p-6">
+              <p className="text-sm text-muted-foreground italic">
+                &ldquo;{testimonial.quote}&rdquo;
+              </p>
+              <footer className="mt-4">
+                <p className="text-sm font-semibold">{testimonial.author}</p>
+                <p className="text-xs text-muted-foreground">
+                  {testimonial.role}, {testimonial.company}
+                </p>
+              </footer>
+            </blockquote>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

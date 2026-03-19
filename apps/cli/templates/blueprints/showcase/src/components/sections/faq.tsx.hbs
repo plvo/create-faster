@@ -1,0 +1,52 @@
+import { FaqJsonLd } from '@/components/seo/json-ld';
+
+const faqItems = [
+  {
+    question: 'How does PigeonPost actually work?',
+    answer: 'You submit a message through our dashboard or API. The message is encrypted, printed on microfilm, and loaded into a tamper-evident capsule. A trained homing pigeon carries it to the destination loft, where it is scanned and delivered digitally to the recipient. Average delivery time: 2-4 hours for distances under 200 miles.',
+  },
+  {
+    question: 'Is PigeonPost a joke?',
+    answer: 'PigeonPost is a showcase template for create-faster, demonstrating a production-ready marketing site with SEO optimization, structured data, and conversion-focused design. The pigeon theme is intentionally absurd to make the template memorable and fun to customize.',
+  },
+  {
+    question: 'What happens during bad weather?',
+    answer: 'Our pigeons are trained in all weather conditions. For severe weather events, messages are automatically queued and dispatched via our indoor relay network. Enterprise plans include weather-contingency routing with guaranteed 4-hour delivery windows.',
+  },
+  {
+    question: 'How secure is pigeon-based messaging?',
+    answer: 'Extremely secure. Messages are AES-256 encrypted before printing on microfilm. The capsules are tamper-evident with GPS tracking. There is no digital transmission to intercept — the message physically travels through the air. This is true air-gapped communication.',
+  },
+  {
+    question: 'Can I integrate PigeonPost with my existing tools?',
+    answer: 'Yes. We offer REST API, webhooks, and native integrations with Slack, Teams, and major CRM platforms. Messages can be sent programmatically or through our dashboard.',
+  },
+];
+
+export function Faq() {
+  return (
+    <section id="faq" className="scroll-mt-20 py-20 bg-muted/30">
+      <FaqJsonLd items={faqItems} />
+      <div className="container mx-auto px-4 max-w-3xl">
+        <h2 className="text-3xl font-bold tracking-tight text-center mb-12">
+          Frequently asked questions
+        </h2>
+        <div className="space-y-6">
+          {faqItems.map((item) => (
+            <details key={item.question} className="group rounded-lg border bg-background p-6">
+              <summary className="cursor-pointer font-semibold list-none flex items-center justify-between">
+                {item.question}
+                <span className="ml-2 text-muted-foreground group-open:rotate-180 transition-transform">
+                  &#9662;
+                </span>
+              </summary>
+              <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                {item.answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

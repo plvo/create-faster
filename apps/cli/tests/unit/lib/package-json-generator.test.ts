@@ -966,14 +966,29 @@ describe('blueprint package.json generation', () => {
   test('merges blueprint dependencies into app package.json', () => {
     const ctx: TemplateContext = {
       projectName: 'test-bp',
-      repo: 'single',
-      apps: [{ appName: 'test-bp', stackName: 'nextjs', libraries: [] }],
-      project: { tooling: [] },
+      repo: 'turborepo',
+      apps: [
+        {
+          appName: 'web',
+          stackName: 'nextjs',
+          libraries: [
+            'shadcn',
+            'better-auth',
+            'trpc',
+            'tanstack-query',
+            'tanstack-devtools',
+            'tanstack-form',
+            'next-themes',
+          ],
+        },
+        { appName: 'batch', stackName: 'node', libraries: [] },
+      ],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'dashboard',
+      blueprint: 'org-dashboard',
     };
 
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    expect(result.content.dependencies?.recharts).toBeDefined();
+    expect(result.content.dependencies?.sonner).toBeDefined();
   });
 });

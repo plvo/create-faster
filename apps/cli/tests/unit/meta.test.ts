@@ -212,21 +212,31 @@ describe('META env vars', () => {
   });
 });
 
-describe('META.blueprints.dashboard', () => {
-  test('dashboard blueprint is defined', () => {
-    expect(META.blueprints.dashboard).toBeDefined();
+describe('META.blueprints.org-dashboard', () => {
+  test('org-dashboard blueprint is defined', () => {
+    expect(META.blueprints['org-dashboard']).toBeDefined();
   });
 
-  test('dashboard has valid context', () => {
-    const bp = META.blueprints.dashboard;
-    expect(bp.context.apps.length).toBeGreaterThan(0);
+  test('org-dashboard has valid context with 2 apps', () => {
+    const bp = META.blueprints['org-dashboard'];
+    expect(bp.context.apps).toHaveLength(2);
+    expect(bp.context.apps[0].appName).toBe('web');
     expect(bp.context.apps[0].stackName).toBe('nextjs');
     expect(bp.context.apps[0].libraries).toContain('shadcn');
     expect(bp.context.apps[0].libraries).toContain('better-auth');
+    expect(bp.context.apps[0].libraries).toContain('trpc');
+    expect(bp.context.apps[0].libraries).toContain('tanstack-query');
+    expect(bp.context.apps[0].libraries).toContain('tanstack-devtools');
+    expect(bp.context.apps[0].libraries).toContain('tanstack-form');
+    expect(bp.context.apps[0].libraries).toContain('next-themes');
+    expect(bp.context.apps[1].appName).toBe('batch');
+    expect(bp.context.apps[1].stackName).toBe('node');
+    expect(bp.context.project.database).toBe('postgres');
+    expect(bp.context.project.orm).toBe('drizzle');
   });
 
-  test('dashboard libraries exist and are compatible with their stack', () => {
-    const bp = META.blueprints.dashboard;
+  test('org-dashboard libraries exist and are compatible with their stack', () => {
+    const bp = META.blueprints['org-dashboard'];
     for (const app of bp.context.apps) {
       for (const lib of app.libraries) {
         const library = META.libraries[lib];
