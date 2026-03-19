@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
-import { PostHogPageView } from '@posthog/next';
+import { PostHogProvider, PostHogPageView } from '@posthog/next';
 import { Suspense } from 'react';
-import { AppProviders } from '@/components/app-providers';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/json-ld';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -51,6 +50,21 @@ export const metadata: Metadata = {
   },
 };
 
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+
+function Analytics({ children }: { children: React.ReactNode }) {
+  if (!posthogKey) return <>{children}</>;
+
+  return (
+    <PostHogProvider clientOptions=\{{ api_host: '/ingest' }}>
+      <Suspense fallback={null}>
+        <PostHogPageView />
+      </Suspense>
+      {children}
+    </PostHogProvider>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,12 +73,9 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
-        <AppProviders>
+        <Analytics>
           <OrganizationJsonLd />
           <WebSiteJsonLd />
-          <Suspense fallback={null}>
-            <PostHogPageView />
-          </Suspense>
           <Header />
           <main>{children}</main>
           <Footer />
@@ -77,7 +88,7 @@ export default function RootLayout({
             />
           )}
           {{/if}}
-        </AppProviders>
+        </Analytics>
       </body>
     </html>
   );
