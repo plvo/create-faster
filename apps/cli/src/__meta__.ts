@@ -793,7 +793,7 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@posthog/next': '^1.0.0',
+          '@posthog/next': '^0.1.0',
           'next-sitemap': '^4.2.3',
         },
         scripts: {
