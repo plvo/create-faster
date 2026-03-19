@@ -15,17 +15,17 @@ When you select a blueprint, the CLI pre-fills the stack, libraries, database, O
 <Tabs items={['bun', 'npm', 'pnpm']}>
   <Tab value="bun">
     ```bash
-    bunx create-faster my-project --blueprint dashboard --linter biome --git --pm bun
+    bunx create-faster my-project --blueprint org-dashboard --linter biome --git --pm bun
     ```
   </Tab>
   <Tab value="npm">
     ```bash
-    npx create-faster my-project --blueprint dashboard --linter biome --git --pm npm
+    npx create-faster my-project --blueprint org-dashboard --linter biome --git --pm npm
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx create-faster my-project --blueprint dashboard --linter biome --git --pm pnpm
+    pnpm dlx create-faster my-project --blueprint org-dashboard --linter biome --git --pm pnpm
     ```
   </Tab>
 </Tabs>
@@ -44,7 +44,8 @@ In interactive mode, the CLI prompts you to choose between a blueprint or a cust
 
 | Blueprint | Description |
 |-----------|-------------|
-| [Dashboard](/docs/blueprints/business/dashboard) | Internal CRM-style dashboard with auth, sidebar, and admin panel |
+| [Org Dashboard](/docs/blueprints/business/org-dashboard) | Dashboard with auth, RBAC, admin panel, and example CRUD |
+| [Showcase](/docs/blueprints/business/showcase) | SEO/GEO-optimized SaaS landing page with blog and programmatic pages |
 
 ### Web3
 
@@ -74,7 +75,7 @@ Blueprints define the **application architecture** (stacks, libraries, database,
 A blueprint combines:
 1. **A preset composition** — stacks, libraries, and project addons
 2. **Application code** — pages, layouts, components, and routes
-3. **Extra dependencies** — packages specific to the blueprint (e.g., `recharts` for dashboard charts)
+3. **Extra dependencies** — packages specific to the blueprint (e.g., `posthog-js` for analytics)
 4. **Extra environment variables** — blueprint-specific configuration
 
 Blueprint application code **overrides** the default structural templates. For example, a blueprint's `page.tsx` replaces the stack's default landing page with a functional application page.

@@ -1,0 +1,165 @@
+---
+title: Org Dashboard
+description: Dashboard with auth, RBAC, admin panel, and example CRUD. Ships as a turborepo with a Next.js web app, a Node batch worker, and shared packages.
+---
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), Better Auth ([→ module](/docs/modules/auth/better-auth)), tRPC ([→ module](/docs/modules/api/trpc)), TanStack Query ([→ module](/docs/modules/data-fetching/tanstack-query)), TanStack Devtools ([→ module](/docs/modules/data-fetching/tanstack-devtools)), TanStack Form ([→ module](/docs/modules/forms/tanstack-form)), Next Themes ([→ module](/docs/modules/ui/next-themes))
+- `batch` — Node ([→ docs](/docs/stacks/node))
+
+**Project addons:**
+- Database: [→ PostgreSQL](/docs/database/postgresql)
+- ORM: [→ Drizzle](/docs/orm/drizzle)
+
+## Architecture
+
+### Turborepo structure
+
+```
+apps/
+  web/              # Next.js app
+  batch/            # Node worker
+packages/
+  api/              # tRPC routers
+  auth/             # Better Auth config + types
+  db/               # Drizzle schema + client
+  ui/               # shadcn components
+  config/           # Shared tsconfig
+scripts/
+  seed.ts           # Database seeder (admin + user)
+```
+
+### Web app
+
+```
+src/
+├── app/
+│   ├── layout.tsx                        # Root layout with AppProviders + Toaster
+│   ├── (auth)/
+│   │   ├── layout.tsx                    # Auth guard (redirect if logged in)
+│   │   └── login/
+│   │       ├── page.tsx
+│   │       └── login-form.tsx            # Email/password login form
+│   └── (dashboard)/
+│       ├── layout.tsx                    # Sidebar + auth guard + session check
+│       ├── page.tsx                      # Dashboard home (contact count)
+│       ├── admin/users/
+│       │   ├── page.tsx                  # User list (admin only)
+│       │   └── [id]/
+│       │       ├── page.tsx              # User detail
+│       │       └── user-detail.tsx       # Edit user + generate password
+│       ├── contacts/
+│       │   ├── page.tsx                  # Contact list
+│       │   └── [id]/page.tsx             # Contact detail + edit
+│       └── profile/
+│           ├── layout.tsx                # Tab navigation + ViewTransition
+│           ├── page.tsx                  # Redirect → /profile/account
+│           ├── account/page.tsx          # Account info + edit name
+│           ├── security/page.tsx         # Change password
+│           ├── sessions/page.tsx         # Active sessions + revoke
+│           └── preferences/page.tsx      # Theme switcher
+├── components/
+│   ├── admin/                            # Create user dialog, user actions, user table
+│   ├── contacts/                         # Contact dialog, form, table
+│   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
+│   ├── profile/                          # Account form, security form, session list, preferences, tab nav
+│   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
+├── lib/
+│   └── constants.ts                      # Route definitions (admin vs user routes)
+└── styles/
+    └── globals.css                       # Slide animations for ViewTransition
+```
+
+### API package (packages/api)
+
+```
+src/
+├── root.ts                   # App router (user, contact, session)
+├── trpc.ts                   # tRPC init with auth context + headers
+├── middleware/
+│   └── rbac.ts               # adminProcedure + userProcedure
+└── router/
+    ├── user.ts               # me, list, getById, edit, generatePassword
+    ├── contact.ts            # list, getById, create, update, delete, count
+    └── session.ts            # list, revoke, revokeOthers
+```
+
+### Auth package (packages/auth)
+
+```
+src/
+├── auth.ts                   # Better Auth config (admin plugin, drizzle adapter)
+├── auth-client.ts            # Client with adminClient + inferAdditionalFields
+├── types.ts                  # Session type via auth.$Infer.Session
+└── password.ts               # Cryptographic password generation
+```
+
+## What's included
+
+### Authentication
+
+Email/password login with Better Auth. The admin plugin provides role-based access (admin/user), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role.
+
+### Role-based access control
+
+Two roles: `admin` and `user`. Admin-only routes (`/admin/users`) use `adminProcedure` in tRPC. The sidebar dynamically shows routes based on role — admins see the "Administration" section with user management.
+
+### Admin panel
+
+User list with clickable rows linking to detail pages. User detail page allows editing username, name, phone, and generating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user) and ban/unban.
+
+### CRUD example (Contacts)
+
+Full create, read, update, delete for contacts. Contact form with validation (TanStack Form + Zod). Contact list with link to detail/edit page.
+
+### Profile with View Transitions
+
+Route-based profile tabs using React 19 `ViewTransition` API with directional slide animations. Four sections:
+- **Account** — user info (email, role, joined date) + edit display name
+- **Security** — change password (revokes other sessions)
+- **Sessions** — list active sessions with device/IP info, revoke individual or all others
+- **Preferences** — theme switcher (light/dark/system)
+
+### QueryBoundary
+
+Reusable component wrapping `Suspense` + `ErrorBoundary` + `QueryErrorResetBoundary`. Used throughout for tRPC prefetch error handling with retry UI.
+
+### Database seed
+
+Creates two users via Better Auth's admin API:
+- `admin@example.com` / `password` (role: admin)
+- `user@example.com` / `password` (role: user)
+
+> **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `lucide-react` | Icons in navigation, forms, session list |
+| `react-error-boundary` | QueryBoundary error handling |
+| `sonner` | Toast notifications |
+| `zod` | Form validation schemas |
+
+## Root scripts
+
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `db:push` | `turbo db:push` | Push schema to database |
+| `db:generate` | `turbo db:generate` | Generate migration files |
+| `db:migrate` | `turbo db:migrate` | Apply migrations |
+| `db:studio` | `turbo db:studio` | Open Drizzle Studio |
+| `db:seed` | `bun scripts/seed.ts` | Seed admin + user |
+| `start` | `turbo start` | Start production server |
+
+## CLI usage
+
+```bash
+bunx create-faster myproject \
+  --blueprint org-dashboard \
+  --linter biome \
+  --git \
+  --pm bun
+```
