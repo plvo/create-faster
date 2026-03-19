@@ -1,0 +1,121 @@
+---
+title: Showcase
+description: SEO/GEO-optimized SaaS landing page with blog, programmatic persona pages, analytics, and consent management.
+---
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), MDX ([→ module](/docs/modules/content/mdx))
+
+**No database or ORM** — this is a static marketing site.
+
+## Architecture
+
+Blueprint-specific files:
+```
+src/
+├── app/
+│   ├── layout.tsx                     # Root layout with SEO metadata, JSON-LD, header/footer
+│   ├── page.tsx                       # Homepage (hero, social proof, features, FAQ, CTA)
+│   ├── about/page.tsx                 # About page with team section (E-E-A-T)
+│   ├── blog/
+│   │   ├── page.tsx                   # Blog index listing MDX articles
+│   │   └── [slug]/page.tsx            # Blog post with Article JSON-LD
+│   ├── contact/page.tsx               # Contact form
+│   ├── for/[persona]/page.tsx         # Programmatic persona pages with FAQ
+│   ├── sitemap.ts                     # Dynamic sitemap (static + blog + persona pages)
+│   └── robots.ts                      # Robots.txt with AI bot rules
+├── components/
+│   ├── app-providers.tsx              # Consent manager (c15t) + PostHog opt-in/out
+│   ├── animated.tsx                   # Motion animation wrapper (fade-up, scale, slide)
+│   ├── layout/
+│   │   ├── header.tsx                 # Sticky header with scroll spy anchor links
+│   │   └── footer.tsx                 # Footer with product/company/social links
+│   ├── sections/
+│   │   ├── hero.tsx                   # Hero with primary + secondary CTA
+│   │   ├── features.tsx               # 6-feature benefit grid
+│   │   ├── social-proof.tsx           # Logo bar + testimonials
+│   │   ├── faq.tsx                    # Collapsible FAQ with FAQPage JSON-LD
+│   │   └── cta.tsx                    # Bottom CTA section
+│   └── seo/
+│       ├── json-ld.tsx                # Organization, WebSite, Breadcrumb, FAQ, Article schemas
+│       └── breadcrumbs.tsx            # Breadcrumb nav with BreadcrumbList JSON-LD
+├── hooks/
+│   └── use-active-section.ts          # IntersectionObserver scroll spy for anchor links
+├── lib/
+│   ├── blog.ts                        # MDX blog post reading utilities
+│   └── data/
+│       ├── site-config.ts             # Site name, URLs, nav links, social links
+│       └── personas.ts                # Persona data for /for/[persona] pages
+├── instrumentation-client.ts          # PostHog client-side init
+├── next.config.ts                     # Next.js config with PostHog proxy rewrites
+├── contents/blog/                     # Example MDX blog articles
+└── README.md                          # Setup checklist
+```
+
+## What's included
+
+### SEO / GEO optimization
+
+- **JSON-LD structured data** — Organization, WebSite, BreadcrumbList, FAQPage, and Article schemas auto-injected per page
+- **Dynamic sitemap** — generates from static pages, blog posts, and persona slugs at build time
+- **Robots.txt** — explicitly allows AI search bots (GPTBot, PerplexityBot, ClaudeBot, Google-Extended)
+- **Metadata** — title template, description, Open Graph, Twitter cards on every page
+- **Breadcrumbs** — navigation with BreadcrumbList schema on all subpages
+- **Author attribution** — blog posts support `author` field in MDX frontmatter, rendered as Person schema in Article JSON-LD
+
+### Homepage sections
+
+Five composable sections with `scroll-mt-20` for smooth anchor navigation:
+- **Hero** — headline, description, primary + secondary CTA
+- **Social proof** — client logos + testimonials with quotes
+- **Features** — 6-item benefit grid
+- **FAQ** — collapsible details with FAQPage JSON-LD (critical for AI citation)
+- **CTA** — closing conversion section
+
+### Blog (MDX)
+
+File-based blog using the MDX library. Articles live in `contents/blog/` with YAML frontmatter (`title`, `summary`, `author`, `publishedAt`). Blog index page lists posts sorted by date. Each post renders with Article JSON-LD and breadcrumbs.
+
+### Programmatic persona pages
+
+`/for/[persona]` pages generated from data in `lib/data/personas.ts`. Each persona has a unique headline, description, benefits grid, and FAQ section with its own FAQPage JSON-LD. Includes 3 examples: `logistics-teams`, `bird-enthusiasts`, `enterprise`.
+
+### Analytics and consent
+
+- **PostHog** — initialized via `instrumentation-client.ts`, proxied through Next.js rewrites (`/ingest/*`)
+- **c15t consent manager** — cookie banner with opt-in/opt-out that controls PostHog capture
+
+### Animations
+
+`<Animated>` component using `motion` with viewport-triggered animations. Supports `fade-up`, `scale`, `slide-left`, `slide-right` variants with configurable delay.
+
+### Scroll spy
+
+`useActiveSection` hook tracks which homepage section is visible and highlights the corresponding anchor link in the header navigation.
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `posthog-js` | Client-side analytics |
+| `@c15t/nextjs` | GDPR cookie consent manager |
+| `motion` | Animation library (Animated component) |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project API key |
+| `NEXT_PUBLIC_SITE_URL` | Production site URL (used in sitemap, JSON-LD, OG tags) |
+
+## CLI usage
+
+```bash
+bunx create-faster my-showcase \
+  --blueprint showcase \
+  --linter biome \
+  --git \
+  --pm bun
+```
