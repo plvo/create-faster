@@ -1,0 +1,26 @@
+@import "@repo/ui/base.css";
+
+@keyframes slide-from-right {
+  from { transform: translateX(30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-from-left {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-to-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-30px); opacity: 0; }
+}
+
+@keyframes slide-to-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(30px); opacity: 0; }
+}
+
+.animate-slide-from-right { animation: slide-from-right 0.25s ease-out; }
+.animate-slide-from-left { animation: slide-from-left 0.25s ease-out; }
+.animate-slide-to-left { animation: slide-to-left 0.15s ease-in; }
+.animate-slide-to-right { animation: slide-to-right 0.15s ease-in; }

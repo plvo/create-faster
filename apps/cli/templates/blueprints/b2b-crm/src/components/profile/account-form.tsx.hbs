@@ -1,0 +1,115 @@
+'use client';
+
+import { useForm } from '@tanstack/react-form';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { useTransition } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { Button } from '@repo/ui/components/ui/button';
+import { useTRPC } from '@/trpc/providers';
+import { authClient } from '@repo/auth/auth-client';
+
+const nameSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+});
+
+{{{{raw}}}}
+export function AccountForm() {
+  const trpc = useTRPC();
+  const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
+  const [pending, startTransition] = useTransition();
+
+  const form = useForm({
+    defaultValues: { name: user?.username || '' },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = nameSchema.safeParse(value);
+        if (!result.success) {
+          return { fields: { name: result.error.flatten().fieldErrors.name?.[0] } };
+        }
+        return undefined;
+      },
+    },
+    onSubmit: ({ value }) => {
+      startTransition(async () => {
+        try {
+          const res = await authClient.updateUser({ name: value.name });
+          if (res.error) {
+            toast.error('Failed to update name');
+            return;
+          }
+          toast.success('Name updated');
+        } catch {
+          toast.error('Failed to update name');
+        }
+      });
+    },
+  });
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Account information</h2>
+        <p className='text-sm text-muted-foreground'>Your account details.</p>
+      </div>
+
+      <div className='space-y-3'>
+        <div>
+          <span className='text-sm font-medium'>Email</span>
+          <p className='text-sm text-muted-foreground'>{user?.email}</p>
+        </div>
+        <div>
+          <span className='text-sm font-medium'>Role</span>
+          <p className='text-sm text-muted-foreground capitalize'>{user?.role}</p>
+        </div>
+        <div>
+          <span className='text-sm font-medium'>Joined</span>
+          <p className='text-sm text-muted-foreground'>
+            {user?.createdAt
+              ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className='space-y-4 pt-4 border-t'
+      >
+        <form.Field
+          name='name'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='name' className='text-sm font-medium leading-none'>
+                Display name
+              </label>
+              <input
+                id='name'
+                type='text'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <Button type='submit' disabled={pending}>
+          {pending ? 'Saving...' : 'Save'}
+        </Button>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}

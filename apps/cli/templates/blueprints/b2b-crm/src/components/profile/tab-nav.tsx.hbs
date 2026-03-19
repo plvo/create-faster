@@ -1,0 +1,52 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { addTransitionType, startTransition } from 'react';
+
+const TABS = [
+  { label: 'Account', href: '/profile/account' },
+  { label: 'Security', href: '/profile/security' },
+  { label: 'Sessions', href: '/profile/sessions' },
+  { label: 'Preferences', href: '/profile/preferences' },
+] as const;
+
+{{{{raw}}}}
+function getTabIndex(pathname: string): number {
+  return TABS.findIndex((tab) => pathname.startsWith(tab.href));
+}
+
+export function ProfileTabNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const currentIndex = getTabIndex(pathname);
+
+  return (
+    <nav className='flex gap-1 border-b'>
+      {TABS.map((tab, i) => {
+        const isActive = pathname.startsWith(tab.href);
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            onNavigate={(e) => {
+              e.preventDefault();
+              startTransition(() => {
+                addTransitionType(i > currentIndex ? 'slide-forward' : 'slide-backward');
+                router.push(tab.href);
+              });
+            }}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              isActive
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+{{{{/raw}}}}

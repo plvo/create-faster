@@ -1,0 +1,120 @@
+'use client';
+
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { Globe, Monitor, Smartphone, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@repo/ui/components/ui/button';
+import { useTRPC } from '@/trpc/providers';
+
+function getDeviceIcon(userAgent: string | null) {
+  if (!userAgent) return Globe;
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) return Smartphone;
+  return Monitor;
+}
+
+function parseUserAgent(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  if (userAgent.includes('Chrome')) return 'Chrome';
+  if (userAgent.includes('Firefox')) return 'Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  if (userAgent.includes('Edge')) return 'Edge';
+  return 'Unknown browser';
+}
+
+{{{{raw}}}}
+export function SessionList() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: sessions } = useSuspenseQuery(trpc.session.list.queryOptions());
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: trpc.session.list.queryKey() });
+
+  const revokeMutation = useMutation(
+    trpc.session.revoke.mutationOptions({
+      onSuccess: () => {
+        toast.success('Session revoked');
+        invalidate();
+      },
+      onError: () => toast.error('Failed to revoke session'),
+    }),
+  );
+
+  const revokeOthersMutation = useMutation(
+    trpc.session.revokeOthers.mutationOptions({
+      onSuccess: () => {
+        toast.success('All other sessions revoked');
+        invalidate();
+      },
+      onError: () => toast.error('Failed to revoke sessions'),
+    }),
+  );
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-lg font-semibold'>Active sessions</h2>
+          <p className='text-sm text-muted-foreground'>
+            Manage your active sessions across devices.
+          </p>
+        </div>
+        {sessions.some((s) => !s.isCurrent) && (
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => revokeOthersMutation.mutate()}
+            disabled={revokeOthersMutation.isPending}
+          >
+            {revokeOthersMutation.isPending ? 'Revoking...' : 'Revoke all others'}
+          </Button>
+        )}
+      </div>
+
+      <div className='space-y-3'>
+        {sessions.map((session) => {
+          const DeviceIcon = getDeviceIcon(session.userAgent);
+          return (
+            <div
+              key={session.token}
+              className='flex items-center justify-between rounded-lg border p-4'
+            >
+              <div className='flex items-center gap-3'>
+                <DeviceIcon className='size-5 text-muted-foreground' />
+                <div>
+                  <p className='text-sm font-medium'>
+                    {parseUserAgent(session.userAgent)}
+                    {session.isCurrent && (
+                      <span className='ml-2 text-xs text-primary font-normal'>(current)</span>
+                    )}
+                  </p>
+                  <p className='text-xs text-muted-foreground'>
+                    {session.ipAddress ?? 'Unknown IP'} · Created{' '}
+                    {new Date(session.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+              {!session.isCurrent && (
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => revokeMutation.mutate({ token: session.token })}
+                  disabled={revokeMutation.isPending}
+                >
+                  <Trash2 className='size-4 text-destructive' />
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+{{{{/raw}}}}

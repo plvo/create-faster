@@ -1,0 +1,122 @@
+'use client';
+
+import { useForm } from '@tanstack/react-form';
+import { useTransition } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { Button } from '@repo/ui/components/ui/button';
+import { authClient } from '@repo/auth/auth-client';
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+{{{{raw}}}}
+export function SecurityForm() {
+  const [pending, startTransition] = useTransition();
+
+  const form = useForm({
+    defaultValues: { currentPassword: '', newPassword: '' },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = passwordSchema.safeParse(value);
+        if (!result.success) {
+          const fieldErrors = result.error.flatten().fieldErrors;
+          return {
+            fields: {
+              currentPassword: fieldErrors.currentPassword?.[0],
+              newPassword: fieldErrors.newPassword?.[0],
+            },
+          };
+        }
+        return undefined;
+      },
+    },
+    onSubmit: ({ value }) => {
+      startTransition(async () => {
+        try {
+          const res = await authClient.changePassword({
+            currentPassword: value.currentPassword,
+            newPassword: value.newPassword,
+            revokeOtherSessions: true,
+          });
+          if (res.error) {
+            toast.error('Failed to change password');
+            return;
+          }
+          toast.success('Password changed');
+          form.reset();
+        } catch {
+          toast.error('Failed to change password');
+        }
+      });
+    },
+  });
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change password</h2>
+        <p className='text-sm text-muted-foreground'>
+          Update your password. This will revoke all other sessions.
+        </p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className='space-y-4'
+      >
+        <form.Field
+          name='currentPassword'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='currentPassword' className='text-sm font-medium leading-none'>
+                Current password
+              </label>
+              <input
+                id='currentPassword'
+                type='password'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <form.Field
+          name='newPassword'
+          children={(field) => (
+            <div className='space-y-2'>
+              <label htmlFor='newPassword' className='text-sm font-medium leading-none'>
+                New password
+              </label>
+              <input
+                id='newPassword'
+                type='password'
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+              />
+              {field.state.meta.errors?.[0] && (
+                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
+              )}
+            </div>
+          )}
+        />
+        <Button type='submit' disabled={pending}>
+          {pending ? 'Changing...' : 'Change password'}
+        </Button>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}
