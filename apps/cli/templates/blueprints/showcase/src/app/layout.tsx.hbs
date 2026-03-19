@@ -61,7 +61,7 @@ export default function RootLayout({
           <OrganizationJsonLd />
           <WebSiteJsonLd />
           <Header />
-          <main className='snap-y snap-proximity'>{children}</main>
+          <main>{children}</main>
           <Footer />
           {{#if (hasLibrary "tanstack-devtools")}}
           {process.env.NODE_ENV === 'development' && (
