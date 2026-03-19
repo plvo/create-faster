@@ -1,0 +1,23 @@
+import type { Metadata } from 'next';
+import { Hero } from '@/components/sections/hero';
+import { Features } from '@/components/sections/features';
+import { SocialProof } from '@/components/sections/social-proof';
+import { Faq } from '@/components/sections/faq';
+import { Cta } from '@/components/sections/cta';
+
+export const metadata: Metadata = {
+  title: 'Home',
+  description: 'Carrier pigeon logistics for the modern enterprise. 99.7% delivery rate. Zero digital footprint. No Wi-Fi required.',
+};
+
+export default function HomePage() {
+  return (
+    <>
+      <Hero />
+      <SocialProof />
+      <Features />
+      <Faq />
+      <Cta />
+    </>
+  );
+}

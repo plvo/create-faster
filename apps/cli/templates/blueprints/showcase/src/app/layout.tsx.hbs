@@ -1,0 +1,79 @@
+import type { Metadata } from 'next';
+import '@/styles/globals.css';
+import localFont from 'next/font/local';
+import { AppProviders } from '@/components/app-providers';
+import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/json-ld';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+import { siteConfig } from '@/lib/data/site-config';
+{{#if (hasLibrary "tanstack-devtools")}}
+import { TanStackDevtools } from '@tanstack/react-devtools';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+{{/if}}
+
+const geistSans = localFont({
+  src: '../styles/fonts/geist-sans-vf.woff',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+});
+
+const geistMono = localFont({
+  src: '../styles/fonts/geist-mono-vf.woff',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+});
+
+export const metadata: Metadata = {
+  title: {
+    template: `%s | ${siteConfig.name}`,
+    default: `${siteConfig.name} — ${siteConfig.description}`,
+  },
+  description: siteConfig.description,
+  metadataBase: new URL(siteConfig.url),
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.name,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteConfig.name,
+    description: siteConfig.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang='en' className='scroll-smooth' suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+        <AppProviders>
+          <OrganizationJsonLd />
+          <WebSiteJsonLd />
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          {{#if (hasLibrary "tanstack-devtools")}}
+          {process.env.NODE_ENV === 'development' && (
+            <TanStackDevtools
+              config=\{{ position: 'top-left' }}
+              eventBusConfig=\{{ connectToServerBus: true }}
+              plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
+            />
+          )}
+          {{/if}}
+        </AppProviders>
+      </body>
+    </html>
+  );
+}

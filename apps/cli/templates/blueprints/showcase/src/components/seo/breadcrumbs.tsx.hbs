@@ -1,0 +1,39 @@
+import Link from 'next/link';
+import { BreadcrumbJsonLd } from '@/components/seo/json-ld';
+
+interface BreadcrumbItem {
+  name: string;
+  href: string;
+}
+
+interface BreadcrumbsProps {
+  items: BreadcrumbItem[];
+}
+
+export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  const allItems = [{ name: 'Home', href: '/' }, ...items];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={allItems} />
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground mb-6">
+        <ol className="flex items-center gap-1.5">
+          {allItems.map((item, index) => (
+            <li key={item.href} className="flex items-center gap-1.5">
+              {index > 0 && <span aria-hidden="true">/</span>}
+              {index === allItems.length - 1 ? (
+                <span aria-current="page" className="text-foreground font-medium">
+                  {item.name}
+                </span>
+              ) : (
+                <Link href={item.href} className="hover:text-foreground transition-colors">
+                  {item.name}
+                </Link>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+    </>
+  );
+}

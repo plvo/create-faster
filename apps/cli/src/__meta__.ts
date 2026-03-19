@@ -777,6 +777,38 @@ export const META: Meta = {
         },
       },
     },
+    showcase: {
+      label: 'Showcase',
+      hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',
+      category: 'Business',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'mdx'],
+          },
+        ],
+        project: {},
+      },
+      packageJson: {
+        dependencies: {
+          'posthog-js': '^1.262.0',
+          '@c15t/nextjs': '^1.8.5',
+          motion: '^12.26.0',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_POSTHOG_KEY=phc_your-posthog-project-key',
+          monoScope: ['app'],
+        },
+        {
+          value: 'NEXT_PUBLIC_SITE_URL=http://localhost:3000',
+          monoScope: ['app'],
+        },
+      ],
+    },
   },
 } as const satisfies Meta;
 

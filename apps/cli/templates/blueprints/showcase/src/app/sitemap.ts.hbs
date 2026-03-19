@@ -1,0 +1,28 @@
+import type { MetadataRoute } from 'next';
+import { getAllPosts } from '@/lib/blog';
+import { getAllPersonaSlugs } from '@/lib/data/personas';
+import { siteConfig } from '@/lib/data/site-config';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const staticPages: MetadataRoute.Sitemap = [
+    { url: siteConfig.url, changeFrequency: 'weekly', priority: 1 },
+    { url: `${siteConfig.url}/about`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${siteConfig.url}/blog`, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${siteConfig.url}/contact`, changeFrequency: 'monthly', priority: 0.6 },
+  ];
+
+  const blogPages: MetadataRoute.Sitemap = getAllPosts().map((post) => ({
+    url: `${siteConfig.url}/blog/${post.slug}`,
+    lastModified: new Date(post.publishedAt),
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  const personaPages: MetadataRoute.Sitemap = getAllPersonaSlugs().map((slug) => ({
+    url: `${siteConfig.url}/for/${slug}`,
+    changeFrequency: 'monthly',
+    priority: 0.9,
+  }));
+
+  return [...staticPages, ...blogPages, ...personaPages];
+}

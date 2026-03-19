@@ -1,0 +1,82 @@
+---
+path: next.config.ts
+---
+{{#if (hasLibrary "mdx")}}
+import createMDX from '@next/mdx';
+{{/if}}
+import type { NextConfig } from 'next';
+
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+const nextConfig: NextConfig = {
+  {{#if (isMono)}}
+  transpilePackages: [
+    {{#if (hasLibrary "shadcn")}}
+    "@repo/ui",
+    {{/if}}
+    {{#if (hasContext "orm")}}
+    "@repo/db",
+    {{/if}}
+  ],
+  {{/if}}
+  reactStrictMode: true,
+
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ];
+  },
+
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'date-fns',
+      'date-fns-tz',
+      '@dnd-kit/core',
+      '@dnd-kit/sortable',
+      'react-day-picker',
+      'motion',
+    ],
+  },
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  turbopack: {
+    resolveExtensions: [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      {{#if (hasLibrary "mdx")}}
+      '.mdx',
+      '.md',
+      {{/if}}
+    ],
+  },
+};
+
+{{#if (hasLibrary "mdx")}}
+const withMDX = createMDX({
+  extension: /\.(md|mdx)$/,
+  options: {}
+});
+{{/if}}
+
+{{#if (hasLibrary "mdx")}}
+export default withMDX(withBundleAnalyzer(nextConfig));
+{{else}}
+export default withBundleAnalyzer(nextConfig);
+{{/if}}

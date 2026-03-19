@@ -1,0 +1,73 @@
+'use client';
+
+import { ConsentManagerDialog, ConsentManagerProvider, CookieBanner } from '@c15t/nextjs';
+import { ClientSideOptionsProvider } from '@c15t/nextjs/client';
+import posthog from 'posthog-js';
+import type React from 'react';
+
+interface AppProvidersProps {
+  children: React.ReactNode;
+}
+
+export function AppProviders({ children }: AppProvidersProps) {
+  return (
+    <ConsentManagerProvider
+      options=\{{
+        mode: 'offline',
+        consentCategories: ['necessary', 'measurement'],
+        ignoreGeoLocation: true,
+        react: {
+          colorScheme: 'dark',
+        },
+        translations: {
+          defaultLanguage: 'en',
+          translations: {
+            en: {
+              common: {
+                acceptAll: 'Accept',
+                rejectAll: 'Reject',
+                customize: 'Customize',
+                save: 'Save',
+              },
+              cookieBanner: {
+                title: 'Cookies',
+                description:
+                  'We use cookies to measure site traffic. You can accept or reject them.',
+              },
+              consentManagerDialog: {
+                title: 'Cookie preferences',
+                description: 'Choose which cookies you want to allow.',
+              },
+              consentTypes: {
+                necessary: {
+                  title: 'Essential cookies',
+                  description: 'Required for the site to function.',
+                },
+                measurement: {
+                  title: 'Analytics',
+                  description: 'Help us understand how the site is used.',
+                },
+              },
+            },
+          },
+        },
+      }}
+    >
+      <ClientSideOptionsProvider
+        callbacks=\{{
+          onConsentSet: ({ preferences }) => {
+            if (preferences.measurement) {
+              posthog.opt_in_capturing();
+            } else {
+              posthog.opt_out_capturing();
+            }
+          },
+        }}
+      >
+        {children}
+        <CookieBanner />
+        <ConsentManagerDialog />
+      </ClientSideOptionsProvider>
+    </ConsentManagerProvider>
+  );
+}
