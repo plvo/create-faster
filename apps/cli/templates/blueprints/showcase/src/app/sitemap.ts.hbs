@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getAllPosts } from '@/lib/blog';
-import { getAllPersonaSlugs } from '@/lib/personas';
-import { siteConfig } from '@/lib/site-config';
+import { getAllPersonaSlugs } from '@/lib/data/personas';
+import { siteConfig } from '@/lib/data/site-config';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
