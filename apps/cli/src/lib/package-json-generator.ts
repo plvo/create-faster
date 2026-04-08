@@ -163,6 +163,11 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   }
 
   const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
+
+  if (!isTurborepo && ctx.project.tooling.includes('portless') && scripts.dev) {
+    scripts.dev = `portless ${ctx.projectName} ${scripts.dev}`;
+  }
+
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
 
   const pkg: PackageJson = {

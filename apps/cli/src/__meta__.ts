@@ -558,6 +558,16 @@ export const META: Meta = {
             },
           },
         },
+        portless: {
+          label: 'Portless',
+          hint: 'Named .localhost URLs for local dev',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              portless: '^0.9.0',
+            },
+          },
+        },
       },
     },
   },
