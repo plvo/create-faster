@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { META, type ProjectCategoryName } from '@/__meta__';
-import { isLibraryCompatible } from '@/lib/addon-utils';
+import { applyAppScripts, findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
@@ -155,7 +155,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  const hasPortless = ctx.project.tooling.includes('portless');
+  const runtimeAddon = findRuntimeAddon(ctx);
 
   if (isTurborepo) {
     merged.devDependencies = {
@@ -163,20 +163,15 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
       '@repo/config': '*',
     };
 
-    if (hasPortless) {
-      const portlessAddon = META.project.tooling.options['portless'];
-      if (portlessAddon?.packageJson) {
-        merged = mergeResolved(ctx, merged, portlessAddon.packageJson);
-      }
+    if (runtimeAddon?.runtime?.appScripts && runtimeAddon.packageJson) {
+      merged = mergeResolved(ctx, merged, runtimeAddon.packageJson);
     }
   }
 
-  const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo && !hasPortless ? port : undefined);
+  let scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
 
-  if (hasPortless && scripts.dev) {
-    const domain = isTurborepo ? app.appName : ctx.projectName;
-    scripts.dev = `portless ${domain} ${scripts.dev}`;
-    if (scripts.start) scripts['start:portless'] = `portless ${domain} ${scripts.start}`;
+  if (runtimeAddon?.runtime?.appScripts) {
+    scripts = applyAppScripts(scripts, runtimeAddon.runtime.appScripts);
   }
 
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;

@@ -567,6 +567,17 @@ export const META: Meta = {
               portless: '^0.9.0',
             },
           },
+          runtime: {
+            appScripts: {
+              dev: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
+              'start:portless': {
+                from: 'start',
+                wrap: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
+              },
+            },
+            resolveAppUrl: ({ projectName, appName, isTurborepo }) =>
+              `https://${isTurborepo ? appName : projectName}.localhost:1355`,
+          },
         },
       },
     },

@@ -33,6 +33,22 @@ export interface PackageJsonConfig {
   [key: string]: any;
 }
 
+export interface AppUrlContext {
+  projectName: string;
+  appName: string;
+  isTurborepo: boolean;
+  port: number;
+}
+
+export type AppScriptTransform = ((cmd: string) => string) | { from: string; wrap: (cmd: string) => string };
+
+export interface AddonRuntime {
+  /** Transform or add app scripts. Key = output script name. */
+  appScripts?: Record<string, AppScriptTransform>;
+  /** Resolve the {{appUrl}} env placeholder for apps where this addon is active */
+  resolveAppUrl?: (ctx: AppUrlContext) => string;
+}
+
 export interface MetaAddon {
   label: string;
   hint?: string;
@@ -44,6 +60,7 @@ export interface MetaAddon {
   packageJson?: PackageJsonConfig;
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
+  runtime?: AddonRuntime;
 }
 
 export interface MetaProjectCategory {

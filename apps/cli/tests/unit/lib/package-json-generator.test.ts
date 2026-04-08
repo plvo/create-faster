@@ -105,20 +105,21 @@ describe('generateAppPackageJson (portless, single repo)', () => {
     git: false,
   };
 
-  test('wraps dev script with portless using projectName as domain', () => {
+  test('wraps dev script using portless run auto-detection', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    expect(result.content.scripts?.dev).toBe('portless my-app next dev');
+    expect(result.content.scripts?.dev).toBe('portless run next dev');
   });
 
-  test('adds start:portless instead of overriding start', () => {
+  test('adds start:portless as a separate script, leaving start untouched', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.scripts?.start).toBe('next start');
-    expect(result.content.scripts?.['start:portless']).toBe('portless my-app next start');
+    expect(result.content.scripts?.['start:portless']).toBe('portless run next start');
   });
 
-  test('does not inject --port in dev script', () => {
+  test('strips --port flag in portless-wrapped scripts', () => {
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content.scripts?.dev).not.toContain('--port');
+    expect(result.content.scripts?.['start:portless']).not.toContain('--port');
   });
 
   test('adds portless devDependency', () => {
@@ -139,22 +140,27 @@ describe('generateAppPackageJson (portless, turborepo)', () => {
     git: false,
   };
 
-  test('wraps dev script with appName as domain per app', () => {
+  test('wraps dev script via portless run per app', () => {
     const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
     const api = generateAppPackageJson(ctx.apps[1], ctx, 1);
-    expect(web.content.scripts?.dev).toBe('portless web next dev');
-    expect(api.content.scripts?.dev).toBe('portless api bun run --hot src/index.ts');
+    expect(web.content.scripts?.dev).toBe('portless run next dev');
+    expect(api.content.scripts?.dev).toBe('portless run bun run --hot src/index.ts');
   });
 
   test('adds start:portless for apps with a start script', () => {
     const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    expect(web.content.scripts?.start).toBe('next start');
-    expect(web.content.scripts?.['start:portless']).toBe('portless web next start');
+    expect(web.content.scripts?.['start:portless']).toBe('portless run next start');
   });
 
-  test('does not inject --port in dev script', () => {
+  test('leaves original start script unchanged (including --port in turbo)', () => {
+    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(web.content.scripts?.start).toBe('next start --port 3000');
+  });
+
+  test('strips --port flag in portless-wrapped scripts', () => {
     const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(web.content.scripts?.dev).not.toContain('--port');
+    expect(web.content.scripts?.['start:portless']).not.toContain('--port');
   });
 
   test('adds portless as devDependency in each app', () => {

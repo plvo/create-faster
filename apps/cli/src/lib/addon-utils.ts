@@ -1,6 +1,6 @@
 import { META, type ProjectCategoryName } from '@/__meta__';
 import type { TemplateContext } from '@/types/ctx';
-import type { AddonRequire, MetaAddon, StackName } from '@/types/meta';
+import type { AddonRequire, AppScriptTransform, MetaAddon, StackName } from '@/types/meta';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
   if (!library.support?.stacks) return true;
@@ -57,4 +57,27 @@ export function isProjectCategoryAvailable(category: ProjectCategoryName, ctx: P
     }
   }
   return true;
+}
+
+export function findRuntimeAddon(ctx: TemplateContext): MetaAddon | undefined {
+  for (const toolingName of ctx.project.tooling) {
+    const addon = META.project.tooling.options[toolingName];
+    if (addon?.runtime) return addon;
+  }
+  return undefined;
+}
+
+export function applyAppScripts(
+  scripts: Record<string, string>,
+  transforms: Record<string, AppScriptTransform>,
+): Record<string, string> {
+  const next = { ...scripts };
+  for (const [key, transform] of Object.entries(transforms)) {
+    if (typeof transform === 'function') {
+      if (next[key]) next[key] = transform(next[key]);
+    } else if (next[transform.from]) {
+      next[key] = transform.wrap(next[transform.from]);
+    }
+  }
+  return next;
 }
