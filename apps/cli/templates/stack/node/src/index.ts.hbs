@@ -1,1 +1,15 @@
+{{#if (hasLibrary "evlog")}}
+import { createLogger, initLogger, log } from 'evlog';
+
+initLogger({
+  env: { service: '{{appName}}' },
+});
+
+log.info({ action: 'startup' });
+
+const jobLog = createLogger({ task: 'hello' });
+jobLog.set({ message: 'Hello from {{appName}}' });
+jobLog.emit();
+{{else}}
 console.log('Hello from {{appName}}');
+{{/if}}

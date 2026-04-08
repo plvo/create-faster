@@ -1,11 +1,25 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+{{#unless (hasLibrary "evlog")}}
 import { logger } from 'hono/logger';
+{{/unless}}
 import { timeout } from 'hono/timeout';
+{{#if (hasLibrary "evlog")}}
+import { initLogger } from 'evlog';
+import { evlog, type EvlogVariables } from 'evlog/hono';
 
-const app = new Hono();
+initLogger({
+  env: { service: '{{appName}}' },
+});
+{{/if}}
 
+const app = new Hono{{#if (hasLibrary "evlog")}}<EvlogVariables>{{/if}}();
+
+{{#if (hasLibrary "evlog")}}
+app.use(evlog());
+{{else}}
 app.use(logger());
+{{/if}}
 app.use(timeout(15000));
 
 app.use(
