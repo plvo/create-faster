@@ -96,6 +96,75 @@ describe('generateAppPackageJson (single repo)', () => {
   });
 });
 
+describe('generateAppPackageJson (portless, single repo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'my-app',
+    repo: 'single',
+    apps: [{ appName: 'my-app', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: ['portless'] },
+    git: false,
+  };
+
+  test('wraps dev script with portless using projectName as domain', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.dev).toBe('portless my-app next dev');
+  });
+
+  test('adds start:portless instead of overriding start', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.start).toBe('next start');
+    expect(result.content.scripts?.['start:portless']).toBe('portless my-app next start');
+  });
+
+  test('does not inject --port in dev script', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.scripts?.dev).not.toContain('--port');
+  });
+
+  test('adds portless devDependency', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.portless).toBeDefined();
+  });
+});
+
+describe('generateAppPackageJson (portless, turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'my-saas',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { tooling: ['portless'] },
+    git: false,
+  };
+
+  test('wraps dev script with appName as domain per app', () => {
+    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const api = generateAppPackageJson(ctx.apps[1], ctx, 1);
+    expect(web.content.scripts?.dev).toBe('portless web next dev');
+    expect(api.content.scripts?.dev).toBe('portless api bun run --hot src/index.ts');
+  });
+
+  test('adds start:portless for apps with a start script', () => {
+    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(web.content.scripts?.start).toBe('next start');
+    expect(web.content.scripts?.['start:portless']).toBe('portless web next start');
+  });
+
+  test('does not inject --port in dev script', () => {
+    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(web.content.scripts?.dev).not.toContain('--port');
+  });
+
+  test('adds portless as devDependency in each app', () => {
+    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const api = generateAppPackageJson(ctx.apps[1], ctx, 1);
+    expect(web.content.devDependencies?.portless).toBeDefined();
+    expect(api.content.devDependencies?.portless).toBeDefined();
+  });
+});
+
 describe('generateAllPackageJsons', () => {
   test('generates all package.jsons for turborepo', () => {
     const ctx: TemplateContext = {

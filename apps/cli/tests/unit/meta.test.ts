@@ -212,6 +212,22 @@ describe('META env vars', () => {
   });
 });
 
+describe('META.project.tooling.portless', () => {
+  test('portless is defined in tooling options', () => {
+    expect(META.project.tooling.options['portless']).toBeDefined();
+  });
+
+  test('portless has devDependency declared', () => {
+    const portless = META.project.tooling.options['portless'];
+    expect(portless.packageJson?.devDependencies?.['portless']).toBeDefined();
+  });
+
+  test('portless has root mono scope', () => {
+    const portless = META.project.tooling.options['portless'];
+    expect(portless.mono).toEqual({ scope: 'root' });
+  });
+});
+
 describe('META.blueprints.org-dashboard', () => {
   test('org-dashboard blueprint is defined', () => {
     expect(META.blueprints['org-dashboard']).toBeDefined();

@@ -155,20 +155,28 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
+  const hasPortless = ctx.project.tooling.includes('portless');
+
   if (isTurborepo) {
     merged.devDependencies = {
       ...merged.devDependencies,
       '@repo/config': '*',
     };
+
+    if (hasPortless) {
+      const portlessAddon = META.project.tooling.options['portless'];
+      if (portlessAddon?.packageJson) {
+        merged = mergeResolved(ctx, merged, portlessAddon.packageJson);
+      }
+    }
   }
 
-  const hasPortless = ctx.project.tooling.includes('portless');
   const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo && !hasPortless ? port : undefined);
 
   if (hasPortless && scripts.dev) {
     const domain = isTurborepo ? app.appName : ctx.projectName;
     scripts.dev = `portless ${domain} ${scripts.dev}`;
-    if (scripts.start) scripts.start = `portless ${domain} ${scripts.start}`;
+    if (scripts.start) scripts['start:portless'] = `portless ${domain} ${scripts.start}`;
   }
 
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
