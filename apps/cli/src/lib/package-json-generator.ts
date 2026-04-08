@@ -162,10 +162,12 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     };
   }
 
-  const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
+  const hasPortless = ctx.project.tooling.includes('portless');
+  const scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo && !hasPortless ? port : undefined);
 
-  if (!isTurborepo && ctx.project.tooling.includes('portless') && scripts.dev) {
-    scripts.dev = `portless ${ctx.projectName} ${scripts.dev}`;
+  if (hasPortless && scripts.dev) {
+    const domain = isTurborepo ? app.appName : ctx.projectName;
+    scripts.dev = `portless ${domain} ${scripts.dev}`;
   }
 
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
