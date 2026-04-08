@@ -224,7 +224,7 @@ export const META: Meta = {
           monoScope: [{ pkg: 'auth' }, 'app'],
         },
         {
-          value: 'BETTER_AUTH_URL=http://localhost:{{appPort}}',
+          value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
         },
       ],
@@ -785,7 +785,7 @@ export const META: Meta = {
           monoScope: ['app'],
         },
         {
-          value: 'NEXT_PUBLIC_SITE_URL=http://localhost:3000',
+          value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
           monoScope: ['app'],
         },
       ],

@@ -30,6 +30,11 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
   if (appName) {
     const port = resolveAppPort(ctx.apps, appName);
     resolved = resolved.replace(/\{\{appPort\}\}/g, String(port));
+
+    const hasPortless = ctx.project.tooling.includes('portless');
+    const domain = ctx.repo === 'turborepo' ? appName : ctx.projectName;
+    const appUrl = hasPortless ? `https://${domain}.localhost` : `http://localhost:${port}`;
+    resolved = resolved.replace(/\{\{appUrl\}\}/g, appUrl);
   }
   return resolved;
 }

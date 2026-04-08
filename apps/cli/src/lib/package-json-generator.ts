@@ -168,6 +168,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   if (hasPortless && scripts.dev) {
     const domain = isTurborepo ? app.appName : ctx.projectName;
     scripts.dev = `portless ${domain} ${scripts.dev}`;
+    if (scripts.start) scripts.start = `portless ${domain} ${scripts.start}`;
   }
 
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;

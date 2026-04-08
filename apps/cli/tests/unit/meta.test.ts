@@ -201,7 +201,7 @@ describe('META env vars', () => {
 
     const url = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_URL'));
     expect(url).toBeDefined();
-    expect(url!.value).toContain('{{appPort}}');
+    expect(url!.value).toContain('{{appUrl}}');
     expect(url!.monoScope).toContain('app');
   });
 
