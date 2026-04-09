@@ -5,8 +5,9 @@ import { logger } from 'hono/logger';
 {{/unless}}
 import { timeout } from 'hono/timeout';
 {{#if (hasLibrary "evlog")}}
-import { initLogger } from 'evlog';
+import { initLogger, parseError } from 'evlog';
 import { evlog, type EvlogVariables } from 'evlog/hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 initLogger({
   env: { service: '{{appName}}' },
@@ -56,6 +57,19 @@ app.get('/health/:id', (c) => {
 });
 
 app.onError((err, c) => {
+  {{#if (hasLibrary "evlog")}}
+  c.get('log').error(err);
+  const parsed = parseError(err);
+  return c.json(
+    {
+      ok: false,
+      message: parsed.message,
+      why: parsed.why,
+      fix: parsed.fix,
+    },
+    (parsed.status || 500) as ContentfulStatusCode,
+  );
+  {{else}}
   console.error('Error:', err);
   return c.json(
     {
@@ -65,6 +79,7 @@ app.onError((err, c) => {
     },
     500,
   );
+  {{/if}}
 });
 
 export default app;

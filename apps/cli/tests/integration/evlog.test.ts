@@ -114,6 +114,13 @@ describe('evlog Integration', () => {
       expect(content).not.toContain("from 'hono/logger'");
     });
 
+    test('app.onError uses structured error logging', async () => {
+      const content = await readTextFile(join(projectPath, 'src/app.ts'));
+      expect(content).toContain("c.get('log').error(err)");
+      expect(content).toContain('parseError');
+      expect(content).not.toContain('console.error');
+    });
+
     test('package.json has evlog dependency', async () => {
       const pkg = await readJsonFile<{ dependencies: Record<string, string> }>(join(projectPath, 'package.json'));
       expect(pkg.dependencies.evlog).toBeDefined();
@@ -163,11 +170,10 @@ describe('evlog Integration', () => {
       expect(result.exitCode).toBe(0);
     });
 
-    test('src/index.ts uses initLogger and createLogger', async () => {
+    test('src/index.ts uses initLogger', async () => {
       const content = await readTextFile(join(projectPath, 'src/index.ts'));
       expect(content).toContain("from 'evlog'");
       expect(content).toContain('initLogger');
-      expect(content).toContain('createLogger');
       expect(content).toContain(`service: '${projectName}'`);
       expect(content).not.toContain('console.log');
     });
