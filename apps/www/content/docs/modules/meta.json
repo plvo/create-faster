@@ -1,4 +1,4 @@
 {
   "title": "Modules",
-  "pages": ["ui", "content", "auth", "api", "data-fetching", "forms", "deploy"]
+  "pages": ["ui", "content", "auth", "api", "data-fetching", "forms", "observability", "deploy"]
 }

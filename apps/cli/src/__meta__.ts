@@ -324,6 +324,20 @@ export const META: Meta = {
       support: { stacks: ['hono'] },
       packageJson: {},
     },
+    evlog: {
+      label: 'evlog',
+      hint: 'Wide-event structured logging with drains and sampling',
+      category: 'Observability',
+      support: { stacks: ['nextjs', 'hono', 'tanstack-start', 'node'] },
+      packageJson: {
+        dependencies: {
+          evlog: '^2.11.0',
+        },
+        devDependencies: {
+          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260311-beta'),
+        },
+      },
+    },
   },
 
   project: {

@@ -1,0 +1,146 @@
+---
+title: evlog
+description: Wide-event structured logging with per-framework wire-up, middleware integration, and structured error handling.
+---
+
+<Stacks names="nextjs,hono,tanstack-start,node" />
+<Dependencies packages="evlog" dev="nitro (TanStack Start only)" />
+
+[→ evlog Documentation](https://www.evlog.dev)
+
+## What create-faster adds
+
+The setup varies by stack. Each gets the idiomatic evlog integration for its framework.
+
+### Next.js
+
+Files added:
+```
+src/
+├── lib/
+│   └── evlog.ts            # createEvlog + createInstrumentation
+└── instrumentation.ts      # defineNodeInstrumentation (Node runtime gate)
+```
+
+Modified files:
+- `src/proxy.ts` - Returns via `evlogMiddleware()` for request-id and timing correlation
+
+#### evlog.ts
+
+Factory exports for request-scoped logging and server instrumentation:
+
+```ts title="src/lib/evlog.ts"
+import { createEvlog } from 'evlog/next';
+import { createInstrumentation } from 'evlog/next/instrumentation';
+
+export const { withEvlog, useLogger, log, createError } = createEvlog({
+  service: 'my-app',
+});
+
+export const { register, onRequestError } = createInstrumentation({
+  service: 'my-app',
+});
+```
+
+- `withEvlog()` wraps route handlers to emit wide events on request completion
+- `useLogger()` provides request-scoped `log.set()` for progressive context
+- `createError()` throws structured errors with `why`, `fix`, `link` fields
+
+#### instrumentation.ts
+
+Gates evlog initialization to the Node.js runtime so Edge bundles stay clean:
+
+```ts title="src/instrumentation.ts"
+import { defineNodeInstrumentation } from 'evlog/next/instrumentation';
+
+export const { register, onRequestError } = defineNodeInstrumentation(() => import('./lib/evlog'));
+```
+
+#### proxy.ts
+
+When evlog is selected, `proxy.ts` returns via `evlogMiddleware()` which sets `x-request-id` and `x-evlog-start` headers for timing correlation across the middleware-to-handler chain. Composes cleanly with Better Auth session resolution.
+
+### Hono
+
+Modified files:
+- `src/app.ts` - Adds `initLogger`, `evlog()` middleware, typed variables, and structured error handler
+
+```ts title="src/app.ts"
+import { initLogger, parseError } from 'evlog';
+import { evlog, type EvlogVariables } from 'evlog/hono';
+
+initLogger({
+  env: { service: 'my-api' },
+});
+
+const app = new Hono<EvlogVariables>();
+
+app.use(evlog());
+```
+
+Replaces the default `hono/logger` middleware. The `EvlogVariables` type gives typed access to `c.get('log')` in route handlers.
+
+The error handler uses `parseError()` for structured JSON responses with `why` and `fix` fields.
+
+### TanStack Start
+
+Files added:
+```
+nitro.config.ts             # evlog/nitro/v3 module registration
+```
+
+Modified files:
+- `src/routes/__root.tsx` - Adds `evlogErrorHandler` server middleware
+
+#### nitro.config.ts
+
+Registers the evlog Nitro v3 module with async context for request-scoped logging:
+
+```ts title="nitro.config.ts"
+import { defineConfig } from 'nitro';
+import evlog from 'evlog/nitro/v3';
+
+export default defineConfig({
+  experimental: {
+    asyncContext: true,
+  },
+  modules: [
+    evlog({
+      env: { service: 'my-app' },
+    }),
+  ],
+});
+```
+
+#### __root.tsx
+
+Wires `evlogErrorHandler` as a TanStack Start server middleware to preserve structured error `data` fields (`why`, `fix`, `link`) in responses:
+
+```tsx title="src/routes/__root.tsx"
+import { createMiddleware } from '@tanstack/react-start'
+import { evlogErrorHandler } from 'evlog/nitro/v3'
+
+export const Route = createRootRoute({
+  server: {
+    middleware: [createMiddleware().server(evlogErrorHandler)],
+  },
+  // ...
+})
+```
+
+### Node
+
+Modified files:
+- `src/index.ts` - Adds `initLogger` with service name
+
+```ts title="src/index.ts"
+import { initLogger, log } from 'evlog';
+
+initLogger({
+  env: { service: 'my-worker' },
+});
+
+log.info({ action: 'startup' });
+```
+
+For standalone scripts and workers, use `createLogger()` and `createRequestLogger()` from `evlog` for manual wide events with `log.set()` / `log.emit()`.

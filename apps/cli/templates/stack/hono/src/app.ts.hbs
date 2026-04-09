@@ -1,11 +1,26 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+{{#unless (hasLibrary "evlog")}}
 import { logger } from 'hono/logger';
+{{/unless}}
 import { timeout } from 'hono/timeout';
+{{#if (hasLibrary "evlog")}}
+import { initLogger, parseError } from 'evlog';
+import { evlog, type EvlogVariables } from 'evlog/hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
-const app = new Hono();
+initLogger({
+  env: { service: '{{appName}}' },
+});
+{{/if}}
 
+const app = new Hono{{#if (hasLibrary "evlog")}}<EvlogVariables>{{/if}}();
+
+{{#if (hasLibrary "evlog")}}
+app.use(evlog());
+{{else}}
 app.use(logger());
+{{/if}}
 app.use(timeout(15000));
 
 app.use(
@@ -42,6 +57,19 @@ app.get('/health/:id', (c) => {
 });
 
 app.onError((err, c) => {
+  {{#if (hasLibrary "evlog")}}
+  c.get('log').error(err);
+  const parsed = parseError(err);
+  return c.json(
+    {
+      ok: false,
+      message: parsed.message,
+      why: parsed.why,
+      fix: parsed.fix,
+    },
+    (parsed.status || 500) as ContentfulStatusCode,
+  );
+  {{else}}
   console.error('Error:', err);
   return c.json(
     {
@@ -51,6 +79,7 @@ app.onError((err, c) => {
     },
     500,
   );
+  {{/if}}
 });
 
 export default app;

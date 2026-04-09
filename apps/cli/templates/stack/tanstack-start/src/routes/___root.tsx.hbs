@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+{{#if (hasLibrary "evlog")}}
+import { createMiddleware } from '@tanstack/react-start'
+import { evlogErrorHandler } from 'evlog/nitro/v3'
+{{/if}}
 
 import appCss from '../styles.css?url'
 
@@ -25,6 +29,11 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  {{#if (hasLibrary "evlog")}}
+  server: {
+    middleware: [createMiddleware().server(evlogErrorHandler)],
+  },
+  {{/if}}
   shellComponent: RootDocument,
 })
 
