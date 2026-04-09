@@ -7,5 +7,4 @@ export const { withEvlog, useLogger, log, createError } = createEvlog({
 
 export const { register, onRequestError } = createInstrumentation({
   service: '{{appName}}',
-  captureOutput: true,
 });
