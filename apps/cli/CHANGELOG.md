@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.4](https://github.com/plvo/create-faster/compare/create-faster-v1.6.3...create-faster-v1.6.4) (2026-04-09)
+
+
+### Features
+
+* **library:** add evlog observability library ([#110](https://github.com/plvo/create-faster/issues/110)) ([5489c0d](https://github.com/plvo/create-faster/commit/5489c0deae9374bf26aafe077bfd3b15238a5c49))
+* **tooling:** add portless as project-level option ([#109](https://github.com/plvo/create-faster/issues/109)) ([9fb0206](https://github.com/plvo/create-faster/commit/9fb0206585d96a5e2f1fb441abfa5b1428c5bdf0))
+
 ## [1.6.3](https://github.com/plvo/create-faster/compare/create-faster-v1.6.2...create-faster-v1.6.3) (2026-03-19)
 
 
