@@ -1,0 +1,41 @@
+---
+title: Portless
+description: Portless replaces port numbers with stable, named .localhost URLs for local development.
+---
+
+[→ Portless Documentation](https://portless.sh)
+
+## What create-faster adds
+
+Portless wraps your dev commands so each app is accessible via a named HTTPS domain instead of `http://localhost:3000`.
+
+**Script transformations:**
+
+| Script | Before | After |
+|--------|--------|-------|
+| `dev` | `next dev` | `portless run next dev` |
+| `start:portless` | *(new)* | `portless run next start` |
+
+- `dev` is wrapped in place — portless auto-detects the domain from the project context
+- `start` is left untouched (production use), a separate `start:portless` script is added for local testing
+- `--port` flags are stripped automatically since portless manages port assignment via the `PORT` environment variable
+
+**Environment variables:**
+
+When portless is selected, the `{{appUrl}}` placeholder in `.env.example` resolves to the portless domain:
+
+| Context | URL |
+|---------|-----|
+| Single repo (`myapp`) | `https://myapp.localhost:1355` |
+| Turborepo app (`web`) | `https://web.localhost:1355` |
+
+Without portless, `{{appUrl}}` resolves to `http://localhost:{port}`.
+
+**Dependencies:**
+
+- `portless` `^0.9.0` (dev)
+
+**Turborepo mode:**
+
+- `portless` is added as a devDependency to the root **and** each app's `package.json` (so the binary is available on each workspace's PATH)
+- Each app gets its own portless-wrapped `dev` script using `portless run` auto-detection
