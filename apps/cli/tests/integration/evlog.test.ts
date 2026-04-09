@@ -36,12 +36,12 @@ describe('evlog Integration', () => {
       expect(content).toContain(`service: '${projectName}'`);
     });
 
-    test('generates instrumentation.ts at project root', async () => {
-      expect(await fileExists(join(projectPath, 'instrumentation.ts'))).toBe(true);
-      const content = await readTextFile(join(projectPath, 'instrumentation.ts'));
+    test('generates instrumentation.ts in src/', async () => {
+      expect(await fileExists(join(projectPath, 'src/instrumentation.ts'))).toBe(true);
+      const content = await readTextFile(join(projectPath, 'src/instrumentation.ts'));
       expect(content).toContain('defineNodeInstrumentation');
       expect(content).toContain("from 'evlog/next/instrumentation'");
-      expect(content).toContain("import('./src/lib/evlog')");
+      expect(content).toContain("import('./lib/evlog')");
     });
 
     test('proxy.ts uses evlogMiddleware', async () => {
@@ -226,7 +226,7 @@ describe('evlog Integration', () => {
 
     test('web app has evlog files in apps/web', async () => {
       expect(await fileExists(join(projectPath, 'apps/web/src/lib/evlog.ts'))).toBe(true);
-      expect(await fileExists(join(projectPath, 'apps/web/instrumentation.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/web/src/instrumentation.ts'))).toBe(true);
       const proxy = await readTextFile(join(projectPath, 'apps/web/src/proxy.ts'));
       expect(proxy).toContain('evlogMiddleware');
     });
