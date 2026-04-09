@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { isLibraryCompatible } from '@/lib/addon-utils';
+import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { EnvScope, EnvVar } from '@/types/meta';
 
@@ -30,6 +30,17 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
   if (appName) {
     const port = resolveAppPort(ctx.apps, appName);
     resolved = resolved.replace(/\{\{appPort\}\}/g, String(port));
+
+    const runtimeAddon = findRuntimeAddon(ctx);
+    const appUrl = runtimeAddon?.runtime?.resolveAppUrl
+      ? runtimeAddon.runtime.resolveAppUrl({
+          projectName: ctx.projectName,
+          appName,
+          isTurborepo: ctx.repo === 'turborepo',
+          port,
+        })
+      : `http://localhost:${port}`;
+    resolved = resolved.replace(/\{\{appUrl\}\}/g, appUrl);
   }
   return resolved;
 }

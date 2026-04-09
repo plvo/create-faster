@@ -201,7 +201,7 @@ describe('META env vars', () => {
 
     const url = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_URL'));
     expect(url).toBeDefined();
-    expect(url!.value).toContain('{{appPort}}');
+    expect(url!.value).toContain('{{appUrl}}');
     expect(url!.monoScope).toContain('app');
   });
 
@@ -209,6 +209,22 @@ describe('META env vars', () => {
     expect(META.libraries.shadcn.envs).toBeUndefined();
     expect(META.libraries['tanstack-query'].envs).toBeUndefined();
     expect(META.project.linter.options.biome.envs).toBeUndefined();
+  });
+});
+
+describe('META.project.tooling.portless', () => {
+  test('portless is defined in tooling options', () => {
+    expect(META.project.tooling.options['portless']).toBeDefined();
+  });
+
+  test('portless has devDependency declared', () => {
+    const portless = META.project.tooling.options['portless'];
+    expect(portless.packageJson?.devDependencies?.['portless']).toBeDefined();
+  });
+
+  test('portless has root mono scope', () => {
+    const portless = META.project.tooling.options['portless'];
+    expect(portless.mono).toEqual({ scope: 'root' });
   });
 });
 

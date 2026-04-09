@@ -85,6 +85,36 @@ describe('collectEnvFiles', () => {
     expect(webEnv?.content).not.toContain('{{appPort}}');
   });
 
+  test('resolves {{appUrl}} to localhost URL without portless', () => {
+    const ctx = makeContext({ project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] } });
+    const files = collectEnvFiles(ctx);
+
+    const webEnv = files.find((f) => f.destination === 'apps/web/.env.example');
+    expect(webEnv?.content).toContain('BETTER_AUTH_URL=http://localhost:3000');
+    expect(webEnv?.content).not.toContain('{{appUrl}}');
+  });
+
+  test('resolves {{appUrl}} to portless domain in turborepo', () => {
+    const ctx = makeContext({
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: ['portless'] },
+    });
+    const files = collectEnvFiles(ctx);
+
+    const webEnv = files.find((f) => f.destination === 'apps/web/.env.example');
+    expect(webEnv?.content).toContain('BETTER_AUTH_URL=https://web.localhost:1355');
+  });
+
+  test('resolves {{appUrl}} to portless domain in single repo', () => {
+    const ctx = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: ['portless'] },
+    });
+    const files = collectEnvFiles(ctx);
+
+    expect(files[0].content).toContain('BETTER_AUTH_URL=https://my-project.localhost:1355');
+  });
+
   test('dedupes env vars by key within same destination', () => {
     const ctx = makeContext();
     const files = collectEnvFiles(ctx);

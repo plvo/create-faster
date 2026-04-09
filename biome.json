@@ -21,7 +21,8 @@
       "!**/dist/**/*",
       "!**/out/**/*",
       "!**/generated/**/*",
-      "!**/.turbo/**/*"
+      "!**/.turbo/**/*",
+      "!**/.worktrees/**/*"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },

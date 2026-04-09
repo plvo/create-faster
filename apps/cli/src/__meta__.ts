@@ -224,7 +224,7 @@ export const META: Meta = {
           monoScope: [{ pkg: 'auth' }, 'app'],
         },
         {
-          value: 'BETTER_AUTH_URL=http://localhost:{{appPort}}',
+          value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
         },
       ],
@@ -558,6 +558,27 @@ export const META: Meta = {
             },
           },
         },
+        portless: {
+          label: 'Portless',
+          hint: 'Named .localhost URLs for local dev',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              portless: '^0.9.0',
+            },
+          },
+          runtime: {
+            appScripts: {
+              dev: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
+              'start:portless': {
+                from: 'start',
+                wrap: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
+              },
+            },
+            resolveAppUrl: ({ projectName, appName, isTurborepo }) =>
+              `https://${isTurborepo ? appName : projectName}.localhost:1355`,
+          },
+        },
       },
     },
   },
@@ -775,7 +796,7 @@ export const META: Meta = {
           monoScope: ['app'],
         },
         {
-          value: 'NEXT_PUBLIC_SITE_URL=http://localhost:3000',
+          value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
           monoScope: ['app'],
         },
       ],
