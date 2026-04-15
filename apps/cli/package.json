@@ -64,7 +64,6 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@repo/config": "*",
-    "verdaccio": "^6.2.4"
+    "@repo/config": "*"
   }
 }
