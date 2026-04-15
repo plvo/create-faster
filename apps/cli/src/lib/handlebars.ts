@@ -43,7 +43,7 @@ export function registerHandlebarsHelpers(): void {
     return str.replace(/[-_]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''));
   });
 
-  Handlebars.registerHelper('raw', function (options: Handlebars.HelperOptions) {
+  Handlebars.registerHelper('raw', function (this: TemplateContext, options: Handlebars.HelperOptions) {
     return options.fn(this);
   });
 

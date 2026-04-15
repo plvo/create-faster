@@ -30,7 +30,7 @@ export interface PackageJsonConfig {
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
   exports?: Record<string, string>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AppUrlContext {

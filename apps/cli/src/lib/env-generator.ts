@@ -1,7 +1,7 @@
 import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { EnvScope, EnvVar } from '@/types/meta';
+import type { EnvScope, EnvVar, MetaAddon } from '@/types/meta';
 
 interface EnvFileOutput {
   destination: string;
@@ -53,7 +53,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const envs: CollectedEnv[] = [];
 
   for (const [, category] of Object.entries(META.project)) {
-    for (const [optionName, addon] of Object.entries(category.options)) {
+    for (const [optionName, addon] of Object.entries(category.options) as [string, MetaAddon][]) {
       const isSelected =
         ctx.project.database === optionName ||
         ctx.project.orm === optionName ||
