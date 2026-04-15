@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: <progress step status is always defined> */
-
 import color from 'picocolors';
 
 export type ProgressStep = {
@@ -38,12 +36,11 @@ export class Progress {
   }
 
   next() {
-    if (this.current < this.steps.length) {
-      this.steps[this.current]!.status = 'done';
-      this.current++;
-      if (this.current < this.steps.length) {
-        this.steps[this.current]!.status = 'active';
-      }
-    }
+    const current = this.steps[this.current];
+    if (!current) return;
+    current.status = 'done';
+    this.current++;
+    const next = this.steps[this.current];
+    if (next) next.status = 'active';
   }
 }

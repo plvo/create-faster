@@ -5,12 +5,6 @@ import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, write
 import { removeFrontmatter } from './frontmatter';
 import { renderTemplate } from './handlebars';
 
-/**
- * Process a single template file
- * - Binary files without .hbs: direct copy
- * - Files with .hbs: Handlebars rendering
- * - Other files: copy as text
- */
 export async function processTemplate(
   template: TemplateFile,
   context: TemplateContext,

@@ -198,7 +198,7 @@ export const META: Meta = {
     },
     'better-auth': {
       label: 'Better Auth',
-      hint: 'The most comprehensive authentication framework for TypeScript',
+      hint: 'Authentication framework for TypeScript',
       category: 'Auth',
       support: { stacks: ['nextjs'] },
       require: { orm: ['drizzle', 'prisma'] },
