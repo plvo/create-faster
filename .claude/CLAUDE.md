@@ -282,6 +282,10 @@ only: mono | single           # Repo type filter
    - `pkg` → `packages/{META.mono.name}/`
    - `root` → project root
 
+## Agent-Generated Documentation
+
+All documentation produced by AI agents (research reports, plans, audits, cleanup assessments, etc.) MUST be written under `docs/agents/`, organized by topic (e.g., `docs/agents/cleanup/`, `docs/agents/superpowers/plans/`). Never write agent-generated docs to `docs/` root or other locations.
+
 ## Code Conventions
 
 ### Naming
