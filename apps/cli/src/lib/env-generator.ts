@@ -2,7 +2,7 @@ import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import { resolveAppPort } from '@/lib/utils';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvScope, EnvVar, MetaAddon } from '@/types/meta';
+import type { EnvScope, MetaAddon } from '@/types/meta';
 
 interface EnvFileOutput {
   destination: string;
