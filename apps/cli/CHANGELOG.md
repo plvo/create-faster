@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5](https://github.com/plvo/create-faster/compare/create-faster-v1.6.4...create-faster-v1.6.5) (2026-04-15)
+
+
+### Refactor
+
+* **cli:** codebase quality pass (type consolidation, DRY) ([#112](https://github.com/plvo/create-faster/issues/112)) ([a3fd238](https://github.com/plvo/create-faster/commit/a3fd238d39c4d808a89404c089297de7f2ac1568))
+
 ## [1.6.4](https://github.com/plvo/create-faster/compare/create-faster-v1.6.3...create-faster-v1.6.4) (2026-04-09)
 
 
