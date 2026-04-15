@@ -1,23 +1,10 @@
 import { basename, join } from 'node:path';
-import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
+import { getErrorMessage } from './error-utils';
 import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, writeFileContent } from './file-writer';
 import { removeFrontmatter } from './frontmatter';
 import { renderTemplate } from './handlebars';
 
-interface ProcessResult {
-  success: boolean;
-  destination: string;
-  error?: string;
-  skipped?: boolean;
-  reason?: string;
-}
-
-/**
- * Process a single template file
- * - Binary files without .hbs: direct copy
- * - Files with .hbs: Handlebars rendering
- * - Other files: copy as text
- */
 export async function processTemplate(
   template: TemplateFile,
   context: TemplateContext,
@@ -68,7 +55,7 @@ export async function processTemplate(
     await writeFileContent(finalDestination, content);
     return { success: true, destination: finalDestination };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = getErrorMessage(error);
     return {
       success: false,
       destination,

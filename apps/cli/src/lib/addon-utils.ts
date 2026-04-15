@@ -1,6 +1,6 @@
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import type { TemplateContext } from '@/types/ctx';
-import type { AddonRequire, AppScriptTransform, MetaAddon, StackName } from '@/types/meta';
+import type { AddonRequire, AppScriptTransform, MetaAddon, ProjectCategoryName, StackName } from '@/types/meta';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
   if (!library.support?.stacks) return true;

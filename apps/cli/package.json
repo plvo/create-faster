@@ -46,7 +46,6 @@
     "build": "bun build src/index.ts --outdir dist --target node --format esm --production --banner '#!/usr/bin/env node' && chmod +x dist/index.js",
     "dev": "NODE_ENV=development bun run src/index.ts",
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
-    "publish:test:verdaccio": "bun publish --registry http://localhost:4873",
     "publish:test:start": "bun run build && bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
     "test": "bun test",
     "test:unit": "bun test tests/unit",
@@ -64,7 +63,6 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@repo/config": "*",
-    "verdaccio": "^6.2.4"
+    "@repo/config": "*"
   }
 }

@@ -30,7 +30,7 @@ export interface PackageJsonConfig {
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
   exports?: Record<string, string>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AppUrlContext {
@@ -89,6 +89,18 @@ export interface MetaProject {
   deployment: MetaProjectCategory;
   linter: MetaProjectCategory;
   tooling: MetaProjectCategory;
+}
+
+export type ProjectCategoryName = keyof MetaProject;
+
+export interface TemplateFrontmatter {
+  path?: string;
+  mono?: {
+    scope?: MonoScope;
+    name?: string;
+    path?: string;
+  };
+  only?: 'mono' | 'single' | 'no-blueprint';
 }
 
 export interface MetaBlueprint {

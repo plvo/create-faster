@@ -1,9 +1,9 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
-import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
 import { collectEnvFiles, collectEnvGroups } from './env-generator';
-import { pathExists } from './file-writer';
+import { getErrorMessage } from './error-utils';
+import { pathExists, writeFileContent } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars';
 import { generateAllPackageJsons } from './package-json-generator';
 import { processTemplate } from './template-processor';
@@ -17,12 +17,6 @@ interface GenerationResult {
   generated: string[];
   failed: Array<{ file: string; error: string }>;
   skipped: string[];
-}
-
-interface ProcessResult {
-  success: boolean;
-  destination: string;
-  error?: string;
 }
 
 async function validateProjectDirectory(projectPath: string): Promise<void> {
@@ -64,15 +58,10 @@ export async function generateProjectFiles(
     const fullPath = join(projectPath, path);
 
     try {
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, `${JSON.stringify(content, null, 2)}\n`);
+      await writeFileContent(fullPath, `${JSON.stringify(content, null, 2)}\n`);
       allResults.push({ success: true, destination: path });
     } catch (error) {
-      allResults.push({
-        success: false,
-        destination: path,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      allResults.push({ success: false, destination: path, error: getErrorMessage(error) });
     }
   }
 
@@ -83,15 +72,10 @@ export async function generateProjectFiles(
     const fullPath = join(projectPath, destination);
 
     try {
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, content);
+      await writeFileContent(fullPath, content);
       allResults.push({ success: true, destination });
     } catch (error) {
-      allResults.push({
-        success: false,
-        destination,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      allResults.push({ success: false, destination, error: getErrorMessage(error) });
     }
   }
 

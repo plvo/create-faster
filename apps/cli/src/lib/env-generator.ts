@@ -1,7 +1,8 @@
 import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
-import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { EnvScope, EnvVar } from '@/types/meta';
+import { resolveAppPort } from '@/lib/utils';
+import type { TemplateContext } from '@/types/ctx';
+import type { EnvScope, MetaAddon } from '@/types/meta';
 
 interface EnvFileOutput {
   destination: string;
@@ -18,11 +19,6 @@ interface CollectedEnv {
   scope: EnvScope;
   source: 'project' | 'library';
   libraryName?: string;
-}
-
-function resolveAppPort(apps: AppContext[], appName: string): number {
-  const index = apps.findIndex((a) => a.appName === appName);
-  return index === -1 ? 3000 : 3000 + index;
 }
 
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
@@ -53,7 +49,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const envs: CollectedEnv[] = [];
 
   for (const [, category] of Object.entries(META.project)) {
-    for (const [optionName, addon] of Object.entries(category.options)) {
+    for (const [optionName, addon] of Object.entries(category.options) as [string, MetaAddon][]) {
       const isSelected =
         ctx.project.database === optionName ||
         ctx.project.orm === optionName ||

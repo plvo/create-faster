@@ -1,16 +1,6 @@
 import matter from 'gray-matter';
 import type { TemplateContext } from '@/types/ctx';
-import type { MonoScope } from '@/types/meta';
-
-export interface TemplateFrontmatter {
-  path?: string;
-  mono?: {
-    scope?: MonoScope;
-    name?: string;
-    path?: string;
-  };
-  only?: 'mono' | 'single' | 'no-blueprint';
-}
+import type { TemplateFrontmatter } from '@/types/meta';
 
 export interface ParsedTemplate {
   data: TemplateFrontmatter;

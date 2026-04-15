@@ -2,6 +2,7 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { spinner } from '@clack/prompts';
 import color from 'picocolors';
+import { getErrorMessage } from '@/lib/error-utils';
 import type { TemplateContext } from '@/types/ctx';
 
 const execAsync = promisify(exec);
@@ -20,7 +21,7 @@ export async function runPostGeneration(ctx: TemplateContext, projectPath: strin
       });
       s.stop(`Dependencies installed successfully!`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       s.stop(
         color.yellow(
           `⚠ Warning: Failed to install dependencies: ${errorMessage}\nYou can manually run the install command later.`,
@@ -37,7 +38,7 @@ export async function runPostGeneration(ctx: TemplateContext, projectPath: strin
       await execAsync('git init', { cwd: projectPath, timeout: 10000 });
       s.stop('Git repository initialized successfully!');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       s.stop(
         color.yellow(`⚠ Warning: Failed to initialize git: ${errorMessage}\nYou can manually run "git init" later.`),
       );

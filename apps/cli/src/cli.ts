@@ -2,13 +2,13 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils';
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { StackName } from '@/types/meta';
+import type { ProjectCategoryName, StackName } from '@/types/meta';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {

@@ -1,12 +1,10 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: <We know the project is defined> */
-
 import { Command } from 'commander';
 import color from 'picocolors';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { StackName } from '@/types/meta';
+import type { ProjectCategoryName, StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
@@ -158,20 +156,21 @@ ${color.bold('Examples:')}
     const hasProjectFlags =
       flags.database || flags.orm || flags.deployment || flags.linter || (flags.tooling && flags.tooling.length > 0);
     if (hasProjectFlags) {
-      partial.project = { tooling: [] };
-    }
+      const project: ProjectContext = { tooling: [] };
+      partial.project = project;
 
-    if (flags.database) {
-      validateOption('database', flags.database, META.project.database.options);
-      partial.project!.database = flags.database;
-    }
+      if (flags.database) {
+        validateOption('database', flags.database, META.project.database.options);
+        project.database = flags.database;
+      }
 
-    if (flags.orm) {
-      validateOption('ORM', flags.orm, META.project.orm.options);
-      partial.project!.orm = flags.orm;
-    }
+      if (flags.orm) {
+        validateOption('ORM', flags.orm, META.project.orm.options);
+        project.orm = flags.orm;
+      }
 
-    applyProjectFlags(flags, partial.project!);
+      applyProjectFlags(flags, project);
+    }
   }
 
   if (flags.git !== undefined) {
