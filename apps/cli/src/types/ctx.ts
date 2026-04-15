@@ -32,4 +32,12 @@ export interface TemplateFile {
   destination: string;
 }
 
+export interface ProcessResult {
+  success: boolean;
+  destination: string;
+  error?: string;
+  skipped?: boolean;
+  reason?: string;
+}
+
 export type EnrichedTemplateContext = TemplateContext & Partial<AppContext>;

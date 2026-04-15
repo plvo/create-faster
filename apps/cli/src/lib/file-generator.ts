@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
-import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
 import { collectEnvFiles, collectEnvGroups } from './env-generator';
 import { pathExists } from './file-writer';
 import { registerHandlebarsHelpers } from './handlebars';
@@ -17,12 +17,6 @@ interface GenerationResult {
   generated: string[];
   failed: Array<{ file: string; error: string }>;
   skipped: string[];
-}
-
-interface ProcessResult {
-  success: boolean;
-  destination: string;
-  error?: string;
 }
 
 async function validateProjectDirectory(projectPath: string): Promise<void> {

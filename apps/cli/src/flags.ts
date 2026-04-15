@@ -2,11 +2,11 @@
 
 import { Command } from 'commander';
 import color from 'picocolors';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { StackName } from '@/types/meta';
+import type { ProjectCategoryName, StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;

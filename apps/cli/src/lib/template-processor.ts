@@ -1,16 +1,8 @@
 import { basename, join } from 'node:path';
-import type { TemplateContext, TemplateFile } from '@/types/ctx';
+import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
 import { copyBinaryFile, isBinaryFile, readFileContent, transformFilename, writeFileContent } from './file-writer';
 import { removeFrontmatter } from './frontmatter';
 import { renderTemplate } from './handlebars';
-
-interface ProcessResult {
-  success: boolean;
-  destination: string;
-  error?: string;
-  skipped?: boolean;
-  reason?: string;
-}
 
 /**
  * Process a single template file

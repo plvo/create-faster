@@ -1,10 +1,10 @@
 import { isCancel, SelectPrompt } from '@clack/core';
 import { cancel, groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
-import type { MetaProjectCategory, StackName } from '@/types/meta';
+import type { MetaProjectCategory, ProjectCategoryName, StackName } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({

@@ -817,5 +817,3 @@ export const META: Meta = {
     },
   },
 } as const satisfies Meta;
-
-export type ProjectCategoryName = keyof typeof META.project;

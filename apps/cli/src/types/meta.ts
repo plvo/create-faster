@@ -91,6 +91,18 @@ export interface MetaProject {
   tooling: MetaProjectCategory;
 }
 
+export type ProjectCategoryName = keyof MetaProject;
+
+export interface TemplateFrontmatter {
+  path?: string;
+  mono?: {
+    scope?: MonoScope;
+    name?: string;
+    path?: string;
+  };
+  only?: 'mono' | 'single' | 'no-blueprint';
+}
+
 export interface MetaBlueprint {
   label: string;
   hint: string;

@@ -1,11 +1,10 @@
 import { join } from 'node:path';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { MetaAddon, MonoScope, StackName } from '@/types/meta';
+import type { MetaAddon, MonoScope, ProjectCategoryName, StackName, TemplateFrontmatter } from '@/types/meta';
 import { scanDirectory, transformFilename } from './file-writer';
-import type { TemplateFrontmatter } from './frontmatter';
 import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
 
 const VALID_STACKS = Object.keys(META.stacks);

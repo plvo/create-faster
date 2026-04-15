@@ -1,10 +1,10 @@
 import { execSync } from 'node:child_process';
-import { META, type ProjectCategoryName } from '@/__meta__';
+import { META } from '@/__meta__';
 import { applyAppScripts, findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
-import type { MetaAddon, PackageJsonConfig } from '@/types/meta';
+import type { MetaAddon, PackageJsonConfig, ProjectCategoryName } from '@/types/meta';
 
 export interface PackageJson {
   name: string;
