@@ -1,6 +1,7 @@
 import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
-import type { AppContext, TemplateContext } from '@/types/ctx';
+import { resolveAppPort } from '@/lib/utils';
+import type { TemplateContext } from '@/types/ctx';
 import type { EnvScope, EnvVar, MetaAddon } from '@/types/meta';
 
 interface EnvFileOutput {
@@ -18,11 +19,6 @@ interface CollectedEnv {
   scope: EnvScope;
   source: 'project' | 'library';
   libraryName?: string;
-}
-
-function resolveAppPort(apps: AppContext[], appName: string): number {
-  const index = apps.findIndex((a) => a.appName === appName);
-  return index === -1 ? 3000 : 3000 + index;
 }
 
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {

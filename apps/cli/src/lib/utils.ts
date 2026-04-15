@@ -1,4 +1,11 @@
+import type { AppContext } from '@/types/ctx';
+
 export const MERGE_KEYS = new Set(['dependencies', 'devDependencies', 'scripts', 'exports']);
+
+export function resolveAppPort(apps: AppContext[], appName: string): number {
+  const index = apps.findIndex((a) => a.appName === appName);
+  return index === -1 ? 3000 : 3000 + index;
+}
 
 export function spreadExtraKeys(target: Record<string, unknown>, config: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(config)) {

@@ -1,5 +1,7 @@
 import Handlebars from 'handlebars';
-import type { AppContext, EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import { getErrorMessage } from './error-utils';
+import { resolveAppPort } from './utils';
 
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -49,8 +51,7 @@ export function registerHandlebarsHelpers(): void {
 
   Handlebars.registerHelper('appPort', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
-    const index = root.apps?.findIndex((app: AppContext) => app.appName === appName) ?? -1;
-    return index === -1 ? 3000 : 3000 + index;
+    return resolveAppPort(root.apps ?? [], appName);
   });
 }
 
@@ -64,9 +65,6 @@ export function renderTemplate(templateContent: string, context: TemplateContext
 
     return template(context);
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Handlebars compilation failed: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Handlebars compilation failed: ${getErrorMessage(error)}`);
   }
 }

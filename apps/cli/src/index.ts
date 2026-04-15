@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { intro, log, outro } from '@clack/prompts';
 import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/error-utils';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
@@ -75,13 +76,13 @@ async function main() {
     displaySummaryNote(ctx);
     displayOutroCliCommand(ctx, projectPath);
   } catch (error) {
-    log.error(`An error occurred:\n${error instanceof Error ? error.message : String(error)}`);
+    log.error(`An error occurred:\n${getErrorMessage(error)}`);
     outro('👋 Bye');
     process.exit(1);
   }
 }
 
 main().catch((error) => {
-  log.error(error instanceof Error ? error.message : String(error));
+  log.error(getErrorMessage(error));
   process.exit(1);
 });

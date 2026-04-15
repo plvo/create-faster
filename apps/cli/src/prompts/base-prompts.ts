@@ -8,16 +8,19 @@ import {
   type TextOptions,
   text,
 } from '@clack/prompts';
+
+export function handlePromptCancel(): never {
+  cancel('👋 Bye');
+  process.exit(0);
+}
+
 export async function promptText<T extends string | number = string>(
   message: string,
   options?: Partial<TextOptions>,
 ): Promise<T> {
   const result = await text({ message, ...options });
 
-  if (isCancel(result)) {
-    cancel('👋 Bye');
-    process.exit(0);
-  }
+  if (isCancel(result)) handlePromptCancel();
 
   return result as T;
 }
@@ -39,10 +42,7 @@ export async function promptSelect<R extends string | undefined>(
     ...options,
   });
 
-  if (isCancel(result)) {
-    cancel('👋 Bye');
-    process.exit(0);
-  }
+  if (isCancel(result)) handlePromptCancel();
 
   return result as R;
 }
@@ -50,10 +50,7 @@ export async function promptSelect<R extends string | undefined>(
 export async function promptConfirm(message: string, options?: Partial<ConfirmOptions>): Promise<boolean> {
   const result = await confirm({ message, ...options });
 
-  if (isCancel(result)) {
-    cancel('👋 Bye');
-    process.exit(0);
-  }
+  if (isCancel(result)) handlePromptCancel();
 
   return result;
 }

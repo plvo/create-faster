@@ -2,6 +2,7 @@ import { constants, existsSync } from 'node:fs';
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname } from 'node:path';
 import { globSync } from 'fast-glob';
+import { getErrorMessage } from './error-utils';
 
 const BINARY_EXTENSIONS = new Set([
   '.png',
@@ -35,10 +36,7 @@ async function ensureDirectory(dirPath: string): Promise<void> {
   try {
     await mkdir(dirPath, { recursive: true });
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to create directory ${dirPath}: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Failed to create directory ${dirPath}: ${getErrorMessage(error)}`);
   }
 }
 
@@ -48,10 +46,7 @@ export async function writeFileContent(filePath: string, content: string): Promi
     await ensureDirectory(dir);
     await writeFile(filePath, content, 'utf-8');
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to write file ${filePath}: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Failed to write file ${filePath}: ${getErrorMessage(error)}`);
   }
 }
 
@@ -61,10 +56,7 @@ export async function copyBinaryFile(sourcePath: string, destPath: string): Prom
     await ensureDirectory(dir);
     await copyFile(sourcePath, destPath);
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to copy binary file ${sourcePath} to ${destPath}: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Failed to copy binary file ${sourcePath} to ${destPath}: ${getErrorMessage(error)}`);
   }
 }
 
@@ -72,10 +64,7 @@ export async function readFileContent(filePath: string): Promise<string> {
   try {
     return await readFile(filePath, 'utf-8');
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to read file ${filePath}: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Failed to read file ${filePath}: ${getErrorMessage(error)}`);
   }
 }
 
