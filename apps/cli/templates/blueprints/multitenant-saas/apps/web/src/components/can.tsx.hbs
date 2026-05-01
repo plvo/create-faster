@@ -1,0 +1,25 @@
+---
+path: src/components/can.tsx
+mono:
+  scope: app
+  path: src/components/can.tsx
+---
+'use client';
+
+import type { ReactNode } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+
+{{{{raw}}}}
+type CanProps = {
+  permissions: Record<string, string[]>;
+  fallback?: ReactNode;
+  loadingFallback?: ReactNode;
+  children: ReactNode;
+};
+
+export function Can({ permissions, fallback = null, loadingFallback = null, children }: CanProps) {
+  const { allowed, loading } = usePermission(permissions);
+  if (loading) return <>{loadingFallback}</>;
+  return <>{allowed ? children : fallback}</>;
+}
+{{{{/raw}}}}
