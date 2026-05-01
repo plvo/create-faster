@@ -1,0 +1,27 @@
+---
+path: src/app/(dashboard)/projects/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/projects/page.tsx
+---
+import { ProjectCreateDialog } from '@/components/projects/project-create-dialog';
+import { ProjectTable } from '@/components/projects/project-table';
+
+{{{{raw}}}}
+export default function ProjectsPage() {
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='text-2xl font-semibold'>Projects</h1>
+          <p className='text-sm text-muted-foreground'>
+            Track and manage projects in your organization.
+          </p>
+        </div>
+        <ProjectCreateDialog />
+      </div>
+      <ProjectTable />
+    </div>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,131 @@
+---
+path: src/components/projects/project-form.tsx
+mono:
+  scope: app
+  path: src/components/projects/project-form.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import { Input } from '@repo/ui/components/ui/input';
+import { Label } from '@repo/ui/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@repo/ui/components/ui/select';
+import { cn } from '@repo/ui/lib/utils';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { trpc } from '@/trpc/client';
+
+{{{{raw}}}}
+type ProjectFormValues = {
+  name: string;
+  description: string;
+  status: 'active' | 'archived';
+};
+
+type ProjectFormProps = {
+  mode: 'create' | 'edit';
+  initial?: { id: string; name: string; description: string | null; status: 'active' | 'archived' };
+  onSuccess?: () => void;
+};
+
+export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
+  const utils = trpc.useUtils();
+  const [values, setValues] = useState<ProjectFormValues>({
+    name: initial?.name ?? '',
+    description: initial?.description ?? '',
+    status: initial?.status ?? 'active',
+  });
+
+  const create = trpc.project.create.useMutation({
+    onSuccess: () => {
+      utils.project.list.invalidate();
+      toast.success('Project created');
+      onSuccess?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const update = trpc.project.update.useMutation({
+    onSuccess: () => {
+      utils.project.list.invalidate();
+      utils.project.get.invalidate();
+      toast.success('Project updated');
+      onSuccess?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (mode === 'create') {
+      create.mutate({
+        name: values.name,
+        description: values.description || null,
+        status: values.status,
+      });
+    } else if (initial) {
+      update.mutate({
+        id: initial.id,
+        name: values.name,
+        description: values.description || null,
+        status: values.status,
+      });
+    }
+  }
+
+  const pending = create.isPending || update.isPending;
+
+  return (
+    <form onSubmit={handleSubmit} className='space-y-4'>
+      <div className='space-y-2'>
+        <Label htmlFor='name'>Name</Label>
+        <Input
+          id='name'
+          value={values.name}
+          onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+          required
+          maxLength={120}
+        />
+      </div>
+      <div className='space-y-2'>
+        <Label htmlFor='description'>Description</Label>
+        <textarea
+          id='description'
+          value={values.description}
+          onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
+          maxLength={2000}
+          rows={4}
+          className={cn(
+            'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+            'ring-offset-background placeholder:text-muted-foreground',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          )}
+        />
+      </div>
+      <div className='space-y-2'>
+        <Label htmlFor='status'>Status</Label>
+        <Select
+          value={values.status}
+          onValueChange={(s) => setValues((v) => ({ ...v, status: s as 'active' | 'archived' }))}
+        >
+          <SelectTrigger id='status'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='active'>Active</SelectItem>
+            <SelectItem value='archived'>Archived</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type='submit' disabled={pending} className='w-full'>
+        {pending ? 'Saving...' : mode === 'create' ? 'Create project' : 'Save changes'}
+      </Button>
+    </form>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,37 @@
+---
+path: src/components/projects/project-create-dialog.tsx
+mono:
+  scope: app
+  path: src/components/projects/project-create-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@repo/ui/components/ui/dialog';
+import { useState } from 'react';
+import { ProjectForm } from './project-form';
+
+{{{{raw}}}}
+export function ProjectCreateDialog() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>New project</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create project</DialogTitle>
+        </DialogHeader>
+        <ProjectForm mode='create' onSuccess={() => setOpen(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}
