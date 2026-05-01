@@ -1,0 +1,49 @@
+---
+path: src/lib/constants.ts
+mono:
+  scope: app
+  path: src/lib/constants.ts
+---
+import {
+  DashboardSquare01Icon,
+  FolderLibraryIcon,
+  Settings02Icon,
+  UserGroupIcon,
+  UserIcon,
+} from '@hugeicons/core-free-icons';
+
+{{{{raw}}}}
+export type RouteProps = {
+  url: string;
+  title: string;
+  icon: typeof DashboardSquare01Icon;
+  category?: string;
+  permission?: { resource: string; action: string };
+};
+
+export const ROUTES: RouteProps[] = [
+  { url: '/', title: 'Dashboard', icon: DashboardSquare01Icon },
+  { url: '/projects', title: 'Projects', icon: FolderLibraryIcon, permission: { resource: 'project', action: 'read' } },
+  {
+    url: '/settings/general',
+    title: 'General',
+    icon: Settings02Icon,
+    category: 'Settings',
+    permission: { resource: 'organization', action: 'update' },
+  },
+  {
+    url: '/settings/members',
+    title: 'Members',
+    icon: UserGroupIcon,
+    category: 'Settings',
+    permission: { resource: 'member', action: 'invite' },
+  },
+  {
+    url: '/settings/roles',
+    title: 'Roles',
+    icon: UserIcon,
+    category: 'Settings',
+    permission: { resource: 'role', action: 'read' },
+  },
+];
+{{{{/raw}}}}

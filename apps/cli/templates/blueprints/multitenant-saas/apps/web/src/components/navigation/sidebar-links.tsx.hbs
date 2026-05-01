@@ -1,0 +1,86 @@
+---
+path: src/components/navigation/sidebar-links.tsx
+mono:
+  scope: app
+  path: src/components/navigation/sidebar-links.tsx
+---
+'use client';
+
+import { authClient } from '@repo/auth/auth-client';
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@repo/ui/components/ui/sidebar';
+import { HugeiconsIcon } from '@hugeicons/react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ROUTES, type RouteProps } from '@/lib/constants';
+
+{{{{raw}}}}
+export function SidebarLinks({ role }: { role: string }) {
+  const pathname = usePathname();
+
+  const visible = ROUTES.filter((route) => {
+    if (!route.permission) return true;
+    const result = authClient.organization.checkRolePermission({
+      role,
+      permissions: { [route.permission.resource]: [route.permission.action] },
+    });
+    return result;
+  });
+
+  const ungrouped = visible.filter((r) => !r.category);
+  const grouped = visible.reduce<Record<string, RouteProps[]>>((acc, r) => {
+    if (!r.category) return acc;
+    (acc[r.category] ??= []).push(r);
+    return acc;
+  }, {});
+
+  return (
+    <>
+      <SidebarGroup>
+        <SidebarMenu>
+          {ungrouped.map((item) => (
+            <SidebarMenuItem key={item.url}>
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title}
+                isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
+              >
+                <Link href={item.url}>
+                  <HugeiconsIcon icon={item.icon} />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroup>
+      {Object.entries(grouped).map(([category, items]) => (
+        <SidebarGroup key={category}>
+          <SidebarGroupLabel>{category}</SidebarGroupLabel>
+          <SidebarMenu>
+            {items.map((item) => (
+              <SidebarMenuItem key={item.url}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  isActive={pathname.startsWith(item.url)}
+                >
+                  <Link href={item.url}>
+                    <HugeiconsIcon icon={item.icon} />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      ))}
+    </>
+  );
+}
+{{{{/raw}}}}
