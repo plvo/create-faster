@@ -1,0 +1,41 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/permissions.ts
+---
+import { createAccessControl } from 'better-auth/plugins/access';
+
+{{{{raw}}}}
+export const statement = {
+  organization: ['update', 'delete'],
+  member: ['invite', 'update', 'remove'],
+  invitation: ['create', 'cancel'],
+  role: ['create', 'read', 'update', 'delete'],
+  project: ['create', 'read', 'update', 'delete'],
+} as const;
+
+export const ac = createAccessControl(statement);
+
+export const owner = ac.newRole({
+  organization: ['update', 'delete'],
+  member: ['invite', 'update', 'remove'],
+  invitation: ['create', 'cancel'],
+  role: ['create', 'read', 'update', 'delete'],
+  project: ['create', 'read', 'update', 'delete'],
+});
+
+export const admin = ac.newRole({
+  organization: ['update'],
+  member: ['invite', 'update', 'remove'],
+  invitation: ['create', 'cancel'],
+  role: ['create', 'read', 'update', 'delete'],
+  project: ['create', 'read', 'update', 'delete'],
+});
+
+export const member = ac.newRole({
+  project: ['read'],
+});
+
+export const ROLES = { owner, admin, member } as const;
+{{{{/raw}}}}
