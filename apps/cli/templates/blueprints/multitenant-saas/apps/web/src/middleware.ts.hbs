@@ -1,0 +1,46 @@
+---
+path: src/middleware.ts
+mono:
+  scope: app
+  path: src/middleware.ts
+---
+import { auth } from '@repo/auth/auth';
+import { headers } from 'next/headers';
+import { NextResponse, type NextRequest } from 'next/server';
+
+{{{{raw}}}}
+const PUBLIC_PATHS = ['/login', '/signup', '/accept-invitation', '/api/auth'];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+
+  const hdrs = await headers();
+  const session = await auth.api.getSession({ headers: hdrs });
+  if (!session) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith('/onboarding')) return NextResponse.next();
+
+  const orgs = await auth.api.listOrganizations({ headers: hdrs });
+  if (!orgs || orgs.length === 0) {
+    return NextResponse.redirect(new URL('/onboarding', request.url));
+  }
+
+  if (!session.session.activeOrganizationId) {
+    await auth.api.setActiveOrganization({
+      headers: hdrs,
+      body: { organizationId: orgs[0].id },
+    });
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+{{{{/raw}}}}
