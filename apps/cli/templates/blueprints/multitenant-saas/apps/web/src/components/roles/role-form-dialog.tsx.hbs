@@ -1,0 +1,97 @@
+---
+path: src/components/roles/role-form-dialog.tsx
+mono:
+  scope: app
+  path: src/components/roles/role-form-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/ui/components/ui/dialog';
+import { Input } from '@repo/ui/components/ui/input';
+import { Label } from '@repo/ui/components/ui/label';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { trpc } from '@/trpc/client';
+import { PermissionsGrid } from './permissions-grid';
+
+{{{{raw}}}}
+type RoleFormDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initial?: { roleName: string; permission: Record<string, string[]> } | null;
+};
+
+export function RoleFormDialog({ open, onOpenChange, initial }: RoleFormDialogProps) {
+  const utils = trpc.useUtils();
+  const { data: catalog } = trpc.role.catalog.useQuery();
+  const [roleName, setRoleName] = useState('');
+  const [permission, setPermission] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (open) {
+      setRoleName(initial?.roleName ?? '');
+      setPermission(initial?.permission ?? {});
+    }
+  }, [open, initial]);
+
+  const create = trpc.role.create.useMutation({
+    onSuccess: () => {
+      utils.role.list.invalidate();
+      onOpenChange(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const update = trpc.role.update.useMutation({
+    onSuccess: () => {
+      utils.role.list.invalidate();
+      onOpenChange(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function submit() {
+    if (initial) update.mutate({ roleName: initial.roleName, permission });
+    else create.mutate({ role: roleName, permission });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='max-w-2xl'>
+        <DialogHeader>
+          <DialogTitle>{initial ? 'Edit role' : 'Create role'}</DialogTitle>
+        </DialogHeader>
+        <div className='space-y-4'>
+          {!initial && (
+            <div className='space-y-2'>
+              <Label htmlFor='roleName'>Name</Label>
+              <Input id='roleName' value={roleName} onChange={(e) => setRoleName(e.target.value)} />
+            </div>
+          )}
+          {catalog && (
+            <PermissionsGrid
+              catalog={catalog as Record<string, readonly string[]>}
+              value={permission}
+              onChange={setPermission}
+            />
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={create.isPending || update.isPending}>
+            {initial ? 'Save' : 'Create'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}

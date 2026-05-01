@@ -1,0 +1,59 @@
+---
+path: src/components/roles/permissions-grid.tsx
+mono:
+  scope: app
+  path: src/components/roles/permissions-grid.tsx
+---
+'use client';
+
+import { Checkbox } from '@repo/ui/components/ui/checkbox';
+import { Label } from '@repo/ui/components/ui/label';
+
+{{{{raw}}}}
+type PermissionsGridProps = {
+  catalog: Record<string, readonly string[] | string[]>;
+  value: Record<string, string[]>;
+  onChange: (next: Record<string, string[]>) => void;
+  disabled?: boolean;
+};
+
+export function PermissionsGrid({ catalog, value, onChange, disabled }: PermissionsGridProps) {
+  function toggle(resource: string, action: string, checked: boolean) {
+    const current = value[resource] ?? [];
+    const next = checked ? [...new Set([...current, action])] : current.filter((a) => a !== action);
+    const updated = { ...value };
+    if (next.length === 0) delete updated[resource];
+    else updated[resource] = next;
+    onChange(updated);
+  }
+
+  return (
+    <div className='space-y-4'>
+      {Object.entries(catalog).map(([resource, actions]) => (
+        <div key={resource} className='rounded-lg border p-4'>
+          <div className='mb-3 font-medium capitalize'>{resource}</div>
+          <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
+            {actions.map((action) => {
+              const id = `${resource}.${action}`;
+              const checked = (value[resource] ?? []).includes(action);
+              return (
+                <div key={action} className='flex items-center gap-2'>
+                  <Checkbox
+                    id={id}
+                    checked={checked}
+                    onCheckedChange={(c) => toggle(resource, action, c === true)}
+                    disabled={disabled}
+                  />
+                  <Label htmlFor={id} className='text-sm font-normal'>
+                    {action}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+{{{{/raw}}}}
