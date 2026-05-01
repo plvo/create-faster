@@ -783,6 +783,65 @@ export const META: Meta = {
         },
       },
     },
+    'multitenant-saas': {
+      label: 'Multitenant SaaS',
+      hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
+      category: 'Business',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: [
+              'shadcn',
+              'better-auth',
+              'trpc',
+              'tanstack-query',
+              'tanstack-devtools',
+              'tanstack-form',
+              'next-themes',
+            ],
+          },
+          {
+            appName: 'batch',
+            stackName: 'node',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          '@hugeicons/react': '^1.1.6',
+          '@hugeicons/core-free-icons': '^4.1.1',
+          'react-error-boundary': '^5.0.0',
+          sonner: '^2.0.7',
+          zod: '^4.2.1',
+        },
+      },
+      rootPackageJson: {
+        dependencies: {
+          '@repo/auth': '*',
+        },
+        scripts: {
+          'db:push': 'turbo db:push',
+          'db:generate': 'turbo db:generate',
+          'db:migrate': 'turbo db:migrate',
+          'db:studio': 'turbo db:studio',
+          'db:seed': 'bun scripts/seed.ts',
+          start: 'turbo start',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          monoScope: ['app'],
+        },
+      ],
+    },
     showcase: {
       label: 'Showcase',
       hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',
