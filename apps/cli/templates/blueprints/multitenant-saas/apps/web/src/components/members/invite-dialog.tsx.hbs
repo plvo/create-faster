@@ -1,0 +1,119 @@
+---
+path: src/components/members/invite-dialog.tsx
+mono:
+  scope: app
+  path: src/components/members/invite-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@repo/ui/components/ui/dialog';
+import { Input } from '@repo/ui/components/ui/input';
+import { Label } from '@repo/ui/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@repo/ui/components/ui/select';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { trpc } from '@/trpc/client';
+import { InvitationLinkDialog } from './invitation-link-dialog';
+
+{{{{raw}}}}
+const BUILT_IN_ROLES = ['admin', 'member'];
+
+export function InviteDialog() {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('member');
+  const [linkDialog, setLinkDialog] = useState<{ open: boolean; link: string; email: string }>({
+    open: false,
+    link: '',
+    email: '',
+  });
+
+  const utils = trpc.useUtils();
+  const { data: customRoles } = trpc.role.list.useQuery();
+
+  const create = trpc.invitation.create.useMutation({
+    onSuccess: (data) => {
+      setOpen(false);
+      setEmail('');
+      setRole('member');
+      utils.invitation.list.invalidate();
+      setLinkDialog({ open: true, link: data.inviteLink, email: data.email ?? '' });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button>Invite member</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite member</DialogTitle>
+            <DialogDescription>You'll get a link to share with the invited person.</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='email'>Email</Label>
+              <Input
+                id='email'
+                type='email'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='role'>Role</Label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allRoles.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => create.mutate({ email, role })} disabled={create.isPending}>
+              {create.isPending ? 'Creating...' : 'Create invitation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <InvitationLinkDialog
+        open={linkDialog.open}
+        onOpenChange={(o) => setLinkDialog((s) => ({ ...s, open: o }))}
+        inviteLink={linkDialog.link}
+        email={linkDialog.email}
+      />
+    </>
+  );
+}
+{{{{/raw}}}}

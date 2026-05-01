@@ -1,0 +1,38 @@
+---
+path: src/app/(dashboard)/settings/members/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/settings/members/page.tsx
+---
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/ui/components/ui/tabs';
+import { InviteDialog } from '@/components/members/invite-dialog';
+import { MembersTable } from '@/components/members/members-table';
+import { PendingInvitationsTable } from '@/components/members/pending-invitations-table';
+
+{{{{raw}}}}
+export default function MembersPage() {
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='text-2xl font-semibold'>Members</h1>
+          <p className='text-sm text-muted-foreground'>Manage who can access this organization.</p>
+        </div>
+        <InviteDialog />
+      </div>
+      <Tabs defaultValue='active'>
+        <TabsList>
+          <TabsTrigger value='active'>Active</TabsTrigger>
+          <TabsTrigger value='pending'>Pending invitations</TabsTrigger>
+        </TabsList>
+        <TabsContent value='active' className='pt-4'>
+          <MembersTable />
+        </TabsContent>
+        <TabsContent value='pending' className='pt-4'>
+          <PendingInvitationsTable />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+{{{{/raw}}}}

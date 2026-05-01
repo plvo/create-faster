@@ -1,0 +1,106 @@
+---
+path: src/components/members/members-table.tsx
+mono:
+  scope: app
+  path: src/components/members/members-table.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@repo/ui/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@repo/ui/components/ui/table';
+import { toast } from 'sonner';
+import { trpc } from '@/trpc/client';
+
+{{{{raw}}}}
+const BUILT_IN_ROLES = ['owner', 'admin', 'member'];
+
+type MemberRow = {
+  id: string;
+  userId: string;
+  role: string;
+  user?: { email?: string; name?: string };
+};
+
+export function MembersTable() {
+  const utils = trpc.useUtils();
+  const { data: members, isLoading } = trpc.member.list.useQuery();
+  const { data: customRoles } = trpc.role.list.useQuery();
+
+  const updateRole = trpc.member.updateRole.useMutation({
+    onSuccess: () => utils.member.list.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+  const remove = trpc.member.remove.useMutation({
+    onSuccess: () => utils.member.list.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Email</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead className='w-[100px]' />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {(members as MemberRow[] | undefined)?.map((m) => (
+          <TableRow key={m.id}>
+            <TableCell>{m.user?.email ?? m.userId}</TableCell>
+            <TableCell>
+              <Select
+                value={m.role}
+                onValueChange={(role) => updateRole.mutate({ memberId: m.id, role })}
+                disabled={m.role === 'owner'}
+              >
+                <SelectTrigger className='w-[160px]'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allRoles.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </TableCell>
+            <TableCell>
+              {m.role !== 'owner' ? (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => {
+                    if (confirm(`Remove ${m.user?.email}?`)) remove.mutate({ memberId: m.id });
+                  }}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+{{{{/raw}}}}
