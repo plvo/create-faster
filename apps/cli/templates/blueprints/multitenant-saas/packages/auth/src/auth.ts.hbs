@@ -1,0 +1,102 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/auth.ts
+---
+import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@repo/db';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
+import { organization } from 'better-auth/plugins';
+import { ac, admin, member, owner } from './permissions';
+
+{{{{raw}}}}
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    usePlural: false,
+    schema: {
+      user: userTable,
+      account: userAccountTable,
+      session: userSessionTable,
+      verification: userVerificationTable,
+    },
+  }),
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 6,
+    revokeSessionsOnPasswordReset: true,
+  },
+  plugins: [
+    organization({
+      ac,
+      roles: { owner, admin, member },
+      dynamicAccessControl: { enabled: true },
+      requireEmailVerificationOnInvitation: false,
+      cancelPendingInvitationsOnReInvite: true,
+      async sendInvitationEmail(data) {
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${data.id}`;
+        // No-op: invitations are shared via copy-link from the UI.
+        // Logged here only for development visibility.
+        console.log(`[invite] ${data.email} (${data.role}) → ${inviteLink}`);
+      },
+    }),
+    nextCookies(),
+  ],
+  user: {
+    modelName: 'user',
+    fields: {
+      name: 'username',
+      email: 'email',
+      emailVerified: 'emailVerified',
+      image: 'avatarUrl',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  session: {
+    modelName: 'session',
+    fields: {
+      userId: 'userId',
+      token: 'token',
+      expiresAt: 'expiresAt',
+      ipAddress: 'ipAddress',
+      userAgent: 'userAgent',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+    expiresIn: 15 * DAY,
+  },
+  account: {
+    modelName: 'account',
+    fields: {
+      userId: 'userId',
+      accountId: 'accountId',
+      providerId: 'providerId',
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken',
+      accessTokenExpiresAt: 'accessTokenExpiresAt',
+      refreshTokenExpiresAt: 'refreshTokenExpiresAt',
+      scope: 'scope',
+      idToken: 'idToken',
+      password: 'password',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  verification: {
+    modelName: 'verification',
+    fields: {
+      identifier: 'identifier',
+      value: 'value',
+      expiresAt: 'expiresAt',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+});
+{{{{/raw}}}}
