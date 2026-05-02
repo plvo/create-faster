@@ -1,0 +1,69 @@
+---
+path: src/app/(auth)/accept-invitation/[id]/page.tsx
+mono:
+  scope: app
+  path: src/app/(auth)/accept-invitation/[id]/page.tsx
+---
+import { auth } from '@repo/auth/auth';
+import { Button } from '@repo/ui/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { headers } from 'next/headers';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { AcceptInvitationButton } from './accept-button';
+
+{{{{raw}}}}
+type Params = { id: string };
+
+export default async function AcceptInvitationPage({ params }: { params: Promise<Params> }) {
+  const { id } = await params;
+  const hdrs = await headers();
+  const session = await auth.api.getSession({ headers: hdrs });
+
+  const invitation = await auth.api
+    .getInvitation({ headers: hdrs, query: { id } })
+    .catch(() => null);
+
+  if (!invitation) {
+    return (
+      <div className='flex min-h-screen items-center justify-center p-6'>
+        <Card className='w-full max-w-md'>
+          <CardHeader>
+            <CardTitle>Invitation not found</CardTitle>
+            <CardDescription>This invitation may have expired or been cancelled.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!session) {
+    const search = new URLSearchParams({ redirect: `/accept-invitation/${id}` });
+    redirect(`/login?${search.toString()}`);
+  }
+
+  return (
+    <div className='flex min-h-screen items-center justify-center p-6'>
+      <Card className='w-full max-w-md'>
+        <CardHeader>
+          <CardTitle>Join {invitation.organizationName ?? 'this organization'}</CardTitle>
+          <CardDescription>
+            You've been invited to join as <strong>{invitation.role}</strong>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className='text-sm text-muted-foreground'>
+            Invited email: <span className='font-mono'>{invitation.email}</span>
+          </p>
+        </CardContent>
+        <CardFooter className='flex justify-end gap-2'>
+          <Button variant='outline' asChild>
+            <Link href='/'>Cancel</Link>
+          </Button>
+          <AcceptInvitationButton invitationId={id} />
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+{{{{/raw}}}}
