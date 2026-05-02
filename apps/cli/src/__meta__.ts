@@ -144,10 +144,12 @@ export const META: Meta = {
           cmdk: '^1.1.1',
           'lucide-react': '^0.487.0',
           react: '^19.2.3',
-          vaul: '^1.1.2',
+          tailwindcss: '^4.1.10',
+          'tw-animate-css': '^1.3.4',
           'tailwind-merge': '^3.3.1',
         },
         devDependencies: {
+          typescript: '^5',
           '@tailwindcss/postcss': '^4.1.10',
           '@types/react': '^19.2.3',
         },
@@ -210,6 +212,9 @@ export const META: Meta = {
           '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.5.3'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
+        devDependencies: {
+          typescript: '^5',
+        },
         exports: {
           './route-nextjs': './src/route-nextjs.ts',
           './auth': './src/auth.ts',
@@ -246,6 +251,7 @@ export const META: Meta = {
           zod: '^4.2.1',
         },
         devDependencies: {
+          typescript: '^5',
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
@@ -406,6 +412,7 @@ export const META: Meta = {
               'drizzle-orm': '^0.45.1',
             },
             devDependencies: {
+              typescript: '^5',
               '@types/node': '^22',
               'drizzle-kit': '^0.31.9',
             },
@@ -434,6 +441,7 @@ export const META: Meta = {
               mariadb: $when({ database: 'mysql' }, '^3.0.0'),
             },
             devDependencies: {
+              typescript: '^5',
               '@types/node': '^22',
               dotenv: '^16.0.0',
               prisma: '^7.0.0',
