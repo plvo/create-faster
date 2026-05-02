@@ -1,0 +1,51 @@
+---
+path: src/app/(dashboard)/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/page.tsx
+---
+'use client';
+
+import { useActiveOrganization } from '@repo/auth/auth-client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { trpc } from '@/trpc/client';
+
+{{{{raw}}}}
+export default function DashboardPage() {
+  const { data: active } = useActiveOrganization();
+  const { data: projects } = trpc.project.list.useQuery();
+  const { data: members } = trpc.member.list.useQuery();
+
+  return (
+    <div className='space-y-6'>
+      <div>
+        <h1 className='text-2xl font-semibold'>Welcome to {active?.name ?? 'your dashboard'}</h1>
+        <p className='text-sm text-muted-foreground'>Here's what's happening in your organization.</p>
+      </div>
+      <div className='grid gap-4 md:grid-cols-3'>
+        <Card>
+          <CardHeader className='pb-2'>
+            <CardDescription>Projects</CardDescription>
+            <CardTitle className='text-3xl'>{projects?.length ?? 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className='pb-2'>
+            <CardDescription>Members</CardDescription>
+            <CardTitle className='text-3xl'>{members?.length ?? 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className='pb-2'>
+            <CardDescription>Plan</CardDescription>
+            <CardTitle className='text-3xl'>Free</CardTitle>
+          </CardHeader>
+          <CardContent className='text-xs text-muted-foreground'>
+            Wire up billing in your fork.
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}
