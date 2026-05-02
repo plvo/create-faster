@@ -26,14 +26,17 @@ import {
   SelectValue,
 } from '@repo/ui/components/ui/select';
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 import { InvitationLinkDialog } from './invitation-link-dialog';
 
 {{{{raw}}}}
 const BUILT_IN_ROLES = ['admin', 'member'];
 
 export function InviteDialog() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('member');
@@ -43,19 +46,20 @@ export function InviteDialog() {
     email: '',
   });
 
-  const utils = trpc.useUtils();
-  const { data: customRoles } = trpc.role.list.useQuery();
+  const { data: customRoles } = useQuery(trpc.role.list.queryOptions());
 
-  const create = trpc.invitation.create.useMutation({
-    onSuccess: (data) => {
-      setOpen(false);
-      setEmail('');
-      setRole('member');
-      utils.invitation.list.invalidate();
-      setLinkDialog({ open: true, link: data.inviteLink, email: data.email ?? '' });
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const create = useMutation(
+    trpc.invitation.create.mutationOptions({
+      onSuccess: (data) => {
+        setOpen(false);
+        setEmail('');
+        setRole('member');
+        queryClient.invalidateQueries(trpc.invitation.list.queryFilter());
+        setLinkDialog({ open: true, link: (data as { inviteLink: string; email?: string }).inviteLink, email: (data as { email?: string }).email ?? '' });
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
 
   const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
 

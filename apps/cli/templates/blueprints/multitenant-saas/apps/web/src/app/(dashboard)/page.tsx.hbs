@@ -7,14 +7,16 @@ mono:
 'use client';
 
 import { useActiveOrganization } from '@repo/auth/auth-client';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 export default function DashboardPage() {
+  const trpc = useTRPC();
   const { data: active } = useActiveOrganization();
-  const { data: projects } = trpc.project.list.useQuery();
-  const { data: members } = trpc.member.list.useQuery();
+  const { data: projects } = useQuery(trpc.project.list.queryOptions());
+  const { data: members } = useQuery(trpc.member.list.queryOptions());
 
   return (
     <div className='space-y-6'>

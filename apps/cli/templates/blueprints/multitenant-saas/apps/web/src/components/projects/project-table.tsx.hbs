@@ -15,12 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/ui/components/ui/table';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 export function ProjectTable() {
-  const { data: projects, isLoading } = trpc.project.list.useQuery();
+  const trpc = useTRPC();
+  const { data: projects, isLoading } = useQuery(trpc.project.list.queryOptions());
 
   if (isLoading) return <div>Loading...</div>;
   const list = projects ?? [];

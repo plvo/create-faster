@@ -18,8 +18,9 @@ import {
 } from '@repo/ui/components/ui/select';
 import { cn } from '@repo/ui/lib/utils';
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 type ProjectFormValues = {
@@ -35,30 +36,35 @@ type ProjectFormProps = {
 };
 
 export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
-  const utils = trpc.useUtils();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [values, setValues] = useState<ProjectFormValues>({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
     status: initial?.status ?? 'active',
   });
 
-  const create = trpc.project.create.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      toast.success('Project created');
-      onSuccess?.();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-  const update = trpc.project.update.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      utils.project.get.invalidate();
-      toast.success('Project updated');
-      onSuccess?.();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const create = useMutation(
+    trpc.project.create.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.project.list.queryFilter());
+        toast.success('Project created');
+        onSuccess?.();
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
+  const update = useMutation(
+    trpc.project.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.project.list.queryFilter());
+        queryClient.invalidateQueries(trpc.project.get.queryFilter());
+        toast.success('Project updated');
+        onSuccess?.();
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

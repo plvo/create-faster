@@ -1,0 +1,40 @@
+---
+path: src/trpc/routers/user.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/user.ts
+---
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { router } from '../trpc';
+import { protectedProcedure } from '../trpc';
+{{else}}
+import { router, protectedProcedure } from '@/trpc/init';
+{{/if}}
+
+{{{{raw}}}}
+export const userRouter = router({
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const { user, session } = ctx.session;
+
+    let role: string | null = null;
+    if (session.activeOrganizationId) {
+      const members = await auth.api.listMembers({
+        headers: ctx.headers,
+        query: { organizationId: session.activeOrganizationId },
+      });
+      const me = members?.members?.find((m: { userId: string }) => m.userId === user.id);
+      role = me?.role ?? null;
+    }
+
+    return {
+      id: user.id,
+      username: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      role,
+    };
+  }),
+});
+{{{{/raw}}}}

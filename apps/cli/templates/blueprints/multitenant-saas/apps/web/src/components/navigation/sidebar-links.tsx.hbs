@@ -20,13 +20,15 @@ import { usePathname } from 'next/navigation';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
 {{{{raw}}}}
+type OrgRole = 'owner' | 'admin' | 'member';
+
 export function SidebarLinks({ role }: { role: string }) {
   const pathname = usePathname();
 
   const visible = ROUTES.filter((route) => {
     if (!route.permission) return true;
     const result = authClient.organization.checkRolePermission({
-      role,
+      role: role as OrgRole,
       permissions: { [route.permission.resource]: [route.permission.action] },
     });
     return result;

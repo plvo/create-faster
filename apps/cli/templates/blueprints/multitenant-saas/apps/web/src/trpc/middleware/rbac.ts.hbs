@@ -40,10 +40,10 @@ export const permissionProcedure = (resource: string, action: string) =>
     return next();
   });
 
-export async function assertInScope<T extends { organizationId: string }>(
+export function assertInScope<T extends { organizationId: string }>(
   row: T | undefined | null,
   ctx: { orgId: string },
-): Promise<asserts row is T> {
+): asserts row is T {
   if (!row || row.organizationId !== ctx.orgId) {
     throw new TRPCError({ code: 'NOT_FOUND' });
   }

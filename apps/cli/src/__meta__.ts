@@ -216,6 +216,7 @@ export const META: Meta = {
           './auth-client': './src/auth-client.ts',
           './types': './src/types.ts',
           './password': './src/password.ts',
+          './permissions': './src/permissions.ts',
         },
       },
       envs: [
@@ -239,9 +240,13 @@ export const META: Meta = {
         dependencies: {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
+          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.1'),
           '@trpc/server': '^11.8.1',
           superjson: '^2.2.6',
           zod: '^4.2.1',
+        },
+        devDependencies: {
+          '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
           '.': './src/index.ts',
@@ -413,6 +418,7 @@ export const META: Meta = {
             },
             exports: {
               '.': './src/index.ts',
+              './schema': './src/schema.ts',
             },
           },
         },

@@ -13,14 +13,14 @@ import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import { useTRPC } from '@/trpc/providers';
 
-function getDeviceIcon(userAgent: string | null) {
+function getDeviceIcon(userAgent: string | null | undefined) {
   if (!userAgent) return InternetIcon;
   const ua = userAgent.toLowerCase();
   if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) return SmartPhone01Icon;
   return ComputerIcon;
 }
 
-function parseUserAgent(userAgent: string | null): string {
+function parseUserAgent(userAgent: string | null | undefined): string {
   if (!userAgent) return 'Unknown device';
   if (userAgent.includes('Chrome')) return 'Chrome';
   if (userAgent.includes('Firefox')) return 'Firefox';

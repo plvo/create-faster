@@ -17,8 +17,9 @@ import {
   TableRow,
 } from '@repo/ui/components/ui/table';
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 import { RoleFormDialog } from './role-form-dialog';
 
 {{{{raw}}}}
@@ -29,15 +30,18 @@ type Initial = { roleName: string; permission: Record<string, string[]> } | null
 type CustomRole = { roleName: string; permission: Record<string, string[]> };
 
 export function RolesTable() {
-  const utils = trpc.useUtils();
-  const { data: roles, isLoading } = trpc.role.list.useQuery();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: roles, isLoading } = useQuery(trpc.role.list.queryOptions());
   const [open, setOpen] = useState(false);
   const [initial, setInitial] = useState<Initial>(null);
 
-  const remove = trpc.role.delete.useMutation({
-    onSuccess: () => utils.role.list.invalidate(),
-    onError: (err) => toast.error(err.message),
-  });
+  const remove = useMutation(
+    trpc.role.delete.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries(trpc.role.list.queryFilter()),
+      onError: (err) => toast.error(err.message),
+    }),
+  );
 
   if (isLoading) return <div>Loading...</div>;
 

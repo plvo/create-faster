@@ -10,13 +10,15 @@ import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { useState } from 'react';
-import { trpc } from '@/trpc/client';
+import { useQuery } from '@tanstack/react-query';
+import { useTRPC } from '@/trpc/providers';
 import { ProjectDeleteDialog } from '@/components/projects/project-delete-dialog';
 import { ProjectEditDialog } from '@/components/projects/project-edit-dialog';
 
 {{{{raw}}}}
 export function ProjectDetailClient({ id }: { id: string }) {
-  const { data: project, isLoading } = trpc.project.get.useQuery({ id });
+  const trpc = useTRPC();
+  const { data: project, isLoading } = useQuery(trpc.project.get.queryOptions({ id }));
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 

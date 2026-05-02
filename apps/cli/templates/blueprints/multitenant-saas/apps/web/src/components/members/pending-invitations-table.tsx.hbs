@@ -15,8 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/ui/components/ui/table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 type Invitation = {
@@ -32,12 +33,15 @@ function buildLink(id: string): string {
 }
 
 export function PendingInvitationsTable() {
-  const utils = trpc.useUtils();
-  const { data: invitations, isLoading } = trpc.invitation.list.useQuery();
-  const cancel = trpc.invitation.cancel.useMutation({
-    onSuccess: () => utils.invitation.list.invalidate(),
-    onError: (err) => toast.error(err.message),
-  });
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: invitations, isLoading } = useQuery(trpc.invitation.list.queryOptions());
+  const cancel = useMutation(
+    trpc.invitation.cancel.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries(trpc.invitation.list.queryFilter()),
+      onError: (err) => toast.error(err.message),
+    }),
+  );
 
   if (isLoading) return <div>Loading...</div>;
   const pending = ((invitations as Invitation[] | undefined) ?? []).filter((i) => i.status === 'pending');

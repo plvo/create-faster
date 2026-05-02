@@ -16,10 +16,11 @@ import {
   DialogTitle,
 } from '@repo/ui/components/ui/dialog';
 import { Input } from '@repo/ui/components/ui/input';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { trpc } from '@/trpc/client';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 type Props = {
@@ -30,18 +31,21 @@ type Props = {
 };
 
 export function ProjectDeleteDialog({ open, onOpenChange, project, redirectAfter }: Props) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const router = useRouter();
-  const utils = trpc.useUtils();
   const [confirmInput, setConfirmInput] = useState('');
-  const remove = trpc.project.delete.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      toast.success('Project deleted');
-      onOpenChange(false);
-      if (redirectAfter) router.push('/projects');
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const remove = useMutation(
+    trpc.project.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.project.list.queryFilter());
+        toast.success('Project deleted');
+        onOpenChange(false);
+        if (redirectAfter) router.push('/projects');
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
