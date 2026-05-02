@@ -28,10 +28,10 @@ export const invitationRouter = router({
   create: permissionProcedure('invitation', 'create')
     .input(z.object({ email: z.string().email(), role: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      type OrgRole = 'member' | 'owner' | 'admin';
+      // @ts-expect-error -- better-auth types restrict to built-in roles, but dynamic AC supports custom role strings at runtime
       const result = await auth.api.createInvitation({
         headers: ctx.headers,
-        body: { email: input.email, role: input.role as OrgRole, organizationId: ctx.orgId },
+        body: { email: input.email, role: input.role, organizationId: ctx.orgId },
       });
       const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${result.id}`;
       return { ...result, inviteLink };

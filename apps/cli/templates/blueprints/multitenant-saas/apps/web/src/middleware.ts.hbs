@@ -5,7 +5,6 @@ mono:
   path: src/middleware.ts
 ---
 import { auth } from '@repo/auth/auth';
-import { headers } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 
 {{{{raw}}}}
@@ -15,8 +14,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
-  const hdrs = await headers();
-  const session = await auth.api.getSession({ headers: hdrs });
+  const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
@@ -25,16 +23,9 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/onboarding')) return NextResponse.next();
 
-  const orgs = await auth.api.listOrganizations({ headers: hdrs });
+  const orgs = await auth.api.listOrganizations({ headers: request.headers });
   if (!orgs || orgs.length === 0) {
     return NextResponse.redirect(new URL('/onboarding', request.url));
-  }
-
-  if (!session.session.activeOrganizationId) {
-    await auth.api.setActiveOrganization({
-      headers: hdrs,
-      body: { organizationId: orgs[0].id },
-    });
   }
 
   return NextResponse.next();

@@ -9,12 +9,12 @@ mono:
 import { db } from '@repo/db';
 import { project } from '@repo/db/schema';
 import { router } from '../trpc';
-import { assertInScope, orgProcedure, permissionProcedure } from '../middleware/rbac';
+import { assertInScope, permissionProcedure } from '../middleware/rbac';
 {{else}}
 import { db } from '@/lib/db';
 import { project } from '@/lib/db/schema';
 import { router } from '@/trpc/init';
-import { assertInScope, orgProcedure, permissionProcedure } from '@/trpc/middleware/rbac';
+import { assertInScope, permissionProcedure } from '@/trpc/middleware/rbac';
 {{/if}}
 import { TRPCError } from '@trpc/server';
 import { and, desc, eq } from 'drizzle-orm';
@@ -28,11 +28,11 @@ const projectInput = z.object({
 });
 
 export const projectRouter = router({
-  list: orgProcedure.query(async ({ ctx }) => {
+  list: permissionProcedure('project', 'read').query(async ({ ctx }) => {
     return db.select().from(project).where(eq(project.organizationId, ctx.orgId)).orderBy(desc(project.createdAt));
   }),
 
-  get: orgProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+  get: permissionProcedure('project', 'read').input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     const [row] = await db.select().from(project).where(eq(project.id, input.id));
     await assertInScope(row, ctx);
     return row;

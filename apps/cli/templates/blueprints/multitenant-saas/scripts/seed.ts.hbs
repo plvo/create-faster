@@ -35,11 +35,21 @@ async function main() {
     throw new Error('Failed to create organization');
   }
 
-  console.log('Inviting member...');
+  console.log('Inviting and onboarding member...');
 
-  await auth.api.createInvitation({
+  const invite = await auth.api.createInvitation({
     headers: ownerHeaders,
-    body: { email: 'member@example.com', role: 'admin', organizationId: org.id },
+    body: { email: 'member@example.com', role: 'member', organizationId: org.id },
+  });
+
+  const memberSession = await auth.api.signInEmail({
+    body: { email: 'member@example.com', password: 'member-password' },
+  });
+  const memberHeaders = new Headers({ Authorization: `Bearer ${memberSession.token}` });
+
+  await auth.api.acceptInvitation({
+    headers: memberHeaders,
+    body: { invitationId: invite.id },
   });
 
   console.log('Creating projects...');
@@ -63,7 +73,7 @@ async function main() {
 
   console.log('Done.');
   console.log('Login as: owner@example.com / owner-password');
-  console.log('Or invite-flow: check the latest pending invitation in the database for the member account');
+  console.log('Or as: member@example.com / member-password');
 }
 
 main().catch((err) => {

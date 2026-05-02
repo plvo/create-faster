@@ -70,10 +70,10 @@ src/
 │   ├── profile/                                      # Account form, security form, session list, preferences, tab nav
 │   ├── projects/                                     # Project table, create/edit/delete dialogs, project form
 │   ├── roles/                                        # Roles table, permissions grid, role form dialog
-│   ├── can.tsx                                       # Permission gate component (<Can action="..." resource="...">)
+│   ├── can.tsx                                       # Permission gate component (<Can permissions={{ resource: ['action'] }}>)
 │   └── query-boundary.tsx                            # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── hooks/
-│   └── use-permission.ts                             # usePermission(action, resource) hook
+│   └── use-permission.ts                             # usePermission({ resource: ['action'] }) → { allowed, loading }
 ├── lib/
 │   └── constants.ts                                  # Route definitions + navigation config
 ├── trpc/
@@ -107,9 +107,9 @@ The permission system is defined in `packages/auth/src/permissions.ts` using Bet
 | Resource | Actions |
 |----------|---------|
 | `organization` | `update`, `delete` |
-| `member` | `create`, `update`, `delete` |
-| `invitation` | `create`, `delete` |
-| `role` | `create`, `update`, `delete` |
+| `member` | `invite`, `update`, `remove` |
+| `invitation` | `create`, `cancel` |
+| `role` | `create`, `read`, `update`, `delete` |
 | `project` | `create`, `read`, `update`, `delete` |
 
 **Built-in roles** (immutable defaults):
@@ -125,9 +125,13 @@ Admins can create additional roles with custom permission combinations via the R
 The `<Can>` component and `usePermission` hook provide declarative permission checks in the UI:
 
 ```tsx
-<Can action="create" resource="project">
+<Can permissions={{ project: ['create'] }}>
   <CreateProjectButton />
 </Can>
+```
+
+```ts
+const { allowed, loading } = usePermission({ project: ['create'] });
 ```
 
 ### Link-based invitations
@@ -164,8 +168,8 @@ Reusable component wrapping `Suspense` + `ErrorBoundary` + `QueryErrorResetBound
 ### Database seed
 
 Creates one organization and two users via Better Auth's API:
-- `owner@example.com` / `password` (role: owner)
-- `member@example.com` / `password` (role: member)
+- `owner@example.com` / `owner-password` (role: owner)
+- `member@example.com` / `member-password` (role: member, invitation accepted)
 
 > **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
 
@@ -229,4 +233,4 @@ bun run db:seed
 bun run dev
 ```
 
-Login with `owner@example.com` / `password` to explore the full feature set, or `member@example.com` / `password` for a restricted view.
+Login with `owner@example.com` / `owner-password` to explore the full feature set, or `member@example.com` / `member-password` for a restricted view.

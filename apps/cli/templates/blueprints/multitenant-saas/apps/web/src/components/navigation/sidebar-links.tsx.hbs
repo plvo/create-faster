@@ -17,22 +17,37 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
 {{{{raw}}}}
-type OrgRole = 'owner' | 'admin' | 'member';
-
-export function SidebarLinks({ role }: { role: string }) {
+export function SidebarLinks({ role: _role }: { role: string }) {
   const pathname = usePathname();
+  const [visibleUrls, setVisibleUrls] = useState<Set<string>>(new Set());
 
-  const visible = ROUTES.filter((route) => {
-    if (!route.permission) return true;
-    const result = authClient.organization.checkRolePermission({
-      role: role as OrgRole,
-      permissions: { [route.permission.resource]: [route.permission.action] },
-    });
-    return result;
-  });
+  useEffect(() => {
+    let cancelled = false;
+    async function resolve() {
+      const checks = await Promise.all(
+        ROUTES.map(async (route) => {
+          if (!route.permission) return route.url;
+          const result = await authClient.organization.hasPermission({
+            permissions: { [route.permission.resource]: [route.permission.action] },
+          });
+          return result.data?.success ? route.url : null;
+        }),
+      );
+      if (!cancelled) {
+        setVisibleUrls(new Set(checks.filter((u): u is string => u !== null)));
+      }
+    }
+    resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visible = ROUTES.filter((r) => !r.permission || visibleUrls.has(r.url));
 
   const ungrouped = visible.filter((r) => !r.category);
   const grouped = visible.reduce<Record<string, RouteProps[]>>((acc, r) => {
