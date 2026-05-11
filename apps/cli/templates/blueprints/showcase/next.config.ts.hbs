@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
   {{/if}}
   reactStrictMode: true,
 
+  {{#if (has "tooling" "portless")}}
+  env: {
+    NEXT_PUBLIC_APP_URL: process.env.PORTLESS_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+  },
+
+  {{/if}}
   async rewrites() {
     return [
       {

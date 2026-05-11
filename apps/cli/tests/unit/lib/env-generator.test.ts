@@ -115,6 +115,17 @@ describe('collectEnvFiles', () => {
     expect(files[0].content).toContain('BETTER_AUTH_URL=https://my-project.localhost:1355');
   });
 
+  test('does not pollute .env.example with NEXT_PUBLIC_APP_URL when portless is selected', () => {
+    const ctx = makeContext({
+      project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: ['portless'] },
+    });
+    const files = collectEnvFiles(ctx);
+
+    for (const file of files) {
+      expect(file.content).not.toContain('NEXT_PUBLIC_APP_URL');
+    }
+  });
+
   test('dedupes env vars by key within same destination', () => {
     const ctx = makeContext();
     const files = collectEnvFiles(ctx);
