@@ -1,8 +1,8 @@
 ---
-path: src/middleware.ts
+path: src/proxy.ts
 mono:
   scope: app
-  path: src/middleware.ts
+  path: src/proxy.ts
 ---
 import { auth } from '@repo/auth/auth';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 {{{{raw}}}}
 const PUBLIC_PATHS = ['/login', '/signup', '/accept-invitation', '/api/auth'];
 
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 

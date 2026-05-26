@@ -41,6 +41,7 @@ export const userSessionTable = pgTable('user_sessions', {
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: varchar('ip_address', { length: 255 }),
   userAgent: varchar('user_agent', { length: 255 }),
+  activeOrganizationId: varchar('active_organization_id', { length: 36 }),
   ...timeColumns,
 });
 
@@ -84,6 +85,89 @@ export const userVerificationTable = pgTable('user_verifications', {
   expiresAt: timestamp('expires_at').notNull(),
   ...timeColumns,
 });
+
+// https://www.better-auth.com/docs/plugins/organization#schema
+export const organizationTable = pgTable('organizations', {
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  logo: text('logo'),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const organizationTableRelations = relations(organizationTable, ({ many }) => ({
+  members: many(memberTable),
+  invitations: many(invitationTable),
+  roles: many(organizationRoleTable),
+}));
+
+export const memberTable = pgTable('members', {
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  organizationId: varchar('organization_id', { length: 36 })
+    .notNull()
+    .references(() => organizationTable.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 255 }).notNull().default('member'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const memberTableRelations = relations(memberTable, ({ one }) => ({
+  organization: one(organizationTable, {
+    fields: [memberTable.organizationId],
+    references: [organizationTable.id],
+  }),
+  user: one(userTable, {
+    fields: [memberTable.userId],
+    references: [userTable.id],
+  }),
+}));
+
+export const invitationTable = pgTable('invitations', {
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  organizationId: varchar('organization_id', { length: 36 })
+    .notNull()
+    .references(() => organizationTable.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  inviterId: varchar('inviter_id', { length: 36 })
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 255 }),
+  status: varchar('status', { length: 255 }).notNull().default('pending'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const invitationTableRelations = relations(invitationTable, ({ one }) => ({
+  organization: one(organizationTable, {
+    fields: [invitationTable.organizationId],
+    references: [organizationTable.id],
+  }),
+  inviter: one(userTable, {
+    fields: [invitationTable.inviterId],
+    references: [userTable.id],
+  }),
+}));
+
+export const organizationRoleTable = pgTable('organization_roles', {
+  id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  organizationId: varchar('organization_id', { length: 36 })
+    .notNull()
+    .references(() => organizationTable.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 255 }).notNull(),
+  permission: text('permission').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
+});
+
+export const organizationRoleTableRelations = relations(organizationRoleTable, ({ one }) => ({
+  organization: one(organizationTable, {
+    fields: [organizationRoleTable.organizationId],
+    references: [organizationTable.id],
+  }),
+}));
 
 // --- Application tables ---
 

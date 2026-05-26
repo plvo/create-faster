@@ -840,6 +840,7 @@ export const META: Meta = {
       rootPackageJson: {
         dependencies: {
           '@repo/auth': '*',
+          '@repo/db': '*',
         },
         scripts: {
           'db:push': 'turbo db:push',

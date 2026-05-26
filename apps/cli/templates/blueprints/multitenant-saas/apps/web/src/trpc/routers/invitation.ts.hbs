@@ -28,7 +28,6 @@ export const invitationRouter = router({
   create: permissionProcedure('invitation', 'create')
     .input(z.object({ email: z.string().email(), role: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // @ts-expect-error -- better-auth types restrict to built-in roles, but dynamic AC supports custom role strings at runtime
       const result = await auth.api.createInvitation({
         headers: ctx.headers,
         body: { email: input.email, role: input.role, organizationId: ctx.orgId },

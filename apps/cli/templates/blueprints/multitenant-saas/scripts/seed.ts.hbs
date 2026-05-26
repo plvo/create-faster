@@ -6,7 +6,7 @@ mono:
 ---
 import { auth } from '@repo/auth/auth';
 import { db } from '@repo/db';
-import { project } from '@repo/db/schema';
+import { memberTable, organizationTable, project } from '@repo/db/schema';
 
 {{{{raw}}}}
 async function main() {
@@ -15,42 +15,21 @@ async function main() {
   const owner = await auth.api.signUpEmail({
     body: { email: 'owner@example.com', password: 'owner-password', name: 'Owner Demo' },
   });
-  await auth.api.signUpEmail({
+  const member = await auth.api.signUpEmail({
     body: { email: 'member@example.com', password: 'member-password', name: 'Member Demo' },
   });
 
   console.log('Creating organization...');
 
-  const ownerSession = await auth.api.signInEmail({
-    body: { email: 'owner@example.com', password: 'owner-password' },
-  });
-  const ownerHeaders = new Headers({ Authorization: `Bearer ${ownerSession.token}` });
+  const [org] = await db
+    .insert(organizationTable)
+    .values({ name: 'Acme Inc.', slug: 'acme' })
+    .returning();
 
-  const org = await auth.api.createOrganization({
-    headers: ownerHeaders,
-    body: { name: 'Acme Inc.', slug: 'acme' },
-  });
-
-  if (!org) {
-    throw new Error('Failed to create organization');
-  }
-
-  console.log('Inviting and onboarding member...');
-
-  const invite = await auth.api.createInvitation({
-    headers: ownerHeaders,
-    body: { email: 'member@example.com', role: 'member', organizationId: org.id },
-  });
-
-  const memberSession = await auth.api.signInEmail({
-    body: { email: 'member@example.com', password: 'member-password' },
-  });
-  const memberHeaders = new Headers({ Authorization: `Bearer ${memberSession.token}` });
-
-  await auth.api.acceptInvitation({
-    headers: memberHeaders,
-    body: { invitationId: invite.id },
-  });
+  await db.insert(memberTable).values([
+    { organizationId: org.id, userId: owner.user.id, role: 'owner' },
+    { organizationId: org.id, userId: member.user.id, role: 'member' },
+  ]);
 
   console.log('Creating projects...');
 
