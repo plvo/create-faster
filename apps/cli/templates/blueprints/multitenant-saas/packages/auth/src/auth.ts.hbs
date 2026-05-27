@@ -44,6 +44,11 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 8,
     revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      // No-op: reset links are surfaced via console in development.
+      // Wire an email provider here for production.
+      console.log(`[reset-password] ${user.email} → ${url}`);
+    },
   },
   plugins: [
     organization({

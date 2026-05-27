@@ -8,7 +8,7 @@ import { auth } from '@repo/auth/auth';
 import { NextResponse, type NextRequest } from 'next/server';
 
 {{{{raw}}}}
-const PUBLIC_PATHS = ['/login', '/signup', '/accept-invitation', '/api/auth'];
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/accept-invitation', '/api/auth'];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

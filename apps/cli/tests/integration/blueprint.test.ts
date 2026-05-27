@@ -244,7 +244,17 @@ describe('Blueprint generation - multitenant-saas', () => {
 
     // Onboarding
     expect(await fileExists(join(projectPath, 'apps/web/src/app/(onboarding)/onboarding/page.tsx'))).toBe(true);
-    expect(await fileExists(join(projectPath, 'apps/web/src/middleware.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/proxy.ts'))).toBe(true);
+
+    // Password reset flow
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(auth)/forgot-password/page.tsx'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx')),
+    ).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(auth)/reset-password/page.tsx'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/reset-password/reset-password-form.tsx')),
+    ).toBe(true);
 
     // Accept invitation page
     expect(
@@ -289,6 +299,26 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(result.exitCode).toBe(0);
     const envContent = await readTextFile(join(tempDir, 'test-mt-env/apps/web/.env.example'));
     expect(envContent).toContain('NEXT_PUBLIC_APP_URL');
+  });
+
+  test('password reset is wired into auth config and route protection', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    const authContent = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
+    expect(authContent).toContain('sendResetPassword');
+
+    const proxyContent = await readTextFile(join(projectPath, 'apps/web/src/proxy.ts'));
+    expect(proxyContent).toContain('/forgot-password');
+    expect(proxyContent).toContain('/reset-password');
+  });
+
+  test('project table declares foreign keys for tenant integrity', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+    const schemaContent = await readTextFile(join(projectPath, 'packages/db/src/schema.ts'));
+
+    const appSection = schemaContent.slice(schemaContent.indexOf('Application tables'));
+    expect(appSection).toContain('references(() => organizationTable.id');
+    expect(appSection).toContain('references(() => userTable.id');
   });
 
   test('output shows --blueprint multitenant-saas in recreate command', async () => {

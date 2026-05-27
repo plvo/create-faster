@@ -64,6 +64,11 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             </Button>
           </form>
           <p className='mt-4 text-center text-sm text-muted-foreground'>
+            <Link href='/forgot-password' className='underline'>
+              Forgot your password?
+            </Link>
+          </p>
+          <p className='mt-2 text-center text-sm text-muted-foreground'>
             Don't have an account?{' '}
             <Link href={`/signup?redirect=${encodeURIComponent(redirectTo)}`} className='underline'>
               Sign up

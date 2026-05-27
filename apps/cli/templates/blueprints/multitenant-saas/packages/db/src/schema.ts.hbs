@@ -172,11 +172,15 @@ export const organizationRoleTableRelations = relations(organizationRoleTable, (
 // --- Application tables ---
 
 export const project = pgTable('project', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  organizationId: text('organization_id').notNull(),
-  createdById: text('created_by_id').notNull(),
+  id: varchar('id', { length: 36 })
+    .$defaultFn(() => crypto.randomUUID())
+    .primaryKey(),
+  organizationId: varchar('organization_id', { length: 36 })
+    .notNull()
+    .references(() => organizationTable.id, { onDelete: 'cascade' }),
+  createdById: varchar('created_by_id', { length: 36 }).references(() => userTable.id, {
+    onDelete: 'set null',
+  }),
   name: text('name').notNull(),
   description: text('description'),
   status: text('status', { enum: ['active', 'archived'] })
