@@ -9,32 +9,32 @@ mono:
 import { authClient } from '@repo/auth/auth-client';
 import { Button } from '@repo/ui/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useTransition } from 'react';
 import { toast } from 'sonner';
 
 {{{{raw}}}}
 export function AcceptInvitationButton({ invitationId }: { invitationId: string }) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  async function accept() {
-    setPending(true);
-    const result = await authClient.organization.acceptInvitation({ invitationId });
-    setPending(false);
-    if (result.error) {
-      toast.error(result.error.message ?? 'Failed to accept');
-      return;
-    }
-    if (result.data) {
-      const orgId =
-        (result.data as { invitation?: { organizationId?: string }; organizationId?: string }).invitation
-          ?.organizationId ??
-        (result.data as { organizationId?: string }).organizationId;
-      if (orgId) {
-        await authClient.organization.setActive({ organizationId: orgId });
+  function accept() {
+    startTransition(async () => {
+      const result = await authClient.organization.acceptInvitation({ invitationId });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to accept');
+        return;
       }
-      router.push('/');
-    }
+      if (result.data) {
+        const orgId =
+          (result.data as { invitation?: { organizationId?: string }; organizationId?: string }).invitation
+            ?.organizationId ??
+          (result.data as { organizationId?: string }).organizationId;
+        if (orgId) {
+          await authClient.organization.setActive({ organizationId: orgId });
+        }
+        router.push('/');
+      }
+    });
   }
 
   return (
