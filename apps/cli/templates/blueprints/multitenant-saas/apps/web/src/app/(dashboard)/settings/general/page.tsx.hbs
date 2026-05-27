@@ -12,36 +12,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo
 import { Input } from '@repo/ui/components/ui/input';
 import { Label } from '@repo/ui/components/ui/label';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@/lib/form';
 
 {{{{raw}}}}
+const generalSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  slug: z.string().min(1, 'Slug is required'),
+});
+
 export default function GeneralSettingsPage() {
   const router = useRouter();
   const { data: active, refetch } = useActiveOrganization();
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [confirmInput, setConfirmInput] = useState('');
 
-  useEffect(() => {
-    if (active) {
-      setName(active.name);
-      setSlug(active.slug);
-    }
-  }, [active]);
-
-  async function save() {
-    if (!active) return;
-    const result = await authClient.organization.update({
-      organizationId: active.id,
-      data: { name, slug },
-    });
-    if (result.error) toast.error(result.error.message ?? 'Failed to update');
-    else {
-      toast.success('Saved');
-      refetch();
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { name: active?.name ?? '', slug: active?.slug ?? '' },
+    validators: { onChange: generalSchema },
+    onSubmit: async ({ value }) => {
+      if (!active) return;
+      const result = await authClient.organization.update({
+        organizationId: active.id,
+        data: { name: value.name, slug: value.slug },
+      });
+      if (result.error) toast.error(result.error.message ?? 'Failed to update');
+      else {
+        toast.success('Saved');
+        refetch();
+      }
+    },
+  });
 
   async function deleteOrg() {
     if (!active) return;
@@ -66,16 +68,20 @@ export default function GeneralSettingsPage() {
           <CardTitle>General</CardTitle>
           <CardDescription>Organization name and URL slug.</CardDescription>
         </CardHeader>
-        <CardContent className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='name'>Name</Label>
-            <Input id='name' value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className='space-y-2'>
-            <Label htmlFor='slug'>Slug</Label>
-            <Input id='slug' value={slug} onChange={(e) => setSlug(e.target.value)} />
-          </div>
-          <Button onClick={save}>Save</Button>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
+            <form.AppField name='slug' children={(field) => <field.InputField label='Slug' />} />
+            <form.AppForm>
+              <form.SubmitButton>Save</form.SubmitButton>
+            </form.AppForm>
+          </form>
         </CardContent>
       </Card>
 

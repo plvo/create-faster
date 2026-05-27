@@ -6,28 +6,18 @@ mono:
 ---
 'use client';
 
-import { Button } from '@repo/ui/components/ui/button';
-import { Input } from '@repo/ui/components/ui/input';
-import { Label } from '@repo/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@repo/ui/components/ui/select';
-import { cn } from '@repo/ui/lib/utils';
-import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@/lib/form';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
-type ProjectFormValues = {
-  name: string;
-  description: string;
-  status: 'active' | 'archived';
-};
+const projectSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(120),
+  description: z.string().max(2000),
+  status: z.enum(['active', 'archived']),
+});
 
 type ProjectFormProps = {
   mode: 'create' | 'edit';
@@ -38,11 +28,6 @@ type ProjectFormProps = {
 export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [values, setValues] = useState<ProjectFormValues>({
-    name: initial?.name ?? '',
-    description: initial?.description ?? '',
-    status: initial?.status ?? 'active',
-  });
 
   const create = useMutation(
     trpc.project.create.mutationOptions({
@@ -66,71 +51,48 @@ export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
     }),
   );
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (mode === 'create') {
-      create.mutate({
-        name: values.name,
-        description: values.description || null,
-        status: values.status,
-      });
-    } else if (initial) {
-      update.mutate({
-        id: initial.id,
-        name: values.name,
-        description: values.description || null,
-        status: values.status,
-      });
-    }
-  }
-
-  const pending = create.isPending || update.isPending;
+  const form = useAppForm({
+    defaultValues: {
+      name: initial?.name ?? '',
+      description: initial?.description ?? '',
+      status: initial?.status ?? ('active' as 'active' | 'archived'),
+    },
+    validators: { onChange: projectSchema },
+    onSubmit: async ({ value }) => {
+      const description = value.description || null;
+      if (mode === 'create') {
+        await create.mutateAsync({ name: value.name, description, status: value.status });
+      } else if (initial) {
+        await update.mutateAsync({ id: initial.id, name: value.name, description, status: value.status });
+      }
+    },
+  });
 
   return (
-    <form onSubmit={handleSubmit} className='space-y-4'>
-      <div className='space-y-2'>
-        <Label htmlFor='name'>Name</Label>
-        <Input
-          id='name'
-          value={values.name}
-          onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-          required
-          maxLength={120}
-        />
-      </div>
-      <div className='space-y-2'>
-        <Label htmlFor='description'>Description</Label>
-        <textarea
-          id='description'
-          value={values.description}
-          onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
-          maxLength={2000}
-          rows={4}
-          className={cn(
-            'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-            'ring-offset-background placeholder:text-muted-foreground',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          )}
-        />
-      </div>
-      <div className='space-y-2'>
-        <Label htmlFor='status'>Status</Label>
-        <Select
-          value={values.status}
-          onValueChange={(s) => setValues((v) => ({ ...v, status: s as 'active' | 'archived' }))}
-        >
-          <SelectTrigger id='status'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='active'>Active</SelectItem>
-            <SelectItem value='archived'>Archived</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Button type='submit' disabled={pending} className='w-full'>
-        {pending ? 'Saving...' : mode === 'create' ? 'Create project' : 'Save changes'}
-      </Button>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+      className='space-y-4'
+    >
+      <form.AppField
+        name='name'
+        children={(field) => <field.InputField label='Name' props={{ maxLength: 120 }} />}
+      />
+      <form.AppField
+        name='description'
+        children={(field) => <field.TextareaField label='Description' props={{ maxLength: 2000, rows: 4 }} />}
+      />
+      <form.AppField
+        name='status'
+        children={(field) => <field.SelectField label='Status' options={{ Active: 'active', Archived: 'archived' }} />}
+      />
+      <form.AppForm>
+        <form.SubmitButton props={{ className: 'w-full' }}>
+          {mode === 'create' ? 'Create project' : 'Save changes'}
+        </form.SubmitButton>
+      </form.AppForm>
     </form>
   );
 }

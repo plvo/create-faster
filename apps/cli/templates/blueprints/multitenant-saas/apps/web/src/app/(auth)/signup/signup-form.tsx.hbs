@@ -7,35 +7,36 @@ mono:
 'use client';
 
 import { authClient } from '@repo/auth/auth-client';
-import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
-import { Input } from '@repo/ui/components/ui/input';
-import { Label } from '@repo/ui/components/ui/label';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@/lib/form';
 
 {{{{raw}}}}
+const signupSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.email('Enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
 export function SignupForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    const result = await authClient.signUp.email({ name, email, password });
-    setSubmitting(false);
-    if (result.error) {
-      toast.error(result.error.message ?? 'Failed to create account');
-      return;
-    }
-    router.push(redirectTo);
-    router.refresh();
-  }
+  const form = useAppForm({
+    defaultValues: { name: '', email: '', password: '' },
+    validators: { onChange: signupSchema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.signUp.email({ name: value.name, email: value.email, password: value.password });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to create account');
+        return;
+      }
+      router.push(redirectTo);
+      router.refresh();
+    },
+  });
 
   return (
     <div className='flex min-h-screen items-center justify-center p-6'>
@@ -45,29 +46,22 @@ export function SignupForm({ redirectTo }: { redirectTo: string }) {
           <CardDescription>Sign up to get started.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='name'>Name</Label>
-              <Input id='name' value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='email'>Email</Label>
-              <Input id='email' type='email' value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='password'>Password</Label>
-              <Input
-                id='password'
-                type='password'
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </div>
-            <Button type='submit' className='w-full' disabled={submitting}>
-              {submitting ? 'Creating account...' : 'Sign up'}
-            </Button>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
+            <form.AppField
+              name='email'
+              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            />
+            <form.AppField name='password' children={(field) => <field.PasswordField label='Password' />} />
+            <form.AppForm>
+              <form.SubmitButton props={{ className: 'w-full' }}>Sign up</form.SubmitButton>
+            </form.AppForm>
           </form>
           <p className='mt-4 text-center text-sm text-muted-foreground'>
             Already have an account?{' '}

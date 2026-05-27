@@ -321,6 +321,24 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(appSection).toContain('references(() => userTable.id');
   });
 
+  test('ships the shuip tanstack-form system and migrates forms onto it', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    expect(await fileExists(join(projectPath, 'apps/web/src/lib/form.ts'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/components/ui/shuip/tanstack-form/form-context.tsx')),
+    ).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/components/ui/shuip/tanstack-form/input-field.tsx')),
+    ).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/field.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/input-group.tsx'))).toBe(true);
+
+    const loginForm = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/login/login-form.tsx'));
+    expect(loginForm).toContain('useAppForm');
+    expect(loginForm).toContain('form.AppField');
+  });
+
   test('output shows --blueprint multitenant-saas in recreate command', async () => {
     const result = await runCli(
       ['test-mt-cmd', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],

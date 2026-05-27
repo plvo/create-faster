@@ -1,0 +1,69 @@
+---
+path: src/components/ui/shuip/tanstack-form/textarea-field.tsx
+mono:
+  scope: app
+  path: src/components/ui/shuip/tanstack-form/textarea-field.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { InfoIcon } from 'lucide-react';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@repo/ui/components/ui/field';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@repo/ui/components/ui/input-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@repo/ui/components/ui/tooltip';
+import { useFieldContext } from './form-context';
+
+export interface TextareaFieldProps {
+  label?: string;
+  description?: string;
+  fieldProps?: React.ComponentProps<typeof Field>;
+  props?: React.ComponentProps<typeof InputGroupTextarea>;
+  tooltip?: React.ReactNode;
+}
+
+export function TextareaField({ label, description, fieldProps, props, tooltip }: TextareaFieldProps) {
+  const field = useFieldContext<string>();
+  const { isValid, errors } = field.state.meta;
+
+  return (
+    <Field className='gap-2' data-invalid={!isValid} {...fieldProps}>
+      {label && <FieldLabel htmlFor={field.name}>{label}</FieldLabel>}
+      <InputGroup>
+        <InputGroupTextarea
+          id={field.name}
+          name={field.name}
+          value={field.state.value}
+          onChange={(e) => field.handleChange(e.target.value)}
+          onBlur={field.handleBlur}
+          aria-invalid={!isValid}
+          {...props}
+        />
+        {tooltip && (
+          <InputGroupAddon align='block-end' className='justify-end'>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InputGroupButton aria-label='Info' size='icon-xs'>
+                  <InfoIcon />
+                </InputGroupButton>
+              </TooltipTrigger>
+              <TooltipContent>{tooltip}</TooltipContent>
+            </Tooltip>
+          </InputGroupAddon>
+        )}
+      </InputGroup>
+      {!isValid && (
+        <FieldError
+          className='text-xs text-left'
+          errors={errors.map((error) => ({ message: typeof error === 'string' ? error : error?.message }))}
+        />
+      )}
+      {description && <FieldDescription className='text-xs'>{description}</FieldDescription>}
+    </Field>
+  );
+}
+{{{{/raw}}}}

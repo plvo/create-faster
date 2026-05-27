@@ -11,35 +11,30 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@repo/ui/components/ui/dialog';
-import { Input } from '@repo/ui/components/ui/input';
-import { Label } from '@repo/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@repo/ui/components/ui/select';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@/lib/form';
 import { useTRPC } from '@/trpc/providers';
 import { InvitationLinkDialog } from './invitation-link-dialog';
 
 {{{{raw}}}}
 const BUILT_IN_ROLES = ['admin', 'member'];
 
+const inviteSchema = z.object({
+  email: z.email('Enter a valid email'),
+  role: z.string().min(1, 'Role is required'),
+});
+
 export function InviteDialog() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('member');
   const [linkDialog, setLinkDialog] = useState<{ open: boolean; link: string; email: string }>({
     open: false,
     link: '',
@@ -52,8 +47,7 @@ export function InviteDialog() {
     trpc.invitation.create.mutationOptions({
       onSuccess: (data) => {
         setOpen(false);
-        setEmail('');
-        setRole('member');
+        form.reset();
         queryClient.invalidateQueries(trpc.invitation.list.queryFilter());
         setLinkDialog({ open: true, link: (data as { inviteLink: string; email?: string }).inviteLink, email: (data as { email?: string }).email ?? '' });
       },
@@ -62,6 +56,15 @@ export function InviteDialog() {
   );
 
   const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
+  const roleOptions = Object.fromEntries(allRoles.map((r) => [r, r]));
+
+  const form = useAppForm({
+    defaultValues: { email: '', role: 'member' },
+    validators: { onChange: inviteSchema },
+    onSubmit: async ({ value }) => {
+      await create.mutateAsync({ email: value.email, role: value.role });
+    },
+  });
 
   return (
     <>
@@ -74,41 +77,30 @@ export function InviteDialog() {
             <DialogTitle>Invite member</DialogTitle>
             <DialogDescription>You'll get a link to share with the invited person.</DialogDescription>
           </DialogHeader>
-          <div className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='email'>Email</Label>
-              <Input
-                id='email'
-                type='email'
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField
+              name='email'
+              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            />
+            <form.AppField
+              name='role'
+              children={(field) => <field.SelectField label='Role' options={roleOptions} />}
+            />
+            <div className='flex justify-end gap-2'>
+              <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <form.AppForm>
+                <form.SubmitButton>Create invitation</form.SubmitButton>
+              </form.AppForm>
             </div>
-            <div className='space-y-2'>
-              <Label htmlFor='role'>Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {allRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant='outline' onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => create.mutate({ email, role })} disabled={create.isPending}>
-              {create.isPending ? 'Creating...' : 'Create invitation'}
-            </Button>
-          </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
       <InvitationLinkDialog

@@ -7,13 +7,11 @@ mono:
 'use client';
 
 import { authClient } from '@repo/auth/auth-client';
-import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
-import { Input } from '@repo/ui/components/ui/input';
-import { Label } from '@repo/ui/components/ui/label';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@/lib/form';
 
 {{{{raw}}}}
 function slugify(input: string): string {
@@ -24,29 +22,32 @@ function slugify(input: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+const onboardingSchema = z.object({
+  name: z.string().min(1, 'Organization name is required'),
+  slug: z.string().min(1, 'URL slug is required'),
+});
+
 export default function OnboardingPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    const result = await authClient.organization.create({
-      name,
-      slug: slug || slugify(name),
-    });
-    setSubmitting(false);
-    if (result.error) {
-      toast.error(result.error.message ?? 'Failed to create organization');
-      return;
-    }
-    if (result.data) {
-      await authClient.organization.setActive({ organizationId: result.data.id });
-      router.push('/');
-    }
-  }
+  const form = useAppForm({
+    defaultValues: { name: '', slug: '' },
+    validators: { onChange: onboardingSchema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.organization.create({
+        name: value.name,
+        slug: value.slug || slugify(value.name),
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to create organization');
+        return;
+      }
+      if (result.data) {
+        await authClient.organization.setActive({ organizationId: result.data.id });
+        router.push('/');
+      }
+    },
+  });
 
   return (
     <div className='flex min-h-screen items-center justify-center p-6'>
@@ -56,26 +57,39 @@ export default function OnboardingPage() {
           <CardDescription>This is the workspace where your team will collaborate.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='name'>Organization name</Label>
-              <Input
-                id='name'
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (!slug) setSlug(slugify(e.target.value));
-                }}
-                required
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='slug'>URL slug</Label>
-              <Input id='slug' value={slug} onChange={(e) => setSlug(slugify(e.target.value))} required />
-            </div>
-            <Button type='submit' className='w-full' disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create organization'}
-            </Button>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField
+              name='name'
+              children={(field) => (
+                <field.InputField
+                  label='Organization name'
+                  props={{
+                    onChange: (e) => {
+                      field.handleChange(e.target.value);
+                      if (!form.state.values.slug) form.setFieldValue('slug', slugify(e.target.value));
+                    },
+                  }}
+                />
+              )}
+            />
+            <form.AppField
+              name='slug'
+              children={(field) => (
+                <field.InputField
+                  label='URL slug'
+                  props={{ onChange: (e) => field.handleChange(slugify(e.target.value)) }}
+                />
+              )}
+            />
+            <form.AppForm>
+              <form.SubmitButton props={{ className: 'w-full' }}>Create organization</form.SubmitButton>
+            </form.AppForm>
           </form>
         </CardContent>
       </Card>
