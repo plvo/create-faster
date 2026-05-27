@@ -1,44 +1,36 @@
 ---
-path: src/components/ui/shuip/tanstack-form/password-field.tsx
 mono:
-  scope: app
-  path: src/components/ui/shuip/tanstack-form/password-field.tsx
+  scope: pkg
+  name: ui
+  path: src/components/ui/shuip/tanstack-form/textarea-field.tsx
 ---
 {{{{raw}}}}
 'use client';
 
-import { Eye, EyeOff, InfoIcon } from 'lucide-react';
-import React from 'react';
+import { InfoIcon } from 'lucide-react';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@repo/ui/components/ui/field';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@repo/ui/components/ui/input-group';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@repo/ui/components/ui/input-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@repo/ui/components/ui/tooltip';
-import { useFieldContext } from './form-context';
+import { useFieldContext } from '@repo/ui/components/ui/shuip/tanstack-form/form-context';
 
-export interface PasswordFieldProps {
+export interface TextareaFieldProps {
   label?: string;
   description?: string;
   fieldProps?: React.ComponentProps<typeof Field>;
-  props?: React.ComponentProps<'input'>;
+  props?: React.ComponentProps<typeof InputGroupTextarea>;
   tooltip?: React.ReactNode;
 }
 
-export function PasswordField({ label, description, fieldProps, props, tooltip }: PasswordFieldProps) {
+export function TextareaField({ label, description, fieldProps, props, tooltip }: TextareaFieldProps) {
   const field = useFieldContext<string>();
   const { isValid, errors } = field.state.meta;
-  const [showPassword, setShowPassword] = React.useState(false);
-
-  const handleTogglePassword = React.useCallback(() => {
-    setShowPassword((prev) => !prev);
-  }, []);
 
   return (
     <Field className='gap-2' data-invalid={!isValid} {...fieldProps}>
       {label && <FieldLabel htmlFor={field.name}>{label}</FieldLabel>}
       <InputGroup>
-        <InputGroupInput
+        <InputGroupTextarea
           id={field.name}
-          type={showPassword ? 'text' : 'password'}
-          placeholder='Enter password'
           name={field.name}
           value={field.state.value}
           onChange={(e) => field.handleChange(e.target.value)}
@@ -46,11 +38,8 @@ export function PasswordField({ label, description, fieldProps, props, tooltip }
           aria-invalid={!isValid}
           {...props}
         />
-        <InputGroupAddon align='inline-end'>
-          <InputGroupButton aria-label='Toggle password' onClick={handleTogglePassword}>
-            {showPassword ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
-          </InputGroupButton>
-          {tooltip && (
+        {tooltip && (
+          <InputGroupAddon align='block-end' className='justify-end'>
             <Tooltip>
               <TooltipTrigger asChild>
                 <InputGroupButton aria-label='Info' size='icon-xs'>
@@ -59,8 +48,8 @@ export function PasswordField({ label, description, fieldProps, props, tooltip }
               </TooltipTrigger>
               <TooltipContent>{tooltip}</TooltipContent>
             </Tooltip>
-          )}
-        </InputGroupAddon>
+          </InputGroupAddon>
+        )}
       </InputGroup>
       {!isValid && (
         <FieldError

@@ -324,12 +324,12 @@ describe('Blueprint generation - multitenant-saas', () => {
   test('ships the shuip tanstack-form system and migrates forms onto it', async () => {
     const projectPath = join(tempDir, 'test-mt');
 
-    expect(await fileExists(join(projectPath, 'apps/web/src/lib/form.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/lib/form.ts'))).toBe(true);
     expect(
-      await fileExists(join(projectPath, 'apps/web/src/components/ui/shuip/tanstack-form/form-context.tsx')),
+      await fileExists(join(projectPath, 'packages/ui/src/components/ui/shuip/tanstack-form/form-context.tsx')),
     ).toBe(true);
     expect(
-      await fileExists(join(projectPath, 'apps/web/src/components/ui/shuip/tanstack-form/input-field.tsx')),
+      await fileExists(join(projectPath, 'packages/ui/src/components/ui/shuip/tanstack-form/input-field.tsx')),
     ).toBe(true);
     expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/field.tsx'))).toBe(true);
     expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/input-group.tsx'))).toBe(true);

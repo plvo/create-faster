@@ -113,6 +113,7 @@ export interface MetaBlueprint {
   };
   packageJson?: PackageJsonConfig;
   rootPackageJson?: PackageJsonConfig;
+  pkgPackageJson?: Record<string, PackageJsonConfig>;
   envs?: EnvVar[];
 }
 

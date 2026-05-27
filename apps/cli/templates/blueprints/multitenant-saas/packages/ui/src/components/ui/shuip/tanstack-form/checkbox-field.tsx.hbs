@@ -1,7 +1,7 @@
 ---
-path: src/components/ui/shuip/tanstack-form/checkbox-field.tsx
 mono:
-  scope: app
+  scope: pkg
+  name: ui
   path: src/components/ui/shuip/tanstack-form/checkbox-field.tsx
 ---
 {{{{raw}}}}
@@ -9,7 +9,7 @@ mono:
 
 import { Checkbox } from '@repo/ui/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@repo/ui/components/ui/field';
-import { useFieldContext } from './form-context';
+import { useFieldContext } from '@repo/ui/components/ui/shuip/tanstack-form/form-context';
 
 export interface CheckboxFieldProps {
   label: string;
