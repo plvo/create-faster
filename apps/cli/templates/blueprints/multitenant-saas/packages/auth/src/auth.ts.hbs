@@ -61,6 +61,24 @@ export const auth = betterAuth({
     }),
     nextCookies(),
   ],
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const membership = await db.query.memberTable.findFirst({
+            where: (member, { eq }) => eq(member.userId, session.userId),
+            orderBy: (member, { asc }) => asc(member.createdAt),
+          });
+          return {
+            data: {
+              ...session,
+              activeOrganizationId: membership?.organizationId,
+            },
+          };
+        },
+      },
+    },
+  },
   user: {
     modelName: 'user',
     fields: {
