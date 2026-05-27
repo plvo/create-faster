@@ -6,16 +6,18 @@ mono:
 ---
 'use client';
 
-import { authClient, useActiveOrganization } from '@repo/auth/auth-client';
+import { useActiveOrganization } from '@repo/auth/auth-client';
 import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { Input } from '@repo/ui/components/ui/input';
 import { Label } from '@repo/ui/components/ui/label';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 const generalSchema = z.object({
@@ -25,38 +27,45 @@ const generalSchema = z.object({
 
 export default function GeneralSettingsPage() {
   const router = useRouter();
+  const trpc = useTRPC();
   const { data: active, refetch } = useActiveOrganization();
   const [confirmInput, setConfirmInput] = useState('');
+
+  const updateOrg = useMutation(
+    trpc.organization.update.mutationOptions({
+      onSuccess: () => {
+        toast.success('Saved');
+        refetch();
+      },
+      onError: (err) => toast.error(err.message ?? 'Failed to update'),
+    }),
+  );
+
+  const deleteOrg = useMutation(
+    trpc.organization.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success('Organization deleted');
+        router.push('/onboarding');
+      },
+      onError: (err) => toast.error(err.message ?? 'Failed to delete'),
+    }),
+  );
 
   const form = useAppForm({
     defaultValues: { name: active?.name ?? '', slug: active?.slug ?? '' },
     validators: { onChange: generalSchema },
     onSubmit: async ({ value }) => {
-      if (!active) return;
-      const result = await authClient.organization.update({
-        organizationId: active.id,
-        data: { name: value.name, slug: value.slug },
-      });
-      if (result.error) toast.error(result.error.message ?? 'Failed to update');
-      else {
-        toast.success('Saved');
-        refetch();
-      }
+      await updateOrg.mutateAsync({ name: value.name, slug: value.slug });
     },
   });
 
-  async function deleteOrg() {
+  function handleDelete() {
     if (!active) return;
     if (confirmInput !== active.slug) {
       toast.error('Confirmation does not match the organization slug.');
       return;
     }
-    const result = await authClient.organization.delete({ organizationId: active.id });
-    if (result.error) toast.error(result.error.message ?? 'Failed to delete');
-    else {
-      toast.success('Organization deleted');
-      router.push('/onboarding');
-    }
+    deleteOrg.mutate();
   }
 
   if (!active) return null;
@@ -97,7 +106,7 @@ export default function GeneralSettingsPage() {
             </Label>
             <Input id='confirm' value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
           </div>
-          <Button variant='destructive' onClick={deleteOrg}>
+          <Button variant='destructive' onClick={handleDelete}>
             Delete organization
           </Button>
         </CardContent>

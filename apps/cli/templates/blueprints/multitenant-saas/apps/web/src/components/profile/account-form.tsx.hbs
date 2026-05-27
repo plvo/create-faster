@@ -6,10 +6,9 @@ mono:
 ---
 'use client';
 
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
 import { useTRPC } from '@/trpc/providers';
 
@@ -20,18 +19,24 @@ const nameSchema = z.object({
 
 export function AccountForm() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
+
+  const updateProfile = useMutation(
+    trpc.user.updateProfile.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.user.me.queryFilter());
+        toast.success('Name updated');
+      },
+      onError: () => toast.error('Failed to update name'),
+    }),
+  );
 
   const form = useAppForm({
     defaultValues: { name: user?.username || '' },
     validators: { onChange: nameSchema },
     onSubmit: async ({ value }) => {
-      const res = await authClient.updateUser({ name: value.name });
-      if (res.error) {
-        toast.error('Failed to update name');
-        return;
-      }
-      toast.success('Name updated');
+      await updateProfile.mutateAsync({ name: value.name });
     },
   });
 

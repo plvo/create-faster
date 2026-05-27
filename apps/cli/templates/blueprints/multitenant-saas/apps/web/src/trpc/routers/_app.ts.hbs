@@ -10,6 +10,7 @@ import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { router } from './trpc';
 import { invitationRouter } from './router/invitation';
 import { memberRouter } from './router/member';
+import { organizationRouter } from './router/organization';
 import { projectRouter } from './router/project';
 import { roleRouter } from './router/role';
 import { sessionRouter } from './router/session';
@@ -18,6 +19,7 @@ import { userRouter } from './router/user';
 import { router } from '@/trpc/init';
 import { invitationRouter } from './invitation';
 import { memberRouter } from './member';
+import { organizationRouter } from './organization';
 import { projectRouter } from './project';
 import { roleRouter } from './role';
 import { sessionRouter } from './session';
@@ -27,6 +29,7 @@ import { userRouter } from './user';
 {{{{raw}}}}
 export const appRouter = router({
   project: projectRouter,
+  organization: organizationRouter,
   member: memberRouter,
   role: roleRouter,
   invitation: invitationRouter,

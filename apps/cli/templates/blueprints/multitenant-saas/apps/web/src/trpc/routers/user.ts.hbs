@@ -12,6 +12,7 @@ import { protectedProcedure } from '../trpc';
 {{else}}
 import { router, protectedProcedure } from '@/trpc/init';
 {{/if}}
+import { z } from 'zod';
 
 {{{{raw}}}}
 export const userRouter = router({
@@ -36,5 +37,24 @@ export const userRouter = router({
       role,
     };
   }),
+
+  updateProfile: protectedProcedure
+    .input(z.object({ name: z.string().min(1).max(120) }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.updateUser({ headers: ctx.headers, body: { name: input.name } });
+    }),
+
+  changePassword: protectedProcedure
+    .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.changePassword({
+        headers: ctx.headers,
+        body: {
+          currentPassword: input.currentPassword,
+          newPassword: input.newPassword,
+          revokeOtherSessions: true,
+        },
+      });
+    }),
 });
 {{{{/raw}}}}

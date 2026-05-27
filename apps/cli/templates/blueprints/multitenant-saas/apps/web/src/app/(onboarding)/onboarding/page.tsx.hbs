@@ -8,10 +8,12 @@ mono:
 
 import { authClient } from '@repo/auth/auth-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 function slugify(input: string): string {
@@ -29,21 +31,20 @@ const onboardingSchema = z.object({
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const trpc = useTRPC();
+  const createOrg = useMutation(
+    trpc.organization.create.mutationOptions({
+      onError: (err) => toast.error(err.message ?? 'Failed to create organization'),
+    }),
+  );
 
   const form = useAppForm({
     defaultValues: { name: '', slug: '' },
     validators: { onChange: onboardingSchema },
     onSubmit: async ({ value }) => {
-      const result = await authClient.organization.create({
-        name: value.name,
-        slug: value.slug || slugify(value.name),
-      });
-      if (result.error) {
-        toast.error(result.error.message ?? 'Failed to create organization');
-        return;
-      }
-      if (result.data) {
-        await authClient.organization.setActive({ organizationId: result.data.id });
+      const org = await createOrg.mutateAsync({ name: value.name, slug: value.slug || slugify(value.name) });
+      if (org?.id) {
+        await authClient.organization.setActive({ organizationId: org.id });
         router.push('/');
       }
     },

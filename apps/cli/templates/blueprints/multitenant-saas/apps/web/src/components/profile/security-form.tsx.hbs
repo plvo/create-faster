@@ -6,10 +6,11 @@ mono:
 ---
 'use client';
 
+import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 const passwordSchema = z.object({
@@ -18,20 +19,22 @@ const passwordSchema = z.object({
 });
 
 export function SecurityForm() {
+  const trpc = useTRPC();
+  const changePassword = useMutation(
+    trpc.user.changePassword.mutationOptions({
+      onSuccess: () => toast.success('Password changed'),
+      onError: () => toast.error('Failed to change password'),
+    }),
+  );
+
   const form = useAppForm({
     defaultValues: { currentPassword: '', newPassword: '' },
     validators: { onChange: passwordSchema },
     onSubmit: async ({ value }) => {
-      const res = await authClient.changePassword({
+      await changePassword.mutateAsync({
         currentPassword: value.currentPassword,
         newPassword: value.newPassword,
-        revokeOtherSessions: true,
       });
-      if (res.error) {
-        toast.error('Failed to change password');
-        return;
-      }
-      toast.success('Password changed');
       form.reset();
     },
   });

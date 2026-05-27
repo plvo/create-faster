@@ -339,6 +339,25 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(loginForm).toContain('form.AppField');
   });
 
+  test('routes data mutations through tRPC routers, not auth in pages', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    // organization router exists and is registered
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/organization.ts'))).toBe(true);
+    const root = await readTextFile(join(projectPath, 'packages/api/src/root.ts'));
+    expect(root).toContain('organizationRouter');
+
+    // user router owns profile + password mutations
+    const userRouter = await readTextFile(join(projectPath, 'packages/api/src/router/user.ts'));
+    expect(userRouter).toContain('updateProfile');
+    expect(userRouter).toContain('changePassword');
+
+    // data-mutation forms call tRPC, not authClient directly
+    const accountForm = await readTextFile(join(projectPath, 'apps/web/src/components/profile/account-form.tsx'));
+    expect(accountForm).toContain('user.updateProfile');
+    expect(accountForm).not.toContain('authClient');
+  });
+
   test('output shows --blueprint multitenant-saas in recreate command', async () => {
     const result = await runCli(
       ['test-mt-cmd', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],
