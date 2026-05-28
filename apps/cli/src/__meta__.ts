@@ -144,12 +144,12 @@ export const META: Meta = {
           cmdk: '^1.1.1',
           'lucide-react': '^0.487.0',
           react: '^19.2.3',
-          tailwindcss: '^4.1.10',
           'tw-animate-css': '^1.3.4',
           'tailwind-merge': '^3.3.1',
         },
         devDependencies: {
           typescript: '^5',
+          tailwindcss: '^4.1.10',
           '@tailwindcss/postcss': '^4.1.10',
           '@types/react': '^19.2.3',
         },
