@@ -1,246 +1,93 @@
+---
+mono:
+  scope: app
+  path: src/components/contacts/contact-form.tsx
+---
 {{{{raw}}}}
 'use client';
 
-import { useForm } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTRPC } from '@/trpc/providers';
+import { toast } from 'sonner';
 import { z } from 'zod';
+import { useTRPC } from '@/trpc/client';
+import { useAppForm } from '@repo/ui/lib/form';
+import type { RouterOutput } from '@repo/api';
 
-const contactSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  notes: z.string().optional(),
+type Contact = RouterOutput['contact']['list'][number];
+
+const schema = z.object({
+  firstName: z.string().min(1, 'Required'),
+  lastName: z.string().min(1, 'Required'),
+  email: z.string().email('Invalid email').or(z.literal('')),
+  phone: z.string().or(z.literal('')),
+  company: z.string().or(z.literal('')),
+  notes: z.string().or(z.literal('')),
 });
 
-type ContactValues = z.infer<typeof contactSchema>;
-
-interface ContactFormProps {
-  mode: 'create' | 'edit';
-  contact?: { id: string } & Record<string, unknown>;
-  onSuccess?: () => void;
-}
-
-const EMPTY_VALUES: ContactValues = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  company: '',
-  notes: '',
-};
-
-export function ContactForm({ mode, contact, onSuccess }: ContactFormProps) {
+export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: () => void }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-
-  const createContact = useMutation(
+  const create = useMutation(
     trpc.contact.create.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
-        queryClient.invalidateQueries({ queryKey: trpc.contact.count.queryKey() });
+        queryClient.invalidateQueries(trpc.contact.list.queryFilter());
+        queryClient.invalidateQueries(trpc.contact.count.queryFilter());
+        toast.success('Contact created');
+        onDone?.();
       },
     }),
   );
-
-  const updateContact = useMutation(
+  const update = useMutation(
     trpc.contact.update.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
+        queryClient.invalidateQueries(trpc.contact.list.queryFilter());
+        toast.success('Contact updated');
+        onDone?.();
       },
     }),
   );
+  const mutation = contact ? update : create;
 
-  const form = useForm({
-    defaultValues: mode === 'edit' && contact
-      ? {
-          firstName: String(contact.firstName ?? ''),
-          lastName: String(contact.lastName ?? ''),
-          email: String(contact.email ?? ''),
-          phone: String(contact.phone ?? ''),
-          company: String(contact.company ?? ''),
-          notes: String(contact.notes ?? ''),
-        }
-      : EMPTY_VALUES,
-    validators: {
-      onSubmit: ({ value }) => {
-        const result = contactSchema.safeParse(value);
-        if (!result.success) {
-          const fieldErrors = result.error.flatten().fieldErrors;
-          return {
-            fields: {
-              firstName: fieldErrors.firstName?.[0],
-              lastName: fieldErrors.lastName?.[0],
-              email: fieldErrors.email?.[0],
-            },
-          };
-        }
-        return undefined;
-      },
+  const form = useAppForm({
+    defaultValues: {
+      firstName: contact?.firstName ?? '',
+      lastName: contact?.lastName ?? '',
+      email: contact?.email ?? '',
+      phone: contact?.phone ?? '',
+      company: contact?.company ?? '',
+      notes: contact?.notes ?? '',
     },
+    validators: { onChange: schema },
     onSubmit: async ({ value }) => {
-      const data = {
-        ...value,
-        email: value.email || undefined,
-        phone: value.phone || undefined,
-        company: value.company || undefined,
-        notes: value.notes || undefined,
-      };
-
-      if (mode === 'edit' && contact) {
-        await updateContact.mutateAsync({ id: contact.id, data });
+      if (contact) {
+        await update.mutateAsync({ id: contact.id, ...value });
       } else {
-        await createContact.mutateAsync(data);
+        await create.mutateAsync(value);
       }
-      onSuccess?.();
     },
   });
-
-  const isPending = createContact.isPending || updateContact.isPending;
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        e.stopPropagation();
         form.handleSubmit();
       }}
-      className='space-y-4'
+      className='flex flex-col gap-3'
     >
-      <div className='grid gap-4 sm:grid-cols-2'>
-        <form.Field
-          name='firstName'
-          children={(field) => (
-            <div className='space-y-2'>
-              <label htmlFor='firstName' className='text-sm font-medium leading-none'>
-                First Name *
-              </label>
-              <input
-                id='firstName'
-                type='text'
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-              />
-              {field.state.meta.errors?.[0] && (
-                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-              )}
-            </div>
-          )}
-        />
-        <form.Field
-          name='lastName'
-          children={(field) => (
-            <div className='space-y-2'>
-              <label htmlFor='lastName' className='text-sm font-medium leading-none'>
-                Last Name *
-              </label>
-              <input
-                id='lastName'
-                type='text'
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-              />
-              {field.state.meta.errors?.[0] && (
-                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-              )}
-            </div>
-          )}
-        />
+      <div className='grid grid-cols-2 gap-3'>
+        <form.AppField name='firstName' children={(f) => <f.InputField label='First name' />} />
+        <form.AppField name='lastName' children={(f) => <f.InputField label='Last name' />} />
       </div>
-      <div className='grid gap-4 sm:grid-cols-2'>
-        <form.Field
-          name='email'
-          children={(field) => (
-            <div className='space-y-2'>
-              <label htmlFor='email' className='text-sm font-medium leading-none'>
-                Email
-              </label>
-              <input
-                id='email'
-                type='email'
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-              />
-              {field.state.meta.errors?.[0] && (
-                <p className='text-sm text-destructive'>{field.state.meta.errors[0]}</p>
-              )}
-            </div>
-          )}
-        />
-        <form.Field
-          name='phone'
-          children={(field) => (
-            <div className='space-y-2'>
-              <label htmlFor='phone' className='text-sm font-medium leading-none'>
-                Phone
-              </label>
-              <input
-                id='phone'
-                type='tel'
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-              />
-            </div>
-          )}
-        />
-      </div>
-      <form.Field
-        name='company'
-        children={(field) => (
-          <div className='space-y-2'>
-            <label htmlFor='company' className='text-sm font-medium leading-none'>
-              Company
-            </label>
-            <input
-              id='company'
-              type='text'
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              className='flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-            />
-          </div>
-        )}
-      />
-      <form.Field
-        name='notes'
-        children={(field) => (
-          <div className='space-y-2'>
-            <label htmlFor='notes' className='text-sm font-medium leading-none'>
-              Notes
-            </label>
-            <textarea
-              id='notes'
-              rows={3}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              className='flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-            />
-          </div>
-        )}
-      />
-      <div className='flex justify-end'>
-        <button
-          type='submit'
-          disabled={isPending}
-          className='inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50'
-        >
-          {isPending
-            ? mode === 'edit' ? 'Saving...' : 'Creating...'
-            : mode === 'edit' ? 'Save Changes' : 'Create Contact'}
-        </button>
-      </div>
+      <form.AppField name='email' children={(f) => <f.InputField label='Email' props={{ type: 'email' }} />} />
+      <form.AppField name='phone' children={(f) => <f.InputField label='Phone' />} />
+      <form.AppField name='company' children={(f) => <f.InputField label='Company' />} />
+      <form.AppField name='notes' children={(f) => <f.TextareaField label='Notes' />} />
+      <form.AppForm>
+        <form.SubmitButton disabled={mutation.isPending}>
+          {mutation.isPending ? 'Saving...' : contact ? 'Save changes' : 'Create contact'}
+        </form.SubmitButton>
+      </form.AppForm>
     </form>
   );
 }
