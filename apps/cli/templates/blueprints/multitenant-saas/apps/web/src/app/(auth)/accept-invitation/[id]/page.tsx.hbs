@@ -20,26 +20,27 @@ export default async function AcceptInvitationPage({ params }: { params: Promise
   const hdrs = await headers();
   const session = await auth.api.getSession({ headers: hdrs });
 
-  const invitation = await auth.api
-    .getInvitation({ headers: hdrs, query: { id } })
-    .catch(() => null);
+  if (!session) {
+    const search = new URLSearchParams({ redirect: `/accept-invitation/${id}` });
+    redirect(`/login?${search.toString()}`);
+  }
+
+  const invitation = await auth.api.getInvitation({ headers: hdrs, query: { id } }).catch(() => null);
 
   if (!invitation) {
     return (
       <div className='flex min-h-screen items-center justify-center p-6'>
         <Card className='w-full max-w-md'>
           <CardHeader>
-            <CardTitle>Invitation not found</CardTitle>
-            <CardDescription>This invitation may have expired or been cancelled.</CardDescription>
+            <CardTitle>Invitation unavailable</CardTitle>
+            <CardDescription>
+              This invitation may have expired, been cancelled, or was sent to a different email address. Make sure
+              you're signed in with the email the invitation was sent to.
+            </CardDescription>
           </CardHeader>
         </Card>
       </div>
     );
-  }
-
-  if (!session) {
-    const search = new URLSearchParams({ redirect: `/accept-invitation/${id}` });
-    redirect(`/login?${search.toString()}`);
   }
 
   return (

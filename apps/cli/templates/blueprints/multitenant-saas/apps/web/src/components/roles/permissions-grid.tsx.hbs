@@ -10,6 +10,10 @@ import { Checkbox } from '@repo/ui/components/ui/checkbox';
 import { Label } from '@repo/ui/components/ui/label';
 
 {{{{raw}}}}
+const RESOURCE_LABELS: Record<string, string> = {
+  ac: 'Roles',
+};
+
 type PermissionsGridProps = {
   catalog: Record<string, readonly string[] | string[]>;
   value: Record<string, string[]>;
@@ -31,7 +35,7 @@ export function PermissionsGrid({ catalog, value, onChange, disabled }: Permissi
     <div className='space-y-4'>
       {Object.entries(catalog).map(([resource, actions]) => (
         <div key={resource} className='rounded-lg border p-4'>
-          <div className='mb-3 font-medium capitalize'>{resource}</div>
+          <div className='mb-3 font-medium capitalize'>{RESOURCE_LABELS[resource] ?? resource}</div>
           <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
             {actions.map((action) => {
               const id = `${resource}.${action}`;

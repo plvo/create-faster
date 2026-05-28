@@ -20,9 +20,9 @@ import { z } from 'zod';
 const permissionMap = z.record(z.string(), z.array(z.string()));
 
 export const roleRouter = router({
-  catalog: permissionProcedure('role', 'read').query(() => statement),
+  catalog: permissionProcedure('ac', 'read').query(() => statement),
 
-  list: permissionProcedure('role', 'read').query(async ({ ctx }) => {
+  list: permissionProcedure('ac', 'read').query(async ({ ctx }) => {
     const result = await auth.api.listOrgRoles({
       headers: ctx.headers,
       query: { organizationId: ctx.orgId },
@@ -30,7 +30,7 @@ export const roleRouter = router({
     return (result ?? []).map((r) => ({ roleName: r.role, permission: r.permission }));
   }),
 
-  create: permissionProcedure('role', 'create')
+  create: permissionProcedure('ac', 'create')
     .input(z.object({ role: z.string().min(1).max(60), permission: permissionMap }))
     .mutation(async ({ ctx, input }) => {
       return auth.api.createOrgRole({
@@ -39,7 +39,7 @@ export const roleRouter = router({
       });
     }),
 
-  update: permissionProcedure('role', 'update')
+  update: permissionProcedure('ac', 'update')
     .input(z.object({ roleName: z.string(), permission: permissionMap }))
     .mutation(async ({ ctx, input }) => {
       return auth.api.updateOrgRole({
@@ -48,7 +48,7 @@ export const roleRouter = router({
       });
     }),
 
-  delete: permissionProcedure('role', 'delete')
+  delete: permissionProcedure('ac', 'delete')
     .input(z.object({ roleName: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return auth.api.deleteOrgRole({

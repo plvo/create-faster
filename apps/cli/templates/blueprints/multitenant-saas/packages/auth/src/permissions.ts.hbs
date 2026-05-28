@@ -11,7 +11,7 @@ export const statement = {
   organization: ['update', 'delete'],
   member: ['invite', 'update', 'remove'],
   invitation: ['create', 'cancel'],
-  role: ['create', 'read', 'update', 'delete'],
+  ac: ['create', 'read', 'update', 'delete'],
   project: ['create', 'read', 'update', 'delete'],
 } as const;
 
@@ -21,7 +21,7 @@ export const owner = ac.newRole({
   organization: ['update', 'delete'],
   member: ['invite', 'update', 'remove'],
   invitation: ['create', 'cancel'],
-  role: ['create', 'read', 'update', 'delete'],
+  ac: ['create', 'read', 'update', 'delete'],
   project: ['create', 'read', 'update', 'delete'],
 });
 
@@ -29,7 +29,7 @@ export const admin = ac.newRole({
   organization: ['update'],
   member: ['invite', 'update', 'remove'],
   invitation: ['create', 'cancel'],
-  role: ['create', 'read', 'update', 'delete'],
+  ac: ['create', 'read', 'update', 'delete'],
   project: ['create', 'read', 'update', 'delete'],
 });
 
