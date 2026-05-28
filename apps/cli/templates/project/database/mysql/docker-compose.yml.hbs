@@ -9,7 +9,7 @@ services:
       MYSQL_USER: mysql
       MYSQL_PASSWORD: password
     ports:
-      - "3306:3306"
+      - "{{dbPort}}:3306"
     volumes:
       - mysql-{{projectName}}-data:/var/lib/mysql
     networks:
