@@ -1,0 +1,66 @@
+---
+path: src/components/members/invitation-link-dialog.tsx
+mono:
+  scope: app
+  path: src/components/members/invitation-link-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/ui/components/ui/dialog';
+import { Input } from '@repo/ui/components/ui/input';
+import { CheckmarkSquare01Icon, Copy01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+{{{{raw}}}}
+type InvitationLinkDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  inviteLink: string;
+  email: string;
+  expiresAt?: Date | string | null;
+};
+
+export function InvitationLinkDialog({ open, onOpenChange, inviteLink, email, expiresAt }: InvitationLinkDialogProps) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    toast.success('Link copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invitation created</DialogTitle>
+          <DialogDescription>
+            Share this link with {email}. They can use it to join your organization.
+            {expiresAt ? ` Expires on ${new Date(expiresAt).toLocaleDateString()}.` : ''}
+          </DialogDescription>
+        </DialogHeader>
+        <div className='flex items-center gap-2'>
+          <Input value={inviteLink} readOnly className='font-mono text-sm' />
+          <Button onClick={copy} size='icon' variant='outline' aria-label='Copy link'>
+            <HugeiconsIcon icon={copied ? CheckmarkSquare01Icon : Copy01Icon} className='size-4' />
+          </Button>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}

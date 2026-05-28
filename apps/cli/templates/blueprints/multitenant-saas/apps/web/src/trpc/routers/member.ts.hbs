@@ -1,0 +1,46 @@
+---
+path: src/trpc/routers/member.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/member.ts
+---
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { router } from '../trpc';
+import { orgProcedure, permissionProcedure } from '../middleware/rbac';
+{{else}}
+import { router } from '@/trpc/init';
+import { orgProcedure, permissionProcedure } from '@/trpc/middleware/rbac';
+{{/if}}
+import { z } from 'zod';
+
+{{{{raw}}}}
+export const memberRouter = router({
+  list: orgProcedure.query(async ({ ctx }) => {
+    const result = await auth.api.listMembers({
+      headers: ctx.headers,
+      query: { organizationId: ctx.orgId },
+    });
+    return result?.members ?? [];
+  }),
+
+  updateRole: permissionProcedure('member', 'update')
+    .input(z.object({ memberId: z.string(), role: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.updateMemberRole({
+        headers: ctx.headers,
+        body: { memberId: input.memberId, role: input.role, organizationId: ctx.orgId },
+      });
+    }),
+
+  remove: permissionProcedure('member', 'remove')
+    .input(z.object({ memberId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.removeMember({
+        headers: ctx.headers,
+        body: { memberIdOrEmail: input.memberId, organizationId: ctx.orgId },
+      });
+    }),
+});
+{{{{/raw}}}}

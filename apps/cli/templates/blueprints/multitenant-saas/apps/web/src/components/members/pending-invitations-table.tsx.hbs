@@ -1,0 +1,87 @@
+---
+path: src/components/members/pending-invitations-table.tsx
+mono:
+  scope: app
+  path: src/components/members/pending-invitations-table.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@repo/ui/components/ui/table';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+type Invitation = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expiresAt?: Date | string | null;
+};
+
+function buildLink(id: string): string {
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/accept-invitation/${id}`;
+}
+
+export function PendingInvitationsTable() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: invitations, isLoading } = useQuery(trpc.invitation.list.queryOptions());
+  const cancel = useMutation(
+    trpc.invitation.cancel.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries(trpc.invitation.list.queryFilter()),
+      onError: (err) => toast.error(err.message),
+    }),
+  );
+
+  if (isLoading) return <div>Loading...</div>;
+  const pending = ((invitations as Invitation[] | undefined) ?? []).filter((i) => i.status === 'pending');
+  if (pending.length === 0) return <p className='text-sm text-muted-foreground'>No pending invitations.</p>;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Email</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Expires</TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pending.map((i) => (
+          <TableRow key={i.id}>
+            <TableCell>{i.email}</TableCell>
+            <TableCell>{i.role}</TableCell>
+            <TableCell>{i.expiresAt ? new Date(i.expiresAt).toLocaleDateString() : '—'}</TableCell>
+            <TableCell className='space-x-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={async () => {
+                  await navigator.clipboard.writeText(buildLink(i.id));
+                  toast.success('Link copied');
+                }}
+              >
+                Copy link
+              </Button>
+              <Button variant='ghost' size='sm' onClick={() => cancel.mutate({ invitationId: i.id })}>
+                Cancel
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+{{{{/raw}}}}

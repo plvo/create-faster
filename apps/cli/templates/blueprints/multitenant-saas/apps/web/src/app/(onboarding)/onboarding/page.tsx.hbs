@@ -1,0 +1,106 @@
+---
+path: src/app/(onboarding)/onboarding/page.tsx
+mono:
+  scope: app
+  path: src/app/(onboarding)/onboarding/page.tsx
+---
+'use client';
+
+import { authClient } from '@repo/auth/auth-client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+
+{{{{raw}}}}
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+const onboardingSchema = z.object({
+  name: z.string().min(1, 'Organization name is required'),
+  slug: z.string().min(1, 'URL slug is required'),
+});
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const slugTouched = useRef(false);
+
+  const form = useAppForm({
+    defaultValues: { name: '', slug: '' },
+    validators: { onChange: onboardingSchema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.organization.create({
+        name: value.name,
+        slug: value.slug || slugify(value.name),
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to create organization');
+        return;
+      }
+      if (result.data?.id) {
+        await authClient.organization.setActive({ organizationId: result.data.id });
+        router.push('/');
+      }
+    },
+  });
+
+  return (
+    <div className='flex min-h-screen items-center justify-center p-6'>
+      <Card className='w-full max-w-md'>
+        <CardHeader>
+          <CardTitle>Create your first organization</CardTitle>
+          <CardDescription>This is the workspace where your team will collaborate.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField
+              name='name'
+              children={(field) => (
+                <field.InputField
+                  label='Organization name'
+                  props={{
+                    onChange: (e) => {
+                      field.handleChange(e.target.value);
+                      if (!slugTouched.current) form.setFieldValue('slug', slugify(e.target.value));
+                    },
+                  }}
+                />
+              )}
+            />
+            <form.AppField
+              name='slug'
+              children={(field) => (
+                <field.InputField
+                  label='URL slug'
+                  props={{
+                    onChange: (e) => {
+                      slugTouched.current = true;
+                      field.handleChange(slugify(e.target.value));
+                    },
+                  }}
+                />
+              )}
+            />
+            <form.AppForm>
+              <form.SubmitButton props={{ className: 'w-full' }}>Create organization</form.SubmitButton>
+            </form.AppForm>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+{{{{/raw}}}}

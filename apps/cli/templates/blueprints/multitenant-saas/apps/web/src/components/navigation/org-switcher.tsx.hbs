@@ -1,0 +1,91 @@
+---
+path: src/components/navigation/org-switcher.tsx
+mono:
+  scope: app
+  path: src/components/navigation/org-switcher.tsx
+---
+'use client';
+
+import { authClient, useActiveOrganization, useListOrganizations } from '@repo/auth/auth-client';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@repo/ui/components/ui/dropdown-menu';
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@repo/ui/components/ui/sidebar';
+import { ArrowDown01Icon, Building02Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+
+{{{{raw}}}}
+export function OrgSwitcher() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { isMobile } = useSidebar();
+  const { data: orgs } = useListOrganizations();
+  const { data: active } = useActiveOrganization();
+
+  async function handleSwitch(organizationId: string) {
+    await authClient.organization.setActive({ organizationId });
+    await queryClient.invalidateQueries();
+    router.refresh();
+  }
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton size='lg' className='data-[state=open]:bg-sidebar-accent'>
+              <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg'>
+                <HugeiconsIcon icon={Building02Icon} className='size-4' />
+              </div>
+              <div className='grid flex-1 text-left text-sm leading-tight'>
+                <span className='truncate font-semibold'>{active?.name ?? 'No organization'}</span>
+                <span className='truncate text-xs text-muted-foreground'>{active?.slug ?? '—'}</span>
+              </div>
+              <HugeiconsIcon icon={ArrowDown01Icon} className='ml-auto size-4' />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+            align='start'
+            side={isMobile ? 'bottom' : 'right'}
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className='text-xs text-muted-foreground'>Organizations</DropdownMenuLabel>
+            {orgs?.map((org) => (
+              <DropdownMenuItem
+                key={org.id}
+                onClick={() => handleSwitch(org.id)}
+                className='gap-2'
+              >
+                <div className='flex size-6 items-center justify-center rounded-sm border'>
+                  <HugeiconsIcon icon={Building02Icon} className='size-3.5 shrink-0' />
+                </div>
+                <span className='truncate'>{org.name}</span>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/onboarding')} className='gap-2'>
+              <div className='flex size-6 items-center justify-center rounded-md border bg-background'>
+                <HugeiconsIcon icon={PlusSignIcon} className='size-4' />
+              </div>
+              <div className='font-medium text-muted-foreground'>Create organization</div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,79 @@
+---
+path: src/trpc/routers/project.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/project.ts
+---
+{{#if (isMono)}}
+import { db } from '@repo/db';
+import { project } from '@repo/db/schema';
+import { router } from '../trpc';
+import { assertInScope, permissionProcedure } from '../middleware/rbac';
+{{else}}
+import { db } from '@/lib/db';
+import { project } from '@/lib/db/schema';
+import { router } from '@/trpc/init';
+import { assertInScope, permissionProcedure } from '@/trpc/middleware/rbac';
+{{/if}}
+import { TRPCError } from '@trpc/server';
+import { and, desc, eq } from 'drizzle-orm';
+import { z } from 'zod';
+
+{{{{raw}}}}
+const projectInput = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional().nullable(),
+  status: z.enum(['active', 'archived']).default('active'),
+});
+
+export const projectRouter = router({
+  list: permissionProcedure('project', 'read').query(async ({ ctx }) => {
+    return db.select().from(project).where(eq(project.organizationId, ctx.orgId)).orderBy(desc(project.createdAt));
+  }),
+
+  get: permissionProcedure('project', 'read').input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const [row] = await db.select().from(project).where(eq(project.id, input.id));
+    await assertInScope(row, ctx);
+    return row;
+  }),
+
+  create: permissionProcedure('project', 'create')
+    .input(projectInput)
+    .mutation(async ({ ctx, input }) => {
+      const [created] = await db
+        .insert(project)
+        .values({
+          ...input,
+          organizationId: ctx.orgId,
+          createdById: ctx.session.user.id,
+        })
+        .returning();
+      if (!created) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      return created;
+    }),
+
+  update: permissionProcedure('project', 'update')
+    .input(z.object({ id: z.string() }).merge(projectInput.partial()))
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await db.select().from(project).where(eq(project.id, input.id));
+      await assertInScope(existing, ctx);
+      const { id, ...patch } = input;
+      const [updated] = await db
+        .update(project)
+        .set(patch)
+        .where(and(eq(project.id, id), eq(project.organizationId, ctx.orgId)))
+        .returning();
+      return updated;
+    }),
+
+  delete: permissionProcedure('project', 'delete')
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await db.select().from(project).where(eq(project.id, input.id));
+      await assertInScope(existing, ctx);
+      await db.delete(project).where(and(eq(project.id, input.id), eq(project.organizationId, ctx.orgId)));
+      return { success: true };
+    }),
+});
+{{{{/raw}}}}

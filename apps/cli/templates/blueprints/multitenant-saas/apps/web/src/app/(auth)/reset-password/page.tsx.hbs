@@ -1,0 +1,18 @@
+---
+path: src/app/(auth)/reset-password/page.tsx
+mono:
+  scope: app
+  path: src/app/(auth)/reset-password/page.tsx
+---
+import { ResetPasswordForm } from './reset-password-form';
+
+{{{{raw}}}}
+export default async function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; error?: string }>;
+}) {
+  const { token, error } = await searchParams;
+  return <ResetPasswordForm token={token} error={error} />;
+}
+{{{{/raw}}}}

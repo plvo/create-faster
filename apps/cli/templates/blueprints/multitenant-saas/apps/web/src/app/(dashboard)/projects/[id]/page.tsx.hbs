@@ -1,0 +1,14 @@
+---
+path: src/app/(dashboard)/projects/[id]/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/projects/[id]/page.tsx
+---
+import { ProjectDetailClient } from './project.client';
+
+{{{{raw}}}}
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ProjectDetailClient id={id} />;
+}
+{{{{/raw}}}}

@@ -1,0 +1,115 @@
+---
+path: src/components/members/invite-dialog.tsx
+mono:
+  scope: app
+  path: src/components/members/invite-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@repo/ui/components/ui/dialog';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+import { InvitationLinkDialog } from './invitation-link-dialog';
+
+{{{{raw}}}}
+const BUILT_IN_ROLES = ['admin', 'member'];
+
+const inviteSchema = z.object({
+  email: z.email('Enter a valid email'),
+  role: z.string().min(1, 'Role is required'),
+});
+
+export function InviteDialog() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [linkDialog, setLinkDialog] = useState<{ open: boolean; link: string; email: string }>({
+    open: false,
+    link: '',
+    email: '',
+  });
+
+  const { data: customRoles } = useQuery(trpc.role.list.queryOptions());
+
+  const create = useMutation(
+    trpc.invitation.create.mutationOptions({
+      onSuccess: (data) => {
+        setOpen(false);
+        form.reset();
+        queryClient.invalidateQueries(trpc.invitation.list.queryFilter());
+        setLinkDialog({ open: true, link: (data as { inviteLink: string; email?: string }).inviteLink, email: (data as { email?: string }).email ?? '' });
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
+
+  const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
+  const roleOptions = Object.fromEntries(allRoles.map((r) => [r, r]));
+
+  const form = useAppForm({
+    defaultValues: { email: '', role: 'member' },
+    validators: { onChange: inviteSchema },
+    onSubmit: async ({ value }) => {
+      await create.mutateAsync({ email: value.email, role: value.role });
+    },
+  });
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button>Invite member</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite member</DialogTitle>
+            <DialogDescription>You'll get a link to share with the invited person.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField
+              name='email'
+              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            />
+            <form.AppField
+              name='role'
+              children={(field) => <field.SelectField label='Role' options={roleOptions} />}
+            />
+            <div className='flex justify-end gap-2'>
+              <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <form.AppForm>
+                <form.SubmitButton>Create invitation</form.SubmitButton>
+              </form.AppForm>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <InvitationLinkDialog
+        open={linkDialog.open}
+        onOpenChange={(o) => setLinkDialog((s) => ({ ...s, open: o }))}
+        inviteLink={linkDialog.link}
+        email={linkDialog.email}
+      />
+    </>
+  );
+}
+{{{{/raw}}}}

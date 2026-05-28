@@ -1,0 +1,48 @@
+---
+path: src/trpc/routers/invitation.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/invitation.ts
+---
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { router } from '../trpc';
+import { orgProcedure, permissionProcedure } from '../middleware/rbac';
+{{else}}
+import { router } from '@/trpc/init';
+import { orgProcedure, permissionProcedure } from '@/trpc/middleware/rbac';
+{{/if}}
+import { z } from 'zod';
+
+{{{{raw}}}}
+export const invitationRouter = router({
+  list: orgProcedure.query(async ({ ctx }) => {
+    const result = await auth.api.listInvitations({
+      headers: ctx.headers,
+      query: { organizationId: ctx.orgId },
+    });
+    return result ?? [];
+  }),
+
+  create: permissionProcedure('invitation', 'create')
+    .input(z.object({ email: z.string().email(), role: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await auth.api.createInvitation({
+        headers: ctx.headers,
+        body: { email: input.email, role: input.role, organizationId: ctx.orgId },
+      });
+      const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${result.id}`;
+      return { ...result, inviteLink };
+    }),
+
+  cancel: permissionProcedure('invitation', 'cancel')
+    .input(z.object({ invitationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.cancelInvitation({
+        headers: ctx.headers,
+        body: { invitationId: input.invitationId },
+      });
+    }),
+});
+{{{{/raw}}}}

@@ -1,0 +1,62 @@
+---
+path: scripts/seed.ts
+mono:
+  scope: root
+  path: scripts/seed.ts
+---
+import { auth } from '@repo/auth/auth';
+import { db } from '@repo/db';
+import { memberTable, organizationTable, project } from '@repo/db/schema';
+
+{{{{raw}}}}
+async function main() {
+  console.log('Creating users...');
+
+  const owner = await auth.api.signUpEmail({
+    body: { email: 'owner@example.com', password: 'owner-password', name: 'Owner Demo' },
+  });
+  const member = await auth.api.signUpEmail({
+    body: { email: 'member@example.com', password: 'member-password', name: 'Member Demo' },
+  });
+
+  console.log('Creating organization...');
+
+  const [org] = await db
+    .insert(organizationTable)
+    .values({ name: 'Acme Inc.', slug: 'acme' })
+    .returning();
+
+  await db.insert(memberTable).values([
+    { organizationId: org.id, userId: owner.user.id, role: 'owner' },
+    { organizationId: org.id, userId: member.user.id, role: 'member' },
+  ]);
+
+  console.log('Creating projects...');
+
+  await db.insert(project).values([
+    {
+      organizationId: org.id,
+      createdById: owner.user.id,
+      name: 'Onboarding workflow',
+      description: 'Set up new customer onboarding',
+      status: 'active',
+    },
+    {
+      organizationId: org.id,
+      createdById: owner.user.id,
+      name: 'Q4 launch',
+      description: 'Plan and execute Q4 launch',
+      status: 'active',
+    },
+  ]);
+
+  console.log('Done.');
+  console.log('Login as: owner@example.com / owner-password');
+  console.log('Or as: member@example.com / member-password');
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+{{{{/raw}}}}

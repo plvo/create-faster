@@ -1,0 +1,14 @@
+---
+path: src/app/(auth)/signup/page.tsx
+mono:
+  scope: app
+  path: src/app/(auth)/signup/page.tsx
+---
+import { SignupForm } from './signup-form';
+
+{{{{raw}}}}
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {
+  const { redirect } = await searchParams;
+  return <SignupForm redirectTo={redirect ?? '/'} />;
+}
+{{{{/raw}}}}

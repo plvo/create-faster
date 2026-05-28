@@ -1,0 +1,140 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/auth.ts
+---
+import {
+  db,
+  invitationTable,
+  memberTable,
+  organizationRoleTable,
+  organizationTable,
+  userAccountTable,
+  userSessionTable,
+  userTable,
+  userVerificationTable,
+} from '@repo/db';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
+import { organization } from 'better-auth/plugins';
+import { ac, admin, member, owner } from './permissions';
+
+{{{{raw}}}}
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    usePlural: false,
+    schema: {
+      user: userTable,
+      account: userAccountTable,
+      session: userSessionTable,
+      verification: userVerificationTable,
+      organization: organizationTable,
+      member: memberTable,
+      invitation: invitationTable,
+      organizationRole: organizationRoleTable,
+    },
+  }),
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      // No-op: reset links are surfaced via console in development.
+      // Wire an email provider here for production.
+      console.log(`[reset-password] ${user.email} → ${url}`);
+    },
+  },
+  plugins: [
+    organization({
+      ac,
+      roles: { owner, admin, member },
+      dynamicAccessControl: { enabled: true },
+      requireEmailVerificationOnInvitation: false,
+      cancelPendingInvitationsOnReInvite: true,
+      async sendInvitationEmail(data) {
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${data.id}`;
+        // No-op: invitations are shared via copy-link from the UI.
+        // Logged here only for development visibility.
+        console.log(`[invite] ${data.email} (${data.role}) → ${inviteLink}`);
+      },
+    }),
+    nextCookies(),
+  ],
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const membership = await db.query.memberTable.findFirst({
+            where: (member, { eq }) => eq(member.userId, session.userId),
+            orderBy: (member, { asc }) => asc(member.createdAt),
+          });
+          return {
+            data: {
+              ...session,
+              activeOrganizationId: membership?.organizationId,
+            },
+          };
+        },
+      },
+    },
+  },
+  user: {
+    modelName: 'user',
+    fields: {
+      name: 'username',
+      email: 'email',
+      emailVerified: 'emailVerified',
+      image: 'avatarUrl',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  session: {
+    modelName: 'session',
+    fields: {
+      userId: 'userId',
+      token: 'token',
+      expiresAt: 'expiresAt',
+      ipAddress: 'ipAddress',
+      userAgent: 'userAgent',
+      activeOrganizationId: 'activeOrganizationId',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+    expiresIn: 15 * DAY,
+  },
+  account: {
+    modelName: 'account',
+    fields: {
+      userId: 'userId',
+      accountId: 'accountId',
+      providerId: 'providerId',
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken',
+      accessTokenExpiresAt: 'accessTokenExpiresAt',
+      refreshTokenExpiresAt: 'refreshTokenExpiresAt',
+      scope: 'scope',
+      idToken: 'idToken',
+      password: 'password',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+  verification: {
+    modelName: 'verification',
+    fields: {
+      identifier: 'identifier',
+      value: 'value',
+      expiresAt: 'expiresAt',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    },
+  },
+});
+{{{{/raw}}}}

@@ -1,0 +1,41 @@
+---
+path: src/trpc/routers/session.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/session.ts
+---
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { router } from '../trpc';
+import { protectedProcedure } from '../trpc';
+{{else}}
+import { router, protectedProcedure } from '@/trpc/init';
+{{/if}}
+import { z } from 'zod';
+
+{{{{raw}}}}
+export const sessionRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const currentToken = ctx.session.session.token;
+    const sessions = await auth.api.listSessions({ headers: ctx.headers });
+    return (sessions ?? []).map((s) => ({
+      ...s,
+      isCurrent: s.token === currentToken,
+    }));
+  }),
+
+  revoke: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await auth.api.revokeSession({
+        headers: ctx.headers,
+        body: { token: input.token },
+      });
+    }),
+
+  revokeOthers: protectedProcedure.mutation(async ({ ctx }) => {
+    await auth.api.revokeOtherSessions({ headers: ctx.headers });
+  }),
+});
+{{{{/raw}}}}

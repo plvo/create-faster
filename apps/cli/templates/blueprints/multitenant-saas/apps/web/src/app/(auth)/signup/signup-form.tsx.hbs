@@ -1,0 +1,77 @@
+---
+path: src/app/(auth)/signup/signup-form.tsx
+mono:
+  scope: app
+  path: src/app/(auth)/signup/signup-form.tsx
+---
+'use client';
+
+import { authClient } from '@repo/auth/auth-client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+
+{{{{raw}}}}
+const signupSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.email('Enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export function SignupForm({ redirectTo }: { redirectTo: string }) {
+  const router = useRouter();
+
+  const form = useAppForm({
+    defaultValues: { name: '', email: '', password: '' },
+    validators: { onChange: signupSchema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.signUp.email({ name: value.name, email: value.email, password: value.password });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to create account');
+        return;
+      }
+      router.push(redirectTo);
+      router.refresh();
+    },
+  });
+
+  return (
+    <div className='flex min-h-screen items-center justify-center p-6'>
+      <Card className='w-full max-w-md'>
+        <CardHeader>
+          <CardTitle>Create your account</CardTitle>
+          <CardDescription>Sign up to get started.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
+            <form.AppField
+              name='email'
+              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            />
+            <form.AppField name='password' children={(field) => <field.PasswordField label='Password' />} />
+            <form.AppForm>
+              <form.SubmitButton props={{ className: 'w-full' }}>Sign up</form.SubmitButton>
+            </form.AppForm>
+          </form>
+          <p className='mt-4 text-center text-sm text-muted-foreground'>
+            Already have an account?{' '}
+            <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`} className='underline'>
+              Sign in
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+{{{{/raw}}}}

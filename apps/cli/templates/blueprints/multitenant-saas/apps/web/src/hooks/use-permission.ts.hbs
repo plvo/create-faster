@@ -1,0 +1,39 @@
+---
+path: src/hooks/use-permission.ts
+mono:
+  scope: app
+  path: src/hooks/use-permission.ts
+---
+'use client';
+
+import { authClient } from '@repo/auth/auth-client';
+import { useEffect, useState, useTransition } from 'react';
+
+{{{{raw}}}}
+type Permissions = Record<string, string[]>;
+
+export function usePermission(permissions: Permissions): {
+  allowed: boolean;
+  loading: boolean;
+} {
+  const [allowed, setAllowed] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    startTransition(async () => {
+      try {
+        const result = await authClient.organization.hasPermission({ permissions });
+        if (!cancelled) setAllowed(result.data?.success ?? false);
+      } catch {
+        if (!cancelled) setAllowed(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [JSON.stringify(permissions)]);
+
+  return { allowed, loading: pending };
+}
+{{{{/raw}}}}

@@ -1,0 +1,88 @@
+---
+path: src/components/profile/account-form.tsx
+mono:
+  scope: app
+  path: src/components/profile/account-form.tsx
+---
+'use client';
+
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+const nameSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+});
+
+export function AccountForm() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
+
+  const updateProfile = useMutation(
+    trpc.user.updateProfile.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.user.me.queryFilter());
+        toast.success('Name updated');
+      },
+      onError: () => toast.error('Failed to update name'),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: { name: user?.username || '' },
+    validators: { onChange: nameSchema },
+    onSubmit: async ({ value }) => {
+      await updateProfile.mutateAsync({ name: value.name });
+    },
+  });
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Account information</h2>
+        <p className='text-sm text-muted-foreground'>Your account details.</p>
+      </div>
+
+      <div className='space-y-3'>
+        <div>
+          <span className='text-sm font-medium'>Email</span>
+          <p className='text-sm text-muted-foreground'>{user?.email}</p>
+        </div>
+        <div>
+          <span className='text-sm font-medium'>Role</span>
+          <p className='text-sm text-muted-foreground capitalize'>{user?.role}</p>
+        </div>
+        <div>
+          <span className='text-sm font-medium'>Joined</span>
+          <p className='text-sm text-muted-foreground'>
+            {user?.createdAt
+              ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className='space-y-4 pt-4 border-t'
+      >
+        <form.AppField name='name' children={(field) => <field.InputField label='Display name' />} />
+        <form.AppForm>
+          <form.SubmitButton>Save</form.SubmitButton>
+        </form.AppForm>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}

@@ -144,10 +144,12 @@ export const META: Meta = {
           cmdk: '^1.1.1',
           'lucide-react': '^0.487.0',
           react: '^19.2.3',
-          vaul: '^1.1.2',
+          tailwindcss: '^4.1.10',
+          'tw-animate-css': '^1.3.4',
           'tailwind-merge': '^3.3.1',
         },
         devDependencies: {
+          typescript: '^5',
           '@tailwindcss/postcss': '^4.1.10',
           '@types/react': '^19.2.3',
         },
@@ -210,12 +212,16 @@ export const META: Meta = {
           '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.5.3'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
+        devDependencies: {
+          typescript: '^5',
+        },
         exports: {
           './route-nextjs': './src/route-nextjs.ts',
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './types': './src/types.ts',
           './password': './src/password.ts',
+          './permissions': './src/permissions.ts',
         },
       },
       envs: [
@@ -239,9 +245,14 @@ export const META: Meta = {
         dependencies: {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
+          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.1'),
           '@trpc/server': '^11.8.1',
           superjson: '^2.2.6',
           zod: '^4.2.1',
+        },
+        devDependencies: {
+          typescript: '^5',
+          '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
           '.': './src/index.ts',
@@ -401,6 +412,7 @@ export const META: Meta = {
               'drizzle-orm': '^0.45.1',
             },
             devDependencies: {
+              typescript: '^5',
               '@types/node': '^22',
               'drizzle-kit': '^0.31.9',
             },
@@ -413,6 +425,7 @@ export const META: Meta = {
             },
             exports: {
               '.': './src/index.ts',
+              './schema': './src/schema.ts',
             },
           },
         },
@@ -428,6 +441,7 @@ export const META: Meta = {
               mariadb: $when({ database: 'mysql' }, '^3.0.0'),
             },
             devDependencies: {
+              typescript: '^5',
               '@types/node': '^22',
               dotenv: '^16.0.0',
               prisma: '^7.0.0',
@@ -782,6 +796,74 @@ export const META: Meta = {
           start: 'turbo start',
         },
       },
+    },
+    'multitenant-saas': {
+      label: 'Multitenant SaaS',
+      hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
+      category: 'Business',
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: [
+              'shadcn',
+              'better-auth',
+              'trpc',
+              'tanstack-query',
+              'tanstack-devtools',
+              'tanstack-form',
+              'next-themes',
+            ],
+          },
+          {
+            appName: 'batch',
+            stackName: 'node',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          '@hugeicons/react': '^1.1.6',
+          '@hugeicons/core-free-icons': '^4.1.1',
+          'lucide-react': '^0.487.0',
+          'react-error-boundary': '^5.0.0',
+          sonner: '^2.0.7',
+          zod: '^4.2.1',
+        },
+      },
+      pkgPackageJson: {
+        ui: {
+          dependencies: {
+            '@tanstack/react-form': '^1.23.7',
+          },
+        },
+      },
+      rootPackageJson: {
+        dependencies: {
+          '@repo/auth': '*',
+          '@repo/db': '*',
+        },
+        scripts: {
+          'db:push': 'turbo db:push',
+          'db:generate': 'turbo db:generate',
+          'db:migrate': 'turbo db:migrate',
+          'db:studio': 'turbo db:studio',
+          'db:seed': 'bun scripts/seed.ts',
+          start: 'turbo start',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          monoScope: ['app'],
+        },
+      ],
     },
     showcase: {
       label: 'Showcase',

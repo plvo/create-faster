@@ -1,0 +1,73 @@
+---
+path: src/app/(dashboard)/projects/[id]/project.client.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/projects/[id]/project.client.tsx
+---
+'use client';
+
+import { Badge } from '@repo/ui/components/ui/badge';
+import { Button } from '@repo/ui/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useTRPC } from '@/trpc/providers';
+import { ProjectDeleteDialog } from '@/components/projects/project-delete-dialog';
+import { ProjectEditDialog } from '@/components/projects/project-edit-dialog';
+
+{{{{raw}}}}
+export function ProjectDetailClient({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const { data: project, isLoading } = useQuery(trpc.project.get.queryOptions({ id }));
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!project) return <div>Project not found.</div>;
+
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-start justify-between'>
+        <div>
+          <h1 className='text-2xl font-semibold'>{project.name}</h1>
+          <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>{project.status}</Badge>
+        </div>
+        <div className='space-x-2'>
+          <Button variant='outline' onClick={() => setEditOpen(true)}>
+            Edit
+          </Button>
+          <Button variant='destructive' onClick={() => setDeleteOpen(true)}>
+            Delete
+          </Button>
+        </div>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Description</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className='text-sm whitespace-pre-wrap'>
+            {project.description ?? <em>No description.</em>}
+          </p>
+        </CardContent>
+      </Card>
+      <ProjectEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        project={{
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          status: project.status,
+        }}
+      />
+      <ProjectDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        project={{ id: project.id, name: project.name }}
+        redirectAfter
+      />
+    </div>
+  );
+}
+{{{{/raw}}}}

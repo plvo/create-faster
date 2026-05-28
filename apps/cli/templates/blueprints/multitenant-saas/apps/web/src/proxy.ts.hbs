@@ -1,0 +1,37 @@
+---
+path: src/proxy.ts
+mono:
+  scope: app
+  path: src/proxy.ts
+---
+import { auth } from '@repo/auth/auth';
+import { NextResponse, type NextRequest } from 'next/server';
+
+{{{{raw}}}}
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/accept-invitation', '/api/auth'];
+
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith('/onboarding')) return NextResponse.next();
+
+  const orgs = await auth.api.listOrganizations({ headers: request.headers });
+  if (!orgs || orgs.length === 0) {
+    return NextResponse.redirect(new URL('/onboarding', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+{{{{/raw}}}}
