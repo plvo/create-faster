@@ -769,6 +769,13 @@ export const META: Meta = {
           zod: '^4.2.1',
         },
       },
+      pkgPackageJson: {
+        ui: {
+          dependencies: {
+            '@tanstack/react-form': '^1.23.7',
+          },
+        },
+      },
       rootPackageJson: {
         dependencies: {
           '@repo/auth': '*',
