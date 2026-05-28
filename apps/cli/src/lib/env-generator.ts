@@ -23,6 +23,9 @@ interface CollectedEnv {
 
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
   let resolved = value.replace(/\{\{projectName\}\}/g, ctx.projectName);
+  if (ctx.dbPort !== undefined) {
+    resolved = resolved.replace(/\{\{dbPort\}\}/g, String(ctx.dbPort));
+  }
   if (appName) {
     const port = resolveAppPort(ctx.apps, appName);
     resolved = resolved.replace(/\{\{appPort\}\}/g, String(port));

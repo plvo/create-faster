@@ -55,6 +55,7 @@ async function main() {
     const ctx: TemplateContext = {
       ...config,
       repo: isTurborepo ? 'turborepo' : 'single',
+      dbPort: config.project.database ? Math.floor(Math.random() * 50000) + 10000 : undefined,
     };
 
     const templates = getAllTemplatesForContext(ctx);
