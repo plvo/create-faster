@@ -8,12 +8,11 @@ mono:
 
 import { authClient } from '@repo/auth/auth-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
-import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useRef } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
-import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
 function slugify(input: string): string {
@@ -31,20 +30,22 @@ const onboardingSchema = z.object({
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const trpc = useTRPC();
-  const createOrg = useMutation(
-    trpc.organization.create.mutationOptions({
-      onError: (err) => toast.error(err.message ?? 'Failed to create organization'),
-    }),
-  );
+  const slugTouched = useRef(false);
 
   const form = useAppForm({
     defaultValues: { name: '', slug: '' },
     validators: { onChange: onboardingSchema },
     onSubmit: async ({ value }) => {
-      const org = await createOrg.mutateAsync({ name: value.name, slug: value.slug || slugify(value.name) });
-      if (org?.id) {
-        await authClient.organization.setActive({ organizationId: org.id });
+      const result = await authClient.organization.create({
+        name: value.name,
+        slug: value.slug || slugify(value.name),
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Failed to create organization');
+        return;
+      }
+      if (result.data?.id) {
+        await authClient.organization.setActive({ organizationId: result.data.id });
         router.push('/');
       }
     },
@@ -73,7 +74,7 @@ export default function OnboardingPage() {
                   props={{
                     onChange: (e) => {
                       field.handleChange(e.target.value);
-                      if (!form.state.values.slug) form.setFieldValue('slug', slugify(e.target.value));
+                      if (!slugTouched.current) form.setFieldValue('slug', slugify(e.target.value));
                     },
                   }}
                 />
@@ -84,7 +85,12 @@ export default function OnboardingPage() {
               children={(field) => (
                 <field.InputField
                   label='URL slug'
-                  props={{ onChange: (e) => field.handleChange(slugify(e.target.value)) }}
+                  props={{
+                    onChange: (e) => {
+                      slugTouched.current = true;
+                      field.handleChange(slugify(e.target.value));
+                    },
+                  }}
                 />
               )}
             />

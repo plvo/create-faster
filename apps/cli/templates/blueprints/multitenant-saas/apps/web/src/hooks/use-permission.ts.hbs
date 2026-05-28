@@ -7,7 +7,7 @@ mono:
 'use client';
 
 import { authClient } from '@repo/auth/auth-client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 {{{{raw}}}}
 type Permissions = Record<string, string[]>;
@@ -17,27 +17,23 @@ export function usePermission(permissions: Permissions): {
   loading: boolean;
 } {
   const [allowed, setAllowed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    authClient.organization
-      .hasPermission({ permissions })
-      .then((result) => {
+    startTransition(async () => {
+      try {
+        const result = await authClient.organization.hasPermission({ permissions });
         if (!cancelled) setAllowed(result.data?.success ?? false);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setAllowed(false);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      }
+    });
     return () => {
       cancelled = true;
     };
   }, [JSON.stringify(permissions)]);
 
-  return { allowed, loading };
+  return { allowed, loading: pending };
 }
 {{{{/raw}}}}

@@ -23,17 +23,20 @@ import {
 } from '@repo/ui/components/ui/sidebar';
 import { ArrowDown01Icon, Building02Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 {{{{raw}}}}
 export function OrgSwitcher() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isMobile } = useSidebar();
   const { data: orgs } = useListOrganizations();
   const { data: active } = useActiveOrganization();
 
   async function handleSwitch(organizationId: string) {
     await authClient.organization.setActive({ organizationId });
+    await queryClient.invalidateQueries();
     router.refresh();
   }
 
