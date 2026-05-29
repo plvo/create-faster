@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.6.5](https://github.com/plvo/create-faster/compare/create-faster-v1.6.4...create-faster-v1.6.5) (2026-05-29)
+
+
+### Features
+
+* AI-agent context generation (AGENTS.md + CLAUDE.md) ([417fffa](https://github.com/plvo/create-faster/commit/417fffafa48960ffde11ded5f8d5088dfd821f18))
+* **blueprint/org-dashboard:** packages/ui + shuip forms migration (PR1) ([#120](https://github.com/plvo/create-faster/issues/120)) ([35e5d59](https://github.com/plvo/create-faster/commit/35e5d5908c80ab88440be32c1d06f8825b50b542))
+* **blueprint:** add multitenant-saas ([#114](https://github.com/plvo/create-faster/issues/114)) ([5a53929](https://github.com/plvo/create-faster/commit/5a5392908f14ecfe91b4cdd6a8837c0a11ab081d))
+* **blueprints:** local-setup orchestrator + idempotent seed tooling ([#124](https://github.com/plvo/create-faster/issues/124)) ([614c1dc](https://github.com/plvo/create-faster/commit/614c1dc6aabb63fdf0be79cb6a8c39fb3021c626))
+* **docker/db:** randomize host port for containers ([#118](https://github.com/plvo/create-faster/issues/118)) ([5ac48ff](https://github.com/plvo/create-faster/commit/5ac48ff6b28d469618ce46e0ccc1361fa2308e9f))
+* **testing:** add Vitest, Playwright & jest-expo testing libraries ([#123](https://github.com/plvo/create-faster/issues/123)) ([4b7f510](https://github.com/plvo/create-faster/commit/4b7f510fbb03fcb47963abc184567526266ec474))
+* **tooling:** forward PORTLESS_URL in next.config.ts ([#115](https://github.com/plvo/create-faster/issues/115)) ([06089aa](https://github.com/plvo/create-faster/commit/06089aa119e04a5773beca52a50ff3b1495bf3e2))
+
+
+### Bug Fixes
+
+* **db/docker:** remove latest flag for img versions ([#117](https://github.com/plvo/create-faster/issues/117)) ([87e56e0](https://github.com/plvo/create-faster/commit/87e56e008161b230686ba7e685a854e2f13cc5e2))
+* **meta/shadcn:** move tailwindcss to devDependencies ([#119](https://github.com/plvo/create-faster/issues/119)) ([510d5e3](https://github.com/plvo/create-faster/commit/510d5e335982b13ec245c7af07144ecdab04a15e))
+* **templates:** unify base url handling across auth and trpc ([#121](https://github.com/plvo/create-faster/issues/121)) ([d9751a5](https://github.com/plvo/create-faster/commit/d9751a579ab9b6adfed4eb573d1d5e82053dd801))
+
+
+### Refactor
+
+* **cli:** codebase quality pass (type consolidation, DRY) ([#112](https://github.com/plvo/create-faster/issues/112)) ([a3fd238](https://github.com/plvo/create-faster/commit/a3fd238d39c4d808a89404c089297de7f2ac1568))
+
 ## [1.6.4](https://github.com/plvo/create-faster/compare/create-faster-v1.6.3...create-faster-v1.6.4) (2026-04-09)
 
 
