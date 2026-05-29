@@ -1,0 +1,33 @@
+---
+path: docs/agents/infrastructure.md
+mono:
+  scope: root
+  path: docs/agents/infrastructure.md
+---
+# Infrastructure (Terraform)
+
+Infrastructure is modular Terraform under `infra/`. The root `infra/main.tf` wires four reusable modules in `infra/modules/`:
+
+- `lambda` — one instance per function (`api`, `cron`, `worker`); zips `apps/<fn>/dist`, creates the function + IAM role.
+- `api-gateway` — HTTP API (v2) `$default` route proxying to the `api` Lambda.
+- `sqs` — main queue + DLQ, consume policy, and the event source mapping to the `worker` Lambda.
+- `eventbridge` — schedule rule + target invoking the `cron` Lambda.
+
+`infra/providers.tf` defines `local.resource_name` (`${project_name}-${env}`) and `local.common_tags`, applied as provider `default_tags` and passed to every module. Root outputs (`api_url`, `queue_url`, `cron_rule_arn`) live in `infra/outputs.tf`. Vars are in `infra/variables.tf` (`region`, `project_name`, `env`); state is remote S3 (`infra/backend.tf` + per-env `infra/backend/{dev,prod}.hcl`).
+
+## Ops (justfile)
+
+Run from repo root; the `justfile` sets `working-directory := 'infra'` and takes an `env` param (default `dev`):
+
+- `just init <env>` — `terraform init` with the env's backend config.
+- `just plan <env>` / `just apply <env>` / `just destroy <env>` — pass `-var="env=<env>"`.
+
+## CD (`.github/workflows/deploy.yml`)
+
+Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is OIDC via `aws-actions/configure-aws-credentials` (`secrets.AWS_ROLE_ARN`, `vars.AWS_REGION`, `permissions: id-token: write`). It lints, builds, then `terraform init -backend-config=backend/<env>.hcl`, plan, apply.
+
+## Add a Lambda function
+
+1. Create `apps/<name>/` (build to `dist/`).
+2. Add a `module "<name>"` block in `infra/main.tf` using `source = "./modules/lambda"`.
+3. Wire any trigger (new `api-gateway`/`sqs`/`eventbridge` module call) and expose outputs in `infra/outputs.tf`.

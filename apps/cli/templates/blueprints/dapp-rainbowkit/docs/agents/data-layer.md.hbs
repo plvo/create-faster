@@ -1,0 +1,21 @@
+---
+path: docs/agents/data-layer.md
+mono:
+  scope: root
+  path: docs/agents/data-layer.md
+---
+# Data Layer
+
+The Drizzle + PostgreSQL schema lives in `src/lib/db/schema.ts`, exported (with types and drizzle utilities) through `src/lib/db/index.ts`. The `db` client is a lazy `Proxy` reading `DATABASE_URL`.
+
+## Wallet-aware schema
+Better Auth's tables back authentication: `userTable` (`users`), `userSessionTable`, `userAccountTable`, `userVerificationTable`. SIWE adds `walletAddressTable` (`wallet_addresses`) with `address`, `chainId`, `isPrimary`, and a `userId` FK; one user has many wallet addresses (see `userTableRelations`). These table names are mapped to Better Auth models in `src/lib/auth/auth.ts`.
+
+## Sessions & users
+On SIWE verify, Better Auth persists a row in `userTable` and a session in `userSessionTable` (15-day expiry). Server checks read it via `auth.api.getSession` (`src/proxy.ts`, `src/app/protected/layout.tsx`).
+
+## Types
+`src/lib/db/types.ts` infers `User`, `WalletAddress`, `UserSession`, etc. via `InferSelectModel`, plus composed types like `UserWithRelations`.
+
+## Extend the schema
+Add a `pgTable` (and `relations`) in `src/lib/db/schema.ts`, infer its types in `src/lib/db/types.ts`, then run `drizzle-kit` per `drizzle.config.ts`. Adding fields Better Auth manages also requires registering them in `src/lib/auth/auth.ts`.

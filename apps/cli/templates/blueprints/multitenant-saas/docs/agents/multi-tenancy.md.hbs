@@ -1,0 +1,27 @@
+---
+path: docs/agents/multi-tenancy.md
+mono:
+  scope: root
+  path: docs/agents/multi-tenancy.md
+---
+# Multi-Tenancy
+
+Organizations are the tenants. The active org is stored on the session as `activeOrganizationId` — set in the `databaseHooks.session.create.before` hook in `packages/auth/src/auth.ts` (first membership) and switched via the org switcher.
+
+## Onboarding redirect
+`apps/web/src/proxy.ts` runs on every non-public route: it redirects unauthenticated users to `/login`, then sends users with zero organizations to `/onboarding` (`apps/web/src/app/(onboarding)/onboarding/page.tsx`). The dashboard layout (`apps/web/src/app/(dashboard)/layout.tsx`) re-checks `activeOrganizationId` server-side.
+
+## Org-scoping data
+Every tenant-owned table carries `organizationId` (see `project` in `packages/db/src/schema.ts`). Procedures read the tenant from `ctx.orgId` (provided by `orgProcedure`), filter queries by it, and guard single-row reads with `assertInScope` — see `packages/api/src/middleware/rbac.ts` and `packages/api/src/router/project.ts`.
+
+## Invitations
+Link-based, no email required. `packages/api/src/router/invitation.ts` `create` calls `auth.api.createInvitation` and returns an `inviteLink` to `/accept-invitation/[id]`. The dialog (`apps/web/src/components/members/invite-dialog.tsx` → `invitation-link-dialog.tsx`) surfaces the link to copy. The recipient opens `apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx`.
+
+## Org switcher
+`apps/web/src/components/navigation/org-switcher.tsx` lists orgs via `useListOrganizations`, switches with `authClient.organization.setActive`, then invalidates queries and refreshes.
+
+## Adding an org-scoped resource
+1. Add a table with `organizationId` (FK to `organizations`) in `packages/db/src/schema.ts`.
+2. Add resource + actions to `statement` in `packages/auth/src/permissions.ts` and grant them on the built-in roles.
+3. Add a router under `packages/api/src/router/`, gating with `permissionProcedure(resource, action)`, filtering by `ctx.orgId`, and using `assertInScope` for by-id reads. Register it in `packages/api/src/root.ts`.
+4. Add a sidebar entry (with `permission`) in `apps/web/src/lib/constants.ts` and build the UI.

@@ -14,6 +14,7 @@
     "concepts/stacks",
     "concepts/modules",
     "concepts/blueprints",
+    "concepts/agent-context",
     "---STACKS---",
     "stacks/nextjs",
     "stacks/expo",

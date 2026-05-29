@@ -1,0 +1,59 @@
+---
+title: Agent Context
+description: Every generated project ships with AGENTS.md and CLAUDE.md so AI coding agents understand the stack, conventions, and wiring out of the box.
+icon: Bot
+---
+
+Every project created by create-faster includes context for AI coding agents (Claude Code, Cursor, Codex, Gemini, Copilot). Instead of rediscovering the stack, conventions, and how libraries are wired, an agent reads it from the generated docs.
+
+This is on by default. Opt out with [`--no-agent-context`](/docs/options).
+
+## What gets generated
+
+- **`AGENTS.md`** — the source of truth. Project header (stack, scripts, environment, conventions) plus a short section per selected library and addon.
+- **`CLAUDE.md`** — a one-line `@AGENTS.md` import. Claude Code reads `CLAUDE.md`; every other tool reads the cross-tool `AGENTS.md` standard. No filesystem symlink, so it works on Windows, WSL, and Linux.
+
+### Single repo
+
+```
+my-project/
+├── AGENTS.md     # project header + per-addon sections
+└── CLAUDE.md     # @AGENTS.md
+```
+
+### Monorepo (turborepo)
+
+Each app gets its own context next to its code, while the root holds the project view (apps, packages, global environment).
+
+```
+my-project/
+├── AGENTS.md            # project view: apps, packages, env scopes
+├── CLAUDE.md            # @AGENTS.md
+├── apps/web/AGENTS.md   # web's stack + libraries
+├── apps/web/CLAUDE.md   # @AGENTS.md
+└── apps/api/AGENTS.md   # api's stack + libraries
+```
+
+An app whose stack and libraries have no agent notes gets no `AGENTS.md` — there is never an empty file.
+
+## What the sections contain
+
+Sections describe what is **specific to your generated project** — config location, scripts, environment variables, and conventions — and link out to official docs rather than re-explaining the libraries.
+
+The project header is rendered from your composition (stack, ORM, database, linter, package manager, environment variables). Per-addon sections currently cover the stacks (Next.js, Expo, Hono) and the highest-value libraries and addons (Better Auth, shadcn/ui, tRPC, Drizzle, Prisma, PostgreSQL, MySQL). Addons without notes simply contribute no section.
+
+## Blueprints
+
+Projects generated from a [blueprint](/docs/concepts/blueprints) get extra context at the root `AGENTS.md`:
+
+- **`## About this project`** — states the project was scaffolded from a create-faster blueprint, links to the blueprint's documentation, and flags that the dummy data, fixtures, and example flows are placeholders meant to be replaced. The structure and integrations are the reusable part; the sample content is not.
+- **`## Architecture`** — how the blueprint is wired together.
+- **`docs/agents/*.md`** — focused guides for individual aspects (for example, auth and permissions, or the data layer), linked from the Architecture section.
+
+## Opting out
+
+```bash
+bunx create-faster my-project --app my-project:nextjs --no-agent-context
+```
+
+When disabled, no `AGENTS.md`, `CLAUDE.md`, or `docs/agents/` files are written.

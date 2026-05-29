@@ -102,6 +102,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
+  if (partial?.agentContext === false) ctx.agentContext = false;
   progress.next();
 
   return ctx;
@@ -172,6 +173,7 @@ export async function blueprintCli(
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
+  if (partial?.agentContext === false) ctx.agentContext = false;
   progress.next();
 
   return ctx;

@@ -1,0 +1,21 @@
+---
+path: docs/agents/messaging.md
+mono:
+  scope: root
+  path: docs/agents/messaging.md
+---
+# Messaging (SQS + Cron)
+
+Async work flows through the SQS worker and the EventBridge cron, both wired in `sst.config.ts` (see [Infrastructure](infrastructure.md)).
+
+## Worker
+`apps/worker/src/index.ts` exports an `SQSEvent` handler returning `SQSBatchResponse`. It loops over `event.Records`, calls `processMessage(record)`, and on any throw pushes `{ itemIdentifier: record.messageId }` to `batchItemFailures`. This is partial batch failure: only the failed messages are retried, not the whole batch. `processMessage` parses `record.body` as a `QueueMessage` and branches on `message.type`. Put real handling logic where the `TODO` sits.
+
+## Cron
+`apps/cron/src/index.ts` exports a `ScheduledEvent` handler (`rate(1 hour)`). It receives the EventBridge `event.time` and `context.awsRequestId`; add scheduled work where the `TODO` sits.
+
+## Message contract
+`packages/shared/src/types.ts` defines the shared `QueueMessage<T>`: `{ type, payload, timestamp, traceId }`. It is imported as `@repo/shared/types` and is the single source of truth across functions — always log `traceId` for cross-function tracing.
+
+## Add a message type / enqueue work
+Add a discriminant under `QueueMessage['type']` (or a typed union) in `packages/shared/src/types.ts`, then handle it in the worker's `processMessage` branch. To enqueue, link the `queue` to a producer function in `sst.config.ts` and send a JSON-serialized `QueueMessage` via the AWS SQS SDK using the linked queue URL.

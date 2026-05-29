@@ -7,6 +7,12 @@ import type { MetaAddon, MonoScope, ProjectCategoryName, StackName, TemplateFron
 import { scanDirectory, transformFilename } from './file-writer';
 import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
 
+const AGENT_DOC_FILENAME = '__agent.md.hbs';
+
+export function scanTemplateFiles(dir: string): string[] {
+  return scanDirectory(dir).filter((file) => !file.endsWith(AGENT_DOC_FILENAME));
+}
+
 const VALID_STACKS = Object.keys(META.stacks);
 
 export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
@@ -64,7 +70,7 @@ function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; on
 
 function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: TemplateContext): TemplateFile[] {
   const stackDir = join(TEMPLATES_DIR, 'stack', stackName);
-  const files = scanDirectory(stackDir);
+  const files = scanTemplateFiles(stackDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
@@ -90,7 +96,7 @@ function resolveTemplatesForLibrary(
   if (!library) return [];
 
   const libraryDir = join(TEMPLATES_DIR, 'libraries', libraryName);
-  const files = scanDirectory(libraryDir);
+  const files = scanTemplateFiles(libraryDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
@@ -125,7 +131,7 @@ function resolveTemplatesForProjectAddon(
   if (!addon) return [];
 
   const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
-  const files = scanDirectory(addonDir);
+  const files = scanTemplateFiles(addonDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
@@ -161,7 +167,7 @@ function resolveStackSpecificAddonTemplatesForApps(
   if (!addon) return [];
 
   const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
-  const files = scanDirectory(addonDir);
+  const files = scanTemplateFiles(addonDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {
@@ -186,7 +192,7 @@ function resolveStackSpecificAddonTemplatesForApps(
 
 function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
   const repoDir = join(TEMPLATES_DIR, 'repo', ctx.repo);
-  const files = scanDirectory(repoDir);
+  const files = scanTemplateFiles(repoDir);
 
   return files.map((file) => {
     const source = join(repoDir, file);
@@ -197,7 +203,7 @@ function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
 
 function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContext): TemplateFile[] {
   const blueprintDir = join(TEMPLATES_DIR, 'blueprints', blueprintName);
-  const files = scanDirectory(blueprintDir);
+  const files = scanTemplateFiles(blueprintDir);
   const templates: TemplateFile[] = [];
 
   for (const file of files) {

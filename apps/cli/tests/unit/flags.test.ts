@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { META } from '@/__meta__';
 
 describe('META blueprint category grouping', () => {
@@ -23,6 +25,13 @@ describe('META blueprint category grouping', () => {
 
   test('org-dashboard is in Business category', () => {
     expect(META.blueprints['org-dashboard'].category).toBe('Business');
+  });
+});
+
+describe('agent-context flag', () => {
+  test('flags.ts registers --no-agent-context', () => {
+    const src = readFileSync(join(import.meta.dir, '../../src/flags.ts'), 'utf-8');
+    expect(src).toContain('--no-agent-context');
   });
 });
 

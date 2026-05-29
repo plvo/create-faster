@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { note, spinner } from '@clack/prompts';
 import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
+import { collectAgentContextFiles } from './agent-context-generator';
 import { collectEnvFiles, collectEnvGroups } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { pathExists, writeFileContent } from './file-writer';
@@ -83,18 +84,35 @@ export async function generateProjectFiles(
   const envGroups = collectEnvGroups(context);
   const enrichedContext = { ...context, envGroups };
 
+  const activeTemplates =
+    context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
+
   const s = spinner();
-  const totalFiles = packageJsons.length + envFiles.length + templates.length;
+  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
   s.start(`Generating ${totalFiles} files...`);
 
   let processed = packageJsons.length + envFiles.length;
-  for (const template of templates) {
+  for (const template of activeTemplates) {
     processed++;
     const progress = `[${processed}/${totalFiles}]`;
     s.message(`${progress} ${template.destination}`);
 
     const processResult = await processTemplate(template, enrichedContext, projectPath);
     allResults.push(processResult);
+  }
+
+  // 5. Generate agent context files (programmatic)
+  if (context.agentContext !== false) {
+    const agentFiles = collectAgentContextFiles(context);
+    for (const { destination, content } of agentFiles) {
+      const fullPath = join(projectPath, destination);
+      try {
+        await writeFileContent(fullPath, content);
+        allResults.push({ success: true, destination });
+      } catch (error) {
+        allResults.push({ success: false, destination, error: getErrorMessage(error) });
+      }
+    }
   }
 
   // 4. Compile results

@@ -1,0 +1,27 @@
+---
+path: docs/agents/messaging.md
+mono:
+  scope: root
+  path: docs/agents/messaging.md
+---
+# Messaging (SQS + EventBridge)
+
+Async work flows through SQS to the worker Lambda; scheduled work fires from EventBridge to the cron Lambda. Messages share one typed contract.
+
+## Message contract
+
+`packages/shared/src/types.ts` defines `QueueMessage<T>` (`type`, `payload`, `timestamp`, `traceId`). Producers and the worker import it via `@repo/shared/types` — keep both sides on this type.
+
+## Worker (`apps/worker/src/index.ts`)
+
+SQS-triggered handler returning `SQSBatchResponse`. It loops `event.Records`, parses each body as `QueueMessage`, and on error pushes `{ itemIdentifier: record.messageId }` to `batchItemFailures` (partial batch failure — only failed messages are retried, not the whole batch). This relies on the event source mapping's `function_response_types = ["ReportBatchItemFailures"]` in `infra/modules/sqs/main.tf`. That module also provisions a DLQ (`<queue>-dlq`, 14-day retention) with `maxReceiveCount = 3` redrive.
+
+## Cron (`apps/cron/src/index.ts`)
+
+`ScheduledEvent` handler invoked by the EventBridge rule (`infra/modules/eventbridge/main.tf`). Schedule is the module's `schedule_expression` var (default `rate(1 hour)`).
+
+## Add a message type
+
+1. Extend/narrow `QueueMessage` in `packages/shared/src/types.ts` (e.g. a `type` union with typed `payload`).
+2. Handle the new `message.type` in the worker's `processMessage`.
+3. Enqueue with `SendMessageCommand` against `queue_url` (root Terraform output), sending a JSON-stringified `QueueMessage`; grant the producer's Lambda role `sqs:SendMessage`.

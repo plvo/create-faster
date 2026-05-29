@@ -1,6 +1,9 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { getAllTemplatesForContext, resolveAddonNames, resolveDestination } from '@/lib/template-resolver';
+import { getAllTemplatesForContext, resolveAddonNames, resolveDestination, scanTemplateFiles } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
 const turborepoCtx: TemplateContext = {
@@ -310,5 +313,20 @@ describe('blueprint template resolution', () => {
     const destinations = templates.map((t) => t.destination);
     const unique = new Set(destinations);
     expect(unique.size).toBe(destinations.length);
+  });
+});
+
+describe('scanTemplateFiles', () => {
+  test('excludes __agent.md.hbs but keeps normal templates', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cf-scan-'));
+    writeFileSync(join(dir, 'page.tsx.hbs'), 'x');
+    writeFileSync(join(dir, '__agent.md.hbs'), 'fiche');
+    mkdirSync(join(dir, 'sub'), { recursive: true });
+    writeFileSync(join(dir, 'sub', '__agent.md.hbs'), 'nested fiche');
+
+    const files = scanTemplateFiles(dir);
+
+    expect(files).toContain('page.tsx.hbs');
+    expect(files.some((f) => f.endsWith('__agent.md.hbs'))).toBe(false);
   });
 });
