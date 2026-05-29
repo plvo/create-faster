@@ -23,6 +23,7 @@ const MODULE_META: Record<string, ModuleMeta> = {
   'react-hook-form': { label: 'React Hook Form', category: 'Forms', href: '/docs/modules/forms/react-hook-form' },
   'tanstack-form': { label: 'TanStack Form', category: 'Forms', href: '/docs/modules/forms/tanstack-form' },
   'aws-lambda': { label: 'AWS Lambda', category: 'Deploy', href: '/docs/modules/deploy/aws-lambda' },
+  evlog: { label: 'evlog', category: 'Observability', href: '/docs/modules/observability/evlog' },
   vitest: { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest' },
   'vitest-node': { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest-node' },
   playwright: { label: 'Playwright', category: 'Testing', href: '/docs/modules/testing/playwright' },
