@@ -84,12 +84,15 @@ export async function generateProjectFiles(
   const envGroups = collectEnvGroups(context);
   const enrichedContext = { ...context, envGroups };
 
+  const activeTemplates =
+    context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
+
   const s = spinner();
-  const totalFiles = packageJsons.length + envFiles.length + templates.length;
+  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
   s.start(`Generating ${totalFiles} files...`);
 
   let processed = packageJsons.length + envFiles.length;
-  for (const template of templates) {
+  for (const template of activeTemplates) {
     processed++;
     const progress = `[${processed}/${totalFiles}]`;
     s.message(`${progress} ${template.destination}`);

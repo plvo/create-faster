@@ -1,0 +1,26 @@
+---
+path: docs/agents/wallet-auth.md
+mono:
+  scope: root
+  path: docs/agents/wallet-auth.md
+---
+# Wallet Auth (SIWE)
+
+Wallet connection and Sign-In With Ethereum are wired in `src/components/app-providers.tsx`. `WagmiProvider` (config from `src/lib/wagmi.ts`) wraps `RainbowKitAuthenticationProvider` + `RainbowKitProvider`. The wagmi config (`getDefaultConfig`, chains `mainnet`/`sepolia`, `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`) is shared by both wagmi and RainbowKit.
+
+## Sign-in flow
+`AppProviders` builds a RainbowKit `createAuthenticationAdapter`. After a wallet connects via `<ConnectButton />` (`src/components/header.tsx`), RainbowKit drives:
+1. `getNonce` → `authClient.siwe.nonce({ walletAddress, chainId })`.
+2. `createMessage` → `createSiweMessage` from `viem/siwe`.
+3. `verify` → `authClient.siwe.verify({ message, signature, walletAddress, chainId })`; on success it `router.push('/protected')`.
+`authStatus` is derived from `authClient.useSession()` (loading/authenticated/unauthenticated).
+
+## Better Auth SIWE config
+The `siwe()` plugin is registered in `src/lib/auth/auth.ts`: `getNonce`, and `verifyMessage` using viem's `verifyMessage`. The client mirror lives in `src/lib/auth/auth-client.ts` via `siweClient()`. The HTTP handler is `src/app/api/auth/[...all]/route.ts`.
+
+## Route protection
+- `src/proxy.ts` — checks `auth.api.getSession`; `PUBLIC_ROUTES` (only `/`) is reachable logged out, everything else redirects to `/`.
+- `src/app/protected/layout.tsx` — server layout re-checks the session and redirects to `/` if absent.
+
+## Add a protected page
+Create the route under `src/app/protected/`; the layout guards it. Add a path to `PUBLIC_ROUTES` in `src/proxy.ts` only if it must stay public.

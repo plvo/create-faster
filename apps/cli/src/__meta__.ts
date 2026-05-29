@@ -630,6 +630,16 @@ export const META: Meta = {
       label: 'dApp (Privy)',
       hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
       category: 'Web3',
+      agentArchitecture: [
+        'Web3 dApp: single Next.js app with Privy wallet authentication and wagmi, a tRPC API',
+        'layer backed by TanStack Query, and a wallet-centric Drizzle + PostgreSQL schema.',
+        "Privy's `privy-token` cookie drives both edge-proxy and server-layout route protection,",
+        'and tRPC verifies it server-side to gate protected procedures.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Wallet auth](docs/agents/wallet-auth.md)',
+        '- [Data layer](docs/agents/data-layer.md)',
+      ].join('\n'),
       context: {
         apps: [
           {
@@ -671,6 +681,16 @@ export const META: Meta = {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
       category: 'Web3',
+      agentArchitecture: [
+        'Web3 dApp: single Next.js app with RainbowKit wallet connection, Sign-In With Ethereum',
+        "via Better Auth's SIWE plugin, wagmi, and a wallet-aware Drizzle + PostgreSQL schema.",
+        "Wallet connect drives RainbowKit's authentication adapter through nonce/message/verify,",
+        'and server-side session checks guard `/protected` routes.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Wallet auth (SIWE)](docs/agents/wallet-auth.md)',
+        '- [Data layer](docs/agents/data-layer.md)',
+      ].join('\n'),
       context: {
         apps: [
           {
@@ -702,6 +722,15 @@ export const META: Meta = {
       label: 'Lambda (SST)',
       hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
       category: 'AWS',
+      agentArchitecture: [
+        'Serverless AWS monorepo (SST Ion): a Hono API on API Gateway V2, an SQS-driven worker',
+        'with partial batch failure, and an EventBridge cron, sharing one typed `QueueMessage`',
+        'contract. Deploys run through stage-aware GitHub Actions using OIDC role assumption.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Infrastructure](docs/agents/infrastructure.md)',
+        '- [Messaging](docs/agents/messaging.md)',
+      ].join('\n'),
       context: {
         apps: [
           { appName: 'api', stackName: 'hono', libraries: ['aws-lambda'] },
@@ -726,6 +755,15 @@ export const META: Meta = {
       label: 'Lambda (Terraform)',
       hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
       category: 'AWS',
+      agentArchitecture: [
+        'Serverless AWS monorepo (Terraform): a Hono API on API Gateway, an SQS worker with',
+        'partial batch failures, and an EventBridge cron, plus modular Terraform IaC, a justfile',
+        'for ops, a shared typed message contract, and OIDC-based GitHub Actions CD.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Infrastructure](docs/agents/infrastructure.md)',
+        '- [Messaging](docs/agents/messaging.md)',
+      ].join('\n'),
       context: {
         apps: [
           { appName: 'api', stackName: 'hono', libraries: ['aws-lambda'] },
@@ -818,6 +856,18 @@ export const META: Meta = {
       label: 'Multitenant SaaS',
       hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
       category: 'Business',
+      agentArchitecture: [
+        'Multi-tenant SaaS starter: Next.js web app + Node.js batch app (Turborepo) with shared',
+        '`packages/auth`, `packages/db`, `packages/api`, and `packages/ui`. Better Auth',
+        '(organizations as tenants + a custom access-control model with built-in and dynamic',
+        'roles), tRPC with org-scoped RBAC middleware, TanStack Query, TanStack Form, and',
+        'Drizzle + PostgreSQL.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Auth & RBAC](docs/agents/auth-rbac.md)',
+        '- [Multi-tenancy](docs/agents/multi-tenancy.md)',
+        '- [Data layer](docs/agents/data-layer.md)',
+      ].join('\n'),
       context: {
         apps: [
           {
@@ -886,6 +936,16 @@ export const META: Meta = {
       label: 'Showcase',
       hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',
       category: 'Business',
+      agentArchitecture: [
+        'SEO/GEO-optimized marketing site: a single Next.js app with shadcn/ui and an MDX blog,',
+        'JSON-LD structured data, a dynamic sitemap, AI-bot-aware robots, programmatic persona',
+        'pages, PostHog analytics proxied first-party, and c15t consent gating capture.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [SEO & GEO](docs/agents/seo-geo.md)',
+        '- [Content & blog](docs/agents/content-blog.md)',
+        '- [Analytics & consent](docs/agents/analytics-consent.md)',
+      ].join('\n'),
       context: {
         apps: [
           {

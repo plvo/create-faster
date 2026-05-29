@@ -1,0 +1,23 @@
+---
+path: docs/agents/wallet-auth.md
+mono:
+  scope: root
+  path: docs/agents/wallet-auth.md
+---
+# Wallet Auth
+
+Privy and wagmi are wired in `src/components/app-providers.tsx`: `PrivyProvider` (embedded wallets) wraps `TRPCReactProvider` and `@privy-io/wagmi`'s `WagmiProvider`. Chains and transports live in `src/lib/wagmi.ts`. The `Header` (`src/components/header.tsx`) drives login/logout via `usePrivy` and reads the connected address via wagmi's `useAccount`.
+
+## Session
+Privy stores the session in a `privy-token` cookie. There is no server session store; the cookie is the source of truth.
+
+## Route protection
+Two layers, both keyed on the `privy-token` cookie:
+- `src/proxy.ts` — edge proxy. `PUBLIC_ROUTES` lists routes reachable while logged out; everything else redirects to `/`, and authenticated users on a public route bounce to `/protected`.
+- `src/app/protected/layout.tsx` — server layout that re-checks the cookie and redirects to `/` if missing.
+
+## Server-side verification
+`src/trpc/init.ts` reads the token from the request cookie, calls Privy's `verifyAuthToken`, and puts `privyUserId` on the tRPC context. `protectedProcedure` throws `UNAUTHORIZED` when it is null. Trust `privyUserId`, not client-supplied identity.
+
+## Add a protected page
+Create the route under `src/app/protected/`; the layout guards it. Add `/your-path` to `PUBLIC_ROUTES` in `src/proxy.ts` only if it must be public.

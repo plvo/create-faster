@@ -1,0 +1,22 @@
+---
+path: docs/agents/infrastructure.md
+mono:
+  scope: root
+  path: docs/agents/infrastructure.md
+---
+# Infrastructure (SST)
+
+All infrastructure is defined in `sst.config.ts` (SST Ion). The `app()` callback sets `removal: 'retain'` on the `production` stage and `'remove'` elsewhere, so non-prod stages tear down cleanly. The `run()` callback declares the resources and returns `api.url` / `queue.url` as stack outputs.
+
+## Resources
+- `sst.aws.ApiGatewayV2('api')` with `api.route('$default', 'apps/api/src/index.handler')` — every request hits the Hono handler.
+- `sst.aws.Queue('queue')` with `queue.subscribe({ handler: 'apps/worker/src/index.handler', timeout: '30 seconds' })` — SQS messages drive the worker.
+- `sst.aws.Cron('cron', { function: 'apps/cron/src/index.handler', schedule: 'rate(1 hour)' })` — EventBridge invokes the cron handler.
+
+Handler paths point at `apps/*/src/index.handler` (the exported `handler` in each app's `src/index.ts`).
+
+## Deploy (GitHub Actions)
+`.github/workflows/deploy.yml` runs on push to `main` (defaults to the `staging` stage) and on `workflow_dispatch` with a `stage` choice input (`staging` | `production`). AWS access uses OIDC: `permissions.id-token: write` plus `aws-actions/configure-aws-credentials@v4` assuming `secrets.AWS_ROLE_ARN` in `vars.AWS_REGION`. Steps run `bun install --frozen-lockfile`, `bun run lint`, `bun run build`, then `npx sst deploy --stage <stage>`. A `concurrency` group per stage prevents overlapping deploys.
+
+## Add a resource or function
+Create the function under `apps/<name>/src/index.ts` (export `handler`), then declare it in `run()` (e.g. another `sst.aws.Cron`, `Queue`, or `api.route(...)`). To grant access, pass it through SST's `link` so credentials surface via `sst-env.d.ts`.

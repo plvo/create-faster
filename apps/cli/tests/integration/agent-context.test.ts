@@ -54,3 +54,26 @@ describe('agent context generation (blueprint)', () => {
     expect(await fileExists(join(bpDir, 'bp', 'docs', 'agents', 'data-layer.md'))).toBe(true);
   });
 });
+
+describe('agent context generation (blueprint, --no-agent-context)', () => {
+  let bpDir: string;
+
+  beforeAll(async () => {
+    bpDir = await createTempDir();
+    await runCli(['bp', '--blueprint', 'org-dashboard', '--no-agent-context', '--no-git', '--no-install'], bpDir);
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(bpDir);
+  });
+
+  test('writes no AGENTS.md or CLAUDE.md', async () => {
+    expect(await fileExists(join(bpDir, 'bp', 'AGENTS.md'))).toBe(false);
+    expect(await fileExists(join(bpDir, 'bp', 'CLAUDE.md'))).toBe(false);
+  });
+
+  test('writes no docs/agents guides', async () => {
+    expect(await fileExists(join(bpDir, 'bp', 'docs', 'agents', 'auth.md'))).toBe(false);
+    expect(await fileExists(join(bpDir, 'bp', 'docs', 'agents', 'data-layer.md'))).toBe(false);
+  });
+});

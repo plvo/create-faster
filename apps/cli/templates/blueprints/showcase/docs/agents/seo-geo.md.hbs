@@ -1,0 +1,23 @@
+---
+path: docs/agents/seo-geo.md
+mono:
+  scope: root
+  path: docs/agents/seo-geo.md
+---
+# SEO & GEO
+
+Structured-data components live in `src/components/seo/json-ld.tsx`: `OrganizationJsonLd` and `WebSiteJsonLd` are injected once in `src/app/layout.tsx`; `BreadcrumbJsonLd`, `FaqJsonLd`, and `ArticleJsonLd` are rendered per page. All schemas read names/URLs from `src/lib/data/site-config.ts` (`siteConfig.url`, `siteConfig.name`, `siteConfig.social`).
+
+Metadata and OpenGraph defaults (title template, `metadataBase`, twitter card) are set in `src/app/layout.tsx`; each route overrides them via its own `generateMetadata`.
+
+## Sitemap & robots
+`src/app/sitemap.ts` builds the sitemap from static routes plus `getAllPosts()` (blog) and `getAllPersonaSlugs()` (personas). `src/app/robots.ts` allows all crawlers and explicitly whitelists AI bots (`GPTBot`, `ChatGPT-User`, `PerplexityBot`, `ClaudeBot`, `Google-Extended`) and points to `${siteConfig.url}/sitemap.xml`.
+
+## Breadcrumbs
+`src/components/seo/breadcrumbs.tsx` renders the visible `<nav>` and emits `BreadcrumbJsonLd` together (it always prepends a Home item).
+
+## Adding a new indexed page
+1. Add the route's URL to `staticPages` in `src/app/sitemap.ts` (or make it dynamic like the blog/persona arrays).
+2. Add a `generateMetadata` to the page for title/description/OG.
+3. Render `<Breadcrumbs items={[...]} />` near the top of the page for breadcrumb JSON-LD.
+4. If it is an article or FAQ, also render `ArticleJsonLd` / `FaqJsonLd` from `src/components/seo/json-ld.tsx`.

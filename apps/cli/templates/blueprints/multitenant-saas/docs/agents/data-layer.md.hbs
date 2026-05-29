@@ -1,0 +1,25 @@
+---
+path: docs/agents/data-layer.md
+mono:
+  scope: root
+  path: docs/agents/data-layer.md
+---
+# Data Layer
+
+Drizzle + PostgreSQL schema lives in `packages/db/src/schema.ts` (exported via `@repo/db` and `@repo/db/schema`); the client is `packages/db/src/index.ts` and config is `packages/db/drizzle.config.ts`. Inferred types like `Project` come from `typeof project.$inferSelect`.
+
+## tRPC
+Routers live in `packages/api/src/router/`, composed into `appRouter` in `packages/api/src/root.ts`. Procedure builders (`publicProcedure`, `protectedProcedure`) and `createTRPCContext` (which injects `session`, `headers`, `db`) are in `packages/api/src/trpc.ts`; RBAC builders are in `packages/api/src/middleware/rbac.ts`. Keep all DB access inside procedures — never query Drizzle from a component.
+
+## Client data (TanStack Query)
+The web app wires tRPC + React Query in `apps/web/src/trpc/providers.tsx` (`useTRPC`) and server-side prefetch in `apps/web/src/trpc/server.tsx` (`trpc`, `prefetch`, `HydrateClient`). Components call `useQuery(trpc.x.y.queryOptions())` / `useMutation(trpc.x.y.mutationOptions())` — see `apps/web/src/components/projects/project-table.tsx`. After mutations, invalidate with `queryClient.invalidateQueries(trpc.x.y.queryFilter())`.
+
+`QueryBoundary` (`apps/web/src/components/query-boundary.tsx`) pairs Suspense with an error boundary; wrap suspense-driven sections in it.
+
+## Forms (TanStack Form)
+`useAppForm` is composed in `packages/ui/src/lib/form.ts` (`@repo/ui/lib/form`) with shuip field components (`InputField`, `SelectField`, etc.). See `apps/web/src/components/projects/project-form.tsx`: a Zod schema in `validators.onChange`, `form.AppField` per field, and `form.SubmitButton` inside `form.AppForm`.
+
+## Adding a query/mutation
+1. Add the procedure to the relevant router in `packages/api/src/router/`, validating input with Zod and gating with `permissionProcedure`.
+2. (New router) register it in `packages/api/src/root.ts`.
+3. In the UI, call it through `useTRPC()` with `queryOptions`/`mutationOptions`; invalidate affected queries on success.

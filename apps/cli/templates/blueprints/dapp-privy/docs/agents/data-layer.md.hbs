@@ -1,0 +1,25 @@
+---
+path: docs/agents/data-layer.md
+mono:
+  scope: root
+  path: docs/agents/data-layer.md
+---
+# Data Layer
+
+The schema is wallet-centric: `userTable` in `src/lib/db/schema.ts` keys users on `privyId` (unique) and stores a nullable `walletAddress`. Inferred row types live in `src/lib/db/types.ts` (`User`, `NewUser`). The Drizzle client and re-exports are in `src/lib/db/index.ts`.
+
+## Login sync
+On login the protected page calls the `user.sync` mutation (`src/trpc/routers/user.ts`), which upserts the row by `privyId` (`onConflictDoUpdate`) with the connected `walletAddress`. `user.me` reads the current user by `ctx.privyUserId`. See the wiring in `src/app/protected/page.tsx`.
+
+## Flow
+1. Client calls a typed `trpc` hook (`src/trpc/providers.tsx`).
+2. The procedure validates input via Zod, then queries Drizzle through `ctx.db`.
+3. TanStack Query caches the typed result.
+
+Routers are mounted in `src/trpc/routers/_app.ts`. DB access stays inside procedures.
+
+## Add a query/mutation
+Add a procedure to a router (or create one and mount it in `_app.ts`). Use `protectedProcedure` when it needs `ctx.privyUserId`, `publicProcedure` otherwise. Consume it with the generated `trpc` hook.
+
+## Seed
+`scripts/seed.ts` (`bun run db:seed`) clears `userTable` and inserts a sample user.

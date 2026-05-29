@@ -1,0 +1,22 @@
+---
+path: docs/agents/analytics-consent.md
+mono:
+  scope: root
+  path: docs/agents/analytics-consent.md
+---
+# Analytics & Consent
+
+PostHog is initialized in `src/instrumentation-client.ts`, only when `NEXT_PUBLIC_POSTHOG_KEY` is set. It uses `api_host: '/ingest'` so traffic is proxied first-party.
+
+The `/ingest` rewrites are defined in `next.config.ts` (`rewrites()`): `/ingest/static/*` → `us-assets.i.posthog.com`, `/ingest/*` → `us.i.posthog.com`. This avoids ad-blockers and keeps requests same-origin.
+
+## Consent gating
+Consent is managed by c15t in `src/components/app-providers.tsx`: `ConsentManagerProvider` (categories `necessary` + `measurement`) wraps the app and renders `CookieBanner` + `ConsentManagerDialog`. The `ClientSideOptionsProvider` `onConsentSet` callback calls `posthog.opt_in_capturing()` when `measurement` is granted and `posthog.opt_out_capturing()` otherwise — so capture is off until the user accepts analytics.
+
+## Env vars
+- `NEXT_PUBLIC_POSTHOG_KEY` — gates PostHog init (see `.env.example`).
+- `NEXT_PUBLIC_SITE_URL` — canonical URL used by SEO/sitemap.
+
+## Tracking a custom event
+1. Import `posthog` from `posthog-js` in a client component.
+2. Call `posthog.capture('event_name', { ...props })` — it no-ops until consent is granted, so no extra guard is needed.

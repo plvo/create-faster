@@ -6,13 +6,15 @@ mono:
 ---
 # Auth & Permissions
 
-Better Auth is configured in `apps/web/src/lib/auth/auth.ts` with the organization plugin.
-Sessions are persisted in PostgreSQL via Drizzle (`user`, `account`, `session`, `organization`, `member` tables).
+Better Auth is configured in `packages/auth/src/auth.ts` (exported as `auth` from `@repo/auth/auth`) with the `admin` plugin. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
+
+## Reading the session server-side
+Call `auth.api.getSession({ headers: await headers() })` (see `apps/web/src/app/(dashboard)/layout.tsx`). The dashboard layout redirects to `/login` when there is no `session.user.role`.
 
 ## Adding a protected route
-1. Read the session server-side with the auth helper in `apps/web/src/lib/auth/`.
-2. Redirect unauthenticated users to the sign-in route.
-3. For org-scoped pages, check the member's role before rendering.
+1. Read the session server-side as above.
+2. Redirect unauthenticated users to `/login`.
+3. For admin-only pages, check `session.user.role` before rendering.
 
 ## Roles
-Roles (owner / admin / member) are defined on the organization plugin. Gate actions by role, not by user id.
+Two roles (`admin` / `user`) come from the Better Auth `admin` plugin and live on `session.user.role`. On the server, gate tRPC procedures with `adminProcedure` / `userProcedure` from `packages/api/src/middleware/rbac.ts` — gate by role, not by user id.

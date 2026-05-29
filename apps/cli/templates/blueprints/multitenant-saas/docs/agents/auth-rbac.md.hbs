@@ -1,0 +1,36 @@
+---
+path: docs/agents/auth-rbac.md
+mono:
+  scope: root
+  path: docs/agents/auth-rbac.md
+---
+# Auth & RBAC
+
+Better Auth is configured in `packages/auth/src/auth.ts` (exported as `auth` from `@repo/auth/auth`) with the `organization` plugin and `dynamicAccessControl` enabled. The browser client is `packages/auth/src/auth-client.ts` (`@repo/auth/auth-client`). Sessions persist in PostgreSQL via Drizzle — tables live in `packages/db/src/schema.ts` (`user`, `session`, `account`, `organization`, `member`, `invitation`, `organizationRole`).
+
+## Access control model
+`packages/auth/src/permissions.ts` defines the `statement` (resources → actions) and built-in roles:
+- Resources/actions: `organization` (update, delete), `member` (invite, update, remove), `invitation` (create, cancel), `ac` (create, read, update, delete), `project` (create, read, update, delete).
+- Roles: `owner` (all), `admin` (all except `organization.delete`), `member` (`project.read`).
+- `ac` is the resource that gates managing custom roles themselves — name it `ac` exactly; it is what the roles UI checks.
+
+Custom roles are created at runtime via the `role` router (`auth.api.createOrgRole`) and stored in `organizationRoleTable`.
+
+## Server-side enforcement
+In `packages/api/src/middleware/rbac.ts`:
+- `orgProcedure` requires `session.activeOrganizationId`, exposing it as `ctx.orgId`.
+- `permissionProcedure(resource, action)` builds on `orgProcedure` and calls `auth.api.hasPermission`.
+- `assertInScope(row, ctx)` throws `NOT_FOUND` unless `row.organizationId === ctx.orgId`.
+
+Routers use these — e.g. `permissionProcedure('project', 'create')` in `packages/api/src/router/project.ts`.
+
+## UI gating
+`<Can>` (`apps/web/src/components/can.tsx`) wraps the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`), which calls `authClient.organization.hasPermission`. Sidebar links carry a `permission` field in `apps/web/src/lib/constants.ts`.
+
+```tsx
+{{{{raw}}}}
+<Can permissions={{ project: ['create'] }}>
+  <CreateProjectButton />
+</Can>
+{{{{/raw}}}}
+```
