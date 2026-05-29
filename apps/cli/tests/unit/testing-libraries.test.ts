@@ -33,6 +33,11 @@ describe('Testing libraries', () => {
     expect(META.libraries.playwright.packageJson?.scripts?.test).toBeUndefined();
   });
 
+  test('playwright resolves its base URL from the app URL env var', () => {
+    const env = META.libraries.playwright.envs?.[0];
+    expect(env?.value).toBe('BASE_URL={{appUrl}}');
+  });
+
   test('vitest and vitest-node have disjoint stack support', () => {
     const react = META.libraries.vitest.support?.stacks as string[];
     const node = META.libraries['vitest-node'].support?.stacks as string[];

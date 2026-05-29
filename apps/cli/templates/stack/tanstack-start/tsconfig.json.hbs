@@ -11,5 +11,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"{{#if (or (hasLibrary "vitest") (hasLibrary "playwright"))}}, "tests"{{/if}}]
 }

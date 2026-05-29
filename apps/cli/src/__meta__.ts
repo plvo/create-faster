@@ -407,6 +407,7 @@ export const META: Meta = {
           'test:e2e:ui': 'playwright test --ui',
         },
       },
+      envs: [{ value: 'BASE_URL={{appUrl}}', monoScope: ['app'] }],
     },
     'jest-expo': {
       label: 'Jest',

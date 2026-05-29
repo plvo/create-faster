@@ -1,9 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = 'http://localhost:{{appPort appName}}';
+const baseURL = process.env.BASE_URL ?? 'http://localhost:{{appPort appName}}';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
   fullyParallel: true,
   use: {
     baseURL,
