@@ -19,7 +19,18 @@ import { nextCookies } from 'better-auth/next-js';
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
+const isDev = process.env.NODE_ENV === 'development';
+const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
+
 export const auth = betterAuth({
+  baseURL: {
+    allowedHosts: [
+      prodHost,
+      ...(isDev ? ['localhost:*', '*.localhost:*'] : []),
+    ].filter(Boolean) as string[],
+    fallback: process.env.BETTER_AUTH_URL,
+    protocol: isDev ? 'http' : 'auto',
+  },
   {{#if (has "orm" "drizzle")}}
   database: drizzleAdapter(db, {
     {{#if (has "database" "postgres")}}

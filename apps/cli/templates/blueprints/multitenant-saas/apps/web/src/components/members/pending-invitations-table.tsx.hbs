@@ -17,6 +17,7 @@ import {
 } from '@repo/ui/components/ui/table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getAppUrl } from '@/lib/get-app-url';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
@@ -29,7 +30,7 @@ type Invitation = {
 };
 
 function buildLink(id: string): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/accept-invitation/${id}`;
+  return `${getAppUrl()}/accept-invitation/${id}`;
 }
 
 export function PendingInvitationsTable() {

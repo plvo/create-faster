@@ -8,11 +8,23 @@ import { generateRandomString } from 'better-auth/crypto';
 import { nextCookies } from 'better-auth/next-js';
 import { siwe } from 'better-auth/plugins';
 import { verifyMessage } from 'viem';
+import { getAppUrl } from '@/lib/get-app-url';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
+const isDev = process.env.NODE_ENV === 'development';
+const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
+
 export const auth = betterAuth({
+  baseURL: {
+    allowedHosts: [
+      prodHost,
+      ...(isDev ? ['localhost:*', '*.localhost:*'] : []),
+    ].filter(Boolean) as string[],
+    fallback: process.env.BETTER_AUTH_URL,
+    protocol: isDev ? 'http' : 'auto',
+  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     usePlural: false,
@@ -28,7 +40,7 @@ export const auth = betterAuth({
   plugins: [
     nextCookies(),
     siwe({
-      domain: new URL(process.env.BETTER_AUTH_URL ?? 'http://localhost:3000').host,
+      domain: new URL(getAppUrl()).host,
       emailDomainName: '{{projectName}}.app',
       getNonce: async () => generateRandomString(32, 'a-z', 'A-Z', '0-9'),
       verifyMessage: async ({ message, signature, address }) => {
