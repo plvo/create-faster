@@ -149,7 +149,19 @@ export function collectAgentContextFiles(ctx: TemplateContext): AgentContextFile
   const rootBody = [header, assembleSections(rootSections)].filter(Boolean).join('\n\n');
   files.push({ destination: 'AGENTS.md', content: `${rootBody}\n` });
 
+  const appDestinations = new Set(sections.filter((s) => s.destination !== 'AGENTS.md').map((s) => s.destination));
+
+  for (const destination of appDestinations) {
+    const appName = destination.split('/')[1];
+    const app = ctx.apps.find((a) => a.appName === appName);
+    const preamble = app ? `# ${app.appName}\n\n${META.stacks[app.stackName].label} app.` : `# ${appName}`;
+    const appSections = sections.filter((s) => s.destination === destination);
+    const body = [preamble, assembleSections(appSections)].filter(Boolean).join('\n\n');
+    files.push({ destination, content: `${body}\n` });
+  }
+
   for (const file of files.slice()) {
+    if (!file.destination.endsWith('AGENTS.md')) continue;
     const claudePath = file.destination.replace(/AGENTS\.md$/, 'CLAUDE.md');
     files.push({ destination: claudePath, content: '@AGENTS.md\n' });
   }
