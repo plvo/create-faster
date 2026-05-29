@@ -349,6 +349,85 @@ export const META: Meta = {
         },
       },
     },
+    vitest: {
+      label: 'Vitest',
+      hint: 'A Vite-native testing framework',
+      category: 'Testing',
+      support: { stacks: ['nextjs', 'tanstack-start'] },
+      packageJson: {
+        devDependencies: {
+          vitest: '^4.1.7',
+          '@vitest/coverage-v8': '^4.1.7',
+          '@vitejs/plugin-react': '^4.6.0',
+          vite: '^7.3.1',
+          'vite-tsconfig-paths': '^5.1.4',
+          jsdom: '^29.1.1',
+          '@testing-library/react': '^16.3.2',
+          '@testing-library/dom': '^10.4.1',
+          '@testing-library/jest-dom': '^6.9.1',
+          '@testing-library/user-event': '^14.6.1',
+        },
+        scripts: {
+          test: 'vitest run',
+          'test:watch': 'vitest',
+          'test:coverage': 'vitest run --coverage',
+        },
+      },
+    },
+    'vitest-node': {
+      label: 'Vitest',
+      hint: 'A Vite-native testing framework',
+      category: 'Testing',
+      support: { stacks: ['hono', 'node'] },
+      packageJson: {
+        devDependencies: {
+          vitest: '^4.1.7',
+          '@vitest/coverage-v8': '^4.1.7',
+          vite: '^7.3.1',
+          'vite-tsconfig-paths': '^5.1.4',
+        },
+        scripts: {
+          test: 'vitest run',
+          'test:watch': 'vitest',
+          'test:coverage': 'vitest run --coverage',
+        },
+      },
+    },
+    playwright: {
+      label: 'Playwright',
+      hint: 'Reliable end-to-end testing for modern web apps',
+      category: 'Testing',
+      support: { stacks: ['nextjs', 'tanstack-start'] },
+      packageJson: {
+        devDependencies: {
+          '@playwright/test': '^1.60.0',
+        },
+        scripts: {
+          test: 'playwright test',
+          'test:e2e:ui': 'playwright test --ui',
+        },
+      },
+    },
+    'jest-expo': {
+      label: 'Jest',
+      hint: 'Delightful JavaScript testing for Expo',
+      category: 'Testing',
+      support: { stacks: ['expo'] },
+      packageJson: {
+        devDependencies: {
+          'jest-expo': '~52.0.6',
+          jest: '^29.7.0',
+          'babel-preset-expo': '^12.0.12',
+          '@testing-library/react-native': '^13.3.3',
+          'react-test-renderer': '^18.3.1',
+          '@types/jest': '^29.5.14',
+        },
+        scripts: {
+          test: 'jest',
+          'test:watch': 'jest --watch',
+        },
+      },
+    },
   },
 
   project: {
