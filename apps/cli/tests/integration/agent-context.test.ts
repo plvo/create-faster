@@ -31,3 +31,26 @@ describe('agent context generation (integration)', () => {
     expect(await fileExists(join(dir, 'myapp', 'src', '.agent.md'))).toBe(false);
   });
 });
+
+describe('agent context generation (blueprint)', () => {
+  let bpDir: string;
+
+  beforeAll(async () => {
+    bpDir = await createTempDir();
+    await runCli(['bp', '--blueprint', 'org-dashboard', '--no-git', '--no-install'], bpDir);
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(bpDir);
+  });
+
+  test('blueprint AGENTS.md has an Architecture section', async () => {
+    const content = await readTextFile(join(bpDir, 'bp', 'AGENTS.md'));
+    expect(content).toContain('## Architecture');
+  });
+
+  test('blueprint ships docs/agents guides', async () => {
+    expect(await fileExists(join(bpDir, 'bp', 'docs', 'agents', 'auth.md'))).toBe(true);
+    expect(await fileExists(join(bpDir, 'bp', 'docs', 'agents', 'data-layer.md'))).toBe(true);
+  });
+});
