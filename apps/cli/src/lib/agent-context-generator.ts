@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
-import { TEMPLATES_DIR } from '@/lib/constants';
+import { DOCS_URL, TEMPLATES_DIR } from '@/lib/constants';
 import { collectEnvGroups } from '@/lib/env-generator';
 import { readFrontmatterFile } from '@/lib/frontmatter';
 import { renderTemplate } from '@/lib/handlebars';
@@ -133,6 +133,22 @@ function renderHeader(ctx: TemplateContext): string {
   return renderTemplate(content, { ...ctx, ...enrich, envGroups } as TemplateContext).trim();
 }
 
+function blueprintAbout(ctx: TemplateContext): string {
+  if (!ctx.blueprint) return '';
+  const blueprint = META.blueprints[ctx.blueprint];
+  if (!blueprint) return '';
+  const docsLink = `${DOCS_URL}/docs/blueprints/${blueprint.category.toLowerCase()}/${ctx.blueprint}`;
+  return [
+    '## About this project',
+    '',
+    `Scaffolded from the create-faster **${blueprint.label}** blueprint — a production-shaped starting point, not a finished product.`,
+    '',
+    `- Docs: ${docsLink}`,
+    '- Ships with dummy data, fixtures, and example flows that illustrate the wiring. Treat them as placeholders: replace or delete them as you build the real product.',
+    '- The structure and integrations are the reusable part; the sample content is not.',
+  ].join('\n');
+}
+
 function blueprintArchitecture(ctx: TemplateContext): string {
   if (!ctx.blueprint) return '';
   const blueprint = META.blueprints[ctx.blueprint];
@@ -152,9 +168,10 @@ export function collectAgentContextFiles(ctx: TemplateContext): AgentContextFile
   const files: AgentContextFile[] = [];
 
   const header = renderHeader(ctx);
+  const about = blueprintAbout(ctx);
   const architecture = blueprintArchitecture(ctx);
   const rootSections = sections.filter((s) => s.destination === 'AGENTS.md');
-  const rootBody = [header, architecture, assembleSections(rootSections)].filter(Boolean).join('\n\n');
+  const rootBody = [header, about, architecture, assembleSections(rootSections)].filter(Boolean).join('\n\n');
   files.push({ destination: 'AGENTS.md', content: `${rootBody}\n` });
 
   const appDestinations = new Set(sections.filter((s) => s.destination !== 'AGENTS.md').map((s) => s.destination));
