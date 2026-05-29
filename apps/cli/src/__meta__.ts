@@ -794,13 +794,18 @@ export const META: Meta = {
       rootPackageJson: {
         dependencies: {
           '@repo/auth': '*',
+          '@repo/db': '*',
+        },
+        devDependencies: {
+          '@faker-js/faker': '^10.4.0',
         },
         scripts: {
+          'local-setup': 'bun scripts/local-setup.ts',
           'db:push': 'turbo db:push',
           'db:generate': 'turbo db:generate',
           'db:migrate': 'turbo db:migrate',
           'db:studio': 'turbo db:studio',
-          'db:seed': 'bun scripts/seed.ts',
+          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },
@@ -857,12 +862,16 @@ export const META: Meta = {
           '@repo/auth': '*',
           '@repo/db': '*',
         },
+        devDependencies: {
+          '@faker-js/faker': '^10.4.0',
+        },
         scripts: {
+          'local-setup': 'bun scripts/local-setup.ts',
           'db:push': 'turbo db:push',
           'db:generate': 'turbo db:generate',
           'db:migrate': 'turbo db:migrate',
           'db:studio': 'turbo db:studio',
-          'db:seed': 'bun scripts/seed.ts',
+          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },

@@ -1,0 +1,53 @@
+---
+mono:
+  scope: root
+---
+{{{{raw}}}}
+#!/usr/bin/env bun
+import { existsSync } from 'node:fs';
+import { copyFile } from 'node:fs/promises';
+
+interface Step {
+  label: string;
+  run: () => Promise<void>;
+}
+
+async function sh(command: string[], cwd?: string): Promise<void> {
+  const proc = Bun.spawn(command, { cwd, stdio: ['inherit', 'inherit', 'inherit'] });
+  const code = await proc.exited;
+  if (code !== 0) throw new Error(`\`${command.join(' ')}\` exited with code ${code}`);
+}
+
+async function createEnvFiles(): Promise<void> {
+  const glob = new Bun.Glob('**/.env.example');
+  for await (const example of glob.scan({ dot: true })) {
+    if (example.includes('node_modules')) continue;
+    const target = example.slice(0, -'.example'.length);
+    if (existsSync(target)) continue;
+    await copyFile(example, target);
+    console.log(`  created ${target}`);
+  }
+}
+
+const steps: Step[] = [
+  { label: 'Creating .env files from .env.example', run: createEnvFiles },
+  { label: 'Starting the database (docker compose)', run: () => sh(['docker', 'compose', 'up', '-d', '--wait']) },
+  { label: 'Applying the schema to the database', run: () => sh(['bun', 'run', 'db:push', '--force'], 'packages/db') },
+  { label: 'Seeding demo data', run: () => sh(['bun', 'run', 'db:seed', '--fixtures']) },
+];
+
+console.log('Setting up your local environment\n');
+
+for (const [index, step] of steps.entries()) {
+  console.log(`[${index + 1}/${steps.length}] ${step.label}`);
+  try {
+    await step.run();
+  } catch (error) {
+    console.error(`\nSetup failed during: ${step.label}`);
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
+}
+
+console.log('\nLocal setup complete. Sign in with the credentials printed above, then run `bun dev`.');
+{{{{/raw}}}}
