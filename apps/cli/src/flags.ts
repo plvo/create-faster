@@ -18,6 +18,7 @@ interface ParsedFlags {
   git?: boolean;
   pm?: string;
   install?: boolean;
+  agentContext?: boolean;
 }
 
 function validateOption(label: string, value: string, options: Record<string, unknown>, plural?: string): void {
@@ -79,6 +80,7 @@ export function parseFlags(): Partial<TemplateContext> {
     .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
     .option('--no-install', 'Skip dependency installation')
+    .option('--no-agent-context', 'Skip AGENTS.md / CLAUDE.md generation')
     .addHelpText(
       'after',
       `
@@ -188,6 +190,10 @@ ${color.bold('Examples:')}
 
   if (flags.install === false) {
     partial.skipInstall = true;
+  }
+
+  if (flags.agentContext === false) {
+    partial.agentContext = false;
   }
 
   validateContext(partial);
