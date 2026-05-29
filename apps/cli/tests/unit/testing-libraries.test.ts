@@ -3,13 +3,13 @@ import { META } from '@/__meta__';
 
 describe('Testing libraries', () => {
   const cases = [
-    { key: 'vitest', stacks: ['nextjs', 'tanstack-start'] },
-    { key: 'vitest-node', stacks: ['hono', 'node'] },
-    { key: 'playwright', stacks: ['nextjs', 'tanstack-start'] },
-    { key: 'jest-expo', stacks: ['expo'] },
+    { key: 'vitest', stacks: ['nextjs', 'tanstack-start'], testScript: 'test' },
+    { key: 'vitest-node', stacks: ['hono', 'node'], testScript: 'test' },
+    { key: 'playwright', stacks: ['nextjs', 'tanstack-start'], testScript: 'test:e2e' },
+    { key: 'jest-expo', stacks: ['expo'], testScript: 'test' },
   ] as const;
 
-  for (const { key, stacks } of cases) {
+  for (const { key, stacks, testScript } of cases) {
     test(`${key} exists in the Testing category`, () => {
       const lib = META.libraries[key];
       expect(lib).toBeDefined();
@@ -21,12 +21,17 @@ describe('Testing libraries', () => {
       expect(lib.support?.stacks).toEqual([...stacks]);
     });
 
-    test(`${key} declares a test script`, () => {
+    test(`${key} declares its ${testScript} script`, () => {
       const lib = META.libraries[key];
       const scripts = lib.packageJson?.scripts ?? {};
-      expect(Object.keys(scripts)).toContain('test');
+      expect(Object.keys(scripts)).toContain(testScript);
     });
   }
+
+  test('vitest keeps the test script when combined with playwright', () => {
+    expect(META.libraries.vitest.packageJson?.scripts?.test).toBe('vitest run');
+    expect(META.libraries.playwright.packageJson?.scripts?.test).toBeUndefined();
+  });
 
   test('vitest and vitest-node have disjoint stack support', () => {
     const react = META.libraries.vitest.support?.stacks as string[];

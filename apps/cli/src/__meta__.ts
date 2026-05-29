@@ -403,7 +403,7 @@ export const META: Meta = {
           '@playwright/test': '^1.60.0',
         },
         scripts: {
-          test: 'playwright test',
+          'test:e2e': 'playwright test',
           'test:e2e:ui': 'playwright test --ui',
         },
       },
