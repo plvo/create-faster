@@ -55,7 +55,7 @@ describe('collectAgentContextFiles (turborepo)', () => {
       repo: 'turborepo',
       apps: [
         { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
-        { appName: 'api', stackName: 'hono', libraries: [] },
+        { appName: 'api', stackName: 'tanstack-start', libraries: [] },
       ],
       project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
       git: true,
@@ -86,7 +86,8 @@ describe('collectAgentContextFiles (turborepo)', () => {
 
   test('apps with no fiche-bearing addon get no AGENTS.md', () => {
     const files = collectAgentContextFiles(monoContext());
-    // api (hono, no libs) has no stack/lib fiche yet → no apps/api/AGENTS.md
+    // api (tanstack-start, no libs) has no stack/lib fiche → no apps/api/AGENTS.md.
+    // If a tanstack-start fiche is added later, switch this app to a fiche-less stack.
     expect(files.some((f) => f.destination === 'apps/api/AGENTS.md')).toBe(false);
   });
 });
