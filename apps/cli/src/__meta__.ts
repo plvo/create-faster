@@ -150,6 +150,8 @@ export const META: Meta = {
         devDependencies: {
           '@tailwindcss/postcss': '^4.1.10',
           '@types/react': '^19.2.3',
+          tailwindcss: '^4.1.10',
+          'tw-animate-css': '^1.3.4',
         },
         exports: {
           './': './src/components/',
