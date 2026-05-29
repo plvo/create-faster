@@ -1,0 +1,55 @@
+# {{projectName}}
+
+Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if (has "orm" "drizzle")}} with Drizzle{{/if}}{{#if (has "orm" "prisma")}} with Prisma{{/if}}.
+
+## Stack
+{{#each apps}}- App: {{stackName}}
+{{/each~}}
+{{#if (has "orm" "drizzle")~}}
+- ORM: Drizzle
+{{/if~}}
+{{#if (has "orm" "prisma")~}}
+- ORM: Prisma
+{{/if~}}
+{{#if (has "database" "postgres")~}}
+- Database: PostgreSQL
+{{/if~}}
+{{#if (has "database" "mysql")~}}
+- Database: MySQL
+{{/if~}}
+{{#if (has "linter" "biome")~}}
+- Linter: Biome
+{{/if~}}
+{{#if (has "linter" "eslint")~}}
+- Linter: ESLint
+{{/if}}
+- Package manager: {{pm}}
+
+## Scripts
+- `{{pm}} dev` — start the dev server
+- `{{pm}} build` — production build
+{{#if (has "orm" "drizzle")~}}
+- `{{pm}} db:push` — sync the Drizzle schema
+{{/if~}}
+{{#if (has "orm" "prisma")~}}
+- `{{pm}} db:push` — sync the Prisma schema
+{{/if~}}
+{{#if (has "linter" "biome")~}}
+- `{{pm}} check` — format and lint with Biome
+{{/if}}
+
+## Environment
+{{#if envGroups.length~}}
+
+Copy `.env.example` to `.env` and fill in:
+{{#each envGroups}}{{#each vars~}}
+- `{{this}}`
+{{/each}}{{/each~}}
+{{else~}}
+
+No environment variables required.
+{{/if}}
+
+## Conventions
+- Import alias: `@/*` → `src/*`
+- Keep changes small and typed; no `any`.

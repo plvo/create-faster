@@ -1,7 +1,12 @@
-import { describe, expect, test } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { collectAgentContextFiles } from '@/lib/agent-context-generator';
+import { registerHandlebarsHelpers } from '@/lib/handlebars';
 import type { TemplateContext } from '@/types/ctx';
+
+beforeAll(() => {
+  registerHandlebarsHelpers();
+});
 
 function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext {
   return {

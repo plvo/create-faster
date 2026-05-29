@@ -1,0 +1,56 @@
+# {{projectName}}
+
+Generated with create-faster. Turborepo monorepo.
+
+## Apps
+{{#each apps}}- `apps/{{appName}}` — {{stackName}} (port {{appPort appName}})
+{{/each}}
+
+## Packages
+{{#if (has "orm" "drizzle")~}}
+- `packages/db` — Drizzle schema and client
+{{/if~}}
+{{#if (has "orm" "prisma")~}}
+- `packages/db` — Prisma schema and client
+{{/if}}
+
+## Stack
+{{#if (has "database" "postgres")~}}
+- Database: PostgreSQL
+{{/if~}}
+{{#if (has "database" "mysql")~}}
+- Database: MySQL
+{{/if~}}
+{{#if (has "linter" "biome")~}}
+- Linter: Biome
+{{/if~}}
+{{#if (has "linter" "eslint")~}}
+- Linter: ESLint
+{{/if}}
+- Package manager: {{pm}}
+
+## Scripts
+- `{{pm}} dev` — run all apps via Turborepo
+- `{{pm}} build` — build all apps
+{{#if (has "orm" "drizzle")~}}
+- `{{pm}} db:push` — sync the Drizzle schema (from `packages/db`)
+{{/if~}}
+{{#if (has "orm" "prisma")~}}
+- `{{pm}} db:push` — sync the Prisma schema (from `packages/db`)
+{{/if}}
+
+## Environment
+{{#if envGroups.length~}}
+
+Each `.env.example` lists the variables for its scope:
+{{#each envGroups~}}
+- `{{path}}`: {{#each vars}}`{{this}}` {{/each}}
+{{/each~}}
+{{else~}}
+
+No environment variables required.
+{{/if}}
+
+## Conventions
+- Per-app detail lives in each `apps/<app>/AGENTS.md`.
+- Import alias: `@/*` → that app's `src/*`.
