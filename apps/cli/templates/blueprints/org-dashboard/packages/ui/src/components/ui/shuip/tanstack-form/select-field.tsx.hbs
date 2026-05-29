@@ -1,0 +1,54 @@
+---
+mono:
+  scope: pkg
+  name: ui
+  path: src/components/ui/shuip/tanstack-form/select-field.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { Field, FieldDescription, FieldError, FieldLabel } from '@repo/ui/components/ui/field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
+import { useFieldContext } from '@repo/ui/components/ui/shuip/tanstack-form/form-context';
+
+export type SelectFieldOption = Record<string, string>;
+
+export interface SelectFieldProps {
+  options: SelectFieldOption;
+  label?: string;
+  placeholder?: string;
+  description?: string;
+  fieldProps?: React.ComponentProps<typeof Field>;
+  props?: React.ComponentProps<typeof Select>;
+}
+
+export function SelectField({ options, label, description, placeholder, fieldProps, props }: SelectFieldProps) {
+  const field = useFieldContext<string>();
+  const { isValid, errors } = field.state.meta;
+
+  return (
+    <Field className='gap-2' data-invalid={!isValid} {...fieldProps}>
+      {label && <FieldLabel>{label}</FieldLabel>}
+      <Select name={field.name} value={field.state.value} onValueChange={(value) => field.handleChange(value)} {...props}>
+        <SelectTrigger aria-invalid={!isValid}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(options).map(([optionLabel, value]) => (
+            <SelectItem key={value} value={value}>
+              {optionLabel}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {!isValid && (
+        <FieldError
+          className='text-xs text-left'
+          errors={errors.map((error) => ({ message: typeof error === 'string' ? error : error?.message }))}
+        />
+      )}
+      {description && <FieldDescription className='text-xs'>{description}</FieldDescription>}
+    </Field>
+  );
+}
+{{{{/raw}}}}

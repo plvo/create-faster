@@ -42,8 +42,7 @@ export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
         </div>
         {open && (
           <ContactForm
-            mode='create'
-            onSuccess={() => onOpenChange(false)}
+            onDone={() => onOpenChange(false)}
           />
         )}
       </div>

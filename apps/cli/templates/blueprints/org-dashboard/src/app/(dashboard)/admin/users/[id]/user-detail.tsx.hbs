@@ -5,7 +5,7 @@ import { useForm } from '@tanstack/react-form';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowLeft, Copy, KeyRound, Check } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import { useTRPC } from '@/trpc/providers';
@@ -14,7 +14,6 @@ export function UserDetail({ id }: { id: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: user } = useSuspenseQuery(trpc.user.getById.queryOptions({ id }));
-  const [pending, startTransition] = useTransition();
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -43,19 +42,6 @@ export function UserDetail({ id }: { id: string }) {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       phone: user?.phone || '',
-    },
-    onSubmit: ({ value }) => {
-      startTransition(async () => {
-        try {
-          const trpcClient = trpc.user.edit;
-          await queryClient.fetchQuery({
-            queryKey: trpcClient.queryKey(),
-            queryFn: () => null,
-          });
-        } catch {
-          // ignore
-        }
-      });
     },
   });
 
@@ -134,9 +120,8 @@ export function UserDetail({ id }: { id: string }) {
           className='space-y-4 pt-4 border-t'
         >
           <div className='grid grid-cols-2 gap-4'>
-            <form.Field
-              name='firstName'
-              children={(field) => (
+            <form.Field name='firstName'>
+              {(field) => (
                 <div className='space-y-2'>
                   <label htmlFor='firstName' className='text-sm font-medium leading-none'>
                     First name
@@ -150,10 +135,9 @@ export function UserDetail({ id }: { id: string }) {
                   />
                 </div>
               )}
-            />
-            <form.Field
-              name='lastName'
-              children={(field) => (
+            </form.Field>
+            <form.Field name='lastName'>
+              {(field) => (
                 <div className='space-y-2'>
                   <label htmlFor='lastName' className='text-sm font-medium leading-none'>
                     Last name
@@ -167,11 +151,10 @@ export function UserDetail({ id }: { id: string }) {
                   />
                 </div>
               )}
-            />
+            </form.Field>
           </div>
-          <form.Field
-            name='username'
-            children={(field) => (
+          <form.Field name='username'>
+            {(field) => (
               <div className='space-y-2'>
                 <label htmlFor='username' className='text-sm font-medium leading-none'>
                   Username
@@ -185,10 +168,9 @@ export function UserDetail({ id }: { id: string }) {
                 />
               </div>
             )}
-          />
-          <form.Field
-            name='phone'
-            children={(field) => (
+          </form.Field>
+          <form.Field name='phone'>
+            {(field) => (
               <div className='space-y-2'>
                 <label htmlFor='phone' className='text-sm font-medium leading-none'>
                   Phone
@@ -202,7 +184,7 @@ export function UserDetail({ id }: { id: string }) {
                 />
               </div>
             )}
-          />
+          </form.Field>
           <Button type='submit' disabled={editMutation.isPending}>
             {editMutation.isPending ? 'Saving...' : 'Save changes'}
           </Button>
