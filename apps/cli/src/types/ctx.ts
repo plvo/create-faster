@@ -25,6 +25,7 @@ export interface TemplateContext {
   pm?: PackageManager;
   skipInstall?: boolean;
   blueprint?: string;
+  dbPort?: number;
 }
 
 export interface TemplateFile {

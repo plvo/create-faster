@@ -1,0 +1,301 @@
+---
+title: Multitenant SaaS
+description: B2B SaaS dashboard with organizations, custom RBAC, and link-based invitations. Ships as a turborepo with a Next.js web app, a Node batch worker, and shared packages.
+---
+
+## Presentation
+
+A production-ready B2B SaaS starter. You get a Next.js dashboard with email/password authentication (sign-up, sign-in, forgot/reset password), Better Auth's organization plugin for multi-tenancy, a custom RBAC system with runtime role creation, link-based invitations (no email provider required), full projects CRUD scoped per organization, an account/security/sessions/preferences profile area, and a Node batch worker for background jobs. Ships as a turborepo with shared `auth`, `db`, `api`, and `ui` packages and a seed script that creates demo users, an organization, and sample projects.
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), Better Auth ([→ module](/docs/modules/auth/better-auth)), tRPC ([→ module](/docs/modules/api/trpc)), TanStack Query ([→ module](/docs/modules/data-fetching/tanstack-query)), TanStack Devtools ([→ module](/docs/modules/data-fetching/tanstack-devtools)), TanStack Form ([→ module](/docs/modules/forms/tanstack-form)), Next Themes ([→ module](/docs/modules/ui/next-themes))
+- `batch` — Node ([→ docs](/docs/stacks/node))
+
+**Project addons:**
+- Database: [→ PostgreSQL](/docs/database/postgresql)
+- ORM: [→ Drizzle](/docs/orm/drizzle)
+
+## Architecture
+
+### Turborepo structure
+
+```
+apps/
+  web/              # Next.js app
+  batch/            # Node worker
+packages/
+  api/              # tRPC routers
+  auth/             # Better Auth config + permissions + types
+  db/               # Drizzle schema + client
+  ui/               # shadcn components
+  config/           # Shared tsconfig
+scripts/
+  seed.ts           # Database seeder (owner + member + org + sample projects)
+```
+
+### Web app
+
+```
+src/
+├── app/
+│   ├── layout.tsx                                    # Root layout with AppProviders + Toaster
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   ├── page.tsx
+│   │   │   └── login-form.tsx                        # Email/password sign-in
+│   │   ├── signup/
+│   │   │   ├── page.tsx
+│   │   │   └── signup-form.tsx                       # Email/password sign-up (honors ?redirect)
+│   │   ├── forgot-password/
+│   │   │   ├── page.tsx
+│   │   │   └── forgot-password-form.tsx              # Request reset link
+│   │   ├── reset-password/
+│   │   │   ├── page.tsx                              # Reads ?token / ?error
+│   │   │   └── reset-password-form.tsx               # New-password form
+│   │   └── accept-invitation/[id]/
+│   │       ├── page.tsx                              # Accept invitation landing page
+│   │       └── accept-button.tsx                     # Client action to accept invite
+│   ├── (onboarding)/
+│   │   └── onboarding/page.tsx                       # Create first organization
+│   └── (dashboard)/
+│       ├── layout.tsx                                # Sidebar + auth guard + active org check
+│       ├── page.tsx                                  # Dashboard home (project / member counters)
+│       ├── projects/
+│       │   ├── page.tsx                              # Project list
+│       │   └── [id]/
+│       │       ├── page.tsx                          # Project detail (server-side prefetch)
+│       │       └── project.client.tsx                # Client view + edit dialog
+│       ├── settings/
+│       │   ├── general/page.tsx                      # Org name + danger zone (delete org)
+│       │   ├── members/page.tsx                      # Member list + pending invitations
+│       │   └── roles/page.tsx                        # Role list + permissions grid
+│       └── profile/
+│           ├── layout.tsx                            # Tab navigation + ViewTransition
+│           ├── page.tsx                              # Redirect → /profile/account
+│           ├── account/page.tsx                      # Account info + edit name
+│           ├── security/page.tsx                     # Change password
+│           ├── sessions/page.tsx                     # Active sessions + revoke
+│           └── preferences/page.tsx                  # Theme switcher
+├── components/
+│   ├── members/                                      # Members table, invite dialog, invitation link dialog, pending invitations table
+│   ├── navigation/                                   # App sidebar, org switcher, nav-user dropdown, sidebar links
+│   ├── profile/                                      # Account form, security form, session list, preferences, tab nav
+│   ├── projects/                                     # Project table, create/edit/delete dialogs, project form
+│   ├── roles/                                        # Roles table, permissions grid, role form dialog
+│   ├── can.tsx                                       # Permission gate component (<Can permissions={{ resource: ['action'] }}>)
+│   └── query-boundary.tsx                            # Suspense + ErrorBoundary + QueryErrorResetBoundary
+├── hooks/
+│   └── use-permission.ts                             # usePermission({ resource: ['action'] }) → { allowed, loading }
+├── lib/
+│   └── constants.ts                                  # ROUTES with per-route { resource, action } permission gating
+└── proxy.ts                                          # Next.js middleware (proxy export): auth guard + onboarding redirect
+```
+
+### Auth package (packages/auth)
+
+```
+src/
+├── auth.ts             # Better Auth config (organization plugin, drizzle adapter)
+├── auth-client.ts      # Client with organizationClient + inferAdditionalFields
+├── permissions.ts      # RBAC catalog: 5 resources × 15 actions, 3 built-in roles
+└── types.ts            # Session type via auth.$Infer.Session
+```
+
+### API package (packages/api)
+
+```
+src/
+├── root.ts             # appRouter composition (project, organization, member, role, invitation, session, user)
+├── middleware/
+│   └── rbac.ts         # orgProcedure, permissionProcedure(resource, action), assertInScope
+└── router/
+    ├── project.ts      # Project CRUD scoped to active org
+    ├── organization.ts # Update / delete org + active membership
+    ├── member.ts       # List members, change role, remove
+    ├── role.ts         # Catalog + dynamic role CRUD via Better Auth org-roles API
+    ├── invitation.ts   # Create, list, cancel invitations
+    ├── session.ts      # List + revoke sessions
+    └── user.ts         # Profile read + update
+```
+
+## What's included
+
+### Authentication flows
+
+Email/password auth backed by Better Auth, with all four standard flows pre-wired:
+
+- **Sign-in** (`/login`) — honors `?redirect=…` and pushes the user to the requested page after login.
+- **Sign-up** (`/signup`) — same `?redirect` behavior, creates the user via `authClient.signUp.email`.
+- **Forgot password** (`/forgot-password`) — calls `authClient.requestPasswordReset` and shows a success state without leaking whether the email exists.
+- **Reset password** (`/reset-password?token=…`) — reads the token from search params, calls `authClient.resetPassword`, and routes errors via `?error=…`.
+
+`src/proxy.ts` exposes a single `proxy` export (Next.js middleware) that allow-lists `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/accept-invitation`, and `/api/auth`, and redirects everything else to `/login` (preserving the original path as `?redirect`) or to `/onboarding` when the user has no organizations.
+
+### Multi-tenant organizations
+
+Organizations are first-class entities powered by Better Auth's organization plugin. Each user belongs to one or more organizations with their own members, roles, and projects. After sign-in, unauthenticated users and users with no organization are redirected to `/onboarding` to create their first org. The dashboard layout reads the active organization from the session and gates all API calls to it.
+
+### Custom RBAC
+
+The permission system is defined in `packages/auth/src/permissions.ts` using Better Auth's `createAccessControl` with `dynamicAccessControl` enabled to support runtime role creation:
+
+**Resources and actions:**
+
+| Resource | Actions |
+|----------|---------|
+| `organization` | `update`, `delete` |
+| `member` | `invite`, `update`, `remove` |
+| `invitation` | `create`, `cancel` |
+| `ac` | `create`, `read`, `update`, `delete` |
+| `project` | `create`, `read`, `update`, `delete` |
+
+> The role-management resource is named `ac` (access control), not `role` — Better Auth's dynamic-access-control endpoints (`createOrgRole`, `updateOrgRole`, `deleteOrgRole`) require this internal name when checking permissions on custom org roles.
+
+**Built-in roles** (immutable defaults):
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Full access to all resources |
+| `admin` | All member, invitation, role (`ac`), project actions; cannot delete the organization |
+| `member` | Read-only project access |
+
+Admins can create additional roles with custom permission combinations via the Roles UI. Custom roles are stored in the database and resolved dynamically at runtime.
+
+The `<Can>` component and `usePermission` hook provide declarative permission checks in the UI:
+
+```tsx
+<Can permissions={{ project: ['create'] }}>
+  <CreateProjectButton />
+</Can>
+```
+
+```ts
+const { allowed, loading } = usePermission({ project: ['create'] });
+```
+
+On the server, tRPC enforces the same model through two composable procedures in `packages/api/src/middleware/rbac.ts`:
+
+- `orgProcedure` — requires `session.activeOrganizationId` and injects `ctx.orgId`.
+- `permissionProcedure(resource, action)` — extends `orgProcedure` and calls `auth.api.hasPermission` so custom roles resolve at runtime.
+- `assertInScope(row, ctx)` — narrows a row's `organizationId` against `ctx.orgId` and throws `NOT_FOUND` on mismatch, preventing cross-org data leaks in router handlers.
+
+### Link-based invitations
+
+No email sending is required. An admin creates an invitation in the Members settings page, copies the generated link, and shares it manually (Slack, email, etc.). The recipient opens `/accept-invitation/[id]` to join the organization. Pending invitations are listed in a separate table with the option to copy or revoke them.
+
+### Org switcher
+
+The sidebar includes an org switcher component that lists all organizations the user belongs to. Switching orgs updates the active organization in the session without a full page reload.
+
+### Projects CRUD
+
+Full create, read, update, delete for projects scoped to the active organization. Project form with Zod validation via TanStack Form. Project table with inline actions gated by the `project:update` and `project:delete` permissions.
+
+### Settings pages
+
+Three settings pages under `/settings`:
+- **General** — rename the organization; danger zone with delete organization (owner only)
+- **Members** — member list with role assignment; pending invitations table with copy-link and revoke actions
+- **Roles** — role list with a permission grid for creating and editing custom roles (admin and owner)
+
+### Profile with View Transitions
+
+Route-based profile tabs using React 19 `ViewTransition` API with directional slide animations. Four sections:
+- **Account** — user info (email, role, joined date) + edit display name
+- **Security** — change password (revokes other sessions)
+- **Sessions** — list active sessions with device/IP info, revoke individual or all others
+- **Preferences** — theme switcher (light/dark/system)
+
+### QueryBoundary
+
+Reusable component wrapping `Suspense` + `ErrorBoundary` + `QueryErrorResetBoundary`. Used throughout for tRPC prefetch error handling with retry UI.
+
+### Database seed
+
+`scripts/seed.ts` provisions a full demo dataset via Better Auth's API and a direct Drizzle insert:
+- Users — `owner@example.com` / `owner-password` and `member@example.com` / `member-password`
+- Organization — `Acme Inc.` (slug `acme`) with the owner as `owner` and the second user as `member`
+- Projects — two seeded projects (`Onboarding workflow`, `Q4 launch`) scoped to the organization
+
+> **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
+
+## What's intentionally excluded
+
+| Feature | Notes |
+|---------|-------|
+| Email sending | Invitations use copy-paste links; no SMTP or transactional email provider |
+| Billing / subscriptions | No Stripe or payment integration |
+| Audit log | Member and permission changes are not logged |
+| Sub-organizations / teams | One organization level only; no nested team hierarchy |
+| Webhooks | No outbound event notifications |
+
+## Extra dependencies
+
+App (`apps/web`) and root extras declared by the blueprint:
+
+| Package | Purpose |
+|---------|---------|
+| `@hugeicons/react` | Icon library used throughout the dashboard |
+| `@hugeicons/core-free-icons` | Icon set for @hugeicons/react |
+| `lucide-react` | Inline icons for navigation and dialogs |
+| `react-error-boundary` | QueryBoundary error handling |
+| `sonner` | Toast notifications |
+| `zod` | Form validation schemas |
+
+Shared UI package (`packages/ui`) extras:
+
+| Package | Purpose |
+|---------|---------|
+| `@tanstack/react-form` | Backs the shuip tanstack-form field components shipped in `packages/ui/src/components/ui/shuip/tanstack-form/*` |
+
+## Environment variables
+
+Extra env vars declared by the blueprint (on top of those provided by `better-auth`, `drizzle`, and `postgres`):
+
+| Variable | Scope | Purpose |
+|----------|-------|---------|
+| `NEXT_PUBLIC_APP_URL` | `apps/web/.env.example` | Public origin used for invitation links and password-reset redirects |
+
+## Root scripts
+
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `db:push` | `turbo db:push` | Push schema to database |
+| `db:generate` | `turbo db:generate` | Generate migration files |
+| `db:migrate` | `turbo db:migrate` | Apply migrations |
+| `db:studio` | `turbo db:studio` | Open Drizzle Studio |
+| `db:seed` | `bun scripts/seed.ts` | Seed owner + member + org + sample projects |
+| `start` | `turbo start` | Start production server |
+
+## CLI usage
+
+```bash
+bunx create-faster myproject \
+  --blueprint multitenant-saas \
+  --linter biome \
+  --git \
+  --pm bun
+```
+
+## Getting started
+
+After generating the project:
+
+```bash
+# Install dependencies
+bun install
+
+# Set the database connection string in apps/web/.env.local (or .env.example)
+# DATABASE_URL=postgres://...
+
+# Push the schema and run the seed
+bun run db:push
+bun run db:seed
+
+# Start the dev server
+bun run dev
+```
+
+Login with `owner@example.com` / `owner-password` to explore the full feature set, or `member@example.com` / `member-password` for a restricted view.

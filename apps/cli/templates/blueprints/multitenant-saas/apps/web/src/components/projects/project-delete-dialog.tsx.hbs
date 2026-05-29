@@ -1,0 +1,76 @@
+---
+path: src/components/projects/project-delete-dialog.tsx
+mono:
+  scope: app
+  path: src/components/projects/project-delete-dialog.tsx
+---
+'use client';
+
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/ui/components/ui/dialog';
+import { Input } from '@repo/ui/components/ui/input';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  project: { id: string; name: string };
+  redirectAfter?: boolean;
+};
+
+export function ProjectDeleteDialog({ open, onOpenChange, project, redirectAfter }: Props) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [confirmInput, setConfirmInput] = useState('');
+  const remove = useMutation(
+    trpc.project.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.project.list.queryFilter());
+        toast.success('Project deleted');
+        onOpenChange(false);
+        if (redirectAfter) router.push('/projects');
+      },
+      onError: (err) => toast.error(err.message),
+    }),
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete project</DialogTitle>
+          <DialogDescription>
+            Type <span className='font-mono'>{project.name}</span> to confirm deletion.
+          </DialogDescription>
+        </DialogHeader>
+        <Input value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
+        <DialogFooter>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant='destructive'
+            disabled={confirmInput !== project.name || remove.isPending}
+            onClick={() => remove.mutate({ id: project.id })}
+          >
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}

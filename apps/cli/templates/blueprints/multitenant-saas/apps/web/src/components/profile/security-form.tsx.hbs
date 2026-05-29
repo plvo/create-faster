@@ -1,0 +1,72 @@
+---
+path: src/components/profile/security-form.tsx
+mono:
+  scope: app
+  path: src/components/profile/security-form.tsx
+---
+'use client';
+
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export function SecurityForm() {
+  const trpc = useTRPC();
+  const changePassword = useMutation(
+    trpc.user.changePassword.mutationOptions({
+      onSuccess: () => toast.success('Password changed'),
+      onError: () => toast.error('Failed to change password'),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: { currentPassword: '', newPassword: '' },
+    validators: { onChange: passwordSchema },
+    onSubmit: async ({ value }) => {
+      await changePassword.mutateAsync({
+        currentPassword: value.currentPassword,
+        newPassword: value.newPassword,
+      });
+      form.reset();
+    },
+  });
+
+  return (
+    <section className='rounded-lg border bg-card p-6 space-y-4'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change password</h2>
+        <p className='text-sm text-muted-foreground'>
+          Update your password. This will revoke all other sessions.
+        </p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className='space-y-4'
+      >
+        <form.AppField
+          name='currentPassword'
+          children={(field) => <field.PasswordField label='Current password' />}
+        />
+        <form.AppField
+          name='newPassword'
+          children={(field) => <field.PasswordField label='New password' />}
+        />
+        <form.AppForm>
+          <form.SubmitButton>Change password</form.SubmitButton>
+        </form.AppForm>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}

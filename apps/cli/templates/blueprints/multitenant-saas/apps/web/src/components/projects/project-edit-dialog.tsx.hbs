@@ -1,0 +1,36 @@
+---
+path: src/components/projects/project-edit-dialog.tsx
+mono:
+  scope: app
+  path: src/components/projects/project-edit-dialog.tsx
+---
+'use client';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/ui/components/ui/dialog';
+import { ProjectForm } from './project-form';
+
+{{{{raw}}}}
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  project: { id: string; name: string; description: string | null; status: 'active' | 'archived' };
+};
+
+export function ProjectEditDialog({ open, onOpenChange, project }: Props) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit project</DialogTitle>
+        </DialogHeader>
+        <ProjectForm mode='edit' initial={project} onSuccess={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,66 @@
+---
+path: src/components/projects/project-table.tsx
+mono:
+  scope: app
+  path: src/components/projects/project-table.tsx
+---
+'use client';
+
+import { Badge } from '@repo/ui/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@repo/ui/components/ui/table';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+export function ProjectTable() {
+  const trpc = useTRPC();
+  const { data: projects, isLoading } = useQuery(trpc.project.list.queryOptions());
+
+  if (isLoading) return <div>Loading...</div>;
+  const list = projects ?? [];
+  if (list.length === 0) {
+    return (
+      <p className='text-sm text-muted-foreground'>
+        No projects yet. Create one to get started.
+      </p>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Created</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {list.map((p) => (
+          <TableRow key={p.id} className='cursor-pointer'>
+            <TableCell className='font-medium'>
+              <Link href={`/projects/${p.id}`} className='hover:underline'>
+                {p.name}
+              </Link>
+            </TableCell>
+            <TableCell>
+              <Badge variant={p.status === 'active' ? 'default' : 'secondary'}>{p.status}</Badge>
+            </TableCell>
+            <TableCell className='text-muted-foreground text-sm'>
+              {new Date(p.createdAt).toLocaleDateString()}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,43 @@
+---
+path: src/trpc/routers/_app.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/root.ts
+---
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
+{{#if (isMono)}}
+import { router } from './trpc';
+import { invitationRouter } from './router/invitation';
+import { memberRouter } from './router/member';
+import { organizationRouter } from './router/organization';
+import { projectRouter } from './router/project';
+import { roleRouter } from './router/role';
+import { sessionRouter } from './router/session';
+import { userRouter } from './router/user';
+{{else}}
+import { router } from '@/trpc/init';
+import { invitationRouter } from './invitation';
+import { memberRouter } from './member';
+import { organizationRouter } from './organization';
+import { projectRouter } from './project';
+import { roleRouter } from './role';
+import { sessionRouter } from './session';
+import { userRouter } from './user';
+{{/if}}
+
+{{{{raw}}}}
+export const appRouter = router({
+  project: projectRouter,
+  organization: organizationRouter,
+  member: memberRouter,
+  role: roleRouter,
+  invitation: invitationRouter,
+  session: sessionRouter,
+  user: userRouter,
+});
+
+export type AppRouter = typeof appRouter;
+export type RouterInput = inferRouterInputs<AppRouter>;
+export type RouterOutput = inferRouterOutputs<AppRouter>;
+{{{{/raw}}}}

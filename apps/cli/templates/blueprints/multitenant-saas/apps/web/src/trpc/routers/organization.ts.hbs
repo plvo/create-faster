@@ -1,0 +1,48 @@
+---
+path: src/trpc/routers/organization.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/router/organization.ts
+---
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { protectedProcedure, router } from '../trpc';
+import { permissionProcedure } from '../middleware/rbac';
+{{else}}
+import { protectedProcedure, router } from '@/trpc/init';
+import { permissionProcedure } from '@/trpc/middleware/rbac';
+{{/if}}
+import { z } from 'zod';
+
+{{{{raw}}}}
+const nameSlug = {
+  name: z.string().min(1).max(120),
+  slug: z.string().min(1).max(120),
+};
+
+export const organizationRouter = router({
+  create: protectedProcedure.input(z.object(nameSlug)).mutation(async ({ ctx, input }) => {
+    return auth.api.createOrganization({
+      headers: ctx.headers,
+      body: { name: input.name, slug: input.slug },
+    });
+  }),
+
+  update: permissionProcedure('organization', 'update')
+    .input(z.object({ name: nameSlug.name.optional(), slug: nameSlug.slug.optional() }))
+    .mutation(async ({ ctx, input }) => {
+      return auth.api.updateOrganization({
+        headers: ctx.headers,
+        body: { organizationId: ctx.orgId, data: input },
+      });
+    }),
+
+  delete: permissionProcedure('organization', 'delete').mutation(async ({ ctx }) => {
+    return auth.api.deleteOrganization({
+      headers: ctx.headers,
+      body: { organizationId: ctx.orgId },
+    });
+  }),
+});
+{{{{/raw}}}}

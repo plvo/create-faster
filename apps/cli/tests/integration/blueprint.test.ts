@@ -145,3 +145,225 @@ describe('Blueprint generation - org-dashboard', () => {
     expect(layoutContent).toContain('/login');
   });
 });
+
+describe('Blueprint generation - multitenant-saas', () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('generates project with --blueprint multitenant-saas', async () => {
+    const result = await runCli(
+      ['test-mt', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--git'],
+      tempDir,
+    );
+
+    expect(result.exitCode).toBe(0);
+
+    const projectPath = join(tempDir, 'test-mt');
+
+    // Auth package
+    expect(await fileExists(join(projectPath, 'packages/auth/src/auth.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/auth/src/auth-client.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/auth/src/permissions.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/auth/src/types.ts'))).toBe(true);
+
+    // Permissions catalog content
+    const permsContent = await readTextFile(join(projectPath, 'packages/auth/src/permissions.ts'));
+    expect(permsContent).toContain('createAccessControl');
+    expect(permsContent).toContain('owner');
+    expect(permsContent).toContain('admin');
+
+    // Auth.ts has the organization plugin
+    const authContent = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
+    expect(authContent).toContain('organization');
+    expect(authContent).toContain('dynamicAccessControl');
+
+    // DB schema with project entity
+    const schemaContent = await readTextFile(join(projectPath, 'packages/db/src/schema.ts'));
+    expect(schemaContent).toContain('project');
+    expect(schemaContent).toContain('organizationId');
+    expect(schemaContent).toContain('createdById');
+
+    // tRPC routers (in packages/api/src/router/ in mono mode)
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/project.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/member.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/role.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/invitation.ts'))).toBe(true);
+
+    // Root router registers all four
+    const rootContent = await readTextFile(join(projectPath, 'packages/api/src/root.ts'));
+    expect(rootContent).toContain('projectRouter');
+    expect(rootContent).toContain('memberRouter');
+    expect(rootContent).toContain('roleRouter');
+    expect(rootContent).toContain('invitationRouter');
+
+    // RBAC middleware
+    const rbacContent = await readTextFile(join(projectPath, 'packages/api/src/middleware/rbac.ts'));
+    expect(rbacContent).toContain('orgProcedure');
+    expect(rbacContent).toContain('permissionProcedure');
+    expect(rbacContent).toContain('assertInScope');
+
+    // OrgSwitcher
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/org-switcher.tsx'))).toBe(true);
+
+    // Sidebar links + AppSidebar
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/sidebar-links.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/app-sidebar.tsx'))).toBe(true);
+
+    // Settings pages
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/settings/general/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/settings/members/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/settings/roles/page.tsx'))).toBe(true);
+
+    // Members management components
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/members/members-table.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/members/invite-dialog.tsx'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/components/members/invitation-link-dialog.tsx')),
+    ).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/components/members/pending-invitations-table.tsx')),
+    ).toBe(true);
+
+    // Roles management components
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/roles/roles-table.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/roles/role-form-dialog.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/roles/permissions-grid.tsx'))).toBe(true);
+
+    // Project entity UI
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/projects/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/projects/[id]/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/projects/project-table.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/projects/project-form.tsx'))).toBe(true);
+
+    // Onboarding
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(onboarding)/onboarding/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/proxy.ts'))).toBe(true);
+
+    // Password reset flow
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(auth)/forgot-password/page.tsx'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx')),
+    ).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(auth)/reset-password/page.tsx'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/reset-password/reset-password-form.tsx')),
+    ).toBe(true);
+
+    // Accept invitation page
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx')),
+    ).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'apps/web/src/app/(auth)/accept-invitation/[id]/accept-button.tsx')),
+    ).toBe(true);
+
+    // Permission helpers
+    expect(await fileExists(join(projectPath, 'apps/web/src/hooks/use-permission.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/components/can.tsx'))).toBe(true);
+
+    // Profile pages (reused from org-dashboard)
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/account/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/security/page.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/sessions/page.tsx'))).toBe(true);
+
+    // Seed script
+    expect(await fileExists(join(projectPath, 'scripts/seed.ts'))).toBe(true);
+
+    // Hugeicons dependency
+    const webPkg = await readJsonFile<{ dependencies: Record<string, string> }>(
+      join(projectPath, 'apps/web/package.json'),
+    );
+    expect(webPkg.dependencies['@hugeicons/react']).toBeDefined();
+    expect(webPkg.dependencies['@hugeicons/core-free-icons']).toBeDefined();
+    expect(webPkg.dependencies.sonner).toBeDefined();
+
+    // Shipped shadcn UI components
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/dialog.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/card.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/select.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/table.tsx'))).toBe(true);
+  });
+
+  test('env file includes NEXT_PUBLIC_APP_URL', async () => {
+    const result = await runCli(
+      ['test-mt-env', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    const envContent = await readTextFile(join(tempDir, 'test-mt-env/apps/web/.env.example'));
+    expect(envContent).toContain('NEXT_PUBLIC_APP_URL');
+  });
+
+  test('password reset is wired into auth config and route protection', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    const authContent = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
+    expect(authContent).toContain('sendResetPassword');
+
+    const proxyContent = await readTextFile(join(projectPath, 'apps/web/src/proxy.ts'));
+    expect(proxyContent).toContain('/forgot-password');
+    expect(proxyContent).toContain('/reset-password');
+  });
+
+  test('project table declares foreign keys for tenant integrity', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+    const schemaContent = await readTextFile(join(projectPath, 'packages/db/src/schema.ts'));
+
+    const appSection = schemaContent.slice(schemaContent.indexOf('Application tables'));
+    expect(appSection).toContain('references(() => organizationTable.id');
+    expect(appSection).toContain('references(() => userTable.id');
+  });
+
+  test('ships the shuip tanstack-form system and migrates forms onto it', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    expect(await fileExists(join(projectPath, 'packages/ui/src/lib/form.ts'))).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'packages/ui/src/components/ui/shuip/tanstack-form/form-context.tsx')),
+    ).toBe(true);
+    expect(
+      await fileExists(join(projectPath, 'packages/ui/src/components/ui/shuip/tanstack-form/input-field.tsx')),
+    ).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/field.tsx'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/ui/src/components/ui/input-group.tsx'))).toBe(true);
+
+    const loginForm = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/login/login-form.tsx'));
+    expect(loginForm).toContain('useAppForm');
+    expect(loginForm).toContain('form.AppField');
+  });
+
+  test('routes data mutations through tRPC routers, not auth in pages', async () => {
+    const projectPath = join(tempDir, 'test-mt');
+
+    // organization router exists and is registered
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/organization.ts'))).toBe(true);
+    const root = await readTextFile(join(projectPath, 'packages/api/src/root.ts'));
+    expect(root).toContain('organizationRouter');
+
+    // user router owns profile + password mutations
+    const userRouter = await readTextFile(join(projectPath, 'packages/api/src/router/user.ts'));
+    expect(userRouter).toContain('updateProfile');
+    expect(userRouter).toContain('changePassword');
+
+    // data-mutation forms call tRPC, not authClient directly
+    const accountForm = await readTextFile(join(projectPath, 'apps/web/src/components/profile/account-form.tsx'));
+    expect(accountForm).toContain('user.updateProfile');
+    expect(accountForm).not.toContain('authClient');
+  });
+
+  test('output shows --blueprint multitenant-saas in recreate command', async () => {
+    const result = await runCli(
+      ['test-mt-cmd', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('--blueprint multitenant-saas');
+  });
+});

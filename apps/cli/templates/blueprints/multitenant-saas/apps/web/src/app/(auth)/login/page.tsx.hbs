@@ -1,0 +1,14 @@
+---
+path: src/app/(auth)/login/page.tsx
+mono:
+  scope: app
+  path: src/app/(auth)/login/page.tsx
+---
+import { LoginForm } from './login-form';
+
+{{{{raw}}}}
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {
+  const { redirect } = await searchParams;
+  return <LoginForm redirectTo={redirect ?? '/'} />;
+}
+{{{{/raw}}}}

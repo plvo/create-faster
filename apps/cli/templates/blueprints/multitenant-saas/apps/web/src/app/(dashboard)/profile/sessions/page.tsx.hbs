@@ -1,0 +1,23 @@
+---
+path: src/app/(dashboard)/profile/sessions/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/profile/sessions/page.tsx
+---
+{{{{raw}}}}
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { QueryBoundary } from '@/components/query-boundary';
+import { SessionList } from '@/components/profile/session-list';
+
+export default async function SessionsPage() {
+  void prefetch(trpc.session.list.queryOptions());
+
+  return (
+    <HydrateClient>
+      <QueryBoundary loadingFallback={<p className='text-sm text-muted-foreground p-6'>Loading sessions...</p>}>
+        <SessionList />
+      </QueryBoundary>
+    </HydrateClient>
+  );
+}
+{{{{/raw}}}}

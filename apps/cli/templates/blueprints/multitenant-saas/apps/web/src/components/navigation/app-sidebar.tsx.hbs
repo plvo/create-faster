@@ -1,0 +1,40 @@
+---
+path: src/components/navigation/app-sidebar.tsx
+mono:
+  scope: app
+  path: src/components/navigation/app-sidebar.tsx
+---
+import type { Session } from '@repo/auth/types';
+import type * as React from 'react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+} from '@repo/ui/components/ui/sidebar';
+import { NavUser } from './nav-user';
+import { OrgSwitcher } from './org-switcher';
+import { SidebarLinks } from './sidebar-links';
+
+{{{{raw}}}}
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  session: Session;
+  role: string;
+};
+
+export function AppSidebar({ session, role, ...props }: AppSidebarProps) {
+  return (
+    <Sidebar collapsible='icon' variant='sidebar' {...props}>
+      <SidebarHeader>
+        <OrgSwitcher />
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarLinks role={role} />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser session={session} />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+{{{{/raw}}}}

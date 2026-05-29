@@ -1,0 +1,117 @@
+---
+path: src/app/(dashboard)/settings/general/page.tsx
+mono:
+  scope: app
+  path: src/app/(dashboard)/settings/general/page.tsx
+---
+'use client';
+
+import { useActiveOrganization } from '@repo/auth/auth-client';
+import { Button } from '@repo/ui/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { Input } from '@repo/ui/components/ui/input';
+import { Label } from '@repo/ui/components/ui/label';
+import { useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+
+{{{{raw}}}}
+const generalSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  slug: z.string().min(1, 'Slug is required'),
+});
+
+export default function GeneralSettingsPage() {
+  const router = useRouter();
+  const trpc = useTRPC();
+  const { data: active, refetch } = useActiveOrganization();
+  const [confirmInput, setConfirmInput] = useState('');
+
+  const updateOrg = useMutation(
+    trpc.organization.update.mutationOptions({
+      onSuccess: () => {
+        toast.success('Saved');
+        refetch();
+      },
+      onError: (err) => toast.error(err.message ?? 'Failed to update'),
+    }),
+  );
+
+  const deleteOrg = useMutation(
+    trpc.organization.delete.mutationOptions({
+      onSuccess: () => {
+        toast.success('Organization deleted');
+        router.push('/onboarding');
+      },
+      onError: (err) => toast.error(err.message ?? 'Failed to delete'),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: { name: active?.name ?? '', slug: active?.slug ?? '' },
+    validators: { onChange: generalSchema },
+    onSubmit: async ({ value }) => {
+      await updateOrg.mutateAsync({ name: value.name, slug: value.slug });
+    },
+  });
+
+  function handleDelete() {
+    if (!active) return;
+    if (confirmInput !== active.slug) {
+      toast.error('Confirmation does not match the organization slug.');
+      return;
+    }
+    deleteOrg.mutate();
+  }
+
+  if (!active) return null;
+
+  return (
+    <div className='space-y-6'>
+      <Card>
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+          <CardDescription>Organization name and URL slug.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className='space-y-4'
+          >
+            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
+            <form.AppField name='slug' children={(field) => <field.InputField label='Slug' />} />
+            <form.AppForm>
+              <form.SubmitButton>Save</form.SubmitButton>
+            </form.AppForm>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className='border-destructive'>
+        <CardHeader>
+          <CardTitle className='text-destructive'>Danger zone</CardTitle>
+          <CardDescription>Deleting an organization is permanent.</CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <div className='space-y-2'>
+            <Label htmlFor='confirm'>
+              Type the slug <span className='font-mono'>{active.slug}</span> to confirm.
+            </Label>
+            <Input id='confirm' value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
+          </div>
+          <Button variant='destructive' onClick={handleDelete}>
+            Delete organization
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+{{{{/raw}}}}

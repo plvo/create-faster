@@ -1,0 +1,51 @@
+---
+path: src/trpc/middleware/rbac.ts
+mono:
+  scope: pkg
+  name: api
+  path: src/middleware/rbac.ts
+---
+import { TRPCError } from '@trpc/server';
+import { auth } from '@repo/auth/auth';
+{{#if (isMono)}}
+import { protectedProcedure } from '../trpc';
+{{else}}
+import { protectedProcedure } from '@/trpc/init';
+{{/if}}
+
+{{{{raw}}}}
+export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const orgId = ctx.session.session.activeOrganizationId;
+  if (!orgId) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'No active organization. Switch to an organization or create one.',
+    });
+  }
+  return next({ ctx: { ...ctx, orgId } });
+});
+
+export const permissionProcedure = (resource: string, action: string) =>
+  orgProcedure.use(async ({ ctx, next }) => {
+    const result = await auth.api.hasPermission({
+      headers: ctx.headers,
+      body: { permissions: { [resource]: [action] } },
+    });
+    if (!result.success) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: `Missing permission ${resource}.${action}`,
+      });
+    }
+    return next();
+  });
+
+export function assertInScope<T extends { organizationId: string }>(
+  row: T | undefined | null,
+  ctx: { orgId: string },
+): asserts row is T {
+  if (!row || row.organizationId !== ctx.orgId) {
+    throw new TRPCError({ code: 'NOT_FOUND' });
+  }
+}
+{{{{/raw}}}}

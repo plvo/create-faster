@@ -46,9 +46,14 @@ describe('CLI Integration', () => {
 
       const pkg = await readJsonFile<{
         dependencies: Record<string, string>;
+        devDependencies: Record<string, string>;
       }>(join(projectPath, 'package.json'));
       expect(pkg.dependencies['radix-ui']).toBeDefined();
       expect(pkg.dependencies['class-variance-authority']).toBeDefined();
+
+      const depKeys = new Set(Object.keys(pkg.dependencies ?? {}));
+      const overlap = Object.keys(pkg.devDependencies ?? {}).filter((k) => depKeys.has(k));
+      expect(overlap).toEqual([]);
 
       expect(await fileExists(join(projectPath, 'src/components/ui/button.tsx'))).toBe(true);
       expect(await fileExists(join(projectPath, 'components.json'))).toBe(true);

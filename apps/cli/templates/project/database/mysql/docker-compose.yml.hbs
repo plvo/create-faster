@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:latest
+    image: mysql:8
     container_name: mysql-{{projectName}}
     restart: always
     environment:
@@ -9,12 +9,12 @@ services:
       MYSQL_USER: mysql
       MYSQL_PASSWORD: password
     ports:
-      - "3306:3306"
+      - "{{dbPort}}:3306"
     volumes:
       - mysql-{{projectName}}-data:/var/lib/mysql
     networks:
       - mysql-{{projectName}}-network
-    command: --max-connections=100 --default-authentication-plugin=mysql_native_password
+    command: --max-connections=100
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
