@@ -133,6 +133,13 @@ function renderHeader(ctx: TemplateContext): string {
   return renderTemplate(content, { ...ctx, ...enrich, envGroups } as TemplateContext).trim();
 }
 
+function blueprintArchitecture(ctx: TemplateContext): string {
+  if (!ctx.blueprint) return '';
+  const blueprint = META.blueprints[ctx.blueprint];
+  if (!blueprint?.agentArchitecture) return '';
+  return `## Architecture\n\n${blueprint.agentArchitecture.trim()}`;
+}
+
 function assembleSections(sections: Section[]): string {
   return [...sections]
     .sort((a, b) => a.order - b.order || a.heading.localeCompare(b.heading))
@@ -145,8 +152,9 @@ export function collectAgentContextFiles(ctx: TemplateContext): AgentContextFile
   const files: AgentContextFile[] = [];
 
   const header = renderHeader(ctx);
+  const architecture = blueprintArchitecture(ctx);
   const rootSections = sections.filter((s) => s.destination === 'AGENTS.md');
-  const rootBody = [header, assembleSections(rootSections)].filter(Boolean).join('\n\n');
+  const rootBody = [header, architecture, assembleSections(rootSections)].filter(Boolean).join('\n\n');
   files.push({ destination: 'AGENTS.md', content: `${rootBody}\n` });
 
   const appDestinations = new Set(sections.filter((s) => s.destination !== 'AGENTS.md').map((s) => s.destination));

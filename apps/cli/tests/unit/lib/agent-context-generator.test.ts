@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { META } from '@/__meta__';
 import { collectAgentContextFiles } from '@/lib/agent-context-generator';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -82,5 +83,26 @@ describe('collectAgentContextFiles (turborepo)', () => {
     const files = collectAgentContextFiles(monoContext());
     // api (hono, no libs) has no stack/lib fiche yet → no apps/api/AGENTS.md
     expect(files.some((f) => f.destination === 'apps/api/AGENTS.md')).toBe(false);
+  });
+});
+
+describe('collectAgentContextFiles (blueprint)', () => {
+  test('injects Architecture section from META.agentArchitecture', () => {
+    const blueprintName = Object.keys(META.blueprints).find(
+      (n) => META.blueprints[n].agentArchitecture,
+    );
+    if (!blueprintName) return; // no blueprint annotated yet
+    const blueprint = META.blueprints[blueprintName];
+    const ctx: TemplateContext = {
+      projectName: 'demo',
+      repo: blueprint.context.apps.length > 1 ? 'turborepo' : 'single',
+      apps: blueprint.context.apps.map((a) => ({ ...a })),
+      project: { ...blueprint.context.project, tooling: [] },
+      git: true,
+      pm: 'bun',
+      blueprint: blueprintName,
+    };
+    const root = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md');
+    expect(root?.content).toContain('## Architecture');
   });
 });
