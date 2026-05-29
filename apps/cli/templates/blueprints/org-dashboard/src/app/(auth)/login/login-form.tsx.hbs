@@ -46,14 +46,12 @@ export function LoginForm() {
       }}
       className='flex flex-col gap-4'
     >
-      <form.AppField
-        name='email'
-        children={(f) => <f.InputField label='Email' props={{ type: 'email', autoComplete: 'email' }} />}
-      />
-      <form.AppField
-        name='password'
-        children={(f) => <f.PasswordField label='Password' props={{ autoComplete: 'current-password' }} />}
-      />
+      <form.AppField name='email'>
+        {(f) => <f.InputField label='Email' props={{ type: 'email', autoComplete: 'email' }} />}
+      </form.AppField>
+      <form.AppField name='password'>
+        {(f) => <f.PasswordField label='Password' props={{ autoComplete: 'current-password' }} />}
+      </form.AppField>
       <form.AppForm>
         <form.SubmitButton className='w-full'>Sign in</form.SubmitButton>
       </form.AppForm>

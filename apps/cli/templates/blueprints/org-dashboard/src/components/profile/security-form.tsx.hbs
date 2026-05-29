@@ -57,8 +57,10 @@ export function SecurityForm() {
       }}
       className='flex max-w-md flex-col gap-3'
     >
-      <form.AppField name='currentPassword' children={(f) => <f.PasswordField label='Current password' />} />
-      <form.AppField name='newPassword' children={(f) => <f.PasswordField label='New password' />} />
+      <form.AppField name='currentPassword'>
+        {(f) => <f.PasswordField label='Current password' />}
+      </form.AppField>
+      <form.AppField name='newPassword'>{(f) => <f.PasswordField label='New password' />}</form.AppField>
       <form.AppForm>
         <form.SubmitButton disabled={isPending}>{isPending ? 'Updating...' : 'Update password'}</form.SubmitButton>
       </form.AppForm>

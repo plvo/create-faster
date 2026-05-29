@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/navigation/app-header';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session || !session.user.role) redirect('/login');
+  if (!session?.user.role) redirect('/login');
 
   return (
     <SidebarProvider defaultOpen>

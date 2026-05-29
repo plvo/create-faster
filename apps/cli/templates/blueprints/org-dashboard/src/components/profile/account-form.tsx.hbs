@@ -49,7 +49,7 @@ export function AccountForm({ initialName }: { initialName: string }) {
       }}
       className='flex max-w-md flex-col gap-3'
     >
-      <form.AppField name='name' children={(f) => <f.InputField label='Display name' />} />
+      <form.AppField name='name'>{(f) => <f.InputField label='Display name' />}</form.AppField>
       <form.AppForm>
         <form.SubmitButton disabled={isPending}>{isPending ? 'Saving...' : 'Save'}</form.SubmitButton>
       </form.AppForm>

@@ -65,12 +65,13 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
         }}
         className='flex flex-col gap-3'
       >
-        <form.AppField name='name' children={(f) => <f.InputField label='Name' />} />
-        <form.AppField name='email' children={(f) => <f.InputField label='Email' props={{ type: 'email' }} />} />
-        <form.AppField name='password' children={(f) => <f.PasswordField label='Password' />} />
-        <form.AppField
-          name='role'
-          children={(f) => (
+        <form.AppField name='name'>{(f) => <f.InputField label='Name' />}</form.AppField>
+        <form.AppField name='email'>
+          {(f) => <f.InputField label='Email' props={{ type: 'email' }} />}
+        </form.AppField>
+        <form.AppField name='password'>{(f) => <f.PasswordField label='Password' />}</form.AppField>
+        <form.AppField name='role'>
+          {(f) => (
             <f.SelectField
               label='Role'
               options={[
@@ -79,7 +80,7 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
               ]}
             />
           )}
-        />
+        </form.AppField>
         <div className='mt-2 flex justify-end gap-2'>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancel

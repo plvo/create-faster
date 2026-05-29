@@ -76,13 +76,15 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: (
       className='flex flex-col gap-3'
     >
       <div className='grid grid-cols-2 gap-3'>
-        <form.AppField name='firstName' children={(f) => <f.InputField label='First name' />} />
-        <form.AppField name='lastName' children={(f) => <f.InputField label='Last name' />} />
+        <form.AppField name='firstName'>{(f) => <f.InputField label='First name' />}</form.AppField>
+        <form.AppField name='lastName'>{(f) => <f.InputField label='Last name' />}</form.AppField>
       </div>
-      <form.AppField name='email' children={(f) => <f.InputField label='Email' props={{ type: 'email' }} />} />
-      <form.AppField name='phone' children={(f) => <f.InputField label='Phone' />} />
-      <form.AppField name='company' children={(f) => <f.InputField label='Company' />} />
-      <form.AppField name='notes' children={(f) => <f.TextareaField label='Notes' />} />
+      <form.AppField name='email'>
+        {(f) => <f.InputField label='Email' props={{ type: 'email' }} />}
+      </form.AppField>
+      <form.AppField name='phone'>{(f) => <f.InputField label='Phone' />}</form.AppField>
+      <form.AppField name='company'>{(f) => <f.InputField label='Company' />}</form.AppField>
+      <form.AppField name='notes'>{(f) => <f.TextareaField label='Notes' />}</form.AppField>
       <form.AppForm>
         <form.SubmitButton disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving...' : contact ? 'Save changes' : 'Create contact'}
