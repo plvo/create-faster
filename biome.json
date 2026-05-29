@@ -23,7 +23,8 @@
       "!**/out/**/*",
       "!**/generated/**/*",
       "!**/.turbo/**/*",
-      "!**/.worktrees/**/*"
+      "!**/.worktrees/**/*",
+      "!**/.claude/worktrees/**/*"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
