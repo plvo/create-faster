@@ -1,16 +1,24 @@
 ---
 title: Vitest
-description: Component and unit testing for React stacks with jsdom and Testing Library, wired into the app's tsconfig.
+description: Unit and component testing with the Vite-native runner, configured per stack and wired into the app's tsconfig.
 ---
 
-<Stacks names="nextjs,tanstack-start" />
-<Dependencies dev="vitest,@vitest/coverage-v8,@vitejs/plugin-react,vite,vite-tsconfig-paths,jsdom,@testing-library/react,@testing-library/dom,@testing-library/jest-dom,@testing-library/user-event" />
+<Stacks names="nextjs,tanstack-start,hono,node" />
 
 [→ Vitest Documentation](https://vitest.dev)
 
 ## What create-faster adds
 
-A ready-to-run component testing setup using the Vite-native runner with a jsdom environment and Testing Library.
+The Vite-native runner, configured for the kind of code each stack runs. React stacks get a jsdom environment with Testing Library; server stacks get a plain node environment.
+
+**Scripts** (both variants):
+- `test` - Run the suite once (`vitest run`)
+- `test:watch` - Watch mode (`vitest`)
+- `test:coverage` - V8 coverage report (`vitest run --coverage`)
+
+### React stacks (Next.js, TanStack Start)
+
+<Dependencies dev="vitest,@vitest/coverage-v8,@vitejs/plugin-react,vite,vite-tsconfig-paths,jsdom,@testing-library/react,@testing-library/dom,@testing-library/jest-dom,@testing-library/user-event" />
 
 Files added:
 ```
@@ -20,8 +28,6 @@ tests/
 └── unit/
     └── example.test.tsx    # Sample component test
 ```
-
-### vitest.config.ts
 
 ```ts title="vitest.config.ts"
 import react from '@vitejs/plugin-react';
@@ -39,15 +45,38 @@ export default defineConfig({
 });
 ```
 
-The `include` is scoped to `tests/{unit,integration}` so Vitest never picks up Playwright specs under `tests/e2e`. The `@/*` path alias resolves via `vite-tsconfig-paths`.
-
-**Scripts:**
-- `test` - Run the suite once (`vitest run`)
-- `test:watch` - Watch mode (`vitest`)
-- `test:coverage` - V8 coverage report (`vitest run --coverage`)
+The `include` is scoped to `tests/{unit,integration}` so Vitest never picks up Playwright specs under `tests/e2e`. `tests/setup.ts` registers `@testing-library/jest-dom/vitest`, enabling matchers like `toBeInTheDocument()`.
 
 **Modified files:**
 - TanStack Start `tsconfig.json` - Adds `tests` to `include` (Next.js already covers it via `**/*`) so test files and the jest-dom matcher augmentation are type-checked.
 
-**Setup:**
-- `tests/setup.ts` registers `@testing-library/jest-dom/vitest`, enabling matchers like `toBeInTheDocument()` on Vitest's `expect`.
+### Server stacks (Hono, Node)
+
+<Dependencies dev="vitest,@vitest/coverage-v8,vite,vite-tsconfig-paths" />
+
+Files added:
+```
+vitest.config.ts            # node env, tsconfig-paths plugin
+tests/
+└── unit/
+    └── example.test.ts     # Sample unit test
+```
+
+```ts title="vitest.config.ts"
+import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/{unit,integration}/**/*.{test,spec}.ts'],
+  },
+});
+```
+
+**Modified files:**
+- `tsconfig.json` (Hono and Node) - Adds `tests/**/*.ts` to `include` so test files are type-checked alongside `src`.
+
+The `@/*` path alias resolves via `vite-tsconfig-paths` in both variants.

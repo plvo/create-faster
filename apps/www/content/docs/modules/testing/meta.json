@@ -1,4 +1,4 @@
 {
   "title": "Testing",
-  "pages": ["vitest", "vitest-node", "playwright", "jest-expo"]
+  "pages": ["vitest", "playwright", "jest-expo"]
 }

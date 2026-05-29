@@ -25,7 +25,7 @@ const MODULE_META: Record<string, ModuleMeta> = {
   'aws-lambda': { label: 'AWS Lambda', category: 'Deploy', href: '/docs/modules/deploy/aws-lambda' },
   evlog: { label: 'evlog', category: 'Observability', href: '/docs/modules/observability/evlog' },
   vitest: { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest' },
-  'vitest-node': { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest-node' },
+  'vitest-node': { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest' },
   playwright: { label: 'Playwright', category: 'Testing', href: '/docs/modules/testing/playwright' },
   'jest-expo': { label: 'Jest', category: 'Testing', href: '/docs/modules/testing/jest-expo' },
 };
