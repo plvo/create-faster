@@ -115,6 +115,7 @@ export interface MetaBlueprint {
   pkgPackageJson?: Record<string, PackageJsonConfig>;
   rootPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
+  agentArchitecture?: string;
 }
 
 export interface Meta {
