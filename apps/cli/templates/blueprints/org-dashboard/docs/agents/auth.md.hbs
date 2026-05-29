@@ -1,0 +1,18 @@
+---
+path: docs/agents/auth.md
+mono:
+  scope: root
+  path: docs/agents/auth.md
+---
+# Auth & Permissions
+
+Better Auth is configured in `apps/web/src/lib/auth/auth.ts` with the organization plugin.
+Sessions are persisted in PostgreSQL via Drizzle (`user`, `account`, `session`, `organization`, `member` tables).
+
+## Adding a protected route
+1. Read the session server-side with the auth helper in `apps/web/src/lib/auth/`.
+2. Redirect unauthenticated users to the sign-in route.
+3. For org-scoped pages, check the member's role before rendering.
+
+## Roles
+Roles (owner / admin / member) are defined on the organization plugin. Gate actions by role, not by user id.

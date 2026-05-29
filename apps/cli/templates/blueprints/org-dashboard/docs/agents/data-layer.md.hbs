@@ -1,0 +1,18 @@
+---
+path: docs/agents/data-layer.md
+mono:
+  scope: root
+  path: docs/agents/data-layer.md
+---
+# Data Layer
+
+Drizzle schema lives in the db package. tRPC procedures read and write through the Drizzle client; the client never touches the database directly.
+
+## Flow
+1. Client calls a typed `trpc` hook.
+2. The procedure validates input via its Zod schema.
+3. The procedure queries Drizzle and returns typed data.
+4. TanStack Query caches the result on the client.
+
+## Adding a query
+Add a procedure to the relevant tRPC router, then consume it with the generated hook. Keep DB access inside procedures.

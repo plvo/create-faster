@@ -750,6 +750,15 @@ export const META: Meta = {
       label: 'Org Dashboard',
       hint: 'Dashboard with auth, RBAC, admin panel, and example CRUD',
       category: 'Business',
+      agentArchitecture: [
+        'Organization dashboard: Next.js web app + Node.js batch app (Turborepo), Better Auth',
+        '(organizations + roles), tRPC for typed API calls, TanStack Query for client data,',
+        'TanStack Form for form handling, and Drizzle + PostgreSQL.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Auth & permissions](docs/agents/auth.md)',
+        '- [Data layer](docs/agents/data-layer.md)',
+      ].join('\n'),
       context: {
         apps: [
           {
