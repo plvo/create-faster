@@ -30,6 +30,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts"{{#if (hasLibrary "vitest-node")}}, "tests/**/*.ts"{{/if}}],
   "exclude": ["node_modules", "dist"]
 }

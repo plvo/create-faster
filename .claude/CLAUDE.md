@@ -172,11 +172,17 @@ Programmatic `.env.example` file generation:
 ## Supported Stacks
 
 ### Frameworks & Modules
-- **Next.js**: 10 modules (shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form)
-- **Expo**: 1 module (nativewind)
-- **Hono**: 1 module (aws-lambda)
+- **Next.js**: shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form, evlog, vitest, playwright
+- **Expo**: nativewind, jest-expo
+- **Hono**: aws-lambda, vitest-node, evlog
+- **TanStack Start**: shadcn/ui, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
 
-Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy).
+Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy, Observability, Testing).
+
+### Testing
+- **Vitest**: unit/component runner — `vitest` (React: Next.js, TanStack Start; with jsdom + Testing Library) and `vitest-node` (node env: Hono, Node). Scripts: `test`, `test:watch`, `test:coverage`.
+- **Playwright**: end-to-end for web apps (Next.js, TanStack Start). App-scoped config; scripts `test:e2e`, `test:e2e:ui`.
+- **Jest (Expo)**: `jest-expo` preset + React Native Testing Library for Expo apps.
 
 ### Data Layer
 - **Database**: PostgreSQL, MySQL

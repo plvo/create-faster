@@ -5,6 +5,7 @@ const STACK_META: Record<string, { label: string; href: string }> = {
   expo: { label: 'Expo', href: '/docs/stacks/expo' },
   'tanstack-start': { label: 'TanStack Start', href: '/docs/stacks/tanstack-start' },
   hono: { label: 'Hono', href: '/docs/stacks/hono' },
+  node: { label: 'Node.js', href: '/docs/stacks/node' },
   all: { label: 'All Stacks', href: '/docs' },
 };
 
