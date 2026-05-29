@@ -36,6 +36,12 @@ function collectAllDeclaredPackages(): Set<string> {
 
   for (const blueprint of Object.values(META.blueprints)) {
     addDeps(blueprint.packageJson);
+    addDeps(blueprint.rootPackageJson as Record<string, unknown> | undefined);
+    if ('pkgPackageJson' in blueprint && blueprint.pkgPackageJson) {
+      for (const pkgConfig of Object.values(blueprint.pkgPackageJson)) {
+        addDeps(pkgConfig as Record<string, unknown>);
+      }
+    }
   }
 
   return packages;

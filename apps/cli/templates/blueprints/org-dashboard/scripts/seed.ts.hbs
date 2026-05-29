@@ -2,39 +2,151 @@
 mono:
   scope: root
 ---
+{{{{raw}}}}
+#!/usr/bin/env bun
+import { parseArgs } from 'node:util';
+import { faker } from '@faker-js/faker';
 import { auth } from '@repo/auth/auth';
+import { contactTable, db, postTable, userTable } from '@repo/db';
 
-async function seed() {
-  console.log('🌱 Seeding database...');
+const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 
-  const admin = await auth.api.createUser({
-    body: {
-      email: 'admin@example.com',
-      password: 'password',
-      name: 'Admin',
-      role: 'admin',
-    },
-  });
-  console.log(`✅ Created admin: ${admin.email}`);
+const { values: flags } = parseArgs({
+  options: {
+    reset: { type: 'boolean', default: false },
+    fixtures: { type: 'boolean', default: false },
+    force: { type: 'boolean', default: false },
+    help: { type: 'boolean', short: 'h', default: false },
+  },
+});
 
-  const user = await auth.api.createUser({
-    body: {
-      email: 'user@example.com',
-      password: 'password',
-      name: 'User',
-      role: 'user',
-    },
-  });
-  console.log(`✅ Created user: ${user.email}`);
+function printHelp(): void {
+  console.log(`Seed the database.
 
-  console.log('🎉 Seeding completed!');
+Usage: bun run db:seed [options]
+
+Options:
+  --reset      Wipe existing data before seeding (local databases only)
+  --fixtures   Add demo data (extra users, posts, contacts)
+  --force      Allow --reset against a non-local database
+  -h, --help   Show this help`);
 }
 
-seed()
-  .catch((error) => {
-    console.error('❌ Seeding failed:', error);
-    process.exit(1);
-  })
-  .finally(() => {
-    process.exit(0);
+function isLocalDatabase(url: string): boolean {
+  return /@(localhost|127\.0\.0\.1|0\.0\.0\.0|db|host\.docker\.internal)[:/]/.test(url);
+}
+
+interface CoreRefs {
+  adminId: string;
+  userId: string;
+}
+
+async function findOrCreateUser(input: { email: string; name: string; role: 'admin' | 'user' }): Promise<string> {
+  const existing = await db.query.userTable.findFirst({
+    where: (user, { eq }) => eq(user.email, input.email),
   });
+  if (existing) return existing.id;
+
+  const { user } = await auth.api.createUser({
+    body: { email: input.email, password: DEMO_PASSWORD, name: input.name, role: input.role },
+  });
+  return user.id;
+}
+
+async function seedCore(): Promise<CoreRefs> {
+  const adminId = await findOrCreateUser({ email: 'admin@example.com', name: 'Admin', role: 'admin' });
+  const userId = await findOrCreateUser({ email: 'user@example.com', name: 'User', role: 'user' });
+  return { adminId, userId };
+}
+
+async function seedFixtures(core: CoreRefs): Promise<void> {
+  const existing = await db.query.contactTable.findMany();
+  if (existing.length > 0) {
+    console.log('Fixtures already present, skipping. Use --reset to rebuild them.');
+    return;
+  }
+
+  faker.seed(42);
+
+  const authorIds = [core.adminId, core.userId];
+  for (let i = 0; i < 3; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const id = await findOrCreateUser({
+      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+      name: faker.internet.username({ firstName, lastName }).toLowerCase(),
+      role: 'user',
+    });
+    authorIds.push(id);
+  }
+
+  await db.insert(postTable).values(
+    Array.from({ length: 8 }, () => ({
+      title: faker.lorem.sentence(),
+      content: faker.lorem.paragraphs(2),
+      published: faker.datatype.boolean() ? 'true' : 'false',
+      authorId: faker.helpers.arrayElement(authorIds),
+    })),
+  );
+
+  await db.insert(contactTable).values(
+    Array.from({ length: 12 }, () => {
+      const firstName = faker.person.firstName();
+      const lastName = faker.person.lastName();
+      return {
+        firstName,
+        lastName,
+        email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+        phone: faker.phone.number(),
+        company: faker.company.name(),
+        notes: faker.lorem.sentence(),
+        createdById: faker.helpers.arrayElement([core.adminId, core.userId]),
+      };
+    }),
+  );
+
+  console.log(`Added ${authorIds.length - 2} extra users, 8 posts, 12 contacts.`);
+}
+
+async function reset(): Promise<void> {
+  await db.delete(contactTable);
+  await db.delete(postTable);
+  await db.delete(userTable);
+}
+
+async function main(): Promise<void> {
+  if (flags.help) {
+    printHelp();
+    return;
+  }
+
+  if (flags.reset) {
+    if (!isLocalDatabase(process.env.DATABASE_URL ?? '') && !flags.force) {
+      console.error('Refusing to --reset a database that does not look local.');
+      console.error('  Re-run with --force if you are certain.');
+      process.exit(1);
+    }
+    console.log('Resetting database...');
+    await reset();
+  }
+
+  console.log('Seeding core data...');
+  const core = await seedCore();
+
+  if (flags.fixtures) {
+    console.log('Seeding demo fixtures...');
+    await seedFixtures(core);
+  }
+
+  console.log('\nSeeding complete.');
+  console.log(`  Admin: admin@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  User:  user@example.com / ${DEMO_PASSWORD}`);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Seeding failed:', error);
+    process.exit(1);
+  });
+{{{{/raw}}}}
