@@ -42,6 +42,10 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
     flagsCommand += ` --pm ${ctx.pm}`;
   }
 
+  if (ctx.agentContext === false) {
+    flagsCommand += ' --no-agent-context';
+  }
+
   if (flagsCommand.length > 140) {
     flagsCommand = flagsCommand.replaceAll('--', '\\\n  --');
   }
@@ -103,6 +107,10 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   }
   for (const name of ctx.project.tooling) {
     configs.push(META.project.tooling.options[name]?.label ?? name);
+  }
+
+  if (ctx.agentContext !== false) {
+    configs.push('AGENTS.md');
   }
 
   if (configs.length > 0) {
