@@ -1,0 +1,58 @@
+---
+title: Playwright
+description: End-to-end testing for web stacks with an app-scoped config that resolves its base URL from the environment.
+---
+
+<Stacks names="nextjs,tanstack-start" />
+<Dependencies dev="@playwright/test" />
+
+[→ Playwright Documentation](https://playwright.dev)
+
+## What create-faster adds
+
+An end-to-end testing setup scoped to the app, with a config that boots the dev server and targets the app URL from the environment.
+
+Files added:
+```
+playwright.config.ts        # chromium project, webServer, env-driven baseURL
+tests/
+└── e2e/
+    └── example.spec.ts     # Sample navigation test
+```
+
+### playwright.config.ts
+
+```ts title="playwright.config.ts"
+import { defineConfig, devices } from '@playwright/test';
+
+const baseURL = process.env.BASE_URL ?? 'http://localhost:3000';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  use: {
+    baseURL,
+    trace: 'on-first-retry',
+  },
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  webServer: {
+    command: 'bun run dev',
+    url: baseURL,
+    reuseExistingServer: true,
+  },
+});
+```
+
+The base URL is read from `process.env.BASE_URL` so it stays correct when [Portless](/docs/extras/portless) rewrites the dev URL — the fallback is the conventional `http://localhost:<port>`.
+
+**Scripts:**
+- `test:e2e` - Run the end-to-end suite (`playwright test`)
+- `test:e2e:ui` - Run with the Playwright UI (`playwright test --ui`)
+
+`test:e2e` (not `test`) is used so Vitest keeps `test` when both modules are selected.
+
+**Environment variables:**
+- `BASE_URL` - The app URL Playwright targets. Resolves to `{{appUrl}}` — the Portless URL (`https://<app>.localhost:1355`) when Portless is enabled, otherwise `http://localhost:<port>`. Scope: app.
+
+**Setup:**
+- Browsers are downloaded on first use with `bunx playwright install`.

@@ -1,0 +1,47 @@
+---
+title: Vitest
+description: Unit testing for server stacks with a node environment, wired into the app's tsconfig.
+---
+
+<Stacks names="hono,node" />
+<Dependencies dev="vitest,@vitest/coverage-v8,vite,vite-tsconfig-paths" />
+
+[→ Vitest Documentation](https://vitest.dev)
+
+## What create-faster adds
+
+The Vite-native runner configured for a `node` environment — no DOM, no React — for testing server logic.
+
+Files added:
+```
+vitest.config.ts            # node env, tsconfig-paths plugin
+tests/
+└── unit/
+    └── example.test.ts     # Sample unit test
+```
+
+### vitest.config.ts
+
+```ts title="vitest.config.ts"
+import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/{unit,integration}/**/*.{test,spec}.ts'],
+  },
+});
+```
+
+The `@/*` path alias resolves via `vite-tsconfig-paths`.
+
+**Scripts:**
+- `test` - Run the suite once (`vitest run`)
+- `test:watch` - Watch mode (`vitest`)
+- `test:coverage` - V8 coverage report (`vitest run --coverage`)
+
+**Modified files:**
+- `tsconfig.json` (Hono and Node) - Adds `tests/**/*.ts` to `include` so test files are type-checked alongside `src`.
