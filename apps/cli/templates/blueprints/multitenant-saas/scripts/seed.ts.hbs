@@ -4,59 +4,178 @@ mono:
   scope: root
   path: scripts/seed.ts
 ---
-import { auth } from '@repo/auth/auth';
-import { db } from '@repo/db';
-import { memberTable, organizationTable, project } from '@repo/db/schema';
-
 {{{{raw}}}}
-async function main() {
-  console.log('Creating users...');
+#!/usr/bin/env bun
+import { parseArgs } from 'node:util';
+import { faker } from '@faker-js/faker';
+import { auth } from '@repo/auth/auth';
+import { db, invitationTable, memberTable, organizationTable, project, userTable } from '@repo/db';
 
-  const owner = await auth.api.signUpEmail({
-    body: { email: 'owner@example.com', password: 'owner-password', name: 'Owner Demo' },
-  });
-  const member = await auth.api.signUpEmail({
-    body: { email: 'member@example.com', password: 'member-password', name: 'Member Demo' },
-  });
+const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 
-  console.log('Creating organization...');
+const { values: flags } = parseArgs({
+  options: {
+    reset: { type: 'boolean', default: false },
+    fixtures: { type: 'boolean', default: false },
+    force: { type: 'boolean', default: false },
+    help: { type: 'boolean', short: 'h', default: false },
+  },
+});
 
-  const [org] = await db
-    .insert(organizationTable)
-    .values({ name: 'Acme Inc.', slug: 'acme' })
-    .returning();
+function printHelp(): void {
+  console.log(`Seed the database.
 
-  await db.insert(memberTable).values([
-    { organizationId: org.id, userId: owner.user.id, role: 'owner' },
-    { organizationId: org.id, userId: member.user.id, role: 'member' },
-  ]);
+Usage: bun run db:seed [options]
 
-  console.log('Creating projects...');
-
-  await db.insert(project).values([
-    {
-      organizationId: org.id,
-      createdById: owner.user.id,
-      name: 'Onboarding workflow',
-      description: 'Set up new customer onboarding',
-      status: 'active',
-    },
-    {
-      organizationId: org.id,
-      createdById: owner.user.id,
-      name: 'Q4 launch',
-      description: 'Plan and execute Q4 launch',
-      status: 'active',
-    },
-  ]);
-
-  console.log('Done.');
-  console.log('Login as: owner@example.com / owner-password');
-  console.log('Or as: member@example.com / member-password');
+Options:
+  --reset      Wipe existing data before seeding (local databases only)
+  --fixtures   Add demo data (extra members, projects, invitations)
+  --force      Allow --reset against a non-local database
+  -h, --help   Show this help`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+function isLocalDatabase(url: string): boolean {
+  return /@(localhost|127\.0\.0\.1|0\.0\.0\.0|db|host\.docker\.internal)[:/]/.test(url);
+}
+
+interface CoreRefs {
+  organizationId: string;
+  ownerId: string;
+  memberId: string;
+}
+
+async function findOrCreateUser(input: { email: string; name: string }): Promise<string> {
+  const existing = await db.query.userTable.findFirst({
+    where: (user, { eq }) => eq(user.email, input.email),
+  });
+  if (existing) return existing.id;
+
+  const { user } = await auth.api.signUpEmail({
+    body: { email: input.email, password: DEMO_PASSWORD, name: input.name },
+  });
+  return user.id;
+}
+
+async function findOrCreateOrganization(input: { name: string; slug: string }): Promise<string> {
+  const existing = await db.query.organizationTable.findFirst({
+    where: (organization, { eq }) => eq(organization.slug, input.slug),
+  });
+  if (existing) return existing.id;
+
+  const [organization] = await db.insert(organizationTable).values(input).returning();
+  return organization.id;
+}
+
+async function addMember(input: { organizationId: string; userId: string; role: string }): Promise<void> {
+  const existing = await db.query.memberTable.findFirst({
+    where: (member, { and, eq }) =>
+      and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)),
+  });
+  if (existing) return;
+
+  await db.insert(memberTable).values(input);
+}
+
+async function seedCore(): Promise<CoreRefs> {
+  const ownerId = await findOrCreateUser({ email: 'owner@example.com', name: 'Owner Demo' });
+  const memberId = await findOrCreateUser({ email: 'member@example.com', name: 'Member Demo' });
+
+  const organizationId = await findOrCreateOrganization({ name: 'Acme Inc.', slug: 'acme' });
+
+  await addMember({ organizationId, userId: ownerId, role: 'owner' });
+  await addMember({ organizationId, userId: memberId, role: 'member' });
+
+  return { organizationId, ownerId, memberId };
+}
+
+async function seedFixtures(core: CoreRefs): Promise<void> {
+  const existing = await db.query.project.findMany({
+    where: (row, { eq }) => eq(row.organizationId, core.organizationId),
+  });
+  if (existing.length > 0) {
+    console.log('Fixtures already present, skipping. Use --reset to rebuild them.');
+    return;
+  }
+
+  faker.seed(42);
+
+  const teammates: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const id = await findOrCreateUser({
+      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+      name: faker.internet.username({ firstName, lastName }).toLowerCase(),
+    });
+    teammates.push(id);
+    await addMember({ organizationId: core.organizationId, userId: id, role: 'member' });
+  }
+
+  await db.insert(project).values(
+    Array.from({ length: 6 }, () => ({
+      organizationId: core.organizationId,
+      createdById: faker.helpers.arrayElement([core.ownerId, ...teammates]),
+      name: faker.commerce.productName(),
+      description: faker.company.catchPhrase(),
+      status: faker.helpers.arrayElement(['active', 'archived'] as const),
+    })),
+  );
+
+  await db.insert(invitationTable).values(
+    Array.from({ length: 3 }, () => ({
+      organizationId: core.organizationId,
+      email: faker.internet.email().toLowerCase(),
+      inviterId: core.ownerId,
+      role: 'member',
+      status: 'pending',
+      expiresAt: faker.date.soon({ days: 7 }),
+    })),
+  );
+
+  console.log(`Added ${teammates.length} members, 6 projects, 3 pending invitations.`);
+}
+
+async function reset(): Promise<void> {
+  await db.delete(invitationTable);
+  await db.delete(project);
+  await db.delete(memberTable);
+  await db.delete(organizationTable);
+  await db.delete(userTable);
+}
+
+async function main(): Promise<void> {
+  if (flags.help) {
+    printHelp();
+    return;
+  }
+
+  if (flags.reset) {
+    if (!isLocalDatabase(process.env.DATABASE_URL ?? '') && !flags.force) {
+      console.error('Refusing to --reset a database that does not look local.');
+      console.error('  Re-run with --force if you are certain.');
+      process.exit(1);
+    }
+    console.log('Resetting database...');
+    await reset();
+  }
+
+  console.log('Seeding core data...');
+  const core = await seedCore();
+
+  if (flags.fixtures) {
+    console.log('Seeding demo fixtures...');
+    await seedFixtures(core);
+  }
+
+  console.log('\nSeeding complete.');
+  console.log(`  Owner:  owner@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  Member: member@example.com / ${DEMO_PASSWORD}`);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Seeding failed:', error);
+    process.exit(1);
+  });
 {{{{/raw}}}}

@@ -1,0 +1,49 @@
+---
+title: Jest
+description: Unit and component testing for Expo apps with the jest-expo preset and React Native Testing Library.
+---
+
+<Stacks names="expo" />
+<Dependencies dev="jest-expo,jest,babel-preset-expo,@testing-library/react-native,react-test-renderer,@types/jest" />
+
+[→ jest-expo Documentation](https://docs.expo.dev/develop/unit-testing/)
+
+## What create-faster adds
+
+The `jest-expo` preset wired up with React Native Testing Library and the Babel transform Expo's Metro config does not ship for tests.
+
+Files added:
+```
+jest.config.js              # jest-expo preset
+babel.config.js             # babel-preset-expo (required by the jest transform)
+tests/
+└── unit/
+    └── example.test.tsx    # Sample component test
+```
+
+### jest.config.js
+
+```js title="jest.config.js"
+module.exports = {
+  preset: 'jest-expo',
+};
+```
+
+### babel.config.js
+
+The Expo stack relies on Metro's built-in transform and ships no `babel.config.js`. Jest needs one to transform JSX and TypeScript:
+
+```js title="babel.config.js"
+module.exports = (api) => {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+  };
+};
+```
+
+**Scripts:**
+- `test` - Run the suite (`jest`)
+- `test:watch` - Watch mode (`jest --watch`)
+
+The Expo `tsconfig.json` already includes `**/*.tsx`, so test files under `tests/` are type-checked without changes.

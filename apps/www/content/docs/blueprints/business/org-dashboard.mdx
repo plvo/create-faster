@@ -28,7 +28,8 @@ packages/
   ui/               # shadcn components
   config/           # Shared tsconfig
 scripts/
-  seed.ts           # Database seeder (admin + user)
+  local-setup.ts    # One-command local bootstrap (env, docker, schema, seed)
+  seed.ts           # Idempotent, flag-driven database seeder
 ```
 
 ### Web app
@@ -126,11 +127,32 @@ Route-based profile tabs using React 19 `ViewTransition` API with directional sl
 
 Reusable component wrapping `Suspense` + `ErrorBoundary` + `QueryErrorResetBoundary`. Used throughout for tRPC prefetch error handling with retry UI.
 
+### Local setup
+
+`scripts/local-setup.ts` is a one-command bootstrap. It copies every `.env.example` to `.env`, starts the database with `docker compose up -d --wait`, applies the schema, then seeds demo data:
+
+```bash
+bun run local-setup
+```
+
+Each step is labelled and the script exits on the first failure.
+
 ### Database seed
 
-Creates two users via Better Auth's admin API:
+`scripts/seed.ts` is idempotent (safe to re-run) and flag-driven via `node:util` `parseArgs`:
+
+| Flag | Effect |
+|------|--------|
+| `--fixtures` | Add demo data (extra users, posts, contacts) generated with faker |
+| `--reset` | Wipe existing data before seeding |
+| `--force` | Allow `--reset` against a non-local database |
+| `--help` | Show usage |
+
+Core seeding always creates two accounts via Better Auth's admin API:
 - `admin@example.com` / `password` (role: admin)
 - `user@example.com` / `password` (role: user)
+
+The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-file` to resolve `DATABASE_URL` and `BETTER_AUTH_SECRET`. A `--reset` against a non-local `DATABASE_URL` is refused unless `--force` is passed.
 
 > **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
 
@@ -142,16 +164,18 @@ Creates two users via Better Auth's admin API:
 | `react-error-boundary` | QueryBoundary error handling |
 | `sonner` | Toast notifications |
 | `zod` | Form validation schemas |
+| `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
 
 ## Root scripts
 
 | Script | Command | Purpose |
 |--------|---------|---------|
+| `local-setup` | `bun scripts/local-setup.ts` | One-command local bootstrap (env, docker, schema, seed) |
 | `db:push` | `turbo db:push` | Push schema to database |
 | `db:generate` | `turbo db:generate` | Generate migration files |
 | `db:migrate` | `turbo db:migrate` | Apply migrations |
 | `db:studio` | `turbo db:studio` | Open Drizzle Studio |
-| `db:seed` | `bun scripts/seed.ts` | Seed admin + user |
+| `db:seed` | `bun --env-file=apps/web/.env scripts/seed.ts` | Seed core data (`--fixtures` for demo data) |
 | `start` | `turbo start` | Start production server |
 
 ## CLI usage
