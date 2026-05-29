@@ -5,7 +5,7 @@ import { useForm } from '@tanstack/react-form';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowLeft, Copy, KeyRound, Check } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import { useTRPC } from '@/trpc/providers';
@@ -14,7 +14,6 @@ export function UserDetail({ id }: { id: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: user } = useSuspenseQuery(trpc.user.getById.queryOptions({ id }));
-  const [_pending, startTransition] = useTransition();
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -43,19 +42,6 @@ export function UserDetail({ id }: { id: string }) {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       phone: user?.phone || '',
-    },
-    onSubmit: ({ value: _value }) => {
-      startTransition(async () => {
-        try {
-          const trpcClient = trpc.user.edit;
-          await queryClient.fetchQuery({
-            queryKey: trpcClient.queryKey(),
-            queryFn: () => null,
-          });
-        } catch {
-          // ignore
-        }
-      });
     },
   });
 

@@ -8,21 +8,25 @@ mono:
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { authClient } from '@/lib/auth/auth-client';
+import { authClient } from '@repo/auth/auth-client';
+import { useTRPC } from '@/trpc/providers';
 import { useAppForm } from '@repo/ui/lib/form';
 
 const schema = z.object({
   name: z.string().min(1, 'Display name required').max(64),
 });
 
-export function AccountForm({ initialName }: { initialName: string }) {
+export function AccountForm() {
   const router = useRouter();
+  const trpc = useTRPC();
+  const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
   const [isPending, startTransition] = useTransition();
 
   const form = useAppForm({
-    defaultValues: { name: initialName },
+    defaultValues: { name: user?.username ?? '' },
     validators: { onChange: schema },
     onSubmit: async ({ value }) => {
       await new Promise<void>((resolve) => {
@@ -51,7 +55,7 @@ export function AccountForm({ initialName }: { initialName: string }) {
     >
       <form.AppField name='name'>{(f) => <f.InputField label='Display name' />}</form.AppField>
       <form.AppForm>
-        <form.SubmitButton disabled={isPending}>{isPending ? 'Saving...' : 'Save'}</form.SubmitButton>
+        <form.SubmitButton props={{ disabled: isPending }}>{isPending ? 'Saving...' : 'Save'}</form.SubmitButton>
       </form.AppForm>
     </form>
   );

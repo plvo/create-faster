@@ -51,9 +51,8 @@ export function ContactDetail({ id }: { id: string }) {
           <h1 className='text-3xl font-bold'>Edit Contact</h1>
         </div>
         <ContactForm
-          mode='edit'
           contact={contact}
-          onSuccess={() => {
+          onDone={() => {
             setEditing(false);
             queryClient.invalidateQueries({ queryKey: trpc.contact.getById.queryKey({ id }) });
           }}

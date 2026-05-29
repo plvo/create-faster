@@ -9,7 +9,7 @@ mono:
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { authClient } from '@/lib/auth/auth-client';
+import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
 
 const schema = z.object({
@@ -53,7 +53,7 @@ export function LoginForm() {
         {(f) => <f.PasswordField label='Password' props={{ autoComplete: 'current-password' }} />}
       </form.AppField>
       <form.AppForm>
-        <form.SubmitButton className='w-full'>Sign in</form.SubmitButton>
+        <form.SubmitButton props={{ className: 'w-full' }}>Sign in</form.SubmitButton>
       </form.AppForm>
     </form>
   );

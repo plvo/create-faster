@@ -10,8 +10,8 @@ import { useTransition } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { authClient } from '@/lib/auth/auth-client';
-import { useTRPC } from '@/trpc/client';
+import { authClient } from '@repo/auth/auth-client';
+import { useTRPC } from '@/trpc/providers';
 import { Button } from '@repo/ui/components/ui/button';
 import { useAppForm } from '@repo/ui/lib/form';
 
@@ -28,7 +28,7 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [isPending, startTransition] = useTransition();
 
   const form = useAppForm({
-    defaultValues: { name: '', email: '', password: '', role: 'user' as const },
+    defaultValues: { name: '', email: '', password: '', role: 'user' as 'user' | 'admin' },
     validators: { onChange: schema },
     onSubmit: async ({ value }) => {
       await new Promise<void>((resolve) => {
@@ -74,10 +74,7 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
           {(f) => (
             <f.SelectField
               label='Role'
-              options={[
-                { value: 'user', label: 'User' },
-                { value: 'admin', label: 'Admin' },
-              ]}
+              options={{ User: 'user', Admin: 'admin' }}
             />
           )}
         </form.AppField>
@@ -86,7 +83,7 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
             Cancel
           </Button>
           <form.AppForm>
-            <form.SubmitButton disabled={isPending}>{isPending ? 'Creating...' : 'Create'}</form.SubmitButton>
+            <form.SubmitButton props={{ disabled: isPending }}>{isPending ? 'Creating...' : 'Create'}</form.SubmitButton>
           </form.AppForm>
         </div>
       </form>

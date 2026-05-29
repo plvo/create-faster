@@ -355,6 +355,16 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       }
     }
 
+    if (ctx.blueprint) {
+      const blueprint = META.blueprints[ctx.blueprint];
+      if (blueprint?.pkgPackageJson) {
+        for (const [pkgName, config] of Object.entries(blueprint.pkgPackageJson)) {
+          const existing = extractedPackages.get(pkgName);
+          extractedPackages.set(pkgName, existing ? mergePackageJsonConfigs(existing, config) : config);
+        }
+      }
+    }
+
     for (const [name, config] of extractedPackages) {
       results.push(generatePackagePackageJson(name, config, ctx));
     }
