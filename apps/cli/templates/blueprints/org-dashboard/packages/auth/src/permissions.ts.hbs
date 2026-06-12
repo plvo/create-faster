@@ -1,0 +1,30 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/permissions.ts
+---
+import { createAccessControl } from 'better-auth/plugins/access';
+import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
+
+export const statement = {
+  ...defaultStatements,
+  contact: ['create', 'read', 'update', 'delete'],
+} as const;
+
+export const ac = createAccessControl(statement);
+
+export const roles = {
+  admin: ac.newRole({
+    ...adminAc.statements,
+    contact: ['create', 'read', 'update', 'delete'],
+  }),
+  user: ac.newRole({
+    contact: ['create', 'read', 'update', 'delete'],
+  }),
+  manager: ac.newRole({
+    contact: ['read'],
+  }),
+};
+
+export type AppRole = keyof typeof roles;

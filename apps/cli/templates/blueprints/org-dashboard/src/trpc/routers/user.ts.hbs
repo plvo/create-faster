@@ -25,6 +25,23 @@ export const userRouter = router({
     return user ?? null;
   }),
 
+  create: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(['admin', 'user', 'manager']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const password = generatePassword();
+      const { user } = await auth.api.createUser({
+        headers: ctx.headers,
+        body: { name: input.name, email: input.email, password, role: input.role },
+      });
+      return { user, password };
+    }),
+
   list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(userTable);
   }),
