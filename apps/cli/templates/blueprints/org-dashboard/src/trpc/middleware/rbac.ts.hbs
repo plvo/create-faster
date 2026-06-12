@@ -32,5 +32,3 @@ export const permissionProcedure = (resource: string, action: string) =>
     }
     return opts.next({ ctx: opts.ctx });
   });
-
-export const userProcedure = protectedProcedure;
