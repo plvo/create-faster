@@ -1,0 +1,116 @@
+---
+title: Terraform (Cloudflare)
+description: Terraform scaffolding for Cloudflare with R2 state backend, SOPS-encrypted secrets, and a justfile for operations.
+---
+
+[→ Cloudflare Terraform Provider Documentation](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs)
+
+## What create-faster adds
+
+A complete `infra/` directory with Cloudflare provider configuration, an S3-compatible R2 remote state backend, SOPS + age secret encryption, and a root `justfile` with day-to-day Terraform recipes. No npm dependencies are added -- Terraform, just, sops, and age are installed separately.
+
+Files created:
+```
+justfile                      # Terraform recipes, working directory set to infra/
+infra/
+├── providers.tf              # Cloudflare provider ~> 5, required_version >= 1.10
+├── backend.tf                # S3 backend declaration (configured at init time)
+├── main.tf                   # Zone data sources, DNS, redirect ruleset, zone settings, Workers domain
+├── variables.tf              # project_name, env, domain, account ID, API token, worker name
+├── outputs.tf                # zone_id, zone_name_servers, app_url
+├── variables.auto.tfvars     # Defaults pre-filled with project name
+├── secrets.auto.tfvars       # Cloudflare API token placeholder (gitignored)
+├── backend.secrets.hcl       # R2 credentials for the state backend (gitignored)
+├── .sops.yaml                # SOPS creation rules (age) for both secret files
+└── backend/
+    ├── dev.hcl               # Dev environment R2 backend config
+    └── prod.hcl              # Prod environment R2 backend config
+```
+
+### providers.tf
+
+Configures the Cloudflare provider with:
+- Cloudflare provider `~> 5` (v5 resource names: `cloudflare_dns_record`, `cloudflare_zone_setting`, ...)
+- Terraform `>= 1.10.0`
+- `local.resource_name` computed as `{project_name}-{env}`
+- Authentication via `var.cloudflare_api_token` (filled in `secrets.auto.tfvars`)
+
+### main.tf
+
+Ready-to-apply zone management for the deployed app:
+- `cloudflare_account` and `cloudflare_zone` data sources (v5 `filter` syntax)
+- `cloudflare_workers_custom_domain` routing the apex domain to your Worker
+- `cloudflare_dns_record` for `www` (proxied CNAME to the apex)
+- `cloudflare_ruleset` in the `http_request_dynamic_redirect` phase: 301 redirect from `www` to the apex, preserving the query string
+- `cloudflare_zone_setting` resources: `always_use_https`, `min_tls_version` (1.2), `brotli`
+
+### variables.tf
+
+Six variables:
+- `project_name` -- used in resource naming
+- `env` -- validated to `dev`, `staging`, or `prod`
+- `domain` -- apex domain managed in the Cloudflare zone
+- `cloudflare_account_id` -- Cloudflare account ID
+- `cloudflare_api_token` -- API token (sensitive, from `secrets.auto.tfvars`)
+- `worker_name` -- Worker service that serves the app (defaults to the project name)
+
+### variables.auto.tfvars
+
+Pre-filled with the project name and `env = "dev"`. Replace the `<DOMAIN>` and `<CLOUDFLARE_ACCOUNT_ID>` placeholders before first use.
+
+### State backend on R2
+
+`backend.tf` declares an empty S3 backend. Non-secret per-environment config lives in `backend/dev.hcl` and `backend/prod.hcl` (bucket, key, `region = "auto"`, and the `skip_*`/`use_path_style` flags required for R2's S3 compatibility). R2 credentials and the account endpoint live in `backend.secrets.hcl`. Both are injected at init time:
+
+```bash
+just init dev
+# = terraform init -reconfigure -backend-config=backend/dev.hcl -backend-config=backend.secrets.hcl -upgrade -input=false
+```
+
+### Secrets with SOPS + age
+
+`infra/.sops.yaml` defines creation rules for `secrets.auto.tfvars` (Cloudflare API token) and `backend.secrets.hcl` (R2 credentials). Replace `<AGE_PUBLIC_KEY>` with your age recipient, then:
+
+```bash
+just secrets-encrypt   # writes secrets.auto.tfvars.enc + backend.secrets.hcl.enc (committable)
+just secrets-decrypt   # restores the plaintext files locally
+```
+
+The plaintext files are gitignored; only the `.enc` versions should reach the repository.
+
+### justfile
+
+Root `justfile` with `working-directory` set to `infra/`:
+
+| Recipe | Command |
+|--------|---------|
+| `just init [env]` | `terraform init` with backend configs |
+| `just plan [env]` | `terraform plan -var="env=..."` |
+| `just apply [env]` | `terraform apply -var="env=..."` |
+| `just destroy [env]` | `terraform destroy -var="env=..."` |
+| `just fmt` | `terraform fmt -recursive` |
+| `just validate` | `terraform validate` |
+| `just output` | `terraform output` |
+| `just state` | `terraform state` |
+| `just secrets-encrypt` | SOPS-encrypt both secret files |
+| `just secrets-decrypt` | SOPS-decrypt both secret files |
+
+### .gitignore
+
+`.terraform/`, `*.tfstate*`, `secrets.auto.tfvars`, and `backend.secrets.hcl` are added to `.gitignore`.
+
+## CLI usage
+
+```bash
+bunx create-faster myproject \
+  --app myproject:nextjs \
+  --deployment terraform-cloudflare \
+  --pm bun
+```
+
+Initialize and plan:
+
+```bash
+just init dev
+just plan dev
+```

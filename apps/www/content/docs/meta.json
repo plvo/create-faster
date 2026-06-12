@@ -39,6 +39,7 @@
     "---DEPLOYMENT---",
     "deployment/sst",
     "deployment/terraform-aws",
+    "deployment/terraform-cloudflare",
     "---EXTRAS---",
     "extras/husky",
     "extras/portless"
