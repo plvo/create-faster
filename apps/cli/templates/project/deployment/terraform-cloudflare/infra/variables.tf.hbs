@@ -1,0 +1,28 @@
+variable "project_name" {
+  type = string
+}
+
+variable "env" {
+  type = string
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.env)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "domain" {
+  type = string
+}
+
+variable "cloudflare_account_id" {
+  type = string
+}
+
+variable "cloudflare_api_token" {
+  type      = string
+  sensitive = true
+}
+
+variable "worker_name" {
+  type = string
+}

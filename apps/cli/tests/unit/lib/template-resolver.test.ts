@@ -251,6 +251,54 @@ describe('deployment template resolution', () => {
       expect(t.destination).not.toMatch(/^packages\//);
     }
   });
+
+  test('terraform-cloudflare deployment resolves infra/, .sops.yaml, and justfile in single repo', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'terraform-cloudflare', tooling: [] },
+      git: false,
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const destinations = templates.map((t) => t.destination);
+    expect(destinations).toContain('infra/providers.tf');
+    expect(destinations).toContain('infra/main.tf');
+    expect(destinations).toContain('infra/variables.tf');
+    expect(destinations).toContain('infra/outputs.tf');
+    expect(destinations).toContain('infra/backend.tf');
+    expect(destinations).toContain('infra/backend.secrets.hcl');
+    expect(destinations).toContain('infra/secrets.auto.tfvars');
+    expect(destinations).toContain('infra/variables.auto.tfvars');
+    expect(destinations).toContain('infra/backend/dev.hcl');
+    expect(destinations).toContain('infra/backend/prod.hcl');
+    expect(destinations).toContain('infra/__sops.yaml');
+    expect(destinations).toContain('justfile');
+  });
+
+  test('terraform-cloudflare deployment resolves at repo root in turborepo', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'terraform-cloudflare', tooling: [] },
+      git: false,
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const destinations = templates.map((t) => t.destination);
+    expect(destinations).toContain('infra/main.tf');
+    expect(destinations).toContain('infra/__sops.yaml');
+    expect(destinations).toContain('justfile');
+    const deploymentTemplates = templates.filter(
+      (t) => t.destination.startsWith('infra/') || t.destination === 'justfile',
+    );
+    for (const t of deploymentTemplates) {
+      expect(t.destination).not.toMatch(/^apps\//);
+      expect(t.destination).not.toMatch(/^packages\//);
+    }
+  });
 });
 
 describe('blueprint template resolution', () => {

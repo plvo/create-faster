@@ -1,0 +1,11 @@
+output "zone_id" {
+  value = data.cloudflare_zone.main.id
+}
+
+output "zone_name_servers" {
+  value = data.cloudflare_zone.main.name_servers
+}
+
+output "app_url" {
+  value = "https://${var.domain}"
+}

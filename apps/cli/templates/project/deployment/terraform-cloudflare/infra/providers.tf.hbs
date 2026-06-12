@@ -1,0 +1,17 @@
+locals {
+  resource_name = "${var.project_name}-${var.env}"
+}
+
+terraform {
+  required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
+  }
+  required_version = ">= 1.10.0"
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}

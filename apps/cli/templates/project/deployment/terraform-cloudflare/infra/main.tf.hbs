@@ -1,0 +1,68 @@
+data "cloudflare_account" "main" {
+  account_id = var.cloudflare_account_id
+}
+
+data "cloudflare_zone" "main" {
+  filter = {
+    name = var.domain
+  }
+}
+
+resource "cloudflare_workers_custom_domain" "app" {
+  account_id = data.cloudflare_account.main.id
+  zone_id    = data.cloudflare_zone.main.id
+  hostname   = var.domain
+  service    = var.worker_name
+}
+
+resource "cloudflare_dns_record" "www" {
+  zone_id = data.cloudflare_zone.main.id
+  name    = "www.${var.domain}"
+  type    = "CNAME"
+  content = var.domain
+  proxied = true
+  ttl     = 1
+}
+
+resource "cloudflare_ruleset" "redirects" {
+  zone_id = data.cloudflare_zone.main.id
+  name    = "${local.resource_name}-redirects"
+  kind    = "zone"
+  phase   = "http_request_dynamic_redirect"
+
+  rules = [
+    {
+      ref         = "www_to_apex"
+      description = "Redirect www to apex"
+      expression  = "(http.host eq \"www.${var.domain}\")"
+      action      = "redirect"
+      action_parameters = {
+        from_value = {
+          status_code           = 301
+          preserve_query_string = true
+          target_url = {
+            expression = "concat(\"https://${var.domain}\", http.request.uri.path)"
+          }
+        }
+      }
+    }
+  ]
+}
+
+resource "cloudflare_zone_setting" "always_use_https" {
+  zone_id    = data.cloudflare_zone.main.id
+  setting_id = "always_use_https"
+  value      = "on"
+}
+
+resource "cloudflare_zone_setting" "min_tls_version" {
+  zone_id    = data.cloudflare_zone.main.id
+  setting_id = "min_tls_version"
+  value      = "1.2"
+}
+
+resource "cloudflare_zone_setting" "brotli" {
+  zone_id    = data.cloudflare_zone.main.id
+  setting_id = "brotli"
+  value      = "on"
+}

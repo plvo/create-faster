@@ -561,6 +561,11 @@ export const META: Meta = {
           hint: 'AWS infrastructure with S3 backend',
           mono: { scope: 'root' },
         },
+        'terraform-cloudflare': {
+          label: 'Terraform (Cloudflare)',
+          hint: 'Cloudflare DNS, zone settings & Workers domain with R2 state backend',
+          mono: { scope: 'root' },
+        },
       },
     },
     linter: {

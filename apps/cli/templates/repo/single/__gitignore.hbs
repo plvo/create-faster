@@ -52,13 +52,16 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-{{#if (has "deployment" "terraform-aws")}}
+{{#if (or (has "deployment" "terraform-aws") (has "deployment" "terraform-cloudflare"))}}
 # Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tflock
 secrets.auto.tfvars
+{{#if (has "deployment" "terraform-cloudflare")}}
+backend.secrets.hcl
+{{/if}}
 {{/if}}
 
 {{#if (has "stack" "expo")}}
