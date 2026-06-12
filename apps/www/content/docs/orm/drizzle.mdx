@@ -7,7 +7,7 @@ description: Drizzle ORM is a lightweight, TypeScript-first ORM with zero overhe
 
 [→ Drizzle ORM Documentation](https://orm.drizzle.team)
 
-**Requires:** Database (PostgreSQL or MySQL)
+**Requires:** Database (PostgreSQL, MySQL, or SQLite)
 
 ## What create-faster adds
 
@@ -63,7 +63,7 @@ if (!process.env.DATABASE_URL) {
 export default defineConfig({
   schema: './src/schema.ts', // './src/lib/db/schema.ts' in single repo
   out: './drizzle',
-  dialect: 'postgresql', // or 'mysql' based on database selection
+  dialect: 'postgresql', // or 'mysql' / 'sqlite' based on database selection
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
@@ -100,6 +100,7 @@ export * from './types';
 Adapts automatically based on database selection:
 - **PostgreSQL**: `drizzle-orm/node-postgres`
 - **MySQL**: `drizzle-orm/mysql2`
+- **SQLite**: `drizzle-orm/bun-sqlite` (Bun's built-in driver, relative paths anchored to the db package root — see [SQLite](/docs/database/sqlite))
 
 ### schema.ts
 

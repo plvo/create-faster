@@ -28,6 +28,7 @@
     "---DATABASES---",
     "database/postgresql",
     "database/mysql",
+    "database/sqlite",
     "---ORMS---",
     "orm/drizzle",
     "orm/prisma",
