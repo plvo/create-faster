@@ -48,6 +48,13 @@ yarn-error.log*
 .sst/
 {{/if}}
 
+{{#if (hasLibrary "cloudflare")}}
+# Cloudflare
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
+{{/if}}
+
 # Misc
 .DS_Store
 *.pem

@@ -335,6 +335,22 @@ export const META: Meta = {
       support: { stacks: ['hono'] },
       packageJson: {},
     },
+    cloudflare: {
+      label: 'Cloudflare Workers',
+      hint: 'Deploy to Cloudflare Workers with Wrangler',
+      category: 'Deploy',
+      support: { stacks: ['hono'] },
+      packageJson: {
+        devDependencies: {
+          wrangler: '^4.100.0',
+        },
+        scripts: {
+          deploy: 'wrangler deploy',
+          preview: 'wrangler dev',
+          'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+        },
+      },
+    },
     evlog: {
       label: 'evlog',
       hint: 'Wide-event structured logging with drains and sampling',
