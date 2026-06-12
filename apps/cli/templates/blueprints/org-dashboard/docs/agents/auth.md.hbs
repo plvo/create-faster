@@ -45,7 +45,7 @@ New roles are immediately assignable (admin → Users → row actions → "Set r
 
 **Server (tRPC):** gate data routes with `permissionProcedure(resource, action)` from `packages/api/src/middleware/rbac.ts`. It calls `auth.api.userHasPermission` and throws `FORBIDDEN` when the role lacks the permission. Example: `contact.create` uses `permissionProcedure('contact', 'create')`. Use `adminProcedure` for admin-only surfaces (the Users panel).
 
-**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions={{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session and check it synchronously with `authClient.admin.checkRolePermission`. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
+**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions=\{{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session and check it synchronously with `authClient.admin.checkRolePermission`. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
 
 Gating on both sides matters: the client gate prevents UI leaks, the server procedure prevents route bypass.
 
