@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-12
 **Status:** Design awaiting review
-**Branch:** `worktree-feat+org-dashboard-rbac` (worktree at `.claude/worktrees/feat+org-dashboard-rbac`)
+**Branch:** `feat/org-dashboard-rbac` (worktree at `.claude/worktrees/feat+org-dashboard-rbac`)
 **Scope:** `org-dashboard` only (not `multitenant-saas`)
 
 ## 1. Motivation
