@@ -915,7 +915,11 @@ export const META: Meta = {
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.23.7',
+            'react-dom': '^19.2.3',
             vaul: '^1.1.2',
+          },
+          devDependencies: {
+            '@types/react-dom': '^19.2.3',
           },
         },
       },
