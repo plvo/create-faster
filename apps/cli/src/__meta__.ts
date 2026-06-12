@@ -915,6 +915,7 @@ export const META: Meta = {
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.23.7',
+            vaul: '^1.1.2',
           },
         },
       },
@@ -924,6 +925,7 @@ export const META: Meta = {
           '@repo/db': '*',
         },
         devDependencies: {
+          '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
         },
         scripts: {
