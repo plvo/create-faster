@@ -66,9 +66,12 @@ src/
 │   ├── contacts/                         # Contact dialog, form, table
 │   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
+│   ├── can.tsx                           # Permission gate component
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
+├── hooks/
+│   └── use-permission.ts                 # Synchronous role permission check
 ├── lib/
-│   └── constants.ts                      # Route definitions (admin vs user routes)
+│   └── constants.ts                      # Route definitions with required permissions
 └── styles/
     └── globals.css                       # Slide animations for ViewTransition
 ```
@@ -80,9 +83,9 @@ src/
 ├── root.ts                   # App router (user, contact, session)
 ├── trpc.ts                   # tRPC init with auth context + headers
 ├── middleware/
-│   └── rbac.ts               # adminProcedure + userProcedure
+│   └── rbac.ts               # adminProcedure + permissionProcedure(resource, action)
 └── router/
-    ├── user.ts               # me, list, getById, edit, generatePassword
+    ├── user.ts               # me, create, list, getById, edit, generatePassword
     ├── contact.ts            # list, getById, create, update, delete, count
     └── session.ts            # list, revoke, revokeOthers
 ```
@@ -91,8 +94,9 @@ src/
 
 ```
 src/
-├── auth.ts                   # Better Auth config (admin plugin, drizzle adapter)
-├── auth-client.ts            # Client with adminClient + inferAdditionalFields
+├── auth.ts                   # Better Auth config (admin plugin + ac/roles, drizzle adapter)
+├── auth-client.ts            # Client with adminClient (ac/roles) + inferAdditionalFields
+├── permissions.ts            # Access-control catalog + admin/user/manager roles
 ├── types.ts                  # Session type via auth.$Infer.Session
 └── password.ts               # Cryptographic password generation
 ```
@@ -101,15 +105,21 @@ src/
 
 ### Authentication
 
-Email/password login with Better Auth. The admin plugin provides role-based access (admin/user), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role.
+Email/password login with Better Auth. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role.
 
 ### Role-based access control
 
-Two roles: `admin` and `user`. Admin-only routes (`/admin/users`) use `adminProcedure` in tRPC. The sidebar dynamically shows routes based on role — admins see the "Administration" section with user management.
+A real, single-tenant RBAC built on the Better Auth `admin` plugin's access control. The catalog and roles are code-defined in `packages/auth/src/permissions.ts`:
+
+- `admin` — full `user`/`session` management + all `contact` actions
+- `user` (default) — full CRUD on `contact`, no user management
+- `manager` — `contact: ['read']` only, a read-only example role
+
+Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts`. See [Auth & Permissions](/docs/concepts/agent-context) in the generated `docs/agents/auth.md`.
 
 ### Admin panel
 
-User list with clickable rows linking to detail pages. User detail page allows editing username, name, phone, and generating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user) and ban/unban.
+User list with clickable rows linking to detail pages. Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing username, name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban.
 
 ### CRUD example (Contacts)
 
@@ -148,9 +158,10 @@ Each step is labelled and the script exits on the first failure.
 | `--force` | Allow `--reset` against a non-local database |
 | `--help` | Show usage |
 
-Core seeding always creates two accounts via Better Auth's admin API:
+Core seeding always creates three accounts via Better Auth's admin API:
 - `admin@example.com` / `password` (role: admin)
 - `user@example.com` / `password` (role: user)
+- `manager@example.com` / `password` (role: manager, read-only)
 
 The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-file` to resolve `DATABASE_URL` and `BETTER_AUTH_SECRET`. A `--reset` against a non-local `DATABASE_URL` is refused unless `--force` is passed.
 
@@ -164,6 +175,7 @@ The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-
 | `react-error-boundary` | QueryBoundary error handling |
 | `sonner` | Toast notifications |
 | `zod` | Form validation schemas |
+| `vaul` | Drawer behind the responsive dialog (mobile) |
 | `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
 
 ## Root scripts

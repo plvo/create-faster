@@ -6,15 +6,48 @@ mono:
 ---
 # Auth & Permissions
 
-Better Auth is configured in `packages/auth/src/auth.ts` (exported as `auth` from `@repo/auth/auth`) with the `admin` plugin. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
+Better Auth is configured in `packages/auth/src/auth.ts` (exported as `auth` from `@repo/auth/auth`) with the `admin` plugin and a custom access-control model. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
 
 ## Reading the session server-side
 Call `auth.api.getSession({ headers: await headers() })` (see `apps/web/src/app/(dashboard)/layout.tsx`). The dashboard layout redirects to `/login` when there is no `session.user.role`.
 
-## Adding a protected route
-1. Read the session server-side as above.
-2. Redirect unauthenticated users to `/login`.
-3. For admin-only pages, check `session.user.role` before rendering.
+## RBAC (access control)
 
-## Roles
-Two roles (`admin` / `user`) come from the Better Auth `admin` plugin and live on `session.user.role`. On the server, gate tRPC procedures with `adminProcedure` / `userProcedure` from `packages/api/src/middleware/rbac.ts` — gate by role, not by user id.
+Roles and permissions are defined as code in `packages/auth/src/permissions.ts` (exported from `@repo/auth/permissions`):
+
+- `statement` — the permission catalog: a map of resource → allowed actions. It spreads the admin plugin's `defaultStatements` (`user`, `session`) and adds the app's own `contact` resource.
+- `ac` — the access controller created from `statement`.
+- `roles` — the role definitions built with `ac.newRole(...)`.
+
+Three roles ship by default:
+
+| Role | Permissions |
+|---|---|
+| `admin` | Everything: full `user`/`session` management (`adminAc.statements`) + all `contact` actions |
+| `user` (default) | Full CRUD on `contact`, no user management |
+| `manager` | `contact: ['read']` only — a read-only example role |
+
+`manager` exists to demonstrate a restricted role end to end: it can open Contacts and read rows, but the "New contact" button and the per-contact Edit/Delete actions are hidden, and the server rejects any write.
+
+### Add a role
+Add a key to `roles` in `permissions.ts` with the permissions you want, e.g.:
+
+```ts
+export const roles = {
+  // ...existing roles
+  auditor: ac.newRole({ contact: ['read'], user: ['list'] }),
+};
+```
+
+New roles are immediately assignable (admin → Users → row actions → "Set role: auditor") and enforceable. To surface a new resource, add it to `statement` first.
+
+## Enforcing permissions
+
+**Server (tRPC):** gate data routes with `permissionProcedure(resource, action)` from `packages/api/src/middleware/rbac.ts`. It calls `auth.api.userHasPermission` and throws `FORBIDDEN` when the role lacks the permission. Example: `contact.create` uses `permissionProcedure('contact', 'create')`. Use `adminProcedure` for admin-only surfaces (the Users panel).
+
+**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions={{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session and check it synchronously with `authClient.admin.checkRolePermission`. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
+
+Gating on both sides matters: the client gate prevents UI leaks, the server procedure prevents route bypass.
+
+## Creating users & passwords
+Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`) and returns it once so the admin can share it. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
