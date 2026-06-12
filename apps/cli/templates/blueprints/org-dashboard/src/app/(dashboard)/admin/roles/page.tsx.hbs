@@ -1,0 +1,66 @@
+{{{{raw}}}}
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { auth } from '@repo/auth/auth';
+import { roleDefinitions, statement } from '@repo/auth/permissions';
+
+const RESOURCES = Object.keys(statement) as Array<keyof typeof statement>;
+
+function grantedActions(role: keyof typeof roleDefinitions, resource: string): readonly string[] {
+  // roleDefinitions[role] has a different shape per role, so index it generically.
+  const perms = roleDefinitions[role] as Record<string, readonly string[] | undefined>;
+  return perms[resource] ?? [];
+}
+
+export default async function RolesPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user.role !== 'admin') redirect('/');
+
+  const roleNames = Object.keys(roleDefinitions) as Array<keyof typeof roleDefinitions>;
+
+  return (
+    <div className='space-y-6'>
+      <div>
+        <h1 className='text-3xl font-bold'>Roles &amp; permissions</h1>
+        <p className='text-sm text-muted-foreground'>
+          Roles are defined in code at{' '}
+          <code className='rounded bg-muted px-1 py-0.5 text-xs'>packages/auth/src/permissions.ts</code>. This view is
+          read-only.
+        </p>
+      </div>
+      <div className='grid gap-4'>
+        {roleNames.map((role) => (
+          <section key={role} className='space-y-4 rounded-lg border bg-card p-6'>
+            <h2 className='text-lg font-semibold capitalize'>{role}</h2>
+            <div className='space-y-3'>
+              {RESOURCES.map((resource) => {
+                const granted = grantedActions(role, resource);
+                return (
+                  <div key={resource} className='flex flex-col gap-1.5 sm:flex-row sm:items-baseline sm:gap-4'>
+                    <span className='w-24 shrink-0 text-sm font-medium'>{resource}</span>
+                    <div className='flex flex-wrap gap-1.5'>
+                      {statement[resource].map((action) => {
+                        const allowed = granted.includes(action);
+                        return (
+                          <span
+                            key={action}
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              allowed ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/50 line-through'
+                            }`}
+                          >
+                            {action}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}

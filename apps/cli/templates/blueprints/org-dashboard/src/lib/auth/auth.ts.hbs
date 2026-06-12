@@ -17,6 +17,7 @@ import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 {{/if}}
 import { admin } from 'better-auth/plugins';
+import { ac, roles } from './permissions';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
@@ -52,7 +53,12 @@ export const auth = betterAuth({
   {{/if}}
 
   plugins: [
-    admin(),
+    admin({
+      ac,
+      roles,
+      defaultRole: 'user',
+      adminRoles: ['admin'],
+    }),
     {{#if (has "stack" "nextjs")}}
     nextCookies(),
     {{/if}}

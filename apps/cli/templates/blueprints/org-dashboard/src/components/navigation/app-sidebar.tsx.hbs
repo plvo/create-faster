@@ -34,7 +34,7 @@ export function AppSidebar({ session, ...props }: React.ComponentProps<typeof Si
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarLinks role={session.user.role} />
+        <SidebarLinks />
       </SidebarContent>
       <SidebarFooter>
         <NavUser session={session} />

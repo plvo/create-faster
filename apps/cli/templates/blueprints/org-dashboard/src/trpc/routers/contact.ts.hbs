@@ -7,7 +7,7 @@ mono:
 import { z } from 'zod';
 import { contactTable, desc, eq, count as dbCount } from '@repo/db';
 import { router } from '../trpc';
-import { userProcedure } from '../middleware/rbac';
+import { permissionProcedure } from '../middleware/rbac';
 
 const contactInput = z.object({
   firstName: z.string().min(1),
@@ -19,14 +19,14 @@ const contactInput = z.object({
 });
 
 export const contactRouter = router({
-  list: userProcedure.query(async ({ ctx }) => {
+  list: permissionProcedure('contact', 'read').query(async ({ ctx }) => {
     return ctx.db
       .select()
       .from(contactTable)
       .orderBy(desc(contactTable.createdAt));
   }),
 
-  getById: userProcedure
+  getById: permissionProcedure('contact', 'read')
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -37,7 +37,7 @@ export const contactRouter = router({
       return contact ?? null;
     }),
 
-  create: userProcedure
+  create: permissionProcedure('contact', 'create')
     .input(contactInput)
     .mutation(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -47,7 +47,7 @@ export const contactRouter = router({
       return contact;
     }),
 
-  update: userProcedure
+  update: permissionProcedure('contact', 'update')
     .input(z.object({ id: z.string(), data: contactInput.partial() }))
     .mutation(async ({ ctx, input }) => {
       const [contact] = await ctx.db
@@ -58,7 +58,7 @@ export const contactRouter = router({
       return contact;
     }),
 
-  delete: userProcedure
+  delete: permissionProcedure('contact', 'delete')
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
@@ -66,7 +66,7 @@ export const contactRouter = router({
         .where(eq(contactTable.id, input.id));
     }),
 
-  count: userProcedure.query(async ({ ctx }) => {
+  count: permissionProcedure('contact', 'read').query(async ({ ctx }) => {
     const [result] = await ctx.db
       .select({ count: dbCount() })
       .from(contactTable);

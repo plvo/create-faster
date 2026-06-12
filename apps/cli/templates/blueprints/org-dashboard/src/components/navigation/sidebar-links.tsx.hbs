@@ -1,6 +1,6 @@
+{{{{raw}}}}
 'use client';
 
-import type { Session } from '@repo/auth/types';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -10,45 +10,47 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-import { ADMIN_ROUTES, USER_ROUTES, type RouteProps } from '@/lib/constants';
-{{{{raw}}}}
+import { usePermission } from '@/hooks/use-permission';
+import { ROUTES, type RouteProps } from '@/lib/constants';
 
-export function SidebarLinks({ role }: { role: Session['user']['role'] }) {
+function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
+  const allowed = usePermission(item.permissions ?? {});
+  if (!allowed) return null;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        tooltip={item.title || item.url}
+        isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
+      >
+        <Link href={item.url}>
+          {item.icon && <item.icon />}
+          <span>{item.title}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+export function SidebarLinks() {
   const pathname = usePathname();
 
-  const pages = role === 'admin' ? ADMIN_ROUTES : USER_ROUTES;
-
-  const grouplessPages = pages.filter((item) => !item.category);
-
-  const groupedPages: Record<string, RouteProps[]> = pages.reduce(
-    (acc, item) => {
-      if (!item.category) return acc;
-      if (!acc[item.category]) {
-        acc[item.category] = [];
-      }
-      acc[item.category].push(item);
-      return acc;
-    },
-    {} as Record<string, RouteProps[]>,
-  );
+  const grouplessPages = ROUTES.filter((item) => !item.category);
+  const groupedPages = ROUTES.reduce<Record<string, RouteProps[]>>((acc, item) => {
+    if (!item.category) return acc;
+    const group = acc[item.category] ?? [];
+    group.push(item);
+    acc[item.category] = group;
+    return acc;
+  }, {});
 
   return (
     <>
       <SidebarGroup>
         <SidebarMenu>
           {grouplessPages.map((item) => (
-            <SidebarMenuItem key={item.url}>
-              <SidebarMenuButton
-                asChild
-                tooltip={item.title || item.url}
-                isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
-              >
-                <Link href={item.url}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <RouteItem key={item.url} item={item} pathname={pathname} />
           ))}
         </SidebarMenu>
       </SidebarGroup>
@@ -57,18 +59,7 @@ export function SidebarLinks({ role }: { role: Session['user']['role'] }) {
           <SidebarGroupLabel>{category}</SidebarGroupLabel>
           <SidebarMenu>
             {items.map((item) => (
-              <SidebarMenuItem key={item.url}>
-                <SidebarMenuButton
-                  asChild
-                  tooltip={item.title || item.url}
-                  isActive={item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)}
-                >
-                  <Link href={item.url}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <RouteItem key={item.url} item={item} pathname={pathname} />
             ))}
           </SidebarMenu>
         </SidebarGroup>
