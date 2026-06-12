@@ -277,6 +277,16 @@ function validateContext(partial: Partial<TemplateContext>): void {
     process.exit(1);
   }
 
+  for (const app of partial.apps ?? []) {
+    for (const libraryName of app.libraries) {
+      const library = META.libraries[libraryName];
+      if (library?.require && !isRequirementMet(library.require, partial as TemplateContext)) {
+        printError(`library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require)}`);
+        process.exit(1);
+      }
+    }
+  }
+
   for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
     const category = META.project[categoryName];
     if (category.selection === 'single') {

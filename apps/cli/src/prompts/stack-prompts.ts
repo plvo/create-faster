@@ -2,7 +2,7 @@ import { isCancel, SelectPrompt } from '@clack/core';
 import { groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import { isCategoryValueAllowedByLibraries, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
@@ -129,12 +129,14 @@ export async function selectBlueprintPrompt(message: string): Promise<string> {
 
 export async function promptProjectCategorySingle(
   category: MetaProjectCategory,
+  categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
 ): Promise<string | undefined> {
   const options: { value: string | undefined; label: string; hint?: string }[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
     ...Object.entries(category.options)
       .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
+      .filter(([name]) => isCategoryValueAllowedByLibraries(categoryName, name, ctx))
       .map(([name, addon]) => ({
         value: name,
         label: addon.label,
@@ -185,7 +187,7 @@ export async function promptProjectCategory(
   const category = META.project[categoryName];
 
   if (category.selection === 'single') {
-    return promptProjectCategorySingle(category, ctx);
+    return promptProjectCategorySingle(category, categoryName, ctx);
   }
   return promptProjectCategoryMulti(category, categoryName);
 }

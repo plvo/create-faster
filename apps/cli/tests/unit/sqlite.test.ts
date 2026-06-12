@@ -44,3 +44,26 @@ describe('sqlite database option', () => {
     expect(isRequirementMet(drizzle.require, contextWithDatabase('sqlite'))).toBe(true);
   });
 });
+
+describe('better-auth database restriction', () => {
+  function contextWithBetterAuth(database: string): TemplateContext {
+    return {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { database, orm: 'drizzle', tooling: [] },
+      git: false,
+    };
+  }
+
+  test('is not satisfied with sqlite (no sqlite adapter until #131)', () => {
+    const betterAuth = META.libraries['better-auth'];
+    expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('sqlite'))).toBe(false);
+  });
+
+  test('is satisfied with postgres and mysql', () => {
+    const betterAuth = META.libraries['better-auth'];
+    expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('postgres'))).toBe(true);
+    expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('mysql'))).toBe(true);
+  });
+});

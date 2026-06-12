@@ -1067,3 +1067,34 @@ describe('blueprint package.json generation', () => {
     expect(result.content.dependencies?.sonner).toBeDefined();
   });
 });
+
+describe('root db workflow (turborepo, non-blueprint)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-root-db',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('root package.json exposes @repo/db and db:* scripts when an ORM is selected', () => {
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.dependencies?.['@repo/db']).toBe('*');
+    expect(result.content.scripts?.['db:push']).toBe('turbo db:push');
+    expect(result.content.scripts?.['db:generate']).toBe('turbo db:generate');
+    expect(result.content.scripts?.['db:migrate']).toBe('turbo db:migrate');
+    expect(result.content.scripts?.['db:studio']).toBe('turbo db:studio');
+    expect(result.content.scripts?.['db:seed']).toContain('packages/db/.env');
+  });
+
+  test('root package.json has no db workflow when no ORM is selected', () => {
+    const noOrm: TemplateContext = { ...ctx, project: { tooling: [] } };
+    const result = generateRootPackageJson(noOrm);
+    expect(result.content.dependencies?.['@repo/db']).toBeUndefined();
+    expect(result.content.scripts?.['db:push']).toBeUndefined();
+  });
+});

@@ -487,4 +487,45 @@ describe('CLI Integration', () => {
       expect(apiConfig).not.toContain('eslintConfigPrettier');
     });
   });
+
+  describe('Library requirement validation', () => {
+    test('rejects better-auth with sqlite database', async () => {
+      const result = await runCli(
+        [
+          'auth-sqlite',
+          '--app',
+          'web:nextjs:better-auth',
+          '--database',
+          'sqlite',
+          '--orm',
+          'drizzle',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).not.toBe(0);
+      expect(`${result.stdout}${result.stderr}`).toContain('database: postgres or mysql');
+    });
+
+    test('accepts better-auth with postgres database', async () => {
+      const result = await runCli(
+        [
+          'auth-postgres',
+          '--app',
+          'web:nextjs:better-auth',
+          '--database',
+          'postgres',
+          '--orm',
+          'drizzle',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+    });
+  });
 });
