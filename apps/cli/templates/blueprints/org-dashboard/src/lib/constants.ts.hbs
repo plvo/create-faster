@@ -6,15 +6,11 @@ export interface RouteProps {
   title: string;
   icon?: LucideIcon;
   category?: string;
+  permissions?: Record<string, string[]>;
 }
 
-export const ADMIN_ROUTES: RouteProps[] = [
+export const ROUTES: RouteProps[] = [
   { url: '/', title: 'Dashboard', icon: LayoutDashboard },
-  { url: '/contacts', title: 'Contacts', icon: Users },
-  { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration' },
-];
-
-export const USER_ROUTES: RouteProps[] = [
-  { url: '/', title: 'Dashboard', icon: LayoutDashboard },
-  { url: '/contacts', title: 'Contacts', icon: Users },
+  { url: '/contacts', title: 'Contacts', icon: Users, permissions: { contact: ['read'] } },
+  { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration', permissions: { user: ['list'] } },
 ];
