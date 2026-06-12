@@ -65,7 +65,7 @@ export function UserActions({ user }: { user: User }) {
     }
   };
 
-  const handleSetRole = async (role: 'admin' | 'user') => {
+  const handleSetRole = async (role: 'admin' | 'user' | 'manager') => {
     setLoading(true);
     try {
       const res = await authClient.admin.setRole({ userId: user.id, role });
@@ -95,15 +95,13 @@ export function UserActions({ user }: { user: User }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
-        {user.role === 'user' ? (
-          <DropdownMenuItem onClick={() => handleSetRole('admin')}>
-            Promote to Admin
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onClick={() => handleSetRole('user')}>
-            Demote to Manager
-          </DropdownMenuItem>
-        )}
+        {(['admin', 'user', 'manager'] as const)
+          .filter((role) => role !== user.role)
+          .map((role) => (
+            <DropdownMenuItem key={role} onClick={() => handleSetRole(role)}>
+              Set role: {role}
+            </DropdownMenuItem>
+          ))}
         <DropdownMenuSeparator />
         {user.banned ? (
           <DropdownMenuItem onClick={handleUnban}>
