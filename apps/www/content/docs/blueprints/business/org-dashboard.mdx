@@ -46,11 +46,13 @@ src/
 │   └── (dashboard)/
 │       ├── layout.tsx                    # Sidebar + auth guard + session check
 │       ├── page.tsx                      # Dashboard home (contact count)
-│       ├── admin/users/
-│       │   ├── page.tsx                  # User list (admin only)
-│       │   └── [id]/
-│       │       ├── page.tsx              # User detail
-│       │       └── user-detail.tsx       # Edit user + generate password
+│       ├── admin/
+│       │   ├── users/
+│       │   │   ├── page.tsx              # User list (admin only)
+│       │   │   └── [id]/
+│       │   │       ├── page.tsx          # User detail
+│       │   │       └── user-detail.tsx   # Edit user + generate password
+│       │   └── roles/page.tsx            # Read-only roles + permission matrix (admin only)
 │       ├── contacts/
 │       │   ├── page.tsx                  # Contact list
 │       │   └── [id]/page.tsx             # Contact detail + edit
@@ -115,7 +117,7 @@ A real, single-tenant RBAC built on the Better Auth `admin` plugin's access cont
 - `user` (default) — full CRUD on `contact`, no user management
 - `manager` — `contact: ['read']` only, a read-only example role
 
-Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts`. See [Auth & Permissions](/docs/concepts/agent-context) in the generated `docs/agents/auth.md`.
+Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. See [Auth & Permissions](/docs/concepts/agent-context) in the generated `docs/agents/auth.md`.
 
 ### Admin panel
 

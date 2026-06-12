@@ -14,17 +14,25 @@ export const statement = {
 
 export const ac = createAccessControl(statement);
 
-export const roles = {
-  admin: ac.newRole({
+// Single source of truth for what each role may do. `roles` is built from this,
+// and the admin "Roles" page renders it as a permission matrix.
+export const roleDefinitions = {
+  admin: {
     ...adminAc.statements,
     contact: ['create', 'read', 'update', 'delete'],
-  }),
-  user: ac.newRole({
+  },
+  user: {
     contact: ['create', 'read', 'update', 'delete'],
-  }),
-  manager: ac.newRole({
+  },
+  manager: {
     contact: ['read'],
-  }),
+  },
+} as const;
+
+export const roles = {
+  admin: ac.newRole(roleDefinitions.admin),
+  user: ac.newRole(roleDefinitions.user),
+  manager: ac.newRole(roleDefinitions.manager),
 };
 
-export type AppRole = keyof typeof roles;
+export type AppRole = keyof typeof roleDefinitions;

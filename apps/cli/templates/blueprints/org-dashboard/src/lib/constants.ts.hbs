@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, ShieldCheck } from 'lucide-react';
 
 export interface RouteProps {
   url: string;
@@ -13,4 +13,5 @@ export const ROUTES: RouteProps[] = [
   { url: '/', title: 'Dashboard', icon: LayoutDashboard },
   { url: '/contacts', title: 'Contacts', icon: Users, permissions: { contact: ['read'] } },
   { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration', permissions: { user: ['list'] } },
+  { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];

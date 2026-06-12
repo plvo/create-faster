@@ -17,7 +17,10 @@ Roles and permissions are defined as code in `packages/auth/src/permissions.ts` 
 
 - `statement` — the permission catalog: a map of resource → allowed actions. It spreads the admin plugin's `defaultStatements` (`user`, `session`) and adds the app's own `contact` resource.
 - `ac` — the access controller created from `statement`.
-- `roles` — the role definitions built with `ac.newRole(...)`.
+- `roleDefinitions` — the single source of truth mapping each role to the actions it may perform.
+- `roles` — the Better Auth roles, built from `roleDefinitions` with `ac.newRole(...)`.
+
+Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`, which renders `roleDefinitions` directly.
 
 Three roles ship by default:
 
