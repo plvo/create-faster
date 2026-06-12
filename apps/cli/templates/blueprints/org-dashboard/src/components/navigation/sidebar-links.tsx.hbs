@@ -39,7 +39,9 @@ export function SidebarLinks() {
   const grouplessPages = ROUTES.filter((item) => !item.category);
   const groupedPages = ROUTES.reduce<Record<string, RouteProps[]>>((acc, item) => {
     if (!item.category) return acc;
-    (acc[item.category] ??= []).push(item);
+    const group = acc[item.category] ?? [];
+    group.push(item);
+    acc[item.category] = group;
     return acc;
   }, {});
 

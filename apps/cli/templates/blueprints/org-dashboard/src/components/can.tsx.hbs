@@ -17,7 +17,7 @@ export function Can({
   permissions: Record<string, string[]>;
   children: ReactNode;
   fallback?: ReactNode;
-}) {
-  return usePermission(permissions) ? <>{children}</> : <>{fallback}</>;
+}): ReactNode {
+  return usePermission(permissions) ? children : fallback;
 }
 {{{{/raw}}}}
