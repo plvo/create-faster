@@ -117,4 +117,16 @@ describe('SQLite database option', () => {
     expectNoServerDriverDeps(await readJsonFile<PackageJson>(join(projectDir, 'apps/web/package.json')));
     expectNoServerDriverDeps(await readJsonFile<PackageJson>(join(projectDir, 'package.json')));
   });
+
+  test('turborepo root exposes the db workflow', async () => {
+    const projectDir = join(tempDir, 'sqlite-turbo');
+    const pkg = await readJsonFile<PackageJson & { scripts: Record<string, string> }>(
+      join(projectDir, 'package.json'),
+    );
+
+    expect(pkg.dependencies?.['@repo/db']).toBe('*');
+    expect(pkg.scripts['db:push']).toBe('turbo db:push');
+    expect(pkg.scripts['db:seed']).toContain('scripts/seed.ts');
+    expect(pkg.scripts['db:seed']).toContain('--env-file=packages/db/.env');
+  });
 });

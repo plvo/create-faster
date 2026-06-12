@@ -477,7 +477,11 @@ export const META: Meta = {
           label: 'SQLite',
           hint: 'Local file database, no server needed',
           mono: { scope: 'root' },
-          packageJson: {},
+          packageJson: {
+            devDependencies: {
+              '@libsql/client': '^0.17.3',
+            },
+          },
           envs: [
             {
               value: 'DATABASE_URL="./db.sqlite" # Local SQLite file, created by db:push',

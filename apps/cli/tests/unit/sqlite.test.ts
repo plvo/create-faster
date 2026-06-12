@@ -14,11 +14,11 @@ function contextWithDatabase(database: string): TemplateContext {
 }
 
 describe('sqlite database option', () => {
-  test('declares no driver dependencies', () => {
+  test('declares no runtime driver dependencies, only the drizzle-kit connector', () => {
     const sqlite = META.project.database.options.sqlite;
     expect(sqlite).toBeDefined();
     expect(sqlite.packageJson?.dependencies ?? {}).toEqual({});
-    expect(sqlite.packageJson?.devDependencies ?? {}).toEqual({});
+    expect(Object.keys(sqlite.packageJson?.devDependencies ?? {})).toEqual(['@libsql/client']);
   });
 
   test('declares DATABASE_URL pointing to a local file', () => {
