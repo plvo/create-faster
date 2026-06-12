@@ -7,6 +7,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 {{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
 {{/if}}
+{{#if (has "database" "sqlite")}}
+import { isAbsolute, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+{{/if}}
 import * as schema from './schema';
 
 function createDb() {
@@ -27,6 +32,16 @@ function createDb() {
     schema,
     mode: 'default',
     connection: process.env.DATABASE_URL,
+  });
+{{/if}}
+{{#if (has "database" "sqlite")}}
+  // Anchor relative paths to the {{#if (isMono)}}package{{else}}project{{/if}} root so drizzle-kit, seed scripts, and app code share one database file
+  const url = process.env.DATABASE_URL;
+  const root = fileURLToPath(new URL('{{#if (isMono)}}..{{else}}../../..{{/if}}', import.meta.url));
+  const source = isAbsolute(url) ? url : join(root, url);
+  return drizzle({
+    schema,
+    connection: { source },
   });
 {{/if}}
 }

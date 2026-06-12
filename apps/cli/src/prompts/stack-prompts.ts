@@ -2,9 +2,10 @@ import { isCancel, SelectPrompt } from '@clack/core';
 import { groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible } from '@/lib/addon-utils';
+import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
+import type { TemplateContext } from '@/types/ctx';
 import type { MetaProjectCategory, ProjectCategoryName, StackName } from '@/types/meta';
 
 export async function selectStackPrompt(message: string): Promise<string> {
@@ -126,14 +127,19 @@ export async function selectBlueprintPrompt(message: string): Promise<string> {
   return result;
 }
 
-export async function promptProjectCategorySingle(category: MetaProjectCategory): Promise<string | undefined> {
+export async function promptProjectCategorySingle(
+  category: MetaProjectCategory,
+  ctx: Partial<TemplateContext>,
+): Promise<string | undefined> {
   const options: { value: string | undefined; label: string; hint?: string }[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
-    ...Object.entries(category.options).map(([name, addon]) => ({
-      value: name,
-      label: addon.label,
-      hint: addon.hint,
-    })),
+    ...Object.entries(category.options)
+      .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
+      .map(([name, addon]) => ({
+        value: name,
+        label: addon.label,
+        hint: addon.hint,
+      })),
   ];
 
   const result = await select({
@@ -172,11 +178,14 @@ export async function promptProjectCategoryMulti(
   return result;
 }
 
-export async function promptProjectCategory(categoryName: ProjectCategoryName): Promise<string | string[] | undefined> {
+export async function promptProjectCategory(
+  categoryName: ProjectCategoryName,
+  ctx: Partial<TemplateContext>,
+): Promise<string | string[] | undefined> {
   const category = META.project[categoryName];
 
   if (category.selection === 'single') {
-    return promptProjectCategorySingle(category);
+    return promptProjectCategorySingle(category, ctx);
   }
   return promptProjectCategoryMulti(category, categoryName);
 }

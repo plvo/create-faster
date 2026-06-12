@@ -473,6 +473,18 @@ export const META: Meta = {
             },
           ],
         },
+        sqlite: {
+          label: 'SQLite',
+          hint: 'Local file database, no server needed',
+          mono: { scope: 'root' },
+          packageJson: {},
+          envs: [
+            {
+              value: 'DATABASE_URL="./db.sqlite" # Local SQLite file, created by db:push',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
+        },
       },
     },
     orm: {
@@ -513,6 +525,7 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
+          require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
             dependencies: {

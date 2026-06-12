@@ -17,6 +17,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 {{#if (has "database" "mysql")~}}
 - Database: MySQL
 {{/if~}}
+{{#if (has "database" "sqlite")~}}
+- Database: SQLite (local file)
+{{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}

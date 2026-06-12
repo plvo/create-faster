@@ -7,13 +7,39 @@ import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg
 {{#if (has "database" "mysql")}}
 import { mysqlTable, boolean, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
+{{#if (has "database" "sqlite")}}
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { relations, sql } from 'drizzle-orm';
+{{else}}
 import { relations } from 'drizzle-orm';
+{{/if}}
 
+{{#if (has "database" "sqlite")}}
+const timeColumns = {
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+};
+{{else}}
 const timeColumns = {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 };
+{{/if}}
 
+{{#if (has "database" "sqlite")}}
+export const userTable = sqliteTable('users', {
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  username: text('username').notNull().unique(),
+  email: text('email').notNull().unique(),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
+  avatarUrl: text('avatar_url'),
+
+  phone: text('phone'),
+  firstName: text('first_name'),
+  lastName: text('last_name'),
+  ...timeColumns,
+});
+{{else}}
 {{#if (has "database" "postgres")}}
 export const userTable = pgTable('users', {
 {{/if}}
@@ -36,6 +62,7 @@ export const userTable = mysqlTable('users', {
   lastName: varchar('last_name', { length: 255 }),
   ...timeColumns,
 });
+{{/if}}
 
 export const userTableRelations = relations(userTable, ({ many }) => ({
 {{#if (hasLibrary "better-auth")}}
@@ -130,6 +157,16 @@ export const userVerificationTable = mysqlTable('user_verifications', {
 });
 {{/if}}
 
+{{#if (has "database" "sqlite")}}
+export const postTable = sqliteTable('posts', {
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  published: text('published').notNull().default('false'),
+  authorId: text('author_id').notNull().references(() => userTable.id, { onDelete: 'cascade' }),
+  ...timeColumns,
+});
+{{else}}
 {{#if (has "database" "postgres")}}
 export const postTable = pgTable('posts', {
 {{/if}}
@@ -153,6 +190,7 @@ export const postTable = mysqlTable('posts', {
 {{/if}}
   ...timeColumns,
 });
+{{/if}}
 
 export const postsRelations = relations(postTable, ({ one }) => ({
   author: one(userTable, {
