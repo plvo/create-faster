@@ -8,7 +8,7 @@ description: Pre-configured authentication with ORM adapter integration, API rou
 
 [→ Better Auth Documentation](https://better-auth.com)
 
-**Requirements:** Database + ORM (Drizzle or Prisma)
+**Requirements:** Database (PostgreSQL, MySQL, or SQLite) + ORM (Drizzle or Prisma). SQLite is supported with Drizzle only.
 
 ## What create-faster adds
 
@@ -88,7 +88,7 @@ export const auth = betterAuth({
 ```
 
 Adapts automatically based on ORM and database selection:
-- **Drizzle**: Uses `drizzleAdapter` with `pg` or `mysql` provider
+- **Drizzle**: Uses `drizzleAdapter` with `pg`, `mysql`, or `sqlite` provider
 - **Prisma**: Uses `prismaAdapter` with `postgresql` or `mysql` provider
 
 ### auth-client.ts

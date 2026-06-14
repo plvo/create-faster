@@ -203,7 +203,7 @@ export const META: Meta = {
       hint: 'The most comprehensive authentication framework for TypeScript',
       category: 'Auth',
       support: { stacks: ['nextjs'] },
-      require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql'] },
+      require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite'] },
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {

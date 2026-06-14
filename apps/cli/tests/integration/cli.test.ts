@@ -489,7 +489,7 @@ describe('CLI Integration', () => {
   });
 
   describe('Library requirement validation', () => {
-    test('rejects better-auth with sqlite database', async () => {
+    test('accepts better-auth with sqlite database (drizzle)', async () => {
       const result = await runCli(
         [
           'auth-sqlite',
@@ -505,8 +505,7 @@ describe('CLI Integration', () => {
         tempDir,
       );
 
-      expect(result.exitCode).not.toBe(0);
-      expect(`${result.stdout}${result.stderr}`).toContain('database: postgres or mysql');
+      expect(result.exitCode).toBe(0);
     });
 
     test('accepts better-auth with postgres database', async () => {
