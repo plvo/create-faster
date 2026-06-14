@@ -1100,10 +1100,6 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
 });
 
 describe('db:seed script runtime agnosticism', () => {
-  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
-    return results.find((r) => r.path === path);
-  }
-
   function makeTurboCtx(pm: 'bun' | 'npm' | 'pnpm' | undefined): TemplateContext {
     return {
       projectName: 'test-seed',
@@ -1150,16 +1146,31 @@ describe('db:seed script runtime agnosticism', () => {
     expect(result.content.scripts?.['db:seed']).toBe('bun run scripts/seed.ts');
   });
 
-  // Single repo: npm uses tsx
-  test('single, pm=npm: drizzle db:seed uses tsx scripts/seed.ts', () => {
+  // Single repo: npm uses tsx with --env-file so DATABASE_URL loads under Node (Bun auto-loads .env, tsx does not)
+  test('single, pm=npm: drizzle db:seed uses tsx --env-file=.env', () => {
     const result = generateAppPackageJson(makeSingleCtx('npm').apps[0], makeSingleCtx('npm'), 0);
-    expect(result.content.scripts?.['db:seed']).toBe('tsx scripts/seed.ts');
+    expect(result.content.scripts?.['db:seed']).toBe('tsx --env-file=.env scripts/seed.ts');
   });
 
-  // Single repo: undefined pm (treated as non-bun) uses tsx
-  test('single, pm=undefined: drizzle db:seed uses tsx scripts/seed.ts', () => {
+  // Single repo: undefined pm (treated as non-bun) uses tsx with --env-file
+  test('single, pm=undefined: drizzle db:seed uses tsx --env-file=.env', () => {
     const result = generateAppPackageJson(makeSingleCtx(undefined).apps[0], makeSingleCtx(undefined), 0);
-    expect(result.content.scripts?.['db:seed']).toBe('tsx scripts/seed.ts');
+    expect(result.content.scripts?.['db:seed']).toBe('tsx --env-file=.env scripts/seed.ts');
+  });
+
+  // Blueprint turborepo: db:seed targets the db package env, never an app .env
+  test('blueprint, pm=bun: db:seed targets packages/db/.env', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-bp-seed',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+      pm: 'bun',
+      blueprint: 'org-dashboard',
+    };
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.['db:seed']).toBe('bun --env-file=packages/db/.env scripts/seed.ts');
   });
 
   // tsx is added as devDependency for non-bun, not for bun

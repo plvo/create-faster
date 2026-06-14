@@ -173,7 +173,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   if (!isTurborepo && ctx.project.orm === 'drizzle') {
     scripts['db:seed'] = seedScript(ctx.pm);
     if (ctx.pm !== 'bun') {
-      merged.devDependencies = { ...(merged.devDependencies as Record<string, string> | undefined), tsx: '^4.19.4' };
+      merged.devDependencies = { ...(merged.devDependencies as Record<string, string> | undefined), tsx: TSX_VERSION };
     }
   }
 
@@ -234,13 +234,13 @@ export function getPackageManager(pm: NonNullable<PackageManager>): string {
   return `${pm}@${pmVersion}`;
 }
 
+const TSX_VERSION = '^4.19.4';
+
 function seedScript(pm: PackageManager, envPath?: string): string {
-  const isBun = pm === 'bun';
-  if (envPath) {
-    const runner = isBun ? 'bun' : 'tsx';
-    return `${runner} --env-file=${envPath} scripts/seed.ts`;
+  if (pm === 'bun') {
+    return envPath ? `bun --env-file=${envPath} scripts/seed.ts` : 'bun run scripts/seed.ts';
   }
-  return isBun ? 'bun run scripts/seed.ts' : 'tsx scripts/seed.ts';
+  return `tsx --env-file=${envPath ?? '.env'} scripts/seed.ts`;
 }
 
 export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
@@ -270,7 +270,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     }
     if (isDrizzle) {
       scripts['db:seed'] = seedScript(ctx.pm, `packages/${dbPkg}/.env`);
-      if (ctx.pm !== 'bun') devDependencies.tsx = '^4.19.4';
+      if (ctx.pm !== 'bun') devDependencies.tsx = TSX_VERSION;
     }
   }
 
@@ -309,13 +309,6 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
   Object.assign(scripts, merged.scripts ?? {});
   if (hasAppLintScript) scripts.lint = 'turbo lint';
-
-  if (isDrizzle && ctx.blueprint) {
-    const firstApp = ctx.apps[0];
-    if (firstApp) {
-      scripts['db:seed'] = seedScript(ctx.pm, `apps/${firstApp.appName}/.env`);
-    }
-  }
 
   const pkg: PackageJson = {
     name: ctx.projectName,
