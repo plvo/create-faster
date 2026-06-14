@@ -5,6 +5,7 @@ mono:
   path: src/middleware/rbac.ts
 ---
 import { TRPCError } from '@trpc/server';
+import { auth } from '@repo/auth/auth';
 import { protectedProcedure } from '../trpc';
 
 export const adminProcedure = protectedProcedure.use(async (opts) => {
@@ -18,4 +19,16 @@ export const adminProcedure = protectedProcedure.use(async (opts) => {
   return opts.next({ ctx: opts.ctx });
 });
 
-export const userProcedure = protectedProcedure;
+export const permissionProcedure = (resource: string, action: string) =>
+  protectedProcedure.use(async (opts) => {
+    const result = await auth.api.userHasPermission({
+      body: {
+        userId: opts.ctx.session.user.id,
+        permissions: { [resource]: [action] },
+      },
+    });
+    if (!result.success) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Missing permission' });
+    }
+    return opts.next({ ctx: opts.ctx });
+  });

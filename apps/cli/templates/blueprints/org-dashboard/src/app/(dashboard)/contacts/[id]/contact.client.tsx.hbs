@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/trpc/providers';
+import { Can } from '@/components/can';
 import { ContactForm } from '@/components/contacts/contact-form';
 import Link from 'next/link';
 
@@ -73,40 +74,44 @@ export function ContactDetail({ id }: { id: string }) {
           </h1>
         </div>
         <div className='flex gap-2'>
-          <button
-            type='button'
-            onClick={() => setEditing(true)}
-            className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
-          >
-            Edit
-          </button>
-          {confirmDelete ? (
-            <div className='flex gap-2'>
-              <button
-                type='button'
-                onClick={() => deleteContact.mutate({ id })}
-                disabled={deleteContact.isPending}
-                className='inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50'
-              >
-                {deleteContact.isPending ? 'Deleting...' : 'Confirm'}
-              </button>
-              <button
-                type='button'
-                onClick={() => setConfirmDelete(false)}
-                className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
+          <Can permissions={{ contact: ['update'] }}>
             <button
               type='button'
-              onClick={() => setConfirmDelete(true)}
-              className='inline-flex h-9 items-center justify-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground'
+              onClick={() => setEditing(true)}
+              className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
             >
-              Delete
+              Edit
             </button>
-          )}
+          </Can>
+          <Can permissions={{ contact: ['delete'] }}>
+            {confirmDelete ? (
+              <div className='flex gap-2'>
+                <button
+                  type='button'
+                  onClick={() => deleteContact.mutate({ id })}
+                  disabled={deleteContact.isPending}
+                  className='inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50'
+                >
+                  {deleteContact.isPending ? 'Deleting...' : 'Confirm'}
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setConfirmDelete(false)}
+                  className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type='button'
+                onClick={() => setConfirmDelete(true)}
+                className='inline-flex h-9 items-center justify-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground'
+              >
+                Delete
+              </button>
+            )}
+          </Can>
         </div>
       </div>
       <div className='rounded-lg border bg-card p-6'>

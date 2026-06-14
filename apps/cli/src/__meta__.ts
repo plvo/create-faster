@@ -335,6 +335,22 @@ export const META: Meta = {
       support: { stacks: ['hono'] },
       packageJson: {},
     },
+    cloudflare: {
+      label: 'Cloudflare Workers',
+      hint: 'Deploy to Cloudflare Workers with Wrangler',
+      category: 'Deploy',
+      support: { stacks: ['hono'] },
+      packageJson: {
+        devDependencies: {
+          wrangler: '^4.100.0',
+        },
+        scripts: {
+          deploy: 'wrangler deploy',
+          preview: 'wrangler dev',
+          'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+        },
+      },
+    },
     evlog: {
       label: 'evlog',
       hint: 'Wide-event structured logging with drains and sampling',
@@ -883,12 +899,12 @@ export const META: Meta = {
     },
     'org-dashboard': {
       label: 'Org Dashboard',
-      hint: 'Dashboard with auth, RBAC, admin panel, and example CRUD',
+      hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
       category: 'Business',
       agentArchitecture: [
         'Organization dashboard: Next.js web app + Node.js batch app (Turborepo), Better Auth',
-        '(organizations + roles), tRPC for typed API calls, TanStack Query for client data,',
-        'TanStack Form for form handling, and Drizzle + PostgreSQL.',
+        'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
+        'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
         '',
         'Per-aspect detail in `docs/agents/`:',
         '- [Auth & permissions](docs/agents/auth.md)',
@@ -932,6 +948,11 @@ export const META: Meta = {
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.23.7',
+            'react-dom': '^19.2.3',
+            vaul: '^1.1.2',
+          },
+          devDependencies: {
+            '@types/react-dom': '^19.2.3',
           },
         },
       },
@@ -941,6 +962,7 @@ export const META: Meta = {
           '@repo/db': '*',
         },
         devDependencies: {
+          '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
         },
         scripts: {

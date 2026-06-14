@@ -18,6 +18,7 @@ const KNOWN_EXTENSIONS = new Set([
   'js',
   'jsx',
   'json',
+  'jsonc',
   'mjs',
   'cjs',
   'css',

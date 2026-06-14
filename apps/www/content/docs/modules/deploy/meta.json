@@ -1,4 +1,4 @@
 {
   "title": "Deploy",
-  "pages": ["aws-lambda"]
+  "pages": ["aws-lambda", "cloudflare"]
 }

@@ -39,9 +39,14 @@ function isLocalDatabase(url: string): boolean {
 interface CoreRefs {
   adminId: string;
   userId: string;
+  managerId: string;
 }
 
-async function findOrCreateUser(input: { email: string; name: string; role: 'admin' | 'user' }): Promise<string> {
+async function findOrCreateUser(input: {
+  email: string;
+  name: string;
+  role: 'admin' | 'user' | 'manager';
+}): Promise<string> {
   const existing = await db.query.userTable.findFirst({
     where: (user, { eq }) => eq(user.email, input.email),
   });
@@ -56,7 +61,8 @@ async function findOrCreateUser(input: { email: string; name: string; role: 'adm
 async function seedCore(): Promise<CoreRefs> {
   const adminId = await findOrCreateUser({ email: 'admin@example.com', name: 'Admin', role: 'admin' });
   const userId = await findOrCreateUser({ email: 'user@example.com', name: 'User', role: 'user' });
-  return { adminId, userId };
+  const managerId = await findOrCreateUser({ email: 'manager@example.com', name: 'Manager', role: 'manager' });
+  return { adminId, userId, managerId };
 }
 
 async function seedFixtures(core: CoreRefs): Promise<void> {
@@ -139,8 +145,9 @@ async function main(): Promise<void> {
   }
 
   console.log('\nSeeding complete.');
-  console.log(`  Admin: admin@example.com / ${DEMO_PASSWORD}`);
-  console.log(`  User:  user@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  Admin:   admin@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  User:    user@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  Manager: manager@example.com / ${DEMO_PASSWORD}`);
 }
 
 main()

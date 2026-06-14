@@ -1,8 +1,13 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import { groupMultiselect, type Option, select } from '@clack/prompts';
+import { groupMultiselect, log, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isCategoryValueAllowedByLibraries, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import {
+  findDeployConflict,
+  isCategoryValueAllowedByLibraries,
+  isLibraryCompatible,
+  isRequirementMet,
+} from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
@@ -75,16 +80,25 @@ export async function multiselectLibrariesPrompt(
     });
   }
 
-  const result = await groupMultiselect({
-    options: groupedOptions,
-    message,
-    required,
-    selectableGroups: true,
-  });
+  while (true) {
+    const result = await groupMultiselect({
+      options: groupedOptions,
+      message,
+      required,
+      selectableGroups: true,
+    });
 
-  if (isCancel(result)) handlePromptCancel();
+    if (isCancel(result)) handlePromptCancel();
 
-  return result;
+    const deployConflict = findDeployConflict(result);
+    if (deployConflict.length === 0) {
+      return result;
+    }
+
+    log.warning(
+      `Deploy libraries are mutually exclusive: ${color.bold(deployConflict.join(', '))}. Keep a single Deploy library.`,
+    );
+  }
 }
 
 export async function selectBlueprintPrompt(message: string): Promise<string> {

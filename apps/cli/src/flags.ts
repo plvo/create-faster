@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import { findDeployConflict, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
@@ -246,6 +246,15 @@ function parseAppFlag(appFlag: string): AppContext {
       );
       process.exit(1);
     }
+  }
+
+  const deployConflict = findDeployConflict(libraries);
+  if (deployConflict.length > 0) {
+    printError(
+      `Deploy libraries are mutually exclusive on app '${appName}': ${deployConflict.join(', ')}`,
+      'An app can only deploy to one platform. Keep a single Deploy library.',
+    );
+    process.exit(1);
   }
 
   return {

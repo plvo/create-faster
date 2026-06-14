@@ -1,0 +1,38 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/permissions.ts
+---
+import { createAccessControl } from 'better-auth/plugins/access';
+import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
+
+export const statement = {
+  ...defaultStatements,
+  contact: ['create', 'read', 'update', 'delete'],
+} as const;
+
+export const ac = createAccessControl(statement);
+
+// Single source of truth for what each role may do. `roles` is built from this,
+// and the admin "Roles" page renders it as a permission matrix.
+export const roleDefinitions = {
+  admin: {
+    ...adminAc.statements,
+    contact: ['create', 'read', 'update', 'delete'],
+  },
+  user: {
+    contact: ['create', 'read', 'update', 'delete'],
+  },
+  manager: {
+    contact: ['read'],
+  },
+} as const;
+
+export const roles = {
+  admin: ac.newRole(roleDefinitions.admin),
+  user: ac.newRole(roleDefinitions.user),
+  manager: ac.newRole(roleDefinitions.manager),
+};
+
+export type AppRole = keyof typeof roleDefinitions;
