@@ -79,15 +79,12 @@ describe('Cloudflare Integration', () => {
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
     });
 
-    test('generates .dev.vars.example', async () => {
-      expect(await fileExists(join(projectPath, '.dev.vars.example'))).toBe(true);
-      const content = await readTextFile(join(projectPath, '.dev.vars.example'));
-      expect(content).toContain('.dev.vars');
+    test('does not generate .dev.vars.example', async () => {
+      expect(await fileExists(join(projectPath, '.dev.vars.example'))).toBe(false);
     });
 
     test('gitignore covers wrangler local files', async () => {
       const content = await readTextFile(join(projectPath, '.gitignore'));
-      expect(content).toContain('.dev.vars');
       expect(content).toContain('.wrangler/');
       expect(content).toContain('cloudflare-env.d.ts');
     });
@@ -125,8 +122,8 @@ describe('Cloudflare Integration', () => {
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
     });
 
-    test('generates .dev.vars.example under apps/api only', async () => {
-      expect(await fileExists(join(projectPath, 'apps/api/.dev.vars.example'))).toBe(true);
+    test('does not generate .dev.vars.example', async () => {
+      expect(await fileExists(join(projectPath, 'apps/api/.dev.vars.example'))).toBe(false);
       expect(await fileExists(join(projectPath, 'apps/web/.dev.vars.example'))).toBe(false);
       expect(await fileExists(join(projectPath, '.dev.vars.example'))).toBe(false);
     });
@@ -137,7 +134,6 @@ describe('Cloudflare Integration', () => {
 
     test('root gitignore covers wrangler local files', async () => {
       const content = await readTextFile(join(projectPath, '.gitignore'));
-      expect(content).toContain('.dev.vars');
       expect(content).toContain('.wrangler/');
       expect(content).toContain('cloudflare-env.d.ts');
     });

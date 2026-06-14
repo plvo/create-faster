@@ -1,6 +1,6 @@
 ---
 title: Cloudflare Workers
-description: Cloudflare Workers deployment for Hono with Wrangler config, deploy scripts, and local dev vars.
+description: Cloudflare Workers deployment for Hono with Wrangler config and deploy scripts.
 ---
 
 <Stacks names="hono" />
@@ -15,7 +15,6 @@ A Wrangler-based deployment setup for the app. Hono already exports a Workers-co
 Files added:
 ```
 wrangler.jsonc          # Worker config: name, main, compatibility_date, nodejs_compat
-.dev.vars.example       # Local secrets template for `wrangler dev`
 ```
 
 ### wrangler.jsonc
@@ -38,14 +37,14 @@ The Worker `name` is the app name in turborepo mode and the project name in sing
 - `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
 
 **Modified files:**
-- `.gitignore` - Ignores `.wrangler/` (local state), `.dev.vars` (local secrets), and `cloudflare-env.d.ts` (generated types)
+- `.gitignore` - Ignores `.wrangler/` (local state) and `cloudflare-env.d.ts` (generated types)
 
 **Local secrets:**
 
-`wrangler dev` reads secrets from `.dev.vars` (dotenv syntax). Copy `.dev.vars.example` to `.dev.vars` and fill in real values. Production secrets are managed with `wrangler secret put <KEY>`.
+Wrangler 4.x reads local secrets and variables from `.env` (already gitignored). Put your local values there and run `wrangler dev`. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
 
 **Turborepo mode:**
-`wrangler.jsonc` and `.dev.vars.example` are placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.
+`wrangler.jsonc` is placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.
 
 **Integration notes:**
 Cloudflare Workers and AWS Lambda are mutually exclusive Deploy libraries — an app can only deploy to one platform.
