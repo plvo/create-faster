@@ -203,7 +203,7 @@ export const META: Meta = {
       hint: 'The most comprehensive authentication framework for TypeScript',
       category: 'Auth',
       support: { stacks: ['nextjs'] },
-      require: { orm: ['drizzle', 'prisma'] },
+      require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql'] },
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
@@ -489,6 +489,22 @@ export const META: Meta = {
             },
           ],
         },
+        sqlite: {
+          label: 'SQLite',
+          hint: 'Local file database, no server needed',
+          mono: { scope: 'root' },
+          packageJson: {
+            dependencies: {
+              '@libsql/client': '^0.17.3',
+            },
+          },
+          envs: [
+            {
+              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
+        },
       },
     },
     orm: {
@@ -529,6 +545,7 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
+          require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
             dependencies: {

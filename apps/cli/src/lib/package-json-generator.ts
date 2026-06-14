@@ -242,6 +242,18 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     turbo: '^2.4.0',
   };
 
+  const dependencies: Record<string, string> = {};
+
+  const ormAddon = ctx.project.orm ? META.project.orm.options[ctx.project.orm] : undefined;
+  if (ormAddon?.mono?.scope === 'pkg') {
+    const dbPkg = ormAddon.mono.name;
+    dependencies[`@repo/${dbPkg}`] = '*';
+    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:studio']) {
+      scripts[script] = `turbo ${script}`;
+    }
+    scripts['db:seed'] = `bun --env-file=packages/${dbPkg}/.env scripts/seed.ts`;
+  }
+
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
   const rootConfigs: PackageJsonConfig[] = [];
@@ -273,7 +285,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   }
 
   const merged = mergeResolved(ctx, ...rootConfigs);
-  const dependencies: Record<string, string> = { ...(merged.dependencies ?? {}) };
+  Object.assign(dependencies, merged.dependencies ?? {});
   devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
   Object.assign(scripts, merged.scripts ?? {});
   if (hasAppLintScript) scripts.lint = 'turbo lint';

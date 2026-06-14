@@ -4,7 +4,7 @@ import { META } from '@/__meta__';
 import { findDeployConflict, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { ProjectCategoryName, StackName } from '@/types/meta';
+import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
@@ -264,12 +264,36 @@ function parseAppFlag(appFlag: string): AppContext {
   };
 }
 
+function describeRequire(require: AddonRequire): string {
+  const parts: string[] = [];
+  if (require.git) parts.push('git');
+  if (require.linter) parts.push(Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter');
+  if (require.database) parts.push(`database: ${require.database.join(' or ')}`);
+  if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
+  if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
+  if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
+  return parts.join(', ');
+}
+
 function validateContext(partial: Partial<TemplateContext>): void {
   const project = partial.project ?? { tooling: [] };
 
   if (project.orm && !project.database) {
-    printError('ORM requires a database', 'Add --database postgres or --database mysql');
+    printError(
+      'ORM requires a database',
+      `Add --database <name> (${Object.keys(META.project.database.options).join(', ')})`,
+    );
     process.exit(1);
+  }
+
+  for (const app of partial.apps ?? []) {
+    for (const libraryName of app.libraries) {
+      const library = META.libraries[libraryName];
+      if (library?.require && !isRequirementMet(library.require, partial as TemplateContext)) {
+        printError(`library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require)}`);
+        process.exit(1);
+      }
+    }
   }
 
   for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
@@ -278,8 +302,8 @@ function validateContext(partial: Partial<TemplateContext>): void {
       const value = project[categoryName as keyof ProjectContext] as string | undefined;
       if (value) {
         const addon = category.options[value];
-        if (addon && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' has unmet requirements`, 'Check dependencies and try again');
+        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
+          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
           process.exit(1);
         }
       }
@@ -287,8 +311,8 @@ function validateContext(partial: Partial<TemplateContext>): void {
       const values = (project[categoryName as keyof ProjectContext] as string[] | undefined) ?? [];
       for (const value of values) {
         const addon = category.options[value];
-        if (addon && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' has unmet requirements`, 'Check dependencies and try again');
+        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
+          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
           process.exit(1);
         }
       }

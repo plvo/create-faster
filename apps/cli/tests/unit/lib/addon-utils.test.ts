@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { findDeployConflict, getProjectAddon, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import {
+  findDeployConflict,
+  getProjectAddon,
+  isCategoryValueAllowedByLibraries,
+  isLibraryCompatible,
+  isRequirementMet,
+} from '@/lib/addon-utils';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('isLibraryCompatible', () => {
@@ -142,5 +148,27 @@ describe('isRequirementMet', () => {
   test('husky require fails when linter is present but git is missing', () => {
     const ctx = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
     expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(false);
+  });
+});
+
+describe('isCategoryValueAllowedByLibraries', () => {
+  const ctxWithBetterAuth: Partial<TemplateContext> = {
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+  };
+
+  test('excludes sqlite when a selected library requires postgres/mysql', () => {
+    expect(isCategoryValueAllowedByLibraries('database', 'sqlite', ctxWithBetterAuth)).toBe(false);
+  });
+
+  test('allows postgres and mysql when better-auth is selected', () => {
+    expect(isCategoryValueAllowedByLibraries('database', 'postgres', ctxWithBetterAuth)).toBe(true);
+    expect(isCategoryValueAllowedByLibraries('database', 'mysql', ctxWithBetterAuth)).toBe(true);
+  });
+
+  test('allows any value when no selected library constrains the category', () => {
+    const ctx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }],
+    };
+    expect(isCategoryValueAllowedByLibraries('database', 'sqlite', ctx)).toBe(true);
   });
 });

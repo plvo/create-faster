@@ -21,13 +21,11 @@ export default defineConfig({
   {{#if (has "database" "mysql")}}
   dialect: 'mysql',
   {{/if}}
+  {{#if (has "database" "sqlite")}}
+  dialect: 'sqlite',
+  {{/if}}
   dbCredentials: {
-    {{#if (has "database" "postgres")}}
     url: process.env.DATABASE_URL,
-    {{/if}}
-    {{#if (has "database" "mysql")}}
-    url: process.env.DATABASE_URL,
-    {{/if}}
   },
   verbose: true,
   strict: true,

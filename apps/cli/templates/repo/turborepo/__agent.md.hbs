@@ -21,6 +21,9 @@ Generated with create-faster. Turborepo monorepo.
 {{#if (has "database" "mysql")~}}
 - Database: MySQL
 {{/if~}}
+{{#if (has "database" "sqlite")~}}
+- Database: SQLite (local file in `packages/db`)
+{{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}

@@ -1,0 +1,54 @@
+---
+title: SQLite
+description: SQLite is the most used database engine in the world, a small, fast, self-contained SQL database running on a single local file.
+---
+
+[→ SQLite Documentation](https://www.sqlite.org)
+
+## What create-faster adds
+
+Beyond the official setup, we include:
+
+**Local file database, zero infrastructure:**
+- No Docker container, no database server to run
+- `DATABASE_URL` points to a local file (`file:./db.sqlite`), created automatically by `db:push`
+- `*.sqlite`, `*.sqlite-shm`, and `*.sqlite-wal` are git-ignored
+
+**Environment Variables:**
+- `DATABASE_URL`: `file:./db.sqlite` (the `file:` prefix is required by libSQL for local files)
+
+**Database file location:**
+- Single repo: project root (`./db.sqlite`)
+- Turborepo: `packages/db/db.sqlite`
+
+The Drizzle client anchors relative paths to the db package root, so `db:push`, `db:seed`, and app code always open the same file no matter which directory they run from.
+
+**Drizzle integration:**
+- `drizzle.config.ts` with `dialect: 'sqlite'`
+- Schema uses `sqliteTable` from `drizzle-orm/sqlite-core` (`text` ids with `crypto.randomUUID()`, `integer` timestamp/boolean modes)
+- Client uses `drizzle-orm/libsql` with the `@libsql/client` driver — a runtime dependency that works on any JavaScript runtime
+- The same `@libsql/client` driver powers `db:push` and `db:studio`
+
+## Driver choice
+
+The runtime driver is `@libsql/client` (via `drizzle-orm/libsql`):
+
+- **Runtime-agnostic** — runs on Node and Bun alike, so the generated project works with any package manager (`npm`, `pnpm`, `bun`). It ships prebuilt binaries, nothing to compile.
+- **Same SQLite dialect as Cloudflare D1** — the schema (`sqliteTable`) and drizzle-kit config carry over unchanged when targeting D1 later; only the driver binding changes
+- **Turso upgrade path** — libSQL connects to both local files and remote Turso databases, so moving to a hosted database later is just a `DATABASE_URL` change
+
+## ORM constraint
+
+Only **Drizzle** is available with SQLite. `--database sqlite --orm prisma` is rejected, and the interactive ORM prompt only offers compatible options.
+
+```bash
+bunx create-faster myapp --app myapp:nextjs --database sqlite --orm drizzle
+```
+
+## Workflow
+
+```bash
+bun run db:push   # creates db.sqlite and syncs the schema
+bun run db:seed   # seeds sample data
+bun run db:studio # inspect data
+```

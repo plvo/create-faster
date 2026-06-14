@@ -78,7 +78,7 @@ bunx create-faster my-saas \
 
 Select a database provider.
 
-**Options**: `postgres`, `mysql`
+**Options**: `postgres`, `mysql`, `sqlite`
 
 **Example**:
 ```bash
@@ -90,6 +90,8 @@ Select a database provider.
 Select an ORM. Requires `--database` to be specified.
 
 **Options**: `prisma`, `drizzle`
+
+With `--database sqlite`, only `drizzle` is supported.
 
 **Example**:
 ```bash

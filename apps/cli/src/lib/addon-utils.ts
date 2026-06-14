@@ -20,6 +20,21 @@ export function getProjectAddon(category: string, name: string): MetaAddon | und
   return cat.options[name];
 }
 
+export function isCategoryValueAllowedByLibraries(
+  categoryName: ProjectCategoryName,
+  value: string,
+  ctx: Partial<TemplateContext>,
+): boolean {
+  const selectedLibraries = (ctx.apps ?? []).flatMap((app) => app.libraries);
+  for (const libraryName of selectedLibraries) {
+    const constraint = META.libraries[libraryName]?.require?.[categoryName as keyof AddonRequire];
+    if (Array.isArray(constraint) && !constraint.includes(value)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function isRequirementMet(require: AddonRequire | undefined, ctx: TemplateContext): boolean {
   if (!require) return true;
 

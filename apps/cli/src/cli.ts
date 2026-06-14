@@ -68,7 +68,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
         continue;
       }
 
-      const result = await promptProjectCategory(categoryName);
+      const result = await promptProjectCategory(categoryName, ctx);
 
       switch (categoryName) {
         case 'database':
@@ -140,7 +140,7 @@ export async function blueprintCli(
     ctx.project.deployment = partial.project.deployment;
     log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
   } else if (!partial?.project && !ctx.project.deployment) {
-    const deploymentResult = await promptProjectCategory('deployment');
+    const deploymentResult = await promptProjectCategory('deployment', ctx);
     ctx.project.deployment = deploymentResult as string | undefined;
   }
 
@@ -148,7 +148,7 @@ export async function blueprintCli(
     ctx.project.linter = partial.project.linter;
     log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
   } else if (!partial?.project) {
-    const linterResult = await promptProjectCategory('linter');
+    const linterResult = await promptProjectCategory('linter', ctx);
     ctx.project.linter = linterResult as string | undefined;
   }
 
@@ -157,7 +157,7 @@ export async function blueprintCli(
     log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
   } else if (!partial?.project) {
     if (isProjectCategoryAvailable('tooling', ctx)) {
-      const toolingResult = await promptProjectCategory('tooling');
+      const toolingResult = await promptProjectCategory('tooling', ctx);
       ctx.project.tooling = (toolingResult as string[]) ?? [];
     }
   }
