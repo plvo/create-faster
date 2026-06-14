@@ -1098,3 +1098,143 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
     expect(result.content.scripts?.['db:push']).toBeUndefined();
   });
 });
+
+describe('db:seed script runtime agnosticism', () => {
+  function findByPath(results: ReturnType<typeof generateAllPackageJsons>, path: string) {
+    return results.find((r) => r.path === path);
+  }
+
+  function makeTurboCtx(pm: 'bun' | 'npm' | 'pnpm' | undefined): TemplateContext {
+    return {
+      projectName: 'test-seed',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+      pm,
+    };
+  }
+
+  function makeSingleCtx(pm: 'bun' | 'npm' | 'pnpm' | undefined): TemplateContext {
+    return {
+      projectName: 'test-seed-single',
+      repo: 'single',
+      apps: [{ appName: 'test-seed-single', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+      git: true,
+      pm,
+    };
+  }
+
+  // Turborepo root: bun keeps bun invocation
+  test('turborepo, pm=bun: db:seed uses bun --env-file', () => {
+    const result = generateRootPackageJson(makeTurboCtx('bun'));
+    expect(result.content.scripts?.['db:seed']).toBe('bun --env-file=packages/db/.env scripts/seed.ts');
+  });
+
+  // Turborepo root: npm uses tsx
+  test('turborepo, pm=npm: db:seed uses tsx --env-file', () => {
+    const result = generateRootPackageJson(makeTurboCtx('npm'));
+    expect(result.content.scripts?.['db:seed']).toBe('tsx --env-file=packages/db/.env scripts/seed.ts');
+  });
+
+  // Turborepo root: undefined pm defaults to npm path (tsx)
+  test('turborepo, pm=undefined: db:seed uses tsx --env-file', () => {
+    const result = generateRootPackageJson(makeTurboCtx(undefined));
+    expect(result.content.scripts?.['db:seed']).toBe('tsx --env-file=packages/db/.env scripts/seed.ts');
+  });
+
+  // Single repo: bun uses simple bun run (no --env-file needed, drizzle-kit reads .env itself)
+  test('single, pm=bun: drizzle db:seed uses bun run scripts/seed.ts', () => {
+    const result = generateAppPackageJson(makeSingleCtx('bun').apps[0], makeSingleCtx('bun'), 0);
+    expect(result.content.scripts?.['db:seed']).toBe('bun run scripts/seed.ts');
+  });
+
+  // Single repo: npm uses tsx
+  test('single, pm=npm: drizzle db:seed uses tsx scripts/seed.ts', () => {
+    const result = generateAppPackageJson(makeSingleCtx('npm').apps[0], makeSingleCtx('npm'), 0);
+    expect(result.content.scripts?.['db:seed']).toBe('tsx scripts/seed.ts');
+  });
+
+  // Single repo: undefined pm (treated as non-bun) uses tsx
+  test('single, pm=undefined: drizzle db:seed uses tsx scripts/seed.ts', () => {
+    const result = generateAppPackageJson(makeSingleCtx(undefined).apps[0], makeSingleCtx(undefined), 0);
+    expect(result.content.scripts?.['db:seed']).toBe('tsx scripts/seed.ts');
+  });
+
+  // tsx is added as devDependency for non-bun, not for bun
+  test('turborepo, pm=npm: tsx devDependency added to root', () => {
+    const result = generateRootPackageJson(makeTurboCtx('npm'));
+    expect(result.content.devDependencies?.tsx).toBeDefined();
+  });
+
+  test('turborepo, pm=undefined: tsx devDependency added to root', () => {
+    const result = generateRootPackageJson(makeTurboCtx(undefined));
+    expect(result.content.devDependencies?.tsx).toBeDefined();
+  });
+
+  test('turborepo, pm=bun: tsx NOT added to root', () => {
+    const result = generateRootPackageJson(makeTurboCtx('bun'));
+    expect(result.content.devDependencies?.tsx).toBeUndefined();
+  });
+
+  test('single, pm=npm: drizzle adds tsx as devDependency', () => {
+    const ctx = makeSingleCtx('npm');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.tsx).toBeDefined();
+  });
+
+  test('single, pm=undefined: drizzle adds tsx as devDependency', () => {
+    const ctx = makeSingleCtx(undefined);
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.tsx).toBeDefined();
+  });
+
+  test('single, pm=bun: drizzle does NOT add tsx', () => {
+    const ctx = makeSingleCtx('bun');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.devDependencies?.tsx).toBeUndefined();
+  });
+
+  // Prisma is untouched: always "prisma db seed", no tsx
+  test('prisma db:seed is always "prisma db seed" regardless of pm', () => {
+    const ctxPrisma: TemplateContext = {
+      projectName: 'test-prisma',
+      repo: 'single',
+      apps: [{ appName: 'test-prisma', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'postgres', orm: 'prisma', tooling: [] },
+      git: true,
+      pm: 'npm',
+    };
+    const result = generateAppPackageJson(ctxPrisma.apps[0], ctxPrisma, 0);
+    expect(result.content.scripts?.['db:seed']).toBe('prisma db seed');
+    expect(result.content.devDependencies?.tsx).toBeUndefined();
+  });
+
+  test('prisma turborepo: no tsx devDependency added to root', () => {
+    const ctxPrisma: TemplateContext = {
+      projectName: 'test-prisma-turbo',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'postgres', orm: 'prisma', tooling: [] },
+      git: true,
+      pm: 'npm',
+    };
+    const result = generateRootPackageJson(ctxPrisma);
+    expect(result.content.devDependencies?.tsx).toBeUndefined();
+  });
+
+  // Dialect independence: postgres, mysql produce same command shape
+  test('mysql drizzle turborepo, pm=npm: same tsx seed command', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-mysql',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { database: 'mysql', orm: 'drizzle', tooling: [] },
+      git: true,
+      pm: 'npm',
+    };
+    const result = generateRootPackageJson(ctx);
+    expect(result.content.scripts?.['db:seed']).toBe('tsx --env-file=packages/db/.env scripts/seed.ts');
+  });
+});

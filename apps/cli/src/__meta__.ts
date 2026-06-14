@@ -534,7 +534,6 @@ export const META: Meta = {
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
               'db:studio': 'drizzle-kit studio',
-              'db:seed': 'bun run scripts/seed.ts',
             },
             exports: {
               '.': './src/index.ts',
@@ -971,7 +970,6 @@ export const META: Meta = {
           'db:generate': 'turbo db:generate',
           'db:migrate': 'turbo db:migrate',
           'db:studio': 'turbo db:studio',
-          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },
@@ -1049,7 +1047,6 @@ export const META: Meta = {
           'db:generate': 'turbo db:generate',
           'db:migrate': 'turbo db:migrate',
           'db:studio': 'turbo db:studio',
-          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },
