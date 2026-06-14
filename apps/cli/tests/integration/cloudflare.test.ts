@@ -224,5 +224,18 @@ describe('Cloudflare Integration', () => {
       expect(content).toContain('.wrangler/');
       expect(content).toContain('cloudflare-env.d.ts');
     });
+
+    test('root gitignore omits open-next artifacts when no nextjs app uses cloudflare', async () => {
+      const content = await readTextFile(join(projectPath, '.gitignore'));
+      expect(content).not.toContain('.open-next/');
+      expect(content).not.toContain('.prod.env');
+    });
+
+    test('hono app agent doc uses the Wrangler deploy section, not OpenNext', async () => {
+      const content = await readTextFile(join(projectPath, 'apps/api/AGENTS.md'));
+      expect(content).toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(content).not.toContain('OpenNext');
+      expect(content).not.toContain('build:cf');
+    });
   });
 });

@@ -64,6 +64,27 @@ describe('stackPackageJson: nextjs + cloudflare package.json', () => {
   });
 });
 
+describe('stackPackageJson: nextjs + cloudflare in turborepo', () => {
+  const ctx: TemplateContext = {
+    projectName: 'my-saas',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['cloudflare'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { tooling: [] },
+    git: false,
+  };
+
+  test('cloudflare app keeps opennext deps and scripts in turborepo mode', () => {
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    expect(result.content.dependencies?.['@opennextjs/cloudflare']).toBeDefined();
+    expect(result.content.devDependencies?.wrangler).toMatch(/^\^4/);
+    expect(result.content.scripts?.['build:cf']).toContain('opennextjs-cloudflare');
+    expect(result.content.scripts?.deploy).toContain('opennextjs-cloudflare');
+  });
+});
+
 describe('stackPackageJson regression: hono + cloudflare package.json unchanged', () => {
   const ctx: TemplateContext = {
     projectName: 'my-api',

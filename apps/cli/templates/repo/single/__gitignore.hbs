@@ -59,7 +59,7 @@ yarn-error.log*
 # Cloudflare
 .wrangler/
 cloudflare-env.d.ts
-{{#if (has "stack" "nextjs")}}
+{{#if (hasLibraryOnStack "cloudflare" "nextjs")}}
 .open-next/
 .prod.env
 {{/if}}

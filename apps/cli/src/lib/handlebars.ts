@@ -20,6 +20,13 @@ export function registerHandlebarsHelpers(): void {
     return Array.isArray(this.apps) && this.apps.some((app) => app.libraries.includes(name));
   });
 
+  Handlebars.registerHelper('hasLibraryOnStack', function (this: EnrichedTemplateContext, name: string, stack: string) {
+    if (Array.isArray(this.libraries) && typeof this.stackName === 'string') {
+      return this.stackName === stack && this.libraries.includes(name);
+    }
+    return Array.isArray(this.apps) && this.apps.some((app) => app.stackName === stack && app.libraries.includes(name));
+  });
+
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
     if (category === 'stack') {
       return this.apps.some((app) => app.stackName === value);
