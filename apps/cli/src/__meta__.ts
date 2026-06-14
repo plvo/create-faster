@@ -478,13 +478,13 @@ export const META: Meta = {
           hint: 'Local file database, no server needed',
           mono: { scope: 'root' },
           packageJson: {
-            devDependencies: {
+            dependencies: {
               '@libsql/client': '^0.17.3',
             },
           },
           envs: [
             {
-              value: 'DATABASE_URL="./db.sqlite" # Local SQLite file, created by db:push',
+              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],

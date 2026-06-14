@@ -14,18 +14,18 @@ function contextWithDatabase(database: string): TemplateContext {
 }
 
 describe('sqlite database option', () => {
-  test('declares no runtime driver dependencies, only the drizzle-kit connector', () => {
+  test('declares the libsql driver as a runtime dependency, not a dev-only connector', () => {
     const sqlite = META.project.database.options.sqlite;
     expect(sqlite).toBeDefined();
-    expect(sqlite.packageJson?.dependencies ?? {}).toEqual({});
-    expect(Object.keys(sqlite.packageJson?.devDependencies ?? {})).toEqual(['@libsql/client']);
+    expect(Object.keys(sqlite.packageJson?.dependencies ?? {})).toEqual(['@libsql/client']);
+    expect(sqlite.packageJson?.devDependencies ?? {}).toEqual({});
   });
 
-  test('declares DATABASE_URL pointing to a local file', () => {
+  test('declares DATABASE_URL pointing to a local file with the libsql file: prefix', () => {
     const envs = META.project.database.options.sqlite.envs ?? [];
     const dbUrl = envs.find((env) => env.value.startsWith('DATABASE_URL='));
     expect(dbUrl).toBeDefined();
-    expect(dbUrl?.value).toContain('./db.sqlite');
+    expect(dbUrl?.value).toContain('file:./db.sqlite');
   });
 
   test('prisma requirements are not met with sqlite', () => {

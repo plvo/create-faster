@@ -11,11 +11,11 @@ Beyond the official setup, we include:
 
 **Local file database, zero infrastructure:**
 - No Docker container, no database server to run
-- `DATABASE_URL` points to a local file (`./db.sqlite`), created automatically by `db:push`
+- `DATABASE_URL` points to a local file (`file:./db.sqlite`), created automatically by `db:push`
 - `*.sqlite`, `*.sqlite-shm`, and `*.sqlite-wal` are git-ignored
 
 **Environment Variables:**
-- `DATABASE_URL`: `./db.sqlite` (plain file path, no `file:` prefix)
+- `DATABASE_URL`: `file:./db.sqlite` (the `file:` prefix is required by libSQL for local files)
 
 **Database file location:**
 - Single repo: project root (`./db.sqlite`)
@@ -26,16 +26,16 @@ The Drizzle client anchors relative paths to the db package root, so `db:push`, 
 **Drizzle integration:**
 - `drizzle.config.ts` with `dialect: 'sqlite'`
 - Schema uses `sqliteTable` from `drizzle-orm/sqlite-core` (`text` ids with `crypto.randomUUID()`, `integer` timestamp/boolean modes)
-- Client uses `drizzle-orm/bun-sqlite` on top of Bun's built-in `bun:sqlite` — no runtime driver dependency
-- `@libsql/client` as devDependency: drizzle-kit needs it to connect for `db:push` and `db:studio`
+- Client uses `drizzle-orm/libsql` with the `@libsql/client` driver — a runtime dependency that works on any JavaScript runtime
+- The same `@libsql/client` driver powers `db:push` and `db:studio`
 
 ## Driver choice
 
-The runtime driver is `bun:sqlite` (via `drizzle-orm/bun-sqlite`):
+The runtime driver is `@libsql/client` (via `drizzle-orm/libsql`):
 
-- **Zero runtime dependencies** — SQLite is built into Bun, nothing to compile or install
+- **Runtime-agnostic** — runs on Node and Bun alike, so the generated project works with any package manager (`npm`, `pnpm`, `bun`). It ships prebuilt binaries, nothing to compile.
 - **Same SQLite dialect as Cloudflare D1** — the schema (`sqliteTable`) and drizzle-kit config carry over unchanged when targeting D1 later; only the driver binding changes
-- **Bun runtime required** — `db:seed` and any code opening the database run with Bun. Database scripts are already wired to `bun`.
+- **Turso upgrade path** — libSQL connects to both local files and remote Turso databases, so moving to a hosted database later is just a `DATABASE_URL` change
 
 ## ORM constraint
 

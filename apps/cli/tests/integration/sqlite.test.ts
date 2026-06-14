@@ -68,10 +68,11 @@ describe('SQLite database option', () => {
     expect(schema).not.toContain('mysqlTable');
 
     const client = await readTextFile(join(projectDir, 'src/lib/db/index.ts'));
-    expect(client).toContain("from 'drizzle-orm/bun-sqlite'");
+    expect(client).toContain("from 'drizzle-orm/libsql'");
+    expect(client).not.toContain('bun-sqlite');
 
     const env = await readTextFile(join(projectDir, '.env.example'));
-    expect(env).toContain('DATABASE_URL="./db.sqlite"');
+    expect(env).toContain('DATABASE_URL="file:./db.sqlite"');
 
     expect(await fileExists(join(projectDir, 'docker-compose.yml'))).toBe(false);
 
@@ -109,7 +110,7 @@ describe('SQLite database option', () => {
     expect(schema).toContain('sqliteTable');
 
     const env = await readTextFile(join(projectDir, 'packages/db/.env.example'));
-    expect(env).toContain('DATABASE_URL="./db.sqlite"');
+    expect(env).toContain('DATABASE_URL="file:./db.sqlite"');
 
     expect(await fileExists(join(projectDir, 'docker-compose.yml'))).toBe(false);
 

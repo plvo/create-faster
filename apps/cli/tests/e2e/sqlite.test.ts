@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { Database } from 'bun:sqlite';
 import { copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type CommandResult, cleanupTempDir, createTempDir, fileExists, runCli, runCommand } from './helpers';
@@ -8,14 +7,21 @@ const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_DB = 120_000;
 
-function countRows(dbPath: string, table: string): number {
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    const row = db.query(`SELECT count(*) AS count FROM ${table}`).get() as { count: number };
-    return row.count;
-  } finally {
-    db.close();
-  }
+// Reads the seeded database from a Node process using the generated project's own
+// @libsql/client install. This proves the libsql driver loads and queries on Node
+// (not just Bun) and that it opens the same file written by db:push / db:seed.
+async function countRowsViaNode(projectDir: string, dbPath: string, table: string): Promise<number> {
+  const script = [
+    `const { createClient } = require('@libsql/client');`,
+    `const client = createClient({ url: 'file:' + ${JSON.stringify(dbPath)} });`,
+    `client.execute('SELECT count(*) AS count FROM ${table}')`,
+    `  .then((rs) => { process.stdout.write(String(rs.rows[0].count)); client.close(); })`,
+    `  .catch((err) => { console.error(err); process.exit(1); });`,
+  ].join('\n');
+
+  const result = await runCommand(['node', '-e', script], projectDir);
+  expect(result.exitCode, `node libsql read failed: ${result.stderr}`).toBe(0);
+  return Number(result.stdout.trim());
 }
 
 describe('nextjs-drizzle-sqlite', () => {
@@ -60,7 +66,7 @@ describe('nextjs-drizzle-sqlite', () => {
   );
 
   test(
-    'db:push creates the local database file',
+    'db:push creates the local database file via the Node drizzle-kit CLI',
     async () => {
       const result = await runCommand(['bun', 'run', 'db:push', '--force'], projectDir);
       expect(result.exitCode).toBe(0);
@@ -70,14 +76,14 @@ describe('nextjs-drizzle-sqlite', () => {
   );
 
   test(
-    'db:seed populates the database',
+    'db:seed populates the database and a Node process reads it back',
     async () => {
       const result = await runCommand(['bun', 'run', 'db:seed'], projectDir);
       expect(result.exitCode).toBe(0);
 
       const dbPath = join(projectDir, 'db.sqlite');
-      expect(countRows(dbPath, 'users')).toBe(2);
-      expect(countRows(dbPath, 'posts')).toBe(3);
+      expect(await countRowsViaNode(projectDir, dbPath, 'users')).toBe(2);
+      expect(await countRowsViaNode(projectDir, dbPath, 'posts')).toBe(3);
     },
     TIMEOUT_DB,
   );
@@ -146,7 +152,7 @@ describe('turbo-drizzle-sqlite', () => {
   );
 
   test(
-    'db:seed from the root seeds the same database file',
+    'db:seed from the root seeds the same database file, readable from Node',
     async () => {
       const result = await runCommand(['bun', 'run', 'db:seed'], projectDir);
       expect(result.exitCode).toBe(0);
@@ -154,8 +160,9 @@ describe('turbo-drizzle-sqlite', () => {
       expect(await fileExists(join(projectDir, 'db.sqlite'))).toBe(false);
 
       const dbPath = join(projectDir, 'packages/db/db.sqlite');
-      expect(countRows(dbPath, 'users')).toBe(2);
-      expect(countRows(dbPath, 'posts')).toBe(3);
+      const dbPkg = join(projectDir, 'packages/db');
+      expect(await countRowsViaNode(dbPkg, dbPath, 'users')).toBe(2);
+      expect(await countRowsViaNode(dbPkg, dbPath, 'posts')).toBe(3);
     },
     TIMEOUT_DB,
   );
