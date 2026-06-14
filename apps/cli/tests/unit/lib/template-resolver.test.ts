@@ -252,7 +252,7 @@ describe('deployment template resolution', () => {
     }
   });
 
-  test('terraform-cloudflare deployment resolves infra/, .sops.yaml, and justfile in single repo', () => {
+  test('terraform-cloudflare deployment resolves infra/ and justfile in single repo', () => {
     const ctx: TemplateContext = {
       projectName: 'test',
       repo: 'single',
@@ -273,7 +273,6 @@ describe('deployment template resolution', () => {
     expect(destinations).toContain('infra/variables.auto.tfvars');
     expect(destinations).toContain('infra/backend/dev.hcl');
     expect(destinations).toContain('infra/backend/prod.hcl');
-    expect(destinations).toContain('infra/__sops.yaml');
     expect(destinations).toContain('justfile');
   });
 
@@ -289,7 +288,6 @@ describe('deployment template resolution', () => {
     const templates = getAllTemplatesForContext(ctx);
     const destinations = templates.map((t) => t.destination);
     expect(destinations).toContain('infra/main.tf');
-    expect(destinations).toContain('infra/__sops.yaml');
     expect(destinations).toContain('justfile');
     const deploymentTemplates = templates.filter(
       (t) => t.destination.startsWith('infra/') || t.destination === 'justfile',

@@ -24,12 +24,4 @@ output *args:
 
 state *args:
     terraform state {{args}}
-
-secrets-encrypt:
-    sops encrypt secrets.auto.tfvars > secrets.auto.tfvars.enc
-    sops encrypt backend.secrets.hcl > backend.secrets.hcl.enc
-
-secrets-decrypt:
-    sops decrypt secrets.auto.tfvars.enc > secrets.auto.tfvars
-    sops decrypt backend.secrets.hcl.enc > backend.secrets.hcl
 {{{{/raw}}}}

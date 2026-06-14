@@ -1,13 +1,13 @@
 ---
 title: Terraform (Cloudflare)
-description: Terraform scaffolding for Cloudflare with R2 state backend, SOPS-encrypted secrets, and a justfile for operations.
+description: Terraform scaffolding for Cloudflare with R2 state backend, gitignored secrets placeholders, and a justfile for operations.
 ---
 
 [→ Cloudflare Terraform Provider Documentation](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs)
 
 ## What create-faster adds
 
-A complete `infra/` directory with Cloudflare provider configuration, an S3-compatible R2 remote state backend, SOPS + age secret encryption, and a root `justfile` with day-to-day Terraform recipes. No npm dependencies are added -- Terraform, just, sops, and age are installed separately.
+A complete `infra/` directory with Cloudflare provider configuration, an S3-compatible R2 remote state backend, gitignored secrets placeholders, and a root `justfile` with day-to-day Terraform recipes. No npm dependencies are added -- Terraform and just are installed separately.
 
 Files created:
 ```
@@ -21,7 +21,6 @@ infra/
 ├── variables.auto.tfvars     # Defaults pre-filled with project name
 ├── secrets.auto.tfvars       # Cloudflare API token placeholder (gitignored)
 ├── backend.secrets.hcl       # R2 credentials for the state backend (gitignored)
-├── .sops.yaml                # SOPS creation rules (age) for both secret files
 └── backend/
     ├── dev.hcl               # Dev environment R2 backend config
     └── prod.hcl              # Prod environment R2 backend config
@@ -67,16 +66,9 @@ just init dev
 # = terraform init -reconfigure -backend-config=backend/dev.hcl -backend-config=backend.secrets.hcl -upgrade -input=false
 ```
 
-### Secrets with SOPS + age
+### Secrets
 
-`infra/.sops.yaml` defines creation rules for `secrets.auto.tfvars` (Cloudflare API token) and `backend.secrets.hcl` (R2 credentials). Replace `<AGE_PUBLIC_KEY>` with your age recipient, then:
-
-```bash
-just secrets-encrypt   # writes secrets.auto.tfvars.enc + backend.secrets.hcl.enc (committable)
-just secrets-decrypt   # restores the plaintext files locally
-```
-
-The plaintext files are gitignored; only the `.enc` versions should reach the repository.
+`secrets.auto.tfvars` (Cloudflare API token) and `backend.secrets.hcl` (R2 credentials) ship as plaintext placeholders. Both are gitignored, so they never reach the repository -- fill in the placeholder values locally before your first `just init`. Manage how these secrets are shared across your team however suits your workflow (a secrets manager, encrypted vault, or your CI provider's secret store).
 
 ### justfile
 
@@ -92,8 +84,6 @@ Root `justfile` with `working-directory` set to `infra/`:
 | `just validate` | `terraform validate` |
 | `just output` | `terraform output` |
 | `just state` | `terraform state` |
-| `just secrets-encrypt` | SOPS-encrypt both secret files |
-| `just secrets-decrypt` | SOPS-decrypt both secret files |
 
 ### .gitignore
 
