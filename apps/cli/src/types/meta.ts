@@ -58,6 +58,7 @@ export interface MetaAddon {
   require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+  stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;

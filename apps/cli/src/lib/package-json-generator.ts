@@ -94,12 +94,16 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     const library = META.libraries[libraryName];
     if (!library || !isLibraryCompatible(library, app.stackName)) continue;
 
+    const stackOverride = library.stackPackageJson?.[app.stackName];
     if (isTurborepo && addRepoRef(merged, library)) {
       if (library.appPackageJson) {
         merged = mergeResolved(ctx, merged, library.appPackageJson);
       }
+      if (stackOverride) {
+        merged = mergeResolved(ctx, merged, stackOverride);
+      }
     } else {
-      merged = mergeResolved(ctx, merged, library.packageJson, library.appPackageJson);
+      merged = mergeResolved(ctx, merged, library.packageJson, library.appPackageJson, stackOverride);
     }
   }
 

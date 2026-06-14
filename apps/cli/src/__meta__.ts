@@ -339,15 +339,30 @@ export const META: Meta = {
       label: 'Cloudflare Workers',
       hint: 'Deploy to Cloudflare Workers with Wrangler',
       category: 'Deploy',
-      support: { stacks: ['hono'] },
+      support: { stacks: ['hono', 'nextjs'] },
       packageJson: {
         devDependencies: {
           wrangler: '^4.100.0',
         },
-        scripts: {
-          deploy: 'wrangler deploy',
-          preview: 'wrangler dev',
-          'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+      },
+      stackPackageJson: {
+        hono: {
+          scripts: {
+            deploy: 'wrangler deploy',
+            preview: 'wrangler dev',
+            'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+          },
+        },
+        nextjs: {
+          dependencies: {
+            '@opennextjs/cloudflare': '^1.19.0',
+          },
+          scripts: {
+            'build:cf': 'next build && opennextjs-cloudflare build',
+            preview: 'opennextjs-cloudflare preview',
+            deploy: 'opennextjs-cloudflare deploy',
+            'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+          },
         },
       },
     },

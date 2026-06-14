@@ -45,3 +45,32 @@ describe.each(TEMPLATE_PATHS)('next.config.ts.hbs render: %s', (templatePath) =>
     expect(rendered).not.toContain('NEXT_PUBLIC_APP_URL');
   });
 });
+
+describe('next.config.ts.hbs: cloudflare integration', () => {
+  function makeCloudflareContext(libraries: string[]): TemplateContext {
+    return {
+      projectName: 'my-project',
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries }],
+      project: { tooling: [] },
+      git: false,
+    };
+  }
+
+  test('includes initOpenNextCloudflareForDev import when cloudflare library active', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext(['cloudflare']));
+    expect(rendered).toContain('initOpenNextCloudflareForDev');
+    expect(rendered).toContain('@opennextjs/cloudflare');
+  });
+
+  test('calls initOpenNextCloudflareForDev() at module level', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext(['cloudflare']));
+    expect(rendered).toContain('initOpenNextCloudflareForDev()');
+  });
+
+  test('does NOT include cloudflare import when cloudflare library not selected', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext([]));
+    expect(rendered).not.toContain('initOpenNextCloudflareForDev');
+    expect(rendered).not.toContain('@opennextjs/cloudflare');
+  });
+});
