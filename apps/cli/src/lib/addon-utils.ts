@@ -8,6 +8,12 @@ export function isLibraryCompatible(library: MetaAddon, stackName: StackName): b
   return library.support.stacks.includes(stackName);
 }
 
+/** Deploy libraries target a single platform, so an app can have at most one. */
+export function findDeployConflict(libraries: string[]): string[] {
+  const deployLibraries = libraries.filter((name) => META.libraries[name]?.category === 'Deploy');
+  return deployLibraries.length > 1 ? deployLibraries : [];
+}
+
 export function getProjectAddon(category: string, name: string): MetaAddon | undefined {
   const cat = META.project[category as ProjectCategoryName];
   if (!cat) return undefined;
