@@ -1,4 +1,4 @@
 {
-  "title": "Deploy",
-  "pages": ["aws-lambda", "cloudflare"]
+  "title": "Runtime",
+  "pages": ["aws-lambda"]
 }

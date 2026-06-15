@@ -1,0 +1,75 @@
+---
+title: Cloudflare Workers
+description: Cloudflare Workers deployment platform — stack-aware Wrangler config for Hono and OpenNext config for Next.js.
+---
+
+<Stacks names="hono,nextjs" />
+<Dependencies dev="wrangler" packages="@opennextjs/cloudflare" />
+
+[→ Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
+
+## What create-faster adds
+
+Cloudflare Workers is a project-level deployment platform. Generation is stack-aware per app: a Hono app gets a direct Workers config, and a Next.js app gets an [OpenNext](https://opennext.js.org/cloudflare) config. Selecting it once with `--deployment cloudflare` configures every app according to its stack.
+
+### Hono apps
+
+Hono already exports a Workers-compatible fetch handler (`export default app`), so no adapter is needed — local dev keeps running on Bun while Wrangler handles preview and deploy.
+
+```jsonc title="wrangler.jsonc"
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
+**Scripts:**
+- `deploy` - Deploy the Worker (`wrangler deploy`)
+- `preview` - Run the Worker locally on the Workers runtime (`wrangler dev`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+
+### Next.js apps
+
+Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` so Cloudflare bindings are available during `next dev`, and the build emits the Worker output under `.open-next/`.
+
+```jsonc title="wrangler.jsonc"
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "web",
+  "main": ".open-next/worker.js",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
+}
+```
+
+```typescript title="open-next.config.ts"
+import { defineCloudflareConfig } from '@opennextjs/cloudflare';
+
+export default defineCloudflareConfig({});
+```
+
+**Scripts:**
+- `build:cf` - Next.js build followed by the OpenNext adapter build (`next build && opennextjs-cloudflare build`)
+- `preview` - Local Wrangler preview of the built output (`opennextjs-cloudflare preview`)
+- `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
+- `cf:typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+
+## Shared behavior
+
+The Worker `name` is the app name in turborepo mode and the project name in single mode.
+
+**Modified files:**
+- `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`; for Next.js apps it also ignores `.open-next/` and `.prod.env`.
+
+**Local secrets:**
+
+Wrangler 4.x reads local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
+
+**Turborepo mode:**
+`wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.

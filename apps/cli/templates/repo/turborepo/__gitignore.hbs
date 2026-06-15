@@ -55,11 +55,11 @@ yarn-error.log*
 .sst/
 {{/if}}
 
-{{#if (hasLibrary "cloudflare")}}
+{{#if (has "deployment" "cloudflare")}}
 # Cloudflare
 .wrangler/
 cloudflare-env.d.ts
-{{#if (hasLibraryOnStack "cloudflare" "nextjs")}}
+{{#if (has "stack" "nextjs")}}
 .open-next/
 .prod.env
 {{/if}}

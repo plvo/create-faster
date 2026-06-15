@@ -1,4 +1,4 @@
-{{#if (hasLibrary "cloudflare")}}
+{{#if (and (has "deployment" "cloudflare") (eq stackName "nextjs"))}}
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 {{/if}}
 {{#if (hasLibrary "mdx")}}
@@ -6,7 +6,7 @@ import createMDX from '@next/mdx';
 {{/if}}
 import type { NextConfig } from 'next';
 
-{{#if (hasLibrary "cloudflare")}}
+{{#if (and (has "deployment" "cloudflare") (eq stackName "nextjs"))}}
 initOpenNextCloudflareForDev();
 
 {{/if}}

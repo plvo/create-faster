@@ -130,10 +130,20 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
         merged = mergeResolved(ctx, merged, toolingAddon.packageJson);
       }
     }
+  }
 
-    if (ctx.project.deployment) {
-      const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
-      if (deploymentAddon) {
+  if (ctx.project.deployment) {
+    const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
+    if (deploymentAddon) {
+      const isRootScoped = deploymentAddon.mono?.scope === 'root';
+      if (!isRootScoped) {
+        merged = mergeResolved(
+          ctx,
+          merged,
+          deploymentAddon.packageJson,
+          deploymentAddon.stackPackageJson?.[app.stackName],
+        );
+      } else if (!isTurborepo) {
         merged = mergeResolved(ctx, merged, deploymentAddon.packageJson);
       }
     }

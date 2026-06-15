@@ -13,7 +13,17 @@ describe('hono-cloudflare', () => {
   beforeAll(async () => {
     const tempDir = await createTempDir();
     const result = await runCli(
-      ['hono-cloudflare', '--app', 'hono-cloudflare:hono:cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      [
+        'hono-cloudflare',
+        '--app',
+        'hono-cloudflare:hono',
+        '--deployment',
+        'cloudflare',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

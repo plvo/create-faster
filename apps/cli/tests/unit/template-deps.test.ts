@@ -36,6 +36,11 @@ function collectAllDeclaredPackages(): Set<string> {
     for (const option of Object.values(category.options)) {
       addDeps(option.packageJson);
       if ('appPackageJson' in option) addDeps(option.appPackageJson as Record<string, unknown>);
+      if ('stackPackageJson' in option && option.stackPackageJson) {
+        for (const stackPkg of Object.values(option.stackPackageJson)) {
+          addDeps(stackPkg as Record<string, unknown>);
+        }
+      }
     }
   }
 

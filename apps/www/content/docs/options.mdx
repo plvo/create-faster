@@ -154,16 +154,16 @@ Select a linter/formatter.
 
 ### `--deployment <name>`
 
-Select a deployment platform.
+Select a deployment platform. Generation is stack-aware per app: a Next.js app gets OpenNext config, a Hono app gets a Workers config.
 
-**Options**: `sst`, `terraform-aws`
+**Options**: `cloudflare`, `sst`, `terraform-aws`
 
 **Example**:
 ```bash
---deployment sst
+--deployment cloudflare
 ```
 
-See [SST](/docs/deployment/sst) and [Terraform (AWS)](/docs/deployment/terraform-aws) for details.
+See [Cloudflare Workers](/docs/deployment/cloudflare), [SST](/docs/deployment/sst), and [Terraform (AWS)](/docs/deployment/terraform-aws) for details.
 
 ### `--tooling <name>`
 

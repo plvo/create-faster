@@ -4,10 +4,11 @@ import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, 
 
 interface PackageJsonShape {
   scripts: Record<string, string>;
+  dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 }
 
-describe('Cloudflare Integration', () => {
+describe('Cloudflare deployment platform', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -18,37 +19,6 @@ describe('Cloudflare Integration', () => {
     await cleanupTempDir(tempDir);
   });
 
-  describe('Deploy library exclusion', () => {
-    test('aws-lambda and cloudflare on the same app are rejected', async () => {
-      const result = await runCli(
-        ['test-conflict', '--app', 'api:hono:aws-lambda,cloudflare', '--no-git', '--no-install'],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toContain('Deploy libraries are mutually exclusive');
-      expect(result.stderr).toContain('aws-lambda');
-      expect(result.stderr).toContain('cloudflare');
-    });
-
-    test('aws-lambda and cloudflare on different apps are accepted', async () => {
-      const result = await runCli(
-        [
-          'test-split-deploy',
-          '--app',
-          'api:hono:cloudflare',
-          '--app',
-          'lambda:hono:aws-lambda',
-          '--no-git',
-          '--no-install',
-          '--pm',
-          'bun',
-        ],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(0);
-    });
-  });
-
   describe('Single repo: Hono + cloudflare', () => {
     const projectName = 'test-cloudflare-hono';
     let projectPath: string;
@@ -56,13 +26,13 @@ describe('Cloudflare Integration', () => {
     beforeAll(async () => {
       projectPath = join(tempDir, projectName);
       const result = await runCli(
-        [projectName, '--app', 'api:hono:cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+        [projectName, '--app', 'api:hono', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
         tempDir,
       );
       expect(result.exitCode).toBe(0);
     });
 
-    test('generates wrangler.jsonc named after the project', async () => {
+    test('generates wrangler.jsonc named after the project (Workers, not open-next)', async () => {
       expect(await fileExists(join(projectPath, 'wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'wrangler.jsonc'));
       expect(content).toContain(`"name": "${projectName}"`);
@@ -71,22 +41,24 @@ describe('Cloudflare Integration', () => {
       expect(content).toContain('"nodejs_compat"');
     });
 
-    test('package.json has wrangler scripts and devDependency', async () => {
+    test('does not generate open-next.config.ts', async () => {
+      expect(await fileExists(join(projectPath, 'open-next.config.ts'))).toBe(false);
+    });
+
+    test('package.json has wrangler scripts and devDependency, no opennext', async () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
       expect(pkg.scripts.deploy).toBe('wrangler deploy');
       expect(pkg.scripts.preview).toBe('wrangler dev');
       expect(pkg.scripts['cf-typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
+      expect(pkg.dependencies?.['@opennextjs/cloudflare']).toBeUndefined();
     });
 
-    test('does not generate .dev.vars.example', async () => {
-      expect(await fileExists(join(projectPath, '.dev.vars.example'))).toBe(false);
-    });
-
-    test('gitignore covers wrangler local files', async () => {
+    test('gitignore covers wrangler local files but not open-next', async () => {
       const content = await readTextFile(join(projectPath, '.gitignore'));
       expect(content).toContain('.wrangler/');
       expect(content).toContain('cloudflare-env.d.ts');
+      expect(content).not.toContain('.open-next/');
     });
 
     test('src/index.ts exports the app as default', async () => {
@@ -103,13 +75,23 @@ describe('Cloudflare Integration', () => {
     beforeAll(async () => {
       projectPath = join(tempDir, projectName);
       const result = await runCli(
-        [projectName, '--app', `${projectName}:nextjs:cloudflare`, '--no-git', '--no-install', '--pm', 'bun'],
+        [
+          projectName,
+          '--app',
+          `${projectName}:nextjs`,
+          '--deployment',
+          'cloudflare',
+          '--no-git',
+          '--no-install',
+          '--pm',
+          'bun',
+        ],
         tempDir,
       );
       expect(result.exitCode).toBe(0);
     });
 
-    test('generates wrangler.jsonc with open-next main', async () => {
+    test('generates wrangler.jsonc with open-next main and assets binding', async () => {
       expect(await fileExists(join(projectPath, 'wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'wrangler.jsonc'));
       expect(content).toContain(`"name": "${projectName}"`);
@@ -141,6 +123,7 @@ describe('Cloudflare Integration', () => {
       expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
       expect(pkg.scripts['cf:typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
+      expect(pkg.dependencies['@opennextjs/cloudflare']).toBeDefined();
     });
 
     test('gitignore covers open-next and wrangler artifacts', async () => {
@@ -152,90 +135,133 @@ describe('Cloudflare Integration', () => {
     });
   });
 
-  describe('Turborepo: Next.js + cloudflare', () => {
-    const projectName = 'test-cloudflare-nextjs-turbo';
-    let projectPath: string;
-
-    beforeAll(async () => {
-      projectPath = join(tempDir, projectName);
-      const result = await runCli(
-        [projectName, '--app', 'web:nextjs:cloudflare', '--app', 'api:hono', '--no-git', '--no-install', '--pm', 'bun'],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(0);
-    });
-
-    test('generates wrangler.jsonc under apps/web named after the app', async () => {
-      expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(true);
-      const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(content).toContain('"name": "web"');
-      expect(content).toContain('"main": ".open-next/worker.js"');
-    });
-
-    test('app package.json has opennext scripts', async () => {
-      const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'apps/web/package.json'));
-      expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
-      expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
-    });
-
-    test('other apps do not get wrangler config', async () => {
-      expect(await fileExists(join(projectPath, 'apps/api/wrangler.jsonc'))).toBe(false);
-    });
-  });
-
-  describe('Turborepo: Hono + cloudflare', () => {
+  describe('Turborepo: web (nextjs) + api (hono) with cloudflare', () => {
     const projectName = 'test-cloudflare-turbo';
     let projectPath: string;
 
     beforeAll(async () => {
       projectPath = join(tempDir, projectName);
       const result = await runCli(
-        [projectName, '--app', 'api:hono:cloudflare', '--app', 'web:nextjs', '--no-git', '--no-install', '--pm', 'bun'],
+        [
+          projectName,
+          '--app',
+          'web:nextjs',
+          '--app',
+          'api:hono',
+          '--deployment',
+          'cloudflare',
+          '--no-git',
+          '--no-install',
+          '--pm',
+          'bun',
+        ],
         tempDir,
       );
       expect(result.exitCode).toBe(0);
     });
 
-    test('generates wrangler.jsonc under apps/api named after the app', async () => {
+    test('web app gets open-next wrangler.jsonc', async () => {
+      expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(true);
+      const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
+      expect(content).toContain('"name": "web"');
+      expect(content).toContain('"main": ".open-next/worker.js"');
+    });
+
+    test('web app has open-next.config.ts and opennext deps/scripts', async () => {
+      expect(await fileExists(join(projectPath, 'apps/web/open-next.config.ts'))).toBe(true);
+      const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'apps/web/package.json'));
+      expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
+      expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
+      expect(pkg.dependencies['@opennextjs/cloudflare']).toBeDefined();
+    });
+
+    test('api app gets Workers wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/api/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/api/wrangler.jsonc'));
       expect(content).toContain('"name": "api"');
+      expect(content).toContain('"main": "src/index.ts"');
     });
 
-    test('app package.json has wrangler scripts and devDependency', async () => {
+    test('api app has wrangler scripts, no opennext', async () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'apps/api/package.json'));
       expect(pkg.scripts.deploy).toBe('wrangler deploy');
       expect(pkg.scripts.preview).toBe('wrangler dev');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
+      expect(pkg.dependencies?.['@opennextjs/cloudflare']).toBeUndefined();
     });
 
-    test('does not generate .dev.vars.example', async () => {
-      expect(await fileExists(join(projectPath, 'apps/api/.dev.vars.example'))).toBe(false);
-      expect(await fileExists(join(projectPath, 'apps/web/.dev.vars.example'))).toBe(false);
-      expect(await fileExists(join(projectPath, '.dev.vars.example'))).toBe(false);
+    test('api app does NOT get open-next.config.ts', async () => {
+      expect(await fileExists(join(projectPath, 'apps/api/open-next.config.ts'))).toBe(false);
     });
 
-    test('other apps do not get wrangler config', async () => {
-      expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(false);
-    });
-
-    test('root gitignore covers wrangler local files', async () => {
+    test('root gitignore covers wrangler and open-next (a nextjs app uses cloudflare)', async () => {
       const content = await readTextFile(join(projectPath, '.gitignore'));
       expect(content).toContain('.wrangler/');
       expect(content).toContain('cloudflare-env.d.ts');
+      expect(content).toContain('.open-next/');
+      expect(content).toContain('.prod.env');
+    });
+  });
+
+  describe('Turborepo: hono-only with cloudflare omits open-next from gitignore', () => {
+    const projectName = 'test-cloudflare-hono-turbo';
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = join(tempDir, projectName);
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          'api:hono',
+          '--app',
+          'worker:hono',
+          '--deployment',
+          'cloudflare',
+          '--no-git',
+          '--no-install',
+          '--pm',
+          'bun',
+        ],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
     });
 
-    test('root gitignore omits open-next artifacts when no nextjs app uses cloudflare', async () => {
+    test('both hono apps get Workers wrangler.jsonc', async () => {
+      expect(await fileExists(join(projectPath, 'apps/api/wrangler.jsonc'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/worker/wrangler.jsonc'))).toBe(true);
+    });
+
+    test('root gitignore omits open-next artifacts when no nextjs app exists', async () => {
       const content = await readTextFile(join(projectPath, '.gitignore'));
+      expect(content).toContain('.wrangler/');
       expect(content).not.toContain('.open-next/');
       expect(content).not.toContain('.prod.env');
     });
+  });
 
-    test('hono app agent doc uses the Wrangler deploy section, not OpenNext', async () => {
-      const content = await readTextFile(join(projectPath, 'apps/api/AGENTS.md'));
-      expect(content).toContain('Cloudflare Workers deploy (Wrangler)');
-      expect(content).not.toContain('OpenNext');
-      expect(content).not.toContain('build:cf');
+  describe('Regression: sst deployment still works', () => {
+    const projectName = 'test-sst';
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = join(tempDir, projectName);
+      const result = await runCli(
+        [projectName, '--app', 'api:hono', '--deployment', 'sst', '--no-git', '--no-install', '--pm', 'bun'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+    });
+
+    test('generates sst.config.ts and sst gitignore entry', async () => {
+      expect(await fileExists(join(projectPath, 'sst.config.ts'))).toBe(true);
+      const gitignore = await readTextFile(join(projectPath, '.gitignore'));
+      expect(gitignore).toContain('.sst/');
+    });
+
+    test('does not generate cloudflare artifacts', async () => {
+      expect(await fileExists(join(projectPath, 'wrangler.jsonc'))).toBe(false);
     });
   });
 });
