@@ -74,12 +74,26 @@ export const userTableRelations = relations(userTable, ({ many }) => ({
 
 {{#if (hasLibrary "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
+{{#if (has "database" "sqlite")}}
+export const userSessionTable = sqliteTable('user_sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  ...timeColumns,
+});
+{{/if}}
 {{#if (has "database" "postgres")}}
 export const userSessionTable = pgTable('user_sessions', {
 {{/if}}
 {{#if (has "database" "mysql")}}
 export const userSessionTable = mysqlTable('user_sessions', {
 {{/if}}
+{{#unless (has "database" "sqlite")}}
   id: varchar('id', { length: 255 }).primaryKey(),
 {{#if (has "database" "postgres")}}
   userId: uuid('user_id')
@@ -97,6 +111,7 @@ export const userSessionTable = mysqlTable('user_sessions', {
   userAgent: varchar('user_agent', { length: 255 }),
   ...timeColumns,
 });
+{{/unless}}
 
 export const userSessionTableRelations = relations(userSessionTable, ({ one }) => ({
   user: one(userTable, {
@@ -106,12 +121,31 @@ export const userSessionTableRelations = relations(userSessionTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#account
+{{#if (has "database" "sqlite")}}
+export const userAccountTable = sqliteTable('user_accounts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  accessTokenExpiresAt: integer('access_token_expires_at', { mode: 'timestamp_ms' }),
+  refreshTokenExpiresAt: integer('refresh_token_expires_at', { mode: 'timestamp_ms' }),
+  scope: text('scope'),
+  idToken: text('id_token'),
+  password: text('password'),
+  ...timeColumns,
+});
+{{/if}}
 {{#if (has "database" "postgres")}}
 export const userAccountTable = pgTable('user_accounts', {
 {{/if}}
 {{#if (has "database" "mysql")}}
 export const userAccountTable = mysqlTable('user_accounts', {
 {{/if}}
+{{#unless (has "database" "sqlite")}}
   id: varchar('id', { length: 255 }).primaryKey(),
 {{#if (has "database" "postgres")}}
   userId: uuid('user_id')
@@ -134,6 +168,7 @@ export const userAccountTable = mysqlTable('user_accounts', {
   password: varchar('password', { length: 255 }),
   ...timeColumns,
 });
+{{/unless}}
 
 export const userAccountTableRelations = relations(userAccountTable, ({ one }) => ({
   user: one(userTable, {
@@ -143,18 +178,29 @@ export const userAccountTableRelations = relations(userAccountTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#verification
+{{#if (has "database" "sqlite")}}
+export const userVerificationTable = sqliteTable('user_verifications', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  ...timeColumns,
+});
+{{/if}}
 {{#if (has "database" "postgres")}}
 export const userVerificationTable = pgTable('user_verifications', {
 {{/if}}
 {{#if (has "database" "mysql")}}
 export const userVerificationTable = mysqlTable('user_verifications', {
 {{/if}}
+{{#unless (has "database" "sqlite")}}
   id: varchar('id', { length: 255 }).primaryKey(),
   identifier: varchar('identifier', { length: 255 }).notNull(),
   value: varchar('value', { length: 255 }).notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   ...timeColumns,
 });
+{{/unless}}
 {{/if}}
 
 {{#if (has "database" "sqlite")}}

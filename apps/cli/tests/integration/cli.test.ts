@@ -489,7 +489,7 @@ describe('CLI Integration', () => {
   });
 
   describe('Library requirement validation', () => {
-    test('rejects better-auth with sqlite database', async () => {
+    test('accepts better-auth with sqlite database (drizzle)', async () => {
       const result = await runCli(
         [
           'auth-sqlite',
@@ -505,8 +505,18 @@ describe('CLI Integration', () => {
         tempDir,
       );
 
-      expect(result.exitCode).not.toBe(0);
-      expect(`${result.stdout}${result.stderr}`).toContain('database: postgres or mysql');
+      expect(result.exitCode).toBe(0);
+
+      const schema = await readTextFile(join(tempDir, 'auth-sqlite', 'src/lib/db/schema.ts'));
+      expect(schema).toContain('sqliteTable');
+      expect(schema).not.toContain('pgTable');
+      expect(schema).not.toContain('mysqlTable');
+      expect(schema).toContain('userSessionTable');
+      expect(schema).toContain('userAccountTable');
+      expect(schema).toContain('userVerificationTable');
+
+      const auth = await readTextFile(join(tempDir, 'auth-sqlite', 'src/lib/auth/auth.ts'));
+      expect(auth).toContain("provider: 'sqlite'");
     });
 
     test('accepts better-auth with postgres database', async () => {

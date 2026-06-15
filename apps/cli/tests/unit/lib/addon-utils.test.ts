@@ -156,8 +156,8 @@ describe('isCategoryValueAllowedByLibraries', () => {
     apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
   };
 
-  test('excludes sqlite when a selected library requires postgres/mysql', () => {
-    expect(isCategoryValueAllowedByLibraries('database', 'sqlite', ctxWithBetterAuth)).toBe(false);
+  test('allows sqlite when better-auth is selected (drizzle supports sqlite)', () => {
+    expect(isCategoryValueAllowedByLibraries('database', 'sqlite', ctxWithBetterAuth)).toBe(true);
   });
 
   test('allows postgres and mysql when better-auth is selected', () => {

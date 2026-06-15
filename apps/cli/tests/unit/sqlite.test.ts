@@ -56,9 +56,9 @@ describe('better-auth database restriction', () => {
     };
   }
 
-  test('is not satisfied with sqlite (no sqlite adapter until #131)', () => {
+  test('is satisfied with sqlite (drizzle adapter)', () => {
     const betterAuth = META.libraries['better-auth'];
-    expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('sqlite'))).toBe(false);
+    expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('sqlite'))).toBe(true);
   });
 
   test('is satisfied with postgres and mysql', () => {
