@@ -528,11 +528,13 @@ export const META: Meta = {
               typescript: '^5',
               '@types/node': '^22',
               'drizzle-kit': '^0.31.9',
+              tsx: '^4.19.4',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
+              'db:seed': 'tsx --env-file=.env scripts/seed.ts',
               'db:studio': 'drizzle-kit studio',
             },
             exports: {

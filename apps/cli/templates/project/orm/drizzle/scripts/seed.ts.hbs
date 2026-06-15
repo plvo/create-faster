@@ -1,7 +1,3 @@
----
-mono:
-  scope: root
----
 import { db, postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
 
 async function seed() {

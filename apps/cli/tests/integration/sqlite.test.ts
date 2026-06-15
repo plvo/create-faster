@@ -127,7 +127,6 @@ describe('SQLite database option', () => {
 
     expect(pkg.dependencies?.['@repo/db']).toBe('*');
     expect(pkg.scripts['db:push']).toBe('turbo db:push');
-    expect(pkg.scripts['db:seed']).toContain('scripts/seed.ts');
-    expect(pkg.scripts['db:seed']).toContain('--env-file=packages/db/.env');
+    expect(pkg.scripts['db:seed']).toBe('turbo db:seed');
   });
 });

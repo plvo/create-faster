@@ -40,11 +40,11 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
     expect(setup).toContain('db:seed');
   });
 
-  test('exposes local-setup and env-aware db:seed in the root scripts', async () => {
+  test('exposes local-setup and delegates db:seed to turbo in the root scripts', async () => {
     const pkg = await readJsonFile<RootPkg>(join(projectPath, 'package.json'));
     expect(pkg.scripts['local-setup']).toBeDefined();
-    // The seed runs from the repo root, where no .env lives — it must load the app env explicitly.
-    expect(pkg.scripts['db:seed']).toContain('--env-file');
+    // db:seed delegates to the db package via turbo, like the other db: scripts.
+    expect(pkg.scripts['db:seed']).toBe('turbo db:seed');
   });
 
   test('declares faker for demo fixtures', async () => {
@@ -53,7 +53,7 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
   });
 
   test('seed script is flag-driven and idempotent', async () => {
-    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    const seed = await readTextFile(join(projectPath, 'packages/db/scripts/seed.ts'));
 
     // Flag parsing via the Node built-in, not hand-rolled.
     expect(seed).toContain('parseArgs');
@@ -69,7 +69,7 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
   });
 
   test('seed refuses to reset a non-local database without --force', async () => {
-    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    const seed = await readTextFile(join(projectPath, 'packages/db/scripts/seed.ts'));
     expect(seed).toContain('DATABASE_URL');
     expect(seed).toContain('force');
     expect(seed.toLowerCase()).toContain('local');

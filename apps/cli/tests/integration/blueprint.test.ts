@@ -274,7 +274,7 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/sessions/page.tsx'))).toBe(true);
 
     // Seed script
-    expect(await fileExists(join(projectPath, 'scripts/seed.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(true);
 
     // Hugeicons dependency
     const webPkg = await readJsonFile<{ dependencies: Record<string, string> }>(

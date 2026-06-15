@@ -170,13 +170,6 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   let scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
 
-  if (!isTurborepo && ctx.project.orm === 'drizzle') {
-    scripts['db:seed'] = seedScript(ctx.pm);
-    if (ctx.pm !== 'bun') {
-      merged.devDependencies = { ...(merged.devDependencies as Record<string, string> | undefined), tsx: TSX_VERSION };
-    }
-  }
-
   if (runtimeAddon?.runtime?.appScripts) {
     scripts = applyAppScripts(scripts, runtimeAddon.runtime.appScripts);
   }
@@ -234,15 +227,6 @@ export function getPackageManager(pm: NonNullable<PackageManager>): string {
   return `${pm}@${pmVersion}`;
 }
 
-const TSX_VERSION = '^4.19.4';
-
-function seedScript(pm: PackageManager, envPath?: string): string {
-  if (pm === 'bun') {
-    return envPath ? `bun --env-file=${envPath} scripts/seed.ts` : 'bun run scripts/seed.ts';
-  }
-  return `tsx --env-file=${envPath ?? '.env'} scripts/seed.ts`;
-}
-
 export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
@@ -261,16 +245,11 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   const dependencies: Record<string, string> = {};
 
   const ormAddon = ctx.project.orm ? META.project.orm.options[ctx.project.orm] : undefined;
-  const isDrizzle = ctx.project.orm === 'drizzle';
   if (ormAddon?.mono?.scope === 'pkg') {
     const dbPkg = ormAddon.mono.name;
     dependencies[`@repo/${dbPkg}`] = '*';
-    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:studio']) {
+    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio']) {
       scripts[script] = `turbo ${script}`;
-    }
-    if (isDrizzle) {
-      scripts['db:seed'] = seedScript(ctx.pm, `packages/${dbPkg}/.env`);
-      if (ctx.pm !== 'bun') devDependencies.tsx = TSX_VERSION;
     }
   }
 

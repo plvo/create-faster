@@ -35,7 +35,7 @@ const steps: Step[] = [
   { label: 'Creating .env files from .env.example', run: createEnvFiles },
   { label: 'Starting the database (docker compose)', run: () => sh(['docker', 'compose', 'up', '-d', '--wait']) },
   { label: 'Applying the schema to the database', run: () => sh(['bun', 'run', 'db:push', '--force'], 'packages/db') },
-  { label: 'Seeding demo data', run: () => sh(['bun', 'run', 'db:seed', '--fixtures']) },
+  { label: 'Seeding demo data', run: () => sh(['bun', 'run', 'db:seed', '--fixtures'], 'packages/db') },
 ];
 
 console.log('Setting up your local environment\n');
