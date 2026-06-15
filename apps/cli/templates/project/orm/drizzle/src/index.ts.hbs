@@ -8,12 +8,30 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { drizzle } from 'drizzle-orm/mysql2';
 {{/if}}
 {{#if (has "database" "sqlite")}}
+{{#if (isMono)}}
+import { existsSync } from 'node:fs';
+import { dirname, isAbsolute, join } from 'node:path';
+{{else}}
 import { isAbsolute, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+{{/if}}
 import { drizzle } from 'drizzle-orm/libsql';
 {{/if}}
 import * as schema from './schema';
 
+{{#if (has "database" "sqlite")}}
+{{#if (isMono)}}
+function findMonoRoot(start: string): string {
+  let dir = start;
+  while (true) {
+    if (existsSync(join(dir, 'turbo.json'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return start;
+    dir = parent;
+  }
+}
+
+{{/if}}
+{{/if}}
 function createDb() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is not set');
@@ -35,10 +53,13 @@ function createDb() {
   });
 {{/if}}
 {{#if (has "database" "sqlite")}}
-  // Anchor relative paths to the {{#if (isMono)}}package{{else}}project{{/if}} root so drizzle-kit, seed scripts, and app code share one database file
-  const path = process.env.DATABASE_URL.replace(/^file:/, '');
-  const root = fileURLToPath(new URL('{{#if (isMono)}}..{{else}}../../..{{/if}}', import.meta.url));
-  const url = `file:${isAbsolute(path) ? path : join(root, path)}`;
+  const raw = process.env.DATABASE_URL.replace(/^file:/, '');
+{{#if (isMono)}}
+  const root = findMonoRoot(process.cwd());
+  const url = `file:${isAbsolute(raw) ? raw : join(root, 'packages/db', raw)}`;
+{{else}}
+  const url = `file:${isAbsolute(raw) ? raw : join(process.cwd(), raw)}`;
+{{/if}}
   return drizzle({
     schema,
     connection: { url },
@@ -54,7 +75,6 @@ export const db = new Proxy({} as ReturnType<typeof createDb>, {
   },
 });
 
-// Re-export schema, types, and drizzle utilities
 export * from 'drizzle-orm';
 export * from './schema';
 export * from './types';
