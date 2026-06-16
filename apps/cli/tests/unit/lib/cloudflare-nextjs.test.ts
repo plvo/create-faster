@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
+import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
+
+const destinations = (ctx: TemplateContext) => getAllTemplatesForContext(ctx).map((t) => t.destination);
 
 describe('cloudflare deployment option', () => {
   test('cloudflare is a deployment platform option', () => {
@@ -64,6 +67,63 @@ describe('deployment cloudflare: nextjs app package.json (single repo)', () => {
   test('does NOT have hono-style deploy script (wrangler deploy)', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.deploy).not.toBe('wrangler deploy');
+  });
+});
+
+describe('nextjs request interceptor file: proxy.ts vs middleware.ts', () => {
+  test('cloudflare deployment renames proxy.ts to middleware.ts (single repo)', () => {
+    const ctx: TemplateContext = {
+      projectName: 'site',
+      repo: 'single',
+      apps: [{ appName: 'site', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+      git: false,
+    };
+    const dests = destinations(ctx);
+    expect(dests).toContain('src/middleware.ts');
+    expect(dests).not.toContain('src/proxy.ts');
+  });
+
+  test('without cloudflare deployment, nextjs keeps proxy.ts', () => {
+    const ctx: TemplateContext = {
+      projectName: 'site',
+      repo: 'single',
+      apps: [{ appName: 'site', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+    };
+    const dests = destinations(ctx);
+    expect(dests).toContain('src/proxy.ts');
+    expect(dests).not.toContain('src/middleware.ts');
+  });
+
+  test('non-cloudflare deployment (sst) keeps proxy.ts', () => {
+    const ctx: TemplateContext = {
+      projectName: 'site',
+      repo: 'single',
+      apps: [{ appName: 'site', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'sst', tooling: [] },
+      git: false,
+    };
+    const dests = destinations(ctx);
+    expect(dests).toContain('src/proxy.ts');
+    expect(dests).not.toContain('src/middleware.ts');
+  });
+
+  test('turborepo cloudflare renames per nextjs app, hono unaffected', () => {
+    const ctx: TemplateContext = {
+      projectName: 'saas',
+      repo: 'turborepo',
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: [] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
+      ],
+      project: { deployment: 'cloudflare', tooling: [] },
+      git: false,
+    };
+    const dests = destinations(ctx);
+    expect(dests).toContain('apps/web/src/middleware.ts');
+    expect(dests).not.toContain('apps/web/src/proxy.ts');
   });
 });
 

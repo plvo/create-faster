@@ -116,6 +116,15 @@ describe('Cloudflare deployment platform', () => {
       expect(content).toContain('@opennextjs/cloudflare');
     });
 
+    test('generates src/middleware.ts (Edge runtime) instead of proxy.ts, which OpenNext rejects', async () => {
+      expect(await fileExists(join(projectPath, 'src/middleware.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'src/proxy.ts'))).toBe(false);
+      const content = await readTextFile(join(projectPath, 'src/middleware.ts'));
+      expect(content).toContain('export default async function middleware');
+      expect(content).toContain('NextResponse.next()');
+      expect(content).toContain('matcher');
+    });
+
     test('package.json has opennext scripts and dependency', async () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
       expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
@@ -173,6 +182,13 @@ describe('Cloudflare deployment platform', () => {
       expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
       expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
       expect(pkg.dependencies['@opennextjs/cloudflare']).toBeDefined();
+    });
+
+    test('web app emits src/middleware.ts, not proxy.ts', async () => {
+      expect(await fileExists(join(projectPath, 'apps/web/src/middleware.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/web/src/proxy.ts'))).toBe(false);
+      const content = await readTextFile(join(projectPath, 'apps/web/src/middleware.ts'));
+      expect(content).toContain('export default async function middleware');
     });
 
     test('api app gets Workers wrangler.jsonc', async () => {
@@ -238,6 +254,45 @@ describe('Cloudflare deployment platform', () => {
       expect(content).toContain('.wrangler/');
       expect(content).not.toContain('.open-next/');
       expect(content).not.toContain('.prod.env');
+    });
+  });
+
+  describe('Next.js + cloudflare: middleware.ts preserves better-auth and evlog features', () => {
+    const projectName = 'test-cloudflare-mw-features';
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = join(tempDir, projectName);
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          `${projectName}:nextjs:better-auth,evlog`,
+          '--database',
+          'postgres',
+          '--orm',
+          'drizzle',
+          '--deployment',
+          'cloudflare',
+          '--no-git',
+          '--no-install',
+          '--pm',
+          'bun',
+        ],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+    });
+
+    test('middleware.ts keeps better-auth session check and evlog wiring', async () => {
+      expect(await fileExists(join(projectPath, 'src/middleware.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'src/proxy.ts'))).toBe(false);
+      const content = await readTextFile(join(projectPath, 'src/middleware.ts'));
+      expect(content).toContain('export default async function middleware');
+      expect(content).toContain('auth.api.getSession');
+      expect(content).toContain('evlogMiddleware');
+      expect(content).toContain('MIDDLEWARE');
+      expect(content).not.toContain('PROXY');
     });
   });
 
