@@ -87,6 +87,38 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(env).toContain('DB: D1Database');
     expect(env).toContain('env.DB');
   });
+
+  test('wrangler.jsonc declares the D1 binding', async () => {
+    const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
+    expect(wrangler).toContain('"d1_databases"');
+    expect(wrangler).toContain('"binding": "DB"');
+    expect(wrangler).toContain('"migrations_dir": "drizzle"');
+  });
+});
+
+describe('Single repo: Hono + cloudflare + d1', () => {
+  const projectName = 'd1-hono-single';
+  let projectPath: string;
+  let tempDir: string;
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    projectPath = join(tempDir, projectName);
+    const result = await runCli(
+      [projectName, '--app', 'api:hono', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+  });
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('wrangler.jsonc declares the D1 binding', async () => {
+    const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
+    expect(wrangler).toContain('"d1_databases"');
+    expect(wrangler).toContain('"binding": "DB"');
+    expect(wrangler).toContain('"migrations_dir": "drizzle"');
+  });
 });
 
 describe('Single repo: cloudflare + postgres (no d1 bindings)', () => {
