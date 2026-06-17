@@ -46,6 +46,7 @@ export type Database = ReturnType<typeof createDb>;
 For Next.js apps, a `getEnv` helper retrieves the binding from the OpenNext Cloudflare context:
 
 ```ts
+import 'server-only';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export type Env = { DB: D1Database };
@@ -89,7 +90,7 @@ export default defineConfig({
 
 ## Environment Variables
 
-Generated in `.env.example` (turborepo: `packages/db/.env.example`; single repo: root `.env.example`):
+Generated in `.env.example` (turborepo: `packages/db/.env.example` and `apps/{appName}/.env.example` for each app with D1; single repo: root `.env.example`):
 
 ```bash
 CLOUDFLARE_ACCOUNT_ID=""          # Cloudflare account id (drizzle-kit d1-http, prod migrations)
