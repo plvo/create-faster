@@ -37,6 +37,27 @@ templates/       # Handlebars templates
 - **Validation**: Zod
 - **Tooling**: Turborepo, Biome, TypeScript 5.9.3
 
+## Declarative Choice Logic — NEVER hardcode (MANDATORY)
+
+**Every agent MUST follow this. No exceptions without explicit approval from Pelavo.**
+
+NEVER hardcode logic tied to a specific choice value (a stack, library, deployment, database, ORM, linter, blueprint, etc.) inside core/base logic — the resolver, file generator, flags parser, prompts engine, or any shared algorithm. Core code MUST stay agnostic to which specific choices exist.
+
+Forbidden:
+- A literal branch on a choice value in core logic: `if (deployment === 'cloudflare-static')`, `if (stack === 'nextjs')`, `if (library === 'better-auth')`.
+- An incompatibility/compatibility/support list hardcoded in a `.ts` core file (e.g. `const CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES = [...]`). That data belongs in `META` (`__meta__.ts`), read generically.
+- Choice-specific output paths, filtering, or skipping written as special cases in the resolver.
+
+Required: choice-specific behavior is expressed through **reusable, documented operators** that the core logic applies generically:
+
+- **Handlebars helpers** (`apps/cli/src/lib/handlebars.ts`): `eq`, `ne`, `and`, `or`, `isMono`, `hasLibrary(name)`, `has(category, value)`, `hasContext(key)`, `camelCase`, `raw`, `appPort(name)`. Express conditionals INSIDE templates: `{{#if (has "deployment" "cloudflare")}}…{{/if}}`.
+- **Frontmatter keys** (`TemplateFrontmatter` in `apps/cli/src/types/meta.ts`, applied generically in `template-resolver.ts`): `path`, `mono` (`scope`/`name`/`path`), `only` (`mono|single|no-blueprint`), `deploymentPath` (`Record<deployment, path>` — output path override keyed by deployment, NOT a hardcoded resolver branch). These are the model: a generic key the resolver honors for ANY value.
+- **META data** (`__meta__.ts`): `support`, `require`, `mono`, `packageJson`, `stackPackageJson`, `envs`, category-level and addon-level `require`. Compatibility/dependency rules live here as data, validated generically.
+
+When you need choice-conditional behavior and no operator covers it, the correct move is to **add a new generic operator** (a Handlebars helper or a frontmatter key handled generically by the resolver) and **document it in this file under Template System** — never to special-case a value in core code. Generalize first, then use it.
+
+This is what keeps the tool extensible: adding the next stack/library/deployment must require only a META entry + templates, never edits to core algorithms.
+
 ## Project Structure
 
 ```
