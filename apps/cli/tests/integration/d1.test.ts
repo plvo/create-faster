@@ -129,6 +129,50 @@ describe('Single repo: Hono + cloudflare + d1', () => {
   });
 });
 
+describe('Turborepo: Next.js + Hono + cloudflare + d1', () => {
+  const projectName = 'd1-turbo';
+  let projectPath: string;
+  let tempDir: string;
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    projectPath = join(tempDir, projectName);
+    const result = await runCli(
+      [projectName, '--app', 'web:nextjs', '--app', 'api:hono', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+  });
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('db package index exports createDb factory', async () => {
+    const index = await readTextFile(join(projectPath, 'packages/db/src/index.ts'));
+    expect(index).toContain('export function createDb(d1: D1Database)');
+    expect(index).toContain('export type Database');
+    expect(index).not.toContain('DATABASE_URL');
+  });
+
+  test('web app wrangler.jsonc declares the D1 binding', async () => {
+    const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
+    expect(wrangler).toContain('"d1_databases"');
+    expect(wrangler).toContain('"binding": "DB"');
+    expect(wrangler).toContain('"migrations_dir": "drizzle"');
+  });
+
+  test('api app wrangler.jsonc declares the D1 binding', async () => {
+    const wrangler = await readTextFile(join(projectPath, 'apps/api/wrangler.jsonc'));
+    expect(wrangler).toContain('"d1_databases"');
+    expect(wrangler).toContain('"binding": "DB"');
+  });
+
+  test('drizzle.config in db package uses d1-http driver', async () => {
+    const config = await readTextFile(join(projectPath, 'packages/db/drizzle.config.ts'));
+    expect(config).toContain("dialect: 'sqlite'");
+    expect(config).toContain("driver: 'd1-http'");
+  });
+});
+
 describe('Single repo: cloudflare + postgres (no d1 bindings)', () => {
   let tempDir: string;
   beforeAll(async () => {
