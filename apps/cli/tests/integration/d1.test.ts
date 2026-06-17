@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 describe('D1 database option', () => {
   let tempDir: string;
@@ -78,5 +78,32 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
   test('schema still uses the sqlite dialect', async () => {
     const schema = await readTextFile(join(projectPath, 'src/lib/db/schema.ts'));
     expect(schema).toContain('sqliteTable');
+  });
+
+  test('generates a composable getEnv seam typing the DB binding', async () => {
+    const env = await readTextFile(join(projectPath, 'src/lib/env.ts'));
+    expect(env).toContain("from '@opennextjs/cloudflare'");
+    expect(env).toContain('export async function getEnv()');
+    expect(env).toContain('DB: D1Database');
+    expect(env).toContain('env.DB');
+  });
+});
+
+describe('Single repo: cloudflare + postgres (no d1 bindings)', () => {
+  let tempDir: string;
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+  });
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('does not emit env.ts for cloudflare + postgres (no bindings/secrets)', async () => {
+    const r = await runCli(
+      ['cf-pg', '--app', 'web:nextjs', '--database', 'postgres', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(r.exitCode).toBe(0);
+    expect(await fileExists(join(tempDir, 'cf-pg', 'src/lib/env.ts'))).toBe(false);
   });
 });
