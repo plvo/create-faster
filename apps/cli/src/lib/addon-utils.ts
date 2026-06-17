@@ -47,6 +47,10 @@ export function isRequirementMet(require: AddonRequire | undefined, ctx: Templat
     return false;
   }
 
+  if (require.deployment && (!ctx.project.deployment || !require.deployment.includes(ctx.project.deployment))) {
+    return false;
+  }
+
   if (require.tooling && !require.tooling.some((t) => ctx.project.tooling.includes(t))) {
     return false;
   }

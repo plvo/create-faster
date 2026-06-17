@@ -131,6 +131,21 @@ describe('isRequirementMet', () => {
     const ctx = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
     expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(false);
   });
+
+  test('deployment requirement is unmet when project.deployment is absent', () => {
+    const ctx = { project: { tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(false);
+  });
+
+  test('deployment requirement is unmet for a non-matching deployment', () => {
+    const ctx = { project: { deployment: 'sst', tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(false);
+  });
+
+  test('deployment requirement is met for a matching deployment', () => {
+    const ctx = { project: { deployment: 'cloudflare', tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(true);
+  });
 });
 
 describe('isCategoryValueAllowedByLibraries', () => {
