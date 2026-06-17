@@ -489,6 +489,26 @@ export const META: Meta = {
             },
           ],
         },
+        d1: {
+          label: 'Cloudflare D1',
+          hint: 'Managed SQLite on Cloudflare, accessed via the DB binding',
+          mono: { scope: 'root' },
+          require: { deployment: ['cloudflare'] },
+          envs: [
+            {
+              value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http, prod migrations)',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+            {
+              value: 'CLOUDFLARE_D1_DATABASE_ID="" # D1 database id from `wrangler d1 create`',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+            {
+              value: 'CLOUDFLARE_API_TOKEN="" # Cloudflare API token with D1 edit permission',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
+        },
       },
     },
     orm: {
