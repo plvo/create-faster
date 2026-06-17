@@ -64,6 +64,8 @@ const env = await getEnv();
 const db = createDb(env.DB);
 ```
 
+> **Note:** Wiring `createDb(...)` into your routes, Server Components, or Route Handlers is your responsibility. No generated file calls it automatically — ready-made consumers (auth, tRPC, etc.) will be provided by the cloudflare-fullstack blueprint (#134).
+
 **`drizzle.config.ts` — sqlite dialect with d1-http prod branch:**
 
 The config uses the `sqlite` dialect locally (pointing at the miniflare D1 file) and switches to the `d1-http` driver in production:

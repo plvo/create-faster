@@ -73,11 +73,14 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(config).toContain("driver: 'd1-http'");
     expect(config).toContain('CLOUDFLARE_D1_DATABASE_ID');
     expect(config).not.toContain('postgresql');
+    expect(config).not.toContain('DATABASE_URL');
   });
 
   test('schema still uses the sqlite dialect', async () => {
     const schema = await readTextFile(join(projectPath, 'src/lib/db/schema.ts'));
     expect(schema).toContain('sqliteTable');
+    expect(schema).not.toContain('pgTable');
+    expect(schema).not.toContain('mysqlTable');
   });
 
   test('generates a composable getEnv seam typing the DB binding', async () => {
