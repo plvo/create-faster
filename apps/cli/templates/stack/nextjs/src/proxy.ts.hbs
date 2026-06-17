@@ -1,3 +1,7 @@
+---
+deploymentPath:
+  cloudflare: src/middleware.ts
+---
 {{#if (hasLibrary "evlog")}}
 import type { NextRequest } from 'next/server';
 import { evlogMiddleware } from 'evlog/next';
@@ -17,7 +21,7 @@ import { auth } from '@/lib/auth/auth';
 const withEvlog = evlogMiddleware();
 {{/if}}
 
-export default async function proxy(request: NextRequest) {
+export default async function {{#if (has "deployment" "cloudflare")}}middleware{{else}}proxy{{/if}}(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   {{#if (hasLibrary "better-auth")}}
@@ -25,9 +29,9 @@ export default async function proxy(request: NextRequest) {
     headers: await headers(),
   });
 
-  console.log(`PROXY "${pathname}" | "${session ? session.user.id : 'X'}"`);
+  console.log(`{{#if (has "deployment" "cloudflare")}}MIDDLEWARE{{else}}PROXY{{/if}} "${pathname}" | "${session ? session.user.id : 'X'}"`);
   {{else}}
-  console.log(`PROXY "${pathname}"`);
+  console.log(`{{#if (has "deployment" "cloudflare")}}MIDDLEWARE{{else}}PROXY{{/if}} "${pathname}"`);
   {{/if}}
 
   {{#if (hasLibrary "evlog")}}

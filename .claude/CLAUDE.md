@@ -95,7 +95,7 @@ Single source of truth for all stacks, libraries, and project addons:
 
 ### types/ctx.ts
 - `AppContext`: `{ appName, stackName, libraries }`
-- `ProjectContext`: `{ database?, orm?, linter?, tooling[] }`
+- `ProjectContext`: `{ database?, orm?, deployment?, linter?, tooling[] }`
 - `TemplateContext`: Full context with projectName, repo, apps[], project, git, pm, blueprint?
 - `PackageManager`: `'bun' | 'npm' | 'pnpm' | undefined`
 
@@ -137,6 +137,7 @@ Summary and CLI command generation:
 - Scans templates with fast-glob
 - `resolveAddonDestination()`: Path resolution using frontmatter + META mono config
 - `parseStackSuffix()`: Detects `file.ext.{stack}.hbs` naming convention
+- `applyDeploymentPath()`: Generic frontmatter `deploymentPath` override (e.g. Next.js proxy.ts → middleware.ts on Cloudflare)
 - Maps source → destination paths (app/pkg/root scope)
 
 ### lib/frontmatter.ts
@@ -271,8 +272,15 @@ mono:
   scope: app | pkg | root     # Monorepo scope (overrides META)
   path: schema.ts             # Monorepo path (relative to scope)
 only: mono | single           # Repo type filter
+deploymentPath:               # Output path override keyed by deployment platform
+  cloudflare: src/middleware.ts
 ---
 ```
+
+#### `deploymentPath` (deployment-specific output path)
+`deploymentPath` is a generic map of `{ <deployment platform>: <relative path> }`. When `ctx.project.deployment` matches a key, that path replaces the file's default output path (applied by `applyDeploymentPath()` in `template-resolver.ts`, honored for **stack templates**). The replacement is the pre-scope relative path, so monorepo scoping still prepends `apps/{appName}/`.
+
+**Why it exists** — `templates/stack/nextjs/src/proxy.ts.hbs` declares `deploymentPath.cloudflare: src/middleware.ts`. Next.js 16's `proxy.ts` convention runs middleware on the **Node.js runtime**, which OpenNext (Cloudflare) does not support (`ERROR Node.js middleware is not currently supported`). The legacy `middleware.ts` convention compiles to the **Edge runtime** that OpenNext supports. So a Next.js app deployed to Cloudflare emits `src/middleware.ts` instead of `src/proxy.ts` (the template also renders the exported function name + log label as `middleware`/`MIDDLEWARE` vs `proxy`/`PROXY` via `{{#if (has "deployment" "cloudflare")}}`). Keep this declarative in frontmatter — do not special-case deployment/stack/filename in the core resolver.
 
 ### Scope Mapping
 - `app` → `apps/{appName}/` (turborepo) or root (single)
@@ -282,8 +290,9 @@ only: mono | single           # Repo type filter
 ### Path Resolution Algorithm
 1. Parse frontmatter (if present)
 2. Filter by `only` (skip if repo type doesn't match)
-3. Single repo: use `frontmatter.path` or file-based path
-4. Monorepo: use `frontmatter.mono.scope` or META `mono.scope` or default `app`
+3. Apply `deploymentPath` override if `ctx.project.deployment` matches a key (stack templates)
+4. Single repo: use `frontmatter.path` or file-based path
+5. Monorepo: use `frontmatter.mono.scope` or META `mono.scope` or default `app`
    - `app` → `apps/{appName}/`
    - `pkg` → `packages/{META.mono.name}/`
    - `root` → project root

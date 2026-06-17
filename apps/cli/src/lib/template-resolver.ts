@@ -15,6 +15,14 @@ export function scanTemplateFiles(dir: string): string[] {
 
 const VALID_STACKS = Object.keys(META.stacks);
 
+// A template can declare deployment-specific output paths via frontmatter `deploymentPath`.
+// When the active deployment platform has an entry, that path replaces the default one.
+function applyDeploymentPath(relativePath: string, frontmatter: TemplateFrontmatter, ctx: TemplateContext): string {
+  const { deployment } = ctx.project;
+  if (!deployment) return relativePath;
+  return frontmatter.deploymentPath?.[deployment] ?? relativePath;
+}
+
 export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
   const addon = META.project[category].options[addonName];
   if (addon?.compose) return addon.compose;
@@ -75,11 +83,11 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
 
   for (const file of files) {
     const source = join(stackDir, file);
-    const { only } = readFrontmatter(source);
+    const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
 
-    const transformedFilename = transformFilename(file);
-    const destination = resolveDestination({ relativePath: transformedFilename, ctx, appName });
+    const relativePath = applyDeploymentPath(transformFilename(file), frontmatter, ctx);
+    const destination = resolveDestination({ relativePath, ctx, appName });
     templates.push({ source, destination });
   }
 
@@ -250,6 +258,7 @@ export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] 
   }
   if (ctx.project.deployment) {
     templates.push(...resolveTemplatesForProjectAddon('deployment', ctx.project.deployment, ctx));
+    templates.push(...resolveStackSpecificAddonTemplatesForApps('deployment', ctx.project.deployment, ctx.apps, ctx));
   }
   if (ctx.project.linter) {
     const addonNames = resolveAddonNames('linter', ctx.project.linter);

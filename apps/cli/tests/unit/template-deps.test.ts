@@ -25,12 +25,22 @@ function collectAllDeclaredPackages(): Set<string> {
   for (const lib of Object.values(META.libraries)) {
     addDeps(lib.packageJson);
     if ('appPackageJson' in lib) addDeps(lib.appPackageJson as Record<string, unknown>);
+    if ('stackPackageJson' in lib && lib.stackPackageJson) {
+      for (const stackPkg of Object.values(lib.stackPackageJson)) {
+        addDeps(stackPkg as Record<string, unknown>);
+      }
+    }
   }
 
   for (const category of Object.values(META.project)) {
     for (const option of Object.values(category.options)) {
       addDeps(option.packageJson);
       if ('appPackageJson' in option) addDeps(option.appPackageJson as Record<string, unknown>);
+      if ('stackPackageJson' in option && option.stackPackageJson) {
+        for (const stackPkg of Object.values(option.stackPackageJson)) {
+          addDeps(stackPkg as Record<string, unknown>);
+        }
+      }
     }
   }
 

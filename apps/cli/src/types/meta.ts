@@ -58,6 +58,7 @@ export interface MetaAddon {
   require?: AddonRequire;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+  stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
@@ -101,6 +102,7 @@ export interface TemplateFrontmatter {
     path?: string;
   };
   only?: 'mono' | 'single' | 'no-blueprint';
+  deploymentPath?: Record<string, string>;
 }
 
 export interface MetaBlueprint {

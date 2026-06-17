@@ -1,0 +1,41 @@
+{{#if (eq stackName "nextjs")}}
+## Cloudflare Workers deploy (OpenNext)
+
+**Build & deploy**
+- `bun run build:cf` — Next.js build → OpenNext adapter build
+- `bun run preview` — local Wrangler preview of the built output
+- `bun run deploy` — deploy the built output to Cloudflare Workers
+- `bun run cf:typegen` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`
+
+**Local dev**: `bun run dev` runs `next dev` with `initOpenNextCloudflareForDev()` active (wired in `next.config.ts`), making Cloudflare bindings available through `wrangler.jsonc`.
+
+**Environment variables — two phases**
+
+1. **Build time** (`next build`): values from `.env` are inlined. `NEXT_PUBLIC_*` are frozen into client JS here.
+2. **Runtime** (the deployed Worker): `wrangler.jsonc` `vars` + secrets are the source of truth.
+
+**Where each kind of value lives**
+
+| Kind | Local | Production | Read via |
+|------|-------|------------|----------|
+| `NEXT_PUBLIC_*` | `.env` | `.env` at build / CI env | baked into client bundle |
+| Server config | `.env` or `wrangler.jsonc vars` | `wrangler.jsonc vars` | `process.env.X` |
+| Secret | `.env` (gitignored) | `wrangler secret put X` or `--secrets-file .prod.env` | `process.env.X` |
+| Binding (D1/R2/KV) | `wrangler.jsonc` + local persistence | `wrangler.jsonc` | `getCloudflareContext().env.X` **only** |
+
+**Key rules**
+- Bindings are never on `process.env` — always use `getCloudflareContext().env`.
+- Do NOT add `.dev.vars` — Wrangler ignores `.env` when `.dev.vars` is present.
+- Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
+- Use `.prod.env` (gitignored) for bulk secrets: `bun run deploy --secrets-file .prod.env`.
+
+**Adding bindings (D1, R2, KV)**: declare them in `wrangler.jsonc`, then read via `getCloudflareContext({ async: true }).env.BINDING_NAME`.
+{{else}}
+## Cloudflare Workers deploy (Wrangler)
+
+- `bun run deploy` — `wrangler deploy`
+- `bun run preview` — `wrangler dev` (local Wrangler)
+- `bun run cf-typegen` — regenerate `cloudflare-env.d.ts`
+
+Env vars are available on `c.env.MY_VAR` in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
+{{/if}}

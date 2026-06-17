@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
-  findDeployConflict,
   getProjectAddon,
   isCategoryValueAllowedByLibraries,
   isLibraryCompatible,
@@ -27,23 +26,6 @@ describe('isLibraryCompatible', () => {
   test('nativewind is only compatible with expo', () => {
     expect(isLibraryCompatible(META.libraries.nativewind, 'expo')).toBe(true);
     expect(isLibraryCompatible(META.libraries.nativewind, 'nextjs')).toBe(false);
-  });
-});
-
-describe('findDeployConflict', () => {
-  test('returns empty array when no Deploy library is selected', () => {
-    expect(findDeployConflict([])).toEqual([]);
-    expect(findDeployConflict(['evlog', 'vitest-node'])).toEqual([]);
-  });
-
-  test('returns empty array for a single Deploy library', () => {
-    expect(findDeployConflict(['aws-lambda', 'evlog'])).toEqual([]);
-    expect(findDeployConflict(['cloudflare'])).toEqual([]);
-  });
-
-  test('returns all Deploy libraries when more than one is selected', () => {
-    expect(findDeployConflict(['aws-lambda', 'cloudflare'])).toEqual(['aws-lambda', 'cloudflare']);
-    expect(findDeployConflict(['cloudflare', 'evlog', 'aws-lambda'])).toEqual(['cloudflare', 'aws-lambda']);
   });
 });
 

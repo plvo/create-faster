@@ -330,26 +330,10 @@ export const META: Meta = {
     },
     'aws-lambda': {
       label: 'AWS Lambda',
-      hint: 'Serverless deployment for Hono',
-      category: 'Deploy',
+      hint: 'Hono runtime adapter for AWS Lambda',
+      category: 'Runtime',
       support: { stacks: ['hono'] },
       packageJson: {},
-    },
-    cloudflare: {
-      label: 'Cloudflare Workers',
-      hint: 'Deploy to Cloudflare Workers with Wrangler',
-      category: 'Deploy',
-      support: { stacks: ['hono'] },
-      packageJson: {
-        devDependencies: {
-          wrangler: '^4.100.0',
-        },
-        scripts: {
-          deploy: 'wrangler deploy',
-          preview: 'wrangler dev',
-          'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
-        },
-      },
     },
     evlog: {
       label: 'evlog',
@@ -579,6 +563,35 @@ export const META: Meta = {
       prompt: 'Deployment platform?',
       selection: 'single',
       options: {
+        cloudflare: {
+          label: 'Cloudflare Workers',
+          hint: 'Deploy to Cloudflare Workers with Wrangler',
+          packageJson: {
+            devDependencies: {
+              wrangler: '^4.100.0',
+            },
+          },
+          stackPackageJson: {
+            hono: {
+              scripts: {
+                deploy: 'wrangler deploy',
+                preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+            nextjs: {
+              dependencies: {
+                '@opennextjs/cloudflare': '^1.19.0',
+              },
+              scripts: {
+                'build:cf': 'next build && opennextjs-cloudflare build',
+                preview: 'opennextjs-cloudflare preview',
+                deploy: 'opennextjs-cloudflare deploy',
+                'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+          },
+        },
         sst: {
           label: 'SST',
           hint: 'Deploy to AWS with SST Ion',
