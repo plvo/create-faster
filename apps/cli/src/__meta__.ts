@@ -494,6 +494,14 @@ export const META: Meta = {
           hint: 'Managed SQLite on Cloudflare, accessed via the DB binding',
           mono: { scope: 'root' },
           require: { deployment: ['cloudflare'] },
+          packageJson: {
+            scripts: {
+              'db:generate': 'drizzle-kit generate',
+              'db:migrate:local': 'wrangler d1 migrations apply DB --local',
+              'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
+              'local-setup': 'wrangler d1 migrations apply DB --local && bun run db:seed',
+            },
+          },
           envs: [
             {
               value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http, prod migrations)',

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 describe('D1 database option', () => {
   let tempDir: string;
@@ -93,6 +93,14 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(wrangler).toContain('"d1_databases"');
     expect(wrangler).toContain('"binding": "DB"');
     expect(wrangler).toContain('"migrations_dir": "drizzle"');
+  });
+
+  test('exposes the d1 migration workflow scripts', async () => {
+    const pkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
+    expect(pkg.scripts['db:migrate:local']).toContain('wrangler d1 migrations apply');
+    expect(pkg.scripts['db:migrate:local']).toContain('--local');
+    expect(pkg.scripts['db:migrate:remote']).toContain('--remote');
+    expect(pkg.scripts['local-setup']).toBeDefined();
   });
 });
 
