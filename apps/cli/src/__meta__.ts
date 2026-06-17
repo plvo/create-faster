@@ -592,6 +592,24 @@ export const META: Meta = {
             },
           },
         },
+        'cloudflare-static': {
+          label: 'Cloudflare Workers (static)',
+          hint: 'Deploy a Next.js static export to Cloudflare Workers assets',
+          packageJson: {
+            devDependencies: {
+              wrangler: '^4.100.0',
+            },
+          },
+          stackPackageJson: {
+            nextjs: {
+              scripts: {
+                deploy: 'next build && wrangler deploy',
+                preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+          },
+        },
         sst: {
           label: 'SST',
           hint: 'Deploy to AWS with SST Ion',

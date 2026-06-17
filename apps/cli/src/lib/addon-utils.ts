@@ -29,6 +29,19 @@ export function isCategoryValueAllowedByLibraries(
   return true;
 }
 
+export const CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES = ['better-auth', 'trpc'];
+
+export function isDeploymentValueAvailable(value: string, ctx: Partial<TemplateContext>): boolean {
+  if (value !== 'cloudflare-static') return true;
+
+  const apps = ctx.apps ?? [];
+  const hasNextjs = apps.some((app) => app.stackName === 'nextjs');
+  if (!hasNextjs) return false;
+
+  const selectedLibraries = apps.flatMap((app) => app.libraries);
+  return !selectedLibraries.some((lib) => CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES.includes(lib));
+}
+
 export function isRequirementMet(require: AddonRequire | undefined, ctx: TemplateContext): boolean {
   if (!require) return true;
 

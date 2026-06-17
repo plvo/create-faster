@@ -3,10 +3,40 @@ import { META } from '@/__meta__';
 import {
   getProjectAddon,
   isCategoryValueAllowedByLibraries,
+  isDeploymentValueAvailable,
   isLibraryCompatible,
   isRequirementMet,
 } from '@/lib/addon-utils';
 import type { TemplateContext } from '@/types/ctx';
+
+describe('isDeploymentValueAvailable: cloudflare-static', () => {
+  test('available when a nextjs app exists and no server-dependent library is selected', () => {
+    const ctx = { apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }] } as Partial<TemplateContext>;
+    expect(isDeploymentValueAvailable('cloudflare-static', ctx)).toBe(true);
+  });
+
+  test('unavailable when there is no nextjs app', () => {
+    const ctx = { apps: [{ appName: 'api', stackName: 'hono', libraries: [] }] } as Partial<TemplateContext>;
+    expect(isDeploymentValueAvailable('cloudflare-static', ctx)).toBe(false);
+  });
+
+  test('unavailable when a nextjs app uses better-auth', () => {
+    const ctx = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    } as Partial<TemplateContext>;
+    expect(isDeploymentValueAvailable('cloudflare-static', ctx)).toBe(false);
+  });
+
+  test('unavailable when a nextjs app uses trpc', () => {
+    const ctx = { apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc'] }] } as Partial<TemplateContext>;
+    expect(isDeploymentValueAvailable('cloudflare-static', ctx)).toBe(false);
+  });
+
+  test('other deployment values are always available', () => {
+    const ctx = { apps: [{ appName: 'api', stackName: 'hono', libraries: [] }] } as Partial<TemplateContext>;
+    expect(isDeploymentValueAvailable('cloudflare', ctx)).toBe(true);
+  });
+});
 
 describe('isLibraryCompatible', () => {
   test('shadcn is compatible with nextjs', () => {

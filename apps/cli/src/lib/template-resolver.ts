@@ -23,6 +23,13 @@ function applyDeploymentPath(relativePath: string, frontmatter: TemplateFrontmat
   return frontmatter.deploymentPath?.[deployment] ?? relativePath;
 }
 
+// A template can opt out of being generated for specific deployment platforms via frontmatter `deploymentSkip`.
+function isSkippedForDeployment(frontmatter: TemplateFrontmatter, ctx: TemplateContext): boolean {
+  const { deployment } = ctx.project;
+  if (!deployment) return false;
+  return frontmatter.deploymentSkip?.includes(deployment) ?? false;
+}
+
 export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
   const addon = META.project[category].options[addonName];
   if (addon?.compose) return addon.compose;
@@ -85,6 +92,7 @@ function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: Te
     const source = join(stackDir, file);
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
     const relativePath = applyDeploymentPath(transformFilename(file), frontmatter, ctx);
     const destination = resolveDestination({ relativePath, ctx, appName });

@@ -65,6 +65,12 @@ cloudflare-env.d.ts
 {{/if}}
 {{/if}}
 
+{{#if (has "deployment" "cloudflare-static")}}
+# Cloudflare
+.wrangler/
+cloudflare-env.d.ts
+{{/if}}
+
 # Misc
 .DS_Store
 *.pem

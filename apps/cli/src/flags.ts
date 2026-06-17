@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import { CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
@@ -266,6 +266,34 @@ function describeRequire(require: AddonRequire): string {
   return parts.join(', ');
 }
 
+interface ValidationError {
+  title: string;
+  messages: string[];
+}
+
+export function validateCloudflareStatic(apps: AppContext[]): ValidationError | undefined {
+  const hasNextjs = apps.some((app) => app.stackName === 'nextjs');
+  if (!hasNextjs) {
+    return {
+      title: "deployment 'cloudflare-static' requires a Next.js app",
+      messages: ['Static export is Next.js-only. Add an app with stack nextjs, e.g. --app web:nextjs'],
+    };
+  }
+
+  for (const app of apps) {
+    for (const libraryName of app.libraries) {
+      if (CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES.includes(libraryName)) {
+        return {
+          title: `deployment 'cloudflare-static' is incompatible with library '${libraryName}' on app '${app.appName}'`,
+          messages: [`'${libraryName}' needs a server runtime, which a static export does not provide`],
+        };
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function validateContext(partial: Partial<TemplateContext>): void {
   const project = partial.project ?? { tooling: [] };
 
@@ -318,6 +346,14 @@ function validateContext(partial: Partial<TemplateContext>): void {
   if (project.tooling?.includes('husky') && !project.linter) {
     printError('Husky requires a linter', 'Add --linter biome or --linter eslint');
     process.exit(1);
+  }
+
+  if (project.deployment === 'cloudflare-static') {
+    const error = validateCloudflareStatic(partial.apps ?? []);
+    if (error) {
+      printError(error.title, ...error.messages);
+      process.exit(1);
+    }
   }
 
   if (partial.apps && partial.apps.length > 1) {
