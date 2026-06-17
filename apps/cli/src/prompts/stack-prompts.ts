@@ -4,9 +4,9 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import {
   isCategoryValueAllowedByLibraries,
-  isDeploymentValueAvailable,
   isLibraryCompatible,
   isRequirementMet,
+  isServerRuntimeSatisfied,
 } from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
@@ -142,7 +142,7 @@ export async function promptProjectCategorySingle(
     ...Object.entries(category.options)
       .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
       .filter(([name]) => isCategoryValueAllowedByLibraries(categoryName, name, ctx))
-      .filter(([name]) => categoryName !== 'deployment' || isDeploymentValueAvailable(name, ctx))
+      .filter(([, addon]) => isServerRuntimeSatisfied(addon, ctx))
       .map(([name, addon]) => ({
         value: name,
         label: addon.label,

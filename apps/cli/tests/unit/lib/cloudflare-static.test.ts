@@ -1,10 +1,22 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
+import {
+  isCategoryValueAllowedByLibraries,
+  isRequirementMet,
+  isServerRuntimeSatisfied,
+} from '@/lib/addon-utils';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
 const destinations = (ctx: TemplateContext) => getAllTemplatesForContext(ctx).map((t) => t.destination);
+
+const visibleDeploymentOptions = (ctx: Partial<TemplateContext>): string[] =>
+  Object.entries(META.project.deployment.options)
+    .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
+    .filter(([name]) => isCategoryValueAllowedByLibraries('deployment', name, ctx))
+    .filter(([, addon]) => isServerRuntimeSatisfied(addon, ctx))
+    .map(([name]) => name);
 
 describe('cloudflare-static deployment option', () => {
   test('cloudflare-static is a deployment platform option', () => {
@@ -20,6 +32,36 @@ describe('cloudflare-static deployment option', () => {
   test('cloudflare-static is not root-scoped (generates per app)', () => {
     const option = META.project.deployment.options['cloudflare-static'];
     expect(option?.mono).toBeUndefined();
+  });
+});
+
+describe('interactive deployment prompt visibility', () => {
+  test('shows cloudflare-static when a nextjs app exists with no server-dependent library', () => {
+    const ctx = { apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }] } as Partial<TemplateContext>;
+    expect(visibleDeploymentOptions(ctx)).toContain('cloudflare-static');
+  });
+
+  test('hides cloudflare-static when no nextjs app exists', () => {
+    const ctx = { apps: [{ appName: 'api', stackName: 'hono', libraries: [] }] } as Partial<TemplateContext>;
+    expect(visibleDeploymentOptions(ctx)).not.toContain('cloudflare-static');
+  });
+
+  test('hides cloudflare-static when a nextjs app uses a server-dependent library', () => {
+    const ctxBetterAuth = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    } as Partial<TemplateContext>;
+    const ctxTrpc = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc'] }],
+    } as Partial<TemplateContext>;
+    expect(visibleDeploymentOptions(ctxBetterAuth)).not.toContain('cloudflare-static');
+    expect(visibleDeploymentOptions(ctxTrpc)).not.toContain('cloudflare-static');
+  });
+
+  test('keeps the server-runtime cloudflare option visible regardless of libraries', () => {
+    const ctx = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    } as Partial<TemplateContext>;
+    expect(visibleDeploymentOptions(ctx)).toContain('cloudflare');
   });
 });
 

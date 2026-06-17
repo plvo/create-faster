@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import { isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
@@ -263,35 +263,8 @@ function describeRequire(require: AddonRequire): string {
   if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
   if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
   if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
+  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
   return parts.join(', ');
-}
-
-interface ValidationError {
-  title: string;
-  messages: string[];
-}
-
-export function validateCloudflareStatic(apps: AppContext[]): ValidationError | undefined {
-  const hasNextjs = apps.some((app) => app.stackName === 'nextjs');
-  if (!hasNextjs) {
-    return {
-      title: "deployment 'cloudflare-static' requires a Next.js app",
-      messages: ['Static export is Next.js-only. Add an app with stack nextjs, e.g. --app web:nextjs'],
-    };
-  }
-
-  for (const app of apps) {
-    for (const libraryName of app.libraries) {
-      if (CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES.includes(libraryName)) {
-        return {
-          title: `deployment 'cloudflare-static' is incompatible with library '${libraryName}' on app '${app.appName}'`,
-          messages: [`'${libraryName}' needs a server runtime, which a static export does not provide`],
-        };
-      }
-    }
-  }
-
-  return undefined;
 }
 
 function validateContext(partial: Partial<TemplateContext>): void {
@@ -317,23 +290,24 @@ function validateContext(partial: Partial<TemplateContext>): void {
 
   for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
     const category = META.project[categoryName];
-    if (category.selection === 'single') {
-      const value = project[categoryName as keyof ProjectContext] as string | undefined;
-      if (value) {
-        const addon = category.options[value];
-        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
-          process.exit(1);
-        }
+    const selected = project[categoryName as keyof ProjectContext];
+    const values =
+      category.selection === 'single' ? (selected ? [selected as string] : []) : ((selected as string[]) ?? []);
+    for (const value of values) {
+      const addon = category.options[value];
+      if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
+        printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
+        process.exit(1);
       }
-    } else {
-      const values = (project[categoryName as keyof ProjectContext] as string[] | undefined) ?? [];
-      for (const value of values) {
-        const addon = category.options[value];
-        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
-          process.exit(1);
-        }
+      if (!isServerRuntimeSatisfied(addon, partial)) {
+        const blocking = (partial.apps ?? [])
+          .flatMap((app) => app.libraries)
+          .find((lib) => META.libraries[lib]?.needsServerRuntime);
+        printError(
+          `${categoryName} '${value}' is incompatible with library '${blocking}'`,
+          `'${blocking}' needs a server runtime, which '${value}' does not provide`,
+        );
+        process.exit(1);
       }
     }
   }
@@ -346,14 +320,6 @@ function validateContext(partial: Partial<TemplateContext>): void {
   if (project.tooling?.includes('husky') && !project.linter) {
     printError('Husky requires a linter', 'Add --linter biome or --linter eslint');
     process.exit(1);
-  }
-
-  if (project.deployment === 'cloudflare-static') {
-    const error = validateCloudflareStatic(partial.apps ?? []);
-    if (error) {
-      printError(error.title, ...error.messages);
-      process.exit(1);
-    }
   }
 
   if (partial.apps && partial.apps.length > 1) {

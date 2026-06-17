@@ -22,24 +22,18 @@ export function isCategoryValueAllowedByLibraries(
   const selectedLibraries = (ctx.apps ?? []).flatMap((app) => app.libraries);
   for (const libraryName of selectedLibraries) {
     const constraint = META.libraries[libraryName]?.require?.[categoryName as keyof AddonRequire];
-    if (Array.isArray(constraint) && !constraint.includes(value)) {
+    if (Array.isArray(constraint) && !(constraint as string[]).includes(value)) {
       return false;
     }
   }
   return true;
 }
 
-export const CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES = ['better-auth', 'trpc'];
+export function isServerRuntimeSatisfied(addon: MetaAddon | undefined, ctx: Partial<TemplateContext>): boolean {
+  if (addon?.providesServerRuntime !== false) return true;
 
-export function isDeploymentValueAvailable(value: string, ctx: Partial<TemplateContext>): boolean {
-  if (value !== 'cloudflare-static') return true;
-
-  const apps = ctx.apps ?? [];
-  const hasNextjs = apps.some((app) => app.stackName === 'nextjs');
-  if (!hasNextjs) return false;
-
-  const selectedLibraries = apps.flatMap((app) => app.libraries);
-  return !selectedLibraries.some((lib) => CLOUDFLARE_STATIC_INCOMPATIBLE_LIBRARIES.includes(lib));
+  const selectedLibraries = (ctx.apps ?? []).flatMap((app) => app.libraries);
+  return !selectedLibraries.some((lib) => META.libraries[lib]?.needsServerRuntime);
 }
 
 export function isRequirementMet(require: AddonRequire | undefined, ctx: TemplateContext): boolean {
@@ -69,6 +63,10 @@ export function isRequirementMet(require: AddonRequire | undefined, ctx: Templat
     if (!require.libraries.some((lib) => allLibraries.includes(lib))) {
       return false;
     }
+  }
+
+  if (require.stacks && !ctx.apps.some((app) => require.stacks?.includes(app.stackName))) {
+    return false;
   }
 
   return true;

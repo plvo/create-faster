@@ -204,6 +204,7 @@ export const META: Meta = {
       category: 'Auth',
       support: { stacks: ['nextjs'] },
       require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite'] },
+      needsServerRuntime: true,
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
@@ -240,6 +241,7 @@ export const META: Meta = {
       hint: 'End-to-end typesafe APIs',
       category: 'API',
       support: { stacks: ['nextjs'] },
+      needsServerRuntime: true,
       mono: { scope: 'pkg', name: 'api' },
       packageJson: {
         dependencies: {
@@ -595,6 +597,8 @@ export const META: Meta = {
         'cloudflare-static': {
           label: 'Cloudflare Workers (static)',
           hint: 'Deploy a Next.js static export to Cloudflare Workers assets',
+          require: { stacks: ['nextjs'] },
+          providesServerRuntime: false,
           packageJson: {
             devDependencies: {
               wrangler: '^4.100.0',
