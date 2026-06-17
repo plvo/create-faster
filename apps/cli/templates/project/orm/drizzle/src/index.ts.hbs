@@ -1,6 +1,19 @@
 ---
 path: src/lib/db/index.ts
 ---
+{{#if (has "database" "d1")}}
+import { drizzle } from 'drizzle-orm/d1';
+import * as schema from './schema';
+
+export function createDb(d1: D1Database) {
+  return drizzle(d1, { schema });
+}
+export type Database = ReturnType<typeof createDb>;
+
+export * from 'drizzle-orm';
+export * from './schema';
+export * from './types';
+{{else}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
 {{/if}}
@@ -78,3 +91,4 @@ export const db = new Proxy({} as ReturnType<typeof createDb>, {
 export * from 'drizzle-orm';
 export * from './schema';
 export * from './types';
+{{/if}}

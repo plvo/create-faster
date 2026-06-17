@@ -2,8 +2,44 @@
 mono:
   scope: pkg
 ---
+{{#if (has "database" "d1")}}
+import fs from 'node:fs';
+import path from 'node:path';
+{{/if}}
 import { defineConfig } from 'drizzle-kit';
 
+{{#if (has "database" "d1")}}
+const isProduction = process.env.NODE_ENV === 'production';
+
+function getLocalD1DB(): string | undefined {
+  const d1Dir = path.resolve(process.cwd(), '{{#if (isMono)}}../../{{/if}}.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+  if (!fs.existsSync(d1Dir)) return undefined;
+  const files = fs
+    .readdirSync(d1Dir)
+    .filter((f) => f.endsWith('.sqlite') && f !== 'metadata.sqlite')
+    .map((f) => ({ name: f, mtime: fs.statSync(path.join(d1Dir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  return files.length ? path.join(d1Dir, files[0]?.name ?? '') : undefined;
+}
+
+export default defineConfig({
+  schema: '{{#if (isMono)}}./src/schema.ts{{else}}./src/lib/db/schema.ts{{/if}}',
+  out: './drizzle',
+  dialect: 'sqlite',
+  ...(isProduction
+    ? {
+        driver: 'd1-http',
+        dbCredentials: {
+          accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+          databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID,
+          token: process.env.CLOUDFLARE_API_TOKEN,
+        },
+      }
+    : { dbCredentials: { url: getLocalD1DB() ?? '' } }),
+  verbose: true,
+  strict: true,
+});
+{{else}}
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
@@ -30,3 +66,4 @@ export default defineConfig({
   verbose: true,
   strict: true,
 });
+{{/if}}
