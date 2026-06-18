@@ -256,4 +256,22 @@ describe('getCategoryOptionUnavailability', () => {
     const reason = getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, honoOnly);
     expect(reason).toContain('nextjs');
   });
+
+  test('reports the require.deployment gap for d1 when the deployment is not cloudflare', () => {
+    const d1Option = META.project.database.options.d1;
+    expect(getCategoryOptionUnavailability('database', 'd1', d1Option, nextjsPlain)).toContain('deployment: cloudflare');
+    const sst: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [], deployment: 'sst' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'd1', d1Option, sst)).toContain('deployment: cloudflare');
+  });
+
+  test('d1 is available when the deployment is cloudflare', () => {
+    const cloudflareCtx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, cloudflareCtx)).toBeUndefined();
+  });
 });
