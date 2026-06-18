@@ -567,8 +567,12 @@ export const META: Meta = {
           mono: { scope: 'root' },
           require: { deployment: ['cloudflare'] },
           packageJson: {
+            devDependencies: {
+              '@libsql/client': '^0.17.3',
+            },
             scripts: {
               'db:generate': 'drizzle-kit generate',
+              'db:migrate': 'wrangler d1 migrations apply DB --local',
               'db:migrate:local': 'wrangler d1 migrations apply DB --local',
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
               'local-setup': 'wrangler d1 migrations apply DB --local && bun run db:seed',

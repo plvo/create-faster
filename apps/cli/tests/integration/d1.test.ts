@@ -106,6 +106,20 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(pkg.scripts['local-setup']).toBeDefined();
   });
 
+  test('db:migrate is the wrangler local apply (not the unusable drizzle-kit migrate)', async () => {
+    const pkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
+    expect(pkg.scripts['db:migrate']).toContain('wrangler d1 migrations apply');
+    expect(pkg.scripts['db:migrate']).not.toContain('drizzle-kit');
+  });
+
+  test('installs a sqlite client so drizzle-kit studio can read the local D1 file', async () => {
+    const pkg = await readJsonFile<{ devDependencies: Record<string, string>; scripts: Record<string, string> }>(
+      join(projectPath, 'package.json'),
+    );
+    expect(pkg.devDependencies['@libsql/client']).toBeDefined();
+    expect(pkg.scripts['db:studio']).toContain('drizzle-kit studio');
+  });
+
   test('seed.ts uses bun:sqlite + drizzle-orm/bun-sqlite instead of missing db singleton', async () => {
     const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
     expect(seed).toContain("from 'bun:sqlite'");
