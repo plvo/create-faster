@@ -36,6 +36,17 @@ export function isServerRuntimeSatisfied(addon: MetaAddon | undefined, ctx: Part
   return !selectedLibraries.some((lib) => META.libraries[lib]?.needsServerRuntime);
 }
 
+export function isSingletonDbSatisfied(addon: MetaAddon | undefined, ctx: Partial<TemplateContext>): boolean {
+  if (!addon?.serverlessBinding) return true;
+
+  const deployment = ctx.project?.deployment;
+  const deploymentAddon = deployment ? META.project.deployment.options[deployment] : undefined;
+  if (!deploymentAddon?.providesDbBindings) return true;
+
+  const selectedLibraries = (ctx.apps ?? []).flatMap((app) => app.libraries);
+  return !selectedLibraries.some((lib) => META.libraries[lib]?.needsSingletonDb);
+}
+
 export function isRequirementMet(require: AddonRequire | undefined, ctx: TemplateContext): boolean {
   if (!require) return true;
 
@@ -149,6 +160,18 @@ export function getCategoryOptionUnavailability(
       .flatMap((app) => app.libraries)
       .find((lib) => META.libraries[lib]?.needsServerRuntime);
     return blocking ? `needs a server runtime — ${blocking}` : 'needs a server runtime';
+  }
+
+  if (!isSingletonDbSatisfied(addon, ctx)) {
+    const deploymentLabel = ctx.project?.deployment
+      ? (META.project.deployment.options[ctx.project.deployment]?.label ?? ctx.project.deployment)
+      : 'this deployment';
+    const blocking = (ctx.apps ?? [])
+      .flatMap((app) => app.libraries)
+      .find((lib) => META.libraries[lib]?.needsSingletonDb);
+    return blocking
+      ? `not yet supported with ${blocking} on ${deploymentLabel} (per-request binding — see #153)`
+      : `not yet supported with the selected library on ${deploymentLabel}`;
   }
 
   return undefined;

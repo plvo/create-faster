@@ -205,6 +205,7 @@ export const META: Meta = {
       support: { stacks: ['nextjs'] },
       require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite'] },
       needsServerRuntime: true,
+      needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
@@ -242,6 +243,7 @@ export const META: Meta = {
       category: 'API',
       support: { stacks: ['nextjs'] },
       needsServerRuntime: true,
+      needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'api' },
       packageJson: {
         dependencies: {
@@ -441,6 +443,7 @@ export const META: Meta = {
         cloudflare: {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
+          providesDbBindings: true,
           packageJson: {
             devDependencies: {
               wrangler: '^4.100.0',
@@ -459,7 +462,8 @@ export const META: Meta = {
                 '@opennextjs/cloudflare': '^1.19.0',
               },
               scripts: {
-                'build:cf': 'next build && opennextjs-cloudflare build',
+                'build:cf':
+                  'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && next build && opennextjs-cloudflare build',
                 preview: 'opennextjs-cloudflare preview',
                 deploy: 'opennextjs-cloudflare deploy',
                 'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
@@ -512,12 +516,20 @@ export const META: Meta = {
           label: 'PostgreSQL',
           hint: 'Relational database',
           mono: { scope: 'root' },
+          serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
               pg: '^8.13.1',
             },
             devDependencies: {
               '@types/pg': '^8.11.10',
+            },
+          },
+          deploymentPackageJson: {
+            cloudflare: {
+              dependencies: {
+                'pg-cloudflare': '^1.4.0',
+              },
             },
           },
           envs: [
@@ -532,6 +544,7 @@ export const META: Meta = {
           label: 'MySQL',
           hint: 'Relational database',
           mono: { scope: 'root' },
+          serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
               mysql2: '^3.11.5',
@@ -566,6 +579,7 @@ export const META: Meta = {
           hint: 'Managed SQLite on Cloudflare, accessed via the DB binding',
           mono: { scope: 'root' },
           require: { deployment: ['cloudflare'] },
+          serverlessBinding: 'd1',
           packageJson: {
             devDependencies: {
               '@libsql/client': '^0.17.3',

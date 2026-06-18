@@ -29,7 +29,29 @@ if (!localPath) {
 
 const db = drizzle(new Database(localPath), { schema });
 {{else}}
+{{#if (and (or (has "database" "postgres") (has "database" "mysql")) (has "deployment" "cloudflare"))}}
+{{#if (has "database" "postgres")}}
+import { drizzle } from 'drizzle-orm/node-postgres';
+{{/if}}
+{{#if (has "database" "mysql")}}
+import { drizzle } from 'drizzle-orm/mysql2';
+{{/if}}
+import * as schema from {{#if (isMono)}}'@repo/db/schema'{{else}}'../src/lib/db/schema'{{/if}};
+import { postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+{{#if (has "database" "postgres")}}
+const db = drizzle({ schema, connection: { connectionString: process.env.DATABASE_URL } });
+{{/if}}
+{{#if (has "database" "mysql")}}
+const db = drizzle({ schema, mode: 'default', connection: process.env.DATABASE_URL });
+{{/if}}
+{{else}}
 import { db, postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+{{/if}}
 {{/if}}
 
 async function seed() {
