@@ -1,0 +1,64 @@
+---
+title: Cloudflare Workers (static)
+description: Deploy a Next.js static export to Cloudflare Workers static assets — no server runtime, no OpenNext.
+---
+
+<Stacks names="nextjs" />
+<Dependencies dev="wrangler" />
+
+[→ Static assets on Workers](https://developers.cloudflare.com/workers/static-assets/)
+
+## What create-faster adds
+
+Cloudflare Workers (static) is a project-level deployment platform for **Next.js only**. It builds a Next.js static export (`output: 'export'`) and serves the generated `out/` directory as Workers static assets — no server runtime, no OpenNext adapter. Selecting it with `--deployment cloudflare-static` configures every Next.js app for static export.
+
+Because a static export has no server runtime, this option is mutually exclusive with server-dependent libraries: `better-auth` and `trpc` are rejected, and the project must contain at least one Next.js app.
+
+### next.config.ts
+
+The Next.js config emits a static export and disables the Image Optimization API (which requires a server):
+
+```typescript title="next.config.ts"
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
+  // ...
+};
+```
+
+### wrangler.jsonc
+
+An assets-only Worker: it points `assets.directory` at the static export output and declares no `main` (there is no Worker script). This is Workers static assets, not Cloudflare Pages — there is no `pages_build_output_dir`.
+
+```jsonc title="wrangler.jsonc"
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-site",
+  "compatibility_date": "2026-06-12",
+  "assets": {
+    "directory": "out"
+  }
+}
+```
+
+**Scripts:**
+- `deploy` - Build the static export, then deploy it (`next build && wrangler deploy`)
+- `preview` - Serve the build locally on the Workers runtime (`wrangler dev`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+
+## Shared behavior
+
+The Worker `name` is the app name in turborepo mode and the project name in single mode.
+
+**Omitted files:**
+- The Next.js request interceptor (`proxy.ts` / `middleware.ts`) is not generated — a static export has no server to run it.
+
+**Modified files:**
+- `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`. The static export output `out/` is already ignored.
+
+**Turborepo mode:**
+`wrangler.jsonc` is placed in `apps/<name>/` and the Worker is named after the app. Run the scripts from the app directory.

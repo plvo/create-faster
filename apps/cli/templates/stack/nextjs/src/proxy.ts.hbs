@@ -1,6 +1,8 @@
 ---
 deploymentPath:
   cloudflare: src/middleware.ts
+deploymentSkip:
+  - cloudflare-static
 ---
 {{#if (hasLibrary "evlog")}}
 import type { NextRequest } from 'next/server';

@@ -158,14 +158,16 @@ Select a linter/formatter.
 
 Select a deployment platform. Generation is stack-aware per app: a Next.js app gets OpenNext config, a Hono app gets a Workers config.
 
-**Options**: `cloudflare`, `sst`, `terraform-aws`
+**Options**: `cloudflare`, `cloudflare-static`, `sst`, `terraform-aws`
+
+`cloudflare-static` builds a Next.js static export and serves `out/` as Workers static assets. It is Next.js-only and incompatible with server-dependent libraries (`better-auth`, `trpc`).
 
 **Example**:
 ```bash
 --deployment cloudflare
 ```
 
-See [Cloudflare Workers](/docs/deployment/cloudflare), [SST](/docs/deployment/sst), and [Terraform (AWS)](/docs/deployment/terraform-aws) for details.
+See [Cloudflare Workers](/docs/deployment/cloudflare), [Cloudflare Workers (static)](/docs/deployment/cloudflare-static), [SST](/docs/deployment/sst), and [Terraform (AWS)](/docs/deployment/terraform-aws) for details.
 
 ### `--tooling <name>`
 

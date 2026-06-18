@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import { isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
@@ -264,6 +264,7 @@ function describeRequire(require: AddonRequire): string {
   if (require.deployment) parts.push(`deployment: ${require.deployment.join(' or ')}`);
   if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
   if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
+  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
   return parts.join(', ');
 }
 
@@ -290,23 +291,24 @@ function validateContext(partial: Partial<TemplateContext>): void {
 
   for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
     const category = META.project[categoryName];
-    if (category.selection === 'single') {
-      const value = project[categoryName as keyof ProjectContext] as string | undefined;
-      if (value) {
-        const addon = category.options[value];
-        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
-          process.exit(1);
-        }
+    const selected = project[categoryName as keyof ProjectContext];
+    const values =
+      category.selection === 'single' ? (selected ? [selected as string] : []) : ((selected as string[]) ?? []);
+    for (const value of values) {
+      const addon = category.options[value];
+      if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
+        printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
+        process.exit(1);
       }
-    } else {
-      const values = (project[categoryName as keyof ProjectContext] as string[] | undefined) ?? [];
-      for (const value of values) {
-        const addon = category.options[value];
-        if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
-          printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
-          process.exit(1);
-        }
+      if (!isServerRuntimeSatisfied(addon, partial)) {
+        const blocking = (partial.apps ?? [])
+          .flatMap((app) => app.libraries)
+          .find((lib) => META.libraries[lib]?.needsServerRuntime);
+        printError(
+          `${categoryName} '${value}' is incompatible with library '${blocking}'`,
+          `'${blocking}' needs a server runtime, which '${value}' does not provide`,
+        );
+        process.exit(1);
       }
     }
   }
