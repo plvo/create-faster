@@ -107,3 +107,44 @@ export function applyAppScripts(
   }
   return next;
 }
+
+export function describeRequire(require: AddonRequire): string {
+  const parts: string[] = [];
+  if (require.git) parts.push('git');
+  if (require.linter) parts.push(Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter');
+  if (require.database) parts.push(`database: ${require.database.join(' or ')}`);
+  if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
+  if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
+  if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
+  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
+  return parts.join(', ');
+}
+
+export function getCategoryOptionUnavailability(
+  categoryName: ProjectCategoryName,
+  name: string,
+  addon: MetaAddon | undefined,
+  ctx: Partial<TemplateContext>,
+): string | undefined {
+  if (!addon) return undefined;
+
+  if (addon.require && !isRequirementMet(addon.require, ctx as TemplateContext)) {
+    return `requires ${describeRequire(addon.require)}`;
+  }
+
+  if (!isCategoryValueAllowedByLibraries(categoryName, name, ctx)) {
+    const blocking = (ctx.apps ?? [])
+      .flatMap((app) => app.libraries)
+      .find((lib) => Array.isArray(META.libraries[lib]?.require?.[categoryName as keyof AddonRequire]));
+    return blocking ? `incompatible with ${blocking}` : 'incompatible with a selected library';
+  }
+
+  if (!isServerRuntimeSatisfied(addon, ctx)) {
+    const blocking = (ctx.apps ?? [])
+      .flatMap((app) => app.libraries)
+      .find((lib) => META.libraries[lib]?.needsServerRuntime);
+    return blocking ? `needs a server runtime — ${blocking}` : 'needs a server runtime';
+  }
+
+  return undefined;
+}

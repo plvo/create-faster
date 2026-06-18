@@ -26,6 +26,7 @@ export const S_BAR_END_RIGHT = unicodeOr('┘', '—');
 
 export const S_RADIO_ACTIVE = unicodeOr('●', '>');
 export const S_RADIO_INACTIVE = unicodeOr('○', ' ');
+export const S_RADIO_DISABLED = unicodeOr('⊘', 'x');
 export const S_CHECKBOX_ACTIVE = unicodeOr('◻', '[•]');
 export const S_CHECKBOX_SELECTED = unicodeOr('◼', '[+]');
 export const S_CHECKBOX_INACTIVE = unicodeOr('◻', '[ ]');

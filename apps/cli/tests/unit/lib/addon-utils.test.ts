@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
+  getCategoryOptionUnavailability,
   getProjectAddon,
   isCategoryValueAllowedByLibraries,
   isLibraryCompatible,
@@ -205,5 +206,39 @@ describe('isCategoryValueAllowedByLibraries', () => {
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }],
     };
     expect(isCategoryValueAllowedByLibraries('database', 'sqlite', ctx)).toBe(true);
+  });
+});
+
+describe('getCategoryOptionUnavailability', () => {
+  const staticOption = META.project.deployment.options['cloudflare-static'];
+  const cloudflareOption = META.project.deployment.options.cloudflare;
+
+  const nextjsPlain: Partial<TemplateContext> = {
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+  };
+  const nextjsBetterAuth: Partial<TemplateContext> = {
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    project: { tooling: [] },
+  };
+  const honoOnly: Partial<TemplateContext> = {
+    apps: [{ appName: 'api', stackName: 'hono', libraries: [] }],
+    project: { tooling: [] },
+  };
+
+  test('returns undefined when the option is available', () => {
+    expect(getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, nextjsPlain)).toBeUndefined();
+    expect(getCategoryOptionUnavailability('deployment', 'cloudflare', cloudflareOption, nextjsBetterAuth)).toBeUndefined();
+  });
+
+  test('reports the server-runtime conflict naming the blocking library', () => {
+    const reason = getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, nextjsBetterAuth);
+    expect(reason).toContain('server runtime');
+    expect(reason).toContain('better-auth');
+  });
+
+  test('reports the require.stacks gap when no listed stack is present', () => {
+    const reason = getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, honoOnly);
+    expect(reason).toContain('nextjs');
   });
 });
