@@ -80,6 +80,11 @@ describe('SQLite database option', () => {
     expect(gitignore).toContain('*.sqlite');
 
     expectNoServerDriverDeps(await readJsonFile<PackageJson>(join(projectDir, 'package.json')));
+
+    const seed = await readTextFile(join(projectDir, 'scripts/seed.ts'));
+    expect(seed).toContain("import { db, postTable, userTable }");
+    expect(seed).toContain("from '../src/lib/db'");
+    expect(seed).not.toContain("bun:sqlite");
   });
 
   test('generates turborepo with sqlite + drizzle', async () => {

@@ -105,6 +105,15 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(pkg.scripts['db:migrate:remote']).toContain('--remote');
     expect(pkg.scripts['local-setup']).toBeDefined();
   });
+
+  test('seed.ts uses bun:sqlite + drizzle-orm/bun-sqlite instead of missing db singleton', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).toContain("from 'bun:sqlite'");
+    expect(seed).toContain("from 'drizzle-orm/bun-sqlite'");
+    expect(seed).toContain('getLocalD1DB');
+    expect(seed).not.toContain("import { db,");
+    expect(seed).not.toContain("import { db }");
+  });
 });
 
 describe('Single repo: Hono + cloudflare + d1', () => {
