@@ -73,4 +73,21 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
     expect(rendered).not.toContain('initOpenNextCloudflareForDev');
     expect(rendered).not.toContain('@opennextjs/cloudflare');
   });
+
+  test('emits static export config when deploying to cloudflare-static', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
+    expect(rendered).toContain("output: 'export'");
+    expect(rendered).toContain('unoptimized: true');
+  });
+
+  test('does NOT pull in OpenNext when deploying to cloudflare-static', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
+    expect(rendered).not.toContain('initOpenNextCloudflareForDev');
+    expect(rendered).not.toContain('@opennextjs/cloudflare');
+  });
+
+  test('does NOT emit static export config for the OpenNext cloudflare deployment', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare'));
+    expect(rendered).not.toContain("output: 'export'");
+  });
 });

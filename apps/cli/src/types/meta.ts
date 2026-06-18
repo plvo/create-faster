@@ -23,6 +23,7 @@ export interface AddonRequire {
   orm?: string[];
   tooling?: string[];
   libraries?: string[];
+  stacks?: StackName[];
 }
 
 export interface PackageJsonConfig {
@@ -56,6 +57,10 @@ export interface MetaAddon {
   compose?: string[];
   support?: AddonSupport;
   require?: AddonRequire;
+  /** Library that cannot run without a server runtime (e.g. better-auth, trpc). */
+  needsServerRuntime?: boolean;
+  /** Deployment that runs on a server runtime. Defaults to true; set false for static-only targets. */
+  providesServerRuntime?: boolean;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
   stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
@@ -103,6 +108,7 @@ export interface TemplateFrontmatter {
   };
   only?: 'mono' | 'single' | 'no-blueprint';
   deploymentPath?: Record<string, string>;
+  deploymentSkip?: string[];
 }
 
 export interface MetaBlueprint {

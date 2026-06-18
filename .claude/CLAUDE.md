@@ -102,7 +102,8 @@ Single source of truth for all stacks, libraries, and project addons:
 - `META.blueprints`: Pre-composed project templates with preset context, deps, and envs
 - Addons declare `packageJson` for dependencies and `envs` for environment variables
 - Category-level `require` (e.g., orm requires database)
-- Addon-level `require` (e.g., husky requires git, better-auth requires orm)
+- Addon-level `require` (e.g., husky requires git, better-auth requires orm); `require.stacks` requires at least one app on a listed stack (e.g. `cloudflare-static` requires a nextjs app)
+- Server-runtime capability: a library declares `needsServerRuntime: true` (e.g. better-auth, trpc); a deployment declares `providesServerRuntime: false` for static-only targets. Read generically by `isServerRuntimeSatisfied` — a server-less deployment is unavailable when any selected library needs a runtime
 
 ### types/meta.ts
 - `StackName`: `'nextjs' | 'expo' | 'hono' | 'tanstack-start'`

@@ -39,6 +39,7 @@
     "linter/prettier",
     "---DEPLOYMENT---",
     "deployment/cloudflare",
+    "deployment/cloudflare-static",
     "deployment/sst",
     "deployment/terraform-aws",
     "---EXTRAS---",

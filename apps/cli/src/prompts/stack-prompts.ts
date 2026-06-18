@@ -2,7 +2,12 @@ import { isCancel, SelectPrompt } from '@clack/core';
 import { groupMultiselect, type Option, select } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isCategoryValueAllowedByLibraries, isLibraryCompatible, isRequirementMet } from '@/lib/addon-utils';
+import {
+  isCategoryValueAllowedByLibraries,
+  isLibraryCompatible,
+  isRequirementMet,
+  isServerRuntimeSatisfied,
+} from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
@@ -137,6 +142,7 @@ export async function promptProjectCategorySingle(
     ...Object.entries(category.options)
       .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
       .filter(([name]) => isCategoryValueAllowedByLibraries(categoryName, name, ctx))
+      .filter(([, addon]) => isServerRuntimeSatisfied(addon, ctx))
       .map(([name, addon]) => ({
         value: name,
         label: addon.label,

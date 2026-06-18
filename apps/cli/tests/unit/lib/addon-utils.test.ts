@@ -5,8 +5,54 @@ import {
   isCategoryValueAllowedByLibraries,
   isLibraryCompatible,
   isRequirementMet,
+  isServerRuntimeSatisfied,
 } from '@/lib/addon-utils';
 import type { TemplateContext } from '@/types/ctx';
+
+describe('cloudflare-static declares its availability as META data', () => {
+  const option = META.project.deployment.options['cloudflare-static'];
+
+  test('requires a nextjs app via require.stacks', () => {
+    expect(option?.require?.stacks).toEqual(['nextjs']);
+  });
+
+  test('declares it provides no server runtime', () => {
+    expect(option?.providesServerRuntime).toBe(false);
+  });
+
+  test('server-dependent libraries declare needsServerRuntime', () => {
+    expect(META.libraries['better-auth']?.needsServerRuntime).toBe(true);
+    expect(META.libraries.trpc?.needsServerRuntime).toBe(true);
+  });
+});
+
+describe('isServerRuntimeSatisfied', () => {
+  const staticOption = META.project.deployment.options['cloudflare-static'];
+  const serverOption = META.project.deployment.options.cloudflare;
+
+  test('satisfied when the option provides a server runtime regardless of libraries', () => {
+    const ctx = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    } as Partial<TemplateContext>;
+    expect(isServerRuntimeSatisfied(serverOption, ctx)).toBe(true);
+  });
+
+  test('satisfied for a server-less option when no library needs a runtime', () => {
+    const ctx = { apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }] } as Partial<TemplateContext>;
+    expect(isServerRuntimeSatisfied(staticOption, ctx)).toBe(true);
+  });
+
+  test('not satisfied for a server-less option when a library needs a runtime', () => {
+    const ctxBetterAuth = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    } as Partial<TemplateContext>;
+    const ctxTrpc = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc'] }],
+    } as Partial<TemplateContext>;
+    expect(isServerRuntimeSatisfied(staticOption, ctxBetterAuth)).toBe(false);
+    expect(isServerRuntimeSatisfied(staticOption, ctxTrpc)).toBe(false);
+  });
+});
 
 describe('isLibraryCompatible', () => {
   test('shadcn is compatible with nextjs', () => {
@@ -109,6 +155,13 @@ describe('isRequirementMet', () => {
 
   test('linter: true fails when no linter is selected', () => {
     expect(isRequirementMet({ linter: true }, baseCtx)).toBe(false);
+  });
+
+  test('stacks requirement is satisfied when any app uses a listed stack', () => {
+    const ctxNextjs = { ...baseCtx, apps: [{ appName: 'web', stackName: 'nextjs' as const, libraries: [] }] };
+    const ctxHono = { ...baseCtx, apps: [{ appName: 'api', stackName: 'hono' as const, libraries: [] }] };
+    expect(isRequirementMet({ stacks: ['nextjs'] }, ctxNextjs)).toBe(true);
+    expect(isRequirementMet({ stacks: ['nextjs'] }, ctxHono)).toBe(false);
   });
 
   test('linter: string[] is satisfied when the exact linter matches', () => {
