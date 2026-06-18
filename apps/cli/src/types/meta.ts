@@ -62,8 +62,16 @@ export interface MetaAddon {
   needsServerRuntime?: boolean;
   /** Deployment that runs on a server runtime. Defaults to true; set false for static-only targets. */
   providesServerRuntime?: boolean;
+  /** Database accessed per-request through a Cloudflare binding (no module singleton) on a binding-providing deployment. */
+  serverlessBinding?: string;
+  /** Deployment that exposes databases as per-request bindings (e.g. Cloudflare D1/Hyperdrive). */
+  providesDbBindings?: boolean;
+  /** Library that consumes a module-singleton `db` and cannot use a per-request binding database yet. */
+  needsSingletonDb?: boolean;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
+  /** Package.json contribution applied when `ctx.project.deployment` matches the key. */
+  deploymentPackageJson?: Record<string, PackageJsonConfig>;
   stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];

@@ -7,6 +7,7 @@ import {
   isLibraryCompatible,
   isRequirementMet,
   isServerRuntimeSatisfied,
+  isSingletonDbSatisfied,
 } from '@/lib/addon-utils';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -273,5 +274,55 @@ describe('getCategoryOptionUnavailability', () => {
       project: { tooling: [], deployment: 'cloudflare' },
     };
     expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, cloudflareCtx)).toBeUndefined();
+  });
+
+  test('postgres on cloudflare is disabled with a singleton-db consumer, naming it and #153', () => {
+    const ctx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+    };
+    const reason = getCategoryOptionUnavailability('database', 'postgres', META.project.database.options.postgres, ctx);
+    expect(reason).toContain('better-auth');
+    expect(reason).toContain('153');
+  });
+
+  test('mysql on cloudflare is disabled when trpc is selected', () => {
+    const ctx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['trpc'] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'mysql', META.project.database.options.mysql, ctx)).toContain('trpc');
+  });
+
+  test('postgres + better-auth stays available off Cloudflare (singleton db works)', () => {
+    const ctx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { tooling: [] },
+    };
+    expect(getCategoryOptionUnavailability('database', 'postgres', META.project.database.options.postgres, ctx)).toBeUndefined();
+  });
+});
+
+describe('isSingletonDbSatisfied', () => {
+  const withLibsAndDeployment = (libraries: string[], deployment?: string): Partial<TemplateContext> => ({
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries }],
+    project: { tooling: [], ...(deployment ? { deployment } : {}) },
+  });
+
+  test('databases declare a serverlessBinding; cloudflare provides db bindings; consumers need a singleton', () => {
+    expect(META.project.database.options.postgres?.serverlessBinding).toBe('hyperdrive');
+    expect(META.project.database.options.mysql?.serverlessBinding).toBe('hyperdrive');
+    expect(META.project.database.options.d1?.serverlessBinding).toBe('d1');
+    expect(META.project.deployment.options.cloudflare?.providesDbBindings).toBe(true);
+    expect(META.libraries['better-auth']?.needsSingletonDb).toBe(true);
+    expect(META.libraries.trpc?.needsSingletonDb).toBe(true);
+  });
+
+  test('false only when a binding-based db meets a binding-providing deployment and a singleton consumer', () => {
+    const pg = META.project.database.options.postgres;
+    expect(isSingletonDbSatisfied(pg, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(false);
+    expect(isSingletonDbSatisfied(pg, withLibsAndDeployment(['better-auth']))).toBe(true);
+    expect(isSingletonDbSatisfied(pg, withLibsAndDeployment([], 'cloudflare'))).toBe(true);
+    expect(isSingletonDbSatisfied(META.project.database.options.sqlite, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(true);
   });
 });

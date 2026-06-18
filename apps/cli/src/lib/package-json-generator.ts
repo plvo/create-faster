@@ -55,6 +55,10 @@ function getMonoPackageName(addon: MetaAddon): string | null {
   return addon.mono?.scope === 'pkg' ? addon.mono.name : null;
 }
 
+function deploymentPackageJson(addon: MetaAddon, ctx: TemplateContext): PackageJsonConfig | undefined {
+  return ctx.project.deployment ? addon.deploymentPackageJson?.[ctx.project.deployment] : undefined;
+}
+
 function addRepoRef(
   config: PackageJsonConfig,
   addon: MetaAddon,
@@ -119,7 +123,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   if (ctx.project.database && !isTurborepo) {
     const dbAddon = META.project.database.options[ctx.project.database];
     if (dbAddon) {
-      merged = mergeResolved(ctx, merged, dbAddon.packageJson);
+      merged = mergeResolved(ctx, merged, dbAddon.packageJson, deploymentPackageJson(dbAddon, ctx));
     }
   }
 
@@ -372,8 +376,9 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
 
         if (ctx.project.database) {
           const dbAddon = META.project.database.options[ctx.project.database];
-          if (dbAddon?.packageJson) {
-            config = mergePackageJsonConfigs(config, dbAddon.packageJson);
+          if (dbAddon) {
+            const dbDeployment = deploymentPackageJson(dbAddon, ctx);
+            config = mergePackageJsonConfigs(config, dbAddon.packageJson, dbDeployment);
           }
         }
 

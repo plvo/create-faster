@@ -30,6 +30,15 @@
 - Use `.prod.env` (gitignored) for bulk secrets: `bun run deploy --secrets-file .prod.env`.
 
 **Adding bindings (D1, R2, KV)**: declare them in `wrangler.jsonc`, then read via `getCloudflareContext({ async: true }).env.BINDING_NAME`.
+{{#if (or (has "database" "postgres") (has "database" "mysql"))}}
+
+**Database — Hyperdrive**: the Workers runtime cannot open a raw TCP connection to {{#if (has "database" "postgres")}}Postgres{{/if}}{{#if (has "database" "mysql")}}MySQL{{/if}}, and forbids reusing a connection across requests. The DB goes through the Cloudflare **Hyperdrive** binding (a pooling proxy), so the `db` package exports a per-request `createDb(hyperdrive)` factory — there is no module-level `db` singleton.
+
+- Build resolves the driver's `cloudflare:sockets` transport ({{#if (has "database" "postgres")}}`pg-cloudflare`{{/if}}{{#if (has "database" "mysql")}}`mysql2` with `disableEval: true`{{/if}}); the connection itself is created per request via `createDb((await getEnv()).HYPERDRIVE)`.
+- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by `wrangler dev`/local only and matches your local `DATABASE_URL`.
+- **Migrations** run on Node (not the Worker) via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
+- better-auth / tRPC over this binding (per-request consumers) is not wired yet — see #153.
+{{/if}}
 {{else}}
 ## Cloudflare Workers deploy (Wrangler)
 

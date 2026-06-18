@@ -16,5 +16,14 @@
       "database_id": "REPLACE_WITH_D1_DATABASE_ID",
       "migrations_dir": "drizzle"
     }
+  ]{{/if}}{{#if (or (has "database" "postgres") (has "database" "mysql"))}},
+  // Run `wrangler hyperdrive create <name> --connection-string=...` and paste the id below.
+  // localConnectionString is used by `wrangler dev` only; it matches the local DATABASE_URL in .env.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID",
+      "localConnectionString": "{{#if (has "database" "postgres")}}postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}{{/if}}{{#if (has "database" "mysql")}}mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}{{/if}}"
+    }
   ]{{/if}}
 }

@@ -200,7 +200,7 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1', () => {
   });
 });
 
-describe('Single repo: cloudflare + postgres (no d1 bindings)', () => {
+describe('Single repo: cloudflare + postgres (Hyperdrive binding)', () => {
   let tempDir: string;
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -209,12 +209,14 @@ describe('Single repo: cloudflare + postgres (no d1 bindings)', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('does not emit env.ts for cloudflare + postgres (no bindings/secrets)', async () => {
+  test('emits env.ts typing the HYPERDRIVE binding for cloudflare + postgres', async () => {
     const r = await runCli(
       ['cf-pg', '--app', 'web:nextjs', '--database', 'postgres', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(r.exitCode).toBe(0);
-    expect(await fileExists(join(tempDir, 'cf-pg', 'src/lib/env.ts'))).toBe(false);
+    expect(await fileExists(join(tempDir, 'cf-pg', 'src/lib/env.ts'))).toBe(true);
+    const env = await readTextFile(join(tempDir, 'cf-pg', 'src/lib/env.ts'));
+    expect(env).toContain('HYPERDRIVE: Hyperdrive');
   });
 });
