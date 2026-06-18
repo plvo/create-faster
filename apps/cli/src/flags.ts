@@ -1,10 +1,10 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
+import { describeRequire, isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
+import type { ProjectCategoryName, StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
@@ -304,10 +304,14 @@ function validateContext(partial: Partial<TemplateContext>): void {
         const blocking = (partial.apps ?? [])
           .flatMap((app) => app.libraries)
           .find((lib) => META.libraries[lib]?.needsServerRuntime);
-        printError(
-          `${categoryName} '${value}' is incompatible with library '${blocking}'`,
-          `'${blocking}' needs a server runtime, which '${value}' does not provide`,
-        );
+        if (blocking) {
+          printError(
+            `${categoryName} '${value}' is incompatible with library '${blocking}'`,
+            `'${blocking}' needs a server runtime, which '${value}' does not provide`,
+          );
+        } else {
+          printError(`${categoryName} '${value}' needs a server runtime`);
+        }
         process.exit(1);
       }
     }
