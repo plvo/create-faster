@@ -64,7 +64,41 @@ const env = await getEnv();
 const db = createDb(env.DB);
 ```
 
-> **Note:** Wiring `createDb(...)` into your routes, Server Components, or Route Handlers is your responsibility. No generated file calls it automatically — ready-made consumers (auth, tRPC, etc.) will be provided by the cloudflare-fullstack blueprint (#134).
+**`src/lib/server.ts` (Next.js only) — per-request `getDb`/`getAuth`:**
+
+When the app also selects an ORM (and optionally Better Auth), create-faster generates an app-side accessor that composes the binding into ready-to-use per-request instances:
+
+```ts
+import 'server-only';
+import { createDb } from '@/lib/db';
+import { createAuth } from '@/lib/auth/auth';
+import { getEnv } from '@/lib/env';
+
+export async function getDb() {
+  return createDb((await getEnv()).DB);
+}
+
+export async function getAuth() {
+  return createAuth(await getDb());
+}
+```
+
+## Better Auth & tRPC on D1
+
+Because D1 has no module-level `db` singleton, Better Auth and tRPC are wired **per request** instead of importing a singleton:
+
+- **Better Auth** (`auth.ts`) exports a `createAuth(db: Database)` factory (with the shared config) instead of `export const auth`. The auth route handler resolves it per request via `await getAuth()`.
+- **tRPC** (`init.ts` / `packages/api/src/trpc.ts`) takes the `db` in its context and builds `auth = createAuth(db)` inside `createTRPCContext`. The Server Component caller and the route handler supply it with `db: await getDb()`.
+
+This is fully supported in both single-repo and turborepo modes:
+
+```bash
+bunx create-faster myapp \
+  --app web:nextjs:trpc,better-auth \
+  --database d1 \
+  --orm drizzle \
+  --deployment cloudflare
+```
 
 **`drizzle.config.ts` — sqlite dialect with d1-http prod branch:**
 

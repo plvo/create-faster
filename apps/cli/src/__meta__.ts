@@ -203,7 +203,7 @@ export const META: Meta = {
       hint: 'The most comprehensive authentication framework for TypeScript',
       category: 'Auth',
       support: { stacks: ['nextjs'] },
-      require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite'] },
+      require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite', 'd1'] },
       needsServerRuntime: true,
       needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'auth' },
@@ -580,6 +580,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           require: { deployment: ['cloudflare'] },
           serverlessBinding: 'd1',
+          serverlessConsumersWired: true,
           packageJson: {
             devDependencies: {
               '@libsql/client': '^0.17.3',

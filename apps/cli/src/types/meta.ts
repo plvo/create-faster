@@ -64,6 +64,8 @@ export interface MetaAddon {
   providesServerRuntime?: boolean;
   /** Database accessed per-request through a Cloudflare binding (no module singleton) on a binding-providing deployment. */
   serverlessBinding?: string;
+  /** Binding database whose server-side consumers (better-auth/trpc) are wired per-request, so it no longer needs a singleton. */
+  serverlessConsumersWired?: boolean;
   /** Deployment that exposes databases as per-request bindings (e.g. Cloudflare D1/Hyperdrive). */
   providesDbBindings?: boolean;
   /** Library that consumes a module-singleton `db` and cannot use a per-request binding database yet. */

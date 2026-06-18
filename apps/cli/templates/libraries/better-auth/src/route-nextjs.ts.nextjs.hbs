@@ -3,7 +3,9 @@ only: mono
 mono:
   scope: pkg
 ---
+{{#unless (has "database" "d1")}}
 import { toNextJsHandler } from 'better-auth/next-js';
 import { auth } from './auth';
 
 export const { GET, POST } = toNextJsHandler(auth.handler);
+{{/unless}}

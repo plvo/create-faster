@@ -2,6 +2,16 @@
 mono:
   scope: app
 ---
+{{#if (has "database" "d1")}}
+import { getAuth } from '@/lib/server';
+
+async function handler(request: Request) {
+  const auth = await getAuth();
+  return auth.handler(request);
+}
+
+export { handler as GET, handler as POST };
+{{else}}
 {{#if (eq repo "single")}}
 import { toNextJsHandler } from 'better-auth/next-js';
 import { auth } from '@/lib/auth/auth';
@@ -9,4 +19,5 @@ import { auth } from '@/lib/auth/auth';
 export const { GET, POST } = toNextJsHandler(auth.handler);
 {{else}}
 export { GET, POST } from '@repo/auth/route-nextjs';
+{{/if}}
 {{/if}}

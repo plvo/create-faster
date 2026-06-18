@@ -38,6 +38,7 @@ export function isServerRuntimeSatisfied(addon: MetaAddon | undefined, ctx: Part
 
 export function isSingletonDbSatisfied(addon: MetaAddon | undefined, ctx: Partial<TemplateContext>): boolean {
   if (!addon?.serverlessBinding) return true;
+  if (addon.serverlessConsumersWired) return true;
 
   const deployment = ctx.project?.deployment;
   const deploymentAddon = deployment ? META.project.deployment.options[deployment] : undefined;

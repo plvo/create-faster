@@ -18,8 +18,14 @@ import { makeQueryClient } from '@/trpc/query-client';
 import { headers } from 'next/headers';
 import { appRouter, createTRPCContext } from '@repo/api';
 {{else}}
+{{#if (and (has "database" "d1") (hasLibrary "better-auth"))}}
+import { headers } from 'next/headers';
+{{/if}}
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
+{{/if}}
+{{#if (and (has "database" "d1") project.orm)}}
+import { getDb } from '@/lib/server';
 {{/if}}
 
 // IMPORTANT: Create a stable getter for the query client that
@@ -27,10 +33,14 @@ import { createTRPCContext } from '@/trpc/init';
 const getQueryClient = cache(makeQueryClient);
 
 export const trpc = createTRPCOptionsProxy({
+{{#if (and (has "database" "d1") project.orm)}}
+  ctx: async () => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+{{else}}
 {{#if (isMono)}}
   ctx: async () => createTRPCContext({ headers: await headers() }),
 {{else}}
   ctx: createTRPCContext,
+{{/if}}
 {{/if}}
   router: appRouter,
   queryClient: getQueryClient,
@@ -53,6 +63,23 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptio
   }
 }
 {{else}}
+{{#if (and (has "database" "d1") project.orm)}}
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+import { appRouter, createTRPCContext } from '@repo/api';
+{{else}}
+{{#if (hasLibrary "better-auth")}}
+import { headers } from 'next/headers';
+{{/if}}
+import { appRouter } from '@/trpc/routers/_app';
+import { createTRPCContext } from '@/trpc/init';
+{{/if}}
+import { getDb } from '@/lib/server';
+
+export const trpc = appRouter.createCaller(async () =>
+  createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+);
+{{else}}
 {{#if (isMono)}}
 import { headers } from 'next/headers';
 import { appRouter, createTRPCContext } from '@repo/api';
@@ -65,5 +92,6 @@ import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 
 export const trpc = appRouter.createCaller(createTRPCContext);
+{{/if}}
 {{/if}}
 {{/if}}
