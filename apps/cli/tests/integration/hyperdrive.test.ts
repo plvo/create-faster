@@ -148,6 +148,12 @@ describe('Single repo: Next.js + cloudflare + mysql', () => {
     expect(wrangler).toContain('"hyperdrive"');
     expect(wrangler).toContain('"binding": "HYPERDRIVE"');
   });
+
+  test('seed.ts avoids .returning() (unsupported by the mysql driver)', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).not.toContain('.returning()');
+    expect(seed).toContain('crypto.randomUUID()');
+  });
 });
 
 describe('Turborepo: Next.js + cloudflare + postgres', () => {
