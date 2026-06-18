@@ -125,8 +125,8 @@ export function getCategoryOptionUnavailability(
   name: string,
   addon: MetaAddon | undefined,
   ctx: Partial<TemplateContext>,
-): string | null {
-  if (!addon) return null;
+): string | undefined {
+  if (!addon) return undefined;
 
   if (addon.require && !isRequirementMet(addon.require, ctx as TemplateContext)) {
     return `requires ${describeRequire(addon.require)}`;
@@ -136,15 +136,15 @@ export function getCategoryOptionUnavailability(
     const blocking = (ctx.apps ?? [])
       .flatMap((app) => app.libraries)
       .find((lib) => Array.isArray(META.libraries[lib]?.require?.[categoryName as keyof AddonRequire]));
-    return `incompatible with ${blocking}`;
+    return blocking ? `incompatible with ${blocking}` : 'incompatible with a selected library';
   }
 
   if (!isServerRuntimeSatisfied(addon, ctx)) {
     const blocking = (ctx.apps ?? [])
       .flatMap((app) => app.libraries)
       .find((lib) => META.libraries[lib]?.needsServerRuntime);
-    return `needs a server runtime — ${blocking}`;
+    return blocking ? `needs a server runtime — ${blocking}` : 'needs a server runtime';
   }
 
-  return null;
+  return undefined;
 }

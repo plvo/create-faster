@@ -140,7 +140,7 @@ export async function promptProjectCategorySingle(
       value: name,
       label: addon.label,
       hint: addon.hint,
-      disabledReason: getCategoryOptionUnavailability(categoryName, name, addon, ctx) ?? undefined,
+      disabledReason: getCategoryOptionUnavailability(categoryName, name, addon, ctx),
     })),
   ];
 

@@ -226,9 +226,9 @@ describe('getCategoryOptionUnavailability', () => {
     project: { tooling: [] },
   };
 
-  test('returns null when the option is available', () => {
-    expect(getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, nextjsPlain)).toBeNull();
-    expect(getCategoryOptionUnavailability('deployment', 'cloudflare', cloudflareOption, nextjsBetterAuth)).toBeNull();
+  test('returns undefined when the option is available', () => {
+    expect(getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, nextjsPlain)).toBeUndefined();
+    expect(getCategoryOptionUnavailability('deployment', 'cloudflare', cloudflareOption, nextjsBetterAuth)).toBeUndefined();
   });
 
   test('reports the server-runtime conflict naming the blocking library', () => {

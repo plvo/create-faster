@@ -291,10 +291,14 @@ function validateContext(partial: Partial<TemplateContext>): void {
         const blocking = (partial.apps ?? [])
           .flatMap((app) => app.libraries)
           .find((lib) => META.libraries[lib]?.needsServerRuntime);
-        printError(
-          `${categoryName} '${value}' is incompatible with library '${blocking}'`,
-          `'${blocking}' needs a server runtime, which '${value}' does not provide`,
-        );
+        if (blocking) {
+          printError(
+            `${categoryName} '${value}' is incompatible with library '${blocking}'`,
+            `'${blocking}' needs a server runtime, which '${value}' does not provide`,
+          );
+        } else {
+          printError(`${categoryName} '${value}' needs a server runtime`);
+        }
         process.exit(1);
       }
     }
