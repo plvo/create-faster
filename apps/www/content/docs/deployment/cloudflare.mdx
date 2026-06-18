@@ -55,10 +55,28 @@ export default defineCloudflareConfig({});
 ```
 
 **Scripts:**
-- `build:cf` - Next.js build followed by the OpenNext adapter build (`next build && opennextjs-cloudflare build`)
+- `build:cf` - Generate binding types, Next.js build, then the OpenNext adapter build (`wrangler types … && next build && opennextjs-cloudflare build`). Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during `next build`.
 - `preview` - Local Wrangler preview of the built output (`opennextjs-cloudflare preview`)
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
 - `cf:typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+
+## Postgres / MySQL via Hyperdrive
+
+A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and forbids reusing a connection across requests. When a Next.js app uses `--database postgres` (or `mysql`) with `--deployment cloudflare`, the database is routed through a Cloudflare [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) binding (a pooling proxy), and the `db` package exports a per-request `createDb(hyperdrive)` factory instead of a module-level singleton.
+
+```jsonc title="wrangler.jsonc"
+"hyperdrive": [
+  {
+    "binding": "HYPERDRIVE",
+    "id": "REPLACE_WITH_HYPERDRIVE_ID",
+    "localConnectionString": "postgresql://postgres:password@localhost:5432/postgres-my-app"
+  }
+]
+```
+
+- **Setup:** `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc`. `localConnectionString` is used by `wrangler dev`/local only and matches your local `DATABASE_URL`.
+- **Migrations** run on Node via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
+- better-auth / tRPC over a Cloudflare binding database (per-request consumers) is not wired yet, so those combinations are disabled with a reason on Cloudflare (tracked in [#153](https://github.com/plvo/create-faster/issues/153)).
 
 ## Shared behavior
 
