@@ -104,6 +104,7 @@ Single source of truth for all stacks, libraries, and project addons:
 - Category-level `require` (e.g., orm requires database)
 - Addon-level `require` (e.g., husky requires git, better-auth requires orm); `require.stacks` requires at least one app on a listed stack (e.g. `cloudflare-static` requires a nextjs app)
 - Server-runtime capability: a library declares `needsServerRuntime: true` (e.g. better-auth, trpc); a deployment declares `providesServerRuntime: false` for static-only targets. Read generically by `isServerRuntimeSatisfied` — a server-less deployment is unavailable when any selected library needs a runtime
+- Single-select project prompts surface incompatibility instead of hiding it: `getCategoryOptionUnavailability` (addon-utils) returns a generic, META-derived reason (from `require`/`isServerRuntimeSatisfied`/library constraints) for any option, and `promptProjectCategorySingle` renders unavailable options disabled (dim, non-selectable) with that reason — no hardcoded choice value
 
 ### types/meta.ts
 - `StackName`: `'nextjs' | 'expo' | 'hono' | 'tanstack-start'`

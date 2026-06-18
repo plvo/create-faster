@@ -1,10 +1,10 @@
 import { Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
+import { describeRequire, isLibraryCompatible, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { AddonRequire, ProjectCategoryName, StackName } from '@/types/meta';
+import type { ProjectCategoryName, StackName } from '@/types/meta';
 
 interface ParsedFlags {
   projectName?: string;
@@ -253,18 +253,6 @@ function parseAppFlag(appFlag: string): AppContext {
     stackName: stackName as StackName,
     libraries,
   };
-}
-
-function describeRequire(require: AddonRequire): string {
-  const parts: string[] = [];
-  if (require.git) parts.push('git');
-  if (require.linter) parts.push(Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter');
-  if (require.database) parts.push(`database: ${require.database.join(' or ')}`);
-  if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
-  if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
-  if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
-  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
-  return parts.join(', ');
 }
 
 function validateContext(partial: Partial<TemplateContext>): void {

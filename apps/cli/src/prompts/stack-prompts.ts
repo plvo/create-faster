@@ -1,15 +1,10 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import { groupMultiselect, type Option, select } from '@clack/prompts';
+import { groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import {
-  isCategoryValueAllowedByLibraries,
-  isLibraryCompatible,
-  isRequirementMet,
-  isServerRuntimeSatisfied,
-} from '@/lib/addon-utils';
+import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
 import { handlePromptCancel } from '@/prompts/base-prompts';
-import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
+import { S_CONNECT_LEFT, S_GRAY_BAR, S_RADIO_DISABLED, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
 import type { MetaProjectCategory, ProjectCategoryName, StackName } from '@/types/meta';
 
@@ -137,27 +132,47 @@ export async function promptProjectCategorySingle(
   categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
 ): Promise<string | undefined> {
-  const options: { value: string | undefined; label: string; hint?: string }[] = [
+  type CategoryOption = { value: string | undefined; label: string; hint?: string; disabledReason?: string };
+
+  const fullList: CategoryOption[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
-    ...Object.entries(category.options)
-      .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
-      .filter(([name]) => isCategoryValueAllowedByLibraries(categoryName, name, ctx))
-      .filter(([, addon]) => isServerRuntimeSatisfied(addon, ctx))
-      .map(([name, addon]) => ({
-        value: name,
-        label: addon.label,
-        hint: addon.hint,
-      })),
+    ...Object.entries(category.options).map(([name, addon]) => ({
+      value: name,
+      label: addon.label,
+      hint: addon.hint,
+      disabledReason: getCategoryOptionUnavailability(categoryName, name, addon, ctx) ?? undefined,
+    })),
   ];
 
-  const result = await select({
-    message: category.prompt,
-    options,
+  const selectable = fullList.filter((option) => !option.disabledReason);
+
+  const CategoryPrompt = new SelectPrompt({
+    options: selectable,
+
+    render() {
+      let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${category.prompt}`;
+      const active = this.options[this.cursor];
+
+      for (const option of fullList) {
+        if (option.disabledReason) {
+          output += `\n${S_GRAY_BAR} ${color.dim(S_RADIO_DISABLED)} ${color.dim(option.label)}  ${color.red('✕')} ${color.dim(option.disabledReason)}`;
+          continue;
+        }
+
+        const isActive = option.value === active?.value;
+        const hint = isActive && option.hint ? color.dim(`(${option.hint})`) : '';
+        output += `\n${S_GRAY_BAR} ${symbol(isActive ? 'active' : 'submit')} ${option.label} ${hint}`;
+      }
+
+      return output;
+    },
   });
+
+  const result = await CategoryPrompt.prompt();
 
   if (isCancel(result)) handlePromptCancel();
 
-  return result;
+  return result as string | undefined;
 }
 
 export async function promptProjectCategoryMulti(
