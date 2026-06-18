@@ -7,14 +7,14 @@ import { pgTable, boolean, text, timestamp, uuid, varchar } from 'drizzle-orm/pg
 {{#if (has "database" "mysql")}}
 import { mysqlTable, boolean, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { relations, sql } from 'drizzle-orm';
 {{else}}
 import { relations } from 'drizzle-orm';
 {{/if}}
 
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 const timeColumns = {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -26,7 +26,7 @@ const timeColumns = {
 };
 {{/if}}
 
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const userTable = sqliteTable('users', {
   id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
   username: text('username').notNull().unique(),
@@ -74,7 +74,7 @@ export const userTableRelations = relations(userTable, ({ many }) => ({
 
 {{#if (hasLibrary "better-auth")}}
 // https://www.better-auth.com/docs/concepts/database#session
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const userSessionTable = sqliteTable('user_sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id')
@@ -93,7 +93,7 @@ export const userSessionTable = pgTable('user_sessions', {
 {{#if (has "database" "mysql")}}
 export const userSessionTable = mysqlTable('user_sessions', {
 {{/if}}
-{{#unless (has "database" "sqlite")}}
+{{#unless (or (has "database" "sqlite") (has "database" "d1"))}}
   id: varchar('id', { length: 255 }).primaryKey(),
 {{#if (has "database" "postgres")}}
   userId: uuid('user_id')
@@ -121,7 +121,7 @@ export const userSessionTableRelations = relations(userSessionTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#account
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const userAccountTable = sqliteTable('user_accounts', {
   id: text('id').primaryKey(),
   userId: text('user_id')
@@ -145,7 +145,7 @@ export const userAccountTable = pgTable('user_accounts', {
 {{#if (has "database" "mysql")}}
 export const userAccountTable = mysqlTable('user_accounts', {
 {{/if}}
-{{#unless (has "database" "sqlite")}}
+{{#unless (or (has "database" "sqlite") (has "database" "d1"))}}
   id: varchar('id', { length: 255 }).primaryKey(),
 {{#if (has "database" "postgres")}}
   userId: uuid('user_id')
@@ -178,7 +178,7 @@ export const userAccountTableRelations = relations(userAccountTable, ({ one }) =
 }));
 
 // https://www.better-auth.com/docs/concepts/database#verification
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const userVerificationTable = sqliteTable('user_verifications', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
@@ -193,7 +193,7 @@ export const userVerificationTable = pgTable('user_verifications', {
 {{#if (has "database" "mysql")}}
 export const userVerificationTable = mysqlTable('user_verifications', {
 {{/if}}
-{{#unless (has "database" "sqlite")}}
+{{#unless (or (has "database" "sqlite") (has "database" "d1"))}}
   id: varchar('id', { length: 255 }).primaryKey(),
   identifier: varchar('identifier', { length: 255 }).notNull(),
   value: varchar('value', { length: 255 }).notNull(),
@@ -203,7 +203,7 @@ export const userVerificationTable = mysqlTable('user_verifications', {
 {{/unless}}
 {{/if}}
 
-{{#if (has "database" "sqlite")}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const postTable = sqliteTable('posts', {
   id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
   title: text('title').notNull(),

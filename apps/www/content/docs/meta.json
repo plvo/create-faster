@@ -29,6 +29,7 @@
     "database/postgresql",
     "database/mysql",
     "database/sqlite",
+    "database/d1",
     "---ORMS---",
     "orm/drizzle",
     "orm/prisma",

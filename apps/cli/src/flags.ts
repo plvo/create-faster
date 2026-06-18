@@ -255,6 +255,19 @@ function parseAppFlag(appFlag: string): AppContext {
   };
 }
 
+function describeRequire(require: AddonRequire): string {
+  const parts: string[] = [];
+  if (require.git) parts.push('git');
+  if (require.linter) parts.push(Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter');
+  if (require.database) parts.push(`database: ${require.database.join(' or ')}`);
+  if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
+  if (require.deployment) parts.push(`deployment: ${require.deployment.join(' or ')}`);
+  if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
+  if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
+  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
+  return parts.join(', ');
+}
+
 function validateContext(partial: Partial<TemplateContext>): void {
   const project = partial.project ?? { tooling: [] };
 

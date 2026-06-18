@@ -21,6 +21,7 @@ export interface AddonRequire {
   linter?: true | string[];
   database?: string[];
   orm?: string[];
+  deployment?: string[];
   tooling?: string[];
   libraries?: string[];
   stacks?: StackName[];

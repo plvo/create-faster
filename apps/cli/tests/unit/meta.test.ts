@@ -135,9 +135,12 @@ describe('META.project validation', () => {
     expect(META.project.tooling.options.husky).toBeDefined();
   });
 
-  test('project category order is database, orm, deployment, linter, tooling', () => {
+  // deployment must come before database so that deployment-dependent database options
+  // (e.g. d1 requires cloudflare) are reachable in the interactive prompt loop, which
+  // iterates Object.keys(META.project) in declaration order.
+  test('project category order is deployment, database, orm, linter, tooling', () => {
     const keys = Object.keys(META.project);
-    expect(keys).toEqual(['database', 'orm', 'deployment', 'linter', 'tooling']);
+    expect(keys).toEqual(['deployment', 'database', 'orm', 'linter', 'tooling']);
   });
 });
 

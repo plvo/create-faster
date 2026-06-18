@@ -434,6 +434,76 @@ export const META: Meta = {
   },
 
   project: {
+    deployment: {
+      prompt: 'Deployment platform?',
+      selection: 'single',
+      options: {
+        cloudflare: {
+          label: 'Cloudflare Workers',
+          hint: 'Deploy to Cloudflare Workers with Wrangler',
+          packageJson: {
+            devDependencies: {
+              wrangler: '^4.100.0',
+            },
+          },
+          stackPackageJson: {
+            hono: {
+              scripts: {
+                deploy: 'wrangler deploy',
+                preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+            nextjs: {
+              dependencies: {
+                '@opennextjs/cloudflare': '^1.19.0',
+              },
+              scripts: {
+                'build:cf': 'next build && opennextjs-cloudflare build',
+                preview: 'opennextjs-cloudflare preview',
+                deploy: 'opennextjs-cloudflare deploy',
+                'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+          },
+        },
+        'cloudflare-static': {
+          label: 'Cloudflare Workers (static)',
+          hint: 'Deploy a Next.js static export to Cloudflare Workers assets',
+          require: { stacks: ['nextjs'] },
+          providesServerRuntime: false,
+          packageJson: {
+            devDependencies: {
+              wrangler: '^4.100.0',
+            },
+          },
+          stackPackageJson: {
+            nextjs: {
+              scripts: {
+                deploy: 'next build && wrangler deploy',
+                preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+          },
+        },
+        sst: {
+          label: 'SST',
+          hint: 'Deploy to AWS with SST Ion',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              sst: '^4.2.7',
+            },
+          },
+        },
+        'terraform-aws': {
+          label: 'Terraform (AWS)',
+          hint: 'AWS infrastructure with S3 backend',
+          mono: { scope: 'root' },
+        },
+      },
+    },
     database: {
       prompt: 'Include a database?',
       selection: 'single',
@@ -487,6 +557,38 @@ export const META: Meta = {
           envs: [
             {
               value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+          ],
+        },
+        d1: {
+          label: 'Cloudflare D1',
+          hint: 'Managed SQLite on Cloudflare, accessed via the DB binding',
+          mono: { scope: 'root' },
+          require: { deployment: ['cloudflare'] },
+          packageJson: {
+            devDependencies: {
+              '@libsql/client': '^0.17.3',
+            },
+            scripts: {
+              'db:generate': 'drizzle-kit generate',
+              'db:migrate': 'wrangler d1 migrations apply DB --local',
+              'db:migrate:local': 'wrangler d1 migrations apply DB --local',
+              'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
+              'local-setup': 'wrangler d1 migrations apply DB --local && bun run db:seed',
+            },
+          },
+          envs: [
+            {
+              value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http, prod migrations)',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+            {
+              value: 'CLOUDFLARE_D1_DATABASE_ID="" # D1 database id from `wrangler d1 create`',
+              monoScope: [{ pkg: 'db' }, 'app'],
+            },
+            {
+              value: 'CLOUDFLARE_API_TOKEN="" # Cloudflare API token with D1 edit permission',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],
@@ -558,76 +660,6 @@ export const META: Meta = {
               '.': './src/index.ts',
             },
           },
-        },
-      },
-    },
-    deployment: {
-      prompt: 'Deployment platform?',
-      selection: 'single',
-      options: {
-        cloudflare: {
-          label: 'Cloudflare Workers',
-          hint: 'Deploy to Cloudflare Workers with Wrangler',
-          packageJson: {
-            devDependencies: {
-              wrangler: '^4.100.0',
-            },
-          },
-          stackPackageJson: {
-            hono: {
-              scripts: {
-                deploy: 'wrangler deploy',
-                preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
-              },
-            },
-            nextjs: {
-              dependencies: {
-                '@opennextjs/cloudflare': '^1.19.0',
-              },
-              scripts: {
-                'build:cf': 'next build && opennextjs-cloudflare build',
-                preview: 'opennextjs-cloudflare preview',
-                deploy: 'opennextjs-cloudflare deploy',
-                'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
-              },
-            },
-          },
-        },
-        'cloudflare-static': {
-          label: 'Cloudflare Workers (static)',
-          hint: 'Deploy a Next.js static export to Cloudflare Workers assets',
-          require: { stacks: ['nextjs'] },
-          providesServerRuntime: false,
-          packageJson: {
-            devDependencies: {
-              wrangler: '^4.100.0',
-            },
-          },
-          stackPackageJson: {
-            nextjs: {
-              scripts: {
-                deploy: 'next build && wrangler deploy',
-                preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
-              },
-            },
-          },
-        },
-        sst: {
-          label: 'SST',
-          hint: 'Deploy to AWS with SST Ion',
-          mono: { scope: 'root' },
-          packageJson: {
-            devDependencies: {
-              sst: '^4.2.7',
-            },
-          },
-        },
-        'terraform-aws': {
-          label: 'Terraform (AWS)',
-          hint: 'AWS infrastructure with S3 backend',
-          mono: { scope: 'root' },
         },
       },
     },

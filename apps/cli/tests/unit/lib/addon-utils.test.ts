@@ -185,6 +185,21 @@ describe('isRequirementMet', () => {
     const ctx = { ...baseCtx, project: { linter: 'biome', tooling: [] } };
     expect(isRequirementMet({ git: true, linter: true }, ctx)).toBe(false);
   });
+
+  test('deployment requirement is unmet when project.deployment is absent', () => {
+    const ctx = { project: { tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(false);
+  });
+
+  test('deployment requirement is unmet for a non-matching deployment', () => {
+    const ctx = { project: { deployment: 'sst', tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(false);
+  });
+
+  test('deployment requirement is met for a matching deployment', () => {
+    const ctx = { project: { deployment: 'cloudflare', tooling: [] }, apps: [] } as unknown as TemplateContext;
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, ctx)).toBe(true);
+  });
 });
 
 describe('isCategoryValueAllowedByLibraries', () => {
@@ -240,5 +255,23 @@ describe('getCategoryOptionUnavailability', () => {
   test('reports the require.stacks gap when no listed stack is present', () => {
     const reason = getCategoryOptionUnavailability('deployment', 'cloudflare-static', staticOption, honoOnly);
     expect(reason).toContain('nextjs');
+  });
+
+  test('reports the require.deployment gap for d1 when the deployment is not cloudflare', () => {
+    const d1Option = META.project.database.options.d1;
+    expect(getCategoryOptionUnavailability('database', 'd1', d1Option, nextjsPlain)).toContain('deployment: cloudflare');
+    const sst: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [], deployment: 'sst' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'd1', d1Option, sst)).toContain('deployment: cloudflare');
+  });
+
+  test('d1 is available when the deployment is cloudflare', () => {
+    const cloudflareCtx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, cloudflareCtx)).toBeUndefined();
   });
 });

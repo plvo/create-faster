@@ -2,7 +2,35 @@
 mono:
   scope: root
 ---
+{{#if (has "database" "d1")}}
+import fs from 'node:fs';
+import path from 'node:path';
+import { Database } from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import * as schema from {{#if (isMono)}}'@repo/db/schema'{{else}}'../src/lib/db/schema'{{/if}};
+import { postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+
+function getLocalD1DB(): string | undefined {
+  const d1Dir = path.resolve(process.cwd(), '.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+  if (!fs.existsSync(d1Dir)) return undefined;
+  const files = fs
+    .readdirSync(d1Dir)
+    .filter((f) => f.endsWith('.sqlite') && f !== 'metadata.sqlite')
+    .map((f) => ({ name: f, mtime: fs.statSync(path.join(d1Dir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  return files.length ? path.join(d1Dir, files[0]?.name ?? '') : undefined;
+}
+
+const localPath = getLocalD1DB();
+if (!localPath) {
+  console.error('❌ No local D1 database found. Run `bun run db:migrate:local` first.');
+  process.exit(1);
+}
+
+const db = drizzle(new Database(localPath), { schema });
+{{else}}
 import { db, postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+{{/if}}
 
 async function seed() {
   console.log('🌱 Seeding database...');

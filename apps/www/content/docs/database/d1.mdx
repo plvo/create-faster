@@ -1,0 +1,137 @@
+---
+title: Cloudflare D1
+description: Cloudflare D1 is a managed SQLite database running at the edge, accessed through the Workers binding API.
+---
+
+[→ Cloudflare D1 Documentation](https://developers.cloudflare.com/d1)
+
+## What create-faster adds
+
+D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Workers runtime, so there is no connection string. create-faster wires this binding end-to-end across every generated file.
+
+**`wrangler.jsonc` — D1 binding declaration:**
+
+```jsonc
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "{appName}-db",
+    "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+    "migrations_dir": "drizzle"
+  }
+]
+```
+
+Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`.
+
+**`src/lib/db/index.ts` — factory, not singleton:**
+
+D1 is injected per request, not available at module load time. The generated client is a `createDb` factory that accepts the binding:
+
+```ts
+import { drizzle } from 'drizzle-orm/d1';
+import * as schema from './schema';
+
+export function createDb(d1: D1Database) {
+  return drizzle(d1, { schema });
+}
+export type Database = ReturnType<typeof createDb>;
+```
+
+- Single repo: `src/lib/db/index.ts`
+- Turborepo: `packages/db/src/index.ts`
+
+**`src/lib/env.ts` (Next.js only) — `getEnv` seam:**
+
+For Next.js apps, a `getEnv` helper retrieves the binding from the OpenNext Cloudflare context:
+
+```ts
+import 'server-only';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+export type Env = { DB: D1Database };
+
+export async function getEnv(): Promise<Env> {
+  const { env } = await getCloudflareContext({ async: true });
+  return { DB: env.DB };
+}
+```
+
+Call `getEnv()` in Server Components or Route Handlers, then pass `env.DB` to `createDb`:
+
+```ts
+const env = await getEnv();
+const db = createDb(env.DB);
+```
+
+> **Note:** Wiring `createDb(...)` into your routes, Server Components, or Route Handlers is your responsibility. No generated file calls it automatically — ready-made consumers (auth, tRPC, etc.) will be provided by the cloudflare-fullstack blueprint (#134).
+
+**`drizzle.config.ts` — sqlite dialect with d1-http prod branch:**
+
+The config uses the `sqlite` dialect locally (pointing at the miniflare D1 file) and switches to the `d1-http` driver in production:
+
+```ts
+const isProduction = process.env.NODE_ENV === 'production';
+
+export default defineConfig({
+  dialect: 'sqlite',
+  ...(isProduction
+    ? {
+        driver: 'd1-http',
+        dbCredentials: {
+          accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+          databaseId: process.env.CLOUDFLARE_D1_DATABASE_ID,
+          token: process.env.CLOUDFLARE_API_TOKEN,
+        },
+      }
+    : { dbCredentials: { url: getLocalD1DB() ?? '' } }),
+});
+```
+
+**Schema** uses `sqliteTable` from `drizzle-orm/sqlite-core` — identical to the SQLite option. Schemas carry over unchanged between local and D1.
+
+## Environment Variables
+
+Generated in `.env.example` (turborepo: `packages/db/.env.example` and `apps/{appName}/.env.example` for each app with D1; single repo: root `.env.example`):
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=""          # Cloudflare account id (drizzle-kit d1-http, prod migrations)
+CLOUDFLARE_D1_DATABASE_ID=""      # D1 database id from `wrangler d1 create`
+CLOUDFLARE_API_TOKEN=""           # Cloudflare API token with D1 edit permission
+```
+
+These are only needed for `db:migrate:remote` (production migrations via `d1-http`). Local development uses the miniflare SQLite file automatically.
+
+## Workflow Scripts
+
+| Script | Command | Purpose |
+|---|---|---|
+| `db:generate` | `drizzle-kit generate` | Generate migration SQL from schema changes |
+| `db:migrate:local` | `wrangler d1 migrations apply DB --local` | Apply migrations to the local miniflare D1 |
+| `db:migrate:remote` | `wrangler d1 migrations apply DB --remote` | Apply migrations to the production D1 database |
+| `local-setup` | `wrangler d1 migrations apply DB --local && bun run db:seed` | First-time local setup: migrate + seed |
+
+Turborepo: scripts land on the root `package.json` (the D1 database addon has `mono.scope: root`).
+
+## Local development
+
+Local `wrangler dev` persists D1 state in `.wrangler/state/v3/d1/`. The `drizzle.config.ts` auto-discovers the latest SQLite file in that directory, so `db:generate` and `db:migrate:local` work without any env var.
+
+Manual smoke test after `local-setup`:
+
+```bash
+bun run local-setup   # migrate + seed
+wrangler dev          # starts the Worker with the local D1 binding
+```
+
+## ORM constraint
+
+D1 only works with **Drizzle**. `--database d1 --orm prisma` is rejected at validation time, and the interactive ORM prompt only offers compatible options.
+
+```bash
+bunx create-faster myapp \
+  --app myapp:nextjs \
+  --database d1 \
+  --orm drizzle \
+  --deployment cloudflare
+```

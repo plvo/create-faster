@@ -3,5 +3,13 @@
   "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-12",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"]{{#if (has "database" "d1")}},
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "drizzle"
+    }
+  ]{{/if}}
 }
