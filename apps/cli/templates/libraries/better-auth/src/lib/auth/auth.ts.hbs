@@ -4,7 +4,11 @@ mono:
   path: src/auth.ts
 ---
 {{#if (has "orm" "drizzle")}}
+{{#if (has "database" "d1")}}
+import { type Database, userAccountTable, userSessionTable, userTable, userVerificationTable } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{else}}
 import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{/if}}
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 {{/if}}
 {{#if (has "orm" "prisma")}}
@@ -22,7 +26,12 @@ const DAY = 24 * HOUR;
 const isDev = process.env.NODE_ENV === 'development';
 const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
 
+{{#if (has "database" "d1")}}
+export function createAuth(db: Database) {
+  return betterAuth({
+{{else}}
 export const auth = betterAuth({
+{{/if}}
   baseURL: {
     allowedHosts: [
       prodHost,
@@ -39,7 +48,7 @@ export const auth = betterAuth({
     {{#if (has "database" "mysql")}}
     provider: 'mysql',
     {{/if}}
-    {{#if (has "database" "sqlite")}}
+    {{#if (or (has "database" "sqlite") (has "database" "d1"))}}
     provider: 'sqlite',
     {{/if}}
     usePlural: false,
@@ -121,4 +130,11 @@ export const auth = betterAuth({
       updatedAt: 'updatedAt',
     },
   },
+{{#if (has "database" "d1")}}
+  });
+}
+
+export type Auth = ReturnType<typeof createAuth>;
+{{else}}
 });
+{{/if}}

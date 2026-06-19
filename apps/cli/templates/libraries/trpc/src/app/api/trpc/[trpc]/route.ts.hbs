@@ -9,16 +9,23 @@ import { appRouter, createTRPCContext } from '@repo/api';
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 {{/if}}
+{{#if (and (has "database" "d1") project.orm)}}
+import { getDb } from '@/lib/server';
+{{/if}}
 
 const handler = (req: Request) =>
   fetchRequestHandler({
     endpoint: '/api/trpc',
     req,
     router: appRouter,
+{{#if (and (has "database" "d1") project.orm)}}
+    createContext: async ({ req }) => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: req.headers, {{/if}}db: await getDb() }),
+{{else}}
 {{#if (or (isMono) (hasLibrary "better-auth"))}}
     createContext: ({ req }) => createTRPCContext({ headers: req.headers }),
 {{else}}
     createContext: createTRPCContext,
+{{/if}}
 {{/if}}
     onError:
       process.env.NODE_ENV === 'development'

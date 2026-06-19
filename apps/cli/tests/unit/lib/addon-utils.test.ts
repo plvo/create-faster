@@ -276,6 +276,14 @@ describe('getCategoryOptionUnavailability', () => {
     expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, cloudflareCtx)).toBeUndefined();
   });
 
+  test('d1 stays available with better-auth/trpc on cloudflare (consumers wired per-request)', () => {
+    const ctx: Partial<TemplateContext> = {
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth', 'trpc'] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+    };
+    expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, ctx)).toBeUndefined();
+  });
+
   test('postgres on cloudflare is disabled with a singleton-db consumer, naming it and #153', () => {
     const ctx: Partial<TemplateContext> = {
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
@@ -324,5 +332,11 @@ describe('isSingletonDbSatisfied', () => {
     expect(isSingletonDbSatisfied(pg, withLibsAndDeployment(['better-auth']))).toBe(true);
     expect(isSingletonDbSatisfied(pg, withLibsAndDeployment([], 'cloudflare'))).toBe(true);
     expect(isSingletonDbSatisfied(META.project.database.options.sqlite, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(true);
+  });
+
+  test('a binding db with wired consumers is satisfied even with a singleton-consumer library', () => {
+    expect(META.project.database.options.d1?.serverlessConsumersWired).toBe(true);
+    expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(true);
+    expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['trpc'], 'cloudflare'))).toBe(true);
   });
 });

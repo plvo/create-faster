@@ -1,0 +1,20 @@
+{{#if (has "database" "d1")}}
+{{#if project.orm}}
+import 'server-only';
+import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{#if (hasLibrary "better-auth")}}
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{/if}}
+import { getEnv } from '@/lib/env';
+
+export async function getDb() {
+  return createDb((await getEnv()).DB);
+}
+{{#if (hasLibrary "better-auth")}}
+
+export async function getAuth() {
+  return createAuth(await getDb());
+}
+{{/if}}
+{{/if}}
+{{/if}}

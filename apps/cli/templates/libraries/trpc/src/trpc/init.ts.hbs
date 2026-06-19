@@ -4,6 +4,12 @@ mono:
   scope: pkg
   path: src/trpc.ts
 ---
+{{#if (and (has "database" "d1") project.orm)}}
+{{#if (hasLibrary "better-auth")}}
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{/if}}
+import type { Database } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{else}}
 {{#if (hasLibrary "better-auth")}}
 {{#if (isMono)}}
 import { auth } from '@repo/auth/auth';
@@ -15,9 +21,26 @@ import { auth } from '@/lib/auth/auth';
 {{#if project.orm}}
 import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{/if}}
+{{/if}}
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 
+{{#if (and (has "database" "d1") project.orm)}}
+export async function createTRPCContext(opts: { {{#if (hasLibrary "better-auth")}}headers: Headers; {{/if}}db: Database }) {
+{{#if (hasLibrary "better-auth")}}
+  const auth = createAuth(opts.db);
+  const session = await auth.api.getSession({ headers: opts.headers });
+
+{{/if}}
+  return {
+{{#if (hasLibrary "better-auth")}}
+    session,
+    headers: opts.headers,
+{{/if}}
+    db: opts.db,
+  };
+}
+{{else}}
 {{#if (isMono)}}
 export async function createTRPCContext(opts: { headers: Headers }) {
 {{#if (hasLibrary "better-auth")}}
@@ -51,6 +74,7 @@ export async function createTRPCContext({{#if (hasLibrary "better-auth")}}opts?:
 {{/if}}
   };
 }
+{{/if}}
 {{/if}}
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;

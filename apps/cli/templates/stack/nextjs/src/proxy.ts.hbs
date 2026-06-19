@@ -12,10 +12,14 @@ import { type NextRequest, NextResponse } from 'next/server';
 {{/if}}
 {{#if (hasLibrary "better-auth")}}
 import { headers } from 'next/headers';
+{{#if (has "database" "d1")}}
+import { getAuth } from '@/lib/server';
+{{else}}
 {{#if (isMono)}}
 import { auth } from '@repo/auth/auth';
 {{else}}
 import { auth } from '@/lib/auth/auth';
+{{/if}}
 {{/if}}
 {{/if}}
 
@@ -27,6 +31,9 @@ export default async function {{#if (has "deployment" "cloudflare")}}middleware{
   const { pathname } = request.nextUrl;
 
   {{#if (hasLibrary "better-auth")}}
+  {{#if (has "database" "d1")}}
+  const auth = await getAuth();
+  {{/if}}
   const session = await auth.api.getSession({
     headers: await headers(),
   });
