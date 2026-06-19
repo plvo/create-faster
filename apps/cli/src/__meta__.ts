@@ -1200,7 +1200,7 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
           monoScope: ['app'],
         },
       ],
