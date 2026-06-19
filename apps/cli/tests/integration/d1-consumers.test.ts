@@ -40,6 +40,11 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
     expect(auth).not.toContain('export const auth');
   });
 
+  test('auth.ts drizzle adapter uses the sqlite provider for d1', async () => {
+    const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
+    expect(auth).toContain("provider: 'sqlite'");
+  });
+
   test('server.ts composes the per-request db and auth from the binding', async () => {
     const server = await readTextFile(join(projectPath, 'src/lib/server.ts'));
     expect(server).toContain("import { getEnv } from '@/lib/env'");
@@ -54,6 +59,20 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
     expect(route).toContain("import { getAuth } from '@/lib/server'");
     expect(route).toContain('await getAuth()');
     expect(route).not.toContain("import { auth }");
+  });
+
+  test('middleware resolves auth per-request via getAuth()', async () => {
+    const mw = await readTextFile(join(projectPath, 'src/middleware.ts'));
+    expect(mw).toContain("import { getAuth } from '@/lib/server'");
+    expect(mw).toContain('const auth = await getAuth()');
+    expect(mw).not.toContain("import { auth }");
+  });
+
+  test('auth-client infers fields from the Auth type, not the singleton', async () => {
+    const client = await readTextFile(join(projectPath, 'src/lib/auth/auth-client.ts'));
+    expect(client).toContain("import type { Auth } from './auth'");
+    expect(client).toContain('inferAdditionalFields<Auth>()');
+    expect(client).not.toContain('typeof auth');
   });
 });
 

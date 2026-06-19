@@ -584,6 +584,7 @@ export const META: Meta = {
           packageJson: {
             devDependencies: {
               '@libsql/client': '^0.17.3',
+              '@types/bun': '^1.3.13',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',

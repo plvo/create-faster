@@ -48,7 +48,7 @@ export const auth = betterAuth({
     {{#if (has "database" "mysql")}}
     provider: 'mysql',
     {{/if}}
-    {{#if (has "database" "sqlite")}}
+    {{#if (or (has "database" "sqlite") (has "database" "d1"))}}
     provider: 'sqlite',
     {{/if}}
     usePlural: false,
