@@ -1166,6 +1166,45 @@ export const META: Meta = {
         },
       ],
     },
+    'cloudflare-static-site': {
+      label: 'Cloudflare Static Site',
+      hint: 'Static Next.js marketing site with an MDX blog, deployed as Cloudflare Workers assets',
+      category: 'Business',
+      agentArchitecture: [
+        "Static marketing/blog site: a single Next.js app (output: 'export') with shadcn/ui and an",
+        'MDX blog, JSON-LD structured data, a dynamic sitemap, AI-bot-aware robots, and programmatic',
+        'persona pages — all pre-rendered at build time. No server runtime: the export is served as',
+        'Cloudflare Workers static assets via Wrangler (never Pages).',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [SEO & GEO](docs/agents/seo-geo.md)',
+        '- [Content & blog](docs/agents/content-blog.md)',
+        '- [Cloudflare deploy](docs/agents/cloudflare-deploy.md)',
+      ].join('\n'),
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'mdx'],
+          },
+        ],
+        project: {
+          deployment: 'cloudflare-static',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          motion: '^12.26.0',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          monoScope: ['app'],
+        },
+      ],
+    },
     showcase: {
       label: 'Showcase',
       hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',

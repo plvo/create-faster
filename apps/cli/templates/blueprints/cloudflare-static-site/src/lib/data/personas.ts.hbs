@@ -1,0 +1,109 @@
+export interface Persona {
+  slug: string;
+  title: string;
+  headline: string;
+  description: string;
+  benefits: { title: string; description: string }[];
+  faq: { question: string; answer: string }[];
+}
+
+export const personas: Persona[] = [
+  {
+    slug: 'logistics-teams',
+    title: 'For Logistics Teams',
+    headline: 'Replace your fragile supply chain comms with carrier pigeons',
+    description: 'Purpose-bred homing pigeons deliver critical logistics updates with 99.7% delivery rate. No cell towers. No Wi-Fi. Just wings.',
+    benefits: [
+      {
+        title: 'Zero downtime delivery',
+        description: 'Pigeons operate in all weather conditions. Rain, snow, solar flares — your messages get through when Slack goes down.',
+      },
+      {
+        title: 'Real-time flock tracking',
+        description: 'GPS-tagged pigeons with live dashboard. Know exactly where your message is, down to the wingspan.',
+      },
+      {
+        title: 'Warehouse integration',
+        description: 'Our pigeon lofts integrate with your existing warehouse layout. Automated message capsule loading and unloading.',
+      },
+    ],
+    faq: [
+      {
+        question: 'How fast can a carrier pigeon deliver a message?',
+        answer: 'Our enterprise-grade pigeons cruise at 60mph and can cover up to 600 miles in a single flight. For local deliveries under 50 miles, expect sub-hour delivery times.',
+      },
+      {
+        question: 'What happens if a pigeon gets lost?',
+        answer: 'Each pigeon is GPS-tagged with automatic re-routing. If a bird deviates more than 5% from the planned route, a backup pigeon is dispatched immediately. Our SLA guarantees 99.7% delivery rate.',
+      },
+    ],
+  },
+  {
+    slug: 'bird-enthusiasts',
+    title: 'For Bird Enthusiasts',
+    headline: 'Turn your passion for birds into productive communication',
+    description: 'You already love pigeons. Now make them work for you. PigeonPost brings professional-grade avian messaging to hobbyists and breeders.',
+    benefits: [
+      {
+        title: 'Breed tracking dashboard',
+        description: 'Track lineage, flight stats, and message delivery records for every bird in your flock.',
+      },
+      {
+        title: 'Community flock sharing',
+        description: 'Connect with other pigeon enthusiasts. Share routes, trade birds, and collaborate on long-distance relay networks.',
+      },
+      {
+        title: 'Training programs',
+        description: 'AI-powered training schedules that optimize your pigeons flight performance based on weather patterns and genetics.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Do I need special breeds for PigeonPost?',
+        answer: 'While any homing pigeon can work, we recommend starting with Racing Homers or English Carriers for best results. Our onboarding includes a breed compatibility assessment.',
+      },
+      {
+        question: 'Can I use my existing pigeons?',
+        answer: 'Absolutely! Our onboarding program evaluates your existing flock and provides personalized training plans. Most pigeons are delivery-ready within 2-4 weeks.',
+      },
+    ],
+  },
+  {
+    slug: 'enterprise',
+    title: 'For Enterprise',
+    headline: 'Air-gapped message delivery that no firewall can block',
+    description: 'When your board demands communication infrastructure that is truly unhackable, there is only one answer: birds.',
+    benefits: [
+      {
+        title: 'Zero-trust by nature',
+        description: 'No digital footprint. No packets to intercept. No servers to breach. A pigeon carrying an encrypted capsule is the ultimate air-gapped communication.',
+      },
+      {
+        title: 'Regulatory compliance',
+        description: 'Meets GDPR, HIPAA, and SOC2 requirements by default — data in transit is literally in the air, stored on paper, and shredded on delivery.',
+      },
+      {
+        title: 'Dedicated flock SLA',
+        description: 'Enterprise plans include a dedicated pigeon flock, private lofts on your campus, and 24/7 avian support team.',
+      },
+    ],
+    faq: [
+      {
+        question: 'How does PigeonPost handle message encryption?',
+        answer: 'Messages are encrypted before being printed on microfilm and loaded into tamper-evident capsules. The pigeon itself has no knowledge of the message content — true zero-knowledge architecture.',
+      },
+      {
+        question: 'What is the enterprise SLA?',
+        answer: 'Enterprise plans guarantee 99.9% delivery rate with a maximum 4-hour delivery window for distances under 200 miles. Dedicated account pigeons are assigned to your organization.',
+      },
+    ],
+  },
+];
+
+export function getPersona(slug: string): Persona | undefined {
+  return personas.find((p) => p.slug === slug);
+}
+
+export function getAllPersonaSlugs(): string[] {
+  return personas.map((p) => p.slug);
+}

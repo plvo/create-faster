@@ -1,0 +1,128 @@
+---
+title: Cloudflare Static Site
+description: Static Next.js marketing site with an MDX blog, deployed as Cloudflare Workers assets.
+---
+
+## Presentation
+
+A low-cost marketing/blog site: a single Next.js app exported as static HTML (`output: 'export'`) and served as [Cloudflare Workers static assets](/docs/deployment/cloudflare-static) — never Pages. Everything is pre-rendered at build time, so there is no server runtime to pay for or operate. It ships the same SEO/GEO toolkit as the [Showcase](/docs/blueprints/business/showcase) blueprint (JSON-LD, dynamic sitemap, AI-bot-aware robots, programmatic persona pages, MDX blog) minus any server-dependent feature.
+
+## Composition
+
+**Apps:**
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), MDX ([→ module](/docs/modules/content/mdx))
+
+**Project addons:**
+- Deployment: [→ Cloudflare Workers (static)](/docs/deployment/cloudflare-static)
+
+**No database or ORM** — this is a static site.
+
+## Architecture
+
+Blueprint-specific files:
+```
+src/
+├── app/
+│   ├── layout.tsx                     # Root layout with SEO metadata, JSON-LD, header/footer
+│   ├── page.tsx                       # Homepage (hero, social proof, features, FAQ, CTA)
+│   ├── about/page.tsx                 # About page with team section (E-E-A-T)
+│   ├── blog/
+│   │   ├── page.tsx                   # Blog index listing MDX articles
+│   │   └── [slug]/page.tsx            # Blog post (generateStaticParams) with Article JSON-LD
+│   ├── contact/page.tsx               # Contact form (static markup)
+│   ├── for/[persona]/page.tsx         # Programmatic persona pages with FAQ
+│   ├── sitemap.ts                     # Dynamic sitemap (static + blog + persona pages)
+│   └── robots.ts                      # Robots.txt with AI bot rules
+├── components/
+│   ├── animated.tsx                   # Motion animation wrapper (fade-up, scale, slide)
+│   ├── layout/
+│   │   ├── header.tsx                 # Sticky header with scroll spy anchor links
+│   │   └── footer.tsx                 # Footer with product/company/social links
+│   ├── sections/
+│   │   ├── hero.tsx                   # Hero with primary + secondary CTA
+│   │   ├── features.tsx               # 6-feature benefit grid
+│   │   ├── social-proof.tsx           # Logo bar + testimonials
+│   │   ├── faq.tsx                    # Collapsible FAQ with FAQPage JSON-LD
+│   │   └── cta.tsx                    # Bottom CTA section
+│   └── seo/
+│       ├── json-ld.tsx                # Organization, WebSite, Breadcrumb, FAQ, Article schemas
+│       └── breadcrumbs.tsx            # Breadcrumb nav with BreadcrumbList JSON-LD
+├── hooks/
+│   └── use-active-section.ts          # IntersectionObserver scroll spy for anchor links
+└── lib/
+    ├── blog.ts                        # MDX blog post reading utilities
+    └── data/
+        ├── site-config.ts             # Site name, URLs, nav links, social links
+        └── personas.ts                # Persona data for /for/[persona] pages
+contents/blog/                         # Example MDX blog articles
+docs/agents/cloudflare-deploy.md       # Deploy + custom domain guide (no IaC)
+README.md                              # Setup checklist
+```
+
+The `next.config.ts`, `wrangler.jsonc`, and deploy scripts are not blueprint files — they come from the Next.js stack and the [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) deployment, which set `output: 'export'`, `images.unoptimized`, and `assets.directory: "out"`.
+
+## What's included
+
+### SEO / GEO optimization
+
+- **JSON-LD structured data** — Organization, WebSite, BreadcrumbList, FAQPage, and Article schemas auto-injected per page
+- **Dynamic sitemap** — generates from static pages, blog posts, and persona slugs at build time
+- **Robots.txt** — explicitly allows AI search bots (GPTBot, PerplexityBot, ClaudeBot, Google-Extended)
+- **Metadata** — title template, description, Open Graph, Twitter cards on every page
+- **Breadcrumbs** — navigation with BreadcrumbList schema on all subpages
+
+### Homepage sections
+
+Five composable sections with `scroll-mt-20` for smooth anchor navigation: hero, social proof, features, FAQ (with FAQPage JSON-LD), and a closing CTA.
+
+### Blog (MDX)
+
+File-based blog using the MDX library. Articles live in `contents/blog/` with YAML frontmatter (`title`, `summary`, `author`, `publishedAt`). The `[slug]` route uses `generateStaticParams` so every post is pre-rendered into the static export. Each post renders with Article JSON-LD and breadcrumbs.
+
+### Programmatic persona pages
+
+`/for/[persona]` pages generated from data in `lib/data/personas.ts` via `generateStaticParams`. Each persona has a unique headline, benefits grid, and FAQ section with its own FAQPage JSON-LD.
+
+### Static-only by design
+
+No analytics proxy, consent manager, route handlers, or middleware — `output: 'export'` forbids a server runtime, so nothing in the blueprint depends on one. Add a client-side analytics script or wire the contact form to an external service yourself if needed.
+
+### Animations
+
+`<Animated>` component using `motion` with viewport-triggered animations (`fade-up`, `scale`, `slide-left`, `slide-right`) with configurable delay.
+
+## Deployment
+
+```bash
+bun run build      # next build → static export in out/
+bun run preview    # serve the built assets locally with wrangler
+bun run deploy     # next build && wrangler deploy
+```
+
+The export is uploaded as Workers static assets. Pointing a custom domain (Wrangler route or dashboard, no Terraform) is documented in the generated `docs/agents/cloudflare-deploy.md`. See [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) for the deployment details.
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `motion` | Animation library (Animated component) |
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Production site URL (used in sitemap, JSON-LD, OG tags) |
+
+## CLI usage
+
+```bash
+bunx create-faster my-site \
+  --blueprint cloudflare-static-site \
+  --linter biome \
+  --git \
+  --pm bun
+```
+
+## Agent context
+
+This blueprint ships `AGENTS.md` + `docs/agents/` guides (architecture, SEO & GEO, content & blog, Cloudflare deploy) so AI coding agents understand the project out of the box. See [Agent Context](/docs/concepts/agent-context).

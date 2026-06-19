@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
 
 ### wrangler.jsonc
 
-An assets-only Worker: it points `assets.directory` at the static export output and declares no `main` (there is no Worker script). This is Workers static assets, not Cloudflare Pages — there is no `pages_build_output_dir`.
+An assets-only Worker: it points `assets.directory` at the static export output and declares no `main` (there is no Worker script). This is Workers static assets, not Cloudflare Pages — there is no `pages_build_output_dir`. `not_found_handling: "404-page"` serves the export's pre-rendered `out/404.html` for unmatched paths instead of a blank body.
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -40,7 +40,8 @@ An assets-only Worker: it points `assets.directory` at the static export output 
   "name": "my-site",
   "compatibility_date": "2026-06-12",
   "assets": {
-    "directory": "out"
+    "directory": "out",
+    "not_found_handling": "404-page"
   }
 }
 ```

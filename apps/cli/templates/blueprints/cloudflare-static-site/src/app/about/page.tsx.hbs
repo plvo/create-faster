@@ -1,0 +1,56 @@
+import type { Metadata } from 'next';
+import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+import { siteConfig } from '@/lib/data/site-config';
+
+export const metadata: Metadata = {
+  title: 'About',
+  description: `Learn about ${siteConfig.name} — our mission, team, and why we believe carrier pigeons are the future of secure communication.`,
+};
+
+export default function AboutPage() {
+  return (
+    <div className="container mx-auto px-4 py-12 max-w-3xl">
+      <Breadcrumbs items={[{ name: 'About', href: '/about' }]} />
+
+      <h1 className="text-4xl font-bold tracking-tight">About {siteConfig.name}</h1>
+
+      <section className="mt-8 space-y-4 text-muted-foreground leading-relaxed">
+        <p>
+          Founded in 2024, {siteConfig.name} was born from a simple observation:
+          the most secure communication channel is one that never touches the internet.
+        </p>
+        <p>
+          Our team of avian logistics experts and software engineers built a platform
+          that combines centuries-old carrier pigeon technology with modern tracking,
+          encryption, and fleet management software.
+        </p>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold tracking-tight">Our Mission</h2>
+        <p className="mt-4 text-muted-foreground leading-relaxed">
+          To provide every organization with communication infrastructure that is
+          truly unhackable, always available, and surprisingly delightful. We believe
+          the future of messaging has feathers.
+        </p>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold tracking-tight">The Team</h2>
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          {[
+            { name: 'Alex Featherstone', role: 'CEO & Chief Pigeon Officer' },
+            { name: 'Jordan Wingfield', role: 'CTO' },
+            { name: 'Morgan Coo', role: 'Head of Avian Operations' },
+            { name: 'Casey Loft', role: 'VP of Engineering' },
+          ].map((member) => (
+            <div key={member.name} className="rounded-lg border p-4">
+              <p className="font-semibold">{member.name}</p>
+              <p className="text-sm text-muted-foreground">{member.role}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

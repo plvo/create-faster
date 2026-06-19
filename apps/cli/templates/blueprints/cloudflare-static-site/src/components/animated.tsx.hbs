@@ -1,0 +1,53 @@
+'use client';
+
+import { type HTMLMotionProps, type MotionProps, motion } from 'motion/react';
+import type React from 'react';
+
+type AnimationVariant = 'fade-up' | 'scale' | 'slide-left' | 'slide-right';
+
+const variantAnimations: Record<AnimationVariant, Pick<MotionProps, 'initial' | 'whileInView'>> = {
+  'fade-up': {
+    initial: { opacity: 0, y: 20 },
+    whileInView: { opacity: 1, y: 0 },
+  },
+  scale: {
+    initial: { opacity: 0, scale: 0.8 },
+    whileInView: { opacity: 1, scale: 1 },
+  },
+  'slide-left': {
+    initial: { opacity: 0, x: 20 },
+    whileInView: { opacity: 1, x: 0 },
+  },
+  'slide-right': {
+    initial: { opacity: 0, x: -20 },
+    whileInView: { opacity: 1, x: 0 },
+  },
+};
+
+const getAnimatedProps = (delay: number, variant: AnimationVariant): MotionProps => ({
+  ...variantAnimations[variant],
+  viewport: { once: true, margin: '-100px' },
+  transition: {
+    duration: 0.5,
+    delay,
+    ease: [0.22, 1, 0.36, 1],
+  },
+});
+
+type As = 'div' | 'article' | 'section' | 'span' | 'button' | 'ul' | 'li' | 'nav' | 'h1' | 'h2' | 'h3' | 'h4' | 'p';
+
+interface AnimatedProps extends HTMLMotionProps<As> {
+  as?: As;
+  delay?: number;
+  variant?: AnimationVariant;
+}
+
+export function Animated({ as = 'div', delay = 0.2, variant = 'fade-up', children, ...props }: AnimatedProps) {
+  const MotionComponent = motion[as] as React.ComponentType<HTMLMotionProps<typeof as>>;
+
+  return (
+    <MotionComponent {...props} {...getAnimatedProps(delay, variant)}>
+      {children}
+    </MotionComponent>
+  );
+}

@@ -1,0 +1,120 @@
+import { siteConfig } from '@/lib/data/site-config';
+
+interface BreadcrumbItem {
+  name: string;
+  href: string;
+}
+
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+interface ArticleProps {
+  title: string;
+  description: string;
+  publishedAt: string;
+  url: string;
+  author?: string;
+  imageUrl?: string;
+}
+
+function JsonLdScript({ data }: { data: Record<string, unknown> }) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML=\{{ __html: JSON.stringify(data) }}
+    />
+  );
+}
+
+export function OrganizationJsonLd() {
+  return (
+    <JsonLdScript
+      data=\{{
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: siteConfig.name,
+        url: siteConfig.url,
+        logo: `${siteConfig.url}/logo.png`,
+        sameAs: Object.values(siteConfig.social),
+      }}
+    />
+  );
+}
+
+export function WebSiteJsonLd() {
+  return (
+    <JsonLdScript
+      data=\{{
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: siteConfig.name,
+        url: siteConfig.url,
+      }}
+    />
+  );
+}
+
+export function BreadcrumbJsonLd({ items }: { items: BreadcrumbItem[] }) {
+  return (
+    <JsonLdScript
+      data=\{{
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: items.map((item, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: item.name,
+          item: `${siteConfig.url}${item.href}`,
+        })),
+      }}
+    />
+  );
+}
+
+export function FaqJsonLd({ items }: { items: FaqItem[] }) {
+  return (
+    <JsonLdScript
+      data=\{{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: items.map((item) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer,
+          },
+        })),
+      }}
+    />
+  );
+}
+
+export function ArticleJsonLd({ title, description, publishedAt, url, author, imageUrl }: ArticleProps) {
+  return (
+    <JsonLdScript
+      data=\{{
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: title,
+        description,
+        datePublished: publishedAt,
+        url: `${siteConfig.url}${url}`,
+        ...(imageUrl ? { image: `${siteConfig.url}${imageUrl}` } : {}),
+        author: author
+          ? { '@type': 'Person', name: author }
+          : { '@type': 'Organization', name: siteConfig.name },
+        publisher: {
+          '@type': 'Organization',
+          name: siteConfig.name,
+          logo: {
+            '@type': 'ImageObject',
+            url: `${siteConfig.url}/logo.png`,
+          },
+        },
+      }}
+    />
+  );
+}

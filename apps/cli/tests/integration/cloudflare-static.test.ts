@@ -48,6 +48,7 @@ describe('Cloudflare static deployment platform', () => {
       expect(content).toContain(`"name": "${projectName}"`);
       expect(content).toContain('"compatibility_date"');
       expect(content).toContain('"directory": "out"');
+      expect(content).toContain('"not_found_handling": "404-page"');
       expect(content).not.toContain('"main"');
       expect(content).not.toContain('pages_build_output_dir');
     });
