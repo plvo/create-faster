@@ -41,4 +41,13 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(schema).toContain("banned: integer('banned'");
     expect(schema).toContain('expiresAt');
   });
+
+  test('auth override uses createAuth factory + admin plugin', () => {
+    const auth = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/lib/auth/auth.ts.hbs'),
+      'utf8',
+    );
+    expect(auth).toContain('export function createAuth(db: Database)');
+    expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })");
+  });
 });

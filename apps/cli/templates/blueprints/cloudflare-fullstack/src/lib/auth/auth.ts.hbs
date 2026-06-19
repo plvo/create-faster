@@ -1,0 +1,63 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/auth.ts
+---
+import { type Database, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@repo/db';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { betterAuth } from 'better-auth';
+import { nextCookies } from 'better-auth/next-js';
+import { admin } from 'better-auth/plugins';
+import { ac, roles } from './permissions';
+
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+const isDev = process.env.NODE_ENV === 'development';
+const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
+
+export function createAuth(db: Database) {
+  return betterAuth({
+    baseURL: {
+      allowedHosts: [prodHost, ...(isDev ? ['localhost:*', '*.localhost:*'] : [])].filter(Boolean) as string[],
+      fallback: process.env.BETTER_AUTH_URL,
+      protocol: isDev ? 'http' : 'auto',
+    },
+    database: drizzleAdapter(db, {
+      provider: 'sqlite',
+      usePlural: false,
+      schema: {
+        user: userTable,
+        account: userAccountTable,
+        session: userSessionTable,
+        verification: userVerificationTable,
+      },
+    }),
+    plugins: [admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }), nextCookies()],
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 6,
+      revokeSessionsOnPasswordReset: true,
+    },
+    user: {
+      modelName: 'user',
+      fields: { name: 'username', email: 'email', emailVerified: 'emailVerified', image: 'avatarUrl', createdAt: 'createdAt', updatedAt: 'updatedAt' },
+    },
+    session: {
+      modelName: 'session',
+      fields: { userId: 'userId', token: 'token', expiresAt: 'expiresAt', ipAddress: 'ipAddress', userAgent: 'userAgent', createdAt: 'createdAt', updatedAt: 'updatedAt' },
+      expiresIn: 15 * DAY,
+    },
+    account: {
+      modelName: 'account',
+      fields: { userId: 'userId', accountId: 'accountId', providerId: 'providerId', accessToken: 'accessToken', refreshToken: 'refreshToken', accessTokenExpiresAt: 'accessTokenExpiresAt', refreshTokenExpiresAt: 'refreshTokenExpiresAt', scope: 'scope', idToken: 'idToken', password: 'password', createdAt: 'createdAt', updatedAt: 'updatedAt' },
+    },
+    verification: {
+      modelName: 'verification',
+      fields: { identifier: 'identifier', value: 'value', expiresAt: 'expiresAt', createdAt: 'createdAt', updatedAt: 'updatedAt' },
+    },
+  });
+}
+
+export type Auth = ReturnType<typeof createAuth>;
