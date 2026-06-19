@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 
@@ -27,5 +29,16 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(bp!.packageJson?.dependencies).toMatchObject({ 'lucide-react': '^0.487.0', sonner: '^2.0.7', zod: '^4.2.1' });
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated in prior test
     expect(bp!.rootPackageJson?.devDependencies).toMatchObject({ '@faker-js/faker': '^10.4.0' });
+  });
+
+  test('ships a sqlite schema with admin columns + documents table', () => {
+    const schema = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/lib/db/schema.ts.hbs'),
+      'utf8',
+    );
+    expect(schema).toContain("sqliteTable('documents'");
+    expect(schema).toContain("role: text('role')");
+    expect(schema).toContain("banned: integer('banned'");
+    expect(schema).toContain('expiresAt');
   });
 });
