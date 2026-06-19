@@ -9,7 +9,7 @@
       "binding": "DB",
       "database_name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}-db",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID",
-      "migrations_dir": "drizzle"
+      "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"
     }
   ]{{/if}}
 }

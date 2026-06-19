@@ -12,7 +12,7 @@ import { defineConfig } from 'drizzle-kit';
 const isProduction = process.env.NODE_ENV === 'production';
 
 function getLocalD1DB(): string | undefined {
-  const d1Dir = path.resolve(process.cwd(), '{{#if (isMono)}}../../{{/if}}.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+  const d1Dir = path.resolve(process.cwd(), '{{#if (isMono)}}../../{{/if}}.wrangler/v3/d1/miniflare-D1DatabaseObject');
   if (!fs.existsSync(d1Dir)) return undefined;
   const files = fs
     .readdirSync(d1Dir)

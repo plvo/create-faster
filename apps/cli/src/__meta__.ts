@@ -464,7 +464,7 @@ export const META: Meta = {
               scripts: {
                 'build:cf':
                   'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && next build && opennextjs-cloudflare build',
-                preview: 'opennextjs-cloudflare preview',
+                preview: 'opennextjs-cloudflare preview -- --persist-to {{workspaceRoot}}/.wrangler',
                 deploy: 'opennextjs-cloudflare deploy',
                 'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
               },
@@ -588,10 +588,33 @@ export const META: Meta = {
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
-              'db:migrate': 'wrangler d1 migrations apply DB --local',
-              'db:migrate:local': 'wrangler d1 migrations apply DB --local',
+              'db:migrate': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+              'db:migrate:local': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
-              'local-setup': 'wrangler d1 migrations apply DB --local && bun run db:seed',
+              'local-setup':
+                'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+            },
+          },
+          deploymentPackageJson: {
+            cloudflare: {
+              scripts: {
+                'db:migrate': $when(
+                  { repo: 'turborepo' },
+                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+                ),
+                'db:migrate:local': $when(
+                  { repo: 'turborepo' },
+                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+                ),
+                'db:migrate:remote': $when(
+                  { repo: 'turborepo' },
+                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --remote',
+                ),
+                'local-setup': $when(
+                  { repo: 'turborepo' },
+                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                ),
+              },
             },
           },
           envs: [

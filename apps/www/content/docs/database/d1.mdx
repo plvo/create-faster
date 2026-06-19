@@ -138,24 +138,32 @@ These are only needed for `db:migrate:remote` (production migrations via `d1-htt
 
 ## Workflow Scripts
 
-| Script | Command | Purpose |
-|---|---|---|
-| `db:generate` | `drizzle-kit generate` | Generate migration SQL from schema changes |
-| `db:migrate:local` | `wrangler d1 migrations apply DB --local` | Apply migrations to the local miniflare D1 |
-| `db:migrate:remote` | `wrangler d1 migrations apply DB --remote` | Apply migrations to the production D1 database |
-| `local-setup` | `wrangler d1 migrations apply DB --local && bun run db:seed` | First-time local setup: migrate + seed |
+| Script | Purpose |
+|---|---|
+| `db:generate` | Generate migration SQL from schema changes (`drizzle-kit generate`) |
+| `db:migrate` / `db:migrate:local` | Apply migrations to the local D1 |
+| `db:migrate:remote` | Apply migrations to the production D1 database |
+| `local-setup` | First-time local setup: migrate + seed |
 
-Turborepo: scripts land on the root `package.json` (the D1 database addon has `mono.scope: root`).
+**Single repo** — everything is co-located at the project root, so migrate runs against the root `wrangler.jsonc` and the local state at `./.wrangler`.
+
+**Turborepo** — the migration SQL lives in `packages/db/drizzle`, but the D1 binding lives in the consuming app's `wrangler.jsonc`. The migrate scripts (in `packages/db`) therefore point wrangler at that app's config and persist to a single shared state dir at the workspace root:
+
+```
+wrangler --config ../../apps/<app>/wrangler.jsonc d1 migrations apply DB --local --persist-to ../../.wrangler
+```
+
+The app's `wrangler.jsonc` sets `migrations_dir` to `../../packages/db/drizzle`, and `opennextjs-cloudflare preview` runs with the same `--persist-to ../../.wrangler` — so migrate, preview, and `drizzle.config.ts` all read and write the one local database. Run `turbo db:migrate` (or `bun run db:migrate` at the root) to apply migrations across the workspace.
 
 ## Local development
 
-Local `wrangler dev` persists D1 state in `.wrangler/state/v3/d1/`. The `drizzle.config.ts` auto-discovers the latest SQLite file in that directory, so `db:generate` and `db:migrate:local` work without any env var.
+`--persist-to <dir>` stores the local miniflare D1 under `<dir>/v3/d1/`. The generated `drizzle.config.ts` auto-discovers the latest SQLite file in `.wrangler/v3/d1/` (root `.wrangler/v3/d1/` in turborepo), so `db:push` and `db:studio` work without any env var once migrations have been applied.
 
 Manual smoke test after `local-setup`:
 
 ```bash
-bun run local-setup   # migrate + seed
-wrangler dev          # starts the Worker with the local D1 binding
+bun run db:migrate    # apply migrations to the local D1
+bun run preview       # build + start the Worker with the local D1 binding
 ```
 
 ## ORM constraint

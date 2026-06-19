@@ -8,6 +8,8 @@ import {
   isRequirementMet,
   isServerRuntimeSatisfied,
   isSingletonDbSatisfied,
+  resolveDeployAppDir,
+  resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -338,5 +340,56 @@ describe('isSingletonDbSatisfied', () => {
     expect(META.project.database.options.d1?.serverlessConsumersWired).toBe(true);
     expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(true);
     expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['trpc'], 'cloudflare'))).toBe(true);
+  });
+});
+
+describe('resolveDeployAppDir picks the deployment app that consumes the db', () => {
+  const ctx = (apps: TemplateContext['apps'], deployment?: string): TemplateContext =>
+    ({ apps, project: { tooling: [], ...(deployment ? { deployment } : {}) }, repo: 'turborepo' }) as TemplateContext;
+
+  test('prefers the app carrying a singleton-db consumer over declaration order', () => {
+    const apps = [
+      { appName: 'api', stackName: 'hono', libraries: [] },
+      { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
+    ] as TemplateContext['apps'];
+    expect(resolveDeployAppDir(ctx(apps, 'cloudflare'))).toBe('web');
+  });
+
+  test('falls back to the first deployment-capable app when none consume the db', () => {
+    const apps = [
+      { appName: 'api', stackName: 'hono', libraries: [] },
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+    ] as TemplateContext['apps'];
+    expect(resolveDeployAppDir(ctx(apps, 'cloudflare'))).toBe('api');
+  });
+
+  test('returns undefined without a deployment', () => {
+    const apps = [{ appName: 'web', stackName: 'nextjs', libraries: [] }] as TemplateContext['apps'];
+    expect(resolveDeployAppDir(ctx(apps))).toBeUndefined();
+  });
+});
+
+describe('resolveScriptPlaceholders substitutes generic topology tokens', () => {
+  const ctx = (repo: 'single' | 'turborepo'): TemplateContext =>
+    ({
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+      repo,
+    }) as TemplateContext;
+
+  test('workspaceRoot resolves relative to the repo layout', () => {
+    expect(resolveScriptPlaceholders({ x: 'persist {{workspaceRoot}}/.wrangler' }, ctx('turborepo')).x).toBe(
+      'persist ../../.wrangler',
+    );
+    expect(resolveScriptPlaceholders({ x: 'persist {{workspaceRoot}}/.wrangler' }, ctx('single')).x).toBe(
+      'persist ./.wrangler',
+    );
+  });
+
+  test('deployAppDir resolves to the deploy app directory', () => {
+    expect(
+      resolveScriptPlaceholders({ x: 'config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc' }, ctx('turborepo'))
+        .x,
+    ).toBe('config ../../apps/web/wrangler.jsonc');
   });
 });
