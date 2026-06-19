@@ -314,6 +314,32 @@ describe('blueprint template resolution', () => {
     const unique = new Set(destinations);
     expect(unique.size).toBe(destinations.length);
   });
+
+  test('routes stack-suffixed blueprint files to the app matching the suffix, not apps[0]', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [
+        {
+          appName: 'web',
+          stackName: 'nextjs',
+          libraries: ['shadcn', 'next-themes', 'better-auth', 'trpc', 'tanstack-query', 'tanstack-form'],
+        },
+        { appName: 'cron', stackName: 'hono', libraries: [] },
+      ],
+      project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] },
+      git: false,
+      blueprint: 'cloudflare-fullstack',
+    };
+
+    const templates = getAllTemplatesForContext(ctx);
+    const fromBlueprint = (suffix: string) =>
+      templates.find((t) => t.source.includes('blueprints/cloudflare-fullstack') && t.source.endsWith(suffix));
+
+    expect(fromBlueprint('src/index.ts.hono.hbs')?.destination).toBe('apps/cron/src/index.ts');
+    expect(fromBlueprint('wrangler.jsonc.hono.hbs')?.destination).toBe('apps/cron/wrangler.jsonc');
+    expect(templates.some((t) => t.destination === 'apps/web/src/index.ts')).toBe(false);
+  });
 });
 
 describe('scanTemplateFiles', () => {
