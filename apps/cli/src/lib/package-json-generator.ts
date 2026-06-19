@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { META } from '@/__meta__';
-import { applyAppScripts, findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
+import { applyAppScripts, findRuntimeAddon, isLibraryCompatible, resolveScriptPlaceholders } from '@/lib/addon-utils';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
@@ -192,6 +192,8 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     scripts = applyAppScripts(scripts, runtimeAddon.runtime.appScripts);
   }
 
+  scripts = resolveScriptPlaceholders(scripts, ctx);
+
   const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
 
   const pkg: PackageJson = {
@@ -220,6 +222,7 @@ export function generatePackagePackageJson(
   const resolved = mergeResolved(ctx, config);
   const deps = resolved.dependencies;
   const devDeps = { ...resolved.devDependencies, '@repo/config': '*' };
+  const scripts = resolved.scripts ? resolveScriptPlaceholders(resolved.scripts, ctx) : undefined;
 
   const pkg: PackageJson = {
     name: `@repo/${packageName}`,
@@ -227,7 +230,7 @@ export function generatePackagePackageJson(
     private: true,
     type: 'module',
     exports: resolved.exports,
-    scripts: resolved.scripts ? sortObjectKeys(resolved.scripts) : undefined,
+    scripts: scripts ? sortObjectKeys(scripts) : undefined,
     dependencies: deps ? sortObjectKeys(deps) : undefined,
     devDependencies: sortObjectKeys(devDeps),
   };
@@ -308,13 +311,15 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   Object.assign(scripts, merged.scripts ?? {});
   if (hasAppLintScript) scripts.lint = 'turbo lint';
 
+  const resolvedScripts = resolveScriptPlaceholders(scripts, ctx);
+
   const pkg: PackageJson = {
     name: ctx.projectName,
     version: '0.0.0',
     private: true,
     packageManager,
     workspaces: ['apps/*', 'packages/*'],
-    scripts: sortObjectKeys(scripts),
+    scripts: sortObjectKeys(resolvedScripts),
     dependencies: Object.keys(dependencies).length > 0 ? sortObjectKeys(dependencies) : undefined,
     devDependencies: sortObjectKeys(devDependencies),
     syncpack: {

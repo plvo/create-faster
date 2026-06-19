@@ -183,14 +183,14 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1', () => {
     const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
     expect(wrangler).toContain('"d1_databases"');
     expect(wrangler).toContain('"binding": "DB"');
-    expect(wrangler).toContain('"migrations_dir": "drizzle"');
+    expect(wrangler).toContain('"migrations_dir": "../../packages/db/drizzle"');
   });
 
   test('api app wrangler.jsonc declares the D1 binding', async () => {
     const wrangler = await readTextFile(join(projectPath, 'apps/api/wrangler.jsonc'));
     expect(wrangler).toContain('"d1_databases"');
     expect(wrangler).toContain('"binding": "DB"');
-    expect(wrangler).toContain('"migrations_dir": "drizzle"');
+    expect(wrangler).toContain('"migrations_dir": "../../packages/db/drizzle"');
   });
 
   test('drizzle.config in db package uses d1-http driver', async () => {

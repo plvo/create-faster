@@ -109,6 +109,34 @@ export function findRuntimeAddon(ctx: TemplateContext): MetaAddon | undefined {
   return undefined;
 }
 
+export function resolveDeployAppDir(ctx: TemplateContext): string | undefined {
+  const deployment = ctx.project.deployment;
+  if (!deployment) return undefined;
+
+  const deployStacks = Object.keys(META.project.deployment.options[deployment]?.stackPackageJson ?? {});
+  const candidates = ctx.apps.filter((app) => deployStacks.includes(app.stackName));
+  if (candidates.length === 0) return undefined;
+
+  const consumer = candidates.find((app) => app.libraries.some((lib) => META.libraries[lib]?.needsSingletonDb));
+  return (consumer ?? candidates[0]).appName;
+}
+
+export function resolveScriptPlaceholders(
+  scripts: Record<string, string>,
+  ctx: TemplateContext,
+): Record<string, string> {
+  const workspaceRoot = ctx.repo === 'turborepo' ? '../..' : '.';
+  const deployAppDir = resolveDeployAppDir(ctx);
+
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(scripts)) {
+    let next = value.replace(/\{\{workspaceRoot\}\}/g, workspaceRoot);
+    if (deployAppDir) next = next.replace(/\{\{deployAppDir\}\}/g, deployAppDir);
+    resolved[key] = next;
+  }
+  return resolved;
+}
+
 export function applyAppScripts(
   scripts: Record<string, string>,
   transforms: Record<string, AppScriptTransform>,
