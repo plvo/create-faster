@@ -50,4 +50,11 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(auth).toContain('export function createAuth(db: Database)');
     expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })");
   });
+
+  test('registers a documents router using d1 per-request auth', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/trpc');
+    expect(readFileSync(join(base, 'routers/_app.ts.hbs'), 'utf8')).toContain('documents: documentsRouter');
+    expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('createAuth(opts.ctx.db)');
+    expect(readFileSync(join(base, 'routers/documents.ts.hbs'), 'utf8')).toContain('STORAGE.delete(doc.r2Key)');
+  });
 });

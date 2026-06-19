@@ -1,0 +1,42 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/documents.ts
+---
+import { and, desc, documentTable, eq } from '@repo/db';
+import { z } from 'zod';
+import { router } from '../trpc';
+import { permissionProcedure } from '../middleware/rbac';
+
+export const documentsRouter = router({
+  list: permissionProcedure('document', 'read').query(async ({ ctx }) => {
+    const isPrivileged = ctx.session.user.role === 'admin' || ctx.session.user.role === 'manager';
+    return ctx.db
+      .select()
+      .from(documentTable)
+      .where(isPrivileged ? undefined : eq(documentTable.userId, ctx.session.user.id))
+      .orderBy(desc(documentTable.createdAt));
+  }),
+
+  delete: permissionProcedure('document', 'delete')
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [doc] = await ctx.db
+        .select()
+        .from(documentTable)
+        .where(
+          ctx.session.user.role === 'admin'
+            ? eq(documentTable.id, input.id)
+            : and(eq(documentTable.id, input.id), eq(documentTable.userId, ctx.session.user.id)),
+        )
+        .limit(1);
+      if (!doc) return { deleted: false };
+
+      const { getEnv } = await import('@/lib/env');
+      const { STORAGE } = await getEnv();
+      await STORAGE.delete(doc.r2Key);
+      await ctx.db.delete(documentTable).where(eq(documentTable.id, doc.id));
+      return { deleted: true };
+    }),
+});
