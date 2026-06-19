@@ -1,0 +1,161 @@
+---
+mono:
+  scope: root
+---
+{{{{raw}}}}
+import fs from 'node:fs';
+import path from 'node:path';
+import { parseArgs } from 'node:util';
+import { Database as BunSqlite } from 'bun:sqlite';
+import { faker } from '@faker-js/faker';
+import { createAuth } from '@repo/auth/auth';
+import { type Database, documentTable, eq, userTable } from '@repo/db';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import * as schema from '@repo/db';
+
+const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
+
+const { values: flags } = parseArgs({
+  options: {
+    reset: { type: 'boolean', default: false },
+    fixtures: { type: 'boolean', default: false },
+    help: { type: 'boolean', short: 'h', default: false },
+  },
+});
+
+function printHelp(): void {
+  console.log(`Seed the local D1 database.
+
+Run after \`bun run local-setup\` (which creates + migrates the local D1 sqlite).
+
+Usage: bun run db:seed [options]
+
+Options:
+  --reset      Wipe existing rows before seeding
+  --fixtures   Add demo documents (including expired ones for the cron purge)
+  -h, --help   Show this help`);
+}
+
+function getLocalD1DB(): string {
+  const d1Dir = path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject');
+  if (!fs.existsSync(d1Dir)) {
+    throw new Error('Local D1 database not found. Run `bun run local-setup` first.');
+  }
+  const file = fs
+    .readdirSync(d1Dir)
+    .filter((f) => f.endsWith('.sqlite') && f !== 'metadata.sqlite')
+    .map((f) => ({ name: f, mtime: fs.statSync(path.join(d1Dir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)[0];
+  if (!file) throw new Error('Local D1 database not found. Run `bun run local-setup` first.');
+  return path.join(d1Dir, file.name);
+}
+
+// The seed targets the local miniflare sqlite file directly (bun:sqlite), so it
+// reuses the better-auth + drizzle schema without a D1 binding at runtime.
+const sqlite = new BunSqlite(getLocalD1DB());
+const db = drizzle(sqlite, { schema }) as unknown as Database;
+const auth = createAuth(db);
+
+interface CoreRefs {
+  adminId: string;
+  managerId: string;
+  userId: string;
+}
+
+async function findOrCreateUser(input: {
+  email: string;
+  name: string;
+  role: 'admin' | 'manager' | 'user';
+}): Promise<string> {
+  const existing = await db.query.userTable.findFirst({
+    where: (user, { eq }) => eq(user.email, input.email),
+  });
+  if (existing) return existing.id;
+
+  await auth.api.signUpEmail({
+    body: { email: input.email, password: DEMO_PASSWORD, name: input.name },
+  });
+  const created = await db.query.userTable.findFirst({
+    where: (user, { eq }) => eq(user.email, input.email),
+  });
+  if (!created) throw new Error(`Failed to create user ${input.email}`);
+
+  await db.update(userTable).set({ role: input.role }).where(eq(userTable.id, created.id));
+  return created.id;
+}
+
+async function seedCore(): Promise<CoreRefs> {
+  const adminId = await findOrCreateUser({ email: 'admin@example.com', name: 'Admin', role: 'admin' });
+  const managerId = await findOrCreateUser({ email: 'manager@example.com', name: 'Manager', role: 'manager' });
+  const userId = await findOrCreateUser({ email: 'user@example.com', name: 'User', role: 'user' });
+  return { adminId, managerId, userId };
+}
+
+async function seedFixtures(core: CoreRefs): Promise<void> {
+  const existing = await db.query.documentTable.findMany();
+  if (existing.length > 0) {
+    console.log('Documents already present, skipping. Use --reset to rebuild them.');
+    return;
+  }
+
+  faker.seed(42);
+  const ownerIds = [core.adminId, core.managerId, core.userId];
+  const now = Date.now();
+
+  await db.insert(documentTable).values(
+    Array.from({ length: 9 }, (_, i) => {
+      const userId = faker.helpers.arrayElement(ownerIds);
+      const id = crypto.randomUUID();
+      return {
+        id,
+        userId,
+        title: faker.system.commonFileName('pdf'),
+        r2Key: `documents/${userId}/${id}`,
+        size: faker.number.int({ min: 4_096, max: 4_194_304 }),
+        mimeType: 'application/pdf',
+        // Every third document is already expired to demo the cron purge.
+        expiresAt: i % 3 === 0 ? new Date(now - faker.number.int({ min: 1, max: 30 }) * 86_400_000) : null,
+      };
+    }),
+  );
+
+  console.log('Added 9 documents (3 expired for the cron purge demo).');
+}
+
+async function reset(): Promise<void> {
+  await db.delete(documentTable);
+  await db.delete(userTable);
+}
+
+async function main(): Promise<void> {
+  if (flags.help) {
+    printHelp();
+    return;
+  }
+
+  if (flags.reset) {
+    console.log('Resetting local database...');
+    await reset();
+  }
+
+  console.log('Seeding core users...');
+  const core = await seedCore();
+
+  if (flags.fixtures) {
+    console.log('Seeding demo documents...');
+    await seedFixtures(core);
+  }
+
+  console.log('\nSeeding complete.');
+  console.log(`  Admin:   admin@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  Manager: manager@example.com / ${DEMO_PASSWORD}`);
+  console.log(`  User:    user@example.com / ${DEMO_PASSWORD}`);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Seeding failed:', error);
+    process.exit(1);
+  });
+{{{{/raw}}}}

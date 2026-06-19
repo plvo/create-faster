@@ -196,4 +196,24 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(layout).toContain('<Toaster richColors />');
     expect(layout).not.toContain('@tanstack/react-devtools');
   });
+
+  test('ships a local-D1 seed (no DATABASE_URL, no shebang)', () => {
+    const seed = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/scripts/seed.ts.hbs'),
+      'utf8',
+    );
+    expect(seed).toContain("import { Database as BunSqlite } from 'bun:sqlite'");
+    expect(seed).toContain('createAuth(db)');
+    expect(seed).toContain('auth.api.signUpEmail');
+    expect(seed).toContain('miniflare-D1DatabaseObject');
+    expect(seed).not.toContain('DATABASE_URL');
+    expect(seed).not.toContain('#!/usr/bin/env');
+  });
+
+  test('ships the four agent docs', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/docs/agents');
+    for (const f of ['auth-rbac.md.hbs', 'data-layer.md.hbs', 'storage.md.hbs', 'cloudflare-deploy.md.hbs']) {
+      expect(() => readFileSync(join(base, f), 'utf8')).not.toThrow();
+    }
+  });
 });

@@ -1,0 +1,28 @@
+---
+path: docs/agents/storage.md
+mono:
+  scope: root
+  path: docs/agents/storage.md
+---
+# Storage (R2)
+
+Uploaded files live in a **Cloudflare R2** bucket bound as `STORAGE`. The binding is declared in both `apps/web/wrangler.jsonc` and `apps/cron/wrangler.jsonc` (the cron Worker needs it to delete objects). R2 is accessed directly through the binding — no presigned URLs, no S3 SDK.
+
+## Key scheme
+Objects are keyed `documents/<userId>/<documentId>`. The same key is stored in `documents.r2_key`, so the DB row and the object stay linked for reads and deletes.
+
+## Upload
+`apps/web/src/app/api/documents/upload/route.ts` is a Route Handler (POST, multipart):
+
+1. Authenticates via `getAuth()` → 401 if no session.
+2. Parses the `FormData` (`file`, optional `title`); rejects a missing/empty file (400) or anything over **25 MB** (413).
+3. `const { STORAGE } = await getEnv()` then `STORAGE.put(key, await file.arrayBuffer(), { httpMetadata: { contentType } })`.
+4. Inserts the `documents` row (`getDb()`) and returns it as JSON.
+
+The 25 MB cap is deliberate: a Worker buffers the whole body in memory (128 MB limit), so large uploads would OOM. For bigger files, switch to a presigned/multipart upload instead of buffering.
+
+## Delete
+Deletion is owned by the tRPC `documents.delete` mutation (`packages/api/src/router/documents.ts`): it loads the row (owner-scoped unless admin), `STORAGE.delete(doc.r2Key)`, then deletes the DB row. The cron Worker performs the same pair (`STORAGE.delete` + row delete) for expired documents — see [Cloudflare deploy](cloudflare-deploy.md) and [Data layer](data-layer.md).
+
+## Adding a bucket / changing storage
+Add another `r2_buckets` entry (a new `binding` name) to the relevant `wrangler.jsonc`, expose it on the `Env`/`getEnv()` type, and reference it the same way (`env.<BINDING>.put/get/delete`). Keep the key scheme owner-prefixed so per-user listing and cleanup stay cheap.

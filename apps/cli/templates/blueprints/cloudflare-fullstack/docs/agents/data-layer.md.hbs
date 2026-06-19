@@ -1,0 +1,30 @@
+---
+path: docs/agents/data-layer.md
+mono:
+  scope: root
+  path: docs/agents/data-layer.md
+---
+# Data layer (D1 + Drizzle)
+
+The database is **Cloudflare D1** (SQLite) everywhere — local dev and production both go through the `DB` binding. There is **no `DATABASE_URL`**; D1 is never a module singleton because it is only reachable from a request- or event-bound binding.
+
+## Schema
+`packages/db/src/schema.ts` (Drizzle `sqliteTable`) holds the Better Auth tables (`users`, `user_sessions`, `user_accounts`, `user_verifications` — with admin columns `role`, `banned`, `ban_reason`, `ban_expires`) and the domain `documents` table (`r2_key`, `size`, `mime_type`, nullable `expires_at`, owner FK to `users`).
+
+## Connecting
+`packages/db/src/index.ts` exports `createDb(d1: D1Database)` → `drizzle(d1, { schema })`, plus the `Database` type and a re-export of `drizzle-orm` (so `eq`, `and`, `desc`, `lt`, `isNotNull`, … import from `@repo/db`).
+
+- **Web (Server Components / Route Handlers):** `import { getDb } from '@/lib/server'`, then `const db = await getDb()`. The seam (`apps/web/src/lib/env.ts` → `getEnv()`) reads the request's Cloudflare context and hands the `DB` binding to `createDb`.
+- **tRPC procedures:** use `ctx.db` (the context builds it per request).
+- **Cron Worker:** `import { createDb } from '@repo/db'`, then `const db = createDb(env.DB)` inside `scheduled(event, env, ctx)`.
+
+## Migrations
+- `bun run db:generate` — Drizzle Kit generates SQL from the schema into `packages/db/drizzle`.
+- `bun run db:migrate:local` — applies migrations to the local D1 sqlite (`--persist-to .wrangler`).
+- `bun run db:migrate:remote` — applies migrations to the remote D1 database.
+- `bun run local-setup` — chains `db:migrate:local` then `db:seed`; run it once after install to get a working local DB.
+
+`drizzle.config.ts` resolves the newest local sqlite under `.wrangler/v3/d1/miniflare-D1DatabaseObject` for local introspection, and switches to the `d1-http` driver (account id / database id / API token) when `NODE_ENV=production`.
+
+## Seeding
+`scripts/seed.ts` (root) opens the local miniflare sqlite directly via `bun:sqlite` + `drizzle-orm/bun-sqlite`, then creates `admin@example.com` / `manager@example.com` / `user@example.com` through `createAuth(db).api.signUpEmail` (assigning roles afterwards) and inserts demo documents — a third of them already expired to exercise the cron purge. Flags: `--reset`, `--fixtures`, `--help`.
