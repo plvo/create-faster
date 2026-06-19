@@ -1,0 +1,16 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/layout.tsx
+---
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { getAuth } from '@/lib/server';
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user.role !== 'admin') redirect('/');
+
+  return <>{children}</>;
+}

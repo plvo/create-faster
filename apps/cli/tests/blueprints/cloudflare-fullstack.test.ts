@@ -151,4 +151,37 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(page).toContain('authClient.useSession()');
     expect(page).toContain('{{{{raw}}}}');
   });
+
+  test('admin layout exists and server-gates non-admin users', () => {
+    const layout = readFileSync(
+      join(
+        import.meta.dir,
+        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/admin/layout.tsx.hbs',
+      ),
+      'utf8',
+    );
+    expect(layout).toContain("import { getAuth } from '@/lib/server'");
+    expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
+    expect(layout).toContain('const auth = await getAuth()');
+    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
+    expect(layout).toContain("session?.user.role !== 'admin'");
+    expect(layout).toContain("redirect('/')");
+  });
+
+  test('admin users page exists and uses authClient.admin methods', () => {
+    const page = readFileSync(
+      join(
+        import.meta.dir,
+        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/admin/users/page.tsx.hbs',
+      ),
+      'utf8',
+    );
+    expect(page).toContain('{{{{raw}}}}');
+    expect(page).toContain("authClient.admin.listUsers");
+    expect(page).toContain("authClient.admin.setRole");
+    expect(page).toContain("authClient.admin.banUser");
+    expect(page).toContain("authClient.admin.unbanUser");
+    expect(page).toContain("permissions={{ user: ['list'] }}");
+    expect(page).toContain("import { authClient } from '@repo/auth/auth-client'");
+  });
 });
