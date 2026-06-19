@@ -184,4 +184,16 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(page).toContain("permissions={{ user: ['list'] }}");
     expect(page).toContain("import { authClient } from '@repo/auth/auth-client'");
   });
+
+  test('root layout override mounts AppProviders + Toaster (no missing devtools deps)', () => {
+    const layout = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/layout.tsx.hbs'),
+      'utf8',
+    );
+    expect(layout).toContain("import { AppProviders } from '@/components/app-providers'");
+    expect(layout).toContain("import { Toaster } from 'sonner'");
+    expect(layout).toContain('<AppProviders>');
+    expect(layout).toContain('<Toaster richColors />');
+    expect(layout).not.toContain('@tanstack/react-devtools');
+  });
 });
