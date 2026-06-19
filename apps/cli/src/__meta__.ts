@@ -1205,6 +1205,82 @@ export const META: Meta = {
         },
       ],
     },
+    'cloudflare-fullstack': {
+      label: 'Cloudflare Fullstack',
+      hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
+      category: 'Business',
+      agentArchitecture: [
+        'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
+        'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',
+        'APIs, TanStack Query for client data, Drizzle on Cloudflare D1, and direct-binding R2',
+        'uploads. The cron Worker purges expired documents (D1 rows + R2 objects) on a schedule.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Auth & RBAC](docs/agents/auth-rbac.md)',
+        '- [Data layer (D1 + Drizzle)](docs/agents/data-layer.md)',
+        '- [Storage (R2)](docs/agents/storage.md)',
+        '- [Cloudflare deploy](docs/agents/cloudflare-deploy.md)',
+      ].join('\n'),
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn', 'next-themes', 'better-auth', 'trpc', 'tanstack-query', 'tanstack-form'],
+          },
+          {
+            appName: 'cron',
+            stackName: 'hono',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'd1',
+          orm: 'drizzle',
+          deployment: 'cloudflare',
+        },
+      },
+      packageJson: {
+        dependencies: {
+          'lucide-react': '^0.487.0',
+          'react-error-boundary': '^5.0.0',
+          sonner: '^2.0.7',
+          zod: '^4.2.1',
+        },
+      },
+      pkgPackageJson: {
+        ui: {
+          dependencies: {
+            '@tanstack/react-form': '^1.23.7',
+            'react-dom': '^19.2.3',
+            vaul: '^1.1.2',
+          },
+          devDependencies: {
+            '@types/react-dom': '^19.2.3',
+          },
+        },
+      },
+      rootPackageJson: {
+        dependencies: {
+          '@repo/auth': '*',
+          '@repo/db': '*',
+        },
+        devDependencies: {
+          '@repo/config': '*',
+          '@faker-js/faker': '^10.4.0',
+        },
+        scripts: {
+          'db:seed': 'bun --env-file=packages/db/.env scripts/seed.ts',
+          start: 'turbo start',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          monoScope: ['app'],
+        },
+      ],
+    },
     showcase: {
       label: 'Showcase',
       hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',

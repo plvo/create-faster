@@ -63,6 +63,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@repo/config": "*"
+    "@repo/config": "*",
+    "vitest": "^4.1.9"
   }
 }
