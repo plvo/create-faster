@@ -64,4 +64,14 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(readFileSync(join(base, 'src/lib/env.ts.nextjs.hbs'), 'utf8')).toContain('STORAGE: R2Bucket');
     expect(readFileSync(join(base, 'src/app/api/documents/upload/route.ts.hbs'), 'utf8')).toContain('STORAGE.put(key');
   });
+
+  test('ships a cron worker with scheduled purge + triggers.crons', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack');
+    const idx = readFileSync(join(base, 'src/index.ts.hono.hbs'), 'utf8');
+    expect(idx).toContain('async scheduled(');
+    expect(idx).toContain('createDb(env.DB)');
+    const wr = readFileSync(join(base, 'wrangler.jsonc.hono.hbs'), 'utf8');
+    expect(wr).toContain('"crons"');
+    expect(wr).toContain('"binding": "STORAGE"');
+  });
 });

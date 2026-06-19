@@ -1,0 +1,45 @@
+---
+mono:
+  scope: app
+  path: src/index.ts
+---
+import { and, createDb, documentTable, eq, isNotNull, lt } from '@repo/db';
+import { Hono } from 'hono';
+
+interface Env {
+  DB: D1Database;
+  STORAGE: R2Bucket;
+}
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.get('/health', (c) => c.json({ ok: true }));
+
+async function purgeExpiredDocuments(env: Env): Promise<number> {
+  const db = createDb(env.DB);
+  const now = new Date();
+
+  const expired = await db
+    .select({ id: documentTable.id, r2Key: documentTable.r2Key })
+    .from(documentTable)
+    .where(and(isNotNull(documentTable.expiresAt), lt(documentTable.expiresAt, now)));
+
+  for (const doc of expired) {
+    try {
+      await env.STORAGE.delete(doc.r2Key);
+      await db.delete(documentTable).where(eq(documentTable.id, doc.id));
+    } catch (err) {
+      console.error(`[cron] failed to purge document ${doc.id}:`, err);
+    }
+  }
+
+  console.log(`[cron] purged ${expired.length} expired document(s)`);
+  return expired.length;
+}
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(purgeExpiredDocuments(env));
+  },
+};
