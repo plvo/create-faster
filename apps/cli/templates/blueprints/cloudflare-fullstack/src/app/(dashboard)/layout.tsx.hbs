@@ -1,0 +1,37 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/layout.tsx
+---
+import Link from 'next/link';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { getAuth } from '@/lib/server';
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user.role) redirect('/login');
+
+  return (
+    <div className='flex min-h-screen flex-col'>
+      <header className='flex items-center justify-between border-b px-6 py-3'>
+        <Link href='/' className='font-semibold'>
+          {{projectName}}
+        </Link>
+        <nav className='flex items-center gap-4 text-sm'>
+          <Link href='/profile' className='text-muted-foreground hover:text-foreground'>
+            Profile
+          </Link>
+          <a
+            href='/api/auth/sign-out'
+            className='text-muted-foreground hover:text-foreground'
+          >
+            Sign out
+          </a>
+        </nav>
+      </header>
+      <main className='flex-1 p-6'>{children}</main>
+    </div>
+  );
+}

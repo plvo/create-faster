@@ -1,0 +1,21 @@
+---
+mono:
+  scope: app
+  path: src/hooks/use-permission.ts
+---
+{{{{raw}}}}
+'use client';
+
+import type { AppRole } from '@repo/auth/permissions';
+import { authClient } from '@repo/auth/auth-client';
+
+type CheckArgs = Parameters<typeof authClient.admin.checkRolePermission>[0];
+
+export function usePermission(permissions: Record<string, string[]>): boolean {
+  const { data: session } = authClient.useSession();
+  const role = session?.user?.role as AppRole | undefined;
+  if (!role) return false;
+  if (Object.keys(permissions).length === 0) return true;
+  return authClient.admin.checkRolePermission({ role, permissions } as CheckArgs);
+}
+{{{{/raw}}}}

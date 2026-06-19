@@ -1,0 +1,41 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/profile/page.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { authClient } from '@repo/auth/auth-client';
+
+export default function ProfilePage() {
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+
+  return (
+    <div className='space-y-6'>
+      <h1 className='text-3xl font-bold'>Profile</h1>
+      <div className='rounded-lg border p-6'>
+        {user ? (
+          <dl className='space-y-3 text-sm'>
+            <div className='flex gap-4'>
+              <dt className='w-24 font-medium text-muted-foreground'>Name</dt>
+              <dd>{user.name}</dd>
+            </div>
+            <div className='flex gap-4'>
+              <dt className='w-24 font-medium text-muted-foreground'>Email</dt>
+              <dd>{user.email}</dd>
+            </div>
+            <div className='flex gap-4'>
+              <dt className='w-24 font-medium text-muted-foreground'>Role</dt>
+              <dd className='capitalize'>{(user as { role?: string }).role ?? 'user'}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className='text-muted-foreground'>Loading…</p>
+        )}
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}

@@ -102,4 +102,53 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(signupForm).toContain("authClient.signUp.email");
     expect(signupForm).not.toContain("import { auth } from");
   });
+
+  test('ships can.tsx and use-permission.ts (verbatim from org-dashboard)', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src');
+    const can = readFileSync(join(base, 'components/can.tsx.hbs'), 'utf8');
+    expect(can).toContain("import { usePermission } from '@/hooks/use-permission'");
+    expect(can).toContain('usePermission(permissions)');
+    expect(can).toContain('{{{{raw}}}}');
+    const usePerm = readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8');
+    expect(usePerm).toContain("import type { AppRole } from '@repo/auth/permissions'");
+    expect(usePerm).toContain('authClient.admin.checkRolePermission');
+    expect(usePerm).toContain('{{{{raw}}}}');
+  });
+
+  test('(dashboard) layout uses getAuth per-request seam (not singleton)', () => {
+    const layout = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/layout.tsx.hbs'),
+      'utf8',
+    );
+    expect(layout).toContain("import { getAuth } from '@/lib/server'");
+    expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
+    expect(layout).toContain('const auth = await getAuth()');
+    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
+    expect(layout).toContain("redirect('/login')");
+  });
+
+  test('documents page references tRPC documents.list/delete and upload endpoint', () => {
+    const page = readFileSync(
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/page.tsx.hbs'),
+      'utf8',
+    );
+    expect(page).toContain('documents.list');
+    expect(page).toContain('documents.delete');
+    expect(page).toContain('/api/documents/upload');
+    expect(page).toContain('{{{{raw}}}}');
+    expect(page).toContain("permissions={{ document: ['create'] }}");
+    expect(page).toContain("permissions={{ document: ['delete'] }}");
+  });
+
+  test('profile page uses authClient.useSession', () => {
+    const page = readFileSync(
+      join(
+        import.meta.dir,
+        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/profile/page.tsx.hbs',
+      ),
+      'utf8',
+    );
+    expect(page).toContain('authClient.useSession()');
+    expect(page).toContain('{{{{raw}}}}');
+  });
 });
