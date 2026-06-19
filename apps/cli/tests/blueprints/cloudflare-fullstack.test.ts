@@ -57,4 +57,11 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('createAuth(opts.ctx.db)');
     expect(readFileSync(join(base, 'routers/documents.ts.hbs'), 'utf8')).toContain('STORAGE.delete(doc.r2Key)');
   });
+
+  test('adds the R2 STORAGE binding, env field, and upload route', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack');
+    expect(readFileSync(join(base, 'wrangler.jsonc.nextjs.hbs'), 'utf8')).toContain('"binding": "STORAGE"');
+    expect(readFileSync(join(base, 'src/lib/env.ts.nextjs.hbs'), 'utf8')).toContain('STORAGE: R2Bucket');
+    expect(readFileSync(join(base, 'src/app/api/documents/upload/route.ts.hbs'), 'utf8')).toContain('STORAGE.put(key');
+  });
 });
