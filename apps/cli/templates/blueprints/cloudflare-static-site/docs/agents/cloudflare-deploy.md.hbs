@@ -10,9 +10,12 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 
 ```jsonc
 "assets": {
-  "directory": "out"
+  "directory": "out",
+  "not_found_handling": "404-page"
 }
 ```
+
+`not_found_handling: "404-page"` makes unmatched paths serve the export's pre-rendered `out/404.html` (the branded not-found page) instead of a blank 404 body.
 
 ## First deploy
 

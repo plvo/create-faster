@@ -28,6 +28,7 @@ describe('Blueprint generation - cloudflare-static-site', () => {
     const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
     expect(wrangler).toContain('"assets"');
     expect(wrangler).toContain('"directory": "out"');
+    expect(wrangler).toContain('"not_found_handling": "404-page"');
   });
 
   test('deploy script builds then deploys via wrangler', async () => {
