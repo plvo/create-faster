@@ -1,0 +1,16 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { SignupForm } from './signup-form';
+
+export default function SignupPage() {
+  return (
+    <Card className='w-full max-w-sm'>
+      <CardHeader>
+        <CardTitle className='text-2xl'>Create account</CardTitle>
+        <CardDescription>Enter your details to get started.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SignupForm />
+      </CardContent>
+    </Card>
+  );
+}

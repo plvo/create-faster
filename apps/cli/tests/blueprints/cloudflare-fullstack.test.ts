@@ -74,4 +74,32 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(wr).toContain('"crons"');
     expect(wr).toContain('"binding": "STORAGE"');
   });
+
+  test('ships (auth) layout using getAuth per-request seam (not singleton)', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const layout = readFileSync(join(base, 'layout.tsx.hbs'), 'utf8');
+    expect(layout).toContain("import { getAuth } from '@/lib/server'");
+    expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
+    expect(layout).toContain('const auth = await getAuth()');
+    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
+    expect(layout).toContain("redirect('/')");
+  });
+
+  test('ships login and signup pages', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const loginPage = readFileSync(join(base, 'login/page.tsx.hbs'), 'utf8');
+    expect(loginPage).toContain('LoginForm');
+    const signupPage = readFileSync(join(base, 'signup/page.tsx.hbs'), 'utf8');
+    expect(signupPage).toContain('SignupForm');
+  });
+
+  test('login-form and signup-form use authClient (db-agnostic)', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const loginForm = readFileSync(join(base, 'login/login-form.tsx.hbs'), 'utf8');
+    expect(loginForm).toContain("authClient.signIn.email");
+    expect(loginForm).not.toContain("import { auth } from");
+    const signupForm = readFileSync(join(base, 'signup/signup-form.tsx.hbs'), 'utf8');
+    expect(signupForm).toContain("authClient.signUp.email");
+    expect(signupForm).not.toContain("import { auth } from");
+  });
 });
