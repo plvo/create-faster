@@ -6,7 +6,7 @@ mono:
 ---
 # Data layer (D1 + Drizzle)
 
-The database is **Cloudflare D1** (SQLite) everywhere — local dev and production both go through the `DB` binding. There is **no `DATABASE_URL`**; D1 is never a module singleton because it is only reachable from a request- or event-bound binding.
+The database is **Cloudflare D1** (SQLite) everywhere — local dev and production both go through the `DB` binding. There is **no connection-string env var**; D1 is never a module singleton because it is only reachable from a request- or event-bound binding.
 
 ## Schema
 `packages/db/src/schema.ts` (Drizzle `sqliteTable`) holds the Better Auth tables (`users`, `user_sessions`, `user_accounts`, `user_verifications` — with admin columns `role`, `banned`, `ban_reason`, `ban_expires`) and the domain `documents` table (`r2_key`, `size`, `mime_type`, nullable `expires_at`, owner FK to `users`).
@@ -14,7 +14,7 @@ The database is **Cloudflare D1** (SQLite) everywhere — local dev and producti
 ## Connecting
 `packages/db/src/index.ts` exports `createDb(d1: D1Database)` → `drizzle(d1, { schema })`, plus the `Database` type and a re-export of `drizzle-orm` (so `eq`, `and`, `desc`, `lt`, `isNotNull`, … import from `@repo/db`).
 
-- **Web (Server Components / Route Handlers):** `import { getDb } from '@/lib/server'`, then `const db = await getDb()`. The seam (`apps/web/src/lib/env.ts` → `getEnv()`) reads the request's Cloudflare context and hands the `DB` binding to `createDb`.
+- **Web (Server Components / Route Handlers):** call `getDb()` from `@/lib/server`, then `const db = await getDb()`. The seam (`apps/web/src/lib/env.ts` → `getEnv()`) reads the request's Cloudflare context and hands the `DB` binding to `createDb`.
 - **tRPC procedures:** use `ctx.db` (the context builds it per request).
 - **Cron Worker:** `import { createDb } from '@repo/db'`, then `const db = createDb(env.DB)` inside `scheduled(event, env, ctx)`.
 

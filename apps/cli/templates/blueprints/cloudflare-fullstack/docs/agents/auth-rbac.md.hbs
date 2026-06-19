@@ -11,7 +11,7 @@ Authentication is Better Auth with the **admin plugin** + **access control**. Th
 ## Building auth
 `packages/auth/src/auth.ts` exports `createAuth(db: Database)` — it wires the Drizzle adapter (`provider: 'sqlite'`), the `admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })` plugin, and `nextCookies()`.
 
-- **Server Components / Route Handlers (web):** never import a singleton. Use the seam `import { getAuth } from '@/lib/server'`, then `const auth = await getAuth()`. `getAuth()` resolves the request's D1 binding and calls `createAuth(db)`.
+- **Server Components / Route Handlers (web):** never import a singleton. Use the seam `getAuth()` from `@/lib/server`, then `const auth = await getAuth()`. `getAuth()` resolves the request's D1 binding and calls `createAuth(db)`.
 - **tRPC procedures:** the context already injects `ctx.db` and `ctx.session`. To check a permission, build auth from the request db: `createAuth(ctx.ctx.db).api.userHasPermission(...)` (see `permissionProcedure`).
 
 ## Roles & permissions
