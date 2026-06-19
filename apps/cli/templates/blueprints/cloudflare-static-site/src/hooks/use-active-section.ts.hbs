@@ -1,0 +1,67 @@
+import { useEffect, useState } from 'react';
+
+/**
+ * Tracks which section is currently visible in the viewport using IntersectionObserver.
+ * The detection zone is narrowed to the center of the screen (rootMargin: -40% top, -55% bottom)
+ * so only the section occupying the middle wins.
+ *
+ * @example
+ * ```tsx
+ * const sectionIds = ['features', 'testimonials', 'faq'];
+ * const activeSection = useActiveSection(sectionIds);
+ * // activeSection === 'features' | 'testimonials' | 'faq' | null
+ *
+ * // Then in your nav:
+ * <a className={activeSection === 'features' ? 'text-foreground' : 'text-muted-foreground'}>
+ * ```
+ *
+ * Sections must have matching `id` attributes: `<section id="features">`.
+ */
+export function useActiveSection(sectionIds: string[]): string | null {
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    const elements = sectionIds.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries.filter((entry) => entry.isIntersecting);
+
+        if (visibleEntries.length === 0) {
+          const anyVisible = elements.some((el) => {
+            const rect = el.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            return rect.top < viewportHeight * 0.6 && rect.bottom > viewportHeight * 0.4;
+          });
+
+          if (!anyVisible) {
+            setActiveSection(null);
+          }
+          return;
+        }
+
+        const mostVisible = visibleEntries.reduce((prev, current) =>
+          current.intersectionRatio > prev.intersectionRatio ? current : prev,
+        );
+
+        setActiveSection(mostVisible.target.id);
+      },
+      {
+        rootMargin: '-40% 0px -55% 0px',
+        threshold: [0, 0.25, 0.5],
+      },
+    );
+
+    for (const element of elements) {
+      observer.observe(element);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [sectionIds]);
+
+  return activeSection;
+}

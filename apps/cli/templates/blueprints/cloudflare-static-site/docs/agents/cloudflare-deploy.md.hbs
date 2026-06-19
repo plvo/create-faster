@@ -1,0 +1,47 @@
+---
+path: docs/agents/cloudflare-deploy.md
+mono:
+  scope: root
+  path: docs/agents/cloudflare-deploy.md
+---
+# Deploying to Cloudflare Workers (static assets)
+
+This site is a Next.js static export (`output: 'export'` in `next.config.ts`) served as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — never Pages (maintenance mode). There is no server runtime: `next build` writes the whole site to `out/`, and `wrangler.jsonc` points the Worker's `assets.directory` at it.
+
+```jsonc
+"assets": {
+  "directory": "out"
+}
+```
+
+## First deploy
+
+```bash
+bun run deploy   # next build && wrangler deploy
+```
+
+`wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at `https://<name>.<your-subdomain>.workers.dev`.
+
+Dry-run the upload without publishing:
+
+```bash
+wrangler deploy --dry-run
+```
+
+## Custom domain
+
+No Terraform / IaC — bind the domain with Wrangler or the dashboard:
+
+- **Wrangler:** add the route to `wrangler.jsonc`, then `wrangler deploy`.
+
+  ```jsonc
+  "routes": [
+    { "pattern": "example.com", "custom_domain": true }
+  ]
+  ```
+
+  The zone must already exist in your Cloudflare account; Cloudflare issues and renews the TLS certificate automatically.
+
+- **Dashboard:** Workers & Pages → your Worker → Settings → Domains & Routes → Add → Custom Domain.
+
+DNS for the zone (nameservers, apex/`www` records) is managed in the Cloudflare dashboard — a static scaffolder does not provision it.

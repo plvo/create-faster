@@ -1,0 +1,51 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { getAllPosts } from '@/lib/blog';
+import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+import { siteConfig } from '@/lib/data/site-config';
+
+export const metadata: Metadata = {
+  title: 'Blog',
+  description: `Articles and insights from the ${siteConfig.name} team on carrier pigeon logistics, secure messaging, and avian technology.`,
+};
+
+export default function BlogPage() {
+  const posts = getAllPosts();
+
+  return (
+    <div className="container mx-auto px-4 py-12 max-w-3xl">
+      <Breadcrumbs items={[{ name: 'Blog', href: '/blog' }]} />
+
+      <h1 className="text-4xl font-bold tracking-tight">Blog</h1>
+      <p className="mt-4 text-muted-foreground">
+        Insights on carrier pigeon logistics, secure messaging, and the future of avian communication.
+      </p>
+
+      <div className="mt-12 space-y-8">
+        {posts.map((post) => (
+          <article key={post.slug} className="group">
+            <Link href={`/blog/${post.slug}`} className="block rounded-lg border p-6 hover:border-foreground/20 transition-colors">
+              <time dateTime={post.publishedAt} className="text-sm text-muted-foreground">
+                {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+              <h2 className="mt-2 text-xl font-semibold group-hover:text-primary transition-colors">
+                {post.title}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                {post.summary}
+              </p>
+            </Link>
+          </article>
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <p className="mt-12 text-muted-foreground text-center">No articles yet. Check back soon.</p>
+      )}
+    </div>
+  );
+}
