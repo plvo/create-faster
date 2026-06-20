@@ -58,7 +58,6 @@ yarn-error.log*
 {{#if (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
 # Cloudflare
 .wrangler/
-.dev.vars
 cloudflare-env.d.ts
 {{#if (has "deployment" "cloudflare")}}{{#if (has "stack" "nextjs")}}
 .open-next/

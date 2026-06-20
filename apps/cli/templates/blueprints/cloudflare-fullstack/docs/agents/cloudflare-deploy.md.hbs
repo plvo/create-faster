@@ -19,9 +19,10 @@ Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNe
 - **Cron:** from `apps/cron`, `bunx wrangler deploy`. The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
 
 ## Local development
+- `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` (any value locally; `BETTER_AUTH_URL` is already `http://localhost:3000`). Next.js reads `.env`; in dev mode Better Auth trusts `localhost`.
 - `bun run local-setup` once (applies local migrations + seeds the local D1).
-- Local secrets live in `apps/web/.dev.vars` (gitignored): `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL=http://localhost:8787`. Better Auth needs them to resolve its base URL — the preview returns 500s without them. If the preview binds a port other than 8787, point `BETTER_AUTH_URL` at it.
-- Web preview against local bindings: from `apps/web`, `bun run preview` (`opennextjs-cloudflare preview --persist-to ../../.wrangler`).
+- `bun run dev` — `next dev` with the Cloudflare bindings wired via `initOpenNextCloudflareForDev` (D1/R2 from `.wrangler`, the same local state `local-setup` seeds). This is the primary local loop (hot reload, dev-mode auth).
+- `bun run preview` (`apps/web`) runs the OpenNext **production** build locally to smoke-test the deployed shape. Wrangler does not read `.env` here, so set secrets the production way (`wrangler secret put`) before relying on auth in preview.
 - Fire the cron handler locally without waiting for the schedule: from `apps/cron`, `bunx wrangler dev --test-scheduled --persist-to ../../.wrangler` (the `--persist-to` makes it share the same local D1/R2 as the web app), then hit `http://localhost:<port>/__scheduled` to run `scheduled()` (purges expired documents from the local D1 + R2).
 
 ## Build-time vs runtime env

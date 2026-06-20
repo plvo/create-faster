@@ -286,9 +286,11 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(scripts['local-setup']).toContain('db:seed');
   });
 
-  test('ships a .dev.vars so the OpenNext preview resolves the auth base URL', () => {
-    const devVars = bpFile('__dev.vars.hbs');
-    expect(devVars).toContain('BETTER_AUTH_SECRET=');
-    expect(devVars).toContain('BETTER_AUTH_URL=http://localhost:8787');
+  test('next dev wires Cloudflare bindings at the CLI-migrate persist path (d1)', () => {
+    const nextConfig = readFileSync(
+      join(import.meta.dir, '../../templates/stack/nextjs/next.config.ts.hbs'),
+      'utf8',
+    );
+    expect(nextConfig).toContain("persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' }");
   });
 });
