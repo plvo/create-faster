@@ -285,4 +285,10 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(scripts['local-setup']).toContain('db:migrate');
     expect(scripts['local-setup']).toContain('db:seed');
   });
+
+  test('ships a .dev.vars so the OpenNext preview resolves the auth base URL', () => {
+    const devVars = bpFile('__dev.vars.hbs');
+    expect(devVars).toContain('BETTER_AUTH_SECRET=');
+    expect(devVars).toContain('BETTER_AUTH_URL=http://localhost:8787');
+  });
 });

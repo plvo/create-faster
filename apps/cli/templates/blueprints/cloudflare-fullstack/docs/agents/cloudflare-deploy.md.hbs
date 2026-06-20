@@ -20,6 +20,7 @@ Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNe
 
 ## Local development
 - `bun run local-setup` once (applies local migrations + seeds the local D1).
+- Local secrets live in `apps/web/.dev.vars` (gitignored): `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL=http://localhost:8787`. Better Auth needs them to resolve its base URL — the preview returns 500s without them. If the preview binds a port other than 8787, point `BETTER_AUTH_URL` at it.
 - Web preview against local bindings: from `apps/web`, `bun run preview` (`opennextjs-cloudflare preview --persist-to ../../.wrangler`).
 - Fire the cron handler locally without waiting for the schedule: from `apps/cron`, `bunx wrangler dev --test-scheduled`, then hit `http://localhost:8787/__scheduled` to run `scheduled()` (purges expired documents from the local D1 + R2).
 
