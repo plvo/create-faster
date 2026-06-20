@@ -40,4 +40,12 @@ Dogfood (real generation → install → tsc → seed) + a high-effort workflow 
 Skipped with reason: #9 (schema inline = intentional Task 2 fork), #8 (keep userHasPermission; optimizing needs the trpc-init fork we avoid).
 Verified: fresh generation → bun install → cf:typegen → tsc --noEmit CLEAN; turbo build OK; `db:generate && local-setup` bootstraps a seeded local D1. 693+ repo tests green.
 
-Remaining: browser dogfood (OpenNext preview + agent-browser login/dashboard/upload) in progress; then ready-for-review.
+## Browser + cron dogfood (OpenNext preview + agent-browser) — DONE
+Found + fixed: every preview route 500'd because createAuth builds an empty baseURL.allowedHosts without BETTER_AUTH_URL → ship apps/web/.dev.vars (gitignored) (commit 0b1faa5). Validated end-to-end against local D1/R2:
+- login via shuip tanstack-form → dashboard (RBAC gates render) → sign out (client POST)
+- upload a file → R2 STORAGE.put (stream) → listed; delete → tRPC documents.delete 200, R2+row removed (#2 fix proven live)
+- admin/users lists the 3 seeded users with roles + ban
+- cron `wrangler dev --test-scheduled --persist-to ../../.wrangler` → "[cron] purged 3 of 3" → D1 9→6 docs (count #3 + batch #10 proven live)
+Doc fixed: cron local-test command needs --persist-to to share the D1.
+
+BLUEPRINT FULLY VALIDATED. PR #158 ready to move out of draft after Pelavo's review.
