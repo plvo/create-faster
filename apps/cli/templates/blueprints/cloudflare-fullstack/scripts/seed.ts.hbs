@@ -53,6 +53,9 @@ function getLocalD1DB(): string {
 // The seed targets the local miniflare sqlite file directly (bun:sqlite), so it
 // reuses the better-auth + drizzle schema without a D1 binding at runtime.
 const sqlite = new BunSqlite(getLocalD1DB());
+// bun:sqlite leaves foreign keys off by default; enable them so `--reset`
+// cascades to accounts/sessions and avoids orphaned auth rows on re-seed.
+sqlite.exec('PRAGMA foreign_keys = ON;');
 const db = drizzle(sqlite, { schema }) as unknown as Database;
 const auth = createAuth(db);
 

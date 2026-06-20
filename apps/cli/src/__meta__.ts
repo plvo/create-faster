@@ -1259,6 +1259,11 @@ export const META: Meta = {
             '@types/react-dom': '^19.2.3',
           },
         },
+        api: {
+          dependencies: {
+            '@opennextjs/cloudflare': '^1.19.0',
+          },
+        },
       },
       rootPackageJson: {
         dependencies: {

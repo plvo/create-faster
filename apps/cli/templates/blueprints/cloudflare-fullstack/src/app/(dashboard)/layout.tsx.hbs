@@ -7,11 +7,12 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getAuth } from '@/lib/server';
+import { SignOutButton } from './sign-out-button';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const auth = await getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user.role) redirect('/login');
+  if (!session?.user) redirect('/login');
 
   return (
     <div className='flex min-h-screen flex-col'>
@@ -23,12 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Link href='/profile' className='text-muted-foreground hover:text-foreground'>
             Profile
           </Link>
-          <a
-            href='/api/auth/sign-out'
-            className='text-muted-foreground hover:text-foreground'
-          >
-            Sign out
-          </a>
+          <SignOutButton />
         </nav>
       </header>
       <main className='flex-1 p-6'>{children}</main>

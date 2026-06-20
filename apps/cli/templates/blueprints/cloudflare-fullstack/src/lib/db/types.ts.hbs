@@ -1,0 +1,26 @@
+---
+mono:
+  scope: pkg
+  name: db
+  path: src/types.ts
+---
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type { documentTable, userAccountTable, userSessionTable, userTable, userVerificationTable } from './schema';
+
+export type User = InferSelectModel<typeof userTable>;
+export type NewUser = InferInsertModel<typeof userTable>;
+
+export type Document = InferSelectModel<typeof documentTable>;
+export type NewDocument = InferInsertModel<typeof documentTable>;
+
+export type UserAccount = InferSelectModel<typeof userAccountTable>;
+export type UserSession = InferSelectModel<typeof userSessionTable>;
+export type UserVerification = InferSelectModel<typeof userVerificationTable>;
+
+export type UserWithDocuments = User & {
+  documents: Document[];
+};
+
+export type DocumentWithOwner = Document & {
+  owner: User;
+};

@@ -3,7 +3,7 @@ mono:
   scope: app
   path: src/index.ts
 ---
-import { and, createDb, documentTable, eq, isNotNull, lt } from '@repo/db';
+import { and, createDb, documentTable, inArray, isNotNull, lt } from '@repo/db';
 import app from './app';
 
 interface Env {
@@ -20,17 +20,22 @@ async function purgeExpiredDocuments(env: Env): Promise<number> {
     .from(documentTable)
     .where(and(isNotNull(documentTable.expiresAt), lt(documentTable.expiresAt, now)));
 
+  const purgedIds: string[] = [];
   for (const doc of expired) {
     try {
       await env.STORAGE.delete(doc.r2Key);
-      await db.delete(documentTable).where(eq(documentTable.id, doc.id));
+      purgedIds.push(doc.id);
     } catch (err) {
-      console.error(`[cron] failed to purge document ${doc.id}:`, err);
+      console.error(`[cron] failed to delete R2 object for ${doc.id}:`, err);
     }
   }
 
-  console.log(`[cron] purged ${expired.length} expired document(s)`);
-  return expired.length;
+  if (purgedIds.length > 0) {
+    await db.delete(documentTable).where(inArray(documentTable.id, purgedIds));
+  }
+
+  console.log(`[cron] purged ${purgedIds.length} of ${expired.length} expired document(s)`);
+  return purgedIds.length;
 }
 
 export default {
