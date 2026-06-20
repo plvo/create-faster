@@ -1273,9 +1273,11 @@ export const META: Meta = {
         devDependencies: {
           '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
+          'drizzle-orm': '^0.45.1',
         },
         scripts: {
-          'db:seed': 'bun --env-file=packages/db/.env scripts/seed.ts',
+          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 bun --env-file=packages/db/.env scripts/seed.ts',
+          'local-setup': 'bun run db:migrate && bun run db:seed',
           start: 'turbo start',
         },
       },

@@ -275,4 +275,14 @@ describe('cloudflare-fullstack blueprint META', () => {
   test('seed enables sqlite foreign keys so reset cascades', () => {
     expect(bpFile('scripts/seed.ts.hbs')).toContain("PRAGMA foreign_keys = ON");
   });
+
+  test('seed wiring: drizzle-orm at root, local-setup, and a resolvable better-auth baseURL', () => {
+    // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
+    expect(bp!.rootPackageJson?.devDependencies).toHaveProperty('drizzle-orm');
+    // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
+    const scripts = bp!.rootPackageJson?.scripts ?? {};
+    expect(scripts['db:seed']).toContain('BETTER_AUTH_URL=');
+    expect(scripts['local-setup']).toContain('db:migrate');
+    expect(scripts['local-setup']).toContain('db:seed');
+  });
 });

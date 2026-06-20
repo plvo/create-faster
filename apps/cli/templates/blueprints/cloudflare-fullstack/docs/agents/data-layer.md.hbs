@@ -20,9 +20,9 @@ The database is **Cloudflare D1** (SQLite) everywhere — local dev and producti
 
 ## Migrations
 - `bun run db:generate` — Drizzle Kit generates SQL from the schema into `packages/db/drizzle`.
-- `bun run db:migrate:local` — applies migrations to the local D1 sqlite (`--persist-to .wrangler`).
-- `bun run db:migrate:remote` — applies migrations to the remote D1 database.
-- `bun run local-setup` — chains `db:migrate:local` then `db:seed`; run it once after install to get a working local DB.
+- `bun run db:migrate` — applies migrations to the local D1 sqlite (`--persist-to .wrangler`).
+- `bun run local-setup` — chains `db:migrate` then `db:seed`; run it once after install to get a working local DB.
+- Remote: `bun run --filter @repo/db db:migrate:remote` applies migrations to the live D1 database.
 
 `drizzle.config.ts` resolves the newest local sqlite under `.wrangler/v3/d1/miniflare-D1DatabaseObject` for local introspection, and switches to the `d1-http` driver (account id / database id / API token) when `NODE_ENV=production`.
 
