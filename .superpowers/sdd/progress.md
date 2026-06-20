@@ -23,5 +23,21 @@ Base before Task 1: 9bdc7ed
   - DEFERRED (manual HITL): the smoke run (bun install + tsc --noEmit + OpenNext preview + wrangler dev --test-scheduled) needs real CF local runtime + installs — Pelavo to run. Smoke commands in task-12-brief use the wrong /home/ttecim path; correct base is /home/plv/lab/r/create-faster.
 - [x] Task 13: MDX docs page (commit 175c91b; apps/www/content/docs/blueprints/business/cloudflare-fullstack.mdx, auto-listed. Docs-site build NOT run — deps not installed in worktree; MDX validated mechanically for unescaped JSX.)
 
-ALL TASKS DONE. Remaining before merge: (1) manual smoke run (Task 12 HITL, needs CF local runtime + installs), (2) final /code-review --fix per plan.
-Carry-over notes for final review: sign-out in (dashboard)/layout.tsx is a GET `<a href="/api/auth/sign-out">` (Task 8 note) — better-auth sign-out is POST; admin users page uses native HTML table (Task 9 note).
+ALL TASKS 1-13 DONE.
+
+## Post-implementation hardening (dogfood + code-review --fix) — done
+Dogfood (real generation → install → tsc → seed) + a high-effort workflow code-review found and fixed:
+- A: shuip tanstack-form ui kit was imported by auth forms but never shipped → copied the kit from org-dashboard (commit f092e33)
+- B: packages/db/src/types.ts hardcoded postTable (structural) → blueprint types.ts override
+- D: dead/broken BETTER_AUTH_* fields in env seam → removed
+- #2: documents.delete used app-only @/lib/env in packages/api → getCloudflareContext + @opennextjs/cloudflare api dep
+- #1/#5: sign-out GET anchor → client signOut button; guard !session?.user
+- #3/#10: cron purge count + batched delete
+- #4: wrangler database_name unified to {{projectName}}-db
+- #6: seed PRAGMA foreign_keys ON (reset cascade)
+- #7: upload streams to R2
+- seed wiring (commit 906098d): drizzle-orm root dep, BETTER_AUTH_URL on db:seed, root local-setup. Verified end-to-end on local D1 (3 users/accounts/9 docs).
+Skipped with reason: #9 (schema inline = intentional Task 2 fork), #8 (keep userHasPermission; optimizing needs the trpc-init fork we avoid).
+Verified: fresh generation → bun install → cf:typegen → tsc --noEmit CLEAN; turbo build OK; `db:generate && local-setup` bootstraps a seeded local D1. 693+ repo tests green.
+
+Remaining: browser dogfood (OpenNext preview + agent-browser login/dashboard/upload) in progress; then ready-for-review.
