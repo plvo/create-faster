@@ -216,4 +216,63 @@ describe('cloudflare-fullstack blueprint META', () => {
       expect(() => readFileSync(join(base, f), 'utf8')).not.toThrow();
     }
   });
+
+  // Regression guards for bugs found by dogfood typecheck + the code-review pass.
+  const bpFile = (p: string) =>
+    readFileSync(join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack', p), 'utf8');
+
+  test('ships a db types override matching its schema (no postTable)', () => {
+    const types = bpFile('src/lib/db/types.ts.hbs');
+    expect(types).toContain('export type Document =');
+    expect(types).not.toContain('postTable');
+  });
+
+  test('ships the shuip tanstack-form ui kit the auth forms import', () => {
+    expect(() => bpFile('packages/ui/src/lib/form.ts.hbs')).not.toThrow();
+    expect(() => bpFile('packages/ui/src/components/ui/card.tsx.hbs')).not.toThrow();
+    expect(() => bpFile('packages/ui/src/components/ui/shuip/tanstack-form/input-field.tsx.hbs')).not.toThrow();
+  });
+
+  test('env seam exposes only the bindings (no dead better-auth secret fields)', () => {
+    const env = bpFile('src/lib/env.ts.nextjs.hbs');
+    expect(env).toContain('DB: D1Database');
+    expect(env).toContain('STORAGE: R2Bucket');
+    expect(env).not.toContain('BETTER_AUTH_SECRET');
+  });
+
+  test('documents.delete reaches R2 without the app-only @/ alias', () => {
+    const router = bpFile('src/trpc/routers/documents.ts.hbs');
+    expect(router).not.toContain("import('@/lib/env')");
+    expect(router).toContain("import('@opennextjs/cloudflare')");
+    expect(router).toContain('env.STORAGE.delete');
+  });
+
+  test('dashboard guards on session presence and signs out via client (POST)', () => {
+    const layout = bpFile('src/app/(dashboard)/layout.tsx.hbs');
+    expect(layout).toContain('if (!session?.user)');
+    expect(layout).toContain('<SignOutButton />');
+    expect(layout).not.toContain("href='/api/auth/sign-out'");
+    expect(bpFile('src/app/(dashboard)/sign-out-button.tsx.hbs')).toContain('authClient.signOut()');
+  });
+
+  test('cron purge counts actual R2 successes and batches the row delete', () => {
+    const cron = bpFile('src/index.ts.hono.hbs');
+    expect(cron).toContain('inArray(documentTable.id, purgedIds)');
+    expect(cron).toContain('purgedIds.length} of ${expired.length}');
+  });
+
+  test('both wrangler configs share one project-scoped D1 name', () => {
+    expect(bpFile('wrangler.jsonc.nextjs.hbs')).toContain('"database_name": "{{projectName}}-db"');
+    expect(bpFile('wrangler.jsonc.hono.hbs')).toContain('"database_name": "{{projectName}}-db"');
+  });
+
+  test('upload streams the file to R2 (no full-buffer arrayBuffer)', () => {
+    const route = bpFile('src/app/api/documents/upload/route.ts.hbs');
+    expect(route).toContain('STORAGE.put(key, file.stream()');
+    expect(route).not.toContain('await file.arrayBuffer()');
+  });
+
+  test('seed enables sqlite foreign keys so reset cascades', () => {
+    expect(bpFile('scripts/seed.ts.hbs')).toContain("PRAGMA foreign_keys = ON");
+  });
 });
