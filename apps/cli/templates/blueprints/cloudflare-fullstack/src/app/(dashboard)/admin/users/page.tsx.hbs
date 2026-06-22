@@ -6,139 +6,19 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { authClient } from '@repo/auth/auth-client';
+import { CreateUserDialog } from '@/components/admin/create-user-dialog';
+import { UserTable } from '@/components/admin/user-table';
 import { Can } from '@/components/can';
-import type { AppRole } from '@repo/auth/permissions';
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role?: string | null;
-  banned?: boolean | null;
-};
-
-const ROLES: AppRole[] = ['admin', 'user', 'manager'];
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function fetchUsers() {
-    setLoading(true);
-    try {
-      const res = await authClient.admin.listUsers({ query: { limit: 100 } });
-      if (res.error) throw new Error(res.error.message);
-      setUsers((res.data?.users ?? []) as User[]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  async function handleRoleChange(userId: string, role: AppRole) {
-    try {
-      const res = await authClient.admin.setRole({ userId, role });
-      if (res.error) throw new Error(res.error.message);
-      toast.success('Role updated');
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update role');
-    }
-  }
-
-  async function handleBanToggle(user: User) {
-    try {
-      if (user.banned) {
-        const res = await authClient.admin.unbanUser({ userId: user.id });
-        if (res.error) throw new Error(res.error.message);
-        toast.success('User unbanned');
-        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, banned: false } : u)));
-      } else {
-        const res = await authClient.admin.banUser({ userId: user.id });
-        if (res.error) throw new Error(res.error.message);
-        toast.success('User banned');
-        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, banned: true } : u)));
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update ban status');
-    }
-  }
-
   return (
     <Can permissions={{ user: ['list'] }}>
       <div className='space-y-6'>
-        <h1 className='text-3xl font-bold'>Users</h1>
-
-        {loading ? (
-          <p className='text-muted-foreground'>Loading…</p>
-        ) : (
-          <div className='rounded-lg border'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr className='border-b bg-muted/50'>
-                  <th className='px-4 py-3 text-left font-medium'>Name</th>
-                  <th className='px-4 py-3 text-left font-medium'>Email</th>
-                  <th className='px-4 py-3 text-left font-medium'>Role</th>
-                  <th className='px-4 py-3 text-left font-medium'>Status</th>
-                  <th className='px-4 py-3' />
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className='border-b last:border-0 hover:bg-muted/50'>
-                    <td className='px-4 py-3 font-medium'>{user.name}</td>
-                    <td className='px-4 py-3 text-muted-foreground'>{user.email}</td>
-                    <td className='px-4 py-3'>
-                      <select
-                        value={user.role ?? 'user'}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as AppRole)}
-                        className='rounded border bg-background px-2 py-1 text-sm'
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={
-                          user.banned
-                            ? 'rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive'
-                            : 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                        }
-                      >
-                        {user.banned ? 'Banned' : 'Active'}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-right'>
-                      <button
-                        type='button'
-                        onClick={() => handleBanToggle(user)}
-                        className={
-                          user.banned
-                            ? 'text-sm text-green-600 hover:underline'
-                            : 'text-sm text-destructive hover:underline'
-                        }
-                      >
-                        {user.banned ? 'Unban' : 'Ban'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <p className='text-sm text-muted-foreground'>Manage accounts, roles and access.</p>
+          <CreateUserDialog />
+        </div>
+        <UserTable />
       </div>
     </Can>
   );

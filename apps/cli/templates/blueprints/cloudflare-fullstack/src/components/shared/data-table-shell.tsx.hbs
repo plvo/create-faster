@@ -1,0 +1,210 @@
+---
+mono:
+  scope: app
+  path: src/components/shared/data-table-shell.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  type ColumnPinningState,
+  DataTable,
+  DataTableColumnHeader,
+  DataTableFilterMenu,
+  DataTablePagination,
+  DataTableSortMenu,
+  DataTableViewOptions,
+  type FilterFn,
+  type HeaderContext,
+  type OnChangeFn,
+  type PaginationState,
+  type SortingState,
+  useDataTable,
+  type VisibilityState,
+} from '@repo/ui/components/block/shuip/data-table';
+import { SearchInput } from '@repo/ui/components/ui/search-input';
+import { cn } from '@repo/ui/lib/utils';
+import { type ReactElement, type ReactNode, useMemo } from 'react';
+
+export type DataTableShellColumn<TData> = ColumnDef<TData, unknown>;
+
+export interface DataTableShellProps<TData> {
+  columns: ColumnDef<TData, unknown>[];
+  data: TData[];
+  pageSize?: number;
+  searchPlaceholder?: string;
+  searchableAccessor?: (row: TData) => string;
+  searchValue?: string;
+  hideToolbarSearch?: boolean;
+  hideToolbar?: boolean;
+  toolbarStart?: ReactNode;
+  toolbarEnd?: ReactNode;
+  filtering?: 'search' | 'advanced';
+  enablePinning?: boolean;
+  enableHiding?: boolean;
+  initialVisibility?: VisibilityState;
+  initialSorting?: SortingState;
+  initialPinning?: ColumnPinningState;
+  emptyState?: ReactNode;
+  emptyFiltered?: ReactNode;
+  onRowClick?: (row: TData) => void;
+  rowClassName?: (row: TData) => string | undefined;
+  rowWrapper?: (row: TData, node: ReactElement) => ReactNode;
+  className?: string;
+  isLoading?: boolean;
+  loadingVariant?: 'skeleton' | 'overlay' | 'shimmer';
+  paginationVariant?: 'simple' | 'numbered';
+  pageCount?: number;
+  totalCount?: number;
+  state?: {
+    pagination?: PaginationState;
+    sorting?: SortingState;
+    columnFilters?: ColumnFiltersState;
+    globalFilter?: string;
+  };
+  onPaginationChange?: OnChangeFn<PaginationState>;
+  onSortingChange?: OnChangeFn<SortingState>;
+  onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>;
+  onGlobalFilterChange?: OnChangeFn<string>;
+}
+
+export function DataTableShell<TData>({
+  columns,
+  data,
+  pageSize = 20,
+  searchPlaceholder = 'Search…',
+  searchableAccessor,
+  searchValue,
+  hideToolbarSearch,
+  hideToolbar,
+  toolbarStart,
+  toolbarEnd,
+  filtering = 'search',
+  enablePinning = true,
+  enableHiding = true,
+  initialVisibility,
+  initialSorting,
+  initialPinning,
+  emptyState,
+  emptyFiltered,
+  onRowClick,
+  rowClassName,
+  rowWrapper,
+  className,
+  isLoading,
+  loadingVariant = 'skeleton',
+  paginationVariant = 'simple',
+  pageCount,
+  totalCount,
+  state,
+  onPaginationChange,
+  onSortingChange,
+  onColumnFiltersChange,
+  onGlobalFilterChange,
+}: DataTableShellProps<TData>) {
+  const isServer = pageCount != null;
+  const controlledSearch = searchValue !== undefined;
+  const advanced = filtering === 'advanced';
+
+  const globalFilterFn: FilterFn<TData> | undefined = useMemo(() => {
+    if (!searchableAccessor) return undefined;
+    return (row, _columnId, value) => {
+      const needle = String(value ?? '')
+        .toLowerCase()
+        .trim();
+      if (!needle) return true;
+      return searchableAccessor(row.original).toLowerCase().includes(needle);
+    };
+  }, [searchableAccessor]);
+
+  const columnPinning = useMemo<ColumnPinningState | undefined>(() => {
+    if (initialPinning) return initialPinning;
+    if (!enablePinning) return undefined;
+    const first = columns[0];
+    const firstId = first?.id ?? (first as { accessorKey?: string } | undefined)?.accessorKey;
+    return firstId ? { left: [firstId], right: [] } : undefined;
+  }, [columns, enablePinning, initialPinning]);
+
+  const tableColumns = useMemo<ColumnDef<TData, unknown>[]>(
+    () =>
+      columns.map((column) => {
+        if (typeof column.header !== 'string') return column;
+        const title = column.header;
+        return {
+          ...column,
+          header: ({ column: col }: HeaderContext<TData, unknown>) => (
+            <DataTableColumnHeader column={col} title={title} />
+          ),
+        } as ColumnDef<TData, unknown>;
+      }),
+    [columns],
+  );
+
+  const { table } = useDataTable<TData>({
+    data,
+    columns: tableColumns,
+    pageCount,
+    enableColumnPinning: enablePinning,
+    enableHiding,
+    initialState: {
+      pagination: { pageIndex: 0, pageSize },
+      sorting: initialSorting,
+      columnVisibility: initialVisibility,
+      columnPinning,
+    },
+    state: { ...state, ...(controlledSearch ? { globalFilter: searchValue } : {}) },
+    onPaginationChange,
+    onSortingChange,
+    onColumnFiltersChange,
+    onGlobalFilterChange,
+    globalFilterFn,
+  });
+
+  const isFiltered = Boolean(table.getState().globalFilter) || table.getState().columnFilters.length > 0;
+  const bodyEmpty = isFiltered
+    ? (emptyFiltered ?? 'No results match your search.')
+    : (emptyState ?? 'No items.');
+
+  const showSearch = !hideToolbarSearch && !controlledSearch;
+  const showPagination = isServer ? (pageCount ?? 0) > 1 : table.getPageCount() > 1;
+
+  return (
+    <div className={cn('space-y-3', className)}>
+      {!hideToolbar && (
+        <div className='flex flex-wrap items-center gap-2'>
+          {toolbarStart}
+          {showSearch && (
+            <SearchInput
+              placeholder={searchPlaceholder}
+              value={(table.getState().globalFilter as string) ?? ''}
+              onChange={(value) => table.setGlobalFilter(value)}
+              className='max-w-sm flex-1'
+            />
+          )}
+          {advanced && <DataTableFilterMenu table={table} />}
+          {advanced && <DataTableSortMenu table={table} />}
+          <div className='ml-auto flex items-center gap-2'>
+            {toolbarEnd}
+            <DataTableViewOptions table={table} />
+          </div>
+        </div>
+      )}
+
+      <DataTable
+        table={table}
+        layout='auto'
+        isLoading={isLoading}
+        loadingVariant={loadingVariant}
+        emptyState={bodyEmpty}
+        onRowClick={onRowClick}
+        rowClassName={rowClassName}
+        rowWrapper={rowWrapper}
+      />
+
+      {showPagination && <DataTablePagination table={table} variant={paginationVariant} totalCount={totalCount} />}
+    </div>
+  );
+}
+{{{{/raw}}}}

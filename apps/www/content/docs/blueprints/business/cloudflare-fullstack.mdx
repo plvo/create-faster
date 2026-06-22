@@ -32,42 +32,50 @@ apps/
 │       │   ├── (auth)/
 │       │   │   ├── layout.tsx          # Redirects signed-in users to /
 │       │   │   ├── login/{page,login-form}.tsx
-│       │   │   └── signup/{page,signup-form}.tsx
+│       │   │   ├── signup/{page,signup-form}.tsx
+│       │   │   ├── forgot-password/{page,forgot-password-form}.tsx
+│       │   │   └── reset-password/{page,reset-password-form}.tsx
 │       │   ├── (dashboard)/
 │       │   │   ├── layout.tsx          # Session gate (getAuth) + sidebar shell
 │       │   │   ├── page.tsx            # Documents list + upload (permission-gated)
-│       │   │   ├── profile/            # Tabbed: account, security, sessions, preferences
-│       │   │   │   ├── layout.tsx      # Tab nav
-│       │   │   │   ├── account/page.tsx    # Avatar (R2) + display name
+│       │   │   ├── profile/            # Tabbed (vertical): account, security, sessions, preferences
+│       │   │   │   ├── layout.tsx      # Vertical tab nav
+│       │   │   │   ├── account/page.tsx    # Avatar (R2) + inline-edit display name
 │       │   │   │   ├── security/page.tsx   # Change password
 │       │   │   │   ├── sessions/page.tsx   # Active sessions + revoke
 │       │   │   │   └── preferences/page.tsx # Theme
 │       │   │   └── admin/
 │       │   │       ├── layout.tsx      # Admin-only server gate
-│       │   │       ├── users/page.tsx  # User management (roles, ban/unban)
-│       │   │       └── roles/page.tsx  # Access control: role × permission matrix (read-only)
+│       │   │       ├── users/page.tsx       # Users datatable + create dialog
+│       │   │       ├── users/[id]/page.tsx  # Per-user editor (inline edit, role, password, ban)
+│       │   │       └── roles/page.tsx       # Roles: role × permission matrix (read-only)
 │       │   └── api/
 │       │       ├── documents/upload/route.ts  # Multipart → R2 STORAGE.put
 │       │       └── avatar/{route,[userId]/route}.ts  # Avatar upload + serve from R2
 │       ├── components/
 │       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links
-│       │   ├── profile/                # avatar-upload, account/security forms, session-list
+│       │   ├── admin/                  # user-table, create-user-dialog, edit-user
+│       │   ├── profile/                # avatar-upload, account/security forms, session-list, tab-nav
+│       │   ├── shared/data-table-shell.tsx  # shuip datatable wrapper (search + sort)
 │       │   └── can.tsx                 # <Can> permission gate
-│       ├── hooks/use-permission.ts     # usePermission hook
+│       ├── hooks/use-permission.ts     # usePermission + useCan hooks
 │       └── lib/{constants,env}.ts      # ROUTES (sidebar) + getEnv() bindings
 └── cron/                               # Hono scheduled Worker
     ├── wrangler.jsonc                  # crons trigger + DB + STORAGE bindings
     └── src/index.ts                    # scheduled() → purge expired documents
 
 packages/
+├── ui/src/components/                  # shuip data-table block, search-input, inline-edit + base shadcn (registry)
 ├── db/src/schema.ts                    # D1/sqlite schema: auth tables + documents
 ├── auth/src/
 │   ├── auth.ts                         # createAuth(db) factory + admin plugin
 │   ├── permissions.ts                  # ac/roles statements (admin/manager/user)
+│   ├── email.ts                        # reset-password email stub (TODO: wire provider)
 │   └── auth-client.ts                  # authClient with adminClient
 └── api/src/
     ├── root.ts                         # tRPC root router
     ├── router/documents.ts             # documents list/delete
+    ├── router/users.ts                 # admin user CRUD (create/update/role/password/ban)
     └── middleware/rbac.ts              # permissionProcedure / adminProcedure
 
 scripts/seed.ts                         # Local-D1 seed (users + demo documents)
@@ -84,15 +92,23 @@ D1 is only reachable through a request- or event-bound binding, so the blueprint
 
 ### Auth & RBAC
 
-Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Access control** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Details in the generated `docs/agents/auth-rbac.md`.
+Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Roles** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Password reset is wired too: `sendResetPassword` logs the link to the console in dev and calls an `email.ts` stub (with a `TODO`) in prod, behind `/forgot-password` and `/reset-password` pages. Details in the generated `docs/agents/auth-rbac.md`.
+
+### User management
+
+The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` (search + sort) with a **Create user** dialog — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
 
 ### Dashboard shell
 
-A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item. The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs. The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`) are added to `packages/ui` from the official registry.
+A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item — a whole category label is hidden when none of its links are permitted (`useCan`). The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs (so pages don't repeat their own title). The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`, plus `table`, `badge`, `dialog`, `popover`, `command`, `search-input`) and the shuip `data-table` block live in `packages/ui` as registry-faithful code.
+
+### Forms
+
+Every form is built on the shuip TanStack-Form field kit (`useAppForm` in `packages/ui/src/lib/form.ts`) and validates **on submit**. Creation and security forms use plain inputs (`InputField`, `PasswordField`, `SelectField`); single-value live edits use `InlineEditField` (the profile display name and the per-user editor commit on blur/enter).
 
 ### Profile
 
-A tabbed area (`/profile`) over `authClient` — no extra tRPC routers: **account** (display name + avatar), **security** (change password), **sessions** (list + revoke), **preferences** (theme). The avatar uploads to R2 via `POST /api/avatar` (`avatars/<userId>`), is served back through `GET /api/avatar/[userId]` (session-gated), and the returned URL is saved to `user.image` with `authClient.updateUser`.
+A tabbed area (`/profile`) with a **vertical** tab rail, over `authClient` — no extra tRPC routers: **account** (avatar + inline-edit display name), **security** (change password), **sessions** (list + revoke), **preferences** (theme). The avatar uploads to R2 via `POST /api/avatar` (`avatars/<userId>`), is served back through `GET /api/avatar/[userId]` (session-gated), and the returned URL is saved to `user.image` with `authClient.updateUser`.
 
 ### Documents CRUD + R2 uploads
 
@@ -126,6 +142,9 @@ Provisioning the live D1 database + R2 bucket, pasting the `database_id` into bo
 | `zod` | Input validation (tRPC, forms) |
 | `@faker-js/faker` | Seed data (dev) |
 | `vaul` | Drawer primitive (UI package) |
+| `@tanstack/react-table` | Users datatable (UI package) |
+| `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` | Datatable row drag-reorder (UI package) |
+| `cmdk` | Command palette for datatable filters (UI package) |
 
 ## Environment variables
 

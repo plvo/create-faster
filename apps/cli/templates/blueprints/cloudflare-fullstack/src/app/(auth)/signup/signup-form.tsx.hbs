@@ -23,7 +23,7 @@ export function SignupForm() {
 
   const form = useAppForm({
     defaultValues: { name: '', email: '', password: '' },
-    validators: { onChange: schema },
+    validators: { onSubmit: schema },
     onSubmit: async ({ value }) => {
       const result = await authClient.signUp.email({
         name: value.name,

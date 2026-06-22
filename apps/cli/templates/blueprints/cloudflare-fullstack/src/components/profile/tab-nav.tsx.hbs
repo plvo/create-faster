@@ -8,6 +8,7 @@ mono:
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '@repo/ui/lib/utils';
 
 const TABS = [
   { label: 'Account', href: '/profile/account' },
@@ -20,18 +21,19 @@ export function ProfileTabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className='flex gap-1 border-b'>
+    <nav className='flex flex-row gap-1 overflow-x-auto md:flex-col'>
       {TABS.map((tab) => {
         const isActive = pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
               isActive
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+            )}
           >
             {tab.label}
           </Link>

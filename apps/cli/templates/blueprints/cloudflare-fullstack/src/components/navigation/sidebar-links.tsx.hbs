@@ -15,13 +15,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-import { usePermission } from '@/hooks/use-permission';
+import { useCan } from '@/hooks/use-permission';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
 function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
-  const allowed = usePermission(item.permissions ?? {});
-  if (!allowed) return null;
-
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -40,9 +37,11 @@ function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
 
 export function SidebarLinks() {
   const pathname = usePathname();
+  const can = useCan();
 
-  const grouplessPages = ROUTES.filter((item) => !item.category);
-  const groupedPages = ROUTES.reduce<Record<string, RouteProps[]>>((acc, item) => {
+  const visible = ROUTES.filter((item) => can(item.permissions ?? {}));
+  const grouplessPages = visible.filter((item) => !item.category);
+  const groupedPages = visible.reduce<Record<string, RouteProps[]>>((acc, item) => {
     if (!item.category) return acc;
     const group = acc[item.category] ?? [];
     group.push(item);
@@ -52,13 +51,15 @@ export function SidebarLinks() {
 
   return (
     <>
-      <SidebarGroup>
-        <SidebarMenu>
-          {grouplessPages.map((item) => (
-            <RouteItem key={item.url} item={item} pathname={pathname} />
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
+      {grouplessPages.length > 0 && (
+        <SidebarGroup>
+          <SidebarMenu>
+            {grouplessPages.map((item) => (
+              <RouteItem key={item.url} item={item} pathname={pathname} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
       {Object.entries(groupedPages).map(([category, items]) => (
         <SidebarGroup key={category}>
           <SidebarGroupLabel>{category}</SidebarGroupLabel>

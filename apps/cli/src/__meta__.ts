@@ -1251,7 +1251,12 @@ export const META: Meta = {
       pkgPackageJson: {
         ui: {
           dependencies: {
+            '@dnd-kit/core': '^6.3.1',
+            '@dnd-kit/sortable': '^10.0.0',
+            '@dnd-kit/utilities': '^3.2.2',
             '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-table': '^8.21.3',
+            cmdk: '^1.1.1',
             'react-dom': '^19.2.3',
             vaul: '^1.1.2',
           },

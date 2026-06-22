@@ -125,7 +125,13 @@ export function NavUser({ session }: { session: Session }) {
                 </div>
               </div>
             ) : (
-              <DropdownMenuItem onClick={() => setShowLogout(true)} className='hover:bg-destructive/40'>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setShowLogout(true);
+                }}
+                className='hover:bg-destructive/40'
+              >
                 <LogOut />
                 Logout
               </DropdownMenuItem>

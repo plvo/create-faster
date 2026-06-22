@@ -184,14 +184,22 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(get).toContain('if (!session?.user)');
   });
 
-  test('access-control page renders the static role × permission matrix (read-only)', () => {
+  test('roles page renders the static role × permission matrix (read-only)', () => {
     const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
     expect(page).toContain("import { roleDefinitions, statement } from '@repo/auth/permissions'");
-    expect(page).toContain('Access control');
+    // the duplicate page h1 is gone (breadcrumb + sidebar already name the page); the matrix stays read-only.
+    expect(page).not.toContain("<h1");
+    expect(page).toContain('read-only');
     expect(page).toContain('isGranted(role, resource, action)');
     expect(page).toContain("session?.user.role !== 'admin'");
     // current viewer's column is highlighted.
     expect(page).toContain('role === currentRole');
+  });
+
+  test('sidebar route labels rename access control to "Roles"', () => {
+    const constants = bpFile('src/lib/constants.ts.hbs');
+    expect(constants).toContain("title: 'Roles'");
+    expect(constants).not.toContain("'Access control'");
   });
 
   test('ships the navigation shell components + ROUTES', () => {
@@ -235,21 +243,57 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(layout).toContain("redirect('/')");
   });
 
-  test('admin users page exists and uses authClient.admin methods', () => {
-    const page = readFileSync(
-      join(
-        import.meta.dir,
-        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/admin/users/page.tsx.hbs',
-      ),
-      'utf8',
-    );
-    expect(page).toContain('{{{{raw}}}}');
-    expect(page).toContain("authClient.admin.listUsers");
-    expect(page).toContain("authClient.admin.setRole");
-    expect(page).toContain("authClient.admin.banUser");
-    expect(page).toContain("authClient.admin.unbanUser");
+  test('admin users page composes the datatable + create dialog behind a permission gate', () => {
+    const page = bpFile('src/app/(dashboard)/admin/users/page.tsx.hbs');
+    expect(page).toContain('<CreateUserDialog />');
+    expect(page).toContain('<UserTable />');
     expect(page).toContain("permissions={{ user: ['list'] }}");
-    expect(page).toContain("import { authClient } from '@repo/auth/auth-client'");
+    // the duplicate page h1 is gone.
+    expect(page).not.toContain('<h1');
+  });
+
+  test('user table renders through the shuip DataTableShell over trpc.users.list', () => {
+    const table = bpFile('src/components/admin/user-table.tsx.hbs');
+    expect(table).toContain("import { DataTableShell, type DataTableShellColumn } from '@/components/shared/data-table-shell'");
+    expect(table).toContain('trpc.users.list.queryOptions()');
+    expect(table).toContain('href={`/admin/users/${row.original.id}`}');
+  });
+
+  test('create-user dialog creates via trpc + reveals the generated password once', () => {
+    const dialog = bpFile('src/components/admin/create-user-dialog.tsx.hbs');
+    expect(dialog).toContain('trpc.users.create');
+    expect(dialog).toContain('createdPassword');
+    expect(dialog).toContain("import { roleDefinitions } from '@repo/auth/permissions'");
+    // creation uses normal inputs (not inline edit).
+    expect(dialog).toContain('f.InputField');
+    expect(dialog).toContain('f.SelectField');
+  });
+
+  test('per-user page edits a single user by id with inline edit + admin actions', () => {
+    const page = bpFile('src/app/(dashboard)/admin/users/[id]/page.tsx.hbs');
+    expect(page).toContain('useParams<{ id: string }>()');
+    expect(page).toContain('trpc.users.get.queryOptions({ id })');
+    const edit = bpFile('src/components/admin/edit-user.tsx.hbs');
+    // dynamic single-field changes use inline edit; password/ban stay explicit actions.
+    expect(edit).toContain('f.InlineEditField');
+    expect(edit).toContain('trpc.users.update');
+    expect(edit).toContain('trpc.users.setRole');
+    expect(edit).toContain('trpc.users.setPassword');
+    expect(edit).toContain('trpc.users.setBanned');
+    expect(edit).toContain('trpc.users.remove');
+  });
+
+  test('users tRPC router is admin-gated and uses the better-auth admin API per-request', () => {
+    const router = bpFile('src/trpc/routers/users.ts.hbs');
+    expect(router).toContain("import { adminProcedure } from '../middleware/rbac'");
+    expect(router).toContain('auth.api.createUser(');
+    expect(router).toContain('headers: ctx.headers');
+    expect(router).toContain('auth.api.setRole(');
+    expect(router).toContain('auth.api.setUserPassword(');
+    expect(router).toContain('auth.api.banUser(');
+    expect(router).toContain('auth.api.unbanUser(');
+    expect(router).toContain('auth.api.removeUser(');
+    expect(bpFile('src/trpc/routers/_app.ts.hbs')).toContain('users: usersRouter');
   });
 
   test('root layout override mounts AppProviders + Toaster (no missing devtools deps)', () => {
@@ -383,5 +427,94 @@ describe('cloudflare-fullstack blueprint META', () => {
       'utf8',
     );
     expect(nextConfig).toContain("persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' }");
+  });
+
+  test('auth config sends a reset link via an email stub, logging it in dev', () => {
+    const auth = bpFile('src/lib/auth/auth.ts.hbs');
+    expect(auth).toContain('sendResetPassword');
+    expect(auth).toContain('sendResetPasswordEmail');
+    expect(auth).toContain('Password reset link for');
+    const email = bpFile('src/lib/auth/email.ts.hbs');
+    expect(email).toContain('export async function sendResetPasswordEmail');
+    expect(email).toContain('TODO');
+  });
+
+  test('ships forgot-password and reset-password flows wired to authClient', () => {
+    const forgot = bpFile('src/app/(auth)/forgot-password/forgot-password-form.tsx.hbs');
+    expect(forgot).toContain('authClient.requestPasswordReset');
+    expect(forgot).toContain("redirectTo: '/reset-password'");
+    const reset = bpFile('src/app/(auth)/reset-password/reset-password-form.tsx.hbs');
+    expect(reset).toContain('authClient.resetPassword({ newPassword: value.newPassword, token })');
+    // reset page reads the token from the query (?token=) provided by better-auth.
+    expect(bpFile('src/app/(auth)/reset-password/page.tsx.hbs')).toContain('searchParams');
+    // login links to the forgot-password flow.
+    expect(bpFile('src/app/(auth)/login/login-form.tsx.hbs')).toContain("href='/forgot-password'");
+  });
+
+  test('every form validates on submit (not on change)', () => {
+    for (const f of [
+      'src/app/(auth)/login/login-form.tsx.hbs',
+      'src/app/(auth)/signup/signup-form.tsx.hbs',
+      'src/components/profile/account-form.tsx.hbs',
+      'src/components/profile/security-form.tsx.hbs',
+    ]) {
+      const form = bpFile(f);
+      expect(form).toContain('onSubmit: schema');
+      expect(form).not.toContain('onChange: schema');
+    }
+  });
+
+  test('sidebar hides a permission category when none of its routes are visible', () => {
+    const links = bpFile('src/components/navigation/sidebar-links.tsx.hbs');
+    expect(links).toContain("import { useCan } from '@/hooks/use-permission'");
+    expect(links).toContain('const can = useCan();');
+    // groupedPages only holds categories with at least one visible route, so empty groups never render.
+    expect(links).toContain('ROUTES.filter((item) => can(item.permissions ?? {}))');
+    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function useCan()');
+  });
+
+  test('sidebar user menu keeps the dropdown open when confirming logout', () => {
+    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    // onSelect + preventDefault stops the menu from closing on the first Logout click.
+    expect(navUser).toContain('onSelect={(e) => {');
+    expect(navUser).toContain('e.preventDefault();');
+    expect(navUser).toContain('setShowLogout(true);');
+  });
+
+  test('account display name uses an inline-edit field; documents upload uses a normal input', () => {
+    const account = bpFile('src/components/profile/account-form.tsx.hbs');
+    expect(account).toContain('f.InlineEditField');
+    expect(account).toContain('authClient.updateUser({ name: value.name })');
+    const docs = bpFile('src/app/(dashboard)/page.tsx.hbs');
+    expect(docs).toContain("import { useAppForm } from '@repo/ui/lib/form'");
+    expect(docs).toContain('f.InputField');
+  });
+
+  test('profile tab navigation is vertical on desktop', () => {
+    expect(bpFile('src/components/profile/tab-nav.tsx.hbs')).toContain('md:flex-col');
+    expect(bpFile('src/app/(dashboard)/profile/layout.tsx.hbs')).toContain('md:flex-row');
+  });
+
+  test('ships the shuip data-table block + search-input + inline-edit + base ui (registry, packages/ui)', () => {
+    for (const c of ['table', 'badge', 'dialog', 'popover', 'command', 'search-input']) {
+      const file = bpFile(`packages/ui/src/components/ui/${c}.tsx.hbs`);
+      expect(file).toContain('mono:');
+      expect(file).toContain('{{{{raw}}}}');
+    }
+    const dataTable = bpFile('packages/ui/src/components/block/shuip/data-table.tsx.hbs');
+    expect(dataTable).toContain('@tanstack/react-table');
+    // anglicized — no leftover French from the kodex source.
+    expect(dataTable).not.toContain('Rechercher');
+    expect(() => bpFile('packages/ui/src/components/ui/shuip/tanstack-form/inline-edit.tsx.hbs')).not.toThrow();
+    const form = bpFile('packages/ui/src/lib/form.ts.hbs');
+    expect(form).toContain('InlineEditField');
+  });
+
+  test('blueprint adds the datatable/inline-edit ui deps', () => {
+    // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
+    const uiDeps = bp!.pkgPackageJson?.ui?.dependencies ?? {};
+    expect(uiDeps).toHaveProperty('@tanstack/react-table');
+    expect(uiDeps).toHaveProperty('@dnd-kit/core');
+    expect(uiDeps).toHaveProperty('cmdk');
   });
 });

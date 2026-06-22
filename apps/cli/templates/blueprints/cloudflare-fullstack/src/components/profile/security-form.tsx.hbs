@@ -27,7 +27,7 @@ export function SecurityForm() {
 
   const form = useAppForm({
     defaultValues: { currentPassword: '', newPassword: '' },
-    validators: { onChange: schema },
+    validators: { onSubmit: schema },
     onSubmit: async ({ value, formApi }) => {
       await new Promise<void>((resolve) => {
         startTransition(async () => {

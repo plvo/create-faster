@@ -6,6 +6,7 @@ mono:
 {{{{raw}}}}
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ export function LoginForm() {
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
-    validators: { onChange: schema },
+    validators: { onSubmit: schema },
     onSubmit: async ({ value }) => {
       const result = await authClient.signIn.email({
         email: value.email,
@@ -52,6 +53,11 @@ export function LoginForm() {
       <form.AppField name='password'>
         {(f) => <f.PasswordField label='Password' props={{ autoComplete: 'current-password' }} />}
       </form.AppField>
+      <div className='-mt-1 flex justify-end'>
+        <Link href='/forgot-password' className='text-sm text-muted-foreground underline-offset-4 hover:underline'>
+          Forgot password?
+        </Link>
+      </div>
       <form.AppForm>
         <form.SubmitButton props={{ className: 'w-full' }}>Sign in</form.SubmitButton>
       </form.AppForm>

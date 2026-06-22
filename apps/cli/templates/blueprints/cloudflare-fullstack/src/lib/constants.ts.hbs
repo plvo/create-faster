@@ -17,11 +17,5 @@ export interface RouteProps {
 export const ROUTES: RouteProps[] = [
   { url: '/', title: 'Documents', icon: FileText },
   { url: '/admin/users', title: 'Users', icon: Users, category: 'Administration', permissions: { user: ['list'] } },
-  {
-    url: '/admin/roles',
-    title: 'Access control',
-    icon: ShieldCheck,
-    category: 'Administration',
-    permissions: { user: ['list'] },
-  },
+  { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];

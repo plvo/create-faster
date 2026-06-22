@@ -9,10 +9,12 @@ import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { router } from './trpc';
 import { documentsRouter } from './router/documents';
 import { helloRouter } from './router/hello';
+import { usersRouter } from './router/users';
 
 export const appRouter = router({
   hello: helloRouter,
   documents: documentsRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;

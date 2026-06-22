@@ -6,7 +6,6 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -27,25 +26,18 @@ export function AccountForm({
   createdAt: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   const form = useAppForm({
     defaultValues: { name: initialName },
-    validators: { onChange: schema },
+    validators: { onSubmit: schema },
     onSubmit: async ({ value }) => {
-      await new Promise<void>((resolve) => {
-        startTransition(async () => {
-          const result = await authClient.updateUser({ name: value.name });
-          if (result.error) {
-            toast.error(result.error.message ?? 'Update failed');
-            resolve();
-            return;
-          }
-          toast.success('Profile updated');
-          router.refresh();
-          resolve();
-        });
-      });
+      const result = await authClient.updateUser({ name: value.name });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Update failed');
+        return;
+      }
+      toast.success('Profile updated');
+      router.refresh();
     },
   });
 
@@ -53,34 +45,27 @@ export function AccountForm({
     <section className='space-y-4 rounded-lg border bg-card p-6'>
       <div>
         <h2 className='text-lg font-semibold'>Account information</h2>
-        <p className='text-sm text-muted-foreground'>Your account details.</p>
+        <p className='text-sm text-muted-foreground'>Click your display name to edit it.</p>
       </div>
 
-      <div className='space-y-3'>
-        <div>
-          <span className='text-sm font-medium'>Email</span>
-          <p className='text-sm text-muted-foreground'>{email}</p>
+      <dl className='space-y-4'>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Display name</dt>
+          <dd>
+            <form.AppField name='name'>{(f) => <f.InlineEditField variant='boxed' />}</form.AppField>
+          </dd>
         </div>
-        <div>
-          <span className='text-sm font-medium'>Joined</span>
-          <p className='text-sm text-muted-foreground'>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Email</dt>
+          <dd className='text-sm text-muted-foreground'>{email}</dd>
+        </div>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Joined</dt>
+          <dd className='text-sm text-muted-foreground'>
             {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+          </dd>
         </div>
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          form.handleSubmit();
-        }}
-        className='flex max-w-md flex-col gap-3 border-t pt-4'
-      >
-        <form.AppField name='name'>{(f) => <f.InputField label='Display name' />}</form.AppField>
-        <form.AppForm>
-          <form.SubmitButton props={{ disabled: isPending }}>{isPending ? 'Saving...' : 'Save'}</form.SubmitButton>
-        </form.AppForm>
-      </form>
+      </dl>
     </section>
   );
 }

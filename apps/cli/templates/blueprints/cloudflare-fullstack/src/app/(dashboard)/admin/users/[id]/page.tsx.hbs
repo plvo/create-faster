@@ -1,0 +1,34 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/users/[id]/page.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { EditUser } from '@/components/admin/edit-user';
+import { useTRPC } from '@/trpc/providers';
+
+export default function AdminUserDetailPage() {
+  const trpc = useTRPC();
+  const { id } = useParams<{ id: string }>();
+  const { data: user } = useSuspenseQuery(trpc.users.get.queryOptions({ id }));
+
+  return (
+    <div className='space-y-6'>
+      <Link
+        href='/admin/users'
+        className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'
+      >
+        <ArrowLeft className='size-4' />
+        Back to users
+      </Link>
+      <EditUser user={user} />
+    </div>
+  );
+}
+{{{{/raw}}}}

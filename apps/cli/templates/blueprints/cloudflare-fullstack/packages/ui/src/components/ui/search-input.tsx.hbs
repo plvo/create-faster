@@ -1,0 +1,125 @@
+---
+mono:
+  scope: pkg
+  name: ui
+  path: src/components/ui/search-input.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { Search } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { cn } from '../../lib/utils';
+import { Input } from './input';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+}
+
+export interface SearchInputProps {
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  debounceMs?: number;
+  hotkey?: string | false;
+  autoFocus?: boolean;
+  className?: string;
+}
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder = 'Search…',
+  debounceMs = 250,
+  hotkey = '/',
+  autoFocus,
+  className,
+}: SearchInputProps) {
+  const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [text, setText] = useState(value ?? '');
+  const [focused, setFocused] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+
+  useEffect(() => {
+    if (value !== undefined) setText(value);
+  }, [value]);
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!hotkey) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== hotkey || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      inputRef.current?.focus();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [hotkey]);
+
+  function handleChange(next: string) {
+    setText(next);
+    if (timer.current) clearTimeout(timer.current);
+    if (debounceMs <= 0) {
+      onChange(next);
+      return;
+    }
+    timer.current = setTimeout(() => onChange(next), debounceMs);
+  }
+
+  const showHotkeyBadge = Boolean(hotkey) && !focused && text.length === 0;
+
+  return (
+    <div className={cn('relative', className)}>
+      <Search aria-hidden className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+      <Input
+        id={id}
+        ref={inputRef}
+        type='search'
+        placeholder={placeholder}
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        // biome-ignore lint/a11y/noAutofocus: opt-in via prop, off by default
+        autoFocus={autoFocus}
+        className={cn('h-9 pl-9', showHotkeyBadge && 'pr-9')}
+      />
+      {showHotkeyBadge && (
+        <Popover open={hintOpen} onOpenChange={setHintOpen}>
+          <PopoverTrigger
+            type='button'
+            aria-label={`Appuyer sur ${hotkey} pour rechercher`}
+            onClick={() => inputRef.current?.focus()}
+            onMouseEnter={() => setHintOpen(true)}
+            onMouseLeave={() => setHintOpen(false)}
+            className='absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground transition-colors hover:text-foreground'
+          >
+            {hotkey}
+          </PopoverTrigger>
+          <PopoverContent
+            side='top'
+            align='end'
+            sideOffset={8}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            className='w-auto p-2 text-xs text-muted-foreground'
+          >
+            Appuyer sur « {hotkey} » pour rechercher
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
+}
+{{{{/raw}}}}

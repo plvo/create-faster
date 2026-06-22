@@ -9,6 +9,7 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
 import { admin } from 'better-auth/plugins';
+import { sendResetPasswordEmail } from './email';
 import { ac, roles } from './permissions';
 
 const HOUR = 60 * 60;
@@ -39,6 +40,13 @@ export function createAuth(db: Database) {
       enabled: true,
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        if (isDev) {
+          console.info(`\n🔑  Password reset link for ${user.email}:\n${url}\n`);
+          return;
+        }
+        await sendResetPasswordEmail({ to: user.email, url });
+      },
     },
     user: {
       modelName: 'user',

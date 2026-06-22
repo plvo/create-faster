@@ -137,12 +137,51 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     }
   });
 
-  test('generates the read-only access-control matrix page', async () => {
+  test('generates the read-only role matrix page (no duplicate title)', async () => {
     const page = await readTextFile(
       join(projectPath, 'apps/web/src/app/(dashboard)/admin/roles/page.tsx'),
     );
-    expect(page).toContain('Access control');
+    expect(page).toContain('read-only');
     expect(page).toContain('roleDefinitions');
+    expect(page).not.toContain('<h1');
     expect(page).not.toContain('{{');
+  });
+
+  test('generates the users datatable, create dialog, per-id page and users router', async () => {
+    const web = join(projectPath, 'apps/web/src');
+    for (const f of [
+      'components/admin/user-table.tsx',
+      'components/admin/create-user-dialog.tsx',
+      'components/admin/edit-user.tsx',
+      'app/(dashboard)/admin/users/[id]/page.tsx',
+      'components/shared/data-table-shell.tsx',
+    ]) {
+      expect(await fileExists(join(web, f))).toBe(true);
+    }
+    expect(await fileExists(join(projectPath, 'packages/api/src/router/users.ts'))).toBe(true);
+    const root = await readTextFile(join(projectPath, 'packages/api/src/root.ts'));
+    expect(root).toContain('users: usersRouter');
+  });
+
+  test('generates the shuip data-table block + base ui components', async () => {
+    const ui = join(projectPath, 'packages/ui/src/components');
+    expect(await fileExists(join(ui, 'block/shuip/data-table.tsx'))).toBe(true);
+    for (const c of ['table', 'badge', 'dialog', 'popover', 'command', 'search-input']) {
+      expect(await fileExists(join(ui, `ui/${c}.tsx`))).toBe(true);
+    }
+    expect(await fileExists(join(ui, 'ui/shuip/tanstack-form/inline-edit.tsx'))).toBe(true);
+  });
+
+  test('generates the forgot/reset password flow with the email stub', async () => {
+    const web = join(projectPath, 'apps/web/src');
+    for (const f of [
+      'app/(auth)/forgot-password/page.tsx',
+      'app/(auth)/forgot-password/forgot-password-form.tsx',
+      'app/(auth)/reset-password/page.tsx',
+      'app/(auth)/reset-password/reset-password-form.tsx',
+    ]) {
+      expect(await fileExists(join(web, f))).toBe(true);
+    }
+    expect(await fileExists(join(projectPath, 'packages/auth/src/email.ts'))).toBe(true);
   });
 });
