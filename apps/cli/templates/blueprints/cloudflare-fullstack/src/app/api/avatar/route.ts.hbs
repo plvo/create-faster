@@ -1,0 +1,41 @@
+---
+mono:
+  scope: app
+  path: src/app/api/avatar/route.ts
+---
+{{{{raw}}}}
+import { NextResponse } from 'next/server';
+import { getEnv } from '@/lib/env';
+import { getAuth } from '@/lib/server';
+
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+export async function POST(req: Request) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return new NextResponse('Invalid multipart body', { status: 400 });
+  }
+  const file = form.get('file');
+  if (!(file instanceof File)) return new NextResponse('Missing file field', { status: 400 });
+  if (!ALLOWED_TYPES.has(file.type)) return new NextResponse('Unsupported image type', { status: 415 });
+  if (file.size <= 0 || file.size > MAX_BYTES) {
+    return new NextResponse('Image too large (5 MB max)', { status: 413 });
+  }
+
+  const { STORAGE } = await getEnv();
+  const key = `avatars/${session.user.id}`;
+  // Pass the File (a Blob) directly: R2 needs a known content length, which a raw
+  // request stream does not carry. A Blob has a size, so R2 streams it without buffering.
+  await STORAGE.put(key, file, { httpMetadata: { contentType: file.type } });
+
+  // Cache-busting query so the browser reloads the image after a re-upload.
+  return NextResponse.json({ url: `/api/avatar/${session.user.id}?v=${Date.now()}` });
+}
+{{{{/raw}}}}

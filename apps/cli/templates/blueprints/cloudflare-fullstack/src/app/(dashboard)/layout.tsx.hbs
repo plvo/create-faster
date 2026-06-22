@@ -3,11 +3,12 @@ mono:
   scope: app
   path: src/app/(dashboard)/layout.tsx
 ---
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { SidebarInset, SidebarProvider } from '@repo/ui/components/ui/sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
+import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { getAuth } from '@/lib/server';
-import { SignOutButton } from './sign-out-button';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const auth = await getAuth();
@@ -15,19 +16,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session?.user) redirect('/login');
 
   return (
-    <div className='flex min-h-screen flex-col'>
-      <header className='flex items-center justify-between border-b px-6 py-3'>
-        <Link href='/' className='font-semibold'>
-          {{projectName}}
-        </Link>
-        <nav className='flex items-center gap-4 text-sm'>
-          <Link href='/profile' className='text-muted-foreground hover:text-foreground'>
-            Profile
-          </Link>
-          <SignOutButton />
-        </nav>
-      </header>
-      <main className='flex-1 p-6'>{children}</main>
-    </div>
+    <SidebarProvider defaultOpen>
+      <AppSidebar session={session} />
+      <SidebarInset className='min-w-0'>
+        <AppHeader />
+        <main className='min-w-0 flex-1 overflow-auto p-6'>{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

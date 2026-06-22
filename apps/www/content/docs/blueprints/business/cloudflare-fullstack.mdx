@@ -34,16 +34,27 @@ apps/
 │       │   │   ├── login/{page,login-form}.tsx
 │       │   │   └── signup/{page,signup-form}.tsx
 │       │   ├── (dashboard)/
-│       │   │   ├── layout.tsx          # Session gate (getAuth) + nav
+│       │   │   ├── layout.tsx          # Session gate (getAuth) + sidebar shell
 │       │   │   ├── page.tsx            # Documents list + upload (permission-gated)
-│       │   │   ├── profile/page.tsx    # authClient.useSession profile
+│       │   │   ├── profile/            # Tabbed: account, security, sessions, preferences
+│       │   │   │   ├── layout.tsx      # Tab nav
+│       │   │   │   ├── account/page.tsx    # Avatar (R2) + display name
+│       │   │   │   ├── security/page.tsx   # Change password
+│       │   │   │   ├── sessions/page.tsx   # Active sessions + revoke
+│       │   │   │   └── preferences/page.tsx # Theme
 │       │   │   └── admin/
 │       │   │       ├── layout.tsx      # Admin-only server gate
-│       │   │       └── users/page.tsx  # User management (roles, ban/unban)
-│       │   └── api/documents/upload/route.ts  # Multipart → R2 STORAGE.put
-│       ├── components/can.tsx          # <Can> permission gate
+│       │   │       ├── users/page.tsx  # User management (roles, ban/unban)
+│       │   │       └── roles/page.tsx  # Access control: role × permission matrix (read-only)
+│       │   └── api/
+│       │       ├── documents/upload/route.ts  # Multipart → R2 STORAGE.put
+│       │       └── avatar/{route,[userId]/route}.ts  # Avatar upload + serve from R2
+│       ├── components/
+│       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links
+│       │   ├── profile/                # avatar-upload, account/security forms, session-list
+│       │   └── can.tsx                 # <Can> permission gate
 │       ├── hooks/use-permission.ts     # usePermission hook
-│       └── lib/env.ts                  # getEnv() — DB + STORAGE bindings
+│       └── lib/{constants,env}.ts      # ROUTES (sidebar) + getEnv() bindings
 └── cron/                               # Hono scheduled Worker
     ├── wrangler.jsonc                  # crons trigger + DB + STORAGE bindings
     └── src/index.ts                    # scheduled() → purge expired documents
@@ -73,7 +84,15 @@ D1 is only reachable through a request- or event-bound binding, so the blueprint
 
 ### Auth & RBAC
 
-Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. Details in the generated `docs/agents/auth-rbac.md`.
+Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Access control** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Details in the generated `docs/agents/auth-rbac.md`.
+
+### Dashboard shell
+
+A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item. The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs. The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`) are added to `packages/ui` from the official registry.
+
+### Profile
+
+A tabbed area (`/profile`) over `authClient` — no extra tRPC routers: **account** (display name + avatar), **security** (change password), **sessions** (list + revoke), **preferences** (theme). The avatar uploads to R2 via `POST /api/avatar` (`avatars/<userId>`), is served back through `GET /api/avatar/[userId]` (session-gated), and the returned URL is saved to `user.image` with `authClient.updateUser`.
 
 ### Documents CRUD + R2 uploads
 

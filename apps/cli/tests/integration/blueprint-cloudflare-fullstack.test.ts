@@ -96,4 +96,53 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     const matches = await $`grep -rl DATABASE_URL ${projectPath}`.quiet().nothrow();
     expect(matches.stdout.toString().trim()).toBe('');
   });
+
+  test('does not leak local tool caches (.impeccable) into the generated project', async () => {
+    const found = await $`find ${projectPath} -name .impeccable`.quiet().nothrow();
+    expect(found.stdout.toString().trim()).toBe('');
+  });
+
+  test('generates the sidebar dashboard shell and its @repo/ui components', async () => {
+    const web = join(projectPath, 'apps/web/src');
+    for (const f of [
+      'components/navigation/app-sidebar.tsx',
+      'components/navigation/app-header.tsx',
+      'components/navigation/nav-user.tsx',
+      'components/navigation/sidebar-links.tsx',
+      'lib/constants.ts',
+    ]) {
+      expect(await fileExists(join(web, f))).toBe(true);
+    }
+    for (const c of ['sidebar', 'sheet', 'skeleton', 'dropdown-menu', 'breadcrumb', 'avatar']) {
+      expect(await fileExists(join(projectPath, `packages/ui/src/components/ui/${c}.tsx`))).toBe(true);
+    }
+    expect(await fileExists(join(projectPath, 'packages/ui/src/hooks/use-mobile.ts'))).toBe(true);
+    // the standalone sign-out button was replaced by the sidebar user menu.
+    expect(await fileExists(join(web, 'app/(dashboard)/sign-out-button.tsx'))).toBe(false);
+  });
+
+  test('generates the tabbed profile area with the R2 avatar routes', async () => {
+    const web = join(projectPath, 'apps/web/src');
+    for (const f of [
+      'app/(dashboard)/profile/layout.tsx',
+      'app/(dashboard)/profile/account/page.tsx',
+      'app/(dashboard)/profile/security/page.tsx',
+      'app/(dashboard)/profile/sessions/page.tsx',
+      'app/(dashboard)/profile/preferences/page.tsx',
+      'components/profile/avatar-upload.tsx',
+      'app/api/avatar/route.ts',
+      'app/api/avatar/[userId]/route.ts',
+    ]) {
+      expect(await fileExists(join(web, f))).toBe(true);
+    }
+  });
+
+  test('generates the read-only access-control matrix page', async () => {
+    const page = await readTextFile(
+      join(projectPath, 'apps/web/src/app/(dashboard)/admin/roles/page.tsx'),
+    );
+    expect(page).toContain('Access control');
+    expect(page).toContain('roleDefinitions');
+    expect(page).not.toContain('{{');
+  });
 });

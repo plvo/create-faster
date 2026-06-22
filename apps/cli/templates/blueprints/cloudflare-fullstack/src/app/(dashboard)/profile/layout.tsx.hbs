@@ -1,0 +1,16 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/profile/layout.tsx
+---
+import { ProfileTabNav } from '@/components/profile/tab-nav';
+
+export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className='max-w-3xl space-y-6'>
+      <h1 className='text-3xl font-bold'>Profile</h1>
+      <ProfileTabNav />
+      {children}
+    </div>
+  );
+}

@@ -43,3 +43,9 @@ Client-side — `apps/web/src/components/can.tsx` + `apps/web/src/hooks/use-perm
 1. Add the resource (and its actions) to `statement` in `permissions.ts`.
 2. Grant it in the relevant entries of `roleDefinitions`. To add a role, add a key to `roleDefinitions`, expose it in `roles`, and (if it should be assignable) include it where roles are set.
 3. Gate server endpoints with `permissionProcedure('<resource>', '<action>')` (or `adminProcedure`) and UI with `<Can>`. Because `statement`/`roles` are shared by `auth` and `authClient`, client and server stay in sync automatically.
+
+## Admin pages
+Both live under `apps/web/src/app/(dashboard)/admin/` behind an admin-only server gate (`layout.tsx` redirects non-admins):
+
+- `users/page.tsx` — user management via `authClient.admin` (`listUsers`, `setRole`, `banUser`/`unbanUser`).
+- `roles/page.tsx` — **Access control**: a read-only role × permission matrix rendered directly from `roleDefinitions` × `statement`, with the current viewer's role column highlighted. It is read-only by design — roles are code, not data, so editing happens in `permissions.ts` (step 1–2 above), not the UI.

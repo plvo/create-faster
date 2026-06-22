@@ -33,7 +33,9 @@ export async function POST(req: Request) {
   const id = crypto.randomUUID();
   const key = `documents/${session.user.id}/${id}`;
   const contentType = file.type || 'application/octet-stream';
-  await STORAGE.put(key, file.stream(), { httpMetadata: { contentType } });
+  // Pass the File (a Blob) directly: R2 needs a known content length, which a raw
+  // request stream does not carry. A Blob has a size, so R2 streams it without buffering.
+  await STORAGE.put(key, file, { httpMetadata: { contentType } });
 
   const db = await getDb();
   try {

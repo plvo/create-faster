@@ -1,0 +1,78 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/security-form.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useTransition } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useAppForm } from '@repo/ui/lib/form';
+
+const schema = z
+  .object({
+    currentPassword: z.string().min(8, 'Min. 8 characters'),
+    newPassword: z.string().min(8, 'Min. 8 characters'),
+  })
+  .refine((d) => d.currentPassword !== d.newPassword, {
+    message: 'New password must differ from current',
+    path: ['newPassword'],
+  });
+
+export function SecurityForm() {
+  const [isPending, startTransition] = useTransition();
+
+  const form = useAppForm({
+    defaultValues: { currentPassword: '', newPassword: '' },
+    validators: { onChange: schema },
+    onSubmit: async ({ value, formApi }) => {
+      await new Promise<void>((resolve) => {
+        startTransition(async () => {
+          const result = await authClient.changePassword({
+            currentPassword: value.currentPassword,
+            newPassword: value.newPassword,
+            revokeOtherSessions: true,
+          });
+          if (result.error) {
+            toast.error(result.error.message ?? 'Password change failed');
+            resolve();
+            return;
+          }
+          toast.success('Password updated — other sessions signed out');
+          formApi.reset();
+          resolve();
+        });
+      });
+    },
+  });
+
+  return (
+    <section className='space-y-4 rounded-lg border bg-card p-6'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change password</h2>
+        <p className='text-sm text-muted-foreground'>
+          Update your password. All other sessions will be signed out.
+        </p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className='flex max-w-md flex-col gap-3'
+      >
+        <form.AppField name='currentPassword'>{(f) => <f.PasswordField label='Current password' />}</form.AppField>
+        <form.AppField name='newPassword'>{(f) => <f.PasswordField label='New password' />}</form.AppField>
+        <form.AppForm>
+          <form.SubmitButton props={{ disabled: isPending }}>
+            {isPending ? 'Updating...' : 'Update password'}
+          </form.SubmitButton>
+        </form.AppForm>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}

@@ -140,16 +140,83 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(page).toContain("permissions={{ document: ['delete'] }}");
   });
 
-  test('profile page uses authClient.useSession', () => {
-    const page = readFileSync(
-      join(
-        import.meta.dir,
-        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/profile/page.tsx.hbs',
-      ),
-      'utf8',
-    );
-    expect(page).toContain('authClient.useSession()');
-    expect(page).toContain('{{{{raw}}}}');
+  test('profile is a tabbed account/security/sessions/preferences area', () => {
+    const base = 'src/app/(dashboard)/profile';
+    expect(bpFile(`${base}/page.tsx.hbs`)).toContain("redirect('/profile/account')");
+    expect(bpFile(`${base}/layout.tsx.hbs`)).toContain('ProfileTabNav');
+    expect(bpFile(`${base}/security/page.tsx.hbs`)).toContain('SecurityForm');
+    expect(bpFile(`${base}/sessions/page.tsx.hbs`)).toContain('SessionList');
+    expect(bpFile(`${base}/preferences/page.tsx.hbs`)).toContain('Preferences');
+
+    const tabNav = bpFile('src/components/profile/tab-nav.tsx.hbs');
+    for (const href of ['/profile/account', '/profile/security', '/profile/sessions', '/profile/preferences']) {
+      expect(tabNav).toContain(href);
+    }
+  });
+
+  test('account page reads the session server-side and renders avatar + account form', () => {
+    const page = bpFile('src/app/(dashboard)/profile/account/page.tsx.hbs');
+    expect(page).toContain("import { getAuth } from '@/lib/server'");
+    expect(page).toContain('<AvatarUpload name={name} image={image ?? null} />');
+    expect(page).toContain('<AccountForm initialName={name}');
+  });
+
+  test('profile forms update via authClient (no extra trpc routers)', () => {
+    expect(bpFile('src/components/profile/account-form.tsx.hbs')).toContain('authClient.updateUser({ name: value.name })');
+    expect(bpFile('src/components/profile/security-form.tsx.hbs')).toContain('authClient.changePassword');
+    const sessions = bpFile('src/components/profile/session-list.tsx.hbs');
+    expect(sessions).toContain('authClient.listSessions()');
+    expect(sessions).toContain('authClient.revokeSession({ token })');
+    expect(sessions).toContain('authClient.revokeOtherSessions()');
+    expect(bpFile('src/components/profile/preferences.tsx.hbs')).toContain("useTheme");
+  });
+
+  test('avatar uploads to R2 and is served back through a binding route', () => {
+    const post = bpFile('src/app/api/avatar/route.ts.hbs');
+    expect(post).toContain('STORAGE.put(key, file,');
+    expect(post).not.toContain('file.stream()');
+    expect(post).toContain('avatars/${session.user.id}');
+    expect(post).toContain('/api/avatar/${session.user.id}?v=');
+    const get = bpFile('src/app/api/avatar/[userId]/route.ts.hbs');
+    expect(get).toContain('STORAGE.get(`avatars/${userId}`)');
+    expect(get).toContain('object.writeHttpMetadata(headers)');
+    // gated: avatars require an authenticated session.
+    expect(get).toContain('if (!session?.user)');
+  });
+
+  test('access-control page renders the static role × permission matrix (read-only)', () => {
+    const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
+    expect(page).toContain("import { roleDefinitions, statement } from '@repo/auth/permissions'");
+    expect(page).toContain('Access control');
+    expect(page).toContain('isGranted(role, resource, action)');
+    expect(page).toContain("session?.user.role !== 'admin'");
+    // current viewer's column is highlighted.
+    expect(page).toContain('role === currentRole');
+  });
+
+  test('ships the navigation shell components + ROUTES', () => {
+    for (const f of ['app-sidebar', 'app-header', 'nav-user', 'sidebar-links']) {
+      expect(() => bpFile(`src/components/navigation/${f}.tsx.hbs`)).not.toThrow();
+    }
+    const constants = bpFile('src/lib/constants.ts.hbs');
+    expect(constants).toContain('export const ROUTES');
+    expect(constants).toContain("url: '/admin/roles'");
+    expect(constants).toContain("url: '/admin/users'");
+  });
+
+  test('ships the @repo/ui shadcn components the shell needs (registry, in packages/ui)', () => {
+    for (const c of ['sidebar', 'sheet', 'skeleton', 'dropdown-menu', 'breadcrumb', 'avatar']) {
+      const file = bpFile(`packages/ui/src/components/ui/${c}.tsx.hbs`);
+      expect(file).toContain('mono:');
+      expect(file).toContain('{{{{raw}}}}');
+    }
+    expect(() => bpFile('packages/ui/src/hooks/use-mobile.ts.hbs')).not.toThrow();
+  });
+
+  test('ships an auth Session type derived from the createAuth factory', () => {
+    const types = bpFile('src/lib/auth/types.ts.hbs');
+    expect(types).toContain("import type { Auth } from './auth'");
+    expect(types).toContain("export type Session = Auth['$Infer']['Session']");
   });
 
   test('admin layout exists and server-gates non-admin users', () => {
@@ -247,12 +314,21 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(router).toContain('env.STORAGE.delete');
   });
 
-  test('dashboard guards on session presence and signs out via client (POST)', () => {
+  test('dashboard shell mounts the sidebar provider, app sidebar, and header', () => {
     const layout = bpFile('src/app/(dashboard)/layout.tsx.hbs');
     expect(layout).toContain('if (!session?.user)');
-    expect(layout).toContain('<SignOutButton />');
-    expect(layout).not.toContain("href='/api/auth/sign-out'");
-    expect(bpFile('src/app/(dashboard)/sign-out-button.tsx.hbs')).toContain('authClient.signOut()');
+    expect(layout).toContain('<SidebarProvider defaultOpen>');
+    expect(layout).toContain('<AppSidebar session={session} />');
+    expect(layout).toContain('<AppHeader />');
+    // logout moved into the sidebar user menu; the standalone button is gone.
+    expect(layout).not.toContain('<SignOutButton />');
+  });
+
+  test('the sidebar user menu owns sign-out, the theme toggle, and the avatar', () => {
+    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    expect(navUser).toContain('authClient.signOut()');
+    expect(navUser).toContain("import { useTheme } from 'next-themes'");
+    expect(navUser).toContain('<AvatarImage src={session.user.image ?? undefined}');
   });
 
   test('cron purge counts actual R2 successes and batches the row delete', () => {
@@ -266,9 +342,11 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(bpFile('wrangler.jsonc.hono.hbs')).toContain('"database_name": "{{projectName}}-db"');
   });
 
-  test('upload streams the file to R2 (no full-buffer arrayBuffer)', () => {
+  test('upload hands the File (Blob) to R2 — known length, no full-buffer arrayBuffer', () => {
     const route = bpFile('src/app/api/documents/upload/route.ts.hbs');
-    expect(route).toContain('STORAGE.put(key, file.stream()');
+    // A bare file.stream() has no known length and R2.put rejects it; the File/Blob carries its size.
+    expect(route).toContain('STORAGE.put(key, file,');
+    expect(route).not.toContain('file.stream()');
     expect(route).not.toContain('await file.arrayBuffer()');
   });
 

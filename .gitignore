@@ -54,3 +54,6 @@ yarn-error.log*
 **/*.source
 
 .worktrees/
+
+# Impeccable hook caches (per-project tool state, never tracked)
+.impeccable/
