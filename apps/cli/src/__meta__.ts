@@ -1277,7 +1277,7 @@ export const META: Meta = {
         },
         scripts: {
           'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 bun --env-file=packages/db/.env scripts/seed.ts',
-          'local-setup': 'bun run db:migrate && bun run db:seed',
+          'local-setup': 'bun scripts/local-setup.ts',
           start: 'turbo start',
         },
       },

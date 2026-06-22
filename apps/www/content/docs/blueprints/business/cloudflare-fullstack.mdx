@@ -91,8 +91,7 @@ The dashboard lists documents (own rows for users; all rows for admin/manager) a
 
 ```bash
 bun install
-bun run db:generate     # Drizzle migrations from the schema
-bun run local-setup     # apply migrations to local D1 + seed
+bun run local-setup     # .env files, reset + migrate local D1, generate CF types, seed
 cd apps/web && bun run preview   # OpenNext preview against local bindings
 ```
 

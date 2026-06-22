@@ -31,6 +31,9 @@ build
 dist
 create-faster
 
+# Generated CLI test projects (kept out of tooling: biome reads the root .gitignore)
+apps/cli/my-app/
+
 
 # Debug
 npm-debug.log*

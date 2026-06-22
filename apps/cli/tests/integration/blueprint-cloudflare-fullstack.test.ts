@@ -79,6 +79,19 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     }
   });
 
+  test('emits a root local-setup orchestrator wired into the root scripts', async () => {
+    const setupPath = join(projectPath, 'scripts/local-setup.ts');
+    expect(await fileExists(setupPath)).toBe(true);
+    const setup = await readTextFile(setupPath);
+    expect(setup).toContain('.wrangler/v3/d1');
+    expect(setup).toContain('db:generate');
+    expect(setup).toContain('cf:typegen');
+    expect(setup).not.toContain('{{');
+
+    const pkg = await readTextFile(join(projectPath, 'package.json'));
+    expect(pkg).toContain('"local-setup": "bun scripts/local-setup.ts"');
+  });
+
   test('uses D1 bindings everywhere — no DATABASE_URL leaks', async () => {
     const matches = await $`grep -rl DATABASE_URL ${projectPath}`.quiet().nothrow();
     expect(matches.stdout.toString().trim()).toBe('');

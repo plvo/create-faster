@@ -36,10 +36,14 @@ export async function POST(req: Request) {
   await STORAGE.put(key, file.stream(), { httpMetadata: { contentType } });
 
   const db = await getDb();
-  const [doc] = await db
-    .insert(documentTable)
-    .values({ id, userId: session.user.id, title: title || file.name, r2Key: key, size: file.size, mimeType: contentType })
-    .returning();
-
-  return NextResponse.json({ document: doc });
+  try {
+    const [doc] = await db
+      .insert(documentTable)
+      .values({ id, userId: session.user.id, title: title || file.name, r2Key: key, size: file.size, mimeType: contentType })
+      .returning();
+    return NextResponse.json({ document: doc });
+  } catch (err) {
+    await STORAGE.delete(key);
+    throw err;
+  }
 }

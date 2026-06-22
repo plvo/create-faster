@@ -282,8 +282,21 @@ describe('cloudflare-fullstack blueprint META', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
     const scripts = bp!.rootPackageJson?.scripts ?? {};
     expect(scripts['db:seed']).toContain('BETTER_AUTH_URL=');
-    expect(scripts['local-setup']).toContain('db:migrate');
-    expect(scripts['local-setup']).toContain('db:seed');
+    expect(scripts['local-setup']).toBe('bun scripts/local-setup.ts');
+  });
+
+  test('ships a local-setup script that resets D1 and runs generate → migrate → typegen → seed', () => {
+    const setup = bpFile('scripts/local-setup.ts.hbs');
+    expect(setup).toContain('.env.example');
+    expect(setup).toContain('db:generate');
+    expect(setup).toContain('.wrangler/v3/d1');
+    expect(setup).toContain('db:migrate');
+    // wrangler d1 migrations apply prompts for confirmation; CI forces the non-interactive "yes".
+    expect(setup).toContain("{ CI: 'true' }");
+    expect(setup).toContain('cf:typegen');
+    expect(setup).toContain('apps/web');
+    expect(setup).toContain('db:seed');
+    expect(setup).not.toContain('#!/usr/bin/env');
   });
 
   test('next dev wires Cloudflare bindings at the CLI-migrate persist path (d1)', () => {

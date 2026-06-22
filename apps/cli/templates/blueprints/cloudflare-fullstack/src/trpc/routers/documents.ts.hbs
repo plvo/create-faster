@@ -33,10 +33,10 @@ export const documentsRouter = router({
         .limit(1);
       if (!doc) return { deleted: false };
 
+      await ctx.db.delete(documentTable).where(eq(documentTable.id, doc.id));
       const { getCloudflareContext } = await import('@opennextjs/cloudflare');
       const { env } = await getCloudflareContext({ async: true });
       await env.STORAGE.delete(doc.r2Key);
-      await ctx.db.delete(documentTable).where(eq(documentTable.id, doc.id));
       return { deleted: true };
     }),
 });
