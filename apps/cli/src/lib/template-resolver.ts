@@ -226,15 +226,25 @@ function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContex
     const source = join(blueprintDir, file);
 
     const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
-    if (fileSuffix) {
-      const hasStack = ctx.apps.some((app) => app.stackName === fileSuffix);
-      if (!hasStack) continue;
-    }
 
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
 
     const transformedPath = transformFilename(fileSuffix ? cleanFilename : file);
+
+    if (fileSuffix) {
+      for (const app of ctx.apps.filter((a) => a.stackName === fileSuffix)) {
+        const destination = resolveDestination({
+          relativePath: transformedPath,
+          ctx,
+          frontmatter,
+          appName: app.appName,
+        });
+        templates.push({ source, destination });
+      }
+      continue;
+    }
+
     const destination = resolveDestination({ relativePath: transformedPath, ctx, frontmatter });
     templates.push({ source, destination });
   }

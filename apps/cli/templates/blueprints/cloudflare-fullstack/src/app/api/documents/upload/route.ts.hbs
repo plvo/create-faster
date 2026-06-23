@@ -1,0 +1,51 @@
+---
+path: src/app/api/documents/upload/route.ts
+mono:
+  scope: app
+  path: src/app/api/documents/upload/route.ts
+---
+import { documentTable } from '@repo/db';
+import { NextResponse } from 'next/server';
+import { getEnv } from '@/lib/env';
+import { getAuth, getDb } from '@/lib/server';
+
+const MAX_BYTES = 25 * 1024 * 1024; // 25 MB — safe under the 128 MB Worker memory cap
+
+export async function POST(req: Request) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return new NextResponse('Invalid multipart body', { status: 400 });
+  }
+  const file = form.get('file');
+  const title = (form.get('title') as string | null)?.trim();
+  if (!(file instanceof File)) return new NextResponse('Missing file field', { status: 400 });
+  if (file.size <= 0 || file.size > MAX_BYTES) {
+    return new NextResponse(`File too large (${Math.floor(MAX_BYTES / 1024 / 1024)} MB max)`, { status: 413 });
+  }
+
+  const { STORAGE } = await getEnv();
+  const id = crypto.randomUUID();
+  const key = `documents/${session.user.id}/${id}`;
+  const contentType = file.type || 'application/octet-stream';
+  // Pass the File (a Blob) directly: R2 needs a known content length, which a raw
+  // request stream does not carry. A Blob has a size, so R2 streams it without buffering.
+  await STORAGE.put(key, file, { httpMetadata: { contentType } });
+
+  const db = await getDb();
+  try {
+    const [doc] = await db
+      .insert(documentTable)
+      .values({ id, userId: session.user.id, title: title || file.name, r2Key: key, size: file.size, mimeType: contentType })
+      .returning();
+    return NextResponse.json({ document: doc });
+  } catch (err) {
+    await STORAGE.delete(key);
+    throw err;
+  }
+}

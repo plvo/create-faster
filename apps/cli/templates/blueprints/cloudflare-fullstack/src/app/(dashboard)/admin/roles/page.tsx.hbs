@@ -1,0 +1,89 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/roles/page.tsx
+---
+{{{{raw}}}}
+import { Check, Minus } from 'lucide-react';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { roleDefinitions, statement } from '@repo/auth/permissions';
+import { getAuth } from '@/lib/server';
+
+type RoleName = keyof typeof roleDefinitions;
+type ResourceName = keyof typeof statement;
+
+function isGranted(role: RoleName, resource: string, action: string): boolean {
+  // roleDefinitions[role] has a different shape per role, so index it generically.
+  const perms = roleDefinitions[role] as Record<string, readonly string[] | undefined>;
+  return perms[resource]?.includes(action) ?? false;
+}
+
+export default async function RolesPage() {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user.role !== 'admin') redirect('/');
+
+  const currentRole = session.user.role as RoleName;
+  const roleNames = Object.keys(roleDefinitions) as RoleName[];
+  const rows = (Object.keys(statement) as ResourceName[]).flatMap((resource) =>
+    statement[resource].map((action) => ({ resource, action })),
+  );
+
+  return (
+    <div className='space-y-6'>
+      <p className='text-sm text-muted-foreground'>
+        Permissions granted to each role. Roles are defined in code at{' '}
+        <code className='rounded bg-muted px-1 py-0.5 text-xs'>packages/auth/src/permissions.ts</code> — this view is
+        read-only.
+      </p>
+
+      <div className='overflow-x-auto rounded-lg border'>
+        <table className='w-full text-sm'>
+          <thead>
+            <tr className='border-b bg-muted/50'>
+              <th className='px-4 py-3 text-left font-medium'>Permission</th>
+              {roleNames.map((role) => (
+                <th
+                  key={role}
+                  className={`px-4 py-3 text-center font-medium capitalize ${
+                    role === currentRole ? 'bg-primary/10 text-primary' : ''
+                  }`}
+                >
+                  {role}
+                  {role === currentRole && <span className='ml-1 text-xs font-normal'>(you)</span>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ resource, action }) => (
+              <tr key={`${resource}.${action}`} className='border-b last:border-0 hover:bg-muted/50'>
+                <td className='px-4 py-3'>
+                  <span className='font-medium'>{resource}</span>
+                  <span className='text-muted-foreground'>.{action}</span>
+                </td>
+                {roleNames.map((role) => {
+                  const granted = isGranted(role, resource, action);
+                  return (
+                    <td
+                      key={role}
+                      className={`px-4 py-3 text-center ${role === currentRole ? 'bg-primary/5' : ''}`}
+                    >
+                      {granted ? (
+                        <Check className='mx-auto size-4 text-primary' aria-label='Allowed' />
+                      ) : (
+                        <Minus className='mx-auto size-4 text-muted-foreground/40' aria-label='Denied' />
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}

@@ -107,7 +107,9 @@ export function transformFilename(filename: string): string {
 export function scanDirectory(dir: string): string[] {
   if (!existsSync(dir)) return [];
   try {
-    return globSync('**/*', { cwd: dir, onlyFiles: true, dot: true });
+    // Skip local tool caches (e.g. the impeccable hook's .impeccable/) so they never get
+    // treated as template files and copied into generated projects.
+    return globSync('**/*', { cwd: dir, onlyFiles: true, dot: true, ignore: ['**/.impeccable/**'] });
   } catch {
     return [];
   }

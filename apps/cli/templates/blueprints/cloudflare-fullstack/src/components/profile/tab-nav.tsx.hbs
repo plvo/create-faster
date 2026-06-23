@@ -1,0 +1,45 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/tab-nav.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@repo/ui/lib/utils';
+
+const TABS = [
+  { label: 'Account', href: '/profile/account' },
+  { label: 'Security', href: '/profile/security' },
+  { label: 'Sessions', href: '/profile/sessions' },
+  { label: 'Preferences', href: '/profile/preferences' },
+] as const;
+
+export function ProfileTabNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className='flex flex-row gap-1 overflow-x-auto md:flex-col'>
+      {TABS.map((tab) => {
+        const isActive = pathname.startsWith(tab.href);
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={cn(
+              'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              isActive
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,19 @@
+import { getAuth } from '@/lib/server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export default async function AuthLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session) redirect('/');
+
+  return (
+    <main className='flex min-h-screen items-center justify-center'>
+      {children}
+    </main>
+  );
+}

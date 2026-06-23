@@ -1,0 +1,75 @@
+---
+mono:
+  scope: app
+  path: src/components/admin/user-table.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useSuspenseQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { Badge } from '@repo/ui/components/ui/badge';
+import { DataTableShell, type DataTableShellColumn } from '@/components/shared/data-table-shell';
+import { useTRPC } from '@/trpc/providers';
+
+type UserRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string | null;
+  banned: boolean | null;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  createdAt: string | Date;
+};
+
+const columns: DataTableShellColumn<UserRow>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+    meta: { label: 'Name', variant: 'text' },
+    cell: ({ row }) => (
+      <div className='flex items-center gap-2'>
+        <Link href={`/admin/users/${row.original.id}`} className='font-medium hover:underline'>
+          {row.original.name}
+        </Link>
+        {row.original.banned && <Badge variant='destructive'>Banned</Badge>}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'email',
+    header: 'Email',
+    meta: { label: 'Email', variant: 'text' },
+    cell: ({ row }) => <span className='text-muted-foreground'>{row.original.email}</span>,
+  },
+  {
+    accessorKey: 'role',
+    header: 'Role',
+    meta: { label: 'Role', variant: 'text' },
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Badge variant={row.original.role === 'admin' ? 'default' : 'secondary'} className='capitalize'>
+        {row.original.role ?? 'user'}
+      </Badge>
+    ),
+  },
+];
+
+export function UserTable() {
+  const trpc = useTRPC();
+  const { data: users } = useSuspenseQuery(trpc.users.list.queryOptions());
+
+  return (
+    <DataTableShell
+      columns={columns}
+      data={users as UserRow[]}
+      filtering='search'
+      searchPlaceholder='Search by name, email or role…'
+      searchableAccessor={(user) => `${user.name} ${user.email} ${user.role ?? ''}`}
+      emptyFiltered='No users match your search.'
+    />
+  );
+}
+{{{{/raw}}}}

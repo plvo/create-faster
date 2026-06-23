@@ -1,0 +1,18 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/email.ts
+---
+interface ResetPasswordEmail {
+  to: string;
+  url: string;
+}
+
+/**
+ * Sends the password-reset email containing the reset link.
+ * In development the link is logged to the server console instead (see auth.ts).
+ */
+export async function sendResetPasswordEmail(_email: ResetPasswordEmail): Promise<void> {
+  // TODO: wire an email provider (Resend, SES, Postmark, …) and deliver the reset link to `_email.to`.
+}

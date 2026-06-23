@@ -1,0 +1,27 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/layout.tsx
+---
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { SidebarInset, SidebarProvider } from '@repo/ui/components/ui/sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
+import { AppSidebar } from '@/components/navigation/app-sidebar';
+import { getAuth } from '@/lib/server';
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) redirect('/login');
+
+  return (
+    <SidebarProvider defaultOpen>
+      <AppSidebar session={session} />
+      <SidebarInset className='min-w-0'>
+        <AppHeader />
+        <main className='min-w-0 flex-1 overflow-auto p-6'>{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

@@ -1,0 +1,26 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/users/page.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { CreateUserDialog } from '@/components/admin/create-user-dialog';
+import { UserTable } from '@/components/admin/user-table';
+import { Can } from '@/components/can';
+
+export default function AdminUsersPage() {
+  return (
+    <Can permissions={{ user: ['list'] }}>
+      <div className='space-y-6'>
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <p className='text-sm text-muted-foreground'>Manage accounts, roles and access.</p>
+          <CreateUserDialog />
+        </div>
+        <UserTable />
+      </div>
+    </Can>
+  );
+}
+{{{{/raw}}}}

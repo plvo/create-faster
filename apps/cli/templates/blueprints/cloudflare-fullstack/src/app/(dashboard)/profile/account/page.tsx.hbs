@@ -1,0 +1,25 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/profile/account/page.tsx
+---
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { AccountForm } from '@/components/profile/account-form';
+import { AvatarUpload } from '@/components/profile/avatar-upload';
+import { getAuth } from '@/lib/server';
+
+export default async function AccountPage() {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) redirect('/login');
+
+  const { name, email, image, createdAt } = session.user;
+
+  return (
+    <div className='space-y-6'>
+      <AvatarUpload name={name} image={image ?? null} />
+      <AccountForm initialName={name} email={email} createdAt={new Date(createdAt).toISOString()} />
+    </div>
+  );
+}

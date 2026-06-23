@@ -1,0 +1,64 @@
+---
+mono:
+  scope: app
+  path: src/app/(auth)/signup/signup-form.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useAppForm } from '@repo/ui/lib/form';
+
+const schema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Min. 8 characters'),
+});
+
+export function SignupForm() {
+  const router = useRouter();
+
+  const form = useAppForm({
+    defaultValues: { name: '', email: '', password: '' },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.signUp.email({
+        name: value.name,
+        email: value.email,
+        password: value.password,
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Sign-up failed');
+        return;
+      }
+      router.push('/');
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+      className='flex flex-col gap-4'
+    >
+      <form.AppField name='name'>
+        {(f) => <f.InputField label='Name' props={{ type: 'text', autoComplete: 'name' }} />}
+      </form.AppField>
+      <form.AppField name='email'>
+        {(f) => <f.InputField label='Email' props={{ type: 'email', autoComplete: 'email' }} />}
+      </form.AppField>
+      <form.AppField name='password'>
+        {(f) => <f.PasswordField label='Password' props={{ autoComplete: 'new-password' }} />}
+      </form.AppField>
+      <form.AppForm>
+        <form.SubmitButton props={{ className: 'w-full' }}>Create account</form.SubmitButton>
+      </form.AppForm>
+    </form>
+  );
+}
+{{{{/raw}}}}

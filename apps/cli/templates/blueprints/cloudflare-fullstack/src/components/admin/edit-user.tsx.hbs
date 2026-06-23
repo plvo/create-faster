@@ -1,0 +1,247 @@
+---
+mono:
+  scope: app
+  path: src/components/admin/edit-user.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { Check, Copy, KeyRound, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { roleDefinitions } from '@repo/auth/permissions';
+import { Badge } from '@repo/ui/components/ui/badge';
+import { Button } from '@repo/ui/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string | null;
+  banned: boolean | null;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  createdAt: string | Date;
+};
+
+const profileSchema = z.object({
+  name: z.string().min(1, 'Name required').max(64),
+  firstName: z.string().max(255),
+  lastName: z.string().max(255),
+  phone: z.string().max(40),
+});
+
+const ROLES = Object.keys(roleDefinitions);
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className='space-y-1'>
+      <dt className='text-sm font-medium'>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+export function EditUser({ user }: { user: AdminUser }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries(trpc.users.get.queryFilter({ id: user.id }));
+    queryClient.invalidateQueries(trpc.users.list.queryFilter());
+  };
+
+  const updateMutation = useMutation(
+    trpc.users.update.mutationOptions({
+      onSuccess: () => {
+        invalidate();
+        toast.success('Profile updated');
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+  const roleMutation = useMutation(
+    trpc.users.setRole.mutationOptions({
+      onSuccess: () => {
+        invalidate();
+        toast.success('Role updated');
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+  const passwordMutation = useMutation(
+    trpc.users.setPassword.mutationOptions({
+      onSuccess: ({ password }) => {
+        setNewPassword(password);
+        setCopied(false);
+        toast.success('Password reset');
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+  const banMutation = useMutation(
+    trpc.users.setBanned.mutationOptions({
+      onSuccess: () => {
+        invalidate();
+        toast.success('Status updated');
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+  const removeMutation = useMutation(
+    trpc.users.remove.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.users.list.queryFilter());
+        toast.success('User deleted');
+        router.push('/admin/users');
+      },
+      onError: (e) => toast.error(e.message),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: {
+      name: user.name,
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      phone: user.phone ?? '',
+    },
+    validators: { onSubmit: profileSchema },
+    onSubmit: async ({ value }) => {
+      await updateMutation.mutateAsync({ id: user.id, ...value });
+    },
+  });
+
+  async function copyPassword() {
+    if (!newPassword) return;
+    await navigator.clipboard.writeText(newPassword);
+    setCopied(true);
+    toast.success('Password copied');
+  }
+
+  return (
+    <div className='max-w-2xl space-y-6'>
+      <div className='space-y-0.5'>
+        <div className='flex items-center gap-2'>
+          <h2 className='text-lg font-semibold'>{user.name}</h2>
+          {user.banned && <Badge variant='destructive'>Banned</Badge>}
+        </div>
+        <p className='text-sm text-muted-foreground'>{user.email}</p>
+      </div>
+
+      <section className='space-y-4 rounded-lg border bg-card p-6'>
+        <div>
+          <h3 className='text-sm font-semibold'>Profile</h3>
+          <p className='text-sm text-muted-foreground'>Click a value to edit it.</p>
+        </div>
+        <dl className='space-y-4'>
+          <Row label='Display name'>
+            <form.AppField name='name'>{(f) => <f.InlineEditField variant='boxed' />}</form.AppField>
+          </Row>
+          <Row label='First name'>
+            <form.AppField name='firstName'>{(f) => <f.InlineEditField variant='boxed' placeholder='—' />}</form.AppField>
+          </Row>
+          <Row label='Last name'>
+            <form.AppField name='lastName'>{(f) => <f.InlineEditField variant='boxed' placeholder='—' />}</form.AppField>
+          </Row>
+          <Row label='Phone'>
+            <form.AppField name='phone'>{(f) => <f.InlineEditField variant='boxed' placeholder='—' />}</form.AppField>
+          </Row>
+        </dl>
+      </section>
+
+      <section className='space-y-3 rounded-lg border bg-card p-6'>
+        <div>
+          <h3 className='text-sm font-semibold'>Role</h3>
+          <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
+        </div>
+        <Select value={user.role ?? 'user'} onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}>
+          <SelectTrigger className='w-48 capitalize'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ROLES.map((role) => (
+              <SelectItem key={role} value={role} className='capitalize'>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </section>
+
+      <section className='space-y-3 rounded-lg border bg-card p-6'>
+        <div>
+          <h3 className='text-sm font-semibold'>Password</h3>
+          <p className='text-sm text-muted-foreground'>Generate a new password. It is shown only once.</p>
+        </div>
+        {newPassword && (
+          <div className='flex items-center gap-2 rounded-md border bg-muted/40 p-2'>
+            <code className='flex-1 truncate font-mono text-sm'>{newPassword}</code>
+            <Button type='button' variant='outline' size='icon' onClick={copyPassword} aria-label='Copy password'>
+              {copied ? <Check className='size-4' /> : <Copy className='size-4' />}
+            </Button>
+          </div>
+        )}
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => passwordMutation.mutate({ id: user.id })}
+          disabled={passwordMutation.isPending}
+        >
+          <KeyRound className='size-4' />
+          Generate new password
+        </Button>
+      </section>
+
+      <section className='space-y-3 rounded-lg border border-destructive/30 bg-card p-6'>
+        <div>
+          <h3 className='text-sm font-semibold text-destructive'>Danger zone</h3>
+          <p className='text-sm text-muted-foreground'>Restrict or permanently remove this account.</p>
+        </div>
+        <div className='flex flex-wrap gap-2'>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => banMutation.mutate({ id: user.id, banned: !user.banned })}
+            disabled={banMutation.isPending}
+          >
+            {user.banned ? 'Unban user' : 'Ban user'}
+          </Button>
+          {confirmDelete ? (
+            <>
+              <Button
+                type='button'
+                variant='destructive'
+                onClick={() => removeMutation.mutate({ id: user.id })}
+                disabled={removeMutation.isPending}
+              >
+                <Trash2 className='size-4' />
+                Confirm delete
+              </Button>
+              <Button type='button' variant='ghost' onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button type='button' variant='destructive' onClick={() => setConfirmDelete(true)}>
+              <Trash2 className='size-4' />
+              Delete user
+            </Button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+{{{{/raw}}}}

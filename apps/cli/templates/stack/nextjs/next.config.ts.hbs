@@ -7,7 +7,8 @@ import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 
 {{#if (and (has "deployment" "cloudflare") (eq stackName "nextjs"))}}
-initOpenNextCloudflareForDev();
+{{!-- d1: point getPlatformProxy at the same local state the `d1 migrations apply --persist-to` CLI writes (.wrangler/v3), so `next dev` sees the migrated/seeded database --}}
+initOpenNextCloudflareForDev({{#if (has "database" "d1")}}{ persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' } }{{/if}});
 
 {{/if}}
 const withBundleAnalyzer = require('@next/bundle-analyzer')({

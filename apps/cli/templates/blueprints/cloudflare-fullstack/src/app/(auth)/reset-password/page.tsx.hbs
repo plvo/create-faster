@@ -1,0 +1,32 @@
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
+import { ResetPasswordForm } from './reset-password-form';
+
+export default async function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; error?: string }>;
+}) {
+  const { token, error } = await searchParams;
+
+  return (
+    <Card className='w-full max-w-sm'>
+      <CardHeader>
+        <CardTitle className='text-2xl'>Reset password</CardTitle>
+        <CardDescription>Choose a new password for your account.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error || !token ? (
+          <div className='flex flex-col gap-4 text-sm'>
+            <p className='text-muted-foreground'>This reset link is invalid or has expired.</p>
+            <Link href='/forgot-password' className='text-primary underline-offset-4 hover:underline'>
+              Request a new link
+            </Link>
+          </div>
+        ) : (
+          <ResetPasswordForm token={token} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}

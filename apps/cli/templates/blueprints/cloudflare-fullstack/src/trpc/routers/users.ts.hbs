@@ -1,0 +1,128 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/users.ts
+---
+import { desc, eq, userTable } from '@repo/db';
+import { createAuth } from '@repo/auth/auth';
+import type { AppRole } from '@repo/auth/permissions';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { router } from '../trpc';
+import { adminProcedure } from '../middleware/rbac';
+
+const userColumns = {
+  id: userTable.id,
+  name: userTable.username,
+  email: userTable.email,
+  role: userTable.role,
+  banned: userTable.banned,
+  firstName: userTable.firstName,
+  lastName: userTable.lastName,
+  phone: userTable.phone,
+  createdAt: userTable.createdAt,
+};
+
+// Cryptographically-random password for admin-created accounts (shown once).
+function generatePassword(length = 14): string {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
+  const values = new Uint32Array(length);
+  crypto.getRandomValues(values);
+  return Array.from(values, (v) => charset[v % charset.length]).join('');
+}
+
+export const usersRouter = router({
+  list: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.select(userColumns).from(userTable).orderBy(desc(userTable.createdAt));
+  }),
+
+  get: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const [user] = await ctx.db.select(userColumns).from(userTable).where(eq(userTable.id, input.id)).limit(1);
+    if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+    return user;
+  }),
+
+  create: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(64),
+        email: z.string().email(),
+        role: z.string().min(1),
+        firstName: z.string().max(255).optional(),
+        lastName: z.string().max(255).optional(),
+        phone: z.string().max(40).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const auth = createAuth(ctx.db);
+      const password = generatePassword();
+      const { user } = await auth.api.createUser({
+        headers: ctx.headers,
+        body: { email: input.email, password, name: input.name, role: input.role as AppRole },
+      });
+      if (input.firstName || input.lastName || input.phone) {
+        await ctx.db
+          .update(userTable)
+          .set({ firstName: input.firstName || null, lastName: input.lastName || null, phone: input.phone || null })
+          .where(eq(userTable.id, user.id));
+      }
+      return { id: user.id, password };
+    }),
+
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(64),
+        firstName: z.string().max(255).optional(),
+        lastName: z.string().max(255).optional(),
+        phone: z.string().max(40).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(userTable)
+        .set({
+          username: input.name,
+          firstName: input.firstName || null,
+          lastName: input.lastName || null,
+          phone: input.phone || null,
+        })
+        .where(eq(userTable.id, input.id));
+      return { updated: true };
+    }),
+
+  setRole: adminProcedure
+    .input(z.object({ id: z.string(), role: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const auth = createAuth(ctx.db);
+      await auth.api.setRole({ headers: ctx.headers, body: { userId: input.id, role: input.role as AppRole } });
+      return { role: input.role };
+    }),
+
+  setPassword: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    const auth = createAuth(ctx.db);
+    const password = generatePassword();
+    await auth.api.setUserPassword({ headers: ctx.headers, body: { userId: input.id, newPassword: password } });
+    return { password };
+  }),
+
+  setBanned: adminProcedure
+    .input(z.object({ id: z.string(), banned: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const auth = createAuth(ctx.db);
+      if (input.banned) {
+        await auth.api.banUser({ headers: ctx.headers, body: { userId: input.id } });
+      } else {
+        await auth.api.unbanUser({ headers: ctx.headers, body: { userId: input.id } });
+      }
+      return { banned: input.banned };
+    }),
+
+  remove: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    const auth = createAuth(ctx.db);
+    await auth.api.removeUser({ headers: ctx.headers, body: { userId: input.id } });
+    return { removed: true };
+  }),
+});

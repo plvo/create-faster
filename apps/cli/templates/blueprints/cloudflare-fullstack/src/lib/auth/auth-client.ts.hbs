@@ -1,0 +1,15 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/auth-client.ts
+path: src/lib/auth/auth-client.ts
+---
+import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins';
+import { createAuthClient } from 'better-auth/react';
+import type { Auth } from './auth';
+import { ac, roles } from './permissions';
+
+export const authClient = createAuthClient({
+  plugins: [adminClient({ ac, roles }), inferAdditionalFields<Auth>()],
+});

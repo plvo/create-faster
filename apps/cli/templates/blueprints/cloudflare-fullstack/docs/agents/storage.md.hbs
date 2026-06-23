@@ -1,0 +1,34 @@
+---
+path: docs/agents/storage.md
+mono:
+  scope: root
+  path: docs/agents/storage.md
+---
+# Storage (R2)
+
+Uploaded files live in a **Cloudflare R2** bucket bound as `STORAGE`. The binding is declared in both `apps/web/wrangler.jsonc` and `apps/cron/wrangler.jsonc` (the cron Worker needs it to delete objects). R2 is accessed directly through the binding — no presigned URLs, no S3 SDK.
+
+## Key scheme
+Objects are keyed `documents/<userId>/<documentId>`. The same key is stored in `documents.r2_key`, so the DB row and the object stay linked for reads and deletes.
+
+## Upload
+`apps/web/src/app/api/documents/upload/route.ts` is a Route Handler (POST, multipart):
+
+1. Authenticates via `getAuth()` → 401 if no session.
+2. Parses the `FormData` (`file`, optional `title`); rejects a missing/empty file (400) or anything over **25 MB** (413).
+3. `const { STORAGE } = await getEnv()` then `STORAGE.put(key, file, { httpMetadata: { contentType } })` — the `File` (a Blob) is passed straight through. Don't pass `file.stream()`: R2 needs a known content length and a bare stream doesn't carry one (`Provided readable stream must have a known length`). A Blob has a size, so R2 streams it without buffering the whole body into JS memory.
+4. Inserts the `documents` row (`getDb()`) and returns it as JSON. If the insert throws, the just-uploaded object is deleted so no orphan is left in R2.
+
+The 25 MB cap is deliberate: a Worker has a 128 MB memory limit, so very large uploads should move to a presigned/multipart flow.
+
+## Delete
+Deletion is owned by the tRPC `documents.delete` mutation (`packages/api/src/router/documents.ts`): it loads the row (owner-scoped unless admin), `STORAGE.delete(doc.r2Key)`, then deletes the DB row. The cron Worker performs the same pair (`STORAGE.delete` + row delete) for expired documents — see [Cloudflare deploy](cloudflare-deploy.md) and [Data layer](data-layer.md).
+
+## Avatars
+Profile avatars reuse the same bucket under `avatars/<userId>` (one object per user, overwritten on re-upload — no DB column needed beyond `user.image`):
+
+- `POST apps/web/src/app/api/avatar/route.ts` — authenticates, accepts an image (`image/png|jpeg|webp|gif`, **5 MB** max), `STORAGE.put`s it, and returns `{ url: "/api/avatar/<userId>?v=<ts>" }`. The client saves that URL via `authClient.updateUser({ image })`.
+- `GET apps/web/src/app/api/avatar/[userId]/route.ts` — session-gated; streams the object back, setting `content-type` from `object.httpMetadata` + an `etag`. (It deliberately avoids `object.writeHttpMetadata(headers)`: handing a `Headers` instance to the binding breaks the `next dev` Cloudflare proxy, which serializes call args with devalue.) The `?v=` query busts the browser cache after a re-upload.
+
+## Adding a bucket / changing storage
+Add another `r2_buckets` entry (a new `binding` name) to the relevant `wrangler.jsonc`, expose it on the `Env`/`getEnv()` type, and reference it the same way (`env.<BINDING>.put/get/delete`). Keep the key scheme owner-prefixed so per-user listing and cleanup stay cheap.

@@ -1,0 +1,142 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/page.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useRef } from 'react';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Trash2, Upload } from 'lucide-react';
+import { z } from 'zod';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+import { Can } from '@/components/can';
+
+const schema = z.object({
+  title: z.string().max(200),
+});
+
+export default function DocumentsPage() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const { data: documents } = useSuspenseQuery(trpc.documents.list.queryOptions());
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const deleteMutation = useMutation(
+    trpc.documents.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.documents.list.queryFilter());
+        toast.success('Document deleted');
+      },
+      onError: () => toast.error('Failed to delete document'),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: { title: '' },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value, formApi }) => {
+      const file = fileRef.current?.files?.[0];
+      if (!file) {
+        toast.error('Select a file first');
+        return;
+      }
+
+      const body = new FormData();
+      body.append('file', file);
+      body.append('title', value.title || file.name);
+
+      try {
+        const res = await fetch('/api/documents/upload', { method: 'POST', body });
+        if (!res.ok) throw new Error(await res.text());
+        queryClient.invalidateQueries(trpc.documents.list.queryFilter());
+        toast.success('Document uploaded');
+        formApi.reset();
+        if (fileRef.current) fileRef.current.value = '';
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Upload failed');
+      }
+    },
+  });
+
+  return (
+    <div className='space-y-8'>
+      <Can permissions={{ document: ['create'] }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            form.handleSubmit();
+          }}
+          className='flex flex-wrap items-end gap-3 rounded-lg border p-4'
+        >
+          <div className='min-w-48 flex-1'>
+            <form.AppField name='title'>
+              {(f) => <f.InputField label='Title' props={{ placeholder: 'Document title' }} />}
+            </form.AppField>
+          </div>
+          <div className='flex flex-col gap-1.5'>
+            <label className='text-sm font-medium' htmlFor='document-file'>
+              File
+            </label>
+            <input id='document-file' ref={fileRef} type='file' className='text-sm' />
+          </div>
+          <form.AppForm>
+            <form.SubmitButton>
+              <Upload className='size-4' />
+              Upload
+            </form.SubmitButton>
+          </form.AppForm>
+        </form>
+      </Can>
+
+      {documents.length === 0 ? (
+        <div className='rounded-lg border bg-card p-8 text-center'>
+          <p className='text-muted-foreground'>No documents yet. Upload your first document to get started.</p>
+        </div>
+      ) : (
+        <div className='rounded-lg border'>
+          <table className='w-full text-sm'>
+            <thead>
+              <tr className='border-b bg-muted/50'>
+                <th className='px-4 py-3 text-left font-medium'>Title</th>
+                <th className='hidden px-4 py-3 text-left font-medium sm:table-cell'>Size</th>
+                <th className='hidden px-4 py-3 text-left font-medium md:table-cell'>Uploaded</th>
+                <th className='px-4 py-3' />
+              </tr>
+            </thead>
+            <tbody>
+              {documents.map((doc) => (
+                <tr key={doc.id} className='border-b last:border-0 hover:bg-muted/50'>
+                  <td className='px-4 py-3 font-medium'>{doc.title}</td>
+                  <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>
+                    {doc.size != null ? `${(doc.size / 1024).toFixed(1)} KB` : '—'}
+                  </td>
+                  <td className='hidden px-4 py-3 text-muted-foreground md:table-cell'>
+                    {new Date(doc.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className='px-4 py-3 text-right'>
+                    <Can permissions={{ document: ['delete'] }}>
+                      <button
+                        type='button'
+                        onClick={() => deleteMutation.mutate({ id: doc.id })}
+                        disabled={deleteMutation.isPending}
+                        className='text-destructive hover:text-destructive/80 disabled:opacity-50'
+                        aria-label='Delete document'
+                      >
+                        <Trash2 className='size-4' />
+                      </button>
+                    </Can>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,24 @@
+---
+mono:
+  scope: pkg
+  name: ui
+  path: src/lib/form.ts
+---
+{{{{raw}}}}
+import { createFormHook } from '@tanstack/react-form';
+import { CheckboxField } from '@repo/ui/components/ui/shuip/tanstack-form/checkbox-field';
+import { fieldContext, formContext } from '@repo/ui/components/ui/shuip/tanstack-form/form-context';
+import { InlineEditField } from '@repo/ui/components/ui/shuip/tanstack-form/inline-edit';
+import { InputField } from '@repo/ui/components/ui/shuip/tanstack-form/input-field';
+import { PasswordField } from '@repo/ui/components/ui/shuip/tanstack-form/password-field';
+import { SelectField } from '@repo/ui/components/ui/shuip/tanstack-form/select-field';
+import { SubmitButton } from '@repo/ui/components/ui/shuip/tanstack-form/submit-button';
+import { TextareaField } from '@repo/ui/components/ui/shuip/tanstack-form/textarea-field';
+
+export const { useAppForm, withForm } = createFormHook({
+  fieldContext,
+  formContext,
+  fieldComponents: { InputField, PasswordField, SelectField, TextareaField, CheckboxField, InlineEditField },
+  formComponents: { SubmitButton },
+});
+{{{{/raw}}}}

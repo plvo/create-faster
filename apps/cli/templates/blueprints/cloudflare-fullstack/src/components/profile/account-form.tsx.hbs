@@ -1,0 +1,72 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/account-form.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useAppForm } from '@repo/ui/lib/form';
+
+const schema = z.object({
+  name: z.string().min(1, 'Display name required').max(64),
+});
+
+export function AccountForm({
+  initialName,
+  email,
+  createdAt,
+}: {
+  initialName: string;
+  email: string;
+  createdAt: string;
+}) {
+  const router = useRouter();
+
+  const form = useAppForm({
+    defaultValues: { name: initialName },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      const result = await authClient.updateUser({ name: value.name });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Update failed');
+        return;
+      }
+      toast.success('Profile updated');
+      router.refresh();
+    },
+  });
+
+  return (
+    <section className='space-y-4 rounded-lg border bg-card p-6'>
+      <div>
+        <h2 className='text-lg font-semibold'>Account information</h2>
+        <p className='text-sm text-muted-foreground'>Click your display name to edit it.</p>
+      </div>
+
+      <dl className='space-y-4'>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Display name</dt>
+          <dd>
+            <form.AppField name='name'>{(f) => <f.InlineEditField variant='boxed' />}</form.AppField>
+          </dd>
+        </div>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Email</dt>
+          <dd className='text-sm text-muted-foreground'>{email}</dd>
+        </div>
+        <div className='space-y-1'>
+          <dt className='text-sm font-medium'>Joined</dt>
+          <dd className='text-sm text-muted-foreground'>
+            {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+{{{{/raw}}}}

@@ -1,0 +1,141 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/session-list.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Globe, Monitor, Smartphone, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { authClient } from '@repo/auth/auth-client';
+import { Button } from '@repo/ui/components/ui/button';
+
+type SessionRow = {
+  id: string;
+  token: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string | Date;
+};
+
+function getDeviceIcon(userAgent?: string | null) {
+  if (!userAgent) return Globe;
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) return Smartphone;
+  return Monitor;
+}
+
+function parseUserAgent(userAgent?: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  if (userAgent.includes('Edg')) return 'Edge';
+  if (userAgent.includes('Chrome')) return 'Chrome';
+  if (userAgent.includes('Firefox')) return 'Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  return 'Unknown browser';
+}
+
+export function SessionList() {
+  const { data: current } = authClient.useSession();
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const res = await authClient.listSessions();
+    if (res.error) {
+      toast.error('Failed to load sessions');
+      setLoading(false);
+      return;
+    }
+    setSessions((res.data ?? []) as SessionRow[]);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const currentToken = current?.session.token;
+
+  async function revoke(token: string) {
+    setPending(true);
+    const res = await authClient.revokeSession({ token });
+    setPending(false);
+    if (res.error) {
+      toast.error('Failed to revoke session');
+      return;
+    }
+    toast.success('Session revoked');
+    load();
+  }
+
+  async function revokeOthers() {
+    setPending(true);
+    const res = await authClient.revokeOtherSessions();
+    setPending(false);
+    if (res.error) {
+      toast.error('Failed to revoke sessions');
+      return;
+    }
+    toast.success('All other sessions revoked');
+    load();
+  }
+
+  return (
+    <section className='space-y-4 rounded-lg border bg-card p-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-lg font-semibold'>Active sessions</h2>
+          <p className='text-sm text-muted-foreground'>Manage your active sessions across devices.</p>
+        </div>
+        {sessions.some((s) => s.token !== currentToken) && (
+          <Button variant='outline' size='sm' onClick={revokeOthers} disabled={pending}>
+            Revoke all others
+          </Button>
+        )}
+      </div>
+
+      {loading ? (
+        <p className='text-sm text-muted-foreground'>Loading sessions...</p>
+      ) : (
+        <div className='space-y-3'>
+          {sessions.map((session) => {
+            const DeviceIcon = getDeviceIcon(session.userAgent);
+            const isCurrent = session.token === currentToken;
+            return (
+              <div key={session.token} className='flex items-center justify-between rounded-lg border p-4'>
+                <div className='flex items-center gap-3'>
+                  <DeviceIcon className='size-5 text-muted-foreground' />
+                  <div>
+                    <p className='text-sm font-medium'>
+                      {parseUserAgent(session.userAgent)}
+                      {isCurrent && <span className='ml-2 text-xs font-normal text-primary'>(current)</span>}
+                    </p>
+                    <p className='text-xs text-muted-foreground'>
+                      {session.ipAddress ?? 'Unknown IP'} · Created{' '}
+                      {new Date(session.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                {!isCurrent && (
+                  <Button variant='ghost' size='icon' onClick={() => revoke(session.token)} disabled={pending}>
+                    <Trash2 className='size-4 text-destructive' />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+{{{{/raw}}}}

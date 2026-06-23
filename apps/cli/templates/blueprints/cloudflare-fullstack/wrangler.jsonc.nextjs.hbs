@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "{{appName}}",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-12",
+  // global_fetch_strictly_public routes fetch() through the public internet so OpenNext asset serving avoids Worker subrequest limits
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "{{projectName}}-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "../../packages/db/drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "{{projectName}}-storage",
+      "preview_bucket_name": "{{projectName}}-storage-preview"
+    }
+  ]
+}

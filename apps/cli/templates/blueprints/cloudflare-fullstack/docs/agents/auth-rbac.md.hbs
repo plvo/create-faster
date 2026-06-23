@@ -1,0 +1,55 @@
+---
+path: docs/agents/auth-rbac.md
+mono:
+  scope: root
+  path: docs/agents/auth-rbac.md
+---
+# Auth & RBAC
+
+Authentication is Better Auth with the **admin plugin** + **access control**. The auth instance is a per-request factory (no module singleton) because D1 is only reachable through a request-bound binding.
+
+## Building auth
+`packages/auth/src/auth.ts` exports `createAuth(db: Database)` — it wires the Drizzle adapter (`provider: 'sqlite'`), the `admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })` plugin, and `nextCookies()`.
+
+- **Server Components / Route Handlers (web):** never import a singleton. Use the seam `getAuth()` from `@/lib/server`, then `const auth = await getAuth()`. `getAuth()` resolves the request's D1 binding and calls `createAuth(db)`.
+- **tRPC procedures:** the context already injects `ctx.db` and `ctx.session`. To check a permission, build auth from the request db: `createAuth(ctx.ctx.db).api.userHasPermission(...)` (see `permissionProcedure`).
+
+## Roles & permissions
+`packages/auth/src/permissions.ts` is the single source of truth:
+
+- `statement` extends `defaultStatements` with a `document` resource: `['create', 'read', 'update', 'delete']`.
+- `roleDefinitions` maps each role to its allowed actions:
+  - `admin` — all document actions (+ the admin plugin's user-management statements via `adminAc.statements`).
+  - `user` — full CRUD on documents (scoped to their own rows by the router/route).
+  - `manager` — `document: ['read']` only.
+- `roles` is `ac.newRole(...)` per definition; `AppRole` is the role union.
+
+## Enforcing permissions
+Server-side (tRPC) — `packages/api/src/middleware/rbac.ts`:
+
+- `adminProcedure` — rejects unless `ctx.session.user.role === 'admin'`.
+- `permissionProcedure(resource, action)` — builds auth from `ctx.db` and calls `auth.api.userHasPermission(...)`, throwing `FORBIDDEN` on failure. The documents router gates `list` with `('document', 'read')` and `delete` with `('document', 'delete')`, and additionally narrows rows by owner unless the caller is admin/manager.
+
+Client-side — `apps/web/src/components/can.tsx` + `apps/web/src/hooks/use-permission.ts`:
+
+- `usePermission(permissions)` calls `authClient.admin.checkRolePermission` against the current session role.
+- `useCan()` returns a predicate over the current role; the sidebar (`sidebar-links.tsx`) uses it to filter `ROUTES` and hide a whole category label when none of its links are permitted.
+{{{{raw}}}}
+- `<Can permissions={{ document: ['create'] }}>…</Can>` renders its children only when the role grants every listed action. Example from the documents page: the upload form is wrapped in `<Can permissions={{ document: ['create'] }}>` and each delete button in `<Can permissions={{ document: ['delete'] }}>`.
+{{{{/raw}}}}
+
+`authClient` (`packages/auth/src/auth-client.ts`) is built with `adminClient({ ac, roles })` so the client shares the exact same statements as the server.
+
+## Adding a resource or a role
+1. Add the resource (and its actions) to `statement` in `permissions.ts`.
+2. Grant it in the relevant entries of `roleDefinitions`. To add a role, add a key to `roleDefinitions`, expose it in `roles`, and (if it should be assignable) include it where roles are set.
+3. Gate server endpoints with `permissionProcedure('<resource>', '<action>')` (or `adminProcedure`) and UI with `<Can>`. Because `statement`/`roles` are shared by `auth` and `authClient`, client and server stay in sync automatically.
+
+## Password reset
+`emailAndPassword.sendResetPassword` (in `auth.ts`) delivers the reset link. In development it logs the link to the server console so the flow is testable without a mail provider; in production it calls `sendResetPasswordEmail` from `packages/auth/src/email.ts` — a stub with a `TODO` where you wire a provider (Resend, SES, …). The UI is `apps/web/src/app/(auth)/forgot-password` (requests a link via `authClient.requestPasswordReset({ email, redirectTo: '/reset-password' })`) and `reset-password` (reads the `?token` query and calls `authClient.resetPassword`).
+
+## Admin pages
+Both live under `apps/web/src/app/(dashboard)/admin/` behind an admin-only server gate (`layout.tsx` redirects non-admins):
+
+- `users/` — user management backed by the `users` tRPC router (`packages/api/src/router/users.ts`, all `adminProcedure`). `users/page.tsx` lists accounts in the shuip `DataTableShell` (search + sort) with a **Create user** dialog that calls `users.create` — the server generates a random password and returns it once. `users/[id]/page.tsx` is a per-user editor: display name / first / last / phone are **inline-edit** fields (`users.update`), alongside role (`users.setRole`), password reset (`users.setPassword`, shown once), ban/unban (`users.setBanned`) and delete (`users.remove`). The router calls the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with `ctx.headers`) for anything touching credentials or sessions, and writes profile columns directly via Drizzle.
+- `roles/page.tsx` — **Roles**: a read-only role × permission matrix rendered directly from `roleDefinitions` × `statement`, with the current viewer's role column highlighted. It is read-only by design — roles are code, not data, so editing happens in `permissions.ts` (step 1–2 above), not the UI.

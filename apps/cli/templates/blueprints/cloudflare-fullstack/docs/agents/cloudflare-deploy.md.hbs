@@ -1,0 +1,29 @@
+---
+path: docs/agents/cloudflare-deploy.md
+mono:
+  scope: root
+  path: docs/agents/cloudflare-deploy.md
+---
+# Cloudflare deploy
+
+Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNext) and the **cron** Worker (`apps/cron`, Hono). Both bind the same D1 database (`DB`) and R2 bucket (`STORAGE`).
+
+## One-time provisioning
+1. **D1:** `wrangler d1 create {{projectName}}-db` → copy the returned `database_id` into the `"database_id"` field of **both** `apps/web/wrangler.jsonc` and `apps/cron/wrangler.jsonc` (they share one database).
+2. **R2:** `wrangler r2 bucket create {{projectName}}-storage` (and `{{projectName}}-storage-preview` if you use `wrangler dev` preview on the web app).
+3. **Secrets** (per Worker that needs them — at least the web app): `wrangler secret put BETTER_AUTH_SECRET` and `wrangler secret put BETTER_AUTH_URL`. Public, build-time values (e.g. `NEXT_PUBLIC_APP_URL`) stay in `.env`, not secrets.
+4. **Remote migrations:** `bun run db:migrate:remote` to apply the schema to the live D1 database.
+
+## Build & deploy
+- **Web:** `bun run build:cf` (wrangler types → `next build` → `opennextjs-cloudflare build`) then `bun run deploy` (`opennextjs-cloudflare deploy`).
+- **Cron:** from `apps/cron`, `bunx wrangler deploy`. The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
+
+## Local development
+- `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` (any value locally; `BETTER_AUTH_URL` is already `http://localhost:3000`). Next.js reads `.env`; in dev mode Better Auth trusts `localhost`.
+- `bun run local-setup` once (applies local migrations + seeds the local D1).
+- `bun run dev` — `next dev` with the Cloudflare bindings wired via `initOpenNextCloudflareForDev` (D1/R2 from `.wrangler`, the same local state `local-setup` seeds). This is the primary local loop (hot reload, dev-mode auth).
+- `bun run preview` (`apps/web`) runs the OpenNext **production** build locally to smoke-test the deployed shape. Wrangler does not read `.env` here, so set secrets the production way (`wrangler secret put`) before relying on auth in preview.
+- Fire the cron handler locally without waiting for the schedule: from `apps/cron`, `bunx wrangler dev --test-scheduled --persist-to ../../.wrangler` (the `--persist-to` makes it share the same local D1/R2 as the web app), then hit `http://localhost:<port>/__scheduled` to run `scheduled()` (purges expired documents from the local D1 + R2).
+
+## Build-time vs runtime env
+Bindings (`DB`, `STORAGE`) and secrets are **runtime** — read through `getEnv()` (web) or the `Env` arg (cron), never at module load. Only `NEXT_PUBLIC_*` and other build-time config come from `.env`. Keep the D1/R2 access request- or event-scoped; see [Data layer](data-layer.md) and [Storage](storage.md).

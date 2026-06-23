@@ -1,0 +1,87 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/avatar-upload.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Camera } from 'lucide-react';
+import { toast } from 'sonner';
+import { authClient } from '@repo/auth/auth-client';
+import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui/components/ui/avatar';
+import { Button } from '@repo/ui/components/ui/button';
+
+export function AvatarUpload({ name, image }: { name: string; image: string | null }) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(image);
+
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const body = new FormData();
+    body.append('file', file);
+
+    setUploading(true);
+    try {
+      const res = await fetch('/api/avatar', { method: 'POST', body });
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = (await res.json()) as { url: string };
+      const result = await authClient.updateUser({ image: url });
+      if (result.error) throw new Error(result.error.message ?? 'Update failed');
+      setPreview(url);
+      toast.success('Avatar updated');
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  return (
+    <section className='flex items-center gap-4 rounded-lg border bg-card p-6'>
+      <Avatar size='lg' className='size-16'>
+        <AvatarImage src={preview ?? undefined} alt={name} />
+        <AvatarFallback className='text-lg'>{initials}</AvatarFallback>
+      </Avatar>
+      <div className='space-y-2'>
+        <div>
+          <h2 className='text-lg font-semibold'>Avatar</h2>
+          <p className='text-sm text-muted-foreground'>PNG, JPG, WEBP or GIF — 5 MB max.</p>
+        </div>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Camera className='size-4' />
+          {uploading ? 'Uploading...' : 'Change avatar'}
+        </Button>
+        <input
+          ref={inputRef}
+          type='file'
+          accept='image/png,image/jpeg,image/webp,image/gif'
+          className='hidden'
+          onChange={handleChange}
+        />
+      </div>
+    </section>
+  );
+}
+{{{{/raw}}}}
