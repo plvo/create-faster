@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.6.6](https://github.com/plvo/create-faster/compare/create-faster-v1.6.5...create-faster-v1.6.6) (2026-06-23)
+
+
+### Features
+
+* **auth:** better-auth sqlite support via drizzle adapter ([#144](https://github.com/plvo/create-faster/issues/144)) ([e0dbb2a](https://github.com/plvo/create-faster/commit/e0dbb2a7e2151b8516fca899e714ff89a00a3b78))
+* **blueprint:** add cloudflare-fullstack dashboard blueprint ([#158](https://github.com/plvo/create-faster/issues/158)) ([8a36034](https://github.com/plvo/create-faster/commit/8a360341eca090c7da654c27515e8357c1cb8ef8))
+* **blueprint:** cloudflare-static-site ([#157](https://github.com/plvo/create-faster/issues/157)) ([99ce8fa](https://github.com/plvo/create-faster/commit/99ce8fab5d232d0a9e27409ce54502aafbb60ba9))
+* **blueprint:** org-dashboard RBAC, auto-password, responsive dialogs, login card ([#136](https://github.com/plvo/create-faster/issues/136)) ([5002e34](https://github.com/plvo/create-faster/commit/5002e34abd2fbea848c3011fc39cd7030fc13aaf))
+* **cloudflare-static:** Next.js static export deployment to Cloudflare Workers assets ([#149](https://github.com/plvo/create-faster/issues/149)) ([513e517](https://github.com/plvo/create-faster/commit/513e51749c8894ef6f14ff565040bfaa3e6798dd))
+* **d1:** wire better-auth + tRPC per-request consumers ([#153](https://github.com/plvo/create-faster/issues/153)) ([#155](https://github.com/plvo/create-faster/issues/155)) ([8914fe3](https://github.com/plvo/create-faster/commit/8914fe3e2e1bbff8c3a6bf6387b0a83e86f3deee))
+* **database:** Cloudflare D1 option (d1) with declarative cloudflare constraint ([#150](https://github.com/plvo/create-faster/issues/150)) ([a0e96e0](https://github.com/plvo/create-faster/commit/a0e96e0c41e11dfa37648bf0405daef870edf052))
+* **database:** Postgres/MySQL on Cloudflare via Hyperdrive ([#148](https://github.com/plvo/create-faster/issues/148)) ([#154](https://github.com/plvo/create-faster/issues/154)) ([79143e3](https://github.com/plvo/create-faster/commit/79143e308cf5e0115c8e5ce571d98191e2a1a1b7))
+* **database:** sqlite option with Drizzle integration ([#139](https://github.com/plvo/create-faster/issues/139)) ([56648fb](https://github.com/plvo/create-faster/commit/56648fb3cb13b4f163a74df0295a68849ca066a9))
+* **deployment:** Cloudflare as a deployment platform ([#147](https://github.com/plvo/create-faster/issues/147)) ([09db427](https://github.com/plvo/create-faster/commit/09db42772a5d3eae1be6286eb2ae131fe053141a))
+* **libraries:** cloudflare deploy library for Hono (Workers) ([#137](https://github.com/plvo/create-faster/issues/137)) ([2d84e49](https://github.com/plvo/create-faster/commit/2d84e495b4c4b41430d8997a6202e12efe4ad5fc))
+* **prompts:** show incompatible options disabled with reason (not hidden) ([#152](https://github.com/plvo/create-faster/issues/152)) ([5aaf3be](https://github.com/plvo/create-faster/commit/5aaf3be705775dac8b5a65bf436045caa1a8902c))
+
+
+### Bug Fixes
+
+* **d1:** make the turbo db:migrate workflow target the deploy app config ([#156](https://github.com/plvo/create-faster/issues/156)) ([8a61506](https://github.com/plvo/create-faster/commit/8a61506db9d794e987afd15ef5c0a5161c615168))
+* **drizzle:** replace bundler-hostile import.meta.url with cwd-based sqlite path resolution ([#146](https://github.com/plvo/create-faster/issues/146)) ([e4a000f](https://github.com/plvo/create-faster/commit/e4a000fba959ca2686f03d1ad873c82bc967e9dd))
+
 ## [1.6.5](https://github.com/plvo/create-faster/compare/create-faster-v1.6.4...create-faster-v1.6.5) (2026-05-29)
 
 
