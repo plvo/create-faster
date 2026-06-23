@@ -17,8 +17,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
   const object = await STORAGE.get(`avatars/${userId}`);
   if (!object) return new Response('Not found', { status: 404 });
 
+  // Set content-type from R2 metadata directly. Do NOT let the binding write metadata onto a
+  // Headers instance: the `next dev` Cloudflare proxy serializes call args with devalue and
+  // rejects non-POJOs ("Cannot stringify arbitrary non-POJOs"), and Headers is one.
   const headers = new Headers();
-  object.writeHttpMetadata(headers);
+  if (object.httpMetadata?.contentType) headers.set('content-type', object.httpMetadata.contentType);
   headers.set('etag', object.httpEtag);
   headers.set('cache-control', 'private, max-age=3600');
   return new Response(object.body, { headers });

@@ -179,7 +179,10 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(post).toContain('/api/avatar/${session.user.id}?v=');
     const get = bpFile('src/app/api/avatar/[userId]/route.ts.hbs');
     expect(get).toContain('STORAGE.get(`avatars/${userId}`)');
-    expect(get).toContain('object.writeHttpMetadata(headers)');
+    // headers are built from object.httpMetadata, not writeHttpMetadata(headers): passing a
+    // Headers instance into the binding breaks the `next dev` Cloudflare proxy (devalue).
+    expect(get).toContain('object.httpMetadata?.contentType');
+    expect(get).not.toContain('writeHttpMetadata');
     // gated: avatars require an authenticated session.
     expect(get).toContain('if (!session?.user)');
   });
