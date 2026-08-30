@@ -712,7 +712,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              '@biomejs/biome': '^2.3.11',
+              '@biomejs/biome': '^2.5.11',
             },
             scripts: {
               format: 'biome format --write .',
@@ -740,11 +740,11 @@ export const META: Meta = {
             devDependencies: {
               eslint: '^9.22.0',
               '@eslint/js': '^9.22.0',
-              'typescript-eslint': '^8.55.0',
-              globals: '^17.3.0',
+              'typescript-eslint': '^8.68.0',
+              globals: '^17.11.0',
               'eslint-plugin-react': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.37.5'),
-              'eslint-plugin-react-hooks': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.0.1'),
-              '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.1.6'),
+              'eslint-plugin-react-hooks': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.1.1'),
+              '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.3.3'),
             },
             exports: {
               './base': './base.js',
@@ -769,8 +769,8 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              prettier: '^3.8.1',
-              'prettier-plugin-tailwindcss': '^0.7.2',
+              prettier: '^3.9.6',
+              'prettier-plugin-tailwindcss': '^0.8.1',
             },
             scripts: {
               format: 'prettier --write .',
