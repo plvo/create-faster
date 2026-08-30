@@ -113,10 +113,10 @@ export const META: Meta = {
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.160.0',
           '@tailwindcss/vite': '^4.1.18',
-          '@vitejs/plugin-react': '^4.6.0',
+          '@vitejs/plugin-react': '^6.1.1',
           tailwindcss: '^4.1.18',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           dev: 'vite dev --port {{port}}',
@@ -360,16 +360,16 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          vitest: '^4.1.7',
-          '@vitest/coverage-v8': '^4.1.7',
-          '@vitejs/plugin-react': '^4.6.0',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
-          jsdom: '^29.1.1',
-          '@testing-library/react': '^16.3.2',
+          vitest: '^4.1.11',
+          '@vitest/coverage-v8': '^4.1.11',
+          '@vitejs/plugin-react': '^6.1.1',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
+          jsdom: '^30.0.1',
+          '@testing-library/react': '^16.3.3',
           '@testing-library/dom': '^10.4.1',
-          '@testing-library/jest-dom': '^6.9.1',
-          '@testing-library/user-event': '^14.6.1',
+          '@testing-library/jest-dom': '^7.0.1',
+          '@testing-library/user-event': '^14.6.6',
         },
         scripts: {
           test: 'vitest run',
@@ -385,10 +385,10 @@ export const META: Meta = {
       support: { stacks: ['hono', 'node'] },
       packageJson: {
         devDependencies: {
-          vitest: '^4.1.7',
-          '@vitest/coverage-v8': '^4.1.7',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
+          vitest: '^4.1.11',
+          '@vitest/coverage-v8': '^4.1.11',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           test: 'vitest run',
@@ -404,7 +404,7 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          '@playwright/test': '^1.60.0',
+          '@playwright/test': '^1.62.1',
         },
         scripts: {
           'test:e2e': 'playwright test',
