@@ -35,7 +35,7 @@ export const auth = betterAuth({
   baseURL: {
     allowedHosts: [
       prodHost,
-      ...(isDev ? ['localhost:*', '*.localhost:*'] : []),
+      ...(isDev || !prodHost ? ['localhost:*', '*.localhost:*'] : []),
     ].filter(Boolean) as string[],
     fallback: process.env.BETTER_AUTH_URL,
     protocol: isDev ? 'http' : 'auto',

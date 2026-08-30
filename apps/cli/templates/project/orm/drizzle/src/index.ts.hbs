@@ -84,14 +84,13 @@ function findMonoRoot(start: string): string {
 {{/if}}
 {{/if}}
 function createDb() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
+  // Only called once DATABASE_URL is confirmed set by the db proxy below.
+  const databaseUrl = process.env.DATABASE_URL as string;
 {{#if (has "database" "postgres")}}
   return drizzle({
     schema,
     connection: {
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
       ssl: process.env.NODE_ENV === 'production',
     },
   });
@@ -100,11 +99,11 @@ function createDb() {
   return drizzle({
     schema,
     mode: 'default',
-    connection: process.env.DATABASE_URL,
+    connection: databaseUrl,
   });
 {{/if}}
 {{#if (has "database" "sqlite")}}
-  const raw = process.env.DATABASE_URL.replace(/^file:/, '');
+  const raw = databaseUrl.replace(/^file:/, '');
 {{#if (isMono)}}
   const root = findMonoRoot(process.cwd());
   const url = `file:${isAbsolute(raw) ? raw : join(root, 'packages/db', raw)}`;
@@ -121,7 +120,16 @@ function createDb() {
 let _db: ReturnType<typeof createDb> | undefined;
 export const db = new Proxy({} as ReturnType<typeof createDb>, {
   get(_, prop) {
-    if (!_db) _db = createDb();
+    if (!_db) {
+      if (!process.env.DATABASE_URL) {
+        // better-auth's drizzle adapter reads `_` at import time to statically inspect
+        // the schema (optional-chained, so undefined is safe). Every other property
+        // means real usage, so it still throws loudly with no DATABASE_URL.
+        if (prop === '_') return undefined;
+        throw new Error('DATABASE_URL environment variable is not set');
+      }
+      _db = createDb();
+    }
     return Reflect.get(_db, prop);
   },
 });
