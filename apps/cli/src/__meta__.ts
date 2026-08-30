@@ -10,17 +10,17 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           next: '^16.1.1',
-          react: '^19.2.3',
-          'react-dom': '^19.2.3',
-          'tw-animate-css': '^1.3.4',
+          react: '^19.2.8',
+          'react-dom': '^19.2.8',
+          'tw-animate-css': '^1.4.0',
         },
         devDependencies: {
           typescript: '^5',
           '@types/node': '^20',
-          '@types/react': '^19.2.3',
-          '@types/react-dom': '^19.2.3',
-          tailwindcss: '^4.1.10',
-          '@tailwindcss/postcss': '^4.1.10',
+          '@types/react': '^19.2.18',
+          '@types/react-dom': '^19.2.5',
+          tailwindcss: '^4.3.3',
+          '@tailwindcss/postcss': '^4.3.3',
           '@next/bundle-analyzer': '^16.1.1',
         },
         scripts: {
@@ -103,14 +103,14 @@ export const META: Meta = {
         dependencies: {
           '@tanstack/react-router': '^1.160.0',
           '@tanstack/react-start': '^1.160.0',
-          react: '^19.2.3',
-          'react-dom': '^19.2.3',
+          react: '^19.2.8',
+          'react-dom': '^19.2.8',
         },
         devDependencies: {
           typescript: '^5',
           '@types/node': '^22',
-          '@types/react': '^19.2.3',
-          '@types/react-dom': '^19.2.3',
+          '@types/react': '^19.2.18',
+          '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.160.0',
           '@tailwindcss/vite': '^4.1.18',
           '@vitejs/plugin-react': '^4.6.0',
@@ -137,21 +137,21 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
         dependencies: {
-          '@radix-ui/react-slot': '^1.2.4',
-          'radix-ui': '^1.4.2',
+          '@radix-ui/react-slot': '^1.3.3',
+          'radix-ui': '^1.6.7',
           'class-variance-authority': '^0.7.1',
           clsx: '^2.1.1',
           cmdk: '^1.1.1',
-          'lucide-react': '^0.487.0',
-          react: '^19.2.3',
-          'tw-animate-css': '^1.3.4',
-          'tailwind-merge': '^3.3.1',
+          'lucide-react': '^1.37.0',
+          react: '^19.2.8',
+          'tw-animate-css': '^1.4.0',
+          'tailwind-merge': '^3.6.0',
         },
         devDependencies: {
           typescript: '^5',
-          tailwindcss: '^4.1.10',
-          '@tailwindcss/postcss': '^4.1.10',
-          '@types/react': '^19.2.3',
+          tailwindcss: '^4.3.3',
+          '@tailwindcss/postcss': '^4.3.3',
+          '@types/react': '^19.2.18',
         },
         exports: {
           './': './src/components/',
@@ -1054,11 +1054,11 @@ export const META: Meta = {
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.23.7',
-            'react-dom': '^19.2.3',
+            'react-dom': '^19.2.8',
             vaul: '^1.1.2',
           },
           devDependencies: {
-            '@types/react-dom': '^19.2.3',
+            '@types/react-dom': '^19.2.5',
           },
         },
       },
@@ -1256,10 +1256,10 @@ export const META: Meta = {
             '@tanstack/react-form': '^1.23.7',
             '@tanstack/react-table': '^8.21.3',
             cmdk: '^1.1.1',
-            'react-dom': '^19.2.3',
+            'react-dom': '^19.2.8',
           },
           devDependencies: {
-            '@types/react-dom': '^19.2.3',
+            '@types/react-dom': '^19.2.5',
           },
         },
         api: {
