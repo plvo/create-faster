@@ -181,13 +181,13 @@ export const META: Meta = {
       support: { stacks: ['nextjs'] },
       packageJson: {
         dependencies: {
-          '@mdx-js/loader': '^3',
-          '@mdx-js/react': '^3',
-          '@next/mdx': '^16.1.1',
-          'next-mdx-remote': '^5.0.0',
+          '@mdx-js/loader': '^3.1.1',
+          '@mdx-js/react': '^3.1.1',
+          '@next/mdx': '^16.3.3',
+          'next-mdx-remote': '^6.0.0',
         },
         devDependencies: {
-          '@types/mdx': '^2.0.13',
+          '@types/mdx': '^2.0.14',
         },
       },
     },
