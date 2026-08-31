@@ -1044,7 +1044,7 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
           zod: '^4.5.4',
@@ -1128,7 +1128,7 @@ export const META: Meta = {
         dependencies: {
           '@hugeicons/react': '^1.1.6',
           '@hugeicons/core-free-icons': '^4.1.1',
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
           zod: '^4.5.4',
@@ -1242,7 +1242,7 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           sonner: '^2.0.7',
           zod: '^4.5.4',
         },

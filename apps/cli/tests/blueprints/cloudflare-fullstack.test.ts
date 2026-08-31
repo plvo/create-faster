@@ -26,7 +26,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('only adds blueprint-specific extras to packageJson', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated in prior test
-    expect(bp!.packageJson?.dependencies).toMatchObject({ 'lucide-react': '^0.487.0', sonner: '^2.0.7', zod: '^4.5.4' });
+    expect(bp!.packageJson?.dependencies).toMatchObject({ 'lucide-react': '^1.37.0', sonner: '^2.0.7', zod: '^4.5.4' });
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated in prior test
     expect(bp!.rootPackageJson?.devDependencies).toMatchObject({ '@faker-js/faker': '^10.4.0' });
   });
