@@ -11,7 +11,6 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { TRPCReactProvider } from '@/trpc/providers';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
-import { getAccount, getChainId } from 'wagmi/actions';
 import { createSiweMessage } from 'viem/siwe';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
@@ -34,22 +33,12 @@ export function AppProviders({ children }: AppProvidersProps) {
       : 'unauthenticated';
 
   const authAdapter = useMemo(() => {
-    let resolvedAddress: string;
-    let resolvedChainId: number;
-
     return createAuthenticationAdapter({
       getNonce: async () => {
-        const account = getAccount(wagmiConfig);
-        const chainId = getChainId(wagmiConfig);
-        const { data } = await authClient.siwe.nonce({
-          walletAddress: account.address ?? '',
-          chainId,
-        });
+        const { data } = await authClient.siwe.nonce();
         return data?.nonce ?? '';
       },
       createMessage: ({ nonce, address, chainId }) => {
-        resolvedAddress = address;
-        resolvedChainId = chainId;
         return createSiweMessage({
           domain: window.location.host,
           address,
@@ -64,8 +53,6 @@ export function AppProviders({ children }: AppProvidersProps) {
         const { error } = await authClient.siwe.verify({
           message,
           signature,
-          walletAddress: resolvedAddress,
-          chainId: resolvedChainId,
         });
         if (!error) router.push('/protected');
         return !error;
