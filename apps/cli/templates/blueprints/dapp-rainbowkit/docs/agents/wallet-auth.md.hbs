@@ -10,9 +10,9 @@ Wallet connection and Sign-In With Ethereum are wired in `src/components/app-pro
 
 ## Sign-in flow
 `AppProviders` builds a RainbowKit `createAuthenticationAdapter`. After a wallet connects via `<ConnectButton />` (`src/components/header.tsx`), RainbowKit drives:
-1. `getNonce` → `authClient.siwe.nonce({ walletAddress, chainId })`.
+1. `getNonce` → `authClient.siwe.nonce()`.
 2. `createMessage` → `createSiweMessage` from `viem/siwe`.
-3. `verify` → `authClient.siwe.verify({ message, signature, walletAddress, chainId })`; on success it `router.push('/protected')`.
+3. `verify` → `authClient.siwe.verify({ message, signature })`; on success it `router.push('/protected')`.
 `authStatus` is derived from `authClient.useSession()` (loading/authenticated/unauthenticated).
 
 ## Better Auth SIWE config

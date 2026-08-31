@@ -10,17 +10,17 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           next: '^16.1.1',
-          react: '^19.2.3',
-          'react-dom': '^19.2.3',
-          'tw-animate-css': '^1.3.4',
+          react: '^19.2.8',
+          'react-dom': '^19.2.8',
+          'tw-animate-css': '^1.4.0',
         },
         devDependencies: {
           typescript: '^5',
           '@types/node': '^20',
-          '@types/react': '^19.2.3',
-          '@types/react-dom': '^19.2.3',
-          tailwindcss: '^4.1.10',
-          '@tailwindcss/postcss': '^4.1.10',
+          '@types/react': '^19.2.18',
+          '@types/react-dom': '^19.2.5',
+          tailwindcss: '^4.3.3',
+          '@tailwindcss/postcss': '^4.3.3',
           '@next/bundle-analyzer': '^16.1.1',
         },
         scripts: {
@@ -103,20 +103,20 @@ export const META: Meta = {
         dependencies: {
           '@tanstack/react-router': '^1.160.0',
           '@tanstack/react-start': '^1.160.0',
-          react: '^19.2.3',
-          'react-dom': '^19.2.3',
+          react: '^19.2.8',
+          'react-dom': '^19.2.8',
         },
         devDependencies: {
           typescript: '^5',
           '@types/node': '^22',
-          '@types/react': '^19.2.3',
-          '@types/react-dom': '^19.2.3',
+          '@types/react': '^19.2.18',
+          '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.160.0',
           '@tailwindcss/vite': '^4.1.18',
-          '@vitejs/plugin-react': '^4.6.0',
+          '@vitejs/plugin-react': '^6.1.1',
           tailwindcss: '^4.1.18',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           dev: 'vite dev --port {{port}}',
@@ -137,21 +137,21 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'ui' },
       packageJson: {
         dependencies: {
-          '@radix-ui/react-slot': '^1.2.4',
-          'radix-ui': '^1.4.2',
+          '@radix-ui/react-slot': '^1.3.3',
+          'radix-ui': '^1.6.7',
           'class-variance-authority': '^0.7.1',
           clsx: '^2.1.1',
           cmdk: '^1.1.1',
-          'lucide-react': '^0.487.0',
-          react: '^19.2.3',
-          'tw-animate-css': '^1.3.4',
-          'tailwind-merge': '^3.3.1',
+          'lucide-react': '^1.37.0',
+          react: '^19.2.8',
+          'tw-animate-css': '^1.4.0',
+          'tailwind-merge': '^3.6.0',
         },
         devDependencies: {
           typescript: '^5',
-          tailwindcss: '^4.1.10',
-          '@tailwindcss/postcss': '^4.1.10',
-          '@types/react': '^19.2.3',
+          tailwindcss: '^4.3.3',
+          '@tailwindcss/postcss': '^4.3.3',
+          '@types/react': '^19.2.18',
         },
         exports: {
           './': './src/components/',
@@ -181,13 +181,13 @@ export const META: Meta = {
       support: { stacks: ['nextjs'] },
       packageJson: {
         dependencies: {
-          '@mdx-js/loader': '^3',
-          '@mdx-js/react': '^3',
-          '@next/mdx': '^16.1.1',
-          'next-mdx-remote': '^5.0.0',
+          '@mdx-js/loader': '^3.1.1',
+          '@mdx-js/react': '^3.1.1',
+          '@next/mdx': '^16.3.3',
+          'next-mdx-remote': '^6.0.0',
         },
         devDependencies: {
-          '@types/mdx': '^2.0.13',
+          '@types/mdx': '^2.0.14',
         },
       },
     },
@@ -209,9 +209,9 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
-          'better-auth': '^1.5.3',
-          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, '^1.5.3'),
-          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.5.3'),
+          'better-auth': '^1.7.2',
+          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, '^1.7.2'),
+          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.7.2'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         devDependencies: {
@@ -249,10 +249,10 @@ export const META: Meta = {
         dependencies: {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
-          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.1'),
-          '@trpc/server': '^11.8.1',
+          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.2'),
+          '@trpc/server': '^11.18.0',
           superjson: '^2.2.6',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
         devDependencies: {
           typescript: '^5',
@@ -264,9 +264,9 @@ export const META: Meta = {
       },
       appPackageJson: {
         dependencies: {
-          '@trpc/client': '^11.8.1',
-          '@trpc/server': '^11.8.1',
-          '@trpc/tanstack-react-query': '^11.8.1',
+          '@trpc/client': '^11.18.0',
+          '@trpc/server': '^11.18.0',
+          '@trpc/tanstack-react-query': '^11.18.0',
           'server-only': '^0.0.1',
           superjson: '^2.2.6',
         },
@@ -279,7 +279,7 @@ export const META: Meta = {
       support: { stacks: 'all' },
       packageJson: {
         dependencies: {
-          '@tanstack/react-query': '^5.90.0',
+          '@tanstack/react-query': '^5.102.8',
         },
       },
     },
@@ -290,8 +290,8 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          '@tanstack/react-devtools': '^0.7.0',
-          '@tanstack/react-query-devtools': '^5.90.1',
+          '@tanstack/react-devtools': '^0.10.12',
+          '@tanstack/react-query-devtools': '^5.102.8',
         },
       },
     },
@@ -302,8 +302,8 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
-          'react-hook-form': '^7.56.1',
-          '@hookform/resolvers': '^5.2.1',
+          'react-hook-form': '^7.87.0',
+          '@hookform/resolvers': '^5.9.1',
         },
       },
     },
@@ -314,7 +314,7 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
-          '@tanstack/react-form': '^1.23.7',
+          '@tanstack/react-form': '^1.33.5',
         },
       },
     },
@@ -325,7 +325,7 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
-          nativewind: '^4.1.23',
+          nativewind: '^4.2.6',
         },
         devDependencies: {
           tailwindcss: '^3.4.17',
@@ -346,10 +346,10 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'hono', 'tanstack-start', 'node'] },
       packageJson: {
         dependencies: {
-          evlog: '^2.11.0',
+          evlog: '^2.28.0',
         },
         devDependencies: {
-          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260311-beta'),
+          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260610-beta'),
         },
       },
     },
@@ -360,16 +360,16 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          vitest: '^4.1.7',
-          '@vitest/coverage-v8': '^4.1.7',
-          '@vitejs/plugin-react': '^4.6.0',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
-          jsdom: '^29.1.1',
-          '@testing-library/react': '^16.3.2',
+          vitest: '^4.1.11',
+          '@vitest/coverage-v8': '^4.1.11',
+          '@vitejs/plugin-react': '^6.1.1',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
+          jsdom: '^30.0.1',
+          '@testing-library/react': '^16.3.3',
           '@testing-library/dom': '^10.4.1',
-          '@testing-library/jest-dom': '^6.9.1',
-          '@testing-library/user-event': '^14.6.1',
+          '@testing-library/jest-dom': '^7.0.1',
+          '@testing-library/user-event': '^14.6.6',
         },
         scripts: {
           test: 'vitest run',
@@ -385,10 +385,10 @@ export const META: Meta = {
       support: { stacks: ['hono', 'node'] },
       packageJson: {
         devDependencies: {
-          vitest: '^4.1.7',
-          '@vitest/coverage-v8': '^4.1.7',
-          vite: '^7.3.1',
-          'vite-tsconfig-paths': '^5.1.4',
+          vitest: '^4.1.11',
+          '@vitest/coverage-v8': '^4.1.11',
+          vite: '^8.2.2',
+          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           test: 'vitest run',
@@ -404,7 +404,7 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          '@playwright/test': '^1.60.0',
+          '@playwright/test': '^1.62.1',
         },
         scripts: {
           'test:e2e': 'playwright test',
@@ -446,7 +446,7 @@ export const META: Meta = {
           providesDbBindings: true,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.100.0',
+              wrangler: '^4.127.1',
             },
           },
           stackPackageJson: {
@@ -459,7 +459,7 @@ export const META: Meta = {
             },
             nextjs: {
               dependencies: {
-                '@opennextjs/cloudflare': '^1.19.0',
+                '@opennextjs/cloudflare': '^1.20.5',
               },
               scripts: {
                 'build:cf':
@@ -478,7 +478,7 @@ export const META: Meta = {
           providesServerRuntime: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.100.0',
+              wrangler: '^4.127.1',
             },
           },
           stackPackageJson: {
@@ -497,7 +497,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              sst: '^4.2.7',
+              sst: '^4.17.1',
             },
           },
         },
@@ -519,10 +519,10 @@ export const META: Meta = {
           serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
-              pg: '^8.13.1',
+              pg: '^8.23.0',
             },
             devDependencies: {
-              '@types/pg': '^8.11.10',
+              '@types/pg': '^8.23.1',
             },
           },
           deploymentPackageJson: {
@@ -547,7 +547,7 @@ export const META: Meta = {
           serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
-              mysql2: '^3.11.5',
+              mysql2: '^3.24.2',
             },
           },
           envs: [
@@ -564,7 +564,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             dependencies: {
-              '@libsql/client': '^0.17.3',
+              '@libsql/client': '^0.17.4',
             },
           },
           envs: [
@@ -583,8 +583,8 @@ export const META: Meta = {
           serverlessConsumersWired: true,
           packageJson: {
             devDependencies: {
-              '@libsql/client': '^0.17.3',
-              '@types/bun': '^1.3.13',
+              '@libsql/client': '^0.17.4',
+              '@types/bun': '^1.4.0',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
@@ -649,12 +649,12 @@ export const META: Meta = {
             types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
             files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
-              'drizzle-orm': '^0.45.1',
+              'drizzle-orm': '^0.45.2',
             },
             devDependencies: {
               typescript: '^5',
               '@types/node': '^22',
-              'drizzle-kit': '^0.31.9',
+              'drizzle-kit': '^0.31.10',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
@@ -676,16 +676,16 @@ export const META: Meta = {
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
             dependencies: {
-              '@prisma/client': '^7.0.0',
-              '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.0.0'),
-              '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.0.0'),
-              mariadb: $when({ database: 'mysql' }, '^3.0.0'),
+              '@prisma/client': '^7.10.0',
+              '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.10.0'),
+              '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.10.0'),
+              mariadb: $when({ database: 'mysql' }, '^3.5.3'),
             },
             devDependencies: {
               typescript: '^5',
               '@types/node': '^22',
-              dotenv: '^16.0.0',
-              prisma: '^7.0.0',
+              dotenv: '^17.4.2',
+              prisma: '^7.10.0',
             },
             scripts: {
               'db:generate': 'prisma generate',
@@ -712,7 +712,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              '@biomejs/biome': '^2.3.11',
+              '@biomejs/biome': '^2.5.11',
             },
             scripts: {
               format: 'biome format --write .',
@@ -740,11 +740,11 @@ export const META: Meta = {
             devDependencies: {
               eslint: '^9.22.0',
               '@eslint/js': '^9.22.0',
-              'typescript-eslint': '^8.55.0',
-              globals: '^17.3.0',
+              'typescript-eslint': '^8.68.0',
+              globals: '^17.11.0',
               'eslint-plugin-react': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.37.5'),
-              'eslint-plugin-react-hooks': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.0.1'),
-              '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.1.6'),
+              'eslint-plugin-react-hooks': $when({ stack: ['nextjs', 'tanstack-start', 'expo'] }, '^7.1.1'),
+              '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.3.3'),
             },
             exports: {
               './base': './base.js',
@@ -769,8 +769,8 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              prettier: '^3.8.1',
-              'prettier-plugin-tailwindcss': '^0.7.2',
+              prettier: '^3.9.6',
+              'prettier-plugin-tailwindcss': '^0.8.1',
             },
             scripts: {
               format: 'prettier --write .',
@@ -791,8 +791,8 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              husky: '^9',
-              'lint-staged': '^16',
+              husky: '^9.1.7',
+              'lint-staged': '^17.4.1',
             },
             scripts: {
               prepare: 'husky',
@@ -812,7 +812,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              portless: '^0.9.0',
+              portless: '^0.15.6',
             },
           },
           runtime: {
@@ -874,11 +874,11 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@privy-io/react-auth': '^3.16.0',
-          '@privy-io/wagmi': '^4.0.2',
+          '@privy-io/react-auth': '^3.39.0',
+          '@privy-io/wagmi': '^4.0.17',
           '@privy-io/server-auth': '^1.32.5',
-          wagmi: '^3.5.0',
-          viem: '^2.47.0',
+          wagmi: '^3.7.7',
+          viem: '^2.56.1',
         },
       },
       envs: [
@@ -925,9 +925,9 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@rainbow-me/rainbowkit': '^2.2.0',
-          wagmi: '^2.19.0',
-          viem: '^2.38.0',
+          '@rainbow-me/rainbowkit': '^2.2.11',
+          wagmi: '^2.19.5',
+          viem: '^2.56.1',
         },
       },
       envs: [
@@ -1044,21 +1044,21 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
         ui: {
           dependencies: {
-            '@tanstack/react-form': '^1.23.7',
-            'react-dom': '^19.2.3',
+            '@tanstack/react-form': '^1.33.5',
+            'react-dom': '^19.2.8',
             vaul: '^1.1.2',
           },
           devDependencies: {
-            '@types/react-dom': '^19.2.3',
+            '@types/react-dom': '^19.2.5',
           },
         },
       },
@@ -1128,16 +1128,16 @@ export const META: Meta = {
         dependencies: {
           '@hugeicons/react': '^1.1.6',
           '@hugeicons/core-free-icons': '^4.1.1',
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
         ui: {
           dependencies: {
-            '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-form': '^1.33.5',
           },
         },
       },
@@ -1242,9 +1242,9 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          'lucide-react': '^0.487.0',
+          'lucide-react': '^1.37.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
@@ -1253,18 +1253,18 @@ export const META: Meta = {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
             '@dnd-kit/utilities': '^3.2.2',
-            '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-form': '^1.33.5',
             '@tanstack/react-table': '^8.21.3',
             cmdk: '^1.1.1',
-            'react-dom': '^19.2.3',
+            'react-dom': '^19.2.8',
           },
           devDependencies: {
-            '@types/react-dom': '^19.2.3',
+            '@types/react-dom': '^19.2.5',
           },
         },
         api: {
           dependencies: {
-            '@opennextjs/cloudflare': '^1.19.0',
+            '@opennextjs/cloudflare': '^1.20.5',
           },
         },
       },
@@ -1276,7 +1276,7 @@ export const META: Meta = {
         devDependencies: {
           '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
-          'drizzle-orm': '^0.45.1',
+          'drizzle-orm': '^0.45.2',
         },
         scripts: {
           'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 bun --env-file=packages/db/.env scripts/seed.ts',
