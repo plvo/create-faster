@@ -446,7 +446,7 @@ export const META: Meta = {
           providesDbBindings: true,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.100.0',
+              wrangler: '^4.127.1',
             },
           },
           stackPackageJson: {
@@ -459,7 +459,7 @@ export const META: Meta = {
             },
             nextjs: {
               dependencies: {
-                '@opennextjs/cloudflare': '^1.19.0',
+                '@opennextjs/cloudflare': '^1.20.5',
               },
               scripts: {
                 'build:cf':
@@ -478,7 +478,7 @@ export const META: Meta = {
           providesServerRuntime: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.100.0',
+              wrangler: '^4.127.1',
             },
           },
           stackPackageJson: {
@@ -497,7 +497,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              sst: '^4.2.7',
+              sst: '^4.17.1',
             },
           },
         },
@@ -812,7 +812,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              portless: '^0.9.0',
+              portless: '^0.15.6',
             },
           },
           runtime: {
@@ -1264,7 +1264,7 @@ export const META: Meta = {
         },
         api: {
           dependencies: {
-            '@opennextjs/cloudflare': '^1.19.0',
+            '@opennextjs/cloudflare': '^1.20.5',
           },
         },
       },
