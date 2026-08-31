@@ -874,11 +874,11 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@privy-io/react-auth': '^3.16.0',
-          '@privy-io/wagmi': '^4.0.2',
+          '@privy-io/react-auth': '^3.39.0',
+          '@privy-io/wagmi': '^4.0.17',
           '@privy-io/server-auth': '^1.32.5',
-          wagmi: '^3.5.0',
-          viem: '^2.47.0',
+          wagmi: '^3.7.7',
+          viem: '^2.56.1',
         },
       },
       envs: [
@@ -925,9 +925,9 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@rainbow-me/rainbowkit': '^2.2.0',
-          wagmi: '^2.19.0',
-          viem: '^2.38.0',
+          '@rainbow-me/rainbowkit': '^2.2.11',
+          wagmi: '^2.19.5',
+          viem: '^2.56.1',
         },
       },
       envs: [
