@@ -250,9 +250,9 @@ export const META: Meta = {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
           'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.2'),
-          '@trpc/server': '^11.8.1',
+          '@trpc/server': '^11.18.0',
           superjson: '^2.2.6',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
         devDependencies: {
           typescript: '^5',
@@ -264,9 +264,9 @@ export const META: Meta = {
       },
       appPackageJson: {
         dependencies: {
-          '@trpc/client': '^11.8.1',
-          '@trpc/server': '^11.8.1',
-          '@trpc/tanstack-react-query': '^11.8.1',
+          '@trpc/client': '^11.18.0',
+          '@trpc/server': '^11.18.0',
+          '@trpc/tanstack-react-query': '^11.18.0',
           'server-only': '^0.0.1',
           superjson: '^2.2.6',
         },
@@ -279,7 +279,7 @@ export const META: Meta = {
       support: { stacks: 'all' },
       packageJson: {
         dependencies: {
-          '@tanstack/react-query': '^5.90.0',
+          '@tanstack/react-query': '^5.102.8',
         },
       },
     },
@@ -290,8 +290,8 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         devDependencies: {
-          '@tanstack/react-devtools': '^0.7.0',
-          '@tanstack/react-query-devtools': '^5.90.1',
+          '@tanstack/react-devtools': '^0.10.12',
+          '@tanstack/react-query-devtools': '^5.102.8',
         },
       },
     },
@@ -302,8 +302,8 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
-          'react-hook-form': '^7.56.1',
-          '@hookform/resolvers': '^5.2.1',
+          'react-hook-form': '^7.87.0',
+          '@hookform/resolvers': '^5.9.1',
         },
       },
     },
@@ -314,7 +314,7 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
-          '@tanstack/react-form': '^1.23.7',
+          '@tanstack/react-form': '^1.33.5',
         },
       },
     },
@@ -325,7 +325,7 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
-          nativewind: '^4.1.23',
+          nativewind: '^4.2.6',
         },
         devDependencies: {
           tailwindcss: '^3.4.17',
@@ -346,10 +346,10 @@ export const META: Meta = {
       support: { stacks: ['nextjs', 'hono', 'tanstack-start', 'node'] },
       packageJson: {
         dependencies: {
-          evlog: '^2.11.0',
+          evlog: '^2.28.0',
         },
         devDependencies: {
-          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260311-beta'),
+          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260610-beta'),
         },
       },
     },
@@ -1047,13 +1047,13 @@ export const META: Meta = {
           'lucide-react': '^0.487.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
         ui: {
           dependencies: {
-            '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-form': '^1.33.5',
             'react-dom': '^19.2.8',
             vaul: '^1.1.2',
           },
@@ -1131,13 +1131,13 @@ export const META: Meta = {
           'lucide-react': '^0.487.0',
           'react-error-boundary': '^5.0.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
         ui: {
           dependencies: {
-            '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-form': '^1.33.5',
           },
         },
       },
@@ -1244,7 +1244,7 @@ export const META: Meta = {
         dependencies: {
           'lucide-react': '^0.487.0',
           sonner: '^2.0.7',
-          zod: '^4.2.1',
+          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
@@ -1253,7 +1253,7 @@ export const META: Meta = {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
             '@dnd-kit/utilities': '^3.2.2',
-            '@tanstack/react-form': '^1.23.7',
+            '@tanstack/react-form': '^1.33.5',
             '@tanstack/react-table': '^8.21.3',
             cmdk: '^1.1.1',
             'react-dom': '^19.2.8',
