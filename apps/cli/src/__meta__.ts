@@ -791,8 +791,8 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {
-              husky: '^9',
-              'lint-staged': '^16',
+              husky: '^9.1.7',
+              'lint-staged': '^17.4.1',
             },
             scripts: {
               prepare: 'husky',
