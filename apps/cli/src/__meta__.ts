@@ -249,7 +249,7 @@ export const META: Meta = {
         dependencies: {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
-          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.1'),
+          'drizzle-orm': $when({ repo: 'turborepo', orm: 'drizzle' }, '^0.45.2'),
           '@trpc/server': '^11.8.1',
           superjson: '^2.2.6',
           zod: '^4.2.1',
@@ -519,10 +519,10 @@ export const META: Meta = {
           serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
-              pg: '^8.13.1',
+              pg: '^8.23.0',
             },
             devDependencies: {
-              '@types/pg': '^8.11.10',
+              '@types/pg': '^8.23.1',
             },
           },
           deploymentPackageJson: {
@@ -547,7 +547,7 @@ export const META: Meta = {
           serverlessBinding: 'hyperdrive',
           packageJson: {
             dependencies: {
-              mysql2: '^3.11.5',
+              mysql2: '^3.24.2',
             },
           },
           envs: [
@@ -564,7 +564,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             dependencies: {
-              '@libsql/client': '^0.17.3',
+              '@libsql/client': '^0.17.4',
             },
           },
           envs: [
@@ -583,8 +583,8 @@ export const META: Meta = {
           serverlessConsumersWired: true,
           packageJson: {
             devDependencies: {
-              '@libsql/client': '^0.17.3',
-              '@types/bun': '^1.3.13',
+              '@libsql/client': '^0.17.4',
+              '@types/bun': '^1.4.0',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
@@ -649,12 +649,12 @@ export const META: Meta = {
             types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
             files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
-              'drizzle-orm': '^0.45.1',
+              'drizzle-orm': '^0.45.2',
             },
             devDependencies: {
               typescript: '^5',
               '@types/node': '^22',
-              'drizzle-kit': '^0.31.9',
+              'drizzle-kit': '^0.31.10',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
@@ -676,16 +676,16 @@ export const META: Meta = {
           mono: { scope: 'pkg', name: 'db' },
           packageJson: {
             dependencies: {
-              '@prisma/client': '^7.0.0',
-              '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.0.0'),
-              '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.0.0'),
-              mariadb: $when({ database: 'mysql' }, '^3.0.0'),
+              '@prisma/client': '^7.10.0',
+              '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.10.0'),
+              '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.10.0'),
+              mariadb: $when({ database: 'mysql' }, '^3.5.3'),
             },
             devDependencies: {
               typescript: '^5',
               '@types/node': '^22',
-              dotenv: '^16.0.0',
-              prisma: '^7.0.0',
+              dotenv: '^17.4.2',
+              prisma: '^7.10.0',
             },
             scripts: {
               'db:generate': 'prisma generate',
@@ -1276,7 +1276,7 @@ export const META: Meta = {
         devDependencies: {
           '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
-          'drizzle-orm': '^0.45.1',
+          'drizzle-orm': '^0.45.2',
         },
         scripts: {
           'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 bun --env-file=packages/db/.env scripts/seed.ts',

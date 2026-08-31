@@ -11,7 +11,7 @@ const timeColumns = {
 };
 
 export const userTable = pgTable('users', {
-  id: varchar('id', { length: 255 }).primaryKey(),
+  id: varchar('id', { length: 255 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
   username: varchar('username', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -103,7 +103,7 @@ export const walletAddressTableRelations = relations(walletAddressTable, ({ one 
 }));
 
 export const postTable = pgTable('posts', {
-  id: varchar('id', { length: 255 }).primaryKey(),
+  id: varchar('id', { length: 255 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   content: text('content').notNull(),
   published: varchar('published', { length: 10 }).notNull().default('false'),
