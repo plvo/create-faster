@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.8](https://github.com/plvo/create-faster/compare/create-faster-v1.6.7...create-faster-v1.6.8) (2026-10-01)
+
+
+### Features
+
+* **library:** extract posthog from the showcase blueprint ([#163](https://github.com/plvo/create-faster/issues/163)) ([e758793](https://github.com/plvo/create-faster/commit/e758793d72a4fd3d17603253a0442bb50fd952ef)), closes [#116](https://github.com/plvo/create-faster/issues/116)
+
+
+### Bug Fixes
+
+* **evlog:** import createInstrumentation from its create subpath ([#165](https://github.com/plvo/create-faster/issues/165)) ([efbeaa1](https://github.com/plvo/create-faster/commit/efbeaa1660e270e39f6a5aae9b968f2a253246e2))
+
 ## [1.6.7](https://github.com/plvo/create-faster/compare/create-faster-v1.6.6...create-faster-v1.6.7) (2026-10-01)
 
 
