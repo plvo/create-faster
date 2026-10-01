@@ -24,6 +24,7 @@ const MODULE_META: Record<string, ModuleMeta> = {
   'tanstack-form': { label: 'TanStack Form', category: 'Forms', href: '/docs/modules/forms/tanstack-form' },
   'aws-lambda': { label: 'AWS Lambda', category: 'Runtime', href: '/docs/modules/deploy/aws-lambda' },
   evlog: { label: 'evlog', category: 'Observability', href: '/docs/modules/observability/evlog' },
+  posthog: { label: 'PostHog', category: 'Analytics', href: '/docs/modules/analytics/posthog' },
   vitest: { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest' },
   'vitest-node': { label: 'Vitest', category: 'Testing', href: '/docs/modules/testing/vitest' },
   playwright: { label: 'Playwright', category: 'Testing', href: '/docs/modules/testing/playwright' },

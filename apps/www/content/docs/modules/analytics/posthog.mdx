@@ -1,0 +1,73 @@
+---
+title: PostHog
+description: Client-side PostHog initialization with a first-party /ingest reverse proxy wired into next.config.ts.
+---
+
+<Stacks names="nextjs" />
+<Dependencies packages="posthog-js" />
+
+[→ PostHog Documentation](https://posthog.com/docs/libraries/next-js)
+
+**Requirements:** A server runtime. The `/ingest` proxy relies on Next.js rewrites, so PostHog is unavailable with the `cloudflare-static` deployment.
+
+## What create-faster adds
+
+Files added:
+```
+src/
+└── instrumentation-client.ts   # posthog.init through the /ingest proxy
+```
+
+Modified files:
+- `next.config.ts` - Adds the `/ingest` rewrites and `skipTrailingSlashRedirect`
+- `src/proxy.ts` - Excludes `/ingest` from the matcher
+
+**Environment variables:**
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app). PostHog is not initialized when it is unset.
+
+### instrumentation-client.ts
+
+Runs once on the client before hydration (Next.js 15.3+ convention):
+
+```ts title="src/instrumentation-client.ts"
+import posthog from 'posthog-js';
+
+if (process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) {
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, {
+    api_host: '/ingest',
+    ui_host: 'https://us.posthog.com',
+    defaults: '2026-05-30',
+    capture_exceptions: true,
+    debug: process.env.NODE_ENV === 'development',
+  });
+}
+```
+
+### next.config.ts
+
+Events are sent to your own domain and proxied to PostHog Cloud (US), which keeps requests same-origin and avoids ad-blockers:
+
+```ts title="next.config.ts"
+async rewrites() {
+  return [
+    {
+      source: '/ingest/static/:path*',
+      destination: 'https://us-assets.i.posthog.com/static/:path*',
+    },
+    {
+      source: '/ingest/array/:path*',
+      destination: 'https://us-assets.i.posthog.com/array/:path*',
+    },
+    {
+      source: '/ingest/:path*',
+      destination: 'https://us.i.posthog.com/:path*',
+    },
+  ];
+},
+skipTrailingSlashRedirect: true,
+```
+
+`skipTrailingSlashRedirect` is required: PostHog endpoints such as `/e/` end with a slash, and Next.js would otherwise redirect them and drop events. For PostHog Cloud EU, replace `us` with `eu` in the destinations and `ui_host`.
+
+**Turborepo mode:**
+Files are scoped to the app that selects PostHog (`apps/{appName}/`), and the env var lands in that app's `.env.example`.

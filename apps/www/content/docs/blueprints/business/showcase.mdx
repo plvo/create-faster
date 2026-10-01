@@ -6,7 +6,7 @@ description: SEO/GEO-optimized SaaS landing page with blog, programmatic persona
 ## Composition
 
 **Apps:**
-- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), MDX ([→ module](/docs/modules/content/mdx))
+- `web` — Next.js ([→ docs](/docs/stacks/nextjs)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), MDX ([→ module](/docs/modules/content/mdx)), PostHog ([→ module](/docs/modules/analytics/posthog))
 
 **No database or ORM** — this is a static marketing site.
 
@@ -27,7 +27,7 @@ src/
 │   ├── sitemap.ts                     # Dynamic sitemap (static + blog + persona pages)
 │   └── robots.ts                      # Robots.txt with AI bot rules
 ├── components/
-│   ├── app-providers.tsx              # Consent manager (c15t) + PostHog opt-in/out
+│   ├── app-providers.tsx              # Consent manager (c15t v2) + PostHog opt-in/out
 │   ├── animated.tsx                   # Motion animation wrapper (fade-up, scale, slide)
 │   ├── layout/
 │   │   ├── header.tsx                 # Sticky header with scroll spy anchor links
@@ -48,8 +48,7 @@ src/
 │   └── data/
 │       ├── site-config.ts             # Site name, URLs, nav links, social links
 │       └── personas.ts                # Persona data for /for/[persona] pages
-└── instrumentation-client.ts          # PostHog client-side init
-next.config.ts                         # Next.js config with PostHog proxy rewrites
+└── instrumentation-client.ts          # PostHog init, opted out until consent
 contents/blog/                         # Example MDX blog articles
 README.md                              # Setup checklist
 ```
@@ -84,7 +83,7 @@ File-based blog using the MDX library. Articles live in `contents/blog/` with YA
 
 ### Analytics and consent
 
-- **PostHog** — initialized via `instrumentation-client.ts`, proxied through Next.js rewrites (`/ingest/*`)
+- **PostHog** — the [PostHog module](/docs/modules/analytics/posthog) (`/ingest` proxy rewrites in `next.config.ts`). The blueprint overrides `instrumentation-client.ts` with `opt_out_capturing_by_default` and `opt_out_persistence_by_default`, so nothing is captured or stored before consent
 - **c15t consent manager** — cookie banner with opt-in/opt-out that controls PostHog capture
 
 ### Animations
@@ -99,7 +98,6 @@ File-based blog using the MDX library. Articles live in `contents/blog/` with YA
 
 | Package | Purpose |
 |---------|---------|
-| `posthog-js` | Client-side analytics |
 | `@c15t/nextjs` | GDPR cookie consent manager |
 | `motion` | Animation library (Animated component) |
 
@@ -107,7 +105,7 @@ File-based blog using the MDX library. Articles live in `contents/blog/` with YA
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project API key |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | PostHog project token (from the PostHog module) |
 | `NEXT_PUBLIC_SITE_URL` | Production site URL (used in sitemap, JSON-LD, OG tags) |
 
 ## CLI usage
