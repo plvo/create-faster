@@ -1,7 +1,6 @@
 'use client';
 
-import { ConsentManagerDialog, ConsentManagerProvider, CookieBanner } from '@c15t/nextjs';
-import { ClientSideOptionsProvider } from '@c15t/nextjs/client';
+import { ConsentBanner, ConsentDialog, ConsentManagerProvider } from '@c15t/nextjs';
 import posthog from 'posthog-js';
 import type React from 'react';
 
@@ -15,13 +14,10 @@ export function AppProviders({ children }: AppProvidersProps) {
       options=\{{
         mode: 'offline',
         consentCategories: ['necessary', 'measurement'],
-        ignoreGeoLocation: true,
-        react: {
-          colorScheme: 'dark',
-        },
-        translations: {
-          defaultLanguage: 'en',
-          translations: {
+        colorScheme: 'dark',
+        i18n: {
+          locale: 'en',
+          messages: {
             en: {
               common: {
                 acceptAll: 'Accept',
@@ -51,10 +47,7 @@ export function AppProviders({ children }: AppProvidersProps) {
             },
           },
         },
-      }}
-    >
-      <ClientSideOptionsProvider
-        callbacks=\{{
+        callbacks: {
           onConsentSet: ({ preferences }) => {
             if (preferences.measurement) {
               posthog.opt_in_capturing();
@@ -62,12 +55,12 @@ export function AppProviders({ children }: AppProvidersProps) {
               posthog.opt_out_capturing();
             }
           },
-        }}
-      >
-        {children}
-        <CookieBanner />
-        <ConsentManagerDialog />
-      </ClientSideOptionsProvider>
+        },
+      }}
+    >
+      {children}
+      <ConsentBanner />
+      <ConsentDialog />
     </ConsentManagerProvider>
   );
 }

@@ -1328,23 +1328,18 @@ export const META: Meta = {
           {
             appName: 'web',
             stackName: 'nextjs',
-            libraries: ['shadcn', 'mdx'],
+            libraries: ['shadcn', 'mdx', 'posthog'],
           },
         ],
         project: {},
       },
       packageJson: {
         dependencies: {
-          'posthog-js': '^1.262.0',
-          '@c15t/nextjs': '^1.8.5',
+          '@c15t/nextjs': '^2.2.1',
           motion: '^12.26.0',
         },
       },
       envs: [
-        {
-          value: 'NEXT_PUBLIC_POSTHOG_KEY=phc_your-posthog-project-key',
-          monoScope: ['app'],
-        },
         {
           value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
           monoScope: ['app'],
