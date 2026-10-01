@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: "📥 Checkout Code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "🔧 Setup Bun Runtime"
         uses: oven-sh/setup-bun@v2
@@ -47,7 +47,7 @@ jobs:
 
       - name: "💾 Cache Build Artifacts"
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v6
         with:
           path: |
             dist/
