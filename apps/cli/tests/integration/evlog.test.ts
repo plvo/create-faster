@@ -30,7 +30,7 @@ describe('evlog Integration', () => {
       expect(await fileExists(join(projectPath, 'src/lib/evlog.ts'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'src/lib/evlog.ts'));
       expect(content).toContain("from 'evlog/next'");
-      expect(content).toContain("from 'evlog/next/instrumentation'");
+      expect(content).toContain("import { createInstrumentation } from 'evlog/next/instrumentation/create'");
       expect(content).toContain('createEvlog');
       expect(content).toContain('createInstrumentation');
       expect(content).toContain(`service: '${projectName}'`);
