@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.7](https://github.com/plvo/create-faster/compare/create-faster-v1.6.6...create-faster-v1.6.7) (2026-10-01)
+
+
+### Build
+
+* **deps:** bump all dependencies to latest, fix breaking changes ([#159](https://github.com/plvo/create-faster/issues/159)) ([68d10c6](https://github.com/plvo/create-faster/commit/68d10c613a9a6d1b0f8129f4d009bd4018645b25))
+
 ## [1.6.6](https://github.com/plvo/create-faster/compare/create-faster-v1.6.5...create-faster-v1.6.6) (2026-06-23)
 
 
