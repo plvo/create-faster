@@ -27,6 +27,7 @@ describe('cloudflare-static declares its availability as META data', () => {
   test('server-dependent libraries declare needsServerRuntime', () => {
     expect(META.libraries['better-auth']?.needsServerRuntime).toBe(true);
     expect(META.libraries.trpc?.needsServerRuntime).toBe(true);
+    expect(META.libraries.posthog?.needsServerRuntime).toBe(true);
   });
 });
 

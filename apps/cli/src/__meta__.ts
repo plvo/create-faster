@@ -353,6 +353,24 @@ export const META: Meta = {
         },
       },
     },
+    posthog: {
+      label: 'PostHog',
+      hint: 'Product analytics proxied first-party through /ingest',
+      category: 'Analytics',
+      support: { stacks: ['nextjs'] },
+      needsServerRuntime: true,
+      packageJson: {
+        dependencies: {
+          'posthog-js': '^1.435.6',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          monoScope: ['app'],
+        },
+      ],
+    },
     vitest: {
       label: 'Vitest',
       hint: 'A Vite-native testing framework',

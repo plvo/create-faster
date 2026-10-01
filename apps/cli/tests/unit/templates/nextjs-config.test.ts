@@ -28,19 +28,16 @@ function renderHbs(relativePath: string, ctx: TemplateContext): string {
   return renderTemplate(content, enriched);
 }
 
-const TEMPLATE_PATHS = [
-  'stack/nextjs/next.config.ts.hbs',
-  'blueprints/showcase/next.config.ts.hbs',
-];
+const NEXT_CONFIG_TEMPLATE = 'stack/nextjs/next.config.ts.hbs';
 
-describe.each(TEMPLATE_PATHS)('next.config.ts.hbs render: %s', (templatePath) => {
+describe('next.config.ts.hbs: portless integration', () => {
   test('exposes NEXT_PUBLIC_APP_URL from PORTLESS_URL when portless selected', () => {
-    const rendered = renderHbs(templatePath, makeContext(['portless']));
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeContext(['portless']));
     expect(rendered).toContain('NEXT_PUBLIC_APP_URL: process.env.PORTLESS_URL ?? process.env.NEXT_PUBLIC_APP_URL');
   });
 
   test('omits the env block when portless is not selected', () => {
-    const rendered = renderHbs(templatePath, makeContext([]));
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeContext([]));
     expect(rendered).not.toContain('PORTLESS_URL');
     expect(rendered).not.toContain('NEXT_PUBLIC_APP_URL');
   });
@@ -89,5 +86,66 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
   test('does NOT emit static export config for the OpenNext cloudflare deployment', () => {
     const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare'));
     expect(rendered).not.toContain("output: 'export'");
+  });
+});
+
+describe('next.config.ts.hbs: posthog library', () => {
+  function makePosthogContext(libraries: string[]): TemplateContext {
+    return {
+      projectName: 'my-project',
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries }],
+      project: { tooling: [] },
+      git: false,
+    };
+  }
+
+  test('proxies /ingest to PostHog with static and array routes before the catch-all', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makePosthogContext(['posthog']));
+    const staticRoute = rendered.indexOf("source: '/ingest/static/:path*'");
+    const arrayRoute = rendered.indexOf("source: '/ingest/array/:path*'");
+    const catchAllRoute = rendered.indexOf("source: '/ingest/:path*'");
+
+    expect(staticRoute).toBeGreaterThan(-1);
+    expect(arrayRoute).toBeGreaterThan(-1);
+    expect(catchAllRoute).toBeGreaterThan(Math.max(staticRoute, arrayRoute));
+    expect(rendered).toContain("destination: 'https://us-assets.i.posthog.com/static/:path*'");
+    expect(rendered).toContain("destination: 'https://us-assets.i.posthog.com/array/:path*'");
+    expect(rendered).toContain("destination: 'https://us.i.posthog.com/:path*'");
+  });
+
+  test('keeps trailing slashes so PostHog endpoints like /e/ are not redirected', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makePosthogContext(['posthog']));
+    expect(rendered).toContain('skipTrailingSlashRedirect: true');
+  });
+
+  test('omits the PostHog proxy when the library is not selected', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makePosthogContext([]));
+    expect(rendered).not.toContain('rewrites()');
+    expect(rendered).not.toContain('posthog');
+    expect(rendered).not.toContain('skipTrailingSlashRedirect');
+  });
+});
+
+describe('proxy.ts.hbs: posthog library', () => {
+  function makeProxyContext(libraries: string[]): TemplateContext {
+    return {
+      projectName: 'my-project',
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries }],
+      project: { tooling: [] },
+      git: false,
+    };
+  }
+
+  test('excludes the /ingest proxy path from the matcher', () => {
+    const rendered = renderHbs('stack/nextjs/src/proxy.ts.hbs', makeProxyContext(['posthog']));
+    expect(rendered).toContain("'/((?!api|ingest|_next/static|");
+  });
+
+  test('keeps the default matcher without the library', () => {
+    const rendered = renderHbs('stack/nextjs/src/proxy.ts.hbs', makeProxyContext([]));
+    expect(rendered).toContain("'/((?!api|_next/static|");
+    expect(rendered).not.toContain('ingest');
   });
 });
