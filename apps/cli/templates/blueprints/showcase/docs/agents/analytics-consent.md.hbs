@@ -6,15 +6,15 @@ mono:
 ---
 # Analytics & Consent
 
-PostHog is initialized in `src/instrumentation-client.ts`, only when `NEXT_PUBLIC_POSTHOG_KEY` is set. It uses `api_host: '/ingest'` so traffic is proxied first-party.
+PostHog is initialized in `src/instrumentation-client.ts`, only when `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set. It uses `api_host: '/ingest'` so traffic is proxied first-party, and `opt_out_capturing_by_default` + `opt_out_persistence_by_default` so nothing is captured or stored (no PostHog cookie) before consent.
 
-The `/ingest` rewrites are defined in `next.config.ts` (`rewrites()`): `/ingest/static/*` → `us-assets.i.posthog.com`, `/ingest/*` → `us.i.posthog.com`. This avoids ad-blockers and keeps requests same-origin.
+The `/ingest` rewrites are defined in `next.config.ts` (`rewrites()`): `/ingest/static/*` and `/ingest/array/*` → `us-assets.i.posthog.com`, `/ingest/*` → `us.i.posthog.com`. `skipTrailingSlashRedirect: true` keeps PostHog endpoints like `/e/` from being redirected. This avoids ad-blockers and keeps requests same-origin. `src/proxy.ts` excludes `/ingest` from its matcher.
 
 ## Consent gating
-Consent is managed by c15t in `src/components/app-providers.tsx`: `ConsentManagerProvider` (categories `necessary` + `measurement`) wraps the app and renders `CookieBanner` + `ConsentManagerDialog`. The `ClientSideOptionsProvider` `onConsentSet` callback calls `posthog.opt_in_capturing()` when `measurement` is granted and `posthog.opt_out_capturing()` otherwise — so capture is off until the user accepts analytics.
+Consent is managed by c15t in `src/components/app-providers.tsx`: `ConsentManagerProvider` (categories `necessary` + `measurement`) wraps the app and renders `ConsentBanner` + `ConsentDialog`. The `onConsentSet` callback (in the provider `options.callbacks`) calls `posthog.opt_in_capturing()` when `measurement` is granted and `posthog.opt_out_capturing()` otherwise — so capture is off until the user accepts analytics.
 
 ## Env vars
-- `NEXT_PUBLIC_POSTHOG_KEY` — gates PostHog init (see `.env.example`).
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` — gates PostHog init (see `.env.example`).
 - `NEXT_PUBLIC_SITE_URL` — canonical URL used by SEO/sitemap.
 
 ## Tracking a custom event

@@ -5,8 +5,6 @@ if (process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) {
     api_host: '/ingest',
     ui_host: 'https://us.posthog.com',
     defaults: '2026-05-30',
-    opt_out_capturing_by_default: true,
-    opt_out_persistence_by_default: true,
     capture_exceptions: true,
     debug: process.env.NODE_ENV === 'development',
   });

@@ -53,6 +53,6 @@ export default async function {{#if (has "deployment" "cloudflare")}}middleware{
 export const config = {
   matcher: [
     // Exclude API routes, static files, image optimizations, and .png files
-    '/((?!api|_next/static|manifest.webmanifest|_next/image|.*\\.png$).*)',
+    '/((?!api|{{#if (hasLibrary "posthog")}}ingest|{{/if}}_next/static|manifest.webmanifest|_next/image|.*\\.png$).*)',
   ],
 };

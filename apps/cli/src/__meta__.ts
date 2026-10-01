@@ -353,6 +353,24 @@ export const META: Meta = {
         },
       },
     },
+    posthog: {
+      label: 'PostHog',
+      hint: 'Product analytics proxied first-party through /ingest',
+      category: 'Analytics',
+      support: { stacks: ['nextjs'] },
+      needsServerRuntime: true,
+      packageJson: {
+        dependencies: {
+          'posthog-js': '^1.435.6',
+        },
+      },
+      envs: [
+        {
+          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          monoScope: ['app'],
+        },
+      ],
+    },
     vitest: {
       label: 'Vitest',
       hint: 'A Vite-native testing framework',
@@ -1310,23 +1328,18 @@ export const META: Meta = {
           {
             appName: 'web',
             stackName: 'nextjs',
-            libraries: ['shadcn', 'mdx'],
+            libraries: ['shadcn', 'mdx', 'posthog'],
           },
         ],
         project: {},
       },
       packageJson: {
         dependencies: {
-          'posthog-js': '^1.262.0',
-          '@c15t/nextjs': '^1.8.5',
+          '@c15t/nextjs': '^2.2.1',
           motion: '^12.26.0',
         },
       },
       envs: [
-        {
-          value: 'NEXT_PUBLIC_POSTHOG_KEY=phc_your-posthog-project-key',
-          monoScope: ['app'],
-        },
         {
           value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
           monoScope: ['app'],
