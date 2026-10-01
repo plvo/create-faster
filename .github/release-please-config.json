@@ -16,7 +16,8 @@
         { "type": "chore", "section": "Miscellaneous" },
         { "type": "docs", "section": "Documentation" },
         { "type": "test", "section": "Tests" },
-        { "type": "ci", "section": "CI" }
+        { "type": "ci", "section": "CI" },
+        { "type": "build", "section": "Build" }
       ]
     }
   }
