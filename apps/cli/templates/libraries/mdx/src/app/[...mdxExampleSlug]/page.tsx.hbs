@@ -45,7 +45,7 @@ export default async function Page({ params }: PageProps) {
   const { metadata, content: mdxContent } = parseFrontmatter(fileContent);
 
   return (
-    <main className='max-w-[650px] mx-auto px-4 py-4 md:py-8'>
+    <main className='max-w-162.5 mx-auto px-4 py-4 md:py-8'>
       <MDXRemote source={mdxContent} components={mdxComponents} />
       <pre>
         <code>{JSON.stringify({ metadata }, null, 2)}</code>

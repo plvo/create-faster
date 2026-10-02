@@ -513,7 +513,7 @@ describe('CLI Integration', () => {
       const oxfmtConfig = await readTextFile(join(projectPath, 'oxfmt.config.mts'));
       expect(oxfmtConfig).toContain("from 'oxfmt'");
       expect(oxfmtConfig).toContain('singleQuote: true');
-      expect(oxfmtConfig).toContain("stylesheet: 'src/styles/shadcn.css'");
+      expect(oxfmtConfig).toContain("stylesheet: 'src/styles/globals.css'");
 
       const pkg = await readJsonFile<{
         devDependencies: Record<string, string>;
@@ -599,7 +599,7 @@ describe('CLI Integration', () => {
       expect(webPkg.devDependencies?.oxlint).toBeUndefined();
 
       const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'apps/web/components.json'));
-      expect(components.tailwind.css).toBe('../../packages/ui/src/base.css');
+      expect(components.tailwind.css).toBe('src/styles/globals.css');
     });
   });
 
@@ -618,6 +618,7 @@ describe('CLI Integration', () => {
       const theme = await readTextFile(join(projectPath, 'src/styles/shadcn.css'));
       expect(theme).toContain('@import "tailwindcss";');
       expect(theme).toContain('--color-background: var(--background);');
+      expect(theme).toContain('--color-success: var(--success);');
       expect(theme).not.toContain('@source');
 
       const globals = await readTextFile(join(projectPath, 'src/styles/globals.css'));
@@ -625,7 +626,7 @@ describe('CLI Integration', () => {
       expect(globals).not.toContain('@theme');
 
       const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'components.json'));
-      expect(components.tailwind.css).toBe('src/styles/shadcn.css');
+      expect(components.tailwind.css).toBe('src/styles/globals.css');
     });
 
     test('tanstack-start single repo loads the shadcn theme and uses theme tokens', async () => {
@@ -650,6 +651,17 @@ describe('CLI Integration', () => {
         expect(source).not.toMatch(/(slate|gray|cyan)-\d/);
       }
       expect(index).toContain('bg-card');
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'components.json'));
+      expect(components.tailwind.css).toBe('src/styles.css');
+
+      const oxfmtResult = await runCli(
+        [`${projectName}-oxc`, '--app', `${projectName}-oxc:tanstack-start:shadcn`, '--linter', 'oxc', '--no-git', '--no-install'],
+        tempDir,
+      );
+      expect(oxfmtResult.exitCode).toBe(0);
+      const oxfmtConfig = await readTextFile(join(tempDir, `${projectName}-oxc`, 'oxfmt.config.mts'));
+      expect(oxfmtConfig).toContain("stylesheet: 'src/styles.css'");
     });
 
     test('tanstack-start turborepo imports the ui package theme', async () => {
@@ -667,6 +679,11 @@ describe('CLI Integration', () => {
       expect(styles).toContain('@import "@repo/ui/base.css";');
       expect(styles).not.toContain("@import 'tailwindcss';");
       expect(await fileExists(join(projectPath, 'apps/web/src/styles/shadcn.css'))).toBe(false);
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(
+        join(projectPath, 'apps/web/components.json'),
+      );
+      expect(components.tailwind.css).toBe('src/styles.css');
     });
 
     test('tanstack-start without shadcn keeps its plain stylesheet', async () => {
