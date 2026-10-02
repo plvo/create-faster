@@ -1,12 +1,14 @@
 ---
-only: mono
+path: src/styles/shadcn.css
 ---
 @import "tailwindcss";
 @import "tw-animate-css";
 
+{{#if (isMono)}}
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
+{{/if}}
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

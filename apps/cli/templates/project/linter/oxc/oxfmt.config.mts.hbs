@@ -7,7 +7,7 @@ export default defineConfig({
   sortImports: {},
 {{#if (hasLibrary "shadcn")}}
   sortTailwindcss: {
-    stylesheet: '{{#if (isMono)}}packages/ui/src/base.css{{else if (has "stack" "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}',
+    stylesheet: '{{#if (isMono)}}packages/ui/src/base.css{{else}}src/styles/shadcn.css{{/if}}',
     functions: ['cn', 'cva', 'clsx'],
   },
 {{/if}}

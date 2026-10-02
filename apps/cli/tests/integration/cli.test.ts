@@ -513,7 +513,7 @@ describe('CLI Integration', () => {
       const oxfmtConfig = await readTextFile(join(projectPath, 'oxfmt.config.mts'));
       expect(oxfmtConfig).toContain("from 'oxfmt'");
       expect(oxfmtConfig).toContain('singleQuote: true');
-      expect(oxfmtConfig).toContain("stylesheet: 'src/styles/globals.css'");
+      expect(oxfmtConfig).toContain("stylesheet: 'src/styles/shadcn.css'");
 
       const pkg = await readJsonFile<{
         devDependencies: Record<string, string>;
@@ -600,6 +600,89 @@ describe('CLI Integration', () => {
 
       const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'apps/web/components.json'));
       expect(components.tailwind.css).toBe('../../packages/ui/src/base.css');
+    });
+  });
+
+  describe('shadcn theme', () => {
+    test('nextjs single repo imports the shared shadcn theme file', async () => {
+      const projectName = 'test-theme-nextjs-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs:shadcn`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const theme = await readTextFile(join(projectPath, 'src/styles/shadcn.css'));
+      expect(theme).toContain('@import "tailwindcss";');
+      expect(theme).toContain('--color-background: var(--background);');
+      expect(theme).not.toContain('@source');
+
+      const globals = await readTextFile(join(projectPath, 'src/styles/globals.css'));
+      expect(globals).toContain('@import "./shadcn.css";');
+      expect(globals).not.toContain('@theme');
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'components.json'));
+      expect(components.tailwind.css).toBe('src/styles/shadcn.css');
+    });
+
+    test('tanstack-start single repo loads the shadcn theme and uses theme tokens', async () => {
+      const projectName = 'test-theme-tanstack-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start:shadcn`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      expect(await fileExists(join(projectPath, 'src/styles/shadcn.css'))).toBe(true);
+      const styles = await readTextFile(join(projectPath, 'src/styles.css'));
+      expect(styles).toContain('@import "./styles/shadcn.css";');
+      expect(styles).not.toContain("@import 'tailwindcss';");
+
+      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
+      const index = await readTextFile(join(projectPath, 'src/routes/index.tsx'));
+      for (const source of [root, index]) {
+        expect(source).not.toMatch(/(slate|gray|cyan)-\d/);
+      }
+      expect(index).toContain('bg-card');
+    });
+
+    test('tanstack-start turborepo imports the ui package theme', async () => {
+      const projectName = 'test-theme-tanstack-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', 'web:tanstack-start:shadcn', '--app', 'api:hono', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const styles = await readTextFile(join(projectPath, 'apps/web/src/styles.css'));
+      expect(styles).toContain('@import "@repo/ui/base.css";');
+      expect(styles).not.toContain("@import 'tailwindcss';");
+      expect(await fileExists(join(projectPath, 'apps/web/src/styles/shadcn.css'))).toBe(false);
+    });
+
+    test('tanstack-start without shadcn keeps its plain stylesheet', async () => {
+      const projectName = 'test-theme-tanstack-plain';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const styles = await readTextFile(join(projectPath, 'src/styles.css'));
+      expect(styles).toContain("@import 'tailwindcss';");
+      expect(await fileExists(join(projectPath, 'src/styles/shadcn.css'))).toBe(false);
     });
   });
 
