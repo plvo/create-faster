@@ -1,4 +1,12 @@
+{{#if (hasLibrary "shadcn")}}
+{{#if (isMono)}}
+@import "@repo/ui/base.css";
+{{else}}
+@import "./styles/shadcn.css";
+{{/if}}
+{{else}}
 @import 'tailwindcss';
+{{/if}}
 
 body {
   margin: 0;

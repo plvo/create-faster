@@ -993,10 +993,57 @@ describe('Husky lint-staged (single repo)', () => {
     expect(commands).toEqual(['eslint --fix', 'prettier --write']);
   });
 
+  test('oxc: lint-staged has oxlint and oxfmt commands', () => {
+    const ctx = makeSingleCtx('oxc');
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(lintStaged).toBeDefined();
+    const commands = Object.values(lintStaged)[0];
+    expect(commands).toEqual(['oxlint --fix --no-error-on-unmatched-pattern', 'oxfmt --no-error-on-unmatched-pattern']);
+  });
+
   test('no linter: no lint-staged key in output', () => {
     const ctx = makeSingleCtx();
     const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
     expect(result.content['lint-staged']).toBeUndefined();
+  });
+});
+
+describe('Oxc linter package.json', () => {
+  function makeCtx(repo: 'single' | 'turborepo', libraries: string[]): TemplateContext {
+    return {
+      projectName: 'test-oxc',
+      repo,
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries }],
+      project: { linter: 'oxc', tooling: [] },
+      git: false,
+      pm: 'bun',
+    };
+  }
+
+  test('adds @shadcn/lint when an app uses shadcn (single repo)', () => {
+    const ctx = makeCtx('single', ['shadcn']);
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const devDependencies = result.content.devDependencies as Record<string, string>;
+    expect(devDependencies.oxlint).toBeDefined();
+    expect(devDependencies.oxfmt).toBeDefined();
+    expect(devDependencies['@shadcn/lint']).toBeDefined();
+  });
+
+  test('adds @shadcn/lint to the root when an app uses shadcn (turborepo)', () => {
+    const ctx = makeCtx('turborepo', ['shadcn']);
+    const result = generateRootPackageJson(ctx);
+    const devDependencies = result.content.devDependencies as Record<string, string>;
+    expect(devDependencies.oxlint).toBeDefined();
+    expect(devDependencies['@shadcn/lint']).toBeDefined();
+  });
+
+  test('omits @shadcn/lint without shadcn', () => {
+    const ctx = makeCtx('single', []);
+    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const devDependencies = result.content.devDependencies as Record<string, string>;
+    expect(devDependencies.oxlint).toBeDefined();
+    expect(devDependencies['@shadcn/lint']).toBeUndefined();
   });
 });
 

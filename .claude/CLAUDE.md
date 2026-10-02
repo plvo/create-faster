@@ -215,7 +215,7 @@ Libraries are grouped by category in the interactive prompt (UI, Content, Auth, 
 - **ORM**: Prisma, Drizzle (both with Better Auth integration)
 
 ### Dev Tools
-- **Linter**: Biome, ESLint (single selection)
+- **Linter**: Biome, Oxlint + Oxfmt (`oxc`), ESLint + Prettier, ESLint, Prettier (single selection). `oxc` generates root `oxlint.config.mts` + `oxfmt.config.mts` with one override per app (native plugins by stack/library, `@shadcn/lint` JS plugin when the app uses shadcn)
 - **Extras**: Husky (requires git)
 - **Repo**: Single or Turborepo (auto-determined by app count)
 
@@ -270,7 +270,7 @@ templates/
 ├── stack/{framework}/       # Next.js, Expo, Hono, TanStack Start
 ├── libraries/{library}/     # Per-app library templates
 ├── project/orm/{provider}/  # Prisma, Drizzle
-├── project/linter/{linter}/ # Biome, ESLint
+├── project/linter/{linter}/ # Biome, Oxc, ESLint, Prettier
 ├── project/tooling/{tool}/  # Husky
 ├── blueprints/{blueprint}/   # Blueprint application code (override semantics)
 └── repo/{type}/             # Single, Turborepo configs
@@ -442,7 +442,7 @@ bunx create-faster myapp \
   - Options: `prisma`, `drizzle`
 
 - `--linter <name>`: Linter
-  - Options: `biome`, `eslint`
+  - Options: `biome`, `oxc`, `eslint-prettier`, `eslint`, `prettier`
 
 - `--tooling <name>`: Add tooling (repeatable)
   - Options: `husky` (requires git)

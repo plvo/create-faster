@@ -1,0 +1,107 @@
+---
+title: Oxlint + Oxfmt
+description: Rust-powered linting and formatting from the Oxc project, with ESLint-compatible JS plugins such as @shadcn/lint.
+---
+
+<Dependencies dev="oxlint,oxfmt,@shadcn/lint" />
+
+[→ Oxlint Documentation](https://oxc.rs/docs/guide/usage/linter) · [→ Oxfmt Documentation](https://oxc.rs/docs/guide/usage/formatter) · [→ @shadcn/lint](https://github.com/shadcn-ui/lint)
+
+## What create-faster adds
+
+**Scripts added to `package.json`:**
+- `lint` — `oxlint`
+- `format` — `oxfmt`
+- `check` — `oxlint --fix && oxfmt`
+
+Files created:
+```
+oxlint.config.mts           # Linter config, one override per app
+oxfmt.config.mts            # Formatter config
+```
+
+**Turborepo mode:** both configs are placed at the project root and apply to all apps. Each app gets its own override, scoped to `apps/{appName}/**`.
+
+**Requirements:** TypeScript config files need Node.js `^20.19.0 || >=22.18.0`.
+
+### Plugins per app
+
+Oxlint's native plugins are enabled per app from its stack and libraries:
+
+| Condition | Plugins |
+|-----------|---------|
+| Next.js, TanStack Start, Expo | `react` (+ `react/rules-of-hooks`) |
+| Next.js | `nextjs` |
+| `vitest` or `vitest-node` | `vitest` |
+| `jest-expo` | `jest` |
+| `shadcn` | `@shadcn/lint` (JS plugin) |
+
+### @shadcn/lint
+
+When an app uses shadcn/ui, `@shadcn/lint` is installed and these rules run as errors:
+
+| Rule | What it catches |
+|------|-----------------|
+| `shadcn/no-arbitrary-values` | Arbitrary values such as `p-[13px]` |
+| `shadcn/no-raw-colors` | Raw palette colors such as `bg-slate-800` instead of theme tokens |
+| `shadcn/no-unknown-classes` | Classes Tailwind cannot generate |
+
+The rules read the theme through `components.json`, so errors suggest the project's own tokens. The shadcn components themselves (`src/components/ui/**` in single repos, `packages/ui` in turborepo) are not checked.
+
+### oxlint.config.mts
+
+```ts title="oxlint.config.mts (Next.js + shadcn)"
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({
+  ignorePatterns: ['**/generated/**'],
+  overrides: [
+    {
+      files: ['**'],
+      plugins: [
+        'react',
+        'nextjs',
+      ],
+      jsPlugins: ['@shadcn/lint'],
+      rules: {
+        'react/rules-of-hooks': 'error',
+        'shadcn/no-arbitrary-values': 'error',
+        'shadcn/no-raw-colors': 'error',
+        'shadcn/no-unknown-classes': 'error',
+      },
+    },
+    {
+      files: ['src/components/ui/**'],
+      rules: {
+        'shadcn/no-arbitrary-values': 'off',
+        'shadcn/no-raw-colors': 'off',
+        'shadcn/no-unknown-classes': 'off',
+      },
+    },
+  ],
+});
+```
+
+### oxfmt.config.mts
+
+Same style as the Biome config (single quotes, 120 columns), with import sorting. Tailwind class sorting is enabled when shadcn is selected.
+
+```ts title="oxfmt.config.mts"
+import { defineConfig } from 'oxfmt';
+
+export default defineConfig({
+  printWidth: 120,
+  singleQuote: true,
+  jsxSingleQuote: true,
+  sortImports: {},
+  sortTailwindcss: {
+    stylesheet: 'src/styles/globals.css',
+    functions: ['cn', 'cva', 'clsx'],
+  },
+  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'],
+});
+```
+
+**Lint-staged integration:** When combined with Husky, both tools run on staged files:
+- `oxlint --fix --no-error-on-unmatched-pattern`
+- `oxfmt --no-error-on-unmatched-pattern`

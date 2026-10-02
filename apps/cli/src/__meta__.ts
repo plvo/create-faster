@@ -739,6 +739,23 @@ export const META: Meta = {
             },
           },
         },
+        oxc: {
+          label: 'Oxlint + Oxfmt',
+          hint: 'Fast Rust linter & formatter with ESLint-compatible plugins',
+          mono: { scope: 'root' },
+          packageJson: {
+            devDependencies: {
+              oxlint: '^1.86.0',
+              oxfmt: '^0.71.0',
+              '@shadcn/lint': $when({ library: 'shadcn' }, '^0.2.0'),
+            },
+            scripts: {
+              lint: 'oxlint',
+              format: 'oxfmt',
+              check: 'oxlint --fix && oxfmt',
+            },
+          },
+        },
         'eslint-prettier': {
           label: 'ESLint + Prettier',
           hint: 'Lint with ESLint, format with Prettier',
@@ -820,6 +837,8 @@ export const META: Meta = {
                 $when({ linter: 'biome' }, 'biome check --write --unsafe --no-errors-on-unmatched'),
                 $when({ linter: ['eslint', 'eslint-prettier'] }, 'eslint --fix'),
                 $when({ linter: ['prettier', 'eslint-prettier'] }, 'prettier --write'),
+                $when({ linter: 'oxc' }, 'oxlint --fix --no-error-on-unmatched-pattern'),
+                $when({ linter: 'oxc' }, 'oxfmt --no-error-on-unmatched-pattern'),
               ],
             },
           },

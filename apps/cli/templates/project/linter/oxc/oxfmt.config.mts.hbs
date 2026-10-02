@@ -1,0 +1,15 @@
+import { defineConfig } from 'oxfmt';
+
+export default defineConfig({
+  printWidth: 120,
+  singleQuote: true,
+  jsxSingleQuote: true,
+  sortImports: {},
+{{#if (hasLibrary "shadcn")}}
+  sortTailwindcss: {
+    stylesheet: '{{#if (isMono)}}packages/ui/src/base.css{{else if (has "stack" "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}',
+    functions: ['cn', 'cva', 'clsx'],
+  },
+{{/if}}
+  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'],
+});

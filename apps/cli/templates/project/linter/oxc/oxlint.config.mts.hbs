@@ -1,0 +1,51 @@
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({
+  ignorePatterns: ['**/generated/**'],
+  overrides: [
+{{#each apps}}
+{{#if (or (eq stackName "nextjs") (eq stackName "tanstack-start") (eq stackName "expo") (hasLibrary "vitest") (hasLibrary "vitest-node") (hasLibrary "jest-expo"))}}
+    {
+      files: ['{{#if (eq @root.repo "turborepo")}}apps/{{appName}}/{{/if}}**'],
+      plugins: [
+{{#if (or (eq stackName "nextjs") (eq stackName "tanstack-start") (eq stackName "expo"))}}
+        'react',
+{{/if}}
+{{#if (eq stackName "nextjs")}}
+        'nextjs',
+{{/if}}
+{{#if (or (hasLibrary "vitest") (hasLibrary "vitest-node"))}}
+        'vitest',
+{{/if}}
+{{#if (hasLibrary "jest-expo")}}
+        'jest',
+{{/if}}
+      ],
+{{#if (hasLibrary "shadcn")}}
+      jsPlugins: ['@shadcn/lint'],
+{{/if}}
+{{#if (or (eq stackName "nextjs") (eq stackName "tanstack-start") (eq stackName "expo"))}}
+      rules: {
+        'react/rules-of-hooks': 'error',
+{{#if (hasLibrary "shadcn")}}
+        'shadcn/no-arbitrary-values': 'error',
+        'shadcn/no-raw-colors': 'error',
+        'shadcn/no-unknown-classes': 'error',
+{{/if}}
+      },
+{{/if}}
+    },
+{{#if (and (hasLibrary "shadcn") (ne @root.repo "turborepo"))}}
+    {
+      files: ['src/components/ui/**'],
+      rules: {
+        'shadcn/no-arbitrary-values': 'off',
+        'shadcn/no-raw-colors': 'off',
+        'shadcn/no-unknown-classes': 'off',
+      },
+    },
+{{/if}}
+{{/if}}
+{{/each}}
+  ],
+});

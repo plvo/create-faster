@@ -488,6 +488,221 @@ describe('CLI Integration', () => {
     });
   });
 
+  describe('Oxlint + Oxfmt', () => {
+    test('generates oxc configs with the shadcn plugin for single repo', async () => {
+      const projectName = 'test-oxc-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs:shadcn`, '--linter', 'oxc', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const oxlintConfig = await readTextFile(join(projectPath, 'oxlint.config.mts'));
+      expect(oxlintConfig).toContain("from 'oxlint'");
+      expect(oxlintConfig).toContain("files: ['**']");
+      expect(oxlintConfig).toContain("'react'");
+      expect(oxlintConfig).toContain("'nextjs'");
+      expect(oxlintConfig).toContain("jsPlugins: ['@shadcn/lint']");
+      expect(oxlintConfig).toContain("'shadcn/no-raw-colors'");
+      expect(oxlintConfig).not.toContain('shadcn/no-restyle');
+      expect(oxlintConfig).toContain("files: ['src/components/ui/**']");
+
+      const oxfmtConfig = await readTextFile(join(projectPath, 'oxfmt.config.mts'));
+      expect(oxfmtConfig).toContain("from 'oxfmt'");
+      expect(oxfmtConfig).toContain('singleQuote: true');
+      expect(oxfmtConfig).toContain("stylesheet: 'src/styles/globals.css'");
+
+      const pkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(pkg.devDependencies.oxlint).toBeDefined();
+      expect(pkg.devDependencies.oxfmt).toBeDefined();
+      expect(pkg.devDependencies['@shadcn/lint']).toBeDefined();
+      expect(pkg.scripts.lint).toBe('oxlint');
+      expect(pkg.scripts.format).toBe('oxfmt');
+      expect(pkg.scripts.check).toBe('oxlint --fix && oxfmt');
+
+      expect(await fileExists(join(projectPath, 'biome.json'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'eslint.config.mjs'))).toBe(false);
+    });
+
+    test('omits the shadcn plugin and Tailwind sorting without shadcn', async () => {
+      const projectName = 'test-oxc-no-shadcn';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs`, '--linter', 'oxc', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const oxlintConfig = await readTextFile(join(projectPath, 'oxlint.config.mts'));
+      expect(oxlintConfig).toContain("'nextjs'");
+      expect(oxlintConfig).not.toContain('@shadcn/lint');
+
+      const oxfmtConfig = await readTextFile(join(projectPath, 'oxfmt.config.mts'));
+      expect(oxfmtConfig).not.toContain('sortTailwindcss');
+
+      const pkg = await readJsonFile<{ devDependencies: Record<string, string> }>(join(projectPath, 'package.json'));
+      expect(pkg.devDependencies['@shadcn/lint']).toBeUndefined();
+    });
+
+    test('generates root oxc configs with per-app overrides for turborepo', async () => {
+      const projectName = 'test-oxc-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [
+          projectName,
+          '--app',
+          'web:nextjs:shadcn',
+          '--app',
+          'api:hono',
+          '--linter',
+          'oxc',
+          '--no-git',
+          '--no-install',
+        ],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const oxlintConfig = await readTextFile(join(projectPath, 'oxlint.config.mts'));
+      expect(oxlintConfig).toContain("files: ['apps/web/**']");
+      expect(oxlintConfig).toContain("jsPlugins: ['@shadcn/lint']");
+      expect(oxlintConfig).not.toContain("files: ['apps/api/**']");
+      expect(oxlintConfig).not.toContain('src/components/ui/**');
+
+      const oxfmtConfig = await readTextFile(join(projectPath, 'oxfmt.config.mts'));
+      expect(oxfmtConfig).toContain("stylesheet: 'packages/ui/src/base.css'");
+
+      expect(await fileExists(join(projectPath, 'apps/web/oxlint.config.mts'))).toBe(false);
+
+      const rootPkg = await readJsonFile<{
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(rootPkg.devDependencies.oxlint).toBeDefined();
+      expect(rootPkg.devDependencies.oxfmt).toBeDefined();
+      expect(rootPkg.devDependencies['@shadcn/lint']).toBeDefined();
+      expect(rootPkg.scripts.lint).toBe('oxlint');
+
+      const webPkg = await readJsonFile<{ devDependencies?: Record<string, string> }>(
+        join(projectPath, 'apps/web/package.json'),
+      );
+      expect(webPkg.devDependencies?.oxlint).toBeUndefined();
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'apps/web/components.json'));
+      expect(components.tailwind.css).toBe('src/styles/globals.css');
+    });
+  });
+
+  describe('shadcn theme', () => {
+    test('nextjs single repo imports the shared shadcn theme file', async () => {
+      const projectName = 'test-theme-nextjs-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:nextjs:shadcn`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const theme = await readTextFile(join(projectPath, 'src/styles/shadcn.css'));
+      expect(theme).toContain('@import "tailwindcss";');
+      expect(theme).toContain('--color-background: var(--background);');
+      expect(theme).toContain('--color-success: var(--success);');
+      expect(theme).not.toContain('@source');
+
+      const globals = await readTextFile(join(projectPath, 'src/styles/globals.css'));
+      expect(globals).toContain('@import "./shadcn.css";');
+      expect(globals).not.toContain('@theme');
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'components.json'));
+      expect(components.tailwind.css).toBe('src/styles/globals.css');
+    });
+
+    test('tanstack-start single repo loads the shadcn theme and uses theme tokens', async () => {
+      const projectName = 'test-theme-tanstack-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start:shadcn`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      expect(await fileExists(join(projectPath, 'src/styles/shadcn.css'))).toBe(true);
+      const styles = await readTextFile(join(projectPath, 'src/styles.css'));
+      expect(styles).toContain('@import "./styles/shadcn.css";');
+      expect(styles).not.toContain("@import 'tailwindcss';");
+
+      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
+      const index = await readTextFile(join(projectPath, 'src/routes/index.tsx'));
+      for (const source of [root, index]) {
+        expect(source).not.toMatch(/(slate|gray|cyan)-\d/);
+      }
+      expect(index).toContain('bg-card');
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'components.json'));
+      expect(components.tailwind.css).toBe('src/styles.css');
+
+      const oxfmtResult = await runCli(
+        [`${projectName}-oxc`, '--app', `${projectName}-oxc:tanstack-start:shadcn`, '--linter', 'oxc', '--no-git', '--no-install'],
+        tempDir,
+      );
+      expect(oxfmtResult.exitCode).toBe(0);
+      const oxfmtConfig = await readTextFile(join(tempDir, `${projectName}-oxc`, 'oxfmt.config.mts'));
+      expect(oxfmtConfig).toContain("stylesheet: 'src/styles.css'");
+    });
+
+    test('tanstack-start turborepo imports the ui package theme', async () => {
+      const projectName = 'test-theme-tanstack-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', 'web:tanstack-start:shadcn', '--app', 'api:hono', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const styles = await readTextFile(join(projectPath, 'apps/web/src/styles.css'));
+      expect(styles).toContain('@import "@repo/ui/base.css";');
+      expect(styles).not.toContain("@import 'tailwindcss';");
+      expect(await fileExists(join(projectPath, 'apps/web/src/styles/shadcn.css'))).toBe(false);
+
+      const components = await readJsonFile<{ tailwind: { css: string } }>(
+        join(projectPath, 'apps/web/components.json'),
+      );
+      expect(components.tailwind.css).toBe('src/styles.css');
+    });
+
+    test('tanstack-start without shadcn keeps its plain stylesheet', async () => {
+      const projectName = 'test-theme-tanstack-plain';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const styles = await readTextFile(join(projectPath, 'src/styles.css'));
+      expect(styles).toContain("@import 'tailwindcss';");
+      expect(await fileExists(join(projectPath, 'src/styles/shadcn.css'))).toBe(false);
+    });
+  });
+
   describe('Library requirement validation', () => {
     test('accepts better-auth with sqlite database (drizzle)', async () => {
       const result = await runCli(
