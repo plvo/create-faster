@@ -142,6 +142,12 @@ describe('parseStackSuffix', () => {
     expect(result.cleanFilename).toBe('page.tsx.hbs');
   });
 
+  test('treats .mts config files as having no stack suffix', () => {
+    const result = parseStackSuffix('oxlint.config.mts.hbs', validStacks);
+    expect(result.stackName).toBeNull();
+    expect(result.cleanFilename).toBe('oxlint.config.mts.hbs');
+  });
+
   test('detects tanstack-start suffix', () => {
     const result = parseStackSuffix('route.ts.tanstack-start.hbs', validStacks);
     expect(result.stackName).toBe('tanstack-start');

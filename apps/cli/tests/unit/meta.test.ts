@@ -51,6 +51,7 @@ describe('META.project validation', () => {
     expect(META.project.linter.options['eslint-prettier']).toBeDefined();
     expect(META.project.linter.options.eslint).toBeDefined();
     expect(META.project.linter.options.prettier).toBeDefined();
+    expect(META.project.linter.options.oxc).toBeDefined();
   });
 
   test('linter prompt reflects broader code quality scope', () => {
@@ -94,6 +95,16 @@ describe('META.project validation', () => {
   test('biome has root-scoped mono', () => {
     const biome = META.project.linter.options.biome;
     expect(biome.mono?.scope).toBe('root');
+  });
+
+  test('oxc has root-scoped mono with oxlint and oxfmt', () => {
+    const oxc = META.project.linter.options.oxc;
+    expect(oxc.mono?.scope).toBe('root');
+    expect(oxc.packageJson?.devDependencies?.oxlint).toBeDefined();
+    expect(oxc.packageJson?.devDependencies?.oxfmt).toBeDefined();
+    expect(oxc.packageJson?.scripts?.lint).toBe('oxlint');
+    expect(oxc.packageJson?.scripts?.format).toBe('oxfmt');
+    expect(oxc.packageJson?.scripts?.check).toBe('oxlint --fix && oxfmt');
   });
 
   test('prettier has root-scoped mono with formatter deps', () => {
