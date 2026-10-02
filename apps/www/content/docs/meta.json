@@ -35,6 +35,7 @@
     "orm/prisma",
     "---LINTERS---",
     "linter/biomejs",
+    "linter/oxc",
     "linter/eslint-prettier",
     "linter/eslint",
     "linter/prettier",

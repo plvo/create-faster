@@ -23,6 +23,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}
+{{#if (has "linter" "oxc")~}}
+- Linter: Oxlint + Oxfmt
+{{/if~}}
 {{#if (has "linter" "eslint")~}}
 - Linter: ESLint
 {{/if}}
@@ -36,6 +39,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 {{/if~}}
 {{#if (has "orm" "prisma")~}}
 - `{{pm}} db:push` — sync the Prisma schema
+{{/if~}}
+{{#if (has "linter" "oxc")~}}
+- `{{pm}} check` — lint and format with Oxlint + Oxfmt
 {{/if~}}
 {{#if (has "linter" "biome")~}}
 - `{{pm}} check` — format and lint with Biome
