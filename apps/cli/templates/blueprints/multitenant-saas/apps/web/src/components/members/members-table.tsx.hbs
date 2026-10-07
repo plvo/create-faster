@@ -65,7 +65,7 @@ export function MembersTable() {
         <TableRow>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
-          <TableHead className='w-[100px]' />
+          <TableHead className='w-25' />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -78,7 +78,7 @@ export function MembersTable() {
                 onValueChange={(role) => updateRole.mutate({ memberId: m.id, role })}
                 disabled={m.role === 'owner'}
               >
-                <SelectTrigger className='w-[160px]'>
+                <SelectTrigger className='w-40'>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -20,6 +20,7 @@ const KNOWN_EXTENSIONS = new Set([
   'json',
   'jsonc',
   'mjs',
+  'mts',
   'cjs',
   'css',
   'scss',

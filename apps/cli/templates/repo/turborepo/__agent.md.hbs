@@ -27,6 +27,9 @@ Generated with create-faster. Turborepo monorepo.
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}
+{{#if (has "linter" "oxc")~}}
+- Linter: Oxlint + Oxfmt
+{{/if~}}
 {{#if (has "linter" "eslint")~}}
 - Linter: ESLint
 {{/if}}

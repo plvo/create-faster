@@ -1,12 +1,14 @@
 ---
-only: mono
+path: src/styles/shadcn.css
 ---
 @import "tailwindcss";
 @import "tw-animate-css";
 
+{{#if (isMono)}}
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
+{{/if}}
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -28,6 +30,8 @@ only: mono
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -72,6 +76,8 @@ only: mono
   --destructive-foreground: oklch(0.985 0 0);
   --warning: oklch(0.84 0.16 84);
   --warning-foreground: oklch(0.28 0.07 46);
+  --success: oklch(0.527 0.154 150.069);
+  --success-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -109,6 +115,8 @@ only: mono
   --destructive-foreground: oklch(0.985 0 0);
   --warning: oklch(0.41 0.11 46);
   --warning-foreground: oklch(0.99 0.02 95);
+  --success: oklch(0.792 0.209 151.711);
+  --success-foreground: oklch(0.205 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);

@@ -9,11 +9,7 @@ mono:
   "tsx": true,
   "tailwind": {
     "config": "",
-    {{#if (isMono)}}
-    "css": "@repo/ui/base.css",
-    {{else}}
-    "css": "src/styles/globals.css",
-    {{/if}}
+    "css": "{{#if (eq stackName "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}",
     "baseColor": "neutral",
     "cssVariables": true
   },

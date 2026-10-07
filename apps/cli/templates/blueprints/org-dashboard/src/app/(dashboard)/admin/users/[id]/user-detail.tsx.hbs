@@ -209,7 +209,7 @@ export function UserDetail({ id }: { id: string }) {
                 className='flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm font-mono'
               />
               <Button variant='outline' size='icon' onClick={copyPassword}>
-                {copied ? <Check className='size-4 text-green-500' /> : <Copy className='size-4' />}
+                {copied ? <Check className='size-4 text-success' /> : <Copy className='size-4' />}
               </Button>
             </div>
             <p className='text-xs text-warning-foreground bg-warning/10 rounded-md px-3 py-2'>
