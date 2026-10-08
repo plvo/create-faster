@@ -97,3 +97,17 @@ In Chrome against `wrangler dev`:
 - Direct load of `/time/`: the page hydrates, the loader value baked at build time is shown. Clicking the button calls the server function: `GET /_serverFn/<id>` returns 404 and the call throws `Error: Invariant failed`.
 - From `/`, client navigation to `/about` and `/posts/1` works (URL without trailing slash, content rendered).
 - From `/`, client navigation to `/time` runs the loader in the browser, which calls `/_serverFn/<id>`, gets 404, and the route renders the default error component "Something went wrong!".
+
+### Experiment 1b: flat HTML files and a 404 page
+
+**`prerender.autoSubfolderIndex: false`** writes `about.html`, `time.html`, `posts/1.html` instead of `<path>/index.html`. With the default Workers assets `html_handling` (`auto-trailing-slash`), `/about` then returns 200 directly and `/about/` redirects 307 to `/about`, which matches the router's URLs. This is the same shape as a Next.js export with the default `trailingSlash: false`.
+
+**A 404 page.** Start's prerenderer throws on any non-2xx response (`if (!res.ok) throw`, [`prerender.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/prerender.ts)), so a not-found render cannot be prerendered directly. Two workarounds were tried:
+
+1. **A `/404` route** (`src/routes/404.tsx`), auto-discovered and written to `404.html`. Workers serves it with status 404 for `/nope`. In the browser the router re-matches `/nope` on hydration: with no root `notFoundComponent` it swaps the page for the router's default "Not Found"; with the same component set as the root `notFoundComponent` the visible result is correct. Both log React hydration error #418. `/404` itself is also reachable with status 200.
+2. **The SPA shell as the 404 page.** Set `spa: { enabled: true, maskPath: '/?shell', prerender: { outputPath: '/404' } }` next to `prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false }`. The build then writes the full pages (`index.html`, `about.html`, `time.html`, `posts/1.html`) plus a root-only shell at `404.html`. Workers serves the shell with status 404 for any unknown path:
+   - `/posts/2`, a dynamic page that was not crawled, renders "Post 2" on the client with no console error. The HTTP status is still 404.
+   - `/nope` renders the root `notFoundComponent`, but React still logs #418.
+   - `/about` loads and hydrates with no console error.
+
+   The `/?shell` mask path matters. With the default mask `/`, the shell takes the `/` slot in the prerenderer's `seen` set, so `index.html` is never written and nothing is crawled, because SPA prerender options force `crawlLinks: false` ([`schema.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/schema.ts) `spaSchema`). A mask that matches no route (`/__shell`) fails the build with `Failed to fetch /__shell: Not Found`. `/?shell` is a distinct key that still matches the `/` route. This is a workaround I found by reading the source; it is not documented upstream.
