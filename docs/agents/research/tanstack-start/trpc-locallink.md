@@ -22,7 +22,26 @@ To verify:
 
 ## Short answer
 
-Pending verification against the tRPC 11, TanStack Router and seroval sources.
+The planned setup holds, with three precise requirements.
+
+1. **Transformer.** The option is `transformer`, and it is **required by the types** whenever `initTRPC` uses one. Passing `transformer: superjson` does not make `localLink` run superjson: it makes it skip serialization entirely, so inputs and outputs cross in memory by reference, rich types intact. Without it, outputs would be flattened by a JSON round trip (`Date` becomes a string).
+2. **Context.** `localLink` calls `createContext()` with no argument for every operation; the HTTP adapter calls it once per request. Start calls the app's `getRouter()` once per request on the server, so building the server client inside `getRouter()` (via `createIsomorphicFn`, to keep server code out of the client bundle) and memoizing the context **promise** in that closure, with headers from `getRequestHeaders()`, gives one session lookup per request.
+3. **Dehydration.** `setupRouterSsrQueryIntegration` honors the `QueryClient`'s default `dehydrate.serializeData` and `hydrate.deserializeData`. With the superjson pair (as in the existing `makeQueryClient()`), every superjson type tested survives, streamed pending queries included. Without it, seroval alone keeps `Date`/`Map`/`Set`/`bigint` but **throws** on `URL` and on superjson custom types. Errors survive as a bare `Error(message)` in every case, so keep the success-or-pending `shouldDehydrateQuery`.
+
+The Next.js `trpc` library ports mostly as is (`init.ts` without `next/headers`, routers, `query-client.ts`, the `@trpc/tanstack-react-query` context); `server.tsx` is replaced by the router integration and loaders, and `route.ts` by a `/api/trpc/$` server route.
+
+## Open questions for the grilling ticket
+
+- Should `trpc` on TanStack Start **require** `tanstack-query`? Without it there is no SSR cache path (a server-only caller would bypass hydration), and the official TanStack CLI add-on depends on it.
+- Fix the per-call context resolution in the **Next.js** `server.tsx` at the same time (same memo), or leave Next.js untouched in Spec 1?
+- Align the single-repo `init.ts` on the explicit `{ headers }` signature for both stacks (drops the `next/headers` fallback on Next.js), or add a `tanstack-start` stack-suffixed `init.ts`?
+- Prefetch convention in generated examples: `ensureQueryData` in the route `loader` (blocks navigation until data is ready) or `prefetchQuery` without awaiting plus `useSuspenseQuery` (streams)? Both work with the integration; the choice decides what the demo page teaches.
+- Where the `getSession` server function from the better-auth ticket and the tRPC context share the memoized session: a `WeakMap` keyed by `getRequest()` serves both, the `getRouter()` closure serves tRPC only.
+
+## Still unverified
+
+- The full plan has not been built and run. The acceptance run should cover: a prefetch awaited inside a `Suspense` boundary (headers still resolvable late in a stream), a `Date` returned by a procedure and rendered after hydration, and a client bundle check that neither `appRouter` nor the db client is present.
+- Behavior under `@cloudflare/vite-plugin` (workerd): `getRequestHeaders()` relies on `AsyncLocalStorage`, which Start needs anyway, so no extra requirement is expected, but it was not run.
 
 ## 1. `localLink` and the `superjson` transformer
 
@@ -186,4 +205,15 @@ All under `apps/cli/templates/libraries/trpc/`:
 
 `apps/cli/templates/stack/nextjs/src/components/app-providers.tsx.hbs` wraps the app in `TRPCReactProvider` when both `trpc` and `tanstack-query` are selected.
 
-Blueprints (`org-dashboard`, `multitenant-saas`, `cloudflare-fullstack`) use the pattern `void prefetch(trpc.x.queryOptions(...))` then `<HydrateClient>` in a server component page.
+Blueprints `org-dashboard` and `multitenant-saas` use the pattern `void prefetch(trpc.x.queryOptions(...))` then `<HydrateClient>` in a server component page. `cloudflare-fullstack` only uses the client side: `useTRPC()` from `@/trpc/providers` with `useSuspenseQuery`.
+
+### Findings in the Next.js templates that matter for the port
+
+- **The Next.js server path does not memoize the context either.** `server.tsx` passes `ctx` as a function to `createTRPCOptionsProxy({ router, ctx })`, which resolves it on every procedure call (section 2). A page that prefetches three procedures runs `auth.api.getSession` three times today. Not a TanStack Start problem, but the same memo would fix it; out of scope for #170 unless Pelavo wants it.
+- **`init.ts` single-repo variant imports `next/headers`** and falls back to `await headers()` when no headers are passed. TanStack Start needs a variant without that import. The turborepo variant (`createTRPCContext(opts: { headers: Headers })`, no Next import) already has the right shape; aligning the single-repo variant on it would let both stacks share `init.ts`.
+- **`route.ts`** maps to a TanStack Start server route `src/routes/api/trpc/$.ts` with `server.handlers` `GET` and `POST` calling `fetchRequestHandler` (shape confirmed in the [TanStack CLI tRPC add-on](https://github.com/TanStack/cli/blob/main/packages/create/src/frameworks/react/add-ons/tRPC/assets/src/routes/api.trpc.$.tsx)).
+- **`query-client.ts`** is framework-neutral and ports unchanged (section 3).
+- **`server.tsx` (`HydrateClient`, `prefetch`, `React.cache`) has no TanStack Start equivalent.** `setupRouterSsrQueryIntegration` replaces `HydrateClient`, loaders replace `prefetch` (`context.queryClient.ensureQueryData(context.trpc.x.queryOptions())`), and the per-request scope of `getRouter()` replaces `cache`.
+- **`providers.tsx`** keeps `createTRPCContext<AppRouter>()` (`TRPCProvider`, `useTRPC`), but the client and query client come from the router context instead of a browser singleton, and the provider is mounted from the router's `Wrap`/root rather than `app-providers.tsx`.
+- **META**: `trpc.support.stacks` is `['nextjs']` and `server-only` is an app dependency; on Start, `server-only` has no role (the boundary is `createIsomorphicFn`/`createServerOnlyFn`), so it must be scoped to Next.js. Both existing operators can do it: `$when` accepts a `stack` key (`apps/cli/src/lib/when.ts`) and a library's `stackPackageJson` is merged per app stack (`package-json-generator.ts`). Choosing between them is an implementation detail.
+- `trpc` does not `require` `tanstack-query` today: without it, Next.js gets `appRouter.createCaller` on the server and a vanilla client. On Start, a `createCaller` equivalent would have to sit behind `createServerOnlyFn`, and every SSR fetch would then bypass the query cache. Whether Start's `trpc` should require `tanstack-query` is an open question below.
