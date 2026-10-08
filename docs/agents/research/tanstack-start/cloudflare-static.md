@@ -112,7 +112,7 @@ Verified in Experiments 1, 1b and 4 unless noted.
 | Libraries with `needsServerRuntime: true` (better-auth, tRPC, PostHog's `/ingest` proxy) | Already rejected for `cloudflare-static` by META. Once they support `tanstack-start` they are rejected for it with no extra code. |
 | evlog | Builds. It runs only at prerender time, so it is inert, as it is on Next.js `cloudflare-static` today (Experiment 5). |
 
-Development is a trap here, and it is not specific to Start: `vite dev` runs a real SSR server, so server functions and server routes work locally and only fail after the static build. On Next.js, `output: 'export'` makes `next build` fail on unsupported server features. Start has no equivalent guard: the static build succeeds with a server route and a server function present (Experiment 1).
+Development is a trap here, and it is not specific to Start: `vite dev` runs a real SSR server, so server functions and server routes work locally and only fail after the static build. On Next.js, `output: 'export'` turns unsupported server features (route handlers that read the request, Server Actions, cookies, rewrites, proxy, and others) into errors as early as `next dev` ([Static Exports, Unsupported Features](https://github.com/vercel/next.js/blob/canary/docs/01-app/02-guides/static-exports.mdx#unsupported-features)). Start has no equivalent guard: the static build succeeds with a server route and a server function present (Experiment 1).
 
 ## 6. Experiments (local only, no real deploy)
 
@@ -199,3 +199,38 @@ So the Cloudflare plugin adds nothing to a static deploy and needs two Wrangler 
 ### Cleanup
 
 All builds stayed in this ticket's scratch directory. Each `wrangler dev` was stopped after use. Nothing was deployed.
+
+## 7. What create-faster would need (generic operators only)
+
+Everything below uses existing operators, plus the `$when` negation that map #170 already settled. Nothing branches on `cloudflare-static` or `tanstack-start` in core code.
+
+| Change | Where | Operator |
+|---|---|---|
+| Allow the stack | `cloudflare-static.require.stacks: ['nextjs', 'tanstack-start']`; update `label`/`hint` (today "Next.js static export") | META data |
+| Scripts | `cloudflare-static.stackPackageJson['tanstack-start'].scripts`: `deploy: 'vite build && wrangler deploy'`, `preview: 'wrangler dev'` (overrides the stack's `vite preview`, because deployment `stackPackageJson` merges after the stack's `packageJson`), `cf-typegen` as on Next.js | META data |
+| Drop Nitro and `start` | stack `packageJson`: `nitro: $when({ deployment: { not: [...] } }, ...)` and the same on `scripts.start`. The `not` list covers `cloudflare` and `cloudflare-static`, so the planned operator should accept an array. `$when` already resolves inside `scripts` (`resolveConditionals` is recursive, `apps/cli/src/lib/when.ts`) | `$when` negation (settled in #170) |
+| `vite.config.ts` | `templates/stack/tanstack-start/vite.config.ts.hbs`: wrap the `nitro` import and `nitro()` in a deployment conditional; under `{{#if (has "deployment" "cloudflare-static")}}` pass `prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false }` | Handlebars `has` |
+| `.env.start` | `templates/stack/tanstack-start/__env.start.hbs` frontmatter `deploymentSkip: [cloudflare-static]`. Stack templates already honour it | frontmatter `deploymentSkip` |
+| Wrangler config | new `templates/project/deployment/cloudflare-static/wrangler.jsonc.tanstack-start.hbs`, a copy of the Next.js one with `directory: "dist/client"`. Picked up per app by the existing stack-suffix resolution | file suffix |
+| `.gitignore`, `turbo.json` | nothing: `dist` and `.output/` are already ignored, and `dist/**` is already a Turbo output | none |
+| Docs | `apps/www/content/docs/deployment/cloudflare-static.mdx` (Stacks badge, per-stack config, the "what stops working" list from section 5) | docs |
+
+Not required for parity, but surfaced by this research:
+
+- **evlog's `nitro.config.ts.tanstack-start.hbs`** would be dead code under `cloudflare-static`, as it would under `cloudflare` (#176). `resolveTemplatesForLibrary` ignores `deploymentSkip` today. The generic fix is to honour `deploymentSkip` (and `deploymentPath`) for library templates, which #176 also needs.
+- **`require.stacks` means "at least one app"** (`isRequirementMet`). A Turborepo mixing a supported app with an unsupported one (for example `hono` or `expo`) passes, and the other apps silently get no Wrangler config. This is true for Next.js today. If it should be "every web app", that is a new generic require key, not a special case.
+
+## 8. Open questions for the HITL ticket (#182)
+
+1. **The 404 page.** Start cannot prerender a not-found response. Options:
+   - (a) a generated `/404` route, reachable at `/404` with status 200, plus a root `notFoundComponent` (renders correctly, logs React #418 on unknown URLs);
+   - (b) the SPA shell written to `404.html` with the undocumented `maskPath: '/?shell'` workaround (also renders uncrawled dynamic pages on the client, still with HTTP 404; same #418 on unknown URLs);
+   - (c) no `404.html` (empty 404 body).
+
+   Is either workaround acceptable in a template, or should an upstream issue be opened first?
+2. **`autoSubfolderIndex: false`** (flat `about.html`, no redirect) or the default folder indexes plus `html_handling: "drop-trailing-slash"` (not tested)?
+3. **Dynamic routes**: is "only what is linked gets built" enough, or should the template show `pages: [...]` or `prerender.filter` for explicit paths?
+4. **Server functions in a static app**: template nothing and document the limits (section 5), or show `staticFunctionMiddleware` (experimental, untested here) for loaders?
+5. **SPA shell**: confirm it stays documented only. Its `single-page-application` mode turns every failed server call into a silent 200 HTML response.
+6. **evlog on `cloudflare-static`**: keep it allowed and inert (as on Next.js today), or give it a META constraint? The latter would also change Next.js.
+7. **`require.stacks` "at least one app"**: accept it, or introduce an "every web app" semantic?
