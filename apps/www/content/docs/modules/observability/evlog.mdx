@@ -4,7 +4,7 @@ description: Wide-event structured logging with per-framework wire-up, middlewar
 ---
 
 <Stacks names="nextjs,hono,tanstack-start,node" />
-<Dependencies packages="evlog" dev="nitro (TanStack Start only)" />
+<Dependencies packages="evlog" />
 
 [→ evlog Documentation](https://www.evlog.dev)
 
@@ -94,7 +94,7 @@ Modified files:
 
 #### nitro.config.ts
 
-Registers the evlog Nitro v3 module with async context for request-scoped logging:
+Registers the evlog Nitro v3 module with async context for request-scoped logging. `nitro` itself comes with the TanStack Start stack, whose `nitro()` Vite plugin loads this file when building the production server:
 
 ```ts title="nitro.config.ts"
 import { defineConfig } from 'nitro';

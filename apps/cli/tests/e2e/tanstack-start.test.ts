@@ -1,10 +1,19 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import {
+  type CommandResult,
+  cleanupTempDir,
+  createTempDir,
+  expectServesPageWithClientScript,
+  runCli,
+  runCommand,
+  startServer,
+} from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
+const TIMEOUT_START = 60_000;
 
 describe('tanstack-start', () => {
   let projectDir: string;
@@ -41,6 +50,19 @@ describe('tanstack-start', () => {
       expect(result.exitCode).toBe(0);
     },
     TIMEOUT_BUILD,
+  );
+
+  test(
+    'start serves the built app and its client assets',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectServesPageWithClientScript(server.url);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
   );
 
   test(

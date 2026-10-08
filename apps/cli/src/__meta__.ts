@@ -101,8 +101,8 @@ export const META: Meta = {
       moduleType: 'module',
       packageJson: {
         dependencies: {
-          '@tanstack/react-router': '^1.160.0',
-          '@tanstack/react-start': '^1.160.0',
+          '@tanstack/react-router': '^1.170.41',
+          '@tanstack/react-start': '^1.168.60',
           react: '^19.2.8',
           'react-dom': '^19.2.8',
         },
@@ -111,18 +111,18 @@ export const META: Meta = {
           '@types/node': '^22',
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
-          '@tanstack/react-router-devtools': '^1.160.0',
-          '@tailwindcss/vite': '^4.1.18',
-          '@vitejs/plugin-react': '^6.1.1',
-          tailwindcss: '^4.1.18',
-          vite: '^8.2.2',
-          'vite-tsconfig-paths': '^6.1.1',
+          '@tanstack/react-router-devtools': '^1.167.2',
+          '@tailwindcss/vite': '^4.3.3',
+          '@vitejs/plugin-react': '^6.1.2',
+          nitro: '^3.0.260903-beta',
+          tailwindcss: '^4.3.3',
+          vite: '^8.3.4',
         },
         scripts: {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: 'node .output/server/index.mjs',
+          start: 'node --env-file=.env.start .output/server/index.mjs',
         },
       },
     },
@@ -348,9 +348,6 @@ export const META: Meta = {
         dependencies: {
           evlog: '^2.28.0',
         },
-        devDependencies: {
-          nitro: $when({ stack: 'tanstack-start' }, '^3.0.260610-beta'),
-        },
       },
     },
     posthog: {
@@ -380,8 +377,8 @@ export const META: Meta = {
         devDependencies: {
           vitest: '^4.1.11',
           '@vitest/coverage-v8': '^4.1.11',
-          '@vitejs/plugin-react': '^6.1.1',
-          vite: '^8.2.2',
+          '@vitejs/plugin-react': '^6.1.2',
+          vite: '^8.3.4',
           'vite-tsconfig-paths': '^6.1.1',
           jsdom: '^30.0.1',
           '@testing-library/react': '^16.3.3',

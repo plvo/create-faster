@@ -703,6 +703,60 @@ describe('CLI Integration', () => {
     });
   });
 
+  describe('TanStack Start production runtime', () => {
+    test('single repo wires nitro into the vite config and start script, defaults to port 3000 and ignores .output', async () => {
+      const projectName = 'test-runtime-tanstack-single';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start`, '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      const viteConfig = await readTextFile(join(projectPath, 'vite.config.ts'));
+      expect(viteConfig).toContain("import { nitro } from 'nitro/vite'");
+      expect(viteConfig).toContain('nitro(),');
+      expect(viteConfig).toContain('tsconfigPaths: true');
+
+      const pkg = await readJsonFile<{
+        scripts: Record<string, string>;
+        devDependencies: Record<string, string>;
+      }>(join(projectPath, 'package.json'));
+      expect(pkg.scripts.start).toBe('node --env-file=.env.start .output/server/index.mjs');
+      expect(await readTextFile(join(projectPath, '.env.start'))).toBe('PORT=3000\n');
+      expect(pkg.devDependencies.nitro).toBeDefined();
+      expect(pkg.devDependencies['vite-tsconfig-paths']).toBeUndefined();
+
+      const gitignore = await readTextFile(join(projectPath, '.gitignore'));
+      expect(gitignore.split('\n')).toContain('.output/');
+    });
+
+    test('turborepo gives each app its own dev and start port and caches the .output build', async () => {
+      const projectName = 'test-runtime-tanstack-turbo';
+      const projectPath = join(tempDir, projectName);
+
+      const result = await runCli(
+        [projectName, '--app', 'web:tanstack-start', '--app', 'admin:tanstack-start', '--no-git', '--no-install'],
+        tempDir,
+      );
+
+      expect(result.exitCode).toBe(0);
+
+      expect(await readTextFile(join(projectPath, 'apps/web/vite.config.ts'))).toContain('port: 3000,');
+      expect(await readTextFile(join(projectPath, 'apps/admin/vite.config.ts'))).toContain('port: 3001,');
+      expect(await readTextFile(join(projectPath, 'apps/web/.env.start'))).toBe('PORT=3000\n');
+      expect(await readTextFile(join(projectPath, 'apps/admin/.env.start'))).toBe('PORT=3001\n');
+
+      const turbo = await readJsonFile<{ tasks: { build: { outputs: string[] } } }>(join(projectPath, 'turbo.json'));
+      expect(turbo.tasks.build.outputs).toContain('.output/**');
+
+      const gitignore = await readTextFile(join(projectPath, '.gitignore'));
+      expect(gitignore.split('\n')).toContain('.output/');
+    });
+  });
+
   describe('Library requirement validation', () => {
     test('accepts better-auth with sqlite database (drizzle)', async () => {
       const result = await runCli(
