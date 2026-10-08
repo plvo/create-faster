@@ -19,6 +19,12 @@ export interface RunningServer {
 const SERVER_READY_TIMEOUT = 30_000;
 const SERVER_POLL_INTERVAL = 250;
 
+// bun test sets NODE_ENV=test; a user's shell does not, and builds depend on it.
+function userShellEnv(): Record<string, string | undefined> {
+  const { NODE_ENV: _testRunnerMode, ...env } = process.env;
+  return env;
+}
+
 async function getFreePort(): Promise<number> {
   const probe = createServer();
   await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
@@ -41,7 +47,7 @@ export async function startServer(args: string[], cwd: string): Promise<RunningS
   const url = `http://127.0.0.1:${port}`;
   const proc = Bun.spawn(args, {
     cwd,
-    env: { ...process.env, CI: '1', PORT: String(port) },
+    env: { ...userShellEnv(), CI: '1', PORT: String(port) },
     stdout: 'pipe',
     stderr: 'pipe',
   });
@@ -78,7 +84,7 @@ export async function runCommand(args: string[], cwd: string): Promise<CommandRe
   try {
     const result = await $`${args}`
       .cwd(cwd)
-      .env({ ...process.env, CI: '1', NEXT_TELEMETRY_DISABLED: '1' })
+      .env({ ...userShellEnv(), CI: '1', NEXT_TELEMETRY_DISABLED: '1' })
       .quiet();
 
     return {
