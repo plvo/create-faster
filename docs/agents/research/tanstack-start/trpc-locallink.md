@@ -57,6 +57,61 @@ Consequences for the plan:
 - Returned objects are shared references with the procedure's own values. A procedure that returns a module-level cached object hands the caller the same instance. Harmless for the generated `hello.greet`, worth one line in docs.
 - The name is `unstable_localLink`; `experimental_localLink` is a deprecated alias of it.
 
+## 2. Memoizing the per-request context
+
+### The problem, confirmed
+
+- `localLink` calls `opts.createContext()` inside `runProcedure`, once per operation, with no argument ([localLink.ts](https://github.com/trpc/trpc/blob/main/packages/client/src/links/localLink.ts), `ctx = await opts.createContext()`). A page whose loaders prefetch three procedures runs the session lookup three times.
+- The HTTP adapter behaves differently: `resolveResponse` creates the context once per HTTP request and shares it across every call in a batch (its `create` throws "This should only be called once" on a second call, [resolveResponse.ts](https://github.com/trpc/trpc/blob/main/packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts)). Memoizing per SSR request restores parity with what the browser path already gets.
+- `createContext` receives no request. The headers have to come from Start: `getRequestHeaders()` and `getRequest()` are exported by `@tanstack/react-start/server` (re-exported from `start-server-core`'s [request-response.ts](https://github.com/TanStack/router/blob/main/packages/start-server-core/src/request-response.ts)), and read the current request from an `AsyncLocalStorage`. They throw outside the server runtime.
+
+### `getRouter()` is a per-request scope on the server
+
+Verified in `@tanstack/start-server-core` 1.169.39, [createStartHandler.ts](https://github.com/TanStack/router/blob/main/packages/start-server-core/src/createStartHandler.ts): `routerPromise` is a `let` inside the per-request resolver, and `routerPromise ??= ... entries.routerEntry.getRouter()` calls the app's `getRouter()` once per request, memoized for that request (a comment notes it stays memoized for late streamed boundaries and server functions). Anything created inside `getRouter()` on the server is therefore request-scoped: the `QueryClient`, the options proxy, and a closure holding the context.
+
+### Recommended pattern: memoize the promise in a closure built inside `getRouter()`
+
+```ts
+// src/trpc/client.ts (sketch, not yet run)
+import { createIsomorphicFn } from '@tanstack/react-start';
+import { getRequestHeaders } from '@tanstack/react-start/server';
+import { createTRPCClient, httpBatchLink, unstable_localLink } from '@trpc/client';
+import superjson from 'superjson';
+import { appRouter, createTRPCContext } from '...';
+
+export const makeTRPCClient = createIsomorphicFn()
+  .server(() => {
+    let context: ReturnType<typeof createTRPCContext> | undefined;
+    return createTRPCClient<AppRouter>({
+      links: [
+        unstable_localLink({
+          router: appRouter,
+          transformer: superjson,
+          createContext: () => (context ??= createTRPCContext({ headers: getRequestHeaders() })),
+        }),
+      ],
+    });
+  })
+  .client(() =>
+    createTRPCClient<AppRouter>({
+      links: [httpBatchLink({ url: '/api/trpc', transformer: superjson })],
+    }),
+  );
+```
+
+`getRouter()` then calls `makeTRPCClient()` and passes the result to `createTRPCOptionsProxy({ client, queryClient })`.
+
+Why `createIsomorphicFn`: `router.tsx` is isomorphic, it runs and ships on both sides (the [execution model guide](https://tanstack.com/start/latest/docs/framework/react/guide/execution-model) says all code is isomorphic unless constrained). Importing `appRouter`, `db` or `auth` there would put them in the client bundle. The Start compiler replaces `createIsomorphicFn()...` with the current environment's function only, then runs dead code elimination ([handleCreateIsomorphicFn.ts](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/start-compiler/handleCreateIsomorphicFn.ts), `deadCodeElimination` in [compiler.ts](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/start-compiler/compiler.ts)), so the server-only imports drop out of the client build. Verified in source, not yet by inspecting a built bundle.
+
+Points to settle when implementing:
+
+- **Memoize the promise, not the value**, so concurrent loaders share one in-flight lookup. A rejected promise stays cached for the rest of that request; that is acceptable (the request fails either way) and simpler than retrying.
+- **`createTRPCContext` signature.** The Next.js template takes `{ headers }` (plus `db` on D1). The same function serves the `/api/trpc` route (`createContext: () => createTRPCContext({ headers: request.headers })`) and the local link, so no second context builder is needed.
+- **Alternative: a `WeakMap<Request, Promise<Context>>` keyed by `getRequest()`.** Same effect, and also reachable from a server function or an API route in the same request. It is only needed if something outside the router must share the memoized session; the better-auth ticket's `getSession` server function is the candidate. Not needed for tRPC alone.
+- `React.cache`, which the Next.js template uses for `getQueryClient`, is not an option here: [it is only for use with React Server Components](https://react.dev/reference/react/cache), and Start renders without them by default.
+
+Unverified: that `getRequestHeaders()` still resolves for a query that starts late in a streamed render. AsyncLocalStorage propagates through async continuations, and Start keeps the router memoized for late boundaries, so it should; the acceptance run should include a prefetch that is awaited inside a `Suspense` boundary to confirm.
+
 ## 4. What the `trpc` library generates for Next.js today
 
 Verified by reading the templates on `main` (f7d2b0b).
