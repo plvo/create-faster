@@ -18,6 +18,7 @@ export interface RunningServer {
 
 const SERVER_READY_TIMEOUT = 30_000;
 const SERVER_POLL_INTERVAL = 250;
+const SERVER_PROBE_TIMEOUT = 2_000;
 
 // bun test sets NODE_ENV=test; a user's shell does not, and builds depend on it.
 function userShellEnv(): Record<string, string | undefined> {
@@ -33,38 +34,62 @@ async function getFreePort(): Promise<number> {
   return port;
 }
 
+async function isPortFree(port: number): Promise<boolean> {
+  const probe = createServer();
+  return new Promise<boolean>((resolve) => {
+    probe.once('error', () => resolve(false));
+    probe.listen(port, '127.0.0.1', () => probe.close(() => resolve(true)));
+  });
+}
+
 async function isResponding(url: string): Promise<boolean> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(SERVER_PROBE_TIMEOUT) });
     return response.ok;
   } catch {
     return false;
   }
 }
 
-export async function startServer(args: string[], cwd: string): Promise<RunningServer> {
-  const port = await getFreePort();
+export interface StartServerOptions {
+  /** Port the server must pick by itself. Without it, a free port is handed over through PORT. */
+  port?: number;
+  readyTimeout?: number;
+}
+
+export async function startServer(
+  args: string[],
+  cwd: string,
+  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT }: StartServerOptions = {},
+): Promise<RunningServer> {
+  if (ownPort !== undefined && !(await isPortFree(ownPort))) {
+    throw new Error(`Port ${ownPort} is already in use, so the server's own port cannot be tested`);
+  }
+
+  const port = ownPort ?? (await getFreePort());
   const url = `http://127.0.0.1:${port}`;
-  const proc = Bun.spawn(args, {
-    cwd,
-    env: { ...userShellEnv(), CI: '1', PORT: String(port) },
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }) };
+  // detached makes the command a process group leader, so stop() also reaches the server behind a wrapper like `bun run`.
+  const proc = Bun.spawn(args, { cwd, env, stdout: 'pipe', stderr: 'pipe', detached: true });
+  const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 
   const stop = async () => {
-    proc.kill();
+    try {
+      process.kill(-proc.pid, 'SIGKILL');
+    } catch {
+      // the process group is already gone
+    }
     await proc.exited;
   };
 
-  const deadline = Date.now() + SERVER_READY_TIMEOUT;
+  const deadline = Date.now() + readyTimeout;
   while (Date.now() < deadline && proc.exitCode === null) {
     if (await isResponding(url)) return { url, stop };
     await Bun.sleep(SERVER_POLL_INTERVAL);
   }
 
   await stop();
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  const [stdout, stderr] = await output;
   throw new Error(`Server "${args.join(' ')}" never answered on ${url}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
 }
 
