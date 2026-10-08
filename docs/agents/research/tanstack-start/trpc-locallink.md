@@ -24,6 +24,39 @@ To verify:
 
 Pending verification against the tRPC 11, TanStack Router and seroval sources.
 
+## 1. `localLink` and the `superjson` transformer
+
+Verified against `@trpc/client` 11.19.0 (installed package source, identical to `main` on GitHub).
+
+**Option name: `transformer`.** `LocalLinkOptions` is `{ router, createContext, onError? } & TransformerOptions<inferClientTypes<TRouter>>` ([localLink.ts](https://github.com/trpc/trpc/blob/main/packages/client/src/links/localLink.ts)). `TransformerOptions` makes `transformer` **required at the type level** when the router was built with a transformer, and a type error otherwise ([transformer.ts](https://github.com/trpc/trpc/blob/main/packages/client/src/internals/transformer.ts)). Because create-faster's `initTRPC` uses `transformer: superjson`, the link must be written `unstable_localLink({ router: appRouter, createContext, transformer: superjson })`.
+
+**What it does with it: nothing, on purpose.** The link never calls `superjson.serialize`/`deserialize` when a transformer is passed:
+
+```ts
+const transformChunk = (chunk: unknown) => {
+  if (opts.transformer) {
+    return chunk;
+  }
+  // no transformer: JSON round trip through the identity transformer
+  ...
+};
+```
+
+- **Input:** `callProcedure` gets `getRawInput: async () => newInput`, the caller's value as is, in every case.
+- **Output and error shapes:** passed through `transformChunk`, so returned unchanged when `transformer` is set.
+
+So the answer to "both directions" is: neither direction is serialized. Values cross by reference, in memory, which is the same result superjson would produce for the types it supports (and more: a `Promise` survives too). tRPC's own test asserts exactly this: with `transformer: superjson`, a query returning `{ foo: Promise.resolve('bar') }` yields a real `Promise` ([localLink.test.ts, "with transformer"](https://github.com/trpc/trpc/blob/main/packages/client/src/links/localLink.test.ts)).
+
+Without a `transformer`, outputs go through `JSON.parse(JSON.stringify(...))` and a `Date` comes back as a string (same file, "json serialization" test). With superjson on the router, that branch is unreachable for us because the option is mandatory.
+
+The [docs page](https://trpc.io/docs/client/links/localLink) only says the option is "optional input/output transformers for serialization/deserialization of data" and that "transformation [is] handled automatically, just like with HTTP-based links". The source is more precise than the docs: passing the transformer tells the link that the caller understands rich types, so it skips the JSON flattening.
+
+Consequences for the plan:
+
+- Pass `transformer: superjson` to `unstable_localLink`; it is required by the types and keeps rich types intact.
+- Returned objects are shared references with the procedure's own values. A procedure that returns a module-level cached object hands the caller the same instance. Harmless for the generated `hello.greet`, worth one line in docs.
+- The name is `unstable_localLink`; `experimental_localLink` is a deprecated alias of it.
+
 ## 4. What the `trpc` library generates for Next.js today
 
 Verified by reading the templates on `main` (f7d2b0b).
