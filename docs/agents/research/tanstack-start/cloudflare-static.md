@@ -111,3 +111,32 @@ In Chrome against `wrangler dev`:
    - `/about` loads and hydrates with no console error.
 
    The `/?shell` mask path matters. With the default mask `/`, the shell takes the `/` slot in the prerenderer's `seen` set, so `index.html` is never written and nothing is crawled, because SPA prerender options force `crawlLinks: false` ([`schema.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/schema.ts) `spaSchema`). A mask that matches no route (`/__shell`) fails the build with `Failed to fetch /__shell: Not Found`. `/?shell` is a distinct key that still matches the `/` route. This is a workaround I found by reading the source; it is not documented upstream.
+
+### Experiment 2: today's Nitro template with prerender
+
+The generated `vite.config.ts` (with `nitro()`, preset `node-server`) plus the same `prerender` options: the build writes `.output/server/` and prerenders the same pages into **`.output/public/`** (`index.html`, `about.html`, `time.html`, `posts/1.html`). So an assets-only Worker could point at `.output/public`, but the Nitro server bundle is built for nothing. Nitro 3 ships `static`, `cloudflare-pages-static` and other static presets (`node_modules/nitro/dist/_presets.mjs`), but `cloudflare-pages-static` targets Cloudflare Pages, which create-faster does not use, and Start's own prerenderer already does the work. I did not test Nitro's static presets with Start.
+
+### Experiment 3: `@cloudflare/vite-plugin` with prerender
+
+`cloudflare({ viteEnvironment: { name: 'ssr' } })` added to the Experiment 1b config, `@cloudflare/vite-plugin 1.63.1` (npm `latest`):
+
+- **With the assets-only `wrangler.jsonc` (no `main`)**: the build fails. The plugin's preview server is then assets-only, so the prerenderer's `GET /` returns 404 (`Error: Failed to fetch /: Not Found`).
+- **With `main: "@tanstack/react-start/server-entry"`**: the prerender succeeds into `dist/client/`. The plugin also writes `dist/server/index.js`, `dist/server/wrangler.json` (`main: "index.js"`, `assets.directory: "../client"`) and the redirect file `.wrangler/deploy/config.json` → `dist/server/wrangler.json`. A plain `wrangler deploy --dry-run` follows the redirect and would upload a **full Worker** (17 modules, 208 KiB of server code, plus assets), which is not a static deploy. Only `wrangler deploy --config wrangler.static.jsonc`, a second assets-only file, uploads the assets alone (Total Upload 0.31 KiB).
+
+So the Cloudflare plugin adds nothing to a static deploy and needs two Wrangler configs to avoid shipping a Worker. Its one benefit would be prerendering in workerd with local bindings, which a site without a runtime does not need.
+
+### Experiment 4: SPA mode (documented, not offered)
+
+`tanstackStart({ spa: { enabled: true, prerender: { outputPath: '/index' } }, prerender: { autoStaticPathsDiscovery: false, ... } })` writes a single root-only shell at `dist/client/index.html`, and `wrangler.jsonc` uses `not_found_handling: "single-page-application"`. Workers serves `/index.html` with status 200 for any path that does not match a file. Cloudflare's docs say the `Sec-Fetch-Mode: navigate` check only matters when a Worker script is present ([routing diagram](https://developers.cloudflare.com/workers/static-assets/routing/static-site-generation/), [SPA routing](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)), and there is none here.
+
+- `/posts/7`, `/about` and `/nope` all return 200 with the shell and render on the client. `/posts/7` shows "Post 7".
+- **Silent failure**: `/api/hello` and `GET /_serverFn/<id>` (sent with `Sec-Fetch-Mode: cors` and `Accept: application/json`) also return **200 with the HTML shell**. In the browser, client navigation to `/time` calls the server function, gets HTML, and renders an empty loader value **with no error in the console**. In 404-page mode the same call at least fails loudly.
+- The shell output path has to be `/index` to match `single-page-application`, which always serves `/index.html`. The default `/_shell.html` would be ignored by Workers.
+
+### Experiment 5: evlog on a static Start app
+
+`create-faster startevlog --app startevlog:tanstack-start:evlog`, `nitro()` removed and prerender enabled: the build and prerender succeed. The root route's `evlogErrorHandler` middleware from `evlog/nitro/v3` runs only during the build-time prerender. The generated `nitro.config.ts` is dead code. A static site has no request-time events, so evlog does nothing useful there. On Next.js, `cloudflare-static` already skips `proxy.ts`, which carries the evlog middleware, so evlog is equally inert there today, and META allows it.
+
+### Cleanup
+
+All builds stayed in this ticket's scratch directory. Each `wrangler dev` was stopped after use. Nothing was deployed.
