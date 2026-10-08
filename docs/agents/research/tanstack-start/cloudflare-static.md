@@ -54,3 +54,46 @@ All three checks are generic and read META data; none names `cloudflare-static`.
 - **Where it is enforced**: `getCategoryOptionUnavailability` renders the option disabled with a reason in the interactive prompt (`requires an app on stack: nextjs`, or a "needs a server runtime" reason naming the blocking library), and `validateContext` in `apps/cli/src/flags.ts` exits with an error for the same two cases in flag mode.
 
 Consequence for TanStack Start: the server-runtime half is already stack-agnostic. Once better-auth or tRPC gain `tanstack-start` support with `needsServerRuntime: true`, they are excluded from `cloudflare-static` with no new code. The stack half is a data change, `require.stacks: ['nextjs', 'tanstack-start']`, plus templates.
+
+## 6. Experiments (local only, no real deploy)
+
+Setup: `create-faster startstatic --app startstatic:tanstack-start:shadcn,tanstack-query --pm bun` from this branch's CLI (`main` at `f7d2b0b`), installed `@tanstack/react-start 1.168.60` (npm `latest` on 2026-10-08), `@tanstack/start-plugin-core 1.171.49`, `vite 8.3.4`, `wrangler 4.149.0` (npm `latest`, inside the repo's `^4.127.1` range). Added test routes: `/about` (static), `/posts/$id` (dynamic, linked from `/` as `/posts/1`), `/time` (loader that calls a `createServerFn`, plus a button calling it again), `/api/hello` (server route).
+
+### Experiment 1: Start alone, no Nitro, no Cloudflare plugin
+
+`vite.config.ts` with only `tailwindcss()`, `tanstackStart({ prerender: { enabled: true, crawlLinks: true } })`, `viteReact()`. `vite build`:
+
+- Prerendered `/`, `/about`, `/time` (auto-discovered static routes) and `/posts/1` (found by crawling the link from `/`). `/api/hello` is not prerendered (no component).
+- Output: `dist/client/index.html`, `dist/client/about/index.html`, `dist/client/time/index.html`, `dist/client/posts/1/index.html`, plus `dist/client/assets/`. `dist/server/server.js` is also built (the prerenderer needs it) but is not deployed.
+- No `404.html` and no `sitemap.xml` are produced.
+
+Assets-only `wrangler.jsonc`, no `main`:
+
+```jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "startstatic",
+  "compatibility_date": "2026-06-12",
+  "assets": { "directory": "dist/client", "not_found_handling": "404-page" }
+}
+```
+
+`wrangler deploy --dry-run`: "Read 17 files from the assets directory .../dist/client", "No bindings found.", exits cleanly.
+
+`wrangler dev --port 8791`, requests with curl:
+
+| Path | Result |
+|---|---|
+| `/` | 200 |
+| `/about` | 307 to `/about/` (then 200) |
+| `/posts/1` | 307 to `/posts/1/` |
+| `/time` | 307 to `/time/` |
+| `/posts/2` (not crawled) | 404, empty body |
+| `/api/hello` (server route) | 404, empty body |
+| `/nope` | 404, empty body |
+
+In Chrome against `wrangler dev`:
+
+- Direct load of `/time/`: the page hydrates, the loader value baked at build time is shown. Clicking the button calls the server function: `GET /_serverFn/<id>` returns 404 and the call throws `Error: Invariant failed`.
+- From `/`, client navigation to `/about` and `/posts/1` works (URL without trailing slash, content rendered).
+- From `/`, client navigation to `/time` runs the loader in the browser, which calls `/_serverFn/<id>`, gets 404, and the route renders the default error component "Something went wrong!".
