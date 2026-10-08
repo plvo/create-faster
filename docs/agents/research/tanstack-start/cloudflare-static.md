@@ -2,7 +2,7 @@
 
 Research for [#175](https://github.com/plvo/create-faster/issues/175), part of map [#170](https://github.com/plvo/create-faster/issues/170).
 
-Status: in progress.
+Status: complete (2026-10-08).
 
 ## Question
 
@@ -15,16 +15,27 @@ The parity target is create-faster's `cloudflare-static` deployment: a Next.js s
 
 What does `cloudflare-static` generate for Next.js today, and how does META restrict it (`require.stacks`, `providesServerRuntime: false`, `isServerRuntimeSatisfied`)?
 
-## Outline
+## Answer
 
-1. What `cloudflare-static` generates for Next.js today
-2. How META restricts it
-3. TanStack Start static output: prerender versus SPA shell
-4. Output directory and wrangler `assets` without `main`
-5. What stops working
-6. Experiment: build and `wrangler dev` / `wrangler deploy --dry-run`
-7. What create-faster would need (generic operators only)
-8. Open questions
+**TanStack Start reaches `cloudflare-static` parity with full static prerendering, built by Start alone, without Nitro and without `@cloudflare/vite-plugin`.** The recipe below was verified locally: build, typecheck, `wrangler deploy --dry-run`, and `wrangler dev` with a browser. Nothing was deployed.
+
+- **`vite.config.ts`**: drop `nitro()` and keep `tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })`. Start's post-build step starts its own `vite.preview()` server on the SSR build. It prerenders every static route (`autoStaticPathsDiscovery`, on by default) plus every same-origin `<a href>` it finds (`crawlLinks`, on by default), so dynamic pages linked from other pages are included. `autoSubfolderIndex: false` writes `about.html` instead of `about/index.html`, which avoids the 307 trailing-slash redirect that Workers' default `html_handling` adds for folder indexes.
+- **Output directory**: **`dist/client`**, which is Vite's client environment `outDir` (`build.outDir` default `dist` + `client`). With Nitro left in, the same pages land in `.output/public` next to an unused server bundle. `dist/server/server.js` is built because the prerenderer needs it, but it is not deployed.
+- **`wrangler.jsonc`**: the Next.js template with only the directory changed: `{ name, compatibility_date, assets: { directory: "dist/client", not_found_handling: "404-page" } }`, with **no `main`**. `wrangler deploy --dry-run` reads only assets.
+- **`@cloudflare/vite-plugin` is the wrong tool here.** With no `main`, its preview is assets-only and the prerender fails on `GET /`. With `main`, plain `wrangler deploy` follows the plugin's `.wrangler/deploy/config.json` redirect and ships a full Worker.
+- **What stops working** (no server at request time):
+  - server routes return 404;
+  - server functions return 404 (`/_serverFn/<id>`) and throw `Invariant failed`;
+  - a route whose `loader` calls a server function works on a direct load (the build-time result is embedded in the HTML), but on client navigation it re-runs in the browser, fails, and shows the error component;
+  - request middleware runs only at build time;
+  - dynamic routes that no page links to are not generated;
+  - there is no `404.html` unless the app provides one.
+
+  Libraries that need a runtime (better-auth, tRPC, PostHog's proxy) are already excluded by `needsServerRuntime`.
+- **SPA shell** (documented upstream, not offered by the CLI, per map #170): it works on Workers with `spa.prerender.outputPath: '/index'` and `not_found_handling: "single-page-application"`. However, every unmatched URL, including `/api/*` and `/_serverFn/*`, then returns **200 with the HTML shell**, so server calls fail silently. Full prerender plus `404-page` fails loudly, which is the safer default.
+- **META today**: `cloudflare-static` is `require: { stacks: ['nextjs'] }` + `providesServerRuntime: false`. `isServerRuntimeSatisfied` already excludes runtime-dependent libraries for any stack. Adding Start means data (`require.stacks`, `stackPackageJson['tanstack-start']`), templates (a `wrangler.jsonc.tanstack-start.hbs`, conditionals in `vite.config.ts.hbs`), frontmatter (`deploymentSkip` on `.env.start`), and the `$when` negation operator the map already settled (to drop `nitro` and `start`). No core branch on a choice value is needed.
+
+The one piece with no clean answer is the **404 page**. Start's prerenderer refuses non-2xx responses, so a not-found render cannot be written as `404.html` directly. Both workarounds tried (a `/404` route, or the SPA shell written to `404.html`) render correctly but log React hydration error #418 on unknown URLs (section 6, Experiment 1b). This goes to the HITL ticket [#182](https://github.com/plvo/create-faster/issues/182).
 
 ## 1. What `cloudflare-static` generates for Next.js today
 
