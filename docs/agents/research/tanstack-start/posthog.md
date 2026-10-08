@@ -2,7 +2,7 @@
 
 Research for [#174](https://github.com/plvo/create-faster/issues/174), part of map [#170](https://github.com/plvo/create-faster/issues/170).
 
-Status: in progress.
+Status: complete (2026-10-08).
 
 ## Question
 
@@ -30,6 +30,18 @@ Mechanism notes that matter for Start:
 
 - `$when` (`apps/cli/src/lib/when.ts`) is only applied by `package-json-generator.ts`. `env-generator.ts` does not resolve `$when`, and `EnvVar` (`apps/cli/src/types/meta.ts`) is just `{ value, monoScope }`: an env var cannot vary by stack today.
 - Even if `$when` were applied to envs, its `stack` key matches when *any* app in the project uses the stack (`ctx.apps.map(a => a.stackName)`), not the app being generated. A mixed Next.js + Start Turborepo with posthog on both would get both names on both apps.
+- Library dependencies *can* already vary per app stack: `MetaAddon.stackPackageJson` is merged per app by `generateAppPackageJson` (`package-json-generator.ts`, `library.stackPackageJson?.[app.stackName]`).
+- `src/instrumentation-client.ts.hbs` has no stack suffix. Library templates without a suffix are emitted for every supported stack (`resolveTemplatesForLibrary` in `template-resolver.ts` only skips files whose suffix names another stack), so adding `tanstack-start` to `support.stacks` without renaming it to `instrumentation-client.ts.nextjs.hbs` would drop a dead Next.js file into Start apps.
+
+## Answer
+
+**PostHog on TanStack Start needs three things, and the same code runs unchanged on Nitro and on Workers (`@cloudflare/vite-plugin`, no Nitro). All three were built and exercised locally on both runtimes, in a real browser, against real PostHog with a fake token.**
+
+1. **Client: `PostHogProvider` from `@posthog/react` in the root route's shell**, with `api_host: '/ingest'`, `ui_host: 'https://us.posthog.com'`, and the same options as the Next.js template. It is SSR-safe as is: the provider calls `posthog.init` inside a `useEffect` (so never on the server), and `posthog-js` guards its `window` access at import. `defaults: '2026-05-30'` already turns on `capture_pageview: 'history_change'`, so client-side navigations are counted without router wiring.
+2. **Proxy: one splat server route, `src/routes/ingest/$.ts`, with an `ANY` handler** that strips the `/ingest` prefix, sends `/static/*` and `/array/*` to `us-assets.i.posthog.com` and the rest to `us.i.posthog.com`, drops `cookie`, `authorization` and `accept-encoding`, sets `x-forwarded-for`, forwards the body as bytes, and returns the response without `content-encoding` / `content-length`. No trailing-slash redirect happens on a splat server route, so nothing like Next.js's `skipTrailingSlashRedirect` is needed. No deployment-specific code: the client IP comes from `cf-connecting-ip` on Workers and from `getRequestIP({ xForwardedFor: true })` on Node.
+3. **Env: the token must be `VITE_`-prefixed on Start** (Vite only inlines `VITE_*` into client code, at build time). PostHog's own docs use `VITE_POSTHOG_PROJECT_TOKEN`. create-faster's `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` cannot be reused, and META cannot vary an env var by stack today: that needs a new **generic** operator (see the proposal).
+
+**Server-side capture is out of parity scope**: the Next.js library generates none. If it is ever added, `posthog-node` works on both runtimes (on Workers it resolves its `workerd` export, `index.edge.mjs`), but Workers needs a client per request flushed with `captureImmediate` or `waitUntil(shutdown())`, while PostHog's TanStack Start guide shows a module-level singleton that only fits a long-lived Node process.
 
 ## Local verification: Nitro (tested locally, 2026-10-08)
 
