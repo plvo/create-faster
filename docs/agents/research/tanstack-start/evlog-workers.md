@@ -34,6 +34,8 @@ Versions read: evlog `2.30.1` (npm `latest` on 2026-10-08, same as `packages/evl
 - [evloghq/evlog#362](https://github.com/evloghq/evlog/issues/362) "support tanstack start with cloudflare vite plugin" (opened 2026-06-05) is open, labelled `enhancement`, with zero comments. It notes evlog's docs only cover Nitro for TanStack Start.
 - [evloghq/evlog#416](https://github.com/evloghq/evlog/issues/416) asked for `waitUntil` in the custom-integration toolkit, citing #362 and TanStack Start on Workers. It was closed by [PR #429](https://github.com/evloghq/evlog/pull/429) (merged 2026-07-16, released in `2.22.0`): `waitUntil` on `createMiddlewareLogger` / `BaseEvlogOptions`, and `extractWaitUntil` on `defineFrameworkIntegration` manifests.
 - [evloghq/evlog#405](https://github.com/evloghq/evlog/issues/405) (open) documents a `createSerializationAdapter` in `src/start.ts` so `EvlogError` fields (`why`, `fix`) survive TanStack Start server functions. This is runtime-agnostic.
+- Re-checked on 2026-10-08: #362 is still open with zero comments (last update 2026-06-05). No evlog PR or issue mentions TanStack Start on Workers besides #362 and #416. The latest release is `evlog@2.30.1` (2026-10-06).
+- [PR #697](https://github.com/evloghq/evlog/pull/697) (merged 2026-09-12) added a "Background work" section to the TanStack Start page: `log.fork()` is not available there, because `evlog/nitro/v3` attaches the logger to the Nitro request event and registers no `AsyncLocalStorage` storage.
 - evlog's TanStack Start page states "TanStack Start uses Nitro v3 as its server layer, so evlog integrates via the `evlog/nitro/v3` module" and documents only that path ([source](https://github.com/evloghq/evlog/blob/main/apps/docs/content/4.integrate/frameworks/05.tanstack-start.md), [site](https://www.evlog.dev/integrate/frameworks/tanstack-start)). Drains, enrichers and tail sampling there are Nitro plugins hooking `evlog:drain`, `evlog:enrich`, `evlog:emit:keep`; the request logger is read through `useRequest()` from `nitro/context` (needs `experimental.asyncContext`).
 
 ### `evlog/workers`
@@ -63,6 +65,8 @@ Source: [`packages/evlog/src/nitro-v3/`](https://github.com/evloghq/evlog/tree/m
 - The default export is a Nitro module (build-time `setup(nitro)`): it pushes a runtime plugin, prepends an error handler, and bakes options into `runtimeConfig`. Without Nitro there is nothing to run it.
 - `evlogErrorHandler` (`nitro-v3/middleware.ts`) is a TanStack Start server middleware function: it awaits `next()`, and on an `EvlogError` it tries `await import('nitro/context')` → `useRequest().context.log.error(err)` inside a `try { } catch { }` that ignores failure, then **throws a `Response`** with `evlogError.toJSON()` and the error status. Non-evlog errors are rethrown.
 - The `evlog` package sets `"sideEffects": false`; `nitro/v3/index.mjs` re-exports the module, `useLogger`, `evlogErrorHandler`, `createError`, `parseError`.
+- `evlog/nitro/v3` has a single export entry (`dist/nitro/v3/index.mjs`), so importing `evlogErrorHandler` also loads `module.mjs`, whose top level runs `dirname(fileURLToPath(import.meta.url))` with `node:path` and `node:url`. In a production build `sideEffects: false` lets the bundler drop it; in an unbundled dev runtime it executes (behaviour on workerd checked in the experiment below).
+- The handler's only Nitro dependency is the guarded `await import('nitro/context')`; the type file imports `RequestServerResult` from `@tanstack/start-client-core` (an optional peer dependency).
 
 ## Inferences
 
