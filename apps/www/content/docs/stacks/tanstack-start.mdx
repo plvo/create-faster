@@ -18,7 +18,7 @@ Beyond the official setup, we include:
 - `dev` - Development server with dynamic port assignment (3000 or turborepo-specific)
 - `build` - Production build, emits the Nitro server to `.output/`
 - `preview` - Preview the production build
-- `start` - Production server (`node .output/server/index.mjs`), listens on `PORT` (3000 by default)
+- `start` - Production server (`node --env-file=.env.start .output/server/index.mjs`), listens on the app's port; a `PORT` or `NITRO_PORT` environment variable overrides it
 
 **Vite Configuration:**
 - TanStack Router DevTools enabled
@@ -41,6 +41,7 @@ src/
 └── styles.css             # Global styles with Tailwind import
 
 vite.config.ts             # Vite config with all plugins
+.env.start                 # Default PORT for `start`: 3000, or the app's own port in Turborepo
 tsconfig.json              # TypeScript config with path aliases
 ```
 
