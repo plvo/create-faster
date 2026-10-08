@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-08
 **Ticket:** #178 (map #170, TanStack Start parity)
-**Status:** draft, primary-source verification in progress
+**Status:** complete. Versions read: `@trpc/client`, `@trpc/server`, `@trpc/tanstack-react-query` 11.19.0; `@tanstack/react-start` 1.168.60 (`start-server-core` 1.169.39, `start-plugin-core` 1.171.49, `router-core` 1.171.34); `@tanstack/router-ssr-query-core` 1.169.3; `@tanstack/query-core` 5.104.1; `seroval` 1.6.8; `superjson` 2.2.6.
 
 ## Question
 
@@ -26,7 +26,7 @@ Pending verification against the tRPC 11, TanStack Router and seroval sources.
 
 ## 1. `localLink` and the `superjson` transformer
 
-Verified against `@trpc/client` 11.19.0 (installed package source, identical to `main` on GitHub).
+Verified against `@trpc/client` 11.19.0 (installed package source). `main` on GitHub (2026-10-08) differs only inside the subscription loop; the transformer and context code quoted below is identical.
 
 **Option name: `transformer`.** `LocalLinkOptions` is `{ router, createContext, onError? } & TransformerOptions<inferClientTypes<TRouter>>` ([localLink.ts](https://github.com/trpc/trpc/blob/main/packages/client/src/links/localLink.ts)). `TransformerOptions` makes `transformer` **required at the type level** when the router was built with a transformer, and a type error otherwise ([transformer.ts](https://github.com/trpc/trpc/blob/main/packages/client/src/internals/transformer.ts)). Because create-faster's `initTRPC` uses `transformer: superjson`, the link must be written `unstable_localLink({ router: appRouter, createContext, transformer: superjson })`.
 
@@ -111,6 +111,50 @@ Points to settle when implementing:
 - `React.cache`, which the Next.js template uses for `getQueryClient`, is not an option here: [it is only for use with React Server Components](https://react.dev/reference/react/cache), and Start renders without them by default.
 
 Unverified: that `getRequestHeaders()` still resolves for a query that starts late in a streamed render. AsyncLocalStorage propagates through async continuations, and Start keeps the router memoized for late boundaries, so it should; the acceptance run should include a prefetch that is awaited inside a `Suspense` boundary to confirm.
+
+### Why `localLink` and not the `{ router, ctx }` options proxy
+
+`createTRPCOptionsProxy` also accepts `{ router, ctx, queryClient }` and then calls procedures in memory itself; that is what the Next.js `server.tsx` uses. Read in [createOptionsProxy.ts](https://github.com/trpc/trpc/blob/main/packages/tanstack-react-query/src/internals/createOptionsProxy.ts): it resolves `ctx` on every call too (`unwrapLazyArg(opts.ctx)`), passes `signal: undefined`, and returns raw server errors rather than `TRPCClientError`. More decisive for Start: `TRPCProvider` only takes a `trpcClient` ([Context.tsx](https://github.com/trpc/trpc/blob/main/packages/tanstack-react-query/src/internals/Context.tsx)), and the provider also renders during SSR. A `localLink` client is the one object that serves the provider, `useTRPCClient()`, and the router-context options proxy alike on the server, while `httpBatchLink` does the same in the browser. The plan's choice holds.
+
+For comparison, the official TanStack CLI tRPC add-on ([root-provider.tsx.ejs](https://github.com/TanStack/cli/blob/main/packages/create/src/frameworks/react/add-ons/tanstack-query/assets/src/integrations/tanstack-query/root-provider.tsx.ejs)) does not use `localLink`: it builds one module-level client with `httpBatchStreamLink` pointing at `http://localhost:${PORT}/api/trpc` during SSR, so SSR makes an HTTP loopback request and forwards no cookies. It does create a fresh `QueryClient` and options proxy inside `getContext()`, with the same superjson `serializeData`/`deserializeData` pair. That is a weaker design for authenticated data and for Workers, and confirms the planned one is not the beaten path: expect to verify it end to end.
+
+## 3. Do superjson types survive dehydration through Start's serializer?
+
+### How the integration dehydrates
+
+Read in [router-ssr-query-core/src/index.ts](https://github.com/TanStack/router/blob/main/packages/router-ssr-query-core/src/index.ts) (installed 1.169.3, identical to `main`):
+
+- On the server it wraps `router.options.dehydrate`. Each query goes through `dehydrateQuery(query, serializeData, shouldRedactErrors)`, where `serializeData` is `dehydrateOptions?.serializeData ?? queryClient.getDefaultOptions().dehydrate?.serializeData`. So **a `QueryClient` built with `defaultOptions.dehydrate.serializeData: superjson.serialize` is honored without passing anything to `setupRouterSsrQueryIntegration`.**
+- Same fallback for `shouldDehydrateQuery`, except that the integration's own default is **every query** (`shouldDehydrateAllQueries`), not query-core's success-only default.
+- Queries settled before dehydration go in `query.initial`; queries still pending go into a `ReadableStream` and are flushed as they settle. A pending query's `promise` is dehydrated as `query.promise.then(serializeData)` ([query-core hydration.ts](https://github.com/TanStack/query/blob/main/packages/query-core/src/hydration.ts)).
+- On the client, it calls query-core's `hydrate(queryClient, …, hydrateOptions)`, which falls back to `client.getDefaultOptions().hydrate?.deserializeData`, including for streamed promises (`Promise.resolve(promise).then(deserializeData)`).
+
+The whole dehydrated router state is then written into the HTML by seroval's `crossSerializeStream` with Start's SSR plugins: `ShallowErrorPlugin`, `RawStreamSSRPlugin`, `ReadableStreamPlugin` ([ssr-server.ts](https://github.com/TanStack/router/blob/main/packages/router-core/src/ssr/ssr-server.ts), [seroval-plugins.ssr.ts](https://github.com/TanStack/router/blob/main/packages/router-core/src/ssr/serializer/seroval-plugins.ssr.ts)), plus any `serializationAdapters` the app registers with `createStart`.
+
+### Experiment
+
+A throwaway script (kept outside the repo) used the real pieces: query-core `dehydrate` and `hydrate`, `crossSerializeStream` with Start's `ssrSerovalPlugins` imported from `router-core`, and evaluation of the emitted script in the same realm, as the browser does. It covered a settled query, a query still pending at dehydration time (streamed promise) and a failed query.
+
+Per type, **without** `serializeData` (seroval alone):
+
+| Value | Result |
+| --- | --- |
+| `Date`, `Map`, `Set`, `bigint`, `RegExp`, `undefined`, `NaN`, `-0` | survive |
+| `URL` | **throws** `SerovalUnsupportedTypeError` |
+| a class registered with `superjson.registerCustom` | **throws** `SerovalUnsupportedTypeError` |
+
+**With** `serializeData: superjson.serialize` and `deserializeData: superjson.deserialize`: every type above, `URL` and the custom class included, arrives with its original type, for the settled query and for the streamed pending query alike. Seroval then only carries superjson's `{ json, meta }`, which is plain JSON.
+
+A failed query, in both modes, arrives as a bare `Error` with only its `message`: `ShallowErrorPlugin` serializes `new Error(message)` and nothing else ([ShallowErrorPlugin.ts](https://github.com/TanStack/router/blob/main/packages/router-core/src/ssr/serializer/ShallowErrorPlugin.ts)), and `serializeData` never touches errors. A `TRPCClientError` loses its class and `data` (`code`, `httpStatus`, zod issues).
+
+### Answer
+
+Yes, provided the `QueryClient` keeps the superjson `serializeData`/`deserializeData` pair, as the Next.js `makeQueryClient()` already does. Without it, the common types still survive thanks to seroval, but `URL`, superjson custom types and any class seroval does not know break the SSR render instead of degrading.
+
+Two consequences for implementation:
+
+- **Reuse `makeQueryClient()` unchanged**, including its `shouldDehydrateQuery` (success or pending). Since the integration falls back to the client's default, failed queries are then not dehydrated and the browser refetches them, which sidesteps the shallow-error loss. Passing no `shouldDehydrateQuery` anywhere would ship every failed query as a bare `Error`.
+- An alternative would be registering superjson as a Start `serializationAdapter`. Not needed: the query data path is fully covered by `serializeData`, and an adapter would only matter for loader return values and server functions, which tRPC does not use.
 
 ## 4. What the `trpc` library generates for Next.js today
 
