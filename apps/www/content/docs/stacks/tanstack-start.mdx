@@ -16,15 +16,15 @@ Beyond the official setup, we include:
 
 **Development Scripts:**
 - `dev` - Development server with dynamic port assignment (3000 or turborepo-specific)
-- `build` - Production build
-- `start` - Production server
+- `build` - Production build, emits the Nitro server to `.output/`
+- `preview` - Preview the production build
+- `start` - Production server (`node .output/server/index.mjs`), listens on `PORT` (3000 by default)
 
 **Vite Configuration:**
 - TanStack Router DevTools enabled
-- TanStack DevTools plugin
-- Nitro SSR engine
+- Nitro (`nitro/vite`) as the production server: the build emits `.output/server/index.mjs`, which `start` runs
 - Tailwind CSS v4 via Vite plugin
-- TypeScript path aliases configured
+- TypeScript path aliases through Vite's native `resolve.tsconfigPaths`
 
 **Styling:**
 - Tailwind CSS v4 (latest version using new Vite plugin)
@@ -44,10 +44,13 @@ vite.config.ts             # Vite config with all plugins
 tsconfig.json              # TypeScript config with path aliases
 ```
 
+<Dependencies packages="@tanstack/react-router,@tanstack/react-start,react,react-dom" dev="nitro,vite,@vitejs/plugin-react,tailwindcss,@tailwindcss/vite,@tanstack/react-router-devtools,typescript,@types/node,@types/react,@types/react-dom" />
+
 **Integration notes:**
 - ORM integration: When Drizzle or Prisma is selected, database scripts are added to `package.json`
 - Turborepo: Uses `@repo/db` package for shared database logic
 - Single repo: Includes database scripts directly in app package
+- Build output: `.output/` is added to `.gitignore`, and in Turborepo it is part of the `build` task outputs so cached builds keep a runnable server
 
 ## Compatible Modules
 
