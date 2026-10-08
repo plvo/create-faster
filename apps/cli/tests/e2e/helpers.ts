@@ -11,9 +11,14 @@ export interface CommandResult {
   stderr: string;
 }
 
+export interface ServerOutput {
+  stdout: string;
+  stderr: string;
+}
+
 export interface RunningServer {
   url: string;
-  stop: () => Promise<void>;
+  stop: () => Promise<ServerOutput>;
 }
 
 const SERVER_READY_TIMEOUT = 30_000;
@@ -71,15 +76,18 @@ export async function startServer(
   const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }) };
   // detached makes the command a process group leader, so stop() also reaches the server behind a wrapper like `bun run`.
   const proc = Bun.spawn(args, { cwd, env, stdout: 'pipe', stderr: 'pipe', detached: true });
-  const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+  const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]).then(
+    ([stdout, stderr]) => ({ stdout, stderr }),
+  );
 
-  const stop = async () => {
+  const stop = async (): Promise<ServerOutput> => {
     try {
       process.kill(-proc.pid, 'SIGKILL');
     } catch {
       // the process group is already gone
     }
     await proc.exited;
+    return output;
   };
 
   const deadline = Date.now() + readyTimeout;
@@ -88,8 +96,7 @@ export async function startServer(
     await Bun.sleep(SERVER_POLL_INTERVAL);
   }
 
-  await stop();
-  const [stdout, stderr] = await output;
+  const { stdout, stderr } = await stop();
   throw new Error(`Server "${args.join(' ')}" never answered on ${url}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
 }
 

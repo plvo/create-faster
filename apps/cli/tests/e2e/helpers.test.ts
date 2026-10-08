@@ -12,7 +12,10 @@ console.error('hanging-server-marker');
 
 const PLAIN_SERVER = `
 import { createServer } from 'node:http';
-createServer((_request, response) => response.end('ok')).listen(Number(process.env.PORT), '127.0.0.1');
+createServer((_request, response) => {
+  console.log('plain-server-served-request');
+  response.end('ok');
+}).listen(Number(process.env.PORT), '127.0.0.1');
 `;
 
 async function isAnswering(url: string): Promise<boolean> {
@@ -45,6 +48,15 @@ describe('startServer', () => {
 
     expect(failure).toBeInstanceOf(Error);
     expect((failure as Error).message).toContain('hanging-server-marker');
+  }, 15_000);
+
+  test('stop returns what the server printed', async () => {
+    const dir = await projectWithServer(PLAIN_SERVER);
+
+    const server = await startServer(['node', 'server.mjs'], dir);
+    const { stdout } = await server.stop();
+
+    expect(stdout).toContain('plain-server-served-request');
   }, 15_000);
 
   test('stop ends the server that a wrapper command started', async () => {

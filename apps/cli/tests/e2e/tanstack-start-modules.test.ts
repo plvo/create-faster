@@ -7,6 +7,7 @@ import {
   expectServesPageWithClientScript,
   runCli,
   runCommand,
+  type ServerOutput,
   startServer,
 } from './helpers';
 
@@ -25,7 +26,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,react-hook-form,tanstack-query,tanstack-devtools',
+        'tanstack-start-loaded:tanstack-start:shadcn,react-hook-form,tanstack-query,tanstack-devtools,evlog',
         '--no-git',
         '--no-install',
         '--pm',
@@ -61,14 +62,16 @@ describe('tanstack-start-loaded', () => {
   );
 
   test(
-    'start serves the built app and its client assets',
+    'start serves the built app and its client assets, with evlog logging each request',
     async () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
+      let output: ServerOutput;
       try {
         await expectServesPageWithClientScript(server.url);
       } finally {
-        await server.stop();
+        output = await server.stop();
       }
+      expect(output.stdout).toContain('"service":"tanstack-start-loaded"');
     },
     TIMEOUT_START,
   );
