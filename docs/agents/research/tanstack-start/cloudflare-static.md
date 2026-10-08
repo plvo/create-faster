@@ -66,6 +66,54 @@ All three checks are generic and read META data; none names `cloudflare-static`.
 
 Consequence for TanStack Start: the server-runtime half is already stack-agnostic. Once better-auth or tRPC gain `tanstack-start` support with `needsServerRuntime: true`, they are excluded from `cloudflare-static` with no new code. The stack half is a data change, `require.stacks: ['nextjs', 'tanstack-start']`, plus templates.
 
+## 3. TanStack Start static output: prerender versus SPA shell
+
+Sources: the guides [Static Prerendering](https://github.com/TanStack/router/blob/main/docs/start/framework/react/guide/static-prerendering.md), [SPA mode](https://github.com/TanStack/router/blob/main/docs/start/framework/react/guide/spa-mode.md) and [Static Server Functions](https://github.com/TanStack/router/blob/main/docs/start/framework/react/guide/static-server-functions.md); the source of `@tanstack/start-plugin-core` 1.171.49 (the version `@tanstack/react-start` 1.168.60 installs): [`schema.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/schema.ts), [`post-build.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/post-build.ts), [`prerender.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/prerender.ts), [`vite/prerender.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/vite/prerender.ts), [`vite/output-directory.ts`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/vite/output-directory.ts).
+
+**How prerendering runs (Vite).** In the `buildApp` hook after the client and SSR builds, `postServerBuild` calls `postBuild`, which calls `prerenderWithVite`. That function starts `vite.preview({ configFile, preview: { port: 0 } })` on the built SSR environment, `fetch`es each page from it, and writes the HTML into the client environment's `build.outDir`. It does not depend on Nitro or a platform adapter: whatever `vite preview` serves is what gets prerendered. Without an adapter, Start's own `previewServerPlugin` serves the SSR bundle on Node.
+
+**Full prerender options** (`tanstackStart({ prerender: {...}, pages: [...] })`):
+
+- `enabled`. If unset, prerender is on only when some `pages[]` entry enables it (`post-build.ts`).
+- `autoStaticPathsDiscovery`, default `true`: adds every static route. Routes with params, pathless layouts and routes without a component (server routes) are excluded.
+- `crawlLinks`, default `true`: regex-extracts `<a href>` values that start with `/` or `./` from each rendered page and queues them. This is how linked dynamic pages (`/posts/1`) get generated.
+- `autoSubfolderIndex`, default `true`: `/about` is written to `about/index.html`. With `false` it is written to `about.html`.
+- `filter`, `concurrency` (defaults to the CPU count), `retryCount`, `retryDelay`, `maxRedirects` (redirects are followed, same origin only), `failOnError` (default `true`), `onSuccess`, and per-request `headers`.
+- Any non-2xx response throws (`if (!res.ok) throw new Error('Failed to fetch ...')`). A not-found page therefore cannot be prerendered by asking for an unknown path.
+- `sitemap` is written only when a `sitemap` object is configured (`sitemap.host` for absolute URLs).
+
+**SPA mode** (`spa: { enabled, maskPath = '/', prerender }`): `postBuild` forces prerender on and pushes a page `{ path: maskPath }` requested with the `TSS_SHELL` header. The server renders only the root route, with the pending fallback in place of matched routes. SPA prerender defaults are `outputPath: '/_shell'`, `crawlLinks: false`, `retryCount: 0`, and the shell is written as `<outputPath>.html`. Other routes may still be prerendered alongside it, because `autoStaticPathsDiscovery` stays on. The docs' deployment advice is "rewrite all 404s to `/_shell.html`, and allow-list `/_serverFn/*` and `/api/*` to a server", which assumes a server exists.
+
+**Static server functions** (experimental upstream): `staticFunctionMiddleware` from `@tanstack/start-static-server-functions` runs a GET server function at build time and stores its result as a JSON file. Later client calls fetch that file. This is the documented way to keep a loader that calls a server function working on client navigation in a static build. I did not test it.
+
+## 4. Output directory and wrangler `assets` without `main`
+
+- **Output directory.** `getClientOutputDirectory` returns `environments.client.build.outDir`, else `join(build.outDir ?? 'dist', 'client')`. So it is **`dist/client`** for Start alone, `.output/public` with Nitro (Experiment 2), and `dist/client` with the Cloudflare plugin (Experiment 3).
+- **Wrangler.** An assets-only Worker is a Wrangler config with `assets.directory` and no `main` ([Static assets](https://developers.cloudflare.com/workers/static-assets/), [SSG routing](https://developers.cloudflare.com/workers/static-assets/routing/static-site-generation/)). Relevant routing facts from Cloudflare's docs:
+  - `html_handling` defaults to `auto-trailing-slash`: `foo.html` is served at `/foo`, and `foo/index.html` at `/foo/`, with a 307 redirect from `/foo`. Matching the router's no-trailing-slash URLs needs `autoSubfolderIndex: false`, or `html_handling: "drop-trailing-slash"` (not tested).
+  - `not_found_handling: "404-page"` serves the nearest `404.html` with status 404. If there is none, the response is 404 with an empty body.
+  - `not_found_handling: "single-page-application"` serves `/index.html` with status 200 for any unmatched request when there is no Worker script. The `Sec-Fetch-Mode: navigate` distinction applies only when a Worker script exists.
+- **Cloudflare's own TanStack Start guide** ([framework guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/), [source](https://github.com/cloudflare/cloudflare-docs/blob/production/src/content/docs/workers/framework-guides/web-apps/tanstack-start.mdx)) documents "Static prerendering" only on top of the Worker (`main: "@tanstack/react-start/server-entry"` with the Vite plugin): prerendered pages are served as assets, and the Worker serves everything else. It has no assets-only recipe for Start. Its auto-configuration (`wrangler deploy` with no config) assumes the Nitro output (`main: .output/server/index.mjs`, `assets.directory: .output/public`).
+
+## 5. What stops working
+
+Verified in Experiments 1, 1b and 4 unless noted.
+
+| Feature | Static build on Workers assets |
+|---|---|
+| Static routes, linked dynamic pages | Prerendered HTML. They hydrate, and client navigation between them works. |
+| Dynamic pages not reachable by a link | Not generated. 404 (or the shell, see section 6). |
+| Route `loader` with plain client code | Runs at build time for the HTML, then in the browser on client navigation. |
+| Route `loader` calling a server function | Direct load works with the build-time value. On client navigation the call goes to `/_serverFn/<id>`, which returns 404, and the route shows its error component. |
+| `createServerFn` called from an event handler | 404, `Error: Invariant failed`. In SPA mode, 200 with HTML, failing silently. |
+| Server routes (`server.handlers`) | Not prerendered (no component). 404, or the HTML shell in SPA mode. |
+| Request and server-function middleware | Runs only during the build-time prerender. |
+| `cloudflare:workers` bindings, env secrets at request time | None. No Worker exists. |
+| Libraries with `needsServerRuntime: true` (better-auth, tRPC, PostHog's `/ingest` proxy) | Already rejected for `cloudflare-static` by META. Once they support `tanstack-start` they are rejected for it with no extra code. |
+| evlog | Builds. It runs only at prerender time, so it is inert, as it is on Next.js `cloudflare-static` today (Experiment 5). |
+
+Development is a trap here, and it is not specific to Start: `vite dev` runs a real SSR server, so server functions and server routes work locally and only fail after the static build. On Next.js, `output: 'export'` makes `next build` fail on unsupported server features. Start has no equivalent guard: the static build succeeds with a server route and a server function present (Experiment 1).
+
 ## 6. Experiments (local only, no real deploy)
 
 Setup: `create-faster startstatic --app startstatic:tanstack-start:shadcn,tanstack-query --pm bun` from this branch's CLI (`main` at `f7d2b0b`), installed `@tanstack/react-start 1.168.60` (npm `latest` on 2026-10-08), `@tanstack/start-plugin-core 1.171.49`, `vite 8.3.4`, `wrangler 4.149.0` (npm `latest`, inside the repo's `^4.127.1` range). Added test routes: `/about` (static), `/posts/$id` (dynamic, linked from `/` as `/posts/1`), `/time` (loader that calls a `createServerFn`, plus a button calling it again), `/api/hello` (server route).
