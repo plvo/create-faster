@@ -1,6 +1,6 @@
 # TanStack Start parity research
 
-Condensed findings of the TanStack Start parity research: map [#170](https://github.com/plvo/create-faster/issues/170), research tickets [#171](https://github.com/plvo/create-faster/issues/171) to [#178](https://github.com/plvo/create-faster/issues/178), decision tickets [#179](https://github.com/plvo/create-faster/issues/179) to [#186](https://github.com/plvo/create-faster/issues/186).
+Condensed findings of the TanStack Start parity research: map [#170](https://github.com/plvo/create-faster/issues/170), research tickets [#171](https://github.com/plvo/create-faster/issues/171) to [#178](https://github.com/plvo/create-faster/issues/178), decision tickets [#179](https://github.com/plvo/create-faster/issues/179) to [#186](https://github.com/plvo/create-faster/issues/186). Each topic ends with the decisions taken on its decision ticket.
 
 Every check below is local: build, Nitro `start`, `vite preview` in workerd, a browser. **Nothing was deployed.** Reference versions: `@tanstack/react-start` 1.168.60, Vite 8.3.4 (Rolldown), `nitro` 3.0.260903-beta, `@cloudflare/vite-plugin` 1.63.1, wrangler 4.149.0, React 19.3.0. Repo state read: `main` at `f7d2b0b`.
 
@@ -50,12 +50,11 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - A production build evaluates Start's lazily imported router chunk **as global scope**; `vite dev` evaluates it inside the first request. Code that draws randomness or reads a Hyperdrive property at module level passes in dev and fails after build.
 - In a Turborepo, a module-level `db` importing `cloudflare:workers` inside `packages/db` would break any non-Workers consumer of the package (a Node script, Hono off Cloudflare). Build it in the app.
 
-**Open decisions (#184)**
-1. Start + D1: module-level (simpler, no per-request construction) or per-request `getDb()` / `getAuth()` like Next.js (picks up rotated secrets immediately, consistent across stacks)?
-2. If module-level: built in the app (a Start counterpart of `src/lib/server.ts`) or in `packages/db` / `packages/auth`?
-3. Is per-request better-auth and tRPC wiring on Hyperdrive in Spec 1 for Start? If so, does Next.js get it in the same brick so `serverlessConsumersWired` can be set on `postgres` and `mysql` at once? Or does `isSingletonDbSatisfied` keep disabling it?
-4. Does the capability model need a stack dimension? The research says no, unless one stack wires Hyperdrive consumers and the other does not (then a generic per-stack `serverlessConsumersWired`).
-5. Hyperdrive drivers: `new Client` + `connect()` per request (Cloudflare's examples) instead of today's per-request `new Pool({ maxUses: 1 })`? Both work.
+**Decisions (#184)**
+- Start + `cloudflare` + D1 builds `db` and `auth` once at module scope from `import { env } from 'cloudflare:workers'`, not per request.
+- Those instances live in the app, in a Start-specific `src/lib/server.ts`; the packages stay shared factories `createDb(d1)` / `createAuth(db)`, unchanged.
+- postgres/mysql through Hyperdrive with better-auth or tRPC stays blocked on both stacks, out of parity. Per-request wiring is a later, separate brick.
+- The Hyperdrive `pg` template moves from per-request `new Pool({ maxUses: 1 })` to Cloudflare's per-request `new Client()` + `connect()`, in a separate small PR that also touches Next.js.
 
 ### 3.2 tRPC (#178, decision #186, depends on #184)
 
@@ -79,13 +78,12 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - Memoize the **promise**, not the value, so concurrent loaders share one session lookup.
 - The Next.js `server.tsx` does not memoize either: a page prefetching three procedures runs `getSession` three times.
 
-**Open decisions (#186)**
-1. What does `trpc` generate on Start: the isomorphic client, the per-request router context `{ queryClient, trpc }`, the `/api/trpc/$` route, loader prefetching, an example route matching Next.js?
-2. Must `trpc` on Start **require** `tanstack-query`? Without it there is no SSR cache path, and the official add-on depends on it.
-3. Gating of Next-only pieces (`server-only`, `next/headers` in `init.ts`): which helper or suffix? Align the single-repo `init.ts` on the explicit `{ headers }` signature for both stacks, or add `init.ts.tanstack-start.hbs`?
-4. Fix the Next.js `server.tsx` context memoization in the same brick, or leave Next.js untouched in Spec 1?
-5. Prefetch convention: `ensureQueryData` in the `loader` (blocks navigation) or unawaited `prefetchQuery` plus `useSuspenseQuery` (streams)?
-6. Sharing the memoized session with better-auth's `getSession`: a `WeakMap` keyed by `getRequest()` (serves both) or the `getRouter()` closure (tRPC only)?
+**Decisions (#186)**
+- Same as Next.js: `trpc` does not require `tanstack-query`. Without it: router, API route and vanilla client. With it, gated by `hasLibrary "tanstack-query"`: `localLink` for SSR, a per-request `QueryClient` and tRPC proxy in `getRouter()`, `setupRouterSsrQueryIntegration`.
+- The repeated per-procedure session lookup in the Next.js `server.tsx` is fixed with React `cache()`, in a separate small PR.
+- One explicit `createTRPCContext(opts: { headers: Headers })` signature for both stacks and both repo types: the single repo aligns on the Turborepo shape, Next.js callers pass headers, no `next/headers` in `init.ts`.
+- Prefetch streams, like Next.js: unawaited `prefetchQuery` in the loader plus `useSuspenseQuery`. No demo page, only the wiring; the pattern is documented in the generated `__agent.md`.
+- A per-request session cache (`WeakMap<Request, Promise<Session>>`) is shared by better-auth's `getSession` server function and the tRPC context, and documented in the generated project. To verify at implementation: both call sites see the same `Request` object during SSR.
 
 ### 3.3 evlog (#176, decision #183)
 
@@ -111,13 +109,12 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - `log.fork()` is unavailable on Nitro ([PR #697](https://github.com/evloghq/evlog/pull/697)) as through `withEvlog`.
 - Application code reads the logger differently: `useRequest().context.log` on Nitro, `context.log` (or a local `useLogger()`) on Workers.
 
-**Open decisions (#183)**
-1. Is evlog supported on Start + `cloudflare`? If not, which generic META rule disables it with a reason in the prompt (as `getCategoryOptionUnavailability` does)?
-2. If yes: `src/server.ts` with `withEvlog` (stable, Cloudflare fields, owns `main`) or a global middleware on the beta toolkit (keeps the default entry)?
-3. Expose a project-local `useLogger()` (`AsyncLocalStorage`, `nodejs_compat`) or only `context.log`?
-4. Accept that SSR loader and RPC server function errors are missing from the event, or add a server function middleware?
-5. Make library templates honour `deploymentSkip`/`deploymentPath` (generic resolver change), or move evlog's Nitro wiring into the stack templates?
-6. One error middleware template for both runtimes, or split by `has "deployment" "cloudflare"`?
+**Decisions (#183)**
+- On `cloudflare`, a custom `src/server.ts` wraps Start's `handler.fetch` with `withEvlog` from `evlog/workers`; `wrangler.jsonc` `main` points to it.
+- A project-local `useLogger()` through `AsyncLocalStorage` on `cloudflare` (`nodejs_compat`), same API as Next.js. The Nitro path is unchanged.
+- A global server function middleware (`functionMiddleware` in `createStart`) logs errors into the wide event on both runtimes. To verify: it catches SSR loader and RPC server function errors on Nitro and Workers.
+- Generic resolver change: `deploymentSkip` and `deploymentPath` are honoured for all templates (library and project addons), in a shared operators brick delivered first. evlog's `nitro.config.ts` gets `deploymentSkip: [cloudflare, cloudflare-static]`.
+- One local error middleware replaces `evlogErrorHandler` on both runtimes. To verify: logger access under Nitro; if it fails, fall back to a `has "deployment"` condition in the same template.
 
 ### 3.4 terraform-aws (#177, decision #185)
 
@@ -140,15 +137,11 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 **Pitfalls**
 - Buffered responses are capped at 6 MB each: inlined assets suit a starter, not large media.
 
-**Open decisions (#185)**
-1. Coverage in Spec 1: same as Next.js (the skeleton, docs only), a reduced scope, or disabled through a generic META rule until a real deploy validates it?
-2. If real compute: Next.js too (OpenNext on Lambda is far heavier) or accepted asymmetry? In the generic deployment (`{{#each apps}}` in `infra/main.tf`, which also changes hono and node output) or in a Start blueprint?
-3. Assets: shape A (inline) or B (S3 + CloudFront + OAC)?
-4. Preset and `start`: a separate deploy script (`NITRO_PRESET=aws-lambda vite build`) or a deployment-conditional `vite.config.ts`, accepting that `start` breaks?
-5. Front door: API Gateway HTTP API (the blueprint module) or a function URL (fewer resources, streaming-capable)?
-6. Runtime and memory: `nodejs22.x`/256 MB like the blueprint, or `nodejs24.x`/1024 MB like SST?
-7. Env and secrets to Lambda: `environment_variables` from tfvars, SSM Parameter Store, Secrets Manager, or left to the user?
-8. The `main.tf` docs bug and the blueprint module-format risk (section 5): separate tickets?
+**Decisions (#185)**
+- Parity is already met: the skeleton only, nothing more is generated.
+- Document how Start deploys on Lambda (Nitro `aws-lambda` preset).
+- Fix the docs listing a never-generated `infra/main.tf`, and check the `lambda-terraform-aws` module-format risk, in separate small PRs.
+- Real per-app compute is a later effort, for all stacks.
 
 ### 3.5 PostHog (#174, decision #181)
 
@@ -174,17 +167,17 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - A real deploy and real ingestion; `vite dev`; 64 MB bodies (session recordings); the `getRequestIP` fallback on workerd; a template filename containing `$` through the CLI; server capture delivery.
 - That evlog's root-route middleware logs every `/ingest` request (inferred from `handleServerRoutes`).
 
-**Open decisions (#181)**
-1. Env naming on Start: `VITE_POSTHOG_PROJECT_TOKEN` through a generic `EnvVar.stacks`, a neutral server-side name returned to the client at runtime, or Vite `envPrefix` accepting `NEXT_PUBLIC_`?
-2. Provider placement: a library-owned component rendered from `___root.tsx.hbs` under `hasLibrary "posthog"` (the evlog pattern), or inline in the root template?
-3. Keep `/ingest` out of evlog's wide events (Next.js excludes it from middleware)? Through a path check in the generated middleware or evlog's route options?
-4. Cache `/static/*` and `/array/*` under `cloudflare` (`caches.default`, as PostHog's Cloudflare proxy does), or one identical file for both runtimes?
-5. Region: US hardcoded like Next.js, or an EU choice for both stacks (separate ticket)?
-6. Confirm server-side capture stays out of Spec 1.
+**Decisions (#181)**
+- `VITE_POSTHOG_PROJECT_TOKEN` through a new generic `EnvVar.stacks` operator, in the operators brick.
+- The provider is a library component rendered in the root route under `hasLibrary "posthog"`.
+- `/ingest` is not excluded from evlog.
+- One proxy file for both runtimes, no `caches.default`.
+- US region hardcoded.
+- No server-side capture.
 
 ### 3.6 Static Cloudflare hosting (#175, decision #182)
 
-**Answer.** Full prerender by Start alone, without Nitro or `@cloudflare/vite-plugin`: `tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })`, served from `dist/client` by the same assets-only `wrangler.jsonc` as Next.js (no `main`, `not_found_handling: "404-page"`). Server routes and server functions return 404. The SPA shell stays documented only. The 404 page is open.
+**Answer.** Full prerender by Start alone, without Nitro or `@cloudflare/vite-plugin`: `tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })`, served from `dist/client` by the same assets-only `wrangler.jsonc` as Next.js (no `main`, `not_found_handling: "404-page"`). Server routes and server functions return 404. The SPA shell stays documented only. Start cannot prerender a not-found response, so the 404 page needs a workaround.
 
 **Verified facts** (build, typecheck, `wrangler deploy --dry-run`, `wrangler dev` with a browser)
 - Next.js today: `require: { stacks: ['nextjs'] }`, `providesServerRuntime: false`, `wrangler.jsonc.nextjs.hbs` (`assets.directory: "out"`, no `main`), `output: 'export'` + `images.unoptimized`, `proxy.ts` skipped by `deploymentSkip`.
@@ -205,15 +198,15 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - `require.stacks` means "at least one app": a Next.js + Start Turborepo already accepts `cloudflare-static`, and the Start app silently gets no `wrangler.jsonc` and no scripts.
 - 404 workaround through the SPA shell written to `404.html` needs `maskPath: '/?shell'` (undocumented upstream): mask `/` prevents `index.html` from being written, and a mask matching no route fails the build.
 
-**Open decisions (#182)**
-1. Full prerender or SPA shell, and how META says it without branching on a stack in core code (research answer: full prerender, data and templates only).
-2. The 404 page: (a) a `/404` route plus a root `notFoundComponent` (renders correctly, React #418 on unknown URLs, `/404` reachable with 200); (b) the SPA shell as `404.html` through `/?shell` (also renders uncrawled dynamic pages, same #418); (c) no `404.html`. Open an upstream issue first?
-3. `autoSubfolderIndex: false`, or folder indexes plus `drop-trailing-slash`?
-4. Dynamic routes: is "only what is linked gets built" enough, or show `pages: [...]` / `prerender.filter`?
-5. Server functions in a static app: document the limits only, or show `staticFunctionMiddleware`?
-6. Confirm the SPA shell stays documented only.
-7. evlog on `cloudflare-static`: allowed and inert, or a META constraint (which would also change Next.js)?
-8. `require.stacks`: keep "at least one app", or introduce an "every web app" semantic?
+**Decisions (#182)**
+- Full prerender.
+- 404 through a prerendered `/404` route plus the root `notFoundComponent`, accepting React hydration warning #418 on unknown URLs.
+- `autoSubfolderIndex: false`.
+- Only linked pages are generated; `pages` is documented.
+- Server function limits are documented; no `staticFunctionMiddleware`.
+- SPA mode stays out of the CLI.
+- evlog stays allowed.
+- `require.stacks` unchanged ("at least one app").
 
 ### 3.7 Theme switching (#172, decision #179)
 
@@ -236,15 +229,14 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - `next-themes` 0.4.6 dates from March 2025: usable, but upstream fixes are unlikely to land fast.
 - shadcn's `components.json` writes `"rsc": true` for every stack: inaccurate, harmless on Start.
 
-**Open decisions (#179)**
-1. Extend `next-themes` (recommended) or generate shadcn's `ScriptOnce` provider on Start? Renaming the `next-themes` id would break `--app` flags and the recreate command; any compatibility layer needs explicit approval.
-2. Keep the id and only make the hint stack-neutral, or change the label too?
-3. Provider inline in `___root.tsx.hbs`, or a Start `src/components/app-providers.tsx` (holding only the theme provider today)?
-4. Generate a mode toggle on both stacks (shadcn only, with `dropdown-menu`), or keep parity with Next.js, which has none?
-5. Fix the Next.js `AppProviders` bug (section 5) in Spec 1, or track it separately?
-6. `<html lang="en" suppressHydrationWarning>` unconditional on Start, or only with `next-themes`?
-7. Add `disableTransitionOnChange` on both stacks?
-8. Keep `next-themes` and `shadcn` independent, or make `next-themes` require `shadcn`?
+**Decisions (#179)**
+- Keep and extend the `next-themes` library to Start (it is framework-agnostic); no rename of the id or the label.
+- Provider inline in `___root.tsx.hbs`.
+- No toggle generated.
+- The Start shell always renders `<html lang="en" suppressHydrationWarning>`.
+- No `disableTransitionOnChange`.
+- No `shadcn` requirement.
+- The Next.js `AppProviders` never rendered by `layout.tsx.hbs` is fixed in a separate small PR.
 
 ### 3.8 MDX (#173, decision #180)
 
@@ -269,25 +261,26 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 - The `/hello/world` link in `home.mdx` fails the prerender under `@cloudflare/vite-plugin` (exit 1; under Nitro only an `unhandledRejection`, exit 0).
 - Prerender is not on by default in the generated Start app.
 
-**Open decisions (#180)**
-1. Confirm `@mdx-js/rollup` (+ remark plugins) over fumadocs-mdx. What does the library generate: config, content location, example route?
-2. Eager or lazy glob?
-3. Start route `/mdx/{-$slug}`; move Next.js to the same shape (`mdx/[[...slug]]`) in the same spec, fixing its `/mdx` 404 and root-level catch-all?
-4. Replace the `/hello/world` link (for example with `/mdx/cool`)?
-5. Keep both Next.js pipelines, or move the Next.js example to build-time compilation (one model, no request-time `fs`)?
-6. Frontmatter: align both stacks on real YAML?
-7. Does the Start `mdx` library turn on `prerender`, or stay SSR?
-8. A dedicated ticket for opennextjs-cloudflare#1355?
+**Decisions (#180)**
+- `@mdx-js/rollup` with `remark-frontmatter` + `remark-mdx-frontmatter`.
+- Lazy `import.meta.glob`, one chunk per document.
+- Start route `/mdx/{-$slug}`.
+- The Next.js `/mdx` 404 is fixed in a separate small PR.
+- Replace the `/hello/world` link in `home.mdx`.
+- Next.js keeps its two pipelines, untouched.
+- YAML frontmatter on Start.
+- SSR by default, no prerender.
+- No ticket for opennextjs-cloudflare#1355.
 
 ## 4. Generic operators to add
 
 | Operator | What it does | Needed by |
 |---|---|---|
 | `$when` negation accepting a list | `{ deployment: { not: ['cloudflare', 'cloudflare-static'] } }` drops `nitro` and the `start` script outside Nitro. Settled in #170; the list form comes from #175. `$when` already resolves inside `scripts`. | Cloudflare runtime (#170), static hosting (#175) |
-| `deploymentSkip` / `deploymentPath` honoured for library templates | `resolveTemplatesForLibrary` ignores both today (only `resolveTemplatesForStack` honours them). Lets evlog's `nitro.config.ts.tanstack-start.hbs` be skipped under `cloudflare` and `cloudflare-static`. Alternative: move evlog's Nitro wiring into the stack templates. | evlog (#176), static hosting (#175) |
-| `EnvVar.stacks` | Optional per-stack filter applied per app in `env-generator.ts` for library envs, so Start gets `VITE_POSTHOG_PROJECT_TOKEN` and Next.js keeps `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`. `$when` does not fit: not applied to envs, and its `stack` key matches the whole project, not the app. | PostHog (#174) |
-| Per-stack `serverlessConsumersWired` | Only if one stack wires Hyperdrive consumers and the other does not. Not needed today. | db access (#171) |
-| "Every web app" require key | Only if `require.stacks` ("at least one app") must become strict. To decide. | static hosting (#175) |
+| `deploymentSkip` / `deploymentPath` honoured for all templates | Library and project addon templates honour both, as stack templates already do (`resolveTemplatesForLibrary` ignores them today). Decided in #183, in the shared operators brick delivered first. evlog's `nitro.config.ts` gets `deploymentSkip: [cloudflare, cloudflare-static]`. | evlog (#176), static hosting (#175) |
+| `EnvVar.stacks` | Optional per-stack filter applied per app in `env-generator.ts` for library envs, so Start gets `VITE_POSTHOG_PROJECT_TOKEN` and Next.js keeps `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`. `$when` does not fit: not applied to envs, and its `stack` key matches the whole project, not the app. Decided in #181, in the operators brick. | PostHog (#174) |
+| Per-stack `serverlessConsumersWired` | Not added: Hyperdrive with better-auth or tRPC stays blocked on both stacks (#184). | db access (#171) |
+| "Every web app" require key | Not added: `require.stacks` stays "at least one app" (#182). | static hosting (#175) |
 
 Everything else uses existing operators: `support.stacks`, `stackPackageJson`, the `.<stack>.hbs` suffix, `hasLibrary` / `has` (theme, MDX, PostHog, tRPC, and a `wrangler.jsonc` whose `main` depends on evlog).
 
@@ -300,6 +293,14 @@ Everything else uses existing operators: `support.stacks`, `stackPackageJson`, t
 - **terraform-aws docs list a never-generated `infra/main.tf`.** Verified. `main.tf.hbs` is empty and `template-processor.ts` skips blank output, while `terraform-aws.mdx` lists the file. (#177)
 - **Possible module-format issue in the `lambda-terraform-aws` blueprint.** Not verified. `bun build src/index.ts --outfile dist/index.js --target node` is zipped without a `package.json`; Lambda treats `.js` as CommonJS unless `"type": "module"` is set, so if Bun emits ESM by default the handlers would fail to load. (#177)
 - **Unused `@opennextjs/cloudflare` in the cloudflare-fullstack `api` package.** Tracked in #169.
+
+**Follow-up fixes (separate PRs)**
+- Next.js `AppProviders` not rendered by `layout.tsx.hbs` (#179).
+- Next.js tRPC `server.tsx`: memoize the session lookup with React `cache()` (#186).
+- Hyperdrive `pg`: per-request `new Client()` + `connect()` instead of `new Pool({ maxUses: 1 })`, on both stacks (#184).
+- Next.js mdx example `/mdx` 404 (#180).
+- terraform-aws docs listing `infra/main.tf` (#185).
+- `lambda-terraform-aws` module-format check (#185).
 
 ## 6. Environment pitfalls for implementers
 
