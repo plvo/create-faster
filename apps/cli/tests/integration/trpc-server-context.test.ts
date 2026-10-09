@@ -82,6 +82,14 @@ const CASES: ContextCase[] = [
     usesOptionsProxy: false,
   },
   {
+    name: 'turborepo, caller, d1 without better-auth',
+    libraries: 'trpc',
+    extraApps: HONO_APP,
+    extraFlags: D1_CLOUDFLARE,
+    serverPath: 'apps/web/src/trpc/server.tsx',
+    usesOptionsProxy: false,
+  },
+  {
     name: 'turborepo, options proxy, d1',
     libraries: 'trpc,tanstack-query,better-auth',
     extraApps: HONO_APP,
@@ -123,8 +131,11 @@ describe('tRPC server context is built once per request', () => {
 
       const server = await readTextFile(join(tempDir, projectName, testCase.serverPath));
 
-      expect(server).toMatch(/^const getTRPCContext = cache\(/m);
+      expect(server.match(/^const getTRPCContext = cache\(/gm)).toHaveLength(1);
       expect(server.match(/import \{[^}]*\bcache\b[^}]*\} from 'react';/g)).toHaveLength(1);
+
+      const importsHeaders = server.includes("import { headers } from 'next/headers';");
+      expect(server.includes('await headers()')).toBe(importsHeaders);
 
       if (testCase.usesOptionsProxy) {
         expect(server).toContain('ctx: getTRPCContext,');
