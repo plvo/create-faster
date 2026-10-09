@@ -83,10 +83,10 @@ function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): bo
   }
 
   const raw = ctx.project[key as keyof ProjectContext];
-  if (!raw) return false;
+  const actuals = Array.isArray(raw) ? raw : raw ? [raw as string] : [];
+  if (actuals.length === 0) return false;
   if (expected === true) return true;
 
-  const actuals = Array.isArray(raw) ? raw : [raw as string];
   return includesAny(actuals, expected as string | string[]);
 }
 

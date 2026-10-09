@@ -304,6 +304,15 @@ describe('not matcher', () => {
     expect(resolveValues([noHusky], makeCtx({ tooling: ['other'] }))).toEqual(['no-husky']);
   });
 
+  test('treats an empty multi-select category as unselected', () => {
+    const noTooling = $when({ tooling: { not: true } }, 'no-tooling');
+    const anyTooling = $when({ tooling: true }, 'some-tooling');
+    expect(resolveValues([noTooling], makeCtx())).toEqual(['no-tooling']);
+    expect(resolveValues([noTooling], makeCtx({ tooling: ['husky'] }))).toEqual([]);
+    expect(resolveValues([anyTooling], makeCtx())).toEqual([]);
+    expect(resolveValues([anyTooling], makeCtx({ tooling: ['husky'] }))).toEqual(['some-tooling']);
+  });
+
   test('negates the repo key', () => {
     const notTurbo = $when({ repo: { not: 'turborepo' } }, 'single-only');
     expect(resolveValues([notTurbo], makeCtx())).toEqual(['single-only']);
