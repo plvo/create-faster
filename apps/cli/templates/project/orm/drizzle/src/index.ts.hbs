@@ -17,17 +17,15 @@ export * from './types';
 {{#if (and (or (has "database" "postgres") (has "database" "mysql")) (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import { Client } from 'pg';
 import * as schema from './schema';
 
-export function createDb(hyperdrive: Hyperdrive) {
-  const pool = new Pool({
-    connectionString: hyperdrive.connectionString,
-    maxUses: 1,
-  });
-  return drizzle({ client: pool, schema });
+export async function createDb(hyperdrive: Hyperdrive) {
+  const client = new Client({ connectionString: hyperdrive.connectionString });
+  await client.connect();
+  return drizzle({ client, schema });
 }
-export type Database = ReturnType<typeof createDb>;
+export type Database = Awaited<ReturnType<typeof createDb>>;
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
