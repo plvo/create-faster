@@ -32,16 +32,20 @@ import { getDb } from '@/lib/server';
 //            will return the same client during the same request.
 const getQueryClient = cache(makeQueryClient);
 
-export const trpc = createTRPCOptionsProxy({
 {{#if (and (has "database" "d1") project.orm)}}
-  ctx: async () => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+const getTRPCContext = cache(async () =>
+  createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+);
 {{else}}
 {{#if (isMono)}}
-  ctx: async () => createTRPCContext({ headers: await headers() }),
+const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
 {{else}}
-  ctx: createTRPCContext,
+const getTRPCContext = cache(createTRPCContext);
 {{/if}}
 {{/if}}
+
+export const trpc = createTRPCOptionsProxy({
+  ctx: getTRPCContext,
   router: appRouter,
   queryClient: getQueryClient,
 });
@@ -63,6 +67,7 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptio
   }
 }
 {{else}}
+import { cache } from 'react';
 {{#if (and (has "database" "d1") project.orm)}}
 {{#if (isMono)}}
 import { headers } from 'next/headers';
@@ -76,22 +81,26 @@ import { createTRPCContext } from '@/trpc/init';
 {{/if}}
 import { getDb } from '@/lib/server';
 
-export const trpc = appRouter.createCaller(async () =>
+const getTRPCContext = cache(async () =>
   createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
 );
+
+export const trpc = appRouter.createCaller(getTRPCContext);
 {{else}}
 {{#if (isMono)}}
 import { headers } from 'next/headers';
 import { appRouter, createTRPCContext } from '@repo/api';
 
-export const trpc = appRouter.createCaller(async () =>
-  createTRPCContext({ headers: await headers() }),
-);
+const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
+
+export const trpc = appRouter.createCaller(getTRPCContext);
 {{else}}
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 
-export const trpc = appRouter.createCaller(createTRPCContext);
+const getTRPCContext = cache(createTRPCContext);
+
+export const trpc = appRouter.createCaller(getTRPCContext);
 {{/if}}
 {{/if}}
 {{/if}}
