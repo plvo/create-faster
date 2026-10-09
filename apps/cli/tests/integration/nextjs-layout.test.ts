@@ -43,6 +43,14 @@ describe('Next.js root layout and AppProviders', () => {
     expect(countOccurrences(layout, '<AppProviders>')).toBe(1);
   });
 
+  test('renders the devtools inside AppProviders so the query client is available', async () => {
+    const layout = await generateLayout('layout-devtools', [
+      '--app',
+      'layout-devtools:nextjs:tanstack-query,tanstack-devtools',
+    ]);
+    expect(layout).toMatch(/<AppProviders>[\s\S]*<TanStackDevtools[\s\S]*<\/AppProviders>/);
+  });
+
   test('does not import or render AppProviders when no library provides a provider', async () => {
     const layout = await generateLayout('layout-plain', ['--app', 'layout-plain:nextjs:shadcn']);
     expect(layout).not.toContain('AppProviders');

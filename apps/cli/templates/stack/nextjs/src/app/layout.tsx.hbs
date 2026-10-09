@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import localFont from 'next/font/local';
+{{#if (or (hasLibrary "next-themes") (hasLibrary "tanstack-query"))}}
+import { AppProviders } from '@/components/app-providers';
+{{/if}}
 {{#if (hasLibrary "tanstack-devtools")}}
 import { TanStackDevtools } from '@tanstack/react-devtools';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
@@ -34,6 +37,9 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+          {{#if (or (hasLibrary "next-themes") (hasLibrary "tanstack-query"))}}
+          <AppProviders>
+          {{/if}}
           <main>{children}</main>
           {{#if (hasLibrary "tanstack-devtools")}}
           {process.env.NODE_ENV === 'development' && (
@@ -43,6 +49,9 @@ export default function RootLayout({
               plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
             />
           )}
+          {{/if}}
+          {{#if (or (hasLibrary "next-themes") (hasLibrary "tanstack-query"))}}
+          </AppProviders>
           {{/if}}
       </body>
     </html>
