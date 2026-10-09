@@ -215,3 +215,58 @@ describe('nextjs-evlog', () => {
     TIMEOUT_BUILD,
   );
 });
+
+describe('nextjs-providers', () => {
+  let projectDir: string;
+  let installResult: CommandResult;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'nextjs-providers',
+        '--app',
+        'nextjs-providers:nextjs:next-themes,tanstack-query,tanstack-devtools',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+
+    projectDir = join(tempDir, 'nextjs-providers');
+    installResult = await runCommand(['bun', 'install'], projectDir);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'installs dependencies',
+    () => {
+      expect(installResult.exitCode).toBe(0);
+    },
+    TIMEOUT_INSTALL,
+  );
+
+  test(
+    'type-checks',
+    async () => {
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_TYPECHECK,
+  );
+
+  test(
+    'builds',
+    async () => {
+      const result = await runCommand(['bun', 'run', 'build'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_BUILD,
+  );
+});

@@ -31,6 +31,7 @@ interface AppProvidersProps {
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
+  {{#if (or (hasLibrary "next-themes") (hasLibrary "tanstack-query"))}}
   return (
     {{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
     <TRPCReactProvider>
@@ -54,4 +55,7 @@ export function AppProviders({ children }: AppProvidersProps) {
     {{/if}}
     {{/if}}
   );
+  {{else}}
+  return children;
+  {{/if}}
 }
