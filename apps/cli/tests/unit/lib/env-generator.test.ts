@@ -302,10 +302,12 @@ describe('EnvVar.stacks filter', () => {
     };
     const files = withEnvs(postgres, STACK_ENVS, () => collectEnvFiles(ctx));
 
+    const content = contentOf(files, '.env.example');
+
     expect(files.map((f) => f.destination)).toEqual(['.env.example']);
-    expect(files[0].content).toContain('VITE_TOKEN=vite-token');
-    expect(files[0].content).toContain('SHARED_TOKEN=shared-token');
-    expect(files[0].content).not.toContain('NEXT_PUBLIC_TOKEN');
+    expect(content).toContain('VITE_TOKEN=vite-token');
+    expect(content).toContain('SHARED_TOKEN=shared-token');
+    expect(content).not.toContain('NEXT_PUBLIC_TOKEN');
   });
 
   test('collectEnvGroups lists the filtered keys per app', () => {
