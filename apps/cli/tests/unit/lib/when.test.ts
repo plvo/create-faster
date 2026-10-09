@@ -267,3 +267,87 @@ describe('true value in ProjectContext matcher', () => {
     expect(resolveConditionals([item], singleWithOrm)).toEqual([]);
   });
 });
+
+function resolveValues(items: ReturnType<typeof $when<string>>[], ctx: TemplateContext): string[] {
+  return resolveConditionals(items, ctx) as unknown as string[];
+}
+
+describe('not matcher', () => {
+  const item = $when({ deployment: { not: 'cloudflare' } }, 'non-cloudflare-dep');
+
+  test('excludes the negated value and keeps any other', () => {
+    expect(resolveValues([item], makeCtx({ deployment: 'cloudflare' }))).toEqual([]);
+    expect(resolveValues([item], makeCtx({ deployment: 'terraform-aws' }))).toEqual(['non-cloudflare-dep']);
+  });
+
+  test('is true when the category has no selection', () => {
+    expect(resolveValues([item], makeCtx())).toEqual(['non-cloudflare-dep']);
+  });
+
+  test('list form excludes every listed value', () => {
+    const listItem = $when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, 'server-dep');
+    expect(resolveValues([listItem], makeCtx({ deployment: 'cloudflare' }))).toEqual([]);
+    expect(resolveValues([listItem], makeCtx({ deployment: 'cloudflare-static' }))).toEqual([]);
+    expect(resolveValues([listItem], makeCtx({ deployment: 'terraform-aws' }))).toEqual(['server-dep']);
+    expect(resolveValues([listItem], makeCtx())).toEqual(['server-dep']);
+  });
+
+  test('not: true matches only when the category is unselected', () => {
+    const unselected = $when({ orm: { not: true } }, 'no-orm');
+    expect(resolveValues([unselected], makeCtx({ orm: 'drizzle' }))).toEqual([]);
+    expect(resolveValues([unselected], makeCtx())).toEqual(['no-orm']);
+  });
+
+  test('negates against every value of a multi-select category', () => {
+    const noHusky = $when({ tooling: { not: 'husky' } }, 'no-husky');
+    expect(resolveValues([noHusky], makeCtx({ tooling: ['husky', 'other'] }))).toEqual([]);
+    expect(resolveValues([noHusky], makeCtx({ tooling: ['other'] }))).toEqual(['no-husky']);
+  });
+
+  test('treats an empty multi-select category as unselected', () => {
+    const noTooling = $when({ tooling: { not: true } }, 'no-tooling');
+    const anyTooling = $when({ tooling: true }, 'some-tooling');
+    expect(resolveValues([noTooling], makeCtx())).toEqual(['no-tooling']);
+    expect(resolveValues([noTooling], makeCtx({ tooling: ['husky'] }))).toEqual([]);
+    expect(resolveValues([anyTooling], makeCtx())).toEqual([]);
+    expect(resolveValues([anyTooling], makeCtx({ tooling: ['husky'] }))).toEqual(['some-tooling']);
+  });
+
+  test('negates the repo key', () => {
+    const notTurbo = $when({ repo: { not: 'turborepo' } }, 'single-only');
+    expect(resolveValues([notTurbo], makeCtx())).toEqual(['single-only']);
+    expect(resolveValues([notTurbo], { ...makeCtx(), repo: 'turborepo' })).toEqual([]);
+  });
+
+  test('negates the stack key: true only when no app uses a listed stack', () => {
+    const noNextjs = $when({ stack: { not: 'nextjs' } }, 'no-nextjs');
+    const mixed: TemplateContext = {
+      ...makeCtx(),
+      repo: 'turborepo',
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: [] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
+      ],
+    };
+    const honoOnly: TemplateContext = { ...mixed, apps: [{ appName: 'api', stackName: 'hono', libraries: [] }] };
+    expect(resolveValues([noNextjs], mixed)).toEqual([]);
+    expect(resolveValues([noNextjs], honoOnly)).toEqual(['no-nextjs']);
+  });
+
+  test('negates the library key: true only when no app has a listed library', () => {
+    const noAuth = $when({ library: { not: ['better-auth'] } }, 'no-auth');
+    const withAuth: TemplateContext = {
+      ...makeCtx(),
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+    };
+    expect(resolveValues([noAuth], withAuth)).toEqual([]);
+    expect(resolveValues([noAuth], makeCtx())).toEqual(['no-auth']);
+  });
+
+  test('combines with a positive condition', () => {
+    const combined = $when({ database: 'postgres', deployment: { not: 'cloudflare' } }, 'pg-direct');
+    expect(resolveValues([combined], makeCtx({ database: 'postgres' }))).toEqual(['pg-direct']);
+    expect(resolveValues([combined], makeCtx({ database: 'postgres', deployment: 'cloudflare' }))).toEqual([]);
+    expect(resolveValues([combined], makeCtx({ deployment: 'terraform-aws' }))).toEqual([]);
+  });
+});

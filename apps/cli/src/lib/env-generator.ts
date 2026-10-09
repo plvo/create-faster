@@ -2,7 +2,7 @@ import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import { resolveAppPort } from '@/lib/utils';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvScope, MetaAddon } from '@/types/meta';
+import type { EnvScope, MetaAddon, StackName } from '@/types/meta';
 
 interface EnvFileOutput {
   destination: string;
@@ -19,6 +19,7 @@ interface CollectedEnv {
   scope: EnvScope;
   source: 'project' | 'library';
   libraryName?: string;
+  stacks?: StackName[];
 }
 
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
@@ -62,7 +63,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
       if (isSelected && addon.envs) {
         for (const env of addon.envs) {
           for (const scope of env.monoScope) {
-            envs.push({ value: env.value, scope, source: 'project' });
+            envs.push({ value: env.value, scope, source: 'project', stacks: env.stacks });
           }
         }
       }
@@ -76,7 +77,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
 
       for (const env of library.envs) {
         for (const scope of env.monoScope) {
-          envs.push({ value: env.value, scope, source: 'library', libraryName });
+          envs.push({ value: env.value, scope, source: 'library', libraryName, stacks: env.stacks });
         }
       }
     }
@@ -87,7 +88,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
     if (blueprint?.envs) {
       for (const env of blueprint.envs) {
         for (const scope of env.monoScope) {
-          envs.push({ value: env.value, scope, source: 'project' });
+          envs.push({ value: env.value, scope, source: 'project', stacks: env.stacks });
         }
       }
     }
@@ -122,18 +123,24 @@ function addToGroup(grouped: Map<string, string[]>, path: string, value: string)
   grouped.get(path)?.push(value);
 }
 
+function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number]): boolean {
+  if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) return false;
+  return !env.stacks || env.stacks.includes(app.stackName);
+}
+
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
   const grouped = new Map<string, string[]>();
 
   for (const env of envs) {
     if (env.scope === 'app') {
       for (const app of ctx.apps) {
-        if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) continue;
+        if (!appAcceptsEnv(env, app)) continue;
         const path = resolveScopeToPath('app', ctx, app.appName);
         if (!path) continue;
         addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
       }
     } else {
+      if (env.stacks && !ctx.apps.some((app) => appAcceptsEnv(env, app))) continue;
       const path = resolveScopeToPath(env.scope, ctx);
       if (!path) continue;
       addToGroup(grouped, path, resolveEnvValue(env.value, ctx));

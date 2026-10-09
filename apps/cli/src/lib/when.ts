@@ -3,14 +3,16 @@ import type { StackName } from '@/types/meta';
 
 const TAG = Symbol('when');
 
+type Negatable<T> = T | { not: T };
+
 type MatchValue = string | string[] | true;
 
 interface WhenItem<T = unknown> {
   [TAG]: true;
-  match: Partial<Record<keyof ProjectContext, MatchValue>> & {
-    stack?: StackName | StackName[];
-    library?: string | string[];
-    repo?: 'single' | 'turborepo';
+  match: Partial<Record<keyof ProjectContext, Negatable<MatchValue>>> & {
+    stack?: Negatable<StackName | StackName[]>;
+    library?: Negatable<string | string[]>;
+    repo?: Negatable<'single' | 'turborepo'>;
   };
   value: T;
 }
@@ -59,39 +61,43 @@ function includesAny(haystack: string[], needles: string | string[]): boolean {
   return arr.some((n) => haystack.includes(n));
 }
 
+function isNegation(expected: unknown): expected is { not: MatchValue } {
+  return !!expected && typeof expected === 'object' && !Array.isArray(expected) && 'not' in expected;
+}
+
+function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): boolean {
+  if (key === 'repo') return ctx.repo === expected;
+
+  if (key === 'stack') {
+    return includesAny(
+      ctx.apps.map((a) => a.stackName),
+      expected as StackName | StackName[],
+    );
+  }
+
+  if (key === 'library') {
+    return includesAny(
+      ctx.apps.flatMap((a) => a.libraries),
+      expected as string | string[],
+    );
+  }
+
+  const raw = ctx.project[key as keyof ProjectContext];
+  const actuals = Array.isArray(raw) ? raw : raw ? [raw as string] : [];
+  if (actuals.length === 0) return false;
+  if (expected === true) return true;
+
+  return includesAny(actuals, expected as string | string[]);
+}
+
 function matches(match: WhenItem['match'], ctx: TemplateContext): boolean {
   for (const [key, expected] of Object.entries(match)) {
     if (expected === undefined) continue;
 
-    if (key === 'repo') {
-      if (ctx.repo !== expected) return false;
-      continue;
-    }
-
-    if (key === 'stack') {
-      const stacks = ctx.apps.map((a) => a.stackName);
-      if (!includesAny(stacks, expected as StackName | StackName[])) return false;
-      continue;
-    }
-
-    if (key === 'library') {
-      const libs = ctx.apps.flatMap((a) => a.libraries);
-      if (!includesAny(libs, expected as string | string[])) return false;
-      continue;
-    }
-
-    // ProjectContext key
-    const raw = ctx.project[key as keyof ProjectContext];
-
-    if (expected === true) {
-      if (!raw) return false;
-      continue;
-    }
-
-    if (!raw) return false;
-
-    const actuals = Array.isArray(raw) ? raw : [raw as string];
-    if (!includesAny(actuals, expected as string | string[])) return false;
+    const satisfied = isNegation(expected)
+      ? !matchesKey(key, expected.not, ctx)
+      : matchesKey(key, expected as MatchValue, ctx);
+    if (!satisfied) return false;
   }
   return true;
 }
