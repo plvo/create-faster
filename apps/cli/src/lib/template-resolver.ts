@@ -83,8 +83,13 @@ function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; on
   }
 }
 
-function resolveTemplatesForStack(stackName: StackName, appName: string, ctx: TemplateContext): TemplateFile[] {
-  const stackDir = join(TEMPLATES_DIR, 'stack', stackName);
+function resolveTemplatesForStack(
+  stackName: StackName,
+  appName: string,
+  ctx: TemplateContext,
+  templatesDir: string,
+): TemplateFile[] {
+  const stackDir = join(templatesDir, 'stack', stackName);
   const files = scanTemplateFiles(stackDir);
   const templates: TemplateFile[] = [];
 
@@ -107,11 +112,12 @@ function resolveTemplatesForLibrary(
   appName: string,
   ctx: TemplateContext,
   stackName: StackName,
+  templatesDir: string,
 ): TemplateFile[] {
   const library = META.libraries[libraryName];
   if (!library) return [];
 
-  const libraryDir = join(TEMPLATES_DIR, 'libraries', libraryName);
+  const libraryDir = join(templatesDir, 'libraries', libraryName);
   const files = scanTemplateFiles(libraryDir);
   const templates: TemplateFile[] = [];
 
@@ -142,11 +148,12 @@ function resolveTemplatesForProjectAddon(
   category: ProjectCategoryName,
   addonName: string,
   ctx: TemplateContext,
+  templatesDir: string,
 ): TemplateFile[] {
   const addon = META.project[category]?.options[addonName];
   if (!addon) return [];
 
-  const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
+  const addonDir = join(templatesDir, 'project', category, addonName);
   const files = scanTemplateFiles(addonDir);
   const templates: TemplateFile[] = [];
 
@@ -178,11 +185,12 @@ function resolveStackSpecificAddonTemplatesForApps(
   addonName: string,
   apps: { appName: string; stackName: StackName }[],
   ctx: TemplateContext,
+  templatesDir: string,
 ): TemplateFile[] {
   const addon = META.project[category]?.options[addonName];
   if (!addon) return [];
 
-  const addonDir = join(TEMPLATES_DIR, 'project', category, addonName);
+  const addonDir = join(templatesDir, 'project', category, addonName);
   const files = scanTemplateFiles(addonDir);
   const templates: TemplateFile[] = [];
 
@@ -206,8 +214,8 @@ function resolveStackSpecificAddonTemplatesForApps(
   return templates;
 }
 
-function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
-  const repoDir = join(TEMPLATES_DIR, 'repo', ctx.repo);
+function resolveTemplatesForRepo(ctx: TemplateContext, templatesDir: string): TemplateFile[] {
+  const repoDir = join(templatesDir, 'repo', ctx.repo);
   const files = scanTemplateFiles(repoDir);
 
   return files.map((file) => {
@@ -217,8 +225,12 @@ function resolveTemplatesForRepo(ctx: TemplateContext): TemplateFile[] {
   });
 }
 
-function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContext): TemplateFile[] {
-  const blueprintDir = join(TEMPLATES_DIR, 'blueprints', blueprintName);
+function resolveTemplatesForBlueprint(
+  blueprintName: string,
+  ctx: TemplateContext,
+  templatesDir: string,
+): TemplateFile[] {
+  const blueprintDir = join(templatesDir, 'blueprints', blueprintName);
   const files = scanTemplateFiles(blueprintDir);
   const templates: TemplateFile[] = [];
 
@@ -252,45 +264,47 @@ function resolveTemplatesForBlueprint(blueprintName: string, ctx: TemplateContex
   return templates;
 }
 
-export function getAllTemplatesForContext(ctx: TemplateContext): TemplateFile[] {
+export function getAllTemplatesForContext(ctx: TemplateContext, templatesDir = TEMPLATES_DIR): TemplateFile[] {
   const templates: TemplateFile[] = [];
 
-  templates.push(...resolveTemplatesForRepo(ctx));
+  templates.push(...resolveTemplatesForRepo(ctx, templatesDir));
 
   for (const app of ctx.apps) {
-    templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx));
+    templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx, templatesDir));
 
     for (const libraryName of app.libraries) {
       const library = META.libraries[libraryName];
       if (library && isLibraryCompatible(library, app.stackName)) {
-        templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName));
+        templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName, templatesDir));
       }
     }
   }
 
   if (ctx.project.database) {
-    templates.push(...resolveTemplatesForProjectAddon('database', ctx.project.database, ctx));
+    templates.push(...resolveTemplatesForProjectAddon('database', ctx.project.database, ctx, templatesDir));
   }
   if (ctx.project.orm) {
-    templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx));
+    templates.push(...resolveTemplatesForProjectAddon('orm', ctx.project.orm, ctx, templatesDir));
   }
   if (ctx.project.deployment) {
-    templates.push(...resolveTemplatesForProjectAddon('deployment', ctx.project.deployment, ctx));
-    templates.push(...resolveStackSpecificAddonTemplatesForApps('deployment', ctx.project.deployment, ctx.apps, ctx));
+    templates.push(...resolveTemplatesForProjectAddon('deployment', ctx.project.deployment, ctx, templatesDir));
+    templates.push(
+      ...resolveStackSpecificAddonTemplatesForApps('deployment', ctx.project.deployment, ctx.apps, ctx, templatesDir),
+    );
   }
   if (ctx.project.linter) {
     const addonNames = resolveAddonNames('linter', ctx.project.linter);
     for (const name of addonNames) {
-      templates.push(...resolveTemplatesForProjectAddon('linter', name, ctx));
-      templates.push(...resolveStackSpecificAddonTemplatesForApps('linter', name, ctx.apps, ctx));
+      templates.push(...resolveTemplatesForProjectAddon('linter', name, ctx, templatesDir));
+      templates.push(...resolveStackSpecificAddonTemplatesForApps('linter', name, ctx.apps, ctx, templatesDir));
     }
   }
   for (const tooling of ctx.project.tooling) {
-    templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx));
+    templates.push(...resolveTemplatesForProjectAddon('tooling', tooling, ctx, templatesDir));
   }
 
   if (ctx.blueprint) {
-    const blueprintTemplates = resolveTemplatesForBlueprint(ctx.blueprint, ctx);
+    const blueprintTemplates = resolveTemplatesForBlueprint(ctx.blueprint, ctx, templatesDir);
     const blueprintDestinations = new Set(blueprintTemplates.map((t) => t.destination));
     const filtered = templates.filter((t) => !blueprintDestinations.has(t.destination));
     return [...filtered, ...blueprintTemplates];
