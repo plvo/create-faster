@@ -51,7 +51,7 @@ Forbidden:
 Required: choice-specific behavior is expressed through **reusable, documented operators** that the core logic applies generically:
 
 - **Handlebars helpers** (`apps/cli/src/lib/handlebars.ts`): `eq`, `ne`, `and`, `or`, `isMono`, `hasLibrary(name)`, `has(category, value)`, `hasContext(key)`, `camelCase`, `raw`, `appPort(name)`. Express conditionals INSIDE templates: `{{#if (has "deployment" "cloudflare")}}…{{/if}}`.
-- **Frontmatter keys** (`TemplateFrontmatter` in `apps/cli/src/types/meta.ts`, applied generically in `template-resolver.ts`): `path`, `mono` (`scope`/`name`/`path`), `only` (`mono|single|no-blueprint`), `deploymentPath` (`Record<deployment, path>` — output path override keyed by deployment, NOT a hardcoded resolver branch), `deploymentSkip` (`deployment[]` — the file is not generated under a listed deployment). Both deployment keys are honored for every template kind (stack, library, project addon, stack-suffixed addon, repo, blueprint). These are the model: a generic key the resolver honors for ANY value.
+- **Frontmatter keys** (`TemplateFrontmatter` in `apps/cli/src/types/meta.ts`, applied generically in `template-resolver.ts`): `path`, `mono` (`scope`/`name`/`path`), `only` (`mono|single|no-blueprint`), `deploymentPath` (`Record<deployment, path>` — output path override keyed by deployment, NOT a hardcoded resolver branch), `deploymentSkip` (`deployment[]` — the file is not generated under a listed deployment). `only` and both deployment keys are honored for every template kind (stack, library, project addon, stack-suffixed addon, repo, blueprint). These are the model: a generic key the resolver honors for ANY value.
 - **META data** (`__meta__.ts`): `support`, `require`, `mono`, `packageJson`, `stackPackageJson`, `deploymentPackageJson` (`Record<deployment, PackageJsonConfig>` — package.json contribution merged generically by `package-json-generator` when `ctx.project.deployment` matches a key; e.g. `postgres` adds `pg-cloudflare` under `cloudflare`), `envs` (`EnvVar`: `value`, `monoScope`, optional `stacks: StackName[]` — when set, the variable is emitted only for apps whose stack is listed; evaluated per app by `env-generator`, so one project can carry `NEXT_PUBLIC_X` on Next.js apps and `VITE_X` on TanStack Start apps; a root/pkg-scoped variable with `stacks` is emitted when at least one app (with the library, for library envs) has a listed stack), category-level and addon-level `require`. Compatibility/dependency rules live here as data, validated generically.
 - **`$when` conditions** (`apps/cli/src/lib/when.ts`, wrap package.json values/array items in `__meta__.ts`): keys `repo`, `stack`, `library` and any `ProjectContext` category (`database`, `orm`, `deployment`, `linter`, `tooling`); value is a string, a list (any-of) or `true` (category has a selection). Every key accepts a negation, `{ not: <value> }`, true when the positive match is false: `$when({ deployment: { not: 'cloudflare' } }, …)` or `$when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, …)`. An unselected category satisfies any `not` (`{ not: 'cloudflare' }` is true when no deployment is chosen; `{ not: true }` is true only when the category is unselected); `stack`/`library` follow their any-app semantics (`{ not: 'nextjs' }` is true only when no app uses nextjs). All keys of one `$when` must hold.
 - **package.json script placeholders** (resolved generically by `resolveScriptPlaceholders` in `addon-utils.ts`, applied to every generated package.json's scripts): `{{workspaceRoot}}` (repo-relative path to the monorepo root — `.` single, `../..` turbo) and `{{deployAppDir}}` (directory name of the app that consumes the deployment binding — the deployment's `stackPackageJson` stacks, preferring an app with a `needsSingletonDb` library; resolved by `resolveDeployAppDir`). Author topology-dependent script strings with these tokens in META; combine with `deploymentPackageJson` + `$when` for repo/deployment splits — never compute app paths in the generator. e.g. the d1 turbo migrate script is `wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler`.
@@ -113,7 +113,7 @@ Single source of truth for all stacks, libraries, and project addons:
 - `StackName`: `'nextjs' | 'expo' | 'hono' | 'tanstack-start'`
 - `MonoScope`: `'app' | 'pkg' | 'root'`
 - `EnvScope`: `'app' | 'root' | { pkg: string }` — env var target location
-- `EnvVar`: `{ value: string; monoScope: EnvScope[] }` — env variable declaration
+- `EnvVar`: `{ value: string; monoScope: EnvScope[]; stacks?: StackName[] }` — env variable declaration; `stacks` limits it to apps on a listed stack
 - `MetaAddon`: Addon metadata (label, hint, category, support, require, mono, packageJson, envs)
 - `MetaProjectCategory`: Project category with prompt config and options
 - `MetaBlueprint`: Blueprint metadata (label, hint, category, context, packageJson, envs)
@@ -161,7 +161,7 @@ Summary and CLI command generation:
 
 ### lib/template-resolver.ts
 - Scans templates with fast-glob
-- `resolveAddonDestination()`: Path resolution using frontmatter + META mono config
+- `resolveDestination()`: Path resolution using frontmatter + META mono config
 - `parseStackSuffix()`: Detects `file.ext.{stack}.hbs` naming convention
 - `resolveDestination()` applies the generic frontmatter `deploymentPath` override (e.g. Next.js proxy.ts → middleware.ts on Cloudflare) for every template kind; `isSkippedForDeployment()` applies `deploymentSkip` likewise
 - Maps source → destination paths (app/pkg/root scope)
@@ -188,7 +188,7 @@ Programmatic `.env.example` file generation:
 - `collectEnvGroups(ctx)`: Returns `{ path, vars[] }[]` for README rendering
 - Resolves `{{projectName}}` and `{{appPort}}` placeholders in env values
 - Scope resolution: `{ pkg: 'db' }` → `packages/db/.env.example`, `'app'` → `apps/{appName}/.env.example`
-- Library envs: only apps with that library. Project addon envs: all apps.
+- Library envs: only apps with that library. Project addon envs: all apps. An env with `stacks` is further limited to apps on a listed stack (root/pkg-scoped: emitted when at least one app, with the library for library envs, qualifies).
 - Single repos: all scopes collapse to root `.env.example`, deduped by key
 
 ### lib/post-generation.ts

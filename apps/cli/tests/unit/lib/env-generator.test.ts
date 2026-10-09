@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { collectEnvFiles, collectEnvGroups } from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvVar, MetaAddon } from '@/types/meta';
+import type { EnvVar, MetaAddon, MetaBlueprint } from '@/types/meta';
 
 function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext {
   return {
@@ -224,7 +224,7 @@ describe('EnvVar.stacks filter', () => {
     { value: 'SHARED_TOKEN=shared-token', monoScope: ['app'] },
   ];
 
-  function withEnvs<T>(addon: MetaAddon, envs: EnvVar[], run: () => T): T {
+  function withEnvs<T>(addon: { envs?: EnvVar[] }, envs: EnvVar[], run: () => T): T {
     const previous = addon.envs;
     addon.envs = envs;
     try {
@@ -329,5 +329,82 @@ describe('EnvVar.stacks filter', () => {
 
     expect(contentOf(withNext, '.env.example')).toContain('ROOT_NEXT=1');
     expect(contentOf(withoutNext, '.env.example')).not.toContain('ROOT_NEXT');
+  });
+
+  test('pkg scope variable follows the same any-app stack rule', () => {
+    const pkgEnv: EnvVar[] = [{ value: 'DB_NEXT=1', monoScope: [{ pkg: 'db' }], stacks: ['nextjs'] }];
+
+    const withNext = withEnvs(postgres, pkgEnv, () => collectEnvFiles(mixedStacksCtx));
+    const withoutNext = withEnvs(postgres, pkgEnv, () =>
+      collectEnvFiles({ ...mixedStacksCtx, apps: mixedStacksCtx.apps.slice(1) }),
+    );
+
+    expect(contentOf(withNext, 'packages/db/.env.example')).toContain('DB_NEXT=1');
+    expect(contentOf(withoutNext, 'packages/db/.env.example')).not.toContain('DB_NEXT');
+  });
+
+  test('library root variable needs one app with both the library and a listed stack', () => {
+    const libraryRootEnv: EnvVar[] = [{ value: 'LIB_ROOT=1', monoScope: ['root'], stacks: ['nextjs'] }];
+    const splitCtx: TemplateContext = {
+      ...mixedStacksCtx,
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: [] },
+        { appName: 'site', stackName: 'tanstack-start', libraries: ['vitest'] },
+      ],
+    };
+    const sameAppCtx: TemplateContext = {
+      ...mixedStacksCtx,
+      apps: [...splitCtx.apps, { appName: 'docs', stackName: 'nextjs', libraries: ['vitest'] }],
+    };
+
+    const split = withEnvs(vitest, libraryRootEnv, () => collectEnvFiles(splitCtx));
+    const sameApp = withEnvs(vitest, libraryRootEnv, () => collectEnvFiles(sameAppCtx));
+
+    expect(contentOf(split, '.env.example')).not.toContain('LIB_ROOT');
+    expect(contentOf(sameApp, '.env.example')).toContain('LIB_ROOT=1');
+  });
+
+  test('blueprint envs honor stacks per app', () => {
+    const blueprint = META.blueprints['org-dashboard'] as MetaBlueprint;
+    const blueprintEnvs: EnvVar[] = [
+      { value: 'BP_NEXT=1', monoScope: ['app'], stacks: ['nextjs'] },
+      { value: 'BP_SHARED=1', monoScope: ['app'] },
+    ];
+    const ctx: TemplateContext = { ...mixedStacksCtx, blueprint: 'org-dashboard' };
+
+    const files = withEnvs(blueprint, blueprintEnvs, () => collectEnvFiles(ctx));
+
+    expect(contentOf(files, 'apps/web/.env.example')).toContain('BP_NEXT=1');
+    expect(contentOf(files, 'apps/site/.env.example')).not.toContain('BP_NEXT');
+    expect(contentOf(files, 'apps/site/.env.example')).toContain('BP_SHARED=1');
+  });
+
+  describe('single repo', () => {
+    const singleOf = (stackName: TemplateContext['apps'][number]['stackName']): TemplateContext => ({
+      ...mixedStacksCtx,
+      repo: 'single',
+      apps: [{ appName: 'mixed', stackName, libraries: [] }],
+    });
+    const scopedEnvs: EnvVar[] = [
+      { value: 'ROOT_NEXT=1', monoScope: ['root'], stacks: ['nextjs'] },
+      { value: 'DB_NEXT=1', monoScope: [{ pkg: 'db' }], stacks: ['nextjs'] },
+    ];
+
+    test('root and pkg scope variables collapse into the root file when the stack matches', () => {
+      const files = withEnvs(postgres, scopedEnvs, () => collectEnvFiles(singleOf('nextjs')));
+      const content = contentOf(files, '.env.example');
+
+      expect(files.map((f) => f.destination)).toEqual(['.env.example']);
+      expect(content).toContain('ROOT_NEXT=1');
+      expect(content).toContain('DB_NEXT=1');
+    });
+
+    test('root and pkg scope variables are dropped when the stack does not match', () => {
+      const files = withEnvs(postgres, scopedEnvs, () => collectEnvFiles(singleOf('tanstack-start')));
+      const content = contentOf(files, '.env.example');
+
+      expect(content).not.toContain('ROOT_NEXT');
+      expect(content).not.toContain('DB_NEXT');
+    });
   });
 });

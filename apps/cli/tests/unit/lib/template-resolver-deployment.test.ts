@@ -193,7 +193,7 @@ describe('blueprint override with deploymentPath', () => {
     const atTarget = templatesOf(ctx).filter((t) => t.destination === 'lib-override-target.txt');
 
     expect(atTarget).toHaveLength(1);
-    expect(atTarget[0].source).toContain('blueprints');
+    expect(atTarget.map((t) => t.source)).toEqual([expect.stringContaining('blueprints')]);
     expect(destinationsOf(ctx)).not.toContain('bp-takes-over.txt');
   });
 
