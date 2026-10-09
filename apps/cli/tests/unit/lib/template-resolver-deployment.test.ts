@@ -15,17 +15,30 @@ const FIXTURE_FILES: Record<string, string> = {
   'repo/single/repo-skip.txt.hbs': SKIP_FRONTMATTER,
   'repo/single/repo-moved.txt.hbs': moveFrontmatter('cf/repo-moved.txt'),
   'repo/single/repo-plain.txt.hbs': 'body\n',
+  'repo/single/repo-only-mono.txt.hbs': '---\nonly: mono\n---\nbody\n',
+  'repo/turborepo/repo-only-mono.txt.hbs': '---\nonly: mono\n---\nbody\n',
+  'repo/turborepo/repo-only-single.txt.hbs': '---\nonly: single\n---\nbody\n',
   'repo/turborepo/repo-skip.txt.hbs': SKIP_FRONTMATTER,
   'repo/turborepo/repo-moved.txt.hbs': moveFrontmatter('cf/repo-moved.txt'),
   'libraries/shadcn/lib-skip.txt.hbs': SKIP_FRONTMATTER,
   'libraries/shadcn/lib-moved.txt.hbs': moveFrontmatter('cf/lib-moved.txt'),
   'libraries/shadcn/lib-pinned.txt.hbs': moveFrontmatter('cf/lib-pinned.txt', 'path: pinned/lib-pinned.txt\n'),
   'libraries/shadcn/lib-plain.txt.hbs': 'body\n',
+  'libraries/shadcn/lib-skip-second.txt.hbs': '---\ndeploymentSkip:\n  - terraform-aws\n  - cloudflare\n---\nbody\n',
+  'libraries/shadcn/lib-monopath.txt.hbs': moveFrontmatter('cf/lib-monopath.txt', 'mono:\n  path: m/lib-monopath.txt\n'),
+  'libraries/shadcn/lib-monoroot.txt.hbs': moveFrontmatter(
+    'cf/lib-monoroot.txt',
+    'mono:\n  scope: root\n  path: m/lib-monoroot.txt\n',
+  ),
+  'libraries/shadcn/lib-override-target.txt.hbs': 'body\n',
+  'libraries/shadcn/lib-leaves.txt.hbs': 'body\n',
   'libraries/shadcn/lib-skip-nextjs.txt.nextjs.hbs': SKIP_FRONTMATTER,
   'project/orm/drizzle/orm-skip.txt.hbs': SKIP_FRONTMATTER,
   'project/orm/drizzle/orm-moved.txt.hbs': moveFrontmatter('cf/orm-moved.txt'),
   'project/linter/biome/linter-stack-skip.txt.nextjs.hbs': SKIP_FRONTMATTER,
   'project/linter/biome/linter-stack-moved.txt.nextjs.hbs': moveFrontmatter('cf/linter-stack-moved.txt'),
+  'blueprints/fixture-blueprint/bp-takes-over.txt.hbs': moveFrontmatter('lib-override-target.txt'),
+  'blueprints/fixture-blueprint/lib-leaves.txt.hbs': moveFrontmatter('cf/lib-leaves.txt'),
   'blueprints/fixture-blueprint/bp-skip.txt.hbs': SKIP_FRONTMATTER,
   'blueprints/fixture-blueprint/bp-moved.txt.hbs': moveFrontmatter('cf/bp-moved.txt'),
   'blueprints/fixture-blueprint/bp-stack-skip.txt.nextjs.hbs': SKIP_FRONTMATTER,
@@ -57,11 +70,12 @@ function makeCtx(repo: TemplateContext['repo'], deployment?: string): TemplateCo
   };
 }
 
-const destinationsOf = (ctx: TemplateContext) =>
-  getAllTemplatesForContext(ctx, templatesDir).map((t) => t.destination);
+const templatesOf = (ctx: TemplateContext) => getAllTemplatesForContext(ctx, templatesDir);
+
+const destinationsOf = (ctx: TemplateContext) => templatesOf(ctx).map((t) => t.destination);
 
 describe('deploymentSkip applies to every template kind', () => {
-  const skipped = ['repo-skip', 'lib-skip', 'lib-skip-nextjs', 'orm-skip', 'linter-stack-skip', 'bp-skip', 'bp-stack-skip'];
+  const skipped = ['repo-skip', 'lib-skip', 'lib-skip-second', 'lib-skip-nextjs', 'orm-skip', 'linter-stack-skip', 'bp-skip', 'bp-stack-skip'];
 
   test.each(['single', 'turborepo'] as const)('skipped under the matching deployment (%s)', (repo) => {
     const destinations = destinationsOf(makeCtx(repo, 'cloudflare'));
@@ -78,10 +92,16 @@ describe('deploymentSkip applies to every template kind', () => {
   });
 
   test('generated under a different deployment', () => {
-    const destinations = destinationsOf(makeCtx('single', 'terraform-aws'));
+    const destinations = destinationsOf(makeCtx('single', 'cloudflare-static'));
     for (const name of skipped) {
       expect(destinations.filter((d) => d.endsWith(`${name}.txt`))).toHaveLength(1);
     }
+  });
+
+  test('skipped when the active deployment is any entry of the list', () => {
+    expect(destinationsOf(makeCtx('single', 'cloudflare'))).not.toContain('lib-skip-second.txt');
+    expect(destinationsOf(makeCtx('single', 'terraform-aws'))).not.toContain('lib-skip-second.txt');
+    expect(destinationsOf(makeCtx('single', 'cloudflare-static'))).toContain('lib-skip-second.txt');
   });
 
   test('templates without deploymentSkip are unaffected', () => {
@@ -132,9 +152,66 @@ describe('deploymentPath applies to every template kind', () => {
     expect(destinationsOf(makeCtx('single'))).toContain('pinned/lib-pinned.txt');
   });
 
+  test('turborepo: deploymentPath replaces mono.path and keeps the mono.scope', () => {
+    const cloudflare = destinationsOf(makeCtx('turborepo', 'cloudflare'));
+    const none = destinationsOf(makeCtx('turborepo'));
+
+    expect(cloudflare).toContain('packages/ui/cf/lib-monopath.txt');
+    expect(cloudflare).not.toContain('packages/ui/m/lib-monopath.txt');
+    expect(none).toContain('packages/ui/m/lib-monopath.txt');
+
+    expect(cloudflare).toContain('cf/lib-monoroot.txt');
+    expect(cloudflare).not.toContain('m/lib-monoroot.txt');
+    expect(none).toContain('m/lib-monoroot.txt');
+  });
+
   test('other deployments keep the default path', () => {
     const destinations = destinationsOf(makeCtx('single', 'terraform-aws'));
     expect(destinations).toContain('lib-moved.txt');
     expect(destinations).not.toContain('cf/lib-moved.txt');
+  });
+});
+
+describe('only applies to repo templates', () => {
+  test('single repo skips only: mono files', () => {
+    expect(destinationsOf(makeCtx('single'))).not.toContain('repo-only-mono.txt');
+  });
+
+  test('turborepo keeps only: mono files and skips only: single files', () => {
+    const destinations = destinationsOf(makeCtx('turborepo'));
+    expect(destinations).toContain('repo-only-mono.txt');
+    expect(destinations).not.toContain('repo-only-single.txt');
+  });
+});
+
+describe('blueprint override with deploymentPath', () => {
+  const sourceAt = (ctx: TemplateContext, destination: string) =>
+    templatesOf(ctx).find((t) => t.destination === destination)?.source;
+
+  test('a blueprint file moved onto a structural destination replaces it', () => {
+    const ctx = makeCtx('single', 'cloudflare');
+    const atTarget = templatesOf(ctx).filter((t) => t.destination === 'lib-override-target.txt');
+
+    expect(atTarget).toHaveLength(1);
+    expect(atTarget[0].source).toContain('blueprints');
+    expect(destinationsOf(ctx)).not.toContain('bp-takes-over.txt');
+  });
+
+  test('without the deployment the blueprint file stays apart and the structural file remains', () => {
+    const ctx = makeCtx('single');
+
+    expect(sourceAt(ctx, 'lib-override-target.txt')).toContain('libraries');
+    expect(sourceAt(ctx, 'bp-takes-over.txt')).toContain('blueprints');
+  });
+
+  test('a blueprint file moved away from a structural destination no longer overrides it', () => {
+    const cloudflare = makeCtx('single', 'cloudflare');
+    const none = makeCtx('single');
+
+    expect(sourceAt(none, 'lib-leaves.txt')).toContain('blueprints');
+    expect(templatesOf(none).filter((t) => t.destination === 'lib-leaves.txt')).toHaveLength(1);
+
+    expect(sourceAt(cloudflare, 'lib-leaves.txt')).toContain('libraries');
+    expect(sourceAt(cloudflare, 'cf/lib-leaves.txt')).toContain('blueprints');
   });
 });
