@@ -70,6 +70,7 @@ describe('Single repo: Next.js + cloudflare + postgres', () => {
     expect(index).toContain("import { Client } from 'pg'");
     expect(index).toContain('new Client(');
     expect(index).toContain('await client.connect()');
+    expect(index).toContain('drizzle(client, { schema })');
     expect(index).toContain('hyperdrive.connectionString');
     expect(index).toContain('export type Database = Awaited<ReturnType<typeof createDb>>');
     expect(index).not.toContain('Pool');

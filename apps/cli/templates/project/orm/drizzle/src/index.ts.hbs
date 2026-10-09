@@ -23,7 +23,7 @@ import * as schema from './schema';
 export async function createDb(hyperdrive: Hyperdrive) {
   const client = new Client({ connectionString: hyperdrive.connectionString });
   await client.connect();
-  return drizzle({ client, schema });
+  return drizzle(client, { schema });
 }
 export type Database = Awaited<ReturnType<typeof createDb>>;
 {{/if}}
