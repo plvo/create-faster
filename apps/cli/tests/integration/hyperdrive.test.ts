@@ -66,11 +66,14 @@ describe('Single repo: Next.js + cloudflare + postgres', () => {
   test('db index exports a per-request createDb over Hyperdrive, not a DATABASE_URL singleton', async () => {
     const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
     expect(index).toContain("from 'drizzle-orm/node-postgres'");
-    expect(index).toContain('export function createDb(hyperdrive: Hyperdrive)');
-    expect(index).toContain('new Pool(');
-    expect(index).toContain('maxUses: 1');
+    expect(index).toContain('export async function createDb(hyperdrive: Hyperdrive)');
+    expect(index).toContain("import { Client } from 'pg'");
+    expect(index).toContain('new Client(');
+    expect(index).toContain('await client.connect()');
     expect(index).toContain('hyperdrive.connectionString');
-    expect(index).toContain('export type Database');
+    expect(index).toContain('export type Database = Awaited<ReturnType<typeof createDb>>');
+    expect(index).not.toContain('Pool');
+    expect(index).not.toContain('maxUses');
     expect(index).not.toContain('export const db');
     expect(index).not.toContain('DATABASE_URL');
   });
@@ -175,7 +178,7 @@ describe('Turborepo: Next.js + cloudflare + postgres', () => {
 
   test('db package exports the per-request createDb factory', async () => {
     const index = await readTextFile(join(projectPath, 'packages/db/src/index.ts'));
-    expect(index).toContain('export function createDb(hyperdrive: Hyperdrive)');
+    expect(index).toContain('export async function createDb(hyperdrive: Hyperdrive)');
     expect(index).toContain('export type Database');
     expect(index).not.toContain('export const db');
   });
