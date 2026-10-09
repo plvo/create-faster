@@ -9,6 +9,7 @@ export type EnvScope = 'app' | 'root' | { pkg: string };
 export interface EnvVar {
   value: string;
   monoScope: EnvScope[];
+  stacks?: StackName[];
 }
 
 export interface AddonSupport {
