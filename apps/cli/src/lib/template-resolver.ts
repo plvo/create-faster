@@ -16,11 +16,12 @@ export function scanTemplateFiles(dir: string): string[] {
 const VALID_STACKS = Object.keys(META.stacks);
 
 // A template can declare deployment-specific output paths via frontmatter `deploymentPath`.
-// When the active deployment platform has an entry, that path replaces the default one.
-function applyDeploymentPath(relativePath: string, frontmatter: TemplateFrontmatter, ctx: TemplateContext): string {
+// When the active deployment platform has an entry, that path replaces the default one (and
+// any `path` / `mono.path` override); scope resolution still applies on top of it.
+function findDeploymentPath(frontmatter: TemplateFrontmatter, ctx: TemplateContext): string | undefined {
   const { deployment } = ctx.project;
-  if (!deployment) return relativePath;
-  return frontmatter.deploymentPath?.[deployment] ?? relativePath;
+  if (!deployment) return undefined;
+  return frontmatter.deploymentPath?.[deployment];
 }
 
 // A template can opt out of being generated for specific deployment platforms via frontmatter `deploymentSkip`.
@@ -53,12 +54,14 @@ export function resolveDestination({
   appName,
   defaultScope = 'app',
 }: DestinationParams): string {
+  const deploymentPath = findDeploymentPath(frontmatter, ctx);
+
   if (ctx.repo !== 'turborepo') {
-    return frontmatter.path ?? relativePath;
+    return deploymentPath ?? frontmatter.path ?? relativePath;
   }
 
   const scope = frontmatter.mono?.scope ?? addon?.mono?.scope ?? defaultScope;
-  const filePath = frontmatter.mono?.path ?? relativePath;
+  const filePath = deploymentPath ?? frontmatter.mono?.path ?? relativePath;
 
   switch (scope) {
     case 'root':
@@ -99,8 +102,12 @@ function resolveTemplatesForStack(
     if (shouldSkipTemplate(only, ctx)) continue;
     if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
-    const relativePath = applyDeploymentPath(transformFilename(file), frontmatter, ctx);
-    const destination = resolveDestination({ relativePath, ctx, appName });
+    const destination = resolveDestination({
+      relativePath: transformFilename(file),
+      ctx,
+      frontmatter,
+      appName,
+    });
     templates.push({ source, destination });
   }
 
@@ -129,6 +136,7 @@ function resolveTemplatesForLibrary(
 
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
     const destination = resolveDestination({
@@ -165,6 +173,7 @@ function resolveTemplatesForProjectAddon(
 
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(file);
     const destination = resolveDestination({
@@ -199,14 +208,20 @@ function resolveStackSpecificAddonTemplatesForApps(
     if (!fileSuffix) continue;
 
     const source = join(addonDir, file);
-    const { only } = readFrontmatter(source);
+    const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
 
     for (const app of apps) {
       if (app.stackName !== fileSuffix) continue;
-      const destination = resolveDestination({ relativePath: transformedPath, ctx, appName: app.appName });
+      const destination = resolveDestination({
+        relativePath: transformedPath,
+        ctx,
+        frontmatter,
+        appName: app.appName,
+      });
       templates.push({ source, destination });
     }
   }
@@ -218,11 +233,23 @@ function resolveTemplatesForRepo(ctx: TemplateContext, templatesDir: string): Te
   const repoDir = join(templatesDir, 'repo', ctx.repo);
   const files = scanTemplateFiles(repoDir);
 
-  return files.map((file) => {
+  const templates: TemplateFile[] = [];
+
+  for (const file of files) {
     const source = join(repoDir, file);
-    const transformedPath = transformFilename(file);
-    return { source, destination: transformedPath };
-  });
+    const { frontmatter } = readFrontmatter(source);
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+
+    const destination = resolveDestination({
+      relativePath: transformFilename(file),
+      ctx,
+      frontmatter,
+      defaultScope: 'root',
+    });
+    templates.push({ source, destination });
+  }
+
+  return templates;
 }
 
 function resolveTemplatesForBlueprint(
@@ -241,6 +268,7 @@ function resolveTemplatesForBlueprint(
 
     const { frontmatter, only } = readFrontmatter(source);
     if (shouldSkipTemplate(only, ctx)) continue;
+    if (isSkippedForDeployment(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(fileSuffix ? cleanFilename : file);
 
