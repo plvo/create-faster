@@ -12,15 +12,23 @@ import 'server-only';
 import type React from 'react';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+{{/if}}
 import { cache } from 'react';
+{{#if (hasLibrary "tanstack-query")}}
 import { makeQueryClient } from '@/trpc/query-client';
-{{#if (isMono)}}
-import { headers } from 'next/headers';
-import { appRouter, createTRPCContext } from '@repo/api';
-{{else}}
-{{#if (and (has "database" "d1") (hasLibrary "better-auth"))}}
+{{/if}}
+{{#if (and (has "database" "d1") project.orm)}}
+{{#if (hasLibrary "better-auth")}}
 import { headers } from 'next/headers';
 {{/if}}
+{{else}}
+{{#if (isMono)}}
+import { headers } from 'next/headers';
+{{/if}}
+{{/if}}
+{{#if (isMono)}}
+import { appRouter, createTRPCContext } from '@repo/api';
+{{else}}
 import { appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 {{/if}}
@@ -28,20 +36,27 @@ import { createTRPCContext } from '@/trpc/init';
 import { getDb } from '@/lib/server';
 {{/if}}
 
+{{#if (hasLibrary "tanstack-query")}}
 // IMPORTANT: Create a stable getter for the query client that
 //            will return the same client during the same request.
 const getQueryClient = cache(makeQueryClient);
 
-export const trpc = createTRPCOptionsProxy({
+{{/if}}
 {{#if (and (has "database" "d1") project.orm)}}
-  ctx: async () => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+const getTRPCContext = cache(async () =>
+  createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+);
 {{else}}
 {{#if (isMono)}}
-  ctx: async () => createTRPCContext({ headers: await headers() }),
+const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
 {{else}}
-  ctx: createTRPCContext,
+const getTRPCContext = cache(createTRPCContext);
 {{/if}}
 {{/if}}
+
+{{#if (hasLibrary "tanstack-query")}}
+export const trpc = createTRPCOptionsProxy({
+  ctx: getTRPCContext,
   router: appRouter,
   queryClient: getQueryClient,
 });
@@ -63,35 +78,5 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptio
   }
 }
 {{else}}
-{{#if (and (has "database" "d1") project.orm)}}
-{{#if (isMono)}}
-import { headers } from 'next/headers';
-import { appRouter, createTRPCContext } from '@repo/api';
-{{else}}
-{{#if (hasLibrary "better-auth")}}
-import { headers } from 'next/headers';
-{{/if}}
-import { appRouter } from '@/trpc/routers/_app';
-import { createTRPCContext } from '@/trpc/init';
-{{/if}}
-import { getDb } from '@/lib/server';
-
-export const trpc = appRouter.createCaller(async () =>
-  createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
-);
-{{else}}
-{{#if (isMono)}}
-import { headers } from 'next/headers';
-import { appRouter, createTRPCContext } from '@repo/api';
-
-export const trpc = appRouter.createCaller(async () =>
-  createTRPCContext({ headers: await headers() }),
-);
-{{else}}
-import { appRouter } from '@/trpc/routers/_app';
-import { createTRPCContext } from '@/trpc/init';
-
-export const trpc = appRouter.createCaller(createTRPCContext);
-{{/if}}
-{{/if}}
+export const trpc = appRouter.createCaller(getTRPCContext);
 {{/if}}
