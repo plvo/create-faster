@@ -31,6 +31,10 @@ function isSkippedForDeployment(frontmatter: TemplateFrontmatter, ctx: TemplateC
   return frontmatter.deploymentSkip?.includes(deployment) ?? false;
 }
 
+function isTemplateExcluded(frontmatter: TemplateFrontmatter, ctx: TemplateContext): boolean {
+  return shouldSkipTemplate(frontmatter.only, ctx) || isSkippedForDeployment(frontmatter, ctx);
+}
+
 export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
   const addon = META.project[category].options[addonName];
   if (addon?.compose) return addon.compose;
@@ -77,12 +81,11 @@ export function resolveDestination({
   }
 }
 
-function readFrontmatter(source: string): { frontmatter: TemplateFrontmatter; only: string | undefined } {
+function readFrontmatter(source: string): TemplateFrontmatter {
   try {
-    const parsed = readFrontmatterFile(source);
-    return { frontmatter: parsed.data, only: parsed.data.only };
+    return readFrontmatterFile(source).data;
   } catch {
-    return { frontmatter: {}, only: undefined };
+    return {};
   }
 }
 
@@ -98,9 +101,8 @@ function resolveTemplatesForStack(
 
   for (const file of files) {
     const source = join(stackDir, file);
-    const { frontmatter, only } = readFrontmatter(source);
-    if (shouldSkipTemplate(only, ctx)) continue;
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const destination = resolveDestination({
       relativePath: transformFilename(file),
@@ -134,9 +136,8 @@ function resolveTemplatesForLibrary(
     const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
     if (fileSuffix && fileSuffix !== stackName) continue;
 
-    const { frontmatter, only } = readFrontmatter(source);
-    if (shouldSkipTemplate(only, ctx)) continue;
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
     const destination = resolveDestination({
@@ -171,9 +172,8 @@ function resolveTemplatesForProjectAddon(
     const { stackName: fileSuffix } = parseStackSuffix(file, VALID_STACKS);
     if (fileSuffix) continue;
 
-    const { frontmatter, only } = readFrontmatter(source);
-    if (shouldSkipTemplate(only, ctx)) continue;
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(file);
     const destination = resolveDestination({
@@ -208,9 +208,8 @@ function resolveStackSpecificAddonTemplatesForApps(
     if (!fileSuffix) continue;
 
     const source = join(addonDir, file);
-    const { frontmatter, only } = readFrontmatter(source);
-    if (shouldSkipTemplate(only, ctx)) continue;
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(cleanFilename);
 
@@ -237,8 +236,8 @@ function resolveTemplatesForRepo(ctx: TemplateContext, templatesDir: string): Te
 
   for (const file of files) {
     const source = join(repoDir, file);
-    const { frontmatter } = readFrontmatter(source);
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const destination = resolveDestination({
       relativePath: transformFilename(file),
@@ -266,9 +265,8 @@ function resolveTemplatesForBlueprint(
 
     const { stackName: fileSuffix, cleanFilename } = parseStackSuffix(file, VALID_STACKS);
 
-    const { frontmatter, only } = readFrontmatter(source);
-    if (shouldSkipTemplate(only, ctx)) continue;
-    if (isSkippedForDeployment(frontmatter, ctx)) continue;
+    const frontmatter = readFrontmatter(source);
+    if (isTemplateExcluded(frontmatter, ctx)) continue;
 
     const transformedPath = transformFilename(fileSuffix ? cleanFilename : file);
 
