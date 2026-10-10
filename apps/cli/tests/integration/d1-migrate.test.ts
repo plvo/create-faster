@@ -60,6 +60,26 @@ describe('Turborepo: d1 migrate workflow points at the deploy app config and a s
     expect(config).toContain('../../.wrangler/v3/d1/miniflare-D1DatabaseObject');
     expect(config).not.toContain('state/v3');
   });
+
+  test('seed reads the workspace-root state dir that migrate persists to', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).toContain("path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject')");
+    expect(seed).not.toContain('state/v3');
+  });
+
+  test('the root seed can resolve the drizzle sqlite driver it imports', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).toContain("from 'drizzle-orm/bun-sqlite'");
+    const pkg = JSON.parse(await readTextFile(join(projectPath, 'package.json')));
+    expect({ ...pkg.dependencies, ...pkg.devDependencies }['drizzle-orm']).toBeDefined();
+  });
+
+  test('local-setup seeds from the workspace root where the seed script lives', async () => {
+    const pkg = JSON.parse(await readTextFile(join(projectPath, 'packages/db/package.json')));
+    expect(pkg.scripts['local-setup']).toBe(
+      'wrangler --config ../../apps/web/wrangler.jsonc d1 migrations apply DB --local --persist-to ../../.wrangler && bun run --cwd ../.. db:seed',
+    );
+  });
 });
 
 describe('Single repo: d1 migrate workflow stays self-consistent on one local state dir', () => {
@@ -104,5 +124,11 @@ describe('Single repo: d1 migrate workflow stays self-consistent on one local st
     const config = await readTextFile(join(projectPath, 'drizzle.config.ts'));
     expect(config).toContain('.wrangler/v3/d1/miniflare-D1DatabaseObject');
     expect(config).not.toContain('state/v3');
+  });
+
+  test('seed reads the root state dir that migrate persists to', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).toContain("path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject')");
+    expect(seed).not.toContain('state/v3');
   });
 });
