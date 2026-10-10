@@ -18,6 +18,7 @@ const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 const TIMEOUT_START = 60_000;
+const MAX_INGEST_BODY_BYTES = 64 * 1024 * 1024;
 
 describe('tanstack-start-loaded', () => {
   let projectDir: string;
@@ -431,6 +432,38 @@ describe('tanstack-start-posthog', () => {
         expect(reachedUpstream).toBe(true);
         expect(response.status).toBe(200);
         expect(bodyText(upstream.requests[before])).toBe('first-chunk;second-chunk');
+      },
+      TIMEOUT_START,
+    );
+
+    test(
+      'rejects a declared body over the cap without reaching PostHog',
+      async () => {
+        const before = upstream.requests.length;
+        const response = await fetch(`${server.url}/ingest/e/`, {
+          method: 'POST',
+          body: new Uint8Array(MAX_INGEST_BODY_BYTES + 1),
+        });
+        expect(response.status).toBe(413);
+        expect(upstream.requests.length).toBe(before);
+      },
+      TIMEOUT_START,
+    );
+
+    test(
+      'rejects a chunked body that grows over the cap',
+      async () => {
+        const chunk = new Uint8Array(1024 * 1024);
+        let sent = 0;
+        const body = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (sent > MAX_INGEST_BODY_BYTES / chunk.byteLength + 1) return controller.close();
+            controller.enqueue(chunk);
+            sent++;
+          },
+        });
+        const response = await fetch(`${server.url}/ingest/e/`, { method: 'POST', body, duplex: 'half' } as RequestInit);
+        expect(response.status).toBe(413);
       },
       TIMEOUT_START,
     );

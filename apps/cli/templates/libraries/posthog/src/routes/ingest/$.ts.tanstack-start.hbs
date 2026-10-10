@@ -1,33 +1,94 @@
 import { createFileRoute } from '@tanstack/react-router'
+{{#unless (has "deployment" "cloudflare")}}
 import { getRequestIP } from '@tanstack/react-start/server'
+{{/unless}}
 
 const API_HOST = 'us.i.posthog.com'
 const ASSET_HOST = 'us-assets.i.posthog.com'
 const PROXY_PREFIX = '/ingest'
+
+// PostHog asks proxies to accept 64 MB bodies (session recordings). The bound keeps one request from exhausting memory.
+const MAX_BODY_BYTES = 64 * 1024 * 1024
+
+// Everything else (cookies, credentials, proxy and access-gateway headers) stays on this side of the proxy.
+const FORWARDED_REQUEST_HEADERS = [
+  'accept',
+  'accept-language',
+  'content-encoding',
+  'content-type',
+  'origin',
+  'referer',
+  'user-agent',
+]
+
+// The runtime already decompressed the body, and these headers would set cookies or pin HSTS on this app's host.
+const DROPPED_RESPONSE_HEADERS = [
+  'alt-svc',
+  'content-encoding',
+  'content-length',
+  'set-cookie',
+  'strict-transport-security',
+]
+
+function limitBody(body: ReadableStream<Uint8Array>, onExceeded: () => void): ReadableStream<Uint8Array> {
+  let received = 0
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        received += chunk.byteLength
+        if (received > MAX_BODY_BYTES) {
+          onExceeded()
+          controller.error(new Error('Request body too large'))
+          return
+        }
+        controller.enqueue(chunk)
+      },
+    }),
+  )
+}
+
+const payloadTooLarge = () => new Response('Payload Too Large', { status: 413 })
 
 async function forwardToPostHog(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname.slice(PROXY_PREFIX.length)
   const host = path.startsWith('/static/') || path.startsWith('/array/') ? ASSET_HOST : API_HOST
 
-  const headers = new Headers(request.headers)
-  headers.delete('cookie')
-  headers.delete('authorization')
-  headers.delete('accept-encoding')
-  const clientIp = request.headers.get('cf-connecting-ip') ?? getRequestIP({ xForwardedFor: true })
+  const headers = new Headers()
+  for (const name of FORWARDED_REQUEST_HEADERS) {
+    const value = request.headers.get(name)
+    if (value !== null) headers.set(name, value)
+  }
+{{#if (has "deployment" "cloudflare")}}
+  // Cloudflare overwrites cf-connecting-ip on every request, so a client cannot spoof it.
+  const clientIp = request.headers.get('cf-connecting-ip')
+{{else}}
+  // Outside Cloudflare cf-connecting-ip is client-controlled, so only the connection address is trusted.
+  const clientIp = getRequestIP({ xForwardedFor: true })
+{{/if}}
   if (clientIp) headers.set('x-forwarded-for', clientIp)
 
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
-  const response = await fetch(`https://${host}${path}${url.search}`, {
+  if (hasBody && Number(request.headers.get('content-length')) > MAX_BODY_BYTES) return payloadTooLarge()
+
+  let exceeded = false
+  const init: RequestInit & { duplex: 'half' } = {
     method: request.method,
     headers,
-    body: hasBody ? await request.arrayBuffer() : undefined,
+    body: hasBody && request.body ? limitBody(request.body, () => (exceeded = true)) : undefined,
+    duplex: 'half',
     redirect: 'manual',
-  })
+  }
+  let response: Response
+  try {
+    response = await fetch(`https://${host}${path}${url.search}`, init)
+  } catch (error) {
+    if (exceeded) return payloadTooLarge()
+    throw error
+  }
 
   const responseHeaders = new Headers(response.headers)
-  responseHeaders.delete('content-encoding')
-  responseHeaders.delete('content-length')
+  for (const name of DROPPED_RESPONSE_HEADERS) responseHeaders.delete(name)
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

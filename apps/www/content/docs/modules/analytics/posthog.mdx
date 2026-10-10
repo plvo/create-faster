@@ -116,9 +116,10 @@ One splat server route (`ANY`) proxies every `/ingest/*` request. The same file 
 
 - strips the `/ingest` prefix and keeps the rest of the path (trailing slash included) and the query string;
 - sends `/static/*` and `/array/*` to `us-assets.i.posthog.com`, everything else to `us.i.posthog.com`;
-- drops the `cookie`, `authorization` and `accept-encoding` request headers and sets `x-forwarded-for` from `cf-connecting-ip` (Cloudflare) or the request IP;
-- forwards the body as bytes and does not follow redirects;
-- drops `content-encoding` and `content-length` from the response, since the runtime already decompressed it.
+- forwards only an allowlist of request headers (`accept`, `accept-language`, `content-encoding`, `content-type`, `origin`, `referer`, `user-agent`), so cookies, credentials and gateway headers never reach PostHog;
+- sets `x-forwarded-for` from `cf-connecting-ip` on Cloudflare, where it cannot be spoofed, and from the connection address elsewhere;
+- streams the request body, rejects bodies over 64 MB with `413` and does not follow redirects;
+- drops `content-encoding`, `content-length`, `set-cookie`, `strict-transport-security` and `alt-svc` from the response.
 
 When evlog is selected, `/ingest` requests are logged like any other request. For PostHog Cloud EU, replace `us` with `eu` in the two hosts and in `ui_host`.
 
