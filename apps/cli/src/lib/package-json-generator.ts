@@ -284,6 +284,9 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     if (toolingAddon?.packageJson) rootConfigs.push(toolingAddon.packageJson);
   }
 
+  const databaseAddon = ctx.project.database ? META.project.database.options[ctx.project.database] : undefined;
+  if (databaseAddon?.rootPackageJson) rootConfigs.push(databaseAddon.rootPackageJson);
+
   if (ctx.project.deployment) {
     const deploymentAddon = META.project.deployment.options[ctx.project.deployment];
     if (deploymentAddon?.mono?.scope === 'root' && deploymentAddon.packageJson) {

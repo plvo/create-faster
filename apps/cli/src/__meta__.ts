@@ -596,6 +596,11 @@ export const META: Meta = {
           require: { deployment: ['cloudflare'] },
           serverlessBinding: 'd1',
           serverlessConsumersWired: true,
+          rootPackageJson: {
+            devDependencies: {
+              'drizzle-orm': '^0.45.2',
+            },
+          },
           packageJson: {
             devDependencies: {
               '@libsql/client': '^0.17.4',
@@ -627,7 +632,7 @@ export const META: Meta = {
                 ),
                 'local-setup': $when(
                   { repo: 'turborepo' },
-                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run --cwd {{workspaceRoot}} db:seed',
                 ),
               },
             },

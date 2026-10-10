@@ -76,6 +76,8 @@ export interface MetaAddon {
   /** Package.json contribution applied when `ctx.project.deployment` matches the key. */
   deploymentPackageJson?: Record<string, PackageJsonConfig>;
   stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
+  /** Package.json contribution merged into the turborepo root, for root scripts that import the addon's dependencies. */
+  rootPackageJson?: PackageJsonConfig;
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;

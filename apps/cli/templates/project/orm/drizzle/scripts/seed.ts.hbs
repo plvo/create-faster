@@ -11,7 +11,7 @@ import * as schema from {{#if (isMono)}}'@repo/db/schema'{{else}}'../src/lib/db/
 import { postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
 
 function getLocalD1DB(): string | undefined {
-  const d1Dir = path.resolve(process.cwd(), '.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+  const d1Dir = path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject');
   if (!fs.existsSync(d1Dir)) return undefined;
   const files = fs
     .readdirSync(d1Dir)
