@@ -23,7 +23,7 @@ describe('cloudflare-static deployment option', () => {
     expect(META.project.deployment.options['cloudflare-static']).toBeDefined();
   });
 
-  test('cloudflare-static defines only a nextjs stack package.json', () => {
+  test('cloudflare-static defines no hono stack package.json', () => {
     const option = META.project.deployment.options['cloudflare-static'];
     expect(option?.stackPackageJson?.nextjs).toBeDefined();
     expect(option?.stackPackageJson?.hono).toBeUndefined();

@@ -114,7 +114,7 @@ export const META: Meta = {
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: $when({ deployment: { not: 'cloudflare' } }, '^3.0.260903-beta'),
+          nitro: $when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, '^3.0.260903-beta'),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -122,7 +122,10 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: $when({ deployment: { not: 'cloudflare' } }, 'node --env-file=.env.start .output/server/index.mjs'),
+          start: $when(
+            { deployment: { not: ['cloudflare', 'cloudflare-static'] } },
+            'node --env-file=.env.start .output/server/index.mjs',
+          ),
         },
       },
     },
@@ -508,8 +511,8 @@ export const META: Meta = {
         },
         'cloudflare-static': {
           label: 'Cloudflare Workers (static)',
-          hint: 'Deploy a Next.js static export to Cloudflare Workers assets',
-          require: { stacks: ['nextjs'] },
+          hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
+          require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {
             devDependencies: {
@@ -520,6 +523,13 @@ export const META: Meta = {
             nextjs: {
               scripts: {
                 deploy: 'next build && wrangler deploy',
+                preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+            'tanstack-start': {
+              scripts: {
+                deploy: 'vite build && wrangler deploy',
                 preview: 'wrangler dev',
                 'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
               },

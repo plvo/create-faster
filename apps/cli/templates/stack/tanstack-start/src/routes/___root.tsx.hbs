@@ -9,6 +9,9 @@ import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 {{/if}}
 
+{{#if (has "deployment" "cloudflare-static")}}
+import { NotFound } from '@/components/not-found'
+{{/if}}
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -36,6 +39,9 @@ export const Route = createRootRoute({
   server: {
     middleware: [createMiddleware().server(evlogErrorHandler)],
   },
+  {{/if}}
+  {{#if (has "deployment" "cloudflare-static")}}
+  notFoundComponent: NotFound,
   {{/if}}
   shellComponent: RootDocument,
 })
