@@ -165,7 +165,7 @@ export const META: Meta = {
     },
     'next-themes': {
       label: 'Next Themes',
-      hint: 'Theme switching with system preference support',
+      hint: 'A library for managing themes',
       category: 'UI',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
