@@ -172,7 +172,7 @@ describe('TanStack Start + better-auth', () => {
       const cache = await readTextFile(join(projectPath, 'packages/auth/src/session-cache.ts'));
       expect(cache).toContain('new WeakMap<Request, Promise<Session | null>>()');
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'packages/auth/package.json'));
-      expect(pkg.exports).toHaveProperty('./session-cache', './src/session-cache.ts');
+      expect(pkg.exports?.['./session-cache']).toBe('./src/session-cache.ts');
     });
 
     test('the web app owns the route and the getSession server function', async () => {

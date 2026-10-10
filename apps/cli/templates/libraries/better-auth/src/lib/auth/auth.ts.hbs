@@ -16,8 +16,11 @@ import { prisma } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 import { prismaAdapter } from '@better-auth/prisma-adapter';
 {{/if}}
 import { betterAuth } from 'better-auth';
-{{#if (has "stack" "nextjs")}}
+{{#if (stackHasLibrary "nextjs" "better-auth")}}
 import { nextCookies } from 'better-auth/next-js';
+{{/if}}
+{{#if (stackHasLibrary "tanstack-start" "better-auth")}}
+import { tanstackStartCookies } from 'better-auth/tanstack-start';
 {{/if}}
 
 const HOUR = 60 * 60;
@@ -72,7 +75,7 @@ export const auth = betterAuth({
   }),
   {{/if}}
 
-  plugins: [{{#if (has "stack" "nextjs")}}nextCookies(){{/if}}],
+  plugins: [{{#if (stackHasLibrary "nextjs" "better-auth")}}nextCookies(){{/if}}{{#if (and (stackHasLibrary "nextjs" "better-auth") (stackHasLibrary "tanstack-start" "better-auth"))}}, {{/if}}{{#if (stackHasLibrary "tanstack-start" "better-auth")}}tanstackStartCookies(){{/if}}],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,

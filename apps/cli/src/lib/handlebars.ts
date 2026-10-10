@@ -20,6 +20,10 @@ export function registerHandlebarsHelpers(): void {
     return Array.isArray(this.apps) && this.apps.some((app) => app.libraries.includes(name));
   });
 
+  Handlebars.registerHelper('stackHasLibrary', function (this: TemplateContext, stack: string, library: string) {
+    return this.apps.some((app) => app.stackName === stack && app.libraries.includes(library));
+  });
+
   Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
     if (category === 'stack') {
       return this.apps.some((app) => app.stackName === value);

@@ -1,0 +1,17 @@
+---
+mono:
+  scope: app
+---
+import { createServerFn } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
+{{#if (has "database" "d1")}}
+import { auth } from '@/lib/server';
+{{else}}
+import { auth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{/if}}
+import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{else}}'@/lib/auth/session-cache'{{/if}};
+
+export const getSession = createServerFn({ method: 'GET' }).handler(() => {
+  const request = getRequest();
+  return getRequestSession(request, () => auth.api.getSession({ headers: request.headers }));
+});
