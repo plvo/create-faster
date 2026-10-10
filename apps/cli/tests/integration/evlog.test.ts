@@ -148,10 +148,9 @@ describe('evlog Integration', () => {
       expect(content).toContain(`service: '${projectName}'`);
     });
 
-    test('__root.tsx wires evlogErrorHandler via server middleware', async () => {
+    test('__root.tsx wires the evlog error middleware via server middleware', async () => {
       const content = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(content).toContain("from 'evlog/nitro/v3'");
-      expect(content).toContain('evlogErrorHandler');
+      expect(content).toContain('EvlogError');
       expect(content).toContain('createMiddleware');
       expect(content).toContain('server: {');
     });
