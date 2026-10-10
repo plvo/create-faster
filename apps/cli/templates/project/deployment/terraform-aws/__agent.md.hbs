@@ -1,0 +1,20 @@
+{{#if (has "stack" "tanstack-start")}}
+`infra/` only holds the AWS provider and the S3 backend: no resource is provisioned for any app. To run a TanStack Start app on AWS Lambda, build it with Nitro's `aws-lambda` preset and point a Lambda function at the output.
+
+Output to zip, per TanStack Start app:
+{{#each apps}}
+{{#if (eq stackName "tanstack-start")}}
+- `{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}.output/server` ({{appName}})
+{{/if}}
+{{/each}}
+
+**Build**
+- Select the preset for the deploy build only: `NITRO_PRESET=aws-lambda {{#if pm}}{{pm}}{{else}}npm{{/if}} run build`, run from the app directory. Keep it out of `vite.config.ts` and out of the `build` script: an `aws-lambda` build exits immediately on `start` instead of listening.
+- `.output/server/index.mjs` exports `handler` and is self-contained: zip `.output/server`, set the Lambda handler to `index.handler`, use a `nodejs22.x` or `nodejs24.x` runtime, and front it with an API Gateway HTTP API or a function URL.
+
+**Static assets**
+- The `aws-lambda` preset does not serve `.output/public`. Either serve it from S3 behind CloudFront, or embed it in the function with `serveStatic: 'inline'` in the Nitro options, set only for the deploy build so that `start` is unaffected: `nitro({ serveStatic: process.env.NITRO_PRESET === 'aws-lambda' ? 'inline' : undefined })`.
+- A buffered Lambda response is capped at 6 MB. Inlined assets count against it per response: inlining suits a starter, not large media.
+
+The `sst` deployment provisions this setup (function, S3 and CloudFront) through `sst.aws.TanStackStart`.
+{{/if}}
