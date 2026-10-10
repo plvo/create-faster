@@ -1128,9 +1128,9 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
     pm: 'bun',
   };
 
-  test('root package.json exposes @repo/db and db:* scripts when an ORM is selected', () => {
+  test('root package.json delegates db:* scripts to the db package when an ORM is selected', () => {
     const result = generateRootPackageJson(ctx);
-    expect(result.content.dependencies?.['@repo/db']).toBe('*');
+    expect(result.content.dependencies?.['@repo/db']).toBeUndefined();
     expect(result.content.scripts?.['db:push']).toBe('turbo db:push');
     expect(result.content.scripts?.['db:generate']).toBe('turbo db:generate');
     expect(result.content.scripts?.['db:migrate']).toBe('turbo db:migrate');

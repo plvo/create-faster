@@ -49,6 +49,9 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
 
   test('keeps its own root seed and gets no generic seed in the db package', async () => {
     expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(false);
+
+    const dbPkg = await readJsonFile<RootPkg>(join(projectPath, 'packages/db/package.json'));
+    expect(dbPkg.scripts['db:seed']).toBe('bun run --cwd ../.. db:seed');
   });
 
   test('declares faker for demo fixtures', async () => {
