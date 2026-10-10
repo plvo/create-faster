@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.6.8](https://github.com/plvo/create-faster/compare/create-faster-v1.6.7...create-faster-v1.6.8) (2026-10-10)
+
+
+### Features
+
+* add $when negation, deployment keys for all templates, EnvVar.stacks ([#192](https://github.com/plvo/create-faster/issues/192)) ([8f80701](https://github.com/plvo/create-faster/commit/8f8070145e33f06a499a84c8e21ba3f21d5256d0))
+* **library:** extract posthog from the showcase blueprint ([#163](https://github.com/plvo/create-faster/issues/163)) ([e758793](https://github.com/plvo/create-faster/commit/e758793d72a4fd3d17603253a0442bb50fd952ef)), closes [#116](https://github.com/plvo/create-faster/issues/116)
+* **linter:** add oxc option with oxlint, oxfmt and @shadcn/lint ([#167](https://github.com/plvo/create-faster/issues/167)) ([0286651](https://github.com/plvo/create-faster/commit/02866510cac4466c47fe14e16bcbf1d6dac7ec88))
+* **tanstack-start:** deploy to cloudflare workers with the vite plugin ([#195](https://github.com/plvo/create-faster/issues/195)) ([c3e0cb6](https://github.com/plvo/create-faster/commit/c3e0cb6273be39dc0465904f88e4c8739dc50616))
+* **tanstack-start:** support mdx ([#194](https://github.com/plvo/create-faster/issues/194)) ([cd3d238](https://github.com/plvo/create-faster/commit/cd3d2387f25b5c060d195929ace1bf8b61274a6c))
+* **tanstack-start:** support next-themes ([#193](https://github.com/plvo/create-faster/issues/193)) ([39b57ce](https://github.com/plvo/create-faster/commit/39b57ce33c20130bfc8245724fb67b5f5c04e1e7))
+
+
+### Bug Fixes
+
+* **d1:** read the local database where migrations write it ([#196](https://github.com/plvo/create-faster/issues/196)) ([2471491](https://github.com/plvo/create-faster/commit/2471491ef1a0d49107809b2b7adaeab37961f91a))
+* **drizzle:** use a per-request pg Client over Hyperdrive ([#191](https://github.com/plvo/create-faster/issues/191)) ([d813169](https://github.com/plvo/create-faster/commit/d8131692d69d64b05785f1023ae22a8270af7bd5))
+* **evlog:** import createInstrumentation from its create subpath ([#165](https://github.com/plvo/create-faster/issues/165)) ([efbeaa1](https://github.com/plvo/create-faster/commit/efbeaa1660e270e39f6a5aae9b968f2a253246e2))
+* **nextjs:** mount AppProviders in the stack root layout ([#189](https://github.com/plvo/create-faster/issues/189)) ([cea1912](https://github.com/plvo/create-faster/commit/cea19123512b5d51464ff8b8f44ce1dc9e454e74))
+* **sst:** deploy tanstack start with sst.aws.TanStackStart ([#197](https://github.com/plvo/create-faster/issues/197)) ([8f29a7d](https://github.com/plvo/create-faster/commit/8f29a7de5f97a2f7fb9ddd37f09db710bdff8e3c))
+* **tanstack-start:** serve production builds through nitro ([#168](https://github.com/plvo/create-faster/issues/168)) ([f7d2b0b](https://github.com/plvo/create-faster/commit/f7d2b0b25e7b3225a757ce28920e4e78bd1b1084))
+
+
+### Performance
+
+* **trpc:** build the server context once per request ([#190](https://github.com/plvo/create-faster/issues/190)) ([e8c6d0a](https://github.com/plvo/create-faster/commit/e8c6d0aa8003480411da78363588b72bcef2a5cc))
+
 ## [1.6.7](https://github.com/plvo/create-faster/compare/create-faster-v1.6.6...create-faster-v1.6.7) (2026-10-01)
 
 
