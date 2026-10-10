@@ -1,20 +1,24 @@
 ---
 title: Cloudflare Workers (static)
-description: Deploy a Next.js static export to Cloudflare Workers static assets — no server runtime, no OpenNext.
+description: Deploy a Next.js static export or a prerendered TanStack Start site to Cloudflare Workers static assets — no server runtime, no OpenNext.
 ---
 
-<Stacks names="nextjs" />
+<Stacks names="nextjs,tanstack-start" />
 <Dependencies dev="wrangler" />
 
 [→ Static assets on Workers](https://developers.cloudflare.com/workers/static-assets/)
 
 ## What create-faster adds
 
-Cloudflare Workers (static) is a project-level deployment platform for **Next.js only**. It builds a Next.js static export (`output: 'export'`) and serves the generated `out/` directory as Workers static assets — no server runtime, no OpenNext adapter. Selecting it with `--deployment cloudflare-static` configures every Next.js app for static export.
+Cloudflare Workers (static) is a project-level deployment platform for **Next.js and TanStack Start** apps. Each app is built as a static site and served as Workers static assets — no server runtime, no OpenNext adapter, no Worker script. Selecting it with `--deployment cloudflare-static` configures every Next.js and TanStack Start app, according to its stack.
 
-Because a static export has no server runtime, this option is mutually exclusive with server-dependent libraries: `better-auth` and `trpc` are rejected, and the project must contain at least one Next.js app.
+Because a static site has no server runtime, this option is mutually exclusive with server-dependent libraries: `better-auth`, `trpc` and `posthog` are rejected, and the project must contain at least one Next.js or TanStack Start app. Other apps of a Turborepo (Hono, Expo) are not configured for static hosting.
 
-### next.config.ts
+### Next.js apps
+
+A Next.js app builds a static export (`output: 'export'`) and serves the generated `out/` directory.
+
+#### next.config.ts
 
 The Next.js config emits a static export and disables the Image Optimization API (which requires a server):
 
@@ -30,7 +34,7 @@ const nextConfig: NextConfig = {
 };
 ```
 
-### wrangler.jsonc
+#### wrangler.jsonc
 
 An assets-only Worker: it points `assets.directory` at the static export output and declares no `main` (there is no Worker script). This is Workers static assets, not Cloudflare Pages — there is no `pages_build_output_dir`. `not_found_handling: "404-page"` serves the export's pre-rendered `out/404.html` for unmatched paths instead of a blank body.
 
@@ -51,15 +55,76 @@ An assets-only Worker: it points `assets.directory` at the static export output 
 - `preview` - Serve the build locally on the Workers runtime (`wrangler dev`)
 - `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
 
+### TanStack Start apps
+
+A TanStack Start app is fully prerendered by Start itself, without Nitro and without `@cloudflare/vite-plugin` (the Cloudflare plugin builds a Worker, which is the opposite of a static deploy). `vite build` renders every static route and every page reachable through a link, and writes flat HTML files into `dist/client/`.
+
+```typescript title="vite.config.ts"
+tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } }),
+```
+
+`autoSubfolderIndex: false` writes `about.html` instead of `about/index.html`, so Workers serves `/about` directly instead of redirecting to `/about/`.
+
+```jsonc title="wrangler.jsonc"
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-site",
+  "compatibility_date": "2026-06-12",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "404-page"
+  }
+}
+```
+
+**Scripts:**
+- `build` - Build and prerender into `dist/client` (`vite build`)
+- `deploy` - Build, then deploy the assets (`vite build && wrangler deploy`)
+- `preview` - Serve the build locally on the Workers runtime (`wrangler dev`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+
+The `nitro` dependency, the `start` script and `.env.start` are not generated.
+
+#### 404 page
+
+Start cannot prerender a not-found response, because its prerenderer fails on any non-2xx status. The app therefore gets a `/404` route (`src/routes/404.tsx`) that is prerendered to `404.html`, which Workers serves with status 404 for unknown URLs, and the same `NotFound` component (`src/components/not-found.tsx`) is set as the root `notFoundComponent`.
+
+React logs a hydration warning (error #418) when an unknown URL is opened in the browser: the server answered with the `/404` page, and the router then re-matches the real URL on hydration. The page renders correctly; the warning is a known limitation of this approach. `/404` is also reachable directly, with status 200.
+
+#### Only linked pages are generated
+
+The prerenderer discovers static routes automatically and follows every same-origin `<a href>` it finds, so a dynamic page such as `/posts/1` is generated when a prerendered page links to it. A dynamic page that nothing links to is not generated and answers 404. List such pages explicitly with the `pages` option:
+
+```typescript title="vite.config.ts"
+tanstackStart({
+  pages: [{ path: '/posts/2' }, { path: '/posts/3' }],
+  prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false },
+}),
+```
+
+#### What stops working
+
+There is no server at request time. Unlike Next.js `output: 'export'`, Start does not reject server code at build time, and `vite dev` runs a real SSR server where all of it works: it only breaks after the static build.
+
+- Server routes (`server.handlers`) are not prerendered and answer 404.
+- Server functions (`createServerFn`) answer 404 and throw `Invariant failed`.
+- A route whose `loader` calls a server function works on a direct page load (the build-time value is embedded in the HTML) but fails on client-side navigation, where the loader runs again in the browser.
+- Request and server-function middleware only run during the build-time prerender.
+- Cloudflare bindings and secrets are not available: no Worker exists.
+- evlog builds but is inert, as on Next.js.
+
+Keep loaders to plain client-safe code (or data fetched from an external API) in a static app. SPA mode (`spa.enabled`) is not offered: it turns every unmatched URL, including `/api/*` and `/_serverFn/*`, into a `200` response with the HTML shell, so failing server calls go unnoticed.
+
 ## Shared behavior
 
 The Worker `name` is the app name in turborepo mode and the project name in single mode.
 
 **Omitted files:**
 - The Next.js request interceptor (`proxy.ts` / `middleware.ts`) is not generated — a static export has no server to run it.
+- For TanStack Start apps, `.env.start` and evlog's `nitro.config.ts` are not generated — the build has no Nitro server.
 
 **Modified files:**
-- `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`. The static export output `out/` is already ignored.
+- `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`. The build outputs `out/` (Next.js) and `dist/` (TanStack Start) are already ignored.
 
 **Turborepo mode:**
 `wrangler.jsonc` is placed in `apps/<name>/` and the Worker is named after the app. Run the scripts from the app directory.
