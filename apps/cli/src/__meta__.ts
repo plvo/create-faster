@@ -114,7 +114,7 @@ export const META: Meta = {
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: '^3.0.260903-beta',
+          nitro: $when({ deployment: { not: 'cloudflare' } }, '^3.0.260903-beta'),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -122,7 +122,7 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: 'node --env-file=.env.start .output/server/index.mjs',
+          start: $when({ deployment: { not: 'cloudflare' } }, 'node --env-file=.env.start .output/server/index.mjs'),
         },
       },
     },
@@ -469,6 +469,15 @@ export const META: Meta = {
               scripts: {
                 deploy: 'wrangler deploy',
                 preview: 'wrangler dev',
+                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+              },
+            },
+            'tanstack-start': {
+              devDependencies: {
+                '@cloudflare/vite-plugin': '^1.63.1',
+              },
+              scripts: {
+                deploy: 'vite build && wrangler deploy',
                 'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
               },
             },

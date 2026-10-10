@@ -76,6 +76,7 @@ function extractImportedPackages(content: string): ImportEntry[] {
   for (const { regex, typeOnly } of patterns) {
     for (const match of content.matchAll(regex)) {
       const importPath = match[1];
+      if (!importPath) continue;
 
       if (
         importPath.startsWith('.') ||
@@ -84,6 +85,7 @@ function extractImportedPackages(content: string): ImportEntry[] {
         importPath.startsWith('@repo/') ||
         importPath.startsWith('node:') ||
         importPath.startsWith('bun:') ||
+        importPath.startsWith('cloudflare:') ||
         importPath.includes('{{')
       ) {
         continue;

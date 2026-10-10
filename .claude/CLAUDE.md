@@ -204,6 +204,9 @@ Programmatic `.env.example` file generation:
 - **Hono**: aws-lambda, vitest-node, evlog
 - **TanStack Start**: shadcn/ui, next-themes, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
 
+### Deployment
+- **Cloudflare Workers** (`cloudflare`): Hono (Wrangler), Next.js (OpenNext), TanStack Start (`@cloudflare/vite-plugin`, no Nitro). A Start app drops `nitro` and the Nitro `start` script through `$when({ deployment: { not: 'cloudflare' } })`, `vite.config.ts.hbs` swaps `nitro()` for `cloudflare()` under `has "deployment" "cloudflare"`, and `.env.start` carries `deploymentSkip: [cloudflare]`. With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`); with Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.
+
 Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy, Observability, Analytics, Testing).
 
 ### Testing

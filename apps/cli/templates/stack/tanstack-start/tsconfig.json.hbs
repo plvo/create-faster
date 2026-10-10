@@ -11,5 +11,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"{{#if (or (hasLibrary "vitest") (hasLibrary "playwright"))}}, "tests"{{/if}}]
+  "include": ["src"{{#if (has "deployment" "cloudflare")}}, "cloudflare-env.d.ts"{{/if}}{{#if (or (hasLibrary "vitest") (hasLibrary "playwright"))}}, "tests"{{/if}}]
 }

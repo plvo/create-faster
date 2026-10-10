@@ -1,1 +1,5 @@
+---
+deploymentSkip:
+  - cloudflare
+---
 PORT={{#if (isMono)}}{{appPort appName}}{{else}}3000{{/if}}
