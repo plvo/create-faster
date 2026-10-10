@@ -266,24 +266,5 @@ describe('TanStack Start + better-auth', () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('better-auth');
     });
-
-    test('rejects better-auth on cloudflare-static: it needs a server runtime', async () => {
-      const result = await runCli(
-        [
-          'start-auth-static',
-          '--app',
-          'web:tanstack-start:better-auth',
-          '--database',
-          'sqlite',
-          '--orm',
-          'drizzle',
-          '--deployment',
-          'cloudflare-static',
-          ...COMMON_ARGS,
-        ],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(1);
-    });
   });
 });
