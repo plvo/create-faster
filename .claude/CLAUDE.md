@@ -202,7 +202,7 @@ Programmatic `.env.example` file generation:
 - **Next.js**: shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form, evlog, posthog, vitest, playwright
 - **Expo**: nativewind, jest-expo
 - **Hono**: aws-lambda, vitest-node, evlog
-- **TanStack Start**: shadcn/ui, next-themes, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
+- **TanStack Start**: shadcn/ui, next-themes, mdx, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
 
 ### Deployment
 - **Cloudflare Workers** (`cloudflare`): Hono (Wrangler), Next.js (OpenNext), TanStack Start (`@cloudflare/vite-plugin`, no Nitro). A Start app drops `nitro` and the Nitro `start` script through `$when({ deployment: { not: 'cloudflare' } })`, `vite.config.ts.hbs` swaps `nitro()` for `cloudflare()` under `has "deployment" "cloudflare"`, and `.env.start` carries `deploymentSkip: [cloudflare]`. With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`); with Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.

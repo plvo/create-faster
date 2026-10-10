@@ -178,16 +178,27 @@ export const META: Meta = {
       label: 'MDX',
       hint: 'Markdown-based content',
       category: 'Content',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
-        dependencies: {
-          '@mdx-js/loader': '^3.1.1',
-          '@mdx-js/react': '^3.1.1',
-          '@next/mdx': '^16.3.3',
-          'next-mdx-remote': '^6.0.0',
-        },
         devDependencies: {
           '@types/mdx': '^2.0.14',
+        },
+      },
+      stackPackageJson: {
+        nextjs: {
+          dependencies: {
+            '@mdx-js/loader': '^3.1.1',
+            '@mdx-js/react': '^3.1.1',
+            '@next/mdx': '^16.3.3',
+            'next-mdx-remote': '^6.0.0',
+          },
+        },
+        'tanstack-start': {
+          dependencies: {
+            '@mdx-js/rollup': '^3.1.1',
+            'remark-frontmatter': '^5.0.0',
+            'remark-mdx-frontmatter': '^6.0.0',
+          },
         },
       },
     },

@@ -1,0 +1,37 @@
+import { type ComponentType, type LazyExoticComponent, lazy } from 'react';
+
+export type MdxFrontmatter = {
+  title: string;
+  summary: string;
+  publishedAt: string;
+  imageUrl?: string;
+};
+
+type MdxModule = {
+  default: ComponentType;
+  frontmatter: MdxFrontmatter;
+};
+
+const documentLoaders = import.meta.glob<MdxModule>('/contents/*.mdx');
+const documentComponents = new Map<string, LazyExoticComponent<ComponentType>>();
+
+function documentPath(slug: string): string {
+  return `/contents/${slug}.mdx`;
+}
+
+export function hasDocument(slug: string): boolean {
+  return documentPath(slug) in documentLoaders;
+}
+
+export function loadDocument(slug: string): Promise<MdxModule> {
+  return documentLoaders[documentPath(slug)]();
+}
+
+export function documentComponent(slug: string): LazyExoticComponent<ComponentType> {
+  const cached = documentComponents.get(slug);
+  if (cached) return cached;
+
+  const component = lazy(() => loadDocument(slug));
+  documentComponents.set(slug, component);
+  return component;
+}

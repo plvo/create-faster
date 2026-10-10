@@ -7,6 +7,9 @@
 {{else}}
 @import 'tailwindcss';
 {{/if}}
+{{#if (hasLibrary "mdx")}}
+@import "./styles/mdx.css";
+{{/if}}
 
 body {
   margin: 0;

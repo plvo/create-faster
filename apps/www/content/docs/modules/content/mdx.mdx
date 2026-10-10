@@ -3,12 +3,39 @@ title: MDX
 description: Pre-configured MDX support with frontmatter parsing, custom components, and dynamic routing.
 ---
 
-<Stacks names="nextjs" />
-<Dependencies packages="@mdx-js/loader,@mdx-js/react,@next/mdx,next-mdx-remote" dev="@types/mdx" />
+<Stacks names="nextjs,tanstack-start" />
+<Dependencies packages="@mdx-js/loader,@mdx-js/react,@next/mdx,next-mdx-remote,@mdx-js/rollup,remark-frontmatter,remark-mdx-frontmatter" dev="@types/mdx" />
+
+Next.js installs `@mdx-js/loader`, `@mdx-js/react`, `@next/mdx` and `next-mdx-remote`. TanStack Start installs `@mdx-js/rollup`, `remark-frontmatter` and `remark-mdx-frontmatter`.
 
 [→ MDX Documentation](https://mdxjs.com)
 
-## What create-faster adds
+## TanStack Start
+
+Documents in `contents/` are compiled at build time by `@mdx-js/rollup` and loaded lazily with `import.meta.glob`, one chunk per document. YAML frontmatter is exported as `frontmatter`. The example route `/mdx/{-$slug}` renders `/mdx` as `home.mdx` and `/mdx/cool` as `cool.mdx`.
+
+Files added:
+```
+src/
+├── lib/
+│   └── mdx.ts                  # Lazy document loader
+├── mdx-components.tsx          # Custom MDX component mappings
+├── styles/
+│   └── mdx.css                 # MDX-specific styling
+└── routes/mdx/
+    └── {-$slug}.tsx            # MDX route example
+
+contents/
+├── home.mdx                    # Example content
+└── cool.mdx                    # Example content
+```
+
+**Modified files:**
+- `vite.config.ts` - Adds the `@mdx-js/rollup` plugin with `remark-frontmatter` and `remark-mdx-frontmatter`
+- `src/styles.css` - Imports `styles/mdx.css`
+- `src/routes/index.tsx` - Links to the example page
+
+## Next.js
 
 Files added:
 ```

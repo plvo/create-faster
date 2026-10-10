@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute{{#if (hasLibrary "mdx")}}, Link{{/if}} } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -27,6 +27,9 @@ function Home() {
           <li>Edit this page in <code className="px-2 py-1 {{#if (hasLibrary "shadcn")}}bg-muted text-foreground{{else}}bg-slate-700 text-cyan-400{{/if}} rounded">src/routes/index.tsx</code></li>
           <li>Add new routes by creating files in <code className="px-2 py-1 {{#if (hasLibrary "shadcn")}}bg-muted text-foreground{{else}}bg-slate-700 text-cyan-400{{/if}} rounded">src/routes/</code></li>
           <li>Customize your app configuration in <code className="px-2 py-1 {{#if (hasLibrary "shadcn")}}bg-muted text-foreground{{else}}bg-slate-700 text-cyan-400{{/if}} rounded">vite.config.ts</code></li>
+          {{#if (hasLibrary "mdx")}}
+          <li>MDX is enabled, see the <Link to="/mdx/{-$slug}" className="underline">example page</Link></li>
+          {{/if}}
         </ul>
       </section>
     </div>

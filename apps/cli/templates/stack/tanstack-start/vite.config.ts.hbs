@@ -7,6 +7,11 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 {{else}}
 import { nitro } from 'nitro/vite'
 {{/if}}
+{{#if (hasLibrary "mdx")}}
+import mdx from '@mdx-js/rollup'
+import remarkFrontmatter from 'remark-frontmatter'
+import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
+{{/if}}
 
 const config = defineConfig({
   server: {
@@ -20,8 +25,17 @@ const config = defineConfig({
     cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../{{/if}}.wrangler' } }),
 {{/if}}
     tailwindcss(),
+{{#if (hasLibrary "mdx")}}
+    {
+      enforce: 'pre',
+      ...mdx({
+        providerImportSource: '/src/mdx-components.tsx',
+        remarkPlugins: [remarkFrontmatter, remarkMdxFrontmatter],
+      }),
+    },
+{{/if}}
     tanstackStart(),
-    viteReact(),
+    viteReact({{#if (hasLibrary "mdx")}}{ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }{{/if}}),
 {{#unless (has "deployment" "cloudflare")}}
     nitro(),
 {{/unless}}
