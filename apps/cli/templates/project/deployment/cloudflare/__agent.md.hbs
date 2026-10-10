@@ -35,7 +35,7 @@
 {{#if (has "stack" "tanstack-start")}}
 ## Cloudflare Workers deploy (TanStack Start, Vite plugin)
 
-TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in `vite.config.ts`), without Nitro. `wrangler.jsonc` points `main` at `@tanstack/react-start/server-entry`.
+TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in `vite.config.ts`), without Nitro. `wrangler.jsonc` points `main` at `@tanstack/react-start/server-entry`{{#if (hasLibrary "evlog")}}, or at `src/server.ts` in an app with evlog: it wraps that entry with `withEvlog` and passes the request logger as `context.log`. Call `useLogger()` from `@/lib/evlog` in app code{{/if}}.
 
 **Build & deploy**
 - `bun run dev` — `vite dev`, the app runs in workerd with the bindings declared in `wrangler.jsonc`
