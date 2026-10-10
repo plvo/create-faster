@@ -117,7 +117,7 @@ One splat server route (`ANY`) proxies every `/ingest/*` request. The same file 
 - strips the `/ingest` prefix and keeps the rest of the path (trailing slash included) and the query string;
 - sends `/static/*` and `/array/*` to `us-assets.i.posthog.com`, everything else to `us.i.posthog.com`;
 - forwards only an allowlist of request headers (`accept`, `accept-language`, `content-encoding`, `content-type`, `origin`, `referer`, `user-agent`), so cookies, credentials and gateway headers never reach PostHog;
-- sets `x-forwarded-for` from `cf-connecting-ip` on Cloudflare, where it cannot be spoofed, and from the connection address elsewhere;
+- sets `x-forwarded-for` from `cf-connecting-ip` on Cloudflare, where it cannot be spoofed, and from `x-forwarded-for` (leftmost entry, else the connection address) elsewhere, where the server usually sits behind a proxy or CDN;
 - streams the request body, rejects bodies over 64 MB with `413` and does not follow redirects;
 - drops `content-encoding`, `content-length`, `set-cookie`, `strict-transport-security` and `alt-svc` from the response.
 

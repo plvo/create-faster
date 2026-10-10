@@ -381,6 +381,20 @@ describe('tanstack-start-posthog', () => {
     );
 
     test(
+      'passes the leftmost x-forwarded-for entry on, as a server behind a proxy or CDN expects',
+      async () => {
+        const before = upstream.requests.length;
+        await fetch(`${server.url}/ingest/e/`, {
+          method: 'POST',
+          headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.9' },
+          body: '{}',
+        });
+        expect(upstream.requests[before].headers.get('x-forwarded-for')).toBe('203.0.113.7');
+      },
+      TIMEOUT_START,
+    );
+
+    test(
       'routes /static and /array to the assets host',
       async () => {
         const before = upstream.requests.length;

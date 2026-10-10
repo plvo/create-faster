@@ -63,7 +63,9 @@ async function forwardToPostHog(request: Request): Promise<Response> {
   // Cloudflare overwrites cf-connecting-ip on every request, so a client cannot spoof it.
   const clientIp = request.headers.get('cf-connecting-ip')
 {{else}}
-  // Outside Cloudflare cf-connecting-ip is client-controlled, so only the connection address is trusted.
+  // Outside Cloudflare cf-connecting-ip is client-controlled, so it is ignored. x-forwarded-for is honored
+  // (leftmost entry) because the server usually sits behind a proxy or CDN, where the socket address is the proxy's.
+  // A client can spoof it, which only skews the geolocation of its own events.
   const clientIp = getRequestIP({ xForwardedFor: true })
 {{/if}}
   if (clientIp) headers.set('x-forwarded-for', clientIp)
