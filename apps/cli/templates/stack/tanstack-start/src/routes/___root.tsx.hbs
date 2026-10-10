@@ -4,14 +4,14 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 {{#if (hasLibrary "next-themes")}}
 import { ThemeProvider } from 'next-themes'
 {{/if}}
-{{#if (hasLibrary "posthog")}}
-import { AnalyticsProvider } from '../components/analytics-provider'
-{{/if}}
 {{#if (hasLibrary "evlog")}}
 import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 {{/if}}
 
+{{#if (hasLibrary "posthog")}}
+import { AnalyticsProvider } from '@/components/analytics-provider'
+{{/if}}
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
