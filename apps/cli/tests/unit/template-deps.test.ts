@@ -76,6 +76,7 @@ function extractImportedPackages(content: string): ImportEntry[] {
   for (const { regex, typeOnly } of patterns) {
     for (const match of content.matchAll(regex)) {
       const importPath = match[1];
+      if (!importPath) continue;
 
       if (
         importPath.startsWith('.') ||

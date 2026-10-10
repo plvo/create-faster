@@ -56,6 +56,12 @@ describe('TanStack Start + cloudflare', () => {
       expect(agents).toContain('@cloudflare/vite-plugin');
       expect(agents).toContain('cloudflare:workers');
       expect(agents).not.toContain('c.env');
+      expect(agents).not.toContain('Cloudflare Workers deploy (Wrangler)');
+    });
+
+    test('agent docs keep Markdown code spans intact', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('persisted in the `.wrangler/` directory,');
     });
   });
 
@@ -153,15 +159,69 @@ describe('TanStack Start + cloudflare', () => {
       expect(config).toContain("persistState: { path: '../../.wrangler' }");
     });
 
-    test('root agent docs cover both the Start and the Hono deploy flows', async () => {
+    test('root agent docs cover both the Start and the Hono deploy flows, one section per block', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
       expect(agents).toContain('Cloudflare Workers deploy (TanStack Start, Vite plugin)');
-      expect(agents).toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(agents).toContain('\n\n## Cloudflare Workers deploy (Wrangler)');
+      expect(agents).toContain('persisted in the `.wrangler/` directory at the monorepo root,');
     });
 
     test('shared db package never imports cloudflare:workers', async () => {
       const index = await readTextFile(join(projectPath, 'packages/db/src/index.ts'));
       expect(index).not.toContain('cloudflare:workers');
+    });
+  });
+
+  describe('agent docs per stack', () => {
+    const agentsOf = async (name: string, args: string[]) => {
+      const result = await runCli(
+        [name, ...args, '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+      return readTextFile(join(tempDir, name, 'AGENTS.md'));
+    };
+
+    test('a Next.js only Turborepo gets the OpenNext flow, not the Hono one', async () => {
+      const agents = await agentsOf('docs-next-turbo', ['--app', 'web:nextjs', '--app', 'web2:nextjs']);
+      expect(agents).toContain('Cloudflare Workers deploy (OpenNext)');
+      expect(agents).not.toContain('Cloudflare Workers deploy (Wrangler)');
+    });
+
+    test('a Hono only Turborepo gets the Wrangler flow only', async () => {
+      const agents = await agentsOf('docs-hono-turbo', ['--app', 'a:hono', '--app', 'b:hono']);
+      expect(agents).toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(agents).not.toContain('OpenNext');
+      expect(agents).not.toContain('Vite plugin');
+    });
+
+    test('Next.js and Start with Hyperdrive state the shared guidance once, with each stack line', async () => {
+      const agents = await agentsOf('docs-next-start-pg', [
+        '--app',
+        'web:nextjs',
+        '--app',
+        'admin:tanstack-start',
+        '--database',
+        'postgres',
+        '--orm',
+        'drizzle',
+      ]);
+      expect(agents.match(/\*\*Database — Hyperdrive\*\*/g)).toHaveLength(1);
+      expect(agents).toContain('await createDb((await getEnv()).HYPERDRIVE)');
+      expect(agents).toContain('const db = await createDb(env.HYPERDRIVE)');
+    });
+
+    test('Start with Hyperdrive names the Vite local runs, not wrangler dev', async () => {
+      const agents = await agentsOf('docs-start-pg', [
+        '--app',
+        'docs-start-pg:tanstack-start',
+        '--database',
+        'postgres',
+        '--orm',
+        'drizzle',
+      ]);
+      expect(agents).toContain('`vite dev` and `vite preview` only');
+      expect(agents).not.toContain('getEnv');
     });
   });
 });

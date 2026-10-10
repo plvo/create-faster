@@ -17,7 +17,7 @@ const config = defineConfig({
   },
   plugins: [
 {{#if (has "deployment" "cloudflare")}}
-    cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../.wrangler{{else}}.wrangler{{/if}}' } }),
+    cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../{{/if}}.wrangler' } }),
 {{/if}}
     tailwindcss(),
     tanstackStart(),
