@@ -47,6 +47,10 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
     expect(pkg.scripts['db:seed']).toContain('--env-file');
   });
 
+  test('keeps its own root seed and gets no generic seed in the db package', async () => {
+    expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(false);
+  });
+
   test('declares faker for demo fixtures', async () => {
     const pkg = await readJsonFile<RootPkg>(join(projectPath, 'package.json'));
     expect(pkg.devDependencies['@faker-js/faker']).toBeDefined();

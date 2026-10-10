@@ -1135,7 +1135,7 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
     expect(result.content.scripts?.['db:generate']).toBe('turbo db:generate');
     expect(result.content.scripts?.['db:migrate']).toBe('turbo db:migrate');
     expect(result.content.scripts?.['db:studio']).toBe('turbo db:studio');
-    expect(result.content.scripts?.['db:seed']).toContain('packages/db/.env');
+    expect(result.content.scripts?.['db:seed']).toBe('turbo db:seed');
   });
 
   test('root package.json has no db workflow when no ORM is selected', () => {

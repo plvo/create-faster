@@ -1,17 +1,22 @@
 ---
 mono:
-  scope: root
+  scope: pkg
+blueprintSkip:
+  - org-dashboard
+  - multitenant-saas
+  - cloudflare-fullstack
+  - dapp-privy
 ---
 {{#if (has "database" "d1")}}
 import fs from 'node:fs';
 import path from 'node:path';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import * as schema from {{#if (isMono)}}'@repo/db/schema'{{else}}'../src/lib/db/schema'{{/if}};
-import { postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+import * as schema from {{#if (isMono)}}'../src/schema'{{else}}'../src/lib/db/schema'{{/if}};
+import { postTable, userTable } from {{#if (isMono)}}'../src/index'{{else}}'../src/lib/db'{{/if}};
 
 function getLocalD1DB(): string | undefined {
-  const d1Dir = path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject');
+  const d1Dir = path.resolve(process.cwd(), '{{#if (isMono)}}../../{{/if}}.wrangler/v3/d1/miniflare-D1DatabaseObject');
   if (!fs.existsSync(d1Dir)) return undefined;
   const files = fs
     .readdirSync(d1Dir)
@@ -36,8 +41,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 {{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
 {{/if}}
-import * as schema from {{#if (isMono)}}'@repo/db/schema'{{else}}'../src/lib/db/schema'{{/if}};
-import { postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+import * as schema from {{#if (isMono)}}'../src/schema'{{else}}'../src/lib/db/schema'{{/if}};
+import { postTable, userTable } from {{#if (isMono)}}'../src/index'{{else}}'../src/lib/db'{{/if}};
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
@@ -50,7 +55,7 @@ const db = drizzle({ schema, connection: { connectionString: process.env.DATABAS
 const db = drizzle({ schema, mode: 'default', connection: process.env.DATABASE_URL });
 {{/if}}
 {{else}}
-import { db, postTable, userTable } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+import { db, postTable, userTable } from {{#if (isMono)}}'../src/index'{{else}}'../src/lib/db'{{/if}};
 {{/if}}
 {{/if}}
 
@@ -91,6 +96,8 @@ async function seed() {
       },
     ])
     .returning();
+
+  if (!alice || !bob) throw new Error('Failed to create users');
 {{/if}}
 
   console.log(`✅ Created ${2} users`);

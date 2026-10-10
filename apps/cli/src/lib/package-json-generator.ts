@@ -269,10 +269,9 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
   if (ormAddon?.mono?.scope === 'pkg') {
     const dbPkg = ormAddon.mono.name;
     dependencies[`@repo/${dbPkg}`] = '*';
-    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:studio']) {
+    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio']) {
       scripts[script] = `turbo ${script}`;
     }
-    scripts['db:seed'] = `bun --env-file=packages/${dbPkg}/.env scripts/seed.ts`;
   }
 
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
@@ -283,9 +282,6 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     const toolingAddon = META.project.tooling.options[toolingName];
     if (toolingAddon?.packageJson) rootConfigs.push(toolingAddon.packageJson);
   }
-
-  const databaseAddon = ctx.project.database ? META.project.database.options[ctx.project.database] : undefined;
-  if (databaseAddon?.rootPackageJson) rootConfigs.push(databaseAddon.rootPackageJson);
 
   if (ctx.project.deployment) {
     const deploymentAddon = META.project.deployment.options[ctx.project.deployment];

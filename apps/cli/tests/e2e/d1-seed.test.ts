@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
 
@@ -107,3 +108,119 @@ for (const { name, appFlags, localSetupDir } of PROJECTS) {
     );
   });
 }
+
+describe('d1-seed-turbo-db-package: the seed also runs from inside the db package', () => {
+  let projectDir: string;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'd1-seed-turbo-db',
+        '--app',
+        'api:hono',
+        '--app',
+        'web:nextjs',
+        '--database',
+        'd1',
+        '--orm',
+        'drizzle',
+        '--deployment',
+        'cloudflare',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    projectDir = join(tempDir, 'd1-seed-turbo-db');
+    const install = await runCommand(['bun', 'install'], projectDir);
+    expect(install.exitCode).toBe(0);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'bun run db:seed from packages/db seeds the migrated database',
+    async () => {
+      const dbDir = join(projectDir, 'packages/db');
+      expect((await runCommand(['bun', 'run', 'db:generate'], dbDir)).exitCode).toBe(0);
+      expect((await runCommand(['bun', 'run', 'db:migrate'], dbDir)).exitCode).toBe(0);
+      const seed = await runCommand(['bun', 'run', 'db:seed'], dbDir);
+      expect(seed.exitCode, `${seed.stdout}\n${seed.stderr}`).toBe(0);
+      expect(countRows(projectDir, 'users')).toBe(2);
+    },
+    TIMEOUT_DB * 2,
+  );
+});
+
+const UNREACHABLE_DATABASE_URL = 'postgres://user:pass@127.0.0.1:1/db';
+
+const POSTGRES_ORMS = [
+  { orm: 'drizzle', deployment: ['--deployment', 'cloudflare'], unreachable: 'ECONNREFUSED', prepare: [] as string[] },
+  { orm: 'prisma', deployment: [] as string[], unreachable: 'reach database server', prepare: ['bun', 'run', 'db:generate'] },
+];
+
+describe.each(POSTGRES_ORMS)('postgres turborepo ($orm): the seed resolves its imports without a root drizzle-orm', ({
+  orm,
+  deployment,
+  unreachable,
+  prepare,
+}) => {
+  const name = `pg-seed-turbo-${orm}`;
+  let projectDir: string;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        name,
+        '--app',
+        'api:hono',
+        '--app',
+        'web:nextjs',
+        '--database',
+        'postgres',
+        '--orm',
+        orm,
+        ...deployment,
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    projectDir = join(tempDir, name);
+    const install = await runCommand(['bun', 'install'], projectDir);
+    expect(install.exitCode).toBe(0);
+    await writeFile(join(projectDir, 'packages/db/.env'), `DATABASE_URL="${UNREACHABLE_DATABASE_URL}"\n`);
+    if (prepare.length > 0) {
+      const prepared = await runCommand(prepare, join(projectDir, 'packages/db'));
+      expect(prepared.exitCode, prepared.stderr).toBe(0);
+    }
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'db:seed fails on the database connection, not on module resolution, from the root and from packages/db',
+    async () => {
+      for (const dir of ['.', 'packages/db']) {
+        const result = await runCommand(['bun', 'run', 'db:seed'], join(projectDir, dir));
+        const output = `${result.stdout}\n${result.stderr}`;
+        expect(result.exitCode).not.toBe(0);
+        expect(output).not.toContain('Cannot find module');
+        expect(output).toContain(unreachable);
+      }
+    },
+    TIMEOUT_DB,
+  );
+});

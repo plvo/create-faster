@@ -79,6 +79,11 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     }
   });
 
+  test('keeps its root seed and gets no generic seed in the db package', async () => {
+    expect(await fileExists(join(projectPath, 'scripts/seed.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(false);
+  });
+
   test('emits a root local-setup orchestrator wired into the root scripts', async () => {
     const setupPath = join(projectPath, 'scripts/local-setup.ts');
     expect(await fileExists(setupPath)).toBe(true);

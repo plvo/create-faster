@@ -31,8 +31,18 @@ function isSkippedForDeployment(frontmatter: TemplateFrontmatter, ctx: TemplateC
   return frontmatter.deploymentSkip?.includes(deployment) ?? false;
 }
 
+// A template can opt out of being generated for specific blueprints via frontmatter `blueprintSkip`.
+function isSkippedForBlueprint(frontmatter: TemplateFrontmatter, ctx: TemplateContext): boolean {
+  if (!ctx.blueprint) return false;
+  return frontmatter.blueprintSkip?.includes(ctx.blueprint) ?? false;
+}
+
 function isTemplateExcluded(frontmatter: TemplateFrontmatter, ctx: TemplateContext): boolean {
-  return shouldSkipTemplate(frontmatter.only, ctx) || isSkippedForDeployment(frontmatter, ctx);
+  return (
+    shouldSkipTemplate(frontmatter.only, ctx) ||
+    isSkippedForDeployment(frontmatter, ctx) ||
+    isSkippedForBlueprint(frontmatter, ctx)
+  );
 }
 
 export function resolveAddonNames(category: ProjectCategoryName, addonName: string): string[] {
