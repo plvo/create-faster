@@ -84,17 +84,23 @@ The error handler uses `parseError()` for structured JSON responses with `why` a
 
 ### TanStack Start
 
+The wiring depends on the runtime. Nitro (the default) logs through the `evlog/nitro/v3` module. On [Cloudflare Workers](/docs/deployment/cloudflare) there is no Nitro, so a custom server entry wraps Start's `fetch` with `withEvlog`.
+
 Files added:
 ```
-nitro.config.ts             # evlog/nitro/v3 module registration
+src/start.ts                # global server function middleware that logs errors
+nitro.config.ts             # Nitro: evlog/nitro/v3 module registration
+src/server.ts               # Cloudflare: Worker entry wrapped with withEvlog
+src/lib/evlog.ts            # Cloudflare: project-local useLogger()
 ```
 
 Modified files:
-- `src/routes/__root.tsx` - Adds `evlogErrorHandler` server middleware
+- `src/routes/__root.tsx` - Adds an error middleware that logs into the wide event and returns `EvlogError` as JSON
+- `wrangler.jsonc` - Cloudflare: `main` points to `src/server.ts`
 
 #### nitro.config.ts
 
-Registers the evlog Nitro v3 module with async context for request-scoped logging. `nitro` itself comes with the TanStack Start stack, whose `nitro()` Vite plugin loads this file when building the production server:
+Nitro only. Registers the evlog Nitro v3 module with async context for request-scoped logging. `nitro` itself comes with the TanStack Start stack, whose `nitro()` Vite plugin loads this file when building the production server:
 
 ```ts title="nitro.config.ts"
 import { defineConfig } from 'nitro';
@@ -112,21 +118,55 @@ export default defineConfig({
 });
 ```
 
+#### src/server.ts
+
+Cloudflare only. Wraps Start's `fetch` with `withEvlog`, which emits one wide event per request (with `cfRay`, `colo`, `country` and `asn`) and flushes drains through `ctx.waitUntil`. The logger is passed to Start as `context.log` and bound to `useLogger()`:
+
+```ts title="src/server.ts"
+import handler from '@tanstack/react-start/server-entry'
+import { initWorkersLogger, withEvlog } from 'evlog/workers'
+import { loggerStorage } from '@/lib/evlog'
+
+initWorkersLogger({ env: { service: 'my-app' } })
+
+export default withEvlog((request, _env, _ctx, log) =>
+  loggerStorage.run(log, () => handler.fetch(request, { context: { log } })),
+)
+```
+
+`src/lib/evlog.ts` exports `useLogger()` built on `AsyncLocalStorage` (the `nodejs_compat` flag is already set), with the same API as in Next.js. Middleware, server routes and server functions can also read `context.log`. On Nitro, read the logger with `useRequest().context.log` from `nitro/context`.
+
 #### __root.tsx
 
-Wires `evlogErrorHandler` as a TanStack Start server middleware to preserve structured error `data` fields (`why`, `fix`, `link`) in responses:
+Replaces `evlogErrorHandler`: a server middleware that records any error on the wide event and returns an `EvlogError` as a JSON response, preserving its structured `data` fields (`why`, `fix`, `link`):
 
 ```tsx title="src/routes/__root.tsx"
-import { createMiddleware } from '@tanstack/react-start'
-import { evlogErrorHandler } from 'evlog/nitro/v3'
-
 export const Route = createRootRoute({
   server: {
-    middleware: [createMiddleware().server(evlogErrorHandler)],
+    middleware: [
+      createMiddleware().server(async ({ next, context }) => {
+        try {
+          return await next()
+        } catch (error) {
+          context.log?.error(error)
+          if (EvlogError.isEvlogError(error)) {
+            throw new Response(JSON.stringify(error.toJSON()), {
+              status: error.status || 500,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          }
+          throw error
+        }
+      }),
+    ],
   },
   // ...
 })
 ```
+
+#### src/start.ts
+
+A global `functionMiddleware` logs errors thrown by server functions into the wide event, both when a loader calls them during SSR and over RPC. An error thrown directly inside a route `loader` (not through a server function) is not reached by any middleware: the event carries the 500 status but no `error`.
 
 ### Node
 
