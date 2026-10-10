@@ -5,6 +5,7 @@ import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
+  expectIngestProxiesToPostHog,
   expectServesPageWithClientScript,
   fileExists,
   getFreePort,
@@ -32,6 +33,7 @@ interface Scenario {
   startAppDirs: string[];
   workerDirs: string[];
   d1Probe?: D1Probe;
+  ingestProbe?: boolean;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -166,9 +168,17 @@ const SCENARIOS: Scenario[] = [
     startAppDirs: ['apps/web'],
     workerDirs: ['apps/web', 'apps/docs'],
   },
+  {
+    name: 'tanstack-start-cloudflare-posthog',
+    deployment: 'cloudflare',
+    args: ['--app', 'tanstack-start-cloudflare-posthog:tanstack-start:posthog,next-themes'],
+    startAppDirs: ['.'],
+    workerDirs: ['.'],
+    ingestProbe: true,
+  },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
@@ -287,7 +297,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     );
   } else {
     test(
-      'vite preview serves the built app in workerd (and answers a D1 query when there is a database)',
+      'vite preview serves the built app in workerd (and answers a D1 query or proxies /ingest when selected)',
       async () => {
         for (const dir of startAppDirs) {
           const port = await getFreePort();
@@ -297,6 +307,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           servers.push(server);
           await expectServesPageWithClientScript(server.url);
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
+          if (ingestProbe) await expectIngestProxiesToPostHog(server.url);
         }
       },
       TIMEOUT_PREVIEW,
