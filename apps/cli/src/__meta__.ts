@@ -1,6 +1,8 @@
 import { $when } from '@/lib/when';
 import type { Meta } from '@/types/meta';
 
+const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -114,7 +116,7 @@ export const META: Meta = {
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: $when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, '^3.0.260903-beta'),
+          nitro: $when(RUNS_NITRO, '^3.0.260903-beta'),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -122,10 +124,7 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: $when(
-            { deployment: { not: ['cloudflare', 'cloudflare-static'] } },
-            'node --env-file=.env.start .output/server/index.mjs',
-          ),
+          start: $when(RUNS_NITRO, 'node --env-file=.env.start .output/server/index.mjs'),
         },
       },
     },

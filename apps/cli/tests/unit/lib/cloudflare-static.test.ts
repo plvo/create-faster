@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import {
-  isCategoryValueAllowedByLibraries,
-  isRequirementMet,
-  isServerRuntimeSatisfied,
-} from '@/lib/addon-utils';
+import { getCategoryOptionUnavailability } from '@/lib/addon-utils';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
@@ -13,9 +9,7 @@ const destinations = (ctx: TemplateContext) => getAllTemplatesForContext(ctx).ma
 
 const visibleDeploymentOptions = (ctx: Partial<TemplateContext>): string[] =>
   Object.entries(META.project.deployment.options)
-    .filter(([, addon]) => isRequirementMet(addon.require, ctx as TemplateContext))
-    .filter(([name]) => isCategoryValueAllowedByLibraries('deployment', name, ctx))
-    .filter(([, addon]) => isServerRuntimeSatisfied(addon, ctx))
+    .filter(([name, addon]) => getCategoryOptionUnavailability('deployment', name, addon, ctx) === undefined)
     .map(([name]) => name);
 
 describe('cloudflare-static deployment option', () => {
@@ -23,7 +17,7 @@ describe('cloudflare-static deployment option', () => {
     expect(META.project.deployment.options['cloudflare-static']).toBeDefined();
   });
 
-  test('cloudflare-static defines no hono stack package.json', () => {
+  test('cloudflare-static defines a nextjs stack package.json and no hono one', () => {
     const option = META.project.deployment.options['cloudflare-static'];
     expect(option?.stackPackageJson?.nextjs).toBeDefined();
     expect(option?.stackPackageJson?.hono).toBeUndefined();

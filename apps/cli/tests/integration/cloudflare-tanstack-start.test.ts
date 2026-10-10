@@ -46,6 +46,12 @@ describe('TanStack Start + cloudflare', () => {
       expect(await fileExists(join(projectPath, 'src/lib/server.ts'))).toBe(false);
     });
 
+    test('root route imports the not-found component the stack generates', async () => {
+      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
+      expect(root).toContain("import { NotFound } from '@/components/not-found'");
+      expect(await fileExists(join(projectPath, 'src/components/not-found.tsx'))).toBe(true);
+    });
+
     test('tsconfig includes the generated worker types', async () => {
       const tsconfig = await readTextFile(join(projectPath, 'tsconfig.json'));
       expect(tsconfig).toContain('cloudflare-env.d.ts');

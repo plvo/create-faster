@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { isCategoryValueAllowedByLibraries, isRequirementMet, isServerRuntimeSatisfied } from '@/lib/addon-utils';
+import { getCategoryOptionUnavailability } from '@/lib/addon-utils';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
@@ -15,14 +15,13 @@ const singleCtx = (libraries: string[] = []): TemplateContext => ({
   git: false,
 });
 
-const isDeploymentOptionVisible = (ctx: Partial<TemplateContext>): boolean => {
-  const addon = META.project.deployment.options['cloudflare-static']!;
-  return (
-    isRequirementMet(addon.require, ctx as TemplateContext) &&
-    isCategoryValueAllowedByLibraries('deployment', 'cloudflare-static', ctx) &&
-    isServerRuntimeSatisfied(addon, ctx)
-  );
-};
+const isDeploymentOptionVisible = (ctx: Partial<TemplateContext>): boolean =>
+  getCategoryOptionUnavailability(
+    'deployment',
+    'cloudflare-static',
+    META.project.deployment.options['cloudflare-static'],
+    ctx,
+  ) === undefined;
 
 describe('cloudflare-static deployment: tanstack-start package.json', () => {
   test('declares a tanstack-start stack package.json', () => {
@@ -71,6 +70,14 @@ describe('cloudflare-static deployment: tanstack-start generated paths', () => {
     expect(dests).not.toContain('apps/docs/.env.start');
     expect(dests).not.toContain('apps/docs/nitro.config.ts');
   });
+
+  test.each([undefined, 'cloudflare', 'sst', 'cloudflare-static'] as const)(
+    'emits the not-found component the root route imports when the deployment is %p',
+    (deployment) => {
+      const ctx = { ...singleCtx(), project: { deployment, tooling: [] } };
+      expect(destinations(ctx)).toContain('src/components/not-found.tsx');
+    },
+  );
 
   test('other deployments never emit the 404 page route', () => {
     const ctx = { ...singleCtx(), project: { deployment: 'cloudflare' as const, tooling: [] } };

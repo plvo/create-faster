@@ -112,7 +112,7 @@ export default defineConfig({
 });
 ```
 
-Not generated under the `cloudflare-static` deployment, which builds without Nitro. evlog stays allowed there but inert: the `evlogErrorHandler` middleware only runs while the pages are prerendered at build time.
+Not generated under the `cloudflare` and `cloudflare-static` deployments, which build without Nitro. evlog stays allowed there but inert: the `evlogErrorHandler` middleware only runs while the pages are prerendered at build time.
 
 #### __root.tsx
 
