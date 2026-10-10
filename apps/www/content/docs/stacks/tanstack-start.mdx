@@ -22,7 +22,7 @@ Beyond the official setup, we include:
 
 **Vite Configuration:**
 - TanStack Router DevTools enabled
-- Nitro (`nitro/vite`) as the production server: the build emits `.output/server/index.mjs`, which `start` runs
+- Nitro (`nitro/vite`) as the production server: the build emits `.output/server/index.mjs`, which `start` runs. The [Cloudflare Workers](/docs/deployment/cloudflare) and [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) deployments replace it
 - Tailwind CSS v4 via Vite plugin
 - TypeScript path aliases through Vite's native `resolve.tsconfigPaths`
 
@@ -34,6 +34,8 @@ Beyond the official setup, we include:
 Files created:
 ```
 src/
+├── components/
+│   └── not-found.tsx      # Root notFoundComponent
 ├── routes/
 │   ├── ___root.tsx        # Root layout with meta tags and styles
 │   └── index.tsx          # Home page with welcome content

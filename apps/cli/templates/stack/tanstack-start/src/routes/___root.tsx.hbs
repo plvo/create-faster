@@ -9,6 +9,7 @@ import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
 {{/if}}
 
+import { NotFound } from '@/components/not-found'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -37,6 +38,7 @@ export const Route = createRootRoute({
     middleware: [createMiddleware().server(evlogErrorHandler)],
   },
   {{/if}}
+  notFoundComponent: NotFound,
   shellComponent: RootDocument,
 })
 

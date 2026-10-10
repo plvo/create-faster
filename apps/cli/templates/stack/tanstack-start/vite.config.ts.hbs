@@ -4,9 +4,10 @@ import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 {{#if (has "deployment" "cloudflare")}}
 import { cloudflare } from '@cloudflare/vite-plugin'
-{{else}}
-import { nitro } from 'nitro/vite'
 {{/if}}
+{{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
+import { nitro } from 'nitro/vite'
+{{/unless}}
 {{#if (hasLibrary "mdx")}}
 import mdx from '@mdx-js/rollup'
 import remarkFrontmatter from 'remark-frontmatter'
@@ -34,9 +35,13 @@ const config = defineConfig({
       }),
     },
 {{/if}}
+{{#if (has "deployment" "cloudflare-static")}}
+    tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } }),
+{{else}}
     tanstackStart(),
+{{/if}}
     viteReact({{#if (hasLibrary "mdx")}}{ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }{{/if}}),
-{{#unless (has "deployment" "cloudflare")}}
+{{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
     nitro(),
 {{/unless}}
   ],
