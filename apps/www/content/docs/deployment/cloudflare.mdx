@@ -1,16 +1,16 @@
 ---
 title: Cloudflare Workers
-description: Cloudflare Workers deployment platform — stack-aware Wrangler config for Hono and OpenNext config for Next.js.
+description: Cloudflare Workers deployment platform — stack-aware config for Hono, Next.js (OpenNext) and TanStack Start (Vite plugin).
 ---
 
-<Stacks names="hono,nextjs" />
-<Dependencies dev="wrangler" packages="@opennextjs/cloudflare" />
+<Stacks names="hono,nextjs,tanstack-start" />
+<Dependencies dev="wrangler,@cloudflare/vite-plugin" packages="@opennextjs/cloudflare" />
 
 [→ Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 
 ## What create-faster adds
 
-Cloudflare Workers is a project-level deployment platform. Generation is stack-aware per app: a Hono app gets a direct Workers config, and a Next.js app gets an [OpenNext](https://opennext.js.org/cloudflare) config. Selecting it once with `--deployment cloudflare` configures every app according to its stack.
+Cloudflare Workers is a project-level deployment platform. Generation is stack-aware per app: a Hono app gets a direct Workers config, a Next.js app gets an [OpenNext](https://opennext.js.org/cloudflare) config, and a TanStack Start app gets the [Cloudflare Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/). Selecting it once with `--deployment cloudflare` configures every app according to its stack.
 
 ### Hono apps
 
@@ -60,9 +60,31 @@ export default defineCloudflareConfig({});
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
 - `cf:typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
 
+### TanStack Start apps
+
+TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro: `vite.config.ts` registers the plugin in place of `nitro()`, and `vite dev` and `vite preview` run the app in workerd with the bindings declared in `wrangler.jsonc`. The Nitro `start` script and the `.env.start` file are not generated.
+
+```jsonc title="wrangler.jsonc"
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "web",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
+**Scripts:**
+- `build` - Build the client assets and the Worker (`vite build`)
+- `preview` - Serve the production build in workerd (`vite preview`). Check the build here before deploying: `vite dev` hides errors that only appear once the Worker is built, such as I/O or randomness at module level.
+- `deploy` - Build then deploy (`vite build && wrangler deploy`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). Run it after install and after each change to `wrangler.jsonc`: `tsc` reads `cloudflare-env.d.ts` for the `cloudflare:workers` module.
+
+Bindings are read with `import { env } from 'cloudflare:workers'`. With `--database d1`, `src/lib/server.ts` builds the Drizzle `db` once at module scope from `env.DB`, which is safe for D1. With Postgres or MySQL, build a client per request with `await createDb(env.HYPERDRIVE)` (see below).
+
 ## Postgres / MySQL via Hyperdrive
 
-A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and forbids reusing a connection across requests. When a Next.js app uses `--database postgres` (or `mysql`) with `--deployment cloudflare`, the database is routed through a Cloudflare [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) binding (a pooling proxy), and the `db` package exports a per-request `createDb(hyperdrive)` factory instead of a module-level singleton.
+A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and forbids reusing a connection across requests. When a Next.js or TanStack Start app uses `--database postgres` (or `mysql`) with `--deployment cloudflare`, the database is routed through a Cloudflare [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) binding (a pooling proxy), and the `db` package exports a per-request `createDb(hyperdrive)` factory instead of a module-level singleton.
 
 ```jsonc title="wrangler.jsonc"
 "hyperdrive": [
@@ -74,7 +96,7 @@ A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and for
 ]
 ```
 
-- **Setup:** `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc`. `localConnectionString` is used by `wrangler dev`/local only and matches your local `DATABASE_URL`.
+- **Setup:** `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc`. `localConnectionString` is used by local runs only (`wrangler dev`, `vite dev`, `vite preview`) and matches your local `DATABASE_URL`.
 - **Migrations** run on Node via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
 - better-auth / tRPC over a Cloudflare binding database (per-request consumers) is not wired yet, so those combinations are disabled with a reason on Cloudflare (tracked in [#153](https://github.com/plvo/create-faster/issues/153)).
 
@@ -87,7 +109,7 @@ The Worker `name` is the app name in turborepo mode and the project name in sing
 
 **Local secrets:**
 
-Wrangler 4.x reads local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
+Wrangler 4.x and the Vite plugin read local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
 
 **Turborepo mode:**
 `wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.
