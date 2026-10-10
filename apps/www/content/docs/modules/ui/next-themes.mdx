@@ -3,7 +3,7 @@ title: Next Themes
 description: Pre-configured theme provider with system preference support and persistent theme selection.
 ---
 
-<Stacks names="nextjs" />
+<Stacks names="nextjs,tanstack-start" />
 <Dependencies packages="next-themes" />
 
 [→ next-themes Documentation](https://github.com/pacocoursey/next-themes)
@@ -11,7 +11,8 @@ description: Pre-configured theme provider with system preference support and pe
 ## What create-faster adds
 
 Modified files:
-- `src/components/app-providers.tsx` - Wraps app with `NextThemesProvider`
+- Next.js: `src/components/app-providers.tsx` - Wraps app with `NextThemesProvider`
+- TanStack Start: `src/routes/__root.tsx` - Wraps the body content of the root shell with `ThemeProvider`
 
 **Configuration:**
 - `enableSystem: true` - Respects system theme preference
