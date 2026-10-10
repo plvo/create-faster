@@ -153,6 +153,12 @@ describe('TanStack Start + cloudflare', () => {
       expect(config).toContain("persistState: { path: '../../.wrangler' }");
     });
 
+    test('root agent docs cover both the Start and the Hono deploy flows', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('Cloudflare Workers deploy (TanStack Start, Vite plugin)');
+      expect(agents).toContain('Cloudflare Workers deploy (Wrangler)');
+    });
+
     test('shared db package never imports cloudflare:workers', async () => {
       const index = await readTextFile(join(projectPath, 'packages/db/src/index.ts'));
       expect(index).not.toContain('cloudflare:workers');

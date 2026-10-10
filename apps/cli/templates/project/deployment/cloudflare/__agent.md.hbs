@@ -40,6 +40,37 @@
 - better-auth / tRPC over this binding (per-request consumers) is not wired yet — see #153.
 {{/if}}
 {{else}}
+{{#if (has "stack" "tanstack-start")}}
+## Cloudflare Workers deploy (TanStack Start, Vite plugin)
+
+TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in `vite.config.ts`), without Nitro. `wrangler.jsonc` points `main` at `@tanstack/react-start/server-entry`.
+
+**Build & deploy**
+- `bun run dev` — `vite dev`, the app runs in workerd with the bindings declared in `wrangler.jsonc`
+- `bun run build` — `vite build`, emits `dist/client` (assets) and `dist/server` (Worker)
+- `bun run preview` — `vite preview`, serves the production build in workerd. Run it before deploying: `vite dev` hides errors that only appear once the Worker is built (see the global scope rule below)
+- `bun run deploy` — `vite build && wrangler deploy`
+- `bun run cf-typegen` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`. Run it after install and after every change to bindings: `tsc` needs it for the `cloudflare:workers` module and the `D1Database` / `Hyperdrive` types
+
+**Bindings and variables**
+- Read bindings with `import { env } from 'cloudflare:workers'`. They are never on `process.env`.
+- Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `wrangler secret put X`.
+- Local state (D1, KV, R2) is persisted in `{{#if (isMono)}}the monorepo root `.wrangler/`{{else}}`.wrangler/`{{/if}}, the same directory the `wrangler ... --persist-to` scripts use.
+
+**Global scope rule**: in a production build the app's modules are evaluated in the Worker's global scope. At module level there is no I/O, no timers and no randomness (`crypto.randomUUID()`, `crypto.getRandomValues()`). Code that does passes in `vite dev` and fails in `vite preview` and after deploy.
+{{#if (has "database" "d1")}}
+
+**Database — D1**: the app's `src/lib/server.ts` exports a `db` built once at module scope with `createDb(env.DB)`. The D1 binding is safe to hold across requests, so import `db` directly in server functions and route handlers. The `createDb(d1)` factory in the db {{#if (isMono)}}package{{else}}module{{/if}} stays a plain factory with no `cloudflare:workers` import.
+{{/if}}
+{{#if (or (has "database" "postgres") (has "database" "mysql"))}}
+
+**Database — Hyperdrive**: the Workers runtime cannot open a raw TCP connection to {{#if (has "database" "postgres")}}Postgres{{/if}}{{#if (has "database" "mysql")}}MySQL{{/if}}, and a connection cannot be reused across requests. The DB goes through the Cloudflare **Hyperdrive** binding (a pooling proxy). Build a client per request inside each server function or route handler: `const db = await createDb(env.HYPERDRIVE)`. Never create a client or read `env.HYPERDRIVE` properties at module level.
+
+- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by `vite dev` and `vite preview` and matches your local `DATABASE_URL`.
+- **Migrations** run on Node (not the Worker) via `drizzle-kit` against `DATABASE_URL`, unchanged by Hyperdrive.
+{{/if}}
+{{/if}}
+{{#if (or (has "stack" "hono") (eq (has "stack" "tanstack-start") false))}}
 ## Cloudflare Workers deploy (Wrangler)
 
 - `bun run deploy` — `wrangler deploy`
@@ -47,4 +78,5 @@
 - `bun run cf-typegen` — regenerate `cloudflare-env.d.ts`
 
 Env vars are available on `c.env.MY_VAR` in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
+{{/if}}
 {{/if}}

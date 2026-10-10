@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+{{#if (has "deployment" "cloudflare")}}
+import { cloudflare } from '@cloudflare/vite-plugin'
+{{else}}
 import { nitro } from 'nitro/vite'
+{{/if}}
 
 const config = defineConfig({
   server: {
@@ -12,10 +16,15 @@ const config = defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+{{#if (has "deployment" "cloudflare")}}
+    cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../.wrangler{{else}}.wrangler{{/if}}' } }),
+{{/if}}
     tailwindcss(),
     tanstackStart(),
     viteReact(),
+{{#unless (has "deployment" "cloudflare")}}
     nitro(),
+{{/unless}}
   ],
 })
 

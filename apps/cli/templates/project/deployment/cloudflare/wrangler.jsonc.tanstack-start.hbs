@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"]{{#if (has "database" "d1")}},
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"
+    }
+  ]{{/if}}{{#if (or (has "database" "postgres") (has "database" "mysql"))}},
+  // Run `wrangler hyperdrive create <name> --connection-string=...` and paste the id below.
+  // localConnectionString is used by `vite dev` and `vite preview` only; it matches the local DATABASE_URL in .env.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID",
+      "localConnectionString": "{{#if (has "database" "postgres")}}postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}{{/if}}{{#if (has "database" "mysql")}}mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}{{/if}}"
+    }
+  ]{{/if}}
+}

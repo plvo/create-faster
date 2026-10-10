@@ -1,0 +1,8 @@
+{{#if (has "database" "d1")}}
+{{#if project.orm}}
+import { env } from 'cloudflare:workers';
+import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+
+export const db = createDb(env.DB);
+{{/if}}
+{{/if}}

@@ -84,6 +84,7 @@ function extractImportedPackages(content: string): ImportEntry[] {
         importPath.startsWith('@repo/') ||
         importPath.startsWith('node:') ||
         importPath.startsWith('bun:') ||
+        importPath.startsWith('cloudflare:') ||
         importPath.includes('{{')
       ) {
         continue;
