@@ -23,9 +23,11 @@ The configuration maps each app to the appropriate SST component based on its st
 
 - **Next.js** apps use `sst.aws.Nextjs` with optimized OpenNext deployment
 - **Hono** apps use `sst.aws.Function` with `url: true`, pointing to `src/index.handler`
-- **TanStack Start** apps use `sst.aws.Function` with `url: true`, pointing to `.output/server/index.handler`
+- **TanStack Start** apps use `sst.aws.TanStackStart` (Lambda server function, S3 assets bucket and CloudFront)
 
 In a turborepo, each app's `path` or `handler` is prefixed with `apps/{appName}/`.
+
+`sst.aws.TanStackStart` requires the Nitro `aws-lambda` preset. The generated config sets it for the SST build only, through `environment: { NITRO_PRESET: 'aws-lambda' }`, so the app's own `build` script and `start` keep the default `node-server` output.
 
 The config includes:
 - Stage-aware removal policy: `retain` in production, `remove` in other stages
