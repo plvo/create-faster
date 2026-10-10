@@ -54,7 +54,7 @@ export const Route = createFileRoute('/posts/$id')({
 const SCENARIOS: Scenario[] = [
   {
     name: 'tanstack-start-static',
-    args: ['--app', 'tanstack-start-static:tanstack-start:shadcn,evlog'],
+    args: ['--app', 'tanstack-start-static:tanstack-start:shadcn,evlog,mdx'],
     startAppDirs: ['.'],
     otherWorkerDirs: [],
   },
