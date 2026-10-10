@@ -74,6 +74,8 @@ TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro:
 }
 ```
 
+With the [evlog](/docs/modules/observability/evlog) module, `main` is `src/server.ts` instead: a Worker entry that wraps Start's `fetch` with `withEvlog`.
+
 **Scripts:**
 - `build` - Build the client assets and the Worker (`vite build`)
 - `preview` - Serve the production build in workerd (`vite preview`). Check the build here before deploying: `vite dev` hides errors that only appear once the Worker is built, such as I/O or randomness at module level.

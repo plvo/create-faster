@@ -1,0 +1,7 @@
+{{#if (has "deployment" "cloudflare")}}
+import { createLoggerStorage } from 'evlog/toolkit/storage'
+
+export const { storage: loggerStorage, useLogger } = createLoggerStorage(
+  'request context. useLogger() only works inside a request handled by src/server.ts.',
+)
+{{/if}}

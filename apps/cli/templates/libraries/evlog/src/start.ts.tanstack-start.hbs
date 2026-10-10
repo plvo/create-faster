@@ -1,0 +1,22 @@
+import { createMiddleware, createStart } from '@tanstack/react-start'
+{{#unless (has "deployment" "cloudflare")}}
+import type { RequestLogger } from 'evlog'
+import { useRequest } from 'nitro/context'
+{{/unless}}
+
+const logServerFnErrors = createMiddleware({ type: 'function' }).server(async ({ next{{#if (has "deployment" "cloudflare")}}, context{{/if}} }) => {
+  try {
+    return await next()
+  } catch (error) {
+    {{#if (has "deployment" "cloudflare")}}
+    context.log?.error(error)
+    {{else}}
+    (useRequest().context?.log as RequestLogger | undefined)?.error(error)
+    {{/if}}
+    throw error
+  }
+})
+
+export const startInstance = createStart(() => ({
+  functionMiddleware: [logServerFnErrors],
+}))

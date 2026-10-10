@@ -43,7 +43,7 @@ describe('evlog + TanStack Start', () => {
       expect(root).not.toContain('evlogErrorHandler');
       expect(root).not.toContain('evlog/nitro/v3');
       expect(root).toContain("import { useRequest } from 'nitro/context'");
-      expect(root).toContain('useRequest().context.log');
+      expect(root).toContain('useRequest().context?.log');
       expect(root).toContain('EvlogError.isEvlogError(error)');
       expect(root).toContain('throw new Response(JSON.stringify(error.toJSON())');
     });
@@ -54,7 +54,7 @@ describe('evlog + TanStack Start', () => {
       expect(start).toContain("createMiddleware({ type: 'function' })");
       expect(start).toContain('functionMiddleware: [');
       expect(start).toContain("import { useRequest } from 'nitro/context'");
-      expect(start).toContain('useRequest().context.log');
+      expect(start).toContain('useRequest().context?.log');
     });
   });
 
@@ -106,6 +106,12 @@ describe('evlog + TanStack Start', () => {
       expect(root).not.toContain('evlogErrorHandler');
     });
 
+    test('agent docs tell where the logger comes from', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('`src/server.ts`');
+      expect(agents).toContain("`useLogger()` from `@/lib/evlog`");
+    });
+
     test('start.ts logs server function errors from context.log', async () => {
       const start = await readTextFile(join(projectPath, 'src/start.ts'));
       expect(start).toContain("createMiddleware({ type: 'function' })");
@@ -125,6 +131,11 @@ describe('evlog + TanStack Start', () => {
         '--deployment',
         'cloudflare',
       ]);
+    });
+
+    test('agent docs keep the default server entry', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).not.toContain('withEvlog');
     });
 
     test('keeps the default Start server entry and generates no evlog files', async () => {
@@ -159,6 +170,11 @@ describe('evlog + TanStack Start', () => {
       expect(await fileExists(join(projectPath, 'apps/web/src/start.ts'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/admin/src/server.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'apps/admin/src/start.ts'))).toBe(false);
+    });
+
+    test('agent docs describe the custom entry as specific to apps with evlog', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('or at `src/server.ts` in an app with evlog');
     });
 
     test('the service name is the app name', async () => {
