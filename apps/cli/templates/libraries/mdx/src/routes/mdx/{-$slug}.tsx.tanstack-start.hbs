@@ -1,0 +1,30 @@
+import { createFileRoute, notFound } from '@tanstack/react-router';
+import { hasDocument, loadDocument, useDocument } from '@/lib/mdx';
+
+export const Route = createFileRoute('/mdx/{-$slug}')({
+  loader: async ({ params }) => {
+    const slug = params.slug ?? 'home';
+    if (!hasDocument(slug)) throw notFound();
+
+    const { frontmatter } = await loadDocument(slug);
+    return { slug, frontmatter };
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: loaderData?.frontmatter.title },
+      { name: 'description', content: loaderData?.frontmatter.summary },
+    ],
+  }),
+  component: MdxPage,
+});
+
+function MdxPage() {
+  const { slug } = Route.useLoaderData();
+  const { default: Content } = useDocument(slug);
+
+  return (
+    <article className='max-w-162.5 mx-auto'>
+      <Content />
+    </article>
+  );
+}

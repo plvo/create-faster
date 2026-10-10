@@ -1,0 +1,39 @@
+import { use } from 'react';
+import type { ComponentType } from 'react';
+
+export type MdxFrontmatter = {
+  title: string;
+  summary: string;
+  publishedAt: string;
+  imageUrl?: string;
+};
+
+type MdxModule = {
+  default: ComponentType;
+  frontmatter: MdxFrontmatter;
+};
+
+const documentLoaders = import.meta.glob<MdxModule>('/contents/*.mdx');
+const documents = new Map<string, Promise<MdxModule>>();
+
+export function hasDocument(slug: string): boolean {
+  return `/contents/${slug}.mdx` in documentLoaders;
+}
+
+// The client does not run route loaders again when it hydrates: the promise is memoized and marked
+// fulfilled once awaited, so `use()` reads it synchronously on the server and suspends while hydrating.
+export function loadDocument(slug: string): Promise<MdxModule> {
+  const cached = documents.get(slug);
+  if (cached) return cached;
+
+  const document: Promise<MdxModule> = documentLoaders[`/contents/${slug}.mdx`]().then((module) => {
+    Object.assign(document, { status: 'fulfilled', value: module });
+    return module;
+  });
+  documents.set(slug, document);
+  return document;
+}
+
+export function useDocument(slug: string): MdxModule {
+  return use(loadDocument(slug));
+}
