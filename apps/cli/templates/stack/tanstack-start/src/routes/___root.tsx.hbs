@@ -4,6 +4,9 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 {{#if (hasLibrary "next-themes")}}
 import { ThemeProvider } from 'next-themes'
 {{/if}}
+{{#if (hasLibrary "posthog")}}
+import { AnalyticsProvider } from '../components/analytics-provider'
+{{/if}}
 {{#if (hasLibrary "evlog")}}
 import { createMiddleware } from '@tanstack/react-start'
 import { evlogErrorHandler } from 'evlog/nitro/v3'
@@ -50,6 +53,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {{#if (hasLibrary "next-themes")}}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="{{appName}}-theme">
         {{/if}}
+        {{#if (hasLibrary "posthog")}}
+        <AnalyticsProvider>
+        {{/if}}
         <div className="min-h-screen {{#if (hasLibrary "shadcn")}}bg-background text-foreground{{else}}bg-slate-900 text-white{{/if}}">
           <main className="container mx-auto px-4 py-8">
             <h1 className="text-4xl font-bold mb-4">{{appName}}</h1>
@@ -59,6 +65,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </main>
         </div>
         <TanStackRouterDevtools position="bottom-right" />
+        {{#if (hasLibrary "posthog")}}
+        </AnalyticsProvider>
+        {{/if}}
         {{#if (hasLibrary "next-themes")}}
         </ThemeProvider>
         {{/if}}
