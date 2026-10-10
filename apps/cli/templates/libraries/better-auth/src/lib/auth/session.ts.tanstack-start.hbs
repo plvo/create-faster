@@ -13,5 +13,5 @@ import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{el
 
 export const getSession = createServerFn({ method: 'GET' }).handler(() => {
   const request = getRequest();
-  return getRequestSession(request, () => auth.api.getSession({ headers: request.headers }));
+  return getRequestSession(request.headers, () => auth.api.getSession({ headers: request.headers }));
 });

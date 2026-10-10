@@ -17,7 +17,8 @@ Files added:
 src/
 ├── lib/auth/
 │   ├── auth.ts              # Server auth config
-│   └── auth-client.ts       # Client auth helpers
+│   ├── auth-client.ts       # Client auth helpers
+│   └── session-cache.ts     # Per-request session cache (see below)
 └── app/api/auth/[...all]/
     └── route.ts             # Auth API handler
 
@@ -26,6 +27,7 @@ packages/auth/
 ├── src/
 │   ├── auth.ts
 │   ├── auth-client.ts
+│   ├── session-cache.ts
 │   ├── route.ts
 │   └── types.ts
 ├── package.json             # @repo/auth
@@ -153,6 +155,6 @@ export const Route = createFileRoute('/api/auth/$')({
 });
 ```
 
-`getRequestSession(request, load)` memoizes the session promise in a `WeakMap<Request, Promise<Session | null>>`, so loaders and server functions of one SSR request share a single lookup. `getSession` reads through it.
+`getRequestSession(headers, load)` memoizes the session promise in a `WeakMap<Headers, Promise<Session | null>>`, keyed on `request.headers` (the same `Headers` object for the whole request), so loaders and server functions of one SSR request share a single lookup. `getSession` reads through it. `session-cache.ts` is plain TypeScript typed from the `Auth` type exported by `auth.ts`; it is generated on every stack.
 
 On Cloudflare with D1, `auth` is built once at module scope next to `db` in `src/lib/server.ts` with `createAuth(db)`. PostgreSQL and MySQL through Hyperdrive stay disabled with better-auth, like on Next.js.

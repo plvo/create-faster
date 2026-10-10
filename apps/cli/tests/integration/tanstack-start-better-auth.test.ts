@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 interface PackageJson {
@@ -43,8 +44,9 @@ describe('TanStack Start + better-auth', () => {
     test('auth is a module singleton with the Start cookie plugin and no Next.js plugin', async () => {
       const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
       expect(auth).toContain("import { tanstackStartCookies } from 'better-auth/tanstack-start'");
-      expect(auth).toContain('plugins: [tanstackStartCookies()]');
+      expect(auth).toContain('    tanstackStartCookies(),\n');
       expect(auth).toContain('export const auth = betterAuth(');
+      expect(auth).toContain('export type Auth = typeof auth');
       expect(auth).not.toContain('nextCookies');
       expect(auth).not.toContain('better-auth/next-js');
     });
@@ -57,15 +59,18 @@ describe('TanStack Start + better-auth', () => {
       expect(route).toContain('POST: ({ request }) => auth.handler(request)');
     });
 
-    test('auth client is generated', async () => {
+    test('auth client infers from the exported Auth type', async () => {
       const client = await readTextFile(join(projectPath, 'src/lib/auth/auth-client.ts'));
       expect(client).toContain("from 'better-auth/react'");
+      expect(client).toContain("import type { Auth } from './auth'");
+      expect(client).toContain('inferAdditionalFields<Auth>()');
     });
 
-    test('session cache memoizes the promise per Request', async () => {
+    test('session cache memoizes the promise per Headers object, typed from Auth', async () => {
       const cache = await readTextFile(join(projectPath, 'src/lib/auth/session-cache.ts'));
-      expect(cache).toContain('new WeakMap<Request, Promise<Session | null>>()');
-      expect(cache).toContain("import type { auth } from './auth'");
+      expect(cache).toContain('new WeakMap<Headers, Promise<Session | null>>()');
+      expect(cache).toContain("import type { Auth } from './auth'");
+      expect(cache).toContain("Auth['$Infer']['Session']");
     });
 
     test('getSession server function reads the session through the cache', async () => {
@@ -74,6 +79,7 @@ describe('TanStack Start + better-auth', () => {
       expect(session).toContain("import { getRequest } from '@tanstack/react-start/server'");
       expect(session).toContain("import { auth } from '@/lib/auth/auth'");
       expect(session).toContain("import { getRequestSession } from '@/lib/auth/session-cache'");
+      expect(session).toContain('getRequestSession(request.headers,');
     });
 
     test('does not leak Next.js only files or dependencies', async () => {
@@ -87,7 +93,7 @@ describe('TanStack Start + better-auth', () => {
     test('agent docs explain the per-request session cache', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
       expect(agents).toContain('getSession');
-      expect(agents).toContain('WeakMap<Request, Promise<Session | null>>');
+      expect(agents).toContain('WeakMap<Headers, Promise<Session | null>>');
     });
   });
 
@@ -119,7 +125,7 @@ describe('TanStack Start + better-auth', () => {
     test('auth.ts stays a shared createAuth(db) factory with the Start cookie plugin', async () => {
       const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
       expect(auth).toContain('export function createAuth(db: Database)');
-      expect(auth).toContain('plugins: [tanstackStartCookies()]');
+      expect(auth).toContain('    tanstackStartCookies(),\n');
       expect(auth).not.toContain('cloudflare:workers');
       expect(auth).not.toContain('export const auth');
     });
@@ -131,9 +137,11 @@ describe('TanStack Start + better-auth', () => {
       expect(session).toContain("import { auth } from '@/lib/server'");
     });
 
-    test('session cache types the session from the Auth factory type', async () => {
+    test('session cache and client use the same exported Auth type', async () => {
       const cache = await readTextFile(join(projectPath, 'src/lib/auth/session-cache.ts'));
       expect(cache).toContain("import type { Auth } from './auth'");
+      const client = await readTextFile(join(projectPath, 'src/lib/auth/auth-client.ts'));
+      expect(client).toContain('inferAdditionalFields<Auth>()');
     });
 
     test('no Next.js per-request helpers are generated', async () => {
@@ -164,13 +172,13 @@ describe('TanStack Start + better-auth', () => {
 
     test('shared auth package uses the Start cookie plugin only: the Next.js app has no better-auth', async () => {
       const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
-      expect(auth).toContain('tanstackStartCookies()');
+      expect(auth).toContain('    tanstackStartCookies(),\n');
       expect(auth).not.toContain('nextCookies');
     });
 
     test('session cache lives in the auth package so a tRPC context can import it', async () => {
       const cache = await readTextFile(join(projectPath, 'packages/auth/src/session-cache.ts'));
-      expect(cache).toContain('new WeakMap<Request, Promise<Session | null>>()');
+      expect(cache).toContain('new WeakMap<Headers, Promise<Session | null>>()');
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'packages/auth/package.json'));
       expect(pkg.exports?.['./session-cache']).toBe('./src/session-cache.ts');
     });
@@ -239,10 +247,42 @@ describe('TanStack Start + better-auth', () => {
         'drizzle',
       ]);
       const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
-      expect(auth).toContain('nextCookies()');
+      expect(auth).toContain('    nextCookies(),\n');
       expect(auth).not.toContain('tanstackStartCookies');
-      expect(await fileExists(join(projectPath, 'src/lib/auth/session-cache.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'src/lib/auth/session.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/routes'))).toBe(false);
+    });
+
+    test('a Next.js + better-auth turborepo with a Start app without auth exports a session cache that exists', async () => {
+      const projectPath = await generate('next-auth-start-plain', [
+        '--app',
+        'web:nextjs:better-auth',
+        '--app',
+        'admin:tanstack-start',
+        '--database',
+        'sqlite',
+        '--orm',
+        'drizzle',
+      ]);
+      const pkg = await readJsonFile<PackageJson>(join(projectPath, 'packages/auth/package.json'));
+      expect(pkg.exports?.['./session-cache']).toBe('./src/session-cache.ts');
+      expect(await fileExists(join(projectPath, 'packages/auth/src/session-cache.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/admin/src/lib/auth'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'apps/admin/src/routes/api'))).toBe(false);
+    });
+  });
+
+  describe('blueprints that override auth.ts', () => {
+    const blueprintsWithAuth = Object.entries(META.blueprints).filter(([, blueprint]) =>
+      blueprint.context.apps.some((app) => app.libraries.includes('better-auth')),
+    );
+
+    test.each(blueprintsWithAuth)('%s keeps the exported Auth type the session cache imports', async (name) => {
+      const projectPath = await generate(`bp-${name}`, ['--blueprint', name, '--linter', 'biome']);
+      const authPath = [join(projectPath, 'packages/auth/src/auth.ts'), join(projectPath, 'src/lib/auth/auth.ts')];
+      const existing = await Promise.all(authPath.map(async (path) => ((await fileExists(path)) ? path : undefined)));
+      const auth = await readTextFile(existing.find((path) => path !== undefined) as string);
+      expect(auth).toMatch(/export type Auth = /);
     });
   });
 

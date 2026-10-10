@@ -75,7 +75,14 @@ export const auth = betterAuth({
   }),
   {{/if}}
 
-  plugins: [{{#if (stackHasLibrary "nextjs" "better-auth")}}nextCookies(){{/if}}{{#if (and (stackHasLibrary "nextjs" "better-auth") (stackHasLibrary "tanstack-start" "better-auth"))}}, {{/if}}{{#if (stackHasLibrary "tanstack-start" "better-auth")}}tanstackStartCookies(){{/if}}],
+  plugins: [
+    {{#if (stackHasLibrary "nextjs" "better-auth")}}
+    nextCookies(),
+    {{/if}}
+    {{#if (stackHasLibrary "tanstack-start" "better-auth")}}
+    tanstackStartCookies(),
+    {{/if}}
+  ],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
@@ -140,4 +147,6 @@ export const auth = betterAuth({
 export type Auth = ReturnType<typeof createAuth>;
 {{else}}
 });
+
+export type Auth = typeof auth;
 {{/if}}
