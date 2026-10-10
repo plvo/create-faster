@@ -1,4 +1,8 @@
+{{#if (eq stackName "tanstack-start")}}
+import { Link } from '@tanstack/react-router';
+{{else}}
 import Link from 'next/link';
+{{/if}}
 import * as React from 'react';
 
 type HeadingProps = React.ComponentPropsWithoutRef<'h1'>;
@@ -29,7 +33,7 @@ export const mdxComponents = {
   a: ({ href, children, className, ...props }: AnchorProps) => {
     if (href?.startsWith('/')) {
       return (
-        <Link href={href} className={'a-mdx'} {...props}>
+        <Link {{#if (eq stackName "tanstack-start")}}to{{else}}href{{/if}}={href} className={'a-mdx'} {...props}>
           {children}
         </Link>
       );

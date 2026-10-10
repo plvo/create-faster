@@ -61,13 +61,17 @@ describe('MDX Integration', () => {
 
       const lib = await readTextFile(join(projectPath, 'src/lib/mdx.ts'));
       expect(lib).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
+      expect(lib).toContain('lazy(() => loadDocument(slug))');
       expect(lib).not.toContain('eager');
       expect(lib).not.toContain('node:fs');
+      expect(route).toContain('<Suspense>');
+      expect(route).toContain('frontmatter');
     });
 
     test('mdx-components uses the TanStack Router link', async () => {
       const content = await readTextFile(join(projectPath, 'src/mdx-components.tsx'));
-      expect(content).toContain("from '@tanstack/react-router'");
+      expect(content).toContain("import { Link } from '@tanstack/react-router'");
+      expect(content).toContain('<Link to={href}');
       expect(content).not.toContain('next/link');
       expect(content).toContain('export function useMDXComponents()');
     });
@@ -143,7 +147,10 @@ describe('MDX Integration', () => {
 
     test('keeps its example route, components and frontmatter parser', async () => {
       expect(await fileExists(join(projectPath, 'src/app/[...mdxExampleSlug]/page.tsx'))).toBe(true);
-      expect(await readTextFile(join(projectPath, 'src/mdx-components.tsx'))).toContain('next/link');
+      const components = await readTextFile(join(projectPath, 'src/mdx-components.tsx'));
+      expect(components).toContain("import Link from 'next/link'");
+      expect(components).toContain('<Link href={href}');
+      expect(components).not.toContain('@tanstack/react-router');
       expect(await readTextFile(join(projectPath, 'src/lib/mdx.ts'))).toContain('parseFrontmatter');
       expect(await fileExists(join(projectPath, 'src/routes'))).toBe(false);
     });

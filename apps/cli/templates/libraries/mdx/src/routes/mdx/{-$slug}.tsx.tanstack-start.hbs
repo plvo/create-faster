@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { hasDocument, loadDocument, useDocument } from '@/lib/mdx';
+import { Suspense } from 'react';
+import { documentComponent, hasDocument, loadDocument } from '@/lib/mdx';
 
 export const Route = createFileRoute('/mdx/{-$slug}')({
   loader: async ({ params }) => {
@@ -20,11 +21,13 @@ export const Route = createFileRoute('/mdx/{-$slug}')({
 
 function MdxPage() {
   const { slug } = Route.useLoaderData();
-  const { default: Content } = useDocument(slug);
+  const Document = documentComponent(slug);
 
   return (
     <article className='max-w-162.5 mx-auto'>
-      <Content />
+      <Suspense>
+        <Document />
+      </Suspense>
     </article>
   );
 }
