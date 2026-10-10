@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 describe('Turborepo: d1 migrate workflow points at the deploy app config and a shared state dir', () => {
   const projectName = 'd1-migrate-turbo';
@@ -60,6 +60,29 @@ describe('Turborepo: d1 migrate workflow points at the deploy app config and a s
     expect(config).toContain('../../.wrangler/v3/d1/miniflare-D1DatabaseObject');
     expect(config).not.toContain('state/v3');
   });
+
+  test('seed lives in the db package and reads the state dir that migrate persists to', async () => {
+    expect(await fileExists(join(projectPath, 'scripts/seed.ts'))).toBe(false);
+    const seed = await readTextFile(join(projectPath, 'packages/db/scripts/seed.ts'));
+    expect(seed).toContain("path.resolve(process.cwd(), '../../.wrangler/v3/d1/miniflare-D1DatabaseObject')");
+    expect(seed).toContain("from '../src/schema'");
+    expect(seed).toContain("from '../src/index'");
+    expect(seed).not.toContain('state/v3');
+  });
+
+  test('root db:seed delegates to the db package like the other db scripts', async () => {
+    const root = JSON.parse(await readTextFile(join(projectPath, 'package.json')));
+    expect(root.scripts['db:seed']).toBe('turbo db:seed');
+    expect(root.dependencies?.['drizzle-orm']).toBeUndefined();
+    expect(root.devDependencies?.['drizzle-orm']).toBeUndefined();
+  });
+
+  test('local-setup seeds from the db package that owns the seed script', async () => {
+    const pkg = JSON.parse(await readTextFile(join(projectPath, 'packages/db/package.json')));
+    expect(pkg.scripts['local-setup']).toBe(
+      'wrangler --config ../../apps/web/wrangler.jsonc d1 migrations apply DB --local --persist-to ../../.wrangler && bun run db:seed',
+    );
+  });
 });
 
 describe('Single repo: d1 migrate workflow stays self-consistent on one local state dir', () => {
@@ -104,5 +127,11 @@ describe('Single repo: d1 migrate workflow stays self-consistent on one local st
     const config = await readTextFile(join(projectPath, 'drizzle.config.ts'));
     expect(config).toContain('.wrangler/v3/d1/miniflare-D1DatabaseObject');
     expect(config).not.toContain('state/v3');
+  });
+
+  test('seed reads the root state dir that migrate persists to', async () => {
+    const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
+    expect(seed).toContain("path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject')");
+    expect(seed).not.toContain('state/v3');
   });
 });

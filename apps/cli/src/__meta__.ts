@@ -1094,6 +1094,11 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        db: {
+          scripts: {
+            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+          },
+        },
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
@@ -1178,6 +1183,11 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        db: {
+          scripts: {
+            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+          },
+        },
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
@@ -1291,6 +1301,11 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        db: {
+          scripts: {
+            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+          },
+        },
         ui: {
           dependencies: {
             '@dnd-kit/core': '^6.3.1',

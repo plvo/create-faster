@@ -121,6 +121,7 @@ export interface TemplateFrontmatter {
   only?: 'mono' | 'single' | 'no-blueprint';
   deploymentPath?: Record<string, string>;
   deploymentSkip?: string[];
+  blueprintSkip?: string[];
 }
 
 export interface MetaBlueprint {

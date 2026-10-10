@@ -367,3 +367,22 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(result.stdout).toContain('--blueprint multitenant-saas');
   });
 });
+
+describe('Blueprint generation - dapp-privy seed', () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli(['test-dapp-privy', '--blueprint', 'dapp-privy', '--no-install', '--no-git'], tempDir);
+    expect(result.exitCode).toBe(0);
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('ships its own seed in place of the generic orm seed', async () => {
+    const seed = await readTextFile(join(tempDir, 'test-dapp-privy', 'scripts/seed.ts'));
+    expect(seed).not.toContain('Getting Started with Drizzle ORM');
+  });
+});

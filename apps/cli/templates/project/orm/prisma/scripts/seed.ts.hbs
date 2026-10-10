@@ -1,8 +1,8 @@
 ---
 mono:
-  scope: root
+  scope: pkg
 ---
-import { prisma } from {{#if (isMono)}}'@repo/db'{{else}}'../src/lib/db'{{/if}};
+import { prisma } from {{#if (isMono)}}'../src/index'{{else}}'../src/lib/db'{{/if}};
 
 async function seed() {
   console.log('🌱 Seeding database...');

@@ -267,12 +267,9 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
 
   const ormAddon = ctx.project.orm ? META.project.orm.options[ctx.project.orm] : undefined;
   if (ormAddon?.mono?.scope === 'pkg') {
-    const dbPkg = ormAddon.mono.name;
-    dependencies[`@repo/${dbPkg}`] = '*';
-    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:studio']) {
+    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio']) {
       scripts[script] = `turbo ${script}`;
     }
-    scripts['db:seed'] = `bun --env-file=packages/${dbPkg}/.env scripts/seed.ts`;
   }
 
   const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
