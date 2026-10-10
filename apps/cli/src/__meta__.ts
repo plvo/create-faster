@@ -232,7 +232,7 @@ export const META: Meta = {
           './route-nextjs': './src/route-nextjs.ts',
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
-          './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
+          './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts') as unknown as string,
           './types': './src/types.ts',
           './password': './src/password.ts',
           './permissions': './src/permissions.ts',

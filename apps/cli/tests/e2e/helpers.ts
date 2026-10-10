@@ -60,12 +60,14 @@ export interface StartServerOptions {
   /** Port the server must pick by itself. Without it, a free port is handed over through PORT. */
   port?: number;
   readyTimeout?: number;
+  /** Extra environment variables, computed once the port is known. */
+  env?: (port: number) => Record<string, string>;
 }
 
 export async function startServer(
   args: string[],
   cwd: string,
-  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT }: StartServerOptions = {},
+  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT, env: extraEnv }: StartServerOptions = {},
 ): Promise<RunningServer> {
   if (ownPort !== undefined && !(await isPortFree(ownPort))) {
     throw new Error(`Port ${ownPort} is already in use, so the server's own port cannot be tested`);
@@ -73,7 +75,12 @@ export async function startServer(
 
   const port = ownPort ?? (await getFreePort());
   const url = `http://127.0.0.1:${port}`;
-  const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }) };
+  const env = {
+    ...userShellEnv(),
+    CI: '1',
+    ...extraEnv?.(port),
+    ...(ownPort === undefined && { PORT: String(port) }),
+  };
   // detached makes the command a process group leader, so stop() also reaches the server behind a wrapper like `bun run`.
   const proc = Bun.spawn(args, { cwd, env, stdout: 'pipe', stderr: 'pipe', detached: true });
   const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]).then(

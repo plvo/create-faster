@@ -50,7 +50,7 @@ Forbidden:
 
 Required: choice-specific behavior is expressed through **reusable, documented operators** that the core logic applies generically:
 
-- **Handlebars helpers** (`apps/cli/src/lib/handlebars.ts`): `eq`, `ne`, `and`, `or`, `isMono`, `hasLibrary(name)`, `has(category, value)`, `hasContext(key)`, `camelCase`, `raw`, `appPort(name)`. Express conditionals INSIDE templates: `{{#if (has "deployment" "cloudflare")}}…{{/if}}`.
+- **Handlebars helpers** (`apps/cli/src/lib/handlebars.ts`): `eq`, `ne`, `and`, `or`, `isMono`, `hasLibrary(name)`, `stackHasLibrary(stack, library)`, `has(category, value)`, `hasContext(key)`, `camelCase`, `raw`, `appPort(name)`. Express conditionals INSIDE templates: `{{#if (has "deployment" "cloudflare")}}…{{/if}}`.
 - **Frontmatter keys** (`TemplateFrontmatter` in `apps/cli/src/types/meta.ts`, applied generically in `template-resolver.ts`): `path`, `mono` (`scope`/`name`/`path`), `only` (`mono|single|no-blueprint`), `deploymentPath` (`Record<deployment, path>` — output path override keyed by deployment, NOT a hardcoded resolver branch), `deploymentSkip` (`deployment[]` — the file is not generated under a listed deployment), `blueprintSkip` (`blueprint[]` — the file is not generated for a listed blueprint). `only` and the deployment/blueprint skip keys are honored for every template kind (stack, library, project addon, stack-suffixed addon, repo, blueprint). These are the model: a generic key the resolver honors for ANY value.
 - **META data** (`__meta__.ts`): `support`, `require`, `mono`, `packageJson`, `stackPackageJson`, `deploymentPackageJson` (`Record<deployment, PackageJsonConfig>` — package.json contribution merged generically by `package-json-generator` when `ctx.project.deployment` matches a key; e.g. `postgres` adds `pg-cloudflare` under `cloudflare`), `envs` (`EnvVar`: `value`, `monoScope`, optional `stacks: StackName[]` — when set, the variable is emitted only for apps whose stack is listed; evaluated per app by `env-generator`, so one project can carry `NEXT_PUBLIC_X` on Next.js apps and `VITE_X` on TanStack Start apps; a root/pkg-scoped variable with `stacks` is emitted when at least one app (with the library, for library envs) has a listed stack), category-level and addon-level `require`. Compatibility/dependency rules live here as data, validated generically.
 - **`$when` conditions** (`apps/cli/src/lib/when.ts`, wrap package.json values/array items in `__meta__.ts`): keys `repo`, `stack`, `library` and any `ProjectContext` category (`database`, `orm`, `deployment`, `linter`, `tooling`); value is a string, a list (any-of) or `true` (category has a selection). Every key accepts a negation, `{ not: <value> }`, true when the positive match is false: `$when({ deployment: { not: 'cloudflare' } }, …)` or `$when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, …)`. An unselected category satisfies any `not` (`{ not: 'cloudflare' }` is true when no deployment is chosen; `{ not: true }` is true only when the category is unselected); `stack`/`library` follow their any-app semantics (`{ not: 'nextjs' }` is true only when no app uses nextjs). All keys of one `$when` must hold.
@@ -177,7 +177,7 @@ YAML frontmatter parsing using gray-matter:
 Custom helpers:
 - Logical: `eq`, `ne`, `and`, `or`
 - Repo: `isMono()` - Check if turborepo
-- Libraries: `hasLibrary(name)` - Check if current app has library
+- Libraries: `hasLibrary(name)` - Check if current app has library; `stackHasLibrary(stack, library)` - Check if any app on that stack has the library (usable in package-scoped templates, which have no current app)
 - Project: `has(category, value)` - Check database/orm/linter/tooling/stack
 - Context: `hasContext(key)` - Check if key exists in context
 - Utils: `appPort(name)` - Get port for app (3000 + index)
@@ -202,10 +202,10 @@ Programmatic `.env.example` file generation:
 - **Next.js**: shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form, evlog, posthog, vitest, playwright
 - **Expo**: nativewind, jest-expo
 - **Hono**: aws-lambda, vitest-node, evlog
-- **TanStack Start**: shadcn/ui, next-themes, mdx, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
+- **TanStack Start**: shadcn/ui, next-themes, mdx, better-auth, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
 
 ### Deployment
-- **Cloudflare Workers** (`cloudflare`): Hono (Wrangler), Next.js (OpenNext), TanStack Start (`@cloudflare/vite-plugin`, no Nitro). A Start app drops `nitro` and the Nitro `start` script through `$when({ deployment: { not: 'cloudflare' } })`, `vite.config.ts.hbs` swaps `nitro()` for `cloudflare()` under `has "deployment" "cloudflare"`, and `.env.start` carries `deploymentSkip: [cloudflare]`. With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`); with Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.
+- **Cloudflare Workers** (`cloudflare`): Hono (Wrangler), Next.js (OpenNext), TanStack Start (`@cloudflare/vite-plugin`, no Nitro). A Start app drops `nitro` and the Nitro `start` script through `$when({ deployment: { not: 'cloudflare' } })`, `vite.config.ts.hbs` swaps `nitro()` for `cloudflare()` under `has "deployment" "cloudflare"`, and `.env.start` carries `deploymentSkip: [cloudflare]`. With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`), plus `auth = createAuth(db)` when better-auth is selected; with Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.
 
 Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy, Observability, Analytics, Testing).
 
