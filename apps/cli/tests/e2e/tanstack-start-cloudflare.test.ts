@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { join } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import {
   type CommandResult,
   cleanupTempDir,
@@ -18,11 +19,50 @@ const TIMEOUT_BUILD = 240_000;
 const TIMEOUT_DEPLOY_DRY_RUN = 120_000;
 const TIMEOUT_PREVIEW = 90_000;
 
+interface D1Probe {
+  appDir: string;
+  dbImport: string;
+}
+
 interface Scenario {
   name: string;
   args: string[];
   startAppDirs: string[];
   workerDirs: string[];
+  d1Probe?: D1Probe;
+}
+
+const PROBE_ROUTE_PATH = '/api/d1-probe';
+const PROBE_BURST = 20;
+
+// No generated route imports src/lib/server.ts, so a build alone tree-shakes the module-scope db away.
+// This route is test-only: it forces the db into the Worker bundle and queries it.
+const probeRoute = (dbImport: string): string => `import { createFileRoute } from '@tanstack/react-router';
+import { userTable } from '${dbImport}';
+import { db } from '@/lib/server';
+
+export const Route = createFileRoute('${PROBE_ROUTE_PATH}')({
+  server: {
+    handlers: {
+      GET: async () => {
+        await db.insert(userTable).values({ username: crypto.randomUUID(), email: \`\${crypto.randomUUID()}@example.com\` });
+        const rows = await db.select().from(userTable);
+        return Response.json({ count: rows.length });
+      },
+    },
+  },
+});
+`;
+
+async function expectProbeAnswers(url: string): Promise<void> {
+  const responses = await Promise.all(
+    Array.from({ length: PROBE_BURST }, () => fetch(new URL(PROBE_ROUTE_PATH, url))),
+  );
+  for (const response of responses) {
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { count: number };
+    expect(body.count).toBeGreaterThanOrEqual(1);
+  }
 }
 
 const SCENARIOS: Scenario[] = [
@@ -37,6 +77,7 @@ const SCENARIOS: Scenario[] = [
     args: ['--app', 'tanstack-start-cloudflare-d1:tanstack-start', '--database', 'd1', '--orm', 'drizzle'],
     startAppDirs: ['.'],
     workerDirs: ['.'],
+    d1Probe: { appDir: '.', dbImport: '@/lib/db' },
   },
   {
     name: 'tanstack-start-cloudflare-postgres',
@@ -55,10 +96,11 @@ const SCENARIOS: Scenario[] = [
     args: ['--app', 'web:tanstack-start', '--app', 'api:hono', '--database', 'd1', '--orm', 'drizzle'],
     startAppDirs: ['apps/web'],
     workerDirs: ['apps/web', 'apps/api'],
+    d1Probe: { appDir: 'apps/web', dbImport: '@repo/db' },
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs }) => {
+describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs, d1Probe }) => {
   let projectDir: string;
   let installResult: CommandResult;
   const servers: RunningServer[] = [];
@@ -87,6 +129,23 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs }) => 
     },
     TIMEOUT_INSTALL,
   );
+
+  if (d1Probe) {
+    test(
+      'migrates the local D1 database with the generated scripts',
+      async () => {
+        const routePath = join(projectDir, d1Probe.appDir, 'src/routes', `${PROBE_ROUTE_PATH}.ts`);
+        await mkdir(dirname(routePath), { recursive: true });
+        await writeFile(routePath, probeRoute(d1Probe.dbImport));
+
+        const generate = await runCommand(['bun', 'run', 'db:generate'], projectDir);
+        expect(generate.exitCode).toBe(0);
+        const migrate = await runCommand(['bun', 'run', 'db:migrate'], projectDir);
+        expect(migrate.exitCode).toBe(0);
+      },
+      TIMEOUT_BUILD,
+    );
+  }
 
   test(
     'generates the worker types',
@@ -120,7 +179,7 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs }) => 
   );
 
   test(
-    'vite preview serves the built app in workerd',
+    'vite preview serves the built app in workerd (and answers a D1 query when there is a database)',
     async () => {
       for (const dir of startAppDirs) {
         const port = await getFreePort();
@@ -129,6 +188,7 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs }) => 
         });
         servers.push(server);
         await expectServesPageWithClientScript(server.url);
+        if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
       }
     },
     TIMEOUT_PREVIEW,
