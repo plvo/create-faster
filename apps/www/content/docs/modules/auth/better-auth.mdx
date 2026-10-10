@@ -3,7 +3,7 @@ title: Better Auth
 description: Pre-configured authentication with ORM adapter integration, API routes, and shared auth package for monorepos.
 ---
 
-<Stacks names="nextjs" />
+<Stacks names="nextjs,tanstack-start" />
 <Dependencies packages="better-auth" />
 
 [→ Better Auth Documentation](https://better-auth.com)
@@ -17,7 +17,8 @@ Files added:
 src/
 ├── lib/auth/
 │   ├── auth.ts              # Server auth config
-│   └── auth-client.ts       # Client auth helpers
+│   ├── auth-client.ts       # Client auth helpers
+│   └── session-cache.ts     # Per-request session cache (see below)
 └── app/api/auth/[...all]/
     └── route.ts             # Auth API handler
 
@@ -26,6 +27,7 @@ packages/auth/
 ├── src/
 │   ├── auth.ts
 │   ├── auth-client.ts
+│   ├── session-cache.ts
 │   ├── route.ts
 │   └── types.ts
 ├── package.json             # @repo/auth
@@ -121,3 +123,38 @@ In turborepo mode, the app re-exports from `@repo/auth/route-nextjs` instead.
 
 **Turborepo mode:**
 Creates `@repo/auth` package depending on `@repo/db` for database access. Auth config lives in the package, app imports handlers.
+
+## TanStack Start
+
+On TanStack Start the module generates the handler, the cookie plugin, the client and a `getSession` server function instead of the Next.js route. No protected layout is generated: guard routes in `beforeLoad` or `loader`.
+
+```
+src/
+├── lib/auth/
+│   ├── auth.ts              # Server auth config, tanstackStartCookies() as last plugin
+│   ├── auth-client.ts       # Client auth helpers
+│   ├── session-cache.ts     # Per-request session cache
+│   └── session.ts           # getSession server function
+└── routes/api/auth/
+    └── $.ts                 # Auth API handler (GET and POST)
+```
+
+In turborepo mode `session-cache.ts` lives in `@repo/auth` (`@repo/auth/session-cache`) so an API package can import it; the route and `getSession` stay in the app.
+
+```ts title="src/routes/api/auth/$.ts"
+import { createFileRoute } from '@tanstack/react-router';
+import { auth } from '@/lib/auth/auth';
+
+export const Route = createFileRoute('/api/auth/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => auth.handler(request),
+      POST: ({ request }) => auth.handler(request),
+    },
+  },
+});
+```
+
+`getRequestSession(headers, load)` memoizes the session promise in a `WeakMap<Headers, Promise<Session | null>>`, keyed on `request.headers` (the same `Headers` object for the whole request), so loaders and server functions of one SSR request share a single lookup. `getSession` reads through it. `session-cache.ts` is plain TypeScript typed from the `Auth` type exported by `auth.ts`; it is generated on every stack.
+
+On Cloudflare with D1, `auth` is built once at module scope next to `db` in `src/lib/server.ts` with `createAuth(db)`. PostgreSQL and MySQL through Hyperdrive stay disabled with better-auth, like on Next.js.

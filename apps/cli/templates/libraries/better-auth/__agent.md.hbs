@@ -1,2 +1,13 @@
 Auth config in `src/lib/auth/`. `auth.ts` is the server instance, `auth-client.ts` the client.
 Add a social provider by editing `socialProviders` in `auth.ts`.
+{{#if (eq stackName "tanstack-start")}}
+
+**TanStack Start**
+- `src/routes/api/auth/$.ts` serves every `/api/auth/*` request through `auth.handler`.
+- `tanstackStartCookies()` stays the last plugin in `auth.ts`: it forwards the cookies set by auth calls made from server functions.
+- `getSession` (`src/lib/auth/session.ts`) is a server function returning the current session or `null`. Call it from a route `beforeLoad` or `loader`. No protected layout is generated: guard routes yourself.
+- Per-request session cache: `getRequestSession(headers, load)` ({{#if (isMono)}}`@repo/auth/session-cache`{{else}}`src/lib/auth/session-cache.ts`{{/if}}) memoizes the session **promise** in a `WeakMap<Headers, Promise<Session | null>>`. Loaders and server functions running in the same SSR request share one lookup, even when they start concurrently: the cache key is `request.headers`, the same `Headers` object for the whole request. Read the session through it (as `getSession` does), not with `auth.api.getSession` directly.
+{{#if (has "database" "d1")}}
+- Cloudflare + D1: `auth` is built once at module scope next to `db` in `src/lib/server.ts` (`createAuth(db)`), never per request. Import it from there. Locally `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` come from `.env`; `vite build` snapshots `.env` into `dist/server/.dev.vars`, which `vite preview` reads, so rebuild after editing it.
+{{/if}}
+{{/if}}

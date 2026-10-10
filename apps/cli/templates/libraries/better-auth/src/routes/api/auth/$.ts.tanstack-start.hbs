@@ -1,0 +1,19 @@
+---
+mono:
+  scope: app
+---
+import { createFileRoute } from '@tanstack/react-router';
+{{#if (has "database" "d1")}}
+import { auth } from '@/lib/server';
+{{else}}
+import { auth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{/if}}
+
+export const Route = createFileRoute('/api/auth/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => auth.handler(request),
+      POST: ({ request }) => auth.handler(request),
+    },
+  },
+});

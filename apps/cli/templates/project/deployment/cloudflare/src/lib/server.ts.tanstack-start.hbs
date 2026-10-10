@@ -2,7 +2,13 @@
 {{#if project.orm}}
 import { env } from 'cloudflare:workers';
 import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+{{#if (hasLibrary "better-auth")}}
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{/if}}
 
 export const db = createDb(env.DB);
+{{#if (hasLibrary "better-auth")}}
+export const auth = createAuth(db);
+{{/if}}
 {{/if}}
 {{/if}}
