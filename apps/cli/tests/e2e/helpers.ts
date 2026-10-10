@@ -60,12 +60,13 @@ export interface StartServerOptions {
   /** Port the server must pick by itself. Without it, a free port is handed over through PORT. */
   port?: number;
   readyTimeout?: number;
+  env?: Record<string, string>;
 }
 
 export async function startServer(
   args: string[],
   cwd: string,
-  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT }: StartServerOptions = {},
+  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT, env: extraEnv = {} }: StartServerOptions = {},
 ): Promise<RunningServer> {
   if (ownPort !== undefined && !(await isPortFree(ownPort))) {
     throw new Error(`Port ${ownPort} is already in use, so the server's own port cannot be tested`);
@@ -73,7 +74,7 @@ export async function startServer(
 
   const port = ownPort ?? (await getFreePort());
   const url = `http://127.0.0.1:${port}`;
-  const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }) };
+  const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }), ...extraEnv };
   // detached makes the command a process group leader, so stop() also reaches the server behind a wrapper like `bun run`.
   const proc = Bun.spawn(args, { cwd, env, stdout: 'pipe', stderr: 'pipe', detached: true });
   const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]).then(
@@ -131,5 +132,58 @@ export async function runCommand(args: string[], cwd: string): Promise<CommandRe
       stdout: e.stdout?.toString() ?? '',
       stderr: e.stderr?.toString() ?? '',
     };
+  }
+}
+
+const POSTHOG_FLAGS_URL = 'https://us.i.posthog.com/flags/?v=2';
+const POSTHOG_EVENT_URL = 'https://us.i.posthog.com/e/';
+const FAKE_TOKEN = 'phc_create_faster_e2e_fake_token';
+
+interface Ingestion {
+  path: string;
+  headers: Record<string, string>;
+  body: BodyInit;
+  directUrl: string;
+}
+
+const eventPayload = JSON.stringify({ api_key: FAKE_TOKEN, event: 'e2e', distinct_id: 'e2e' });
+
+const INGESTIONS: Ingestion[] = [
+  {
+    path: '/ingest/flags/?v=2',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ api_key: FAKE_TOKEN, distinct_id: 'e2e' }),
+    directUrl: POSTHOG_FLAGS_URL,
+  },
+  {
+    path: '/ingest/e/',
+    headers: { 'content-type': 'text/plain' },
+    body: eventPayload,
+    directUrl: POSTHOG_EVENT_URL,
+  },
+  {
+    path: '/ingest/e/?compression=gzip-js',
+    headers: { 'content-type': 'text/plain' },
+    body: Bun.gzipSync(eventPayload) as BodyInit,
+    directUrl: `${POSTHOG_EVENT_URL}?compression=gzip-js`,
+  },
+];
+
+async function snapshot(response: Response): Promise<{ status: number; body: string }> {
+  return { status: response.status, body: await response.text() };
+}
+
+// Needs outbound access to PostHog: the proxy is only proven by reaching the real upstream.
+export async function expectIngestProxiesToPostHog(appUrl: string): Promise<void> {
+  const asset = await fetch(new URL('/ingest/static/array.js', appUrl));
+  expect(asset.status).toBe(200);
+  expect(asset.headers.get('content-type')).toContain('javascript');
+  expect((await asset.text()).length).toBeGreaterThan(10_000);
+
+  for (const { path, headers, body, directUrl } of INGESTIONS) {
+    const init = { method: 'POST', headers, body };
+    const direct = await snapshot(await fetch(directUrl, init));
+    const proxied = await snapshot(await fetch(new URL(path, appUrl), init));
+    expect(proxied).toEqual(direct);
   }
 }

@@ -365,17 +365,30 @@ export const META: Meta = {
       label: 'PostHog',
       hint: 'Product analytics proxied first-party through /ingest',
       category: 'Analytics',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       needsServerRuntime: true,
       packageJson: {
         dependencies: {
           'posthog-js': '^1.435.6',
         },
       },
+      stackPackageJson: {
+        'tanstack-start': {
+          dependencies: {
+            '@posthog/react': '^1.11.3',
+          },
+        },
+      },
       envs: [
         {
           value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
           monoScope: ['app'],
+          stacks: ['nextjs'],
+        },
+        {
+          value: 'VITE_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          monoScope: ['app'],
+          stacks: ['tanstack-start'],
         },
       ],
     },
