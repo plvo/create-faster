@@ -27,7 +27,7 @@ The configuration maps each app to the appropriate SST component based on its st
 
 In a turborepo, each app's `path` or `handler` is prefixed with `apps/{appName}/`.
 
-`sst.aws.TanStackStart` requires the Nitro `aws-lambda` preset. The generated config sets it for the SST build only, through `environment: { NITRO_PRESET: 'aws-lambda' }`, so the app's own `build` script and `start` keep the default `node-server` output.
+`sst.aws.TanStackStart` requires the Nitro `aws-lambda` preset. The generated config sets it through `environment: { NITRO_PRESET: 'aws-lambda' }`: SST passes that environment to its build command, so the app's own `build` script, `vite.config.ts` and `start` keep the default `node-server` output. SST also adds the `environment` to the deployed Lambda's runtime environment and to the `sst dev` command; both are harmless (Nitro falls back to its dev preset in dev).
 
 The config includes:
 - Stage-aware removal policy: `retain` in production, `remove` in other stages

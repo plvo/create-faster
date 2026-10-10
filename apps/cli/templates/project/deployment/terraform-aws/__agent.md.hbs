@@ -9,7 +9,7 @@ Output to zip, per TanStack Start app:
 {{/each}}
 
 **Build**
-- Select the preset for the deploy build only: `NITRO_PRESET=aws-lambda vite build`, run from the app directory. Keep it out of `vite.config.ts` and out of the `build` script: an `aws-lambda` build exits immediately on `start` instead of listening.
+- Select the preset for the deploy build only: `NITRO_PRESET=aws-lambda {{#if pm}}{{pm}}{{else}}npm{{/if}} run build`, run from the app directory. Keep it out of `vite.config.ts` and out of the `build` script: an `aws-lambda` build exits immediately on `start` instead of listening.
 - `.output/server/index.mjs` exports `handler` and is self-contained: zip `.output/server`, set the Lambda handler to `index.handler`, use a `nodejs22.x` or `nodejs24.x` runtime, and front it with an API Gateway HTTP API or a function URL.
 
 **Static assets**

@@ -71,7 +71,7 @@ Empty file where you add your infrastructure resources.
 
 `infra/` provisions no resource for any stack, TanStack Start included. When the project has a TanStack Start app, the generated `AGENTS.md` documents how to run it on AWS Lambda with Nitro's `aws-lambda` preset:
 
-- Select the preset for the deploy build only (`NITRO_PRESET=aws-lambda vite build`). An `aws-lambda` build does not listen, so keep it out of `vite.config.ts` and out of the `build` script that `start` relies on.
+- Select the preset for the deploy build only (`NITRO_PRESET=aws-lambda npm run build`, or the `bun` / `pnpm` equivalent, run from the app directory). An `aws-lambda` build does not listen, so keep it out of `vite.config.ts` and out of the `build` script that `start` relies on.
 - Zip `.output/server` and set the Lambda handler to `index.handler`.
 - The preset does not serve `.output/public`: serve it from S3 behind CloudFront, or embed it with `serveStatic: 'inline'`.
 - A buffered Lambda response is capped at 6 MB, so inlined assets suit a starter, not large media.
