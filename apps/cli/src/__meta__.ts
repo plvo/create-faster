@@ -165,9 +165,9 @@ export const META: Meta = {
     },
     'next-themes': {
       label: 'Next Themes',
-      hint: 'A library for managing themes in Next.js',
+      hint: 'A library for managing themes',
       category: 'UI',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
         dependencies: {
           'next-themes': '^0.4.6',

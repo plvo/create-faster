@@ -26,7 +26,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,react-hook-form,tanstack-query,tanstack-devtools,evlog',
+        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog',
         '--no-git',
         '--no-install',
         '--pm',
@@ -72,6 +72,21 @@ describe('tanstack-start-loaded', () => {
         output = await server.stop();
       }
       expect(output.stdout).toContain('"service":"tanstack-start-loaded"');
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'start server-renders the next-themes script as the first node of the body',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        const html = await (await fetch(server.url)).text();
+        expect(html).toContain('<html lang="en"');
+        expect(html).toMatch(/<body><script[^>]*>[^<]*"tanstack-start-loaded-theme"/);
+      } finally {
+        await server.stop();
+      }
     },
     TIMEOUT_START,
   );

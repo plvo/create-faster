@@ -202,7 +202,7 @@ Programmatic `.env.example` file generation:
 - **Next.js**: shadcn/ui, next-themes, mdx, pwa, better-auth, trpc, tanstack-query, tanstack-devtools, react-hook-form, tanstack-form, evlog, posthog, vitest, playwright
 - **Expo**: nativewind, jest-expo
 - **Hono**: aws-lambda, vitest-node, evlog
-- **TanStack Start**: shadcn/ui, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
+- **TanStack Start**: shadcn/ui, next-themes, react-hook-form, tanstack-query, tanstack-devtools, evlog, vitest, playwright
 
 Libraries are grouped by category in the interactive prompt (UI, Content, Auth, API, Data Fetching, Forms, Deploy, Observability, Analytics, Testing).
 
