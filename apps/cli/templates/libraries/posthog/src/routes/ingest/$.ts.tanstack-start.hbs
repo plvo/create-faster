@@ -1,0 +1,44 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { getRequestIP } from '@tanstack/react-start/server'
+
+const API_HOST = 'us.i.posthog.com'
+const ASSET_HOST = 'us-assets.i.posthog.com'
+const PROXY_PREFIX = '/ingest'
+
+async function forwardToPostHog(request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const path = url.pathname.slice(PROXY_PREFIX.length)
+  const host = path.startsWith('/static/') || path.startsWith('/array/') ? ASSET_HOST : API_HOST
+
+  const headers = new Headers(request.headers)
+  headers.delete('cookie')
+  headers.delete('authorization')
+  headers.delete('accept-encoding')
+  const clientIp = request.headers.get('cf-connecting-ip') ?? getRequestIP({ xForwardedFor: true })
+  if (clientIp) headers.set('x-forwarded-for', clientIp)
+
+  const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
+  const response = await fetch(`https://${host}${path}${url.search}`, {
+    method: request.method,
+    headers,
+    body: hasBody ? await request.arrayBuffer() : undefined,
+    redirect: 'manual',
+  })
+
+  const responseHeaders = new Headers(response.headers)
+  responseHeaders.delete('content-encoding')
+  responseHeaders.delete('content-length')
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  })
+}
+
+export const Route = createFileRoute('/ingest/$')({
+  server: {
+    handlers: {
+      ANY: ({ request }) => forwardToPostHog(request),
+    },
+  },
+})
