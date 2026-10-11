@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { copyFile, readdir, readFile } from 'node:fs/promises';
+import { copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   AUTH_SECRET,
@@ -18,6 +18,7 @@ import {
   cleanupTempDir,
   createTempDir,
   expectServesPageWithClientScript,
+  filesContaining,
   getFreePort,
   type RunningServer,
   runCli,
@@ -25,10 +26,13 @@ import {
   startServer,
 } from './helpers';
 import {
+  CHROME_AVAILABLE,
+  chromeTestTitle,
   expectAnonymousTrpcSession,
   expectClientBundleWithoutServerCode,
   expectDateSurvivesHydration,
   expectSignedInTrpcSession,
+  expectTrpcGuards,
   expectTrpcServesProcedures,
   readStartTrpcSession,
   SERVER_MARKER,
@@ -42,6 +46,7 @@ import {
 // context reads sessions through a cookie-less instance that never refreshes them.
 // With tRPC on the Start app: procedures over the API route and in a streamed SSR render, a Date kept through
 // hydration, the protected procedure, the session shared with getSession, and no server code in the client.
+// On both stacks, production errors hide internal details and the API route refuses cross-origin writes.
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_DB = 120_000;
@@ -63,6 +68,8 @@ interface Scenario {
   liveDatabase: boolean;
   /** The Start app also has trpc and tanstack-query. */
   startTrpc?: boolean;
+  /** The project uses the Biome linter, whose lint must pass on the generated code. */
+  biome?: boolean;
 }
 
 const MIXED_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'admin:tanstack-start:better-auth,trpc,tanstack-query'];
@@ -84,11 +91,14 @@ const SCENARIOS: Scenario[] = [
       'sqlite',
       '--orm',
       'drizzle',
+      '--linter',
+      'biome',
     ],
     startAppDir: '.',
     dbDir: '.',
     liveDatabase: true,
     startTrpc: true,
+    biome: true,
   },
   {
     name: 'start-auth-nitro-turbo',
@@ -126,20 +136,9 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-async function filesContaining(dir: string, needles: string[]): Promise<string[]> {
-  const matches: string[] = [];
-  for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {
-    if (!entry.isFile() || entry.name.endsWith('.map')) continue;
-    const path = join(entry.parentPath, entry.name);
-    const content = await readFile(path, 'utf8');
-    if (needles.some((needle) => content.includes(needle))) matches.push(path);
-  }
-  return matches;
-}
-
 describe.each(SCENARIOS)(
   '$name',
-  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase, startTrpc }) => {
+  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase, startTrpc, biome }) => {
     let projectDir: string;
     let installResult: CommandResult;
     const servers: RunningServer[] = [];
@@ -177,6 +176,17 @@ describe.each(SCENARIOS)(
       },
       TIMEOUT_INSTALL,
     );
+
+    if (biome) {
+      test(
+        'biome lint passes on the generated code',
+        async () => {
+          const result = await runCommand(['bunx', 'biome', 'lint', '.'], projectDir);
+          expect(result.exitCode, `${result.stdout}\n${result.stderr}`).toBe(0);
+        },
+        TIMEOUT_TYPECHECK,
+      );
+    }
 
     if (liveDatabase) {
       test(
@@ -237,7 +247,7 @@ describe.each(SCENARIOS)(
           liveDatabase
             ? 'start serves sign-up, sign-in, get-session and per-user cached sessions against the sqlite database'
             : 'start serves the auth route and the session server function without a database round trip'
-        }${startTrpc ? ', and the tRPC procedures' : ''}`,
+        }${startTrpc ? ', and the tRPC procedures, error masking and origin check' : ''}`,
         async () => {
           const port = await getFreePort();
           const server = await startServer(['bun', 'run', 'start'], appPath(startAppDir), {
@@ -254,7 +264,7 @@ describe.each(SCENARIOS)(
           }
           if (startTrpc) {
             await expectTrpcServesProcedures(server.url, START_TRPC);
-            await expectDateSurvivesHydration(server.url);
+            await expectTrpcGuards(server.url);
             await expectAnonymousTrpcSession(server.url, START_TRPC);
             if (liveDatabase) {
               const user = await expectAuthApiFlow(server.url);
@@ -270,11 +280,30 @@ describe.each(SCENARIOS)(
       );
     }
 
+    if (startAppDir && startTrpc) {
+      test.skipIf(!CHROME_AVAILABLE)(
+        chromeTestTitle('the Start page keeps the prefetched Date through hydration in Chrome'),
+        async () => {
+          const port = await getFreePort();
+          const server = await startServer(['bun', 'run', 'start'], appPath(startAppDir), {
+            port,
+            env: serverEnv(port),
+          });
+          servers.push(server);
+          await expectDateSurvivesHydration(server.url, '/trpc-probe');
+          await server.stop();
+        },
+        TIMEOUT_SERVE,
+      );
+    }
+
     if (nextAppDir) {
       test(
-        liveDatabase
-          ? 'the Next.js app signs up, signs in, and its tRPC context reads sessions without refreshing them'
-          : 'the Next.js app answers anonymous session requests through the route and the tRPC context',
+        `${
+          liveDatabase
+            ? 'the Next.js app signs up, signs in, and its tRPC context reads sessions without refreshing them'
+            : 'the Next.js app answers anonymous session requests through the route and the tRPC context'
+        }${startTrpc ? ', hides internal errors and refuses cross-origin writes' : ''}`,
         async () => {
           const port = await getFreePort();
           const server = await startServer(['bunx', 'next', 'start', '--port', String(port)], appPath(nextAppDir), {
@@ -290,6 +319,7 @@ describe.each(SCENARIOS)(
             const user = await expectAuthApiFlow(server.url);
             await expectTrpcReadsWithoutRefreshing(server.url, dbPath(), user);
           }
+          if (startTrpc) await expectTrpcGuards(server.url);
 
           const { stdout, stderr } = await server.stop();
           expect(`${stdout}\n${stderr}`).not.toContain(COOKIE_ORDER_WARNING);

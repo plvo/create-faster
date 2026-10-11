@@ -26,10 +26,13 @@ import {
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
 import {
+  CHROME_AVAILABLE,
+  chromeTestTitle,
   expectAnonymousTrpcSession,
   expectClientBundleWithoutServerCode,
   expectDateSurvivesHydration,
   expectSignedInTrpcSession,
+  expectTrpcGuards,
   expectTrpcServesProcedures,
   SERVER_MARKER,
   type TrpcProbeOptions,
@@ -302,6 +305,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
   let projectDir: string;
   let installResult: CommandResult;
   let authPort: number;
+  let trpcAppUrl: string | undefined;
   const servers: RunningServer[] = [];
 
   beforeAll(async () => {
@@ -466,8 +470,9 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
             await expectMixedUsersKeepTheirOwnSession(server.url);
           }
           if (trpcProbe?.appDir === dir) {
+            trpcAppUrl = server.url;
             await expectTrpcServesProcedures(server.url, trpcProbe.options);
-            if (trpcProbe.options.query) await expectDateSurvivesHydration(server.url);
+            await expectTrpcGuards(server.url);
             if (trpcProbe.options.auth) {
               await expectAnonymousTrpcSession(server.url, trpcProbe.options);
               await expectSignedInTrpcSession(server.url, await expectAuthApiFlow(server.url), trpcProbe.options);
@@ -496,6 +501,17 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
         TIMEOUT_PREVIEW,
       );
     }
+  }
+
+  if (trpcProbe?.options.query) {
+    test.skipIf(!CHROME_AVAILABLE)(
+      chromeTestTitle('the previewed page keeps the prefetched Date through hydration in Chrome'),
+      async () => {
+        if (!trpcAppUrl) throw new Error('vite preview did not serve the tRPC app');
+        await expectDateSurvivesHydration(trpcAppUrl, '/trpc-probe');
+      },
+      TIMEOUT_PREVIEW,
+    );
   }
 
   test(

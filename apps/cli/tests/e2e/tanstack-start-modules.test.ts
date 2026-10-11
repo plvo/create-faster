@@ -16,11 +16,16 @@ import {
 import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 import {
+  CHROME_AVAILABLE,
+  chromeTestTitle,
   expectClientBundleWithoutServerCode,
   expectDateSurvivesHydration,
+  expectServesProbePage,
+  expectTrpcGuards,
   expectTrpcServesProcedures,
   SERVER_MARKER,
   type TrpcProbeOptions,
+  writeQueryProbe,
   writeTrpcProbe,
 } from './trpc-probe';
 
@@ -29,7 +34,6 @@ const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 const TIMEOUT_START = 60_000;
 const MAX_INGEST_BODY_BYTES = 64 * 1024 * 1024;
-const TRPC_WITH_QUERY: TrpcProbeOptions = { auth: false, query: true };
 const TRPC_VANILLA: TrpcProbeOptions = { auth: false, query: false };
 
 describe('tanstack-start-loaded', () => {
@@ -42,7 +46,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog,trpc',
+        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog',
         '--no-git',
         '--no-install',
         '--pm',
@@ -55,7 +59,7 @@ describe('tanstack-start-loaded', () => {
     projectDir = join(tempDir, 'tanstack-start-loaded');
     await writeEvlogProbe(projectDir);
     await writeCsrfProbeRoute(projectDir);
-    await writeTrpcProbe(projectDir, projectDir, TRPC_WITH_QUERY);
+    await writeQueryProbe(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -96,18 +100,25 @@ describe('tanstack-start-loaded', () => {
     TIMEOUT_START,
   );
 
-  test('the client assets carry no tRPC router', async () => {
-    const output = join(projectDir, '.output');
-    await expectClientBundleWithoutServerCode(join(output, 'public'), join(output, 'server'), [SERVER_MARKER]);
-  });
-
   test(
-    'start serves tRPC over the API route and in a streamed render whose Date survives hydration',
+    'start streams a page whose loader prefetched a TanStack Query query without awaiting it',
     async () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
       try {
-        await expectTrpcServesProcedures(server.url, TRPC_WITH_QUERY);
-        await expectDateSurvivesHydration(server.url);
+        await expectServesProbePage(server.url, '/query-probe', { streamed: true });
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
+  );
+
+  test.skipIf(!CHROME_AVAILABLE)(
+    chromeTestTitle('the prefetched query keeps its Date through hydration in Chrome'),
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectDateSurvivesHydration(server.url, '/query-probe');
       } finally {
         await server.stop();
       }
@@ -206,12 +217,13 @@ describe('tanstack-start-trpc', () => {
   });
 
   test(
-    'start serves tRPC over the API route and through the router context client in a loader',
+    'start serves tRPC over the API route and through the router context client, masks errors, checks origins',
     async () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
       try {
         await expectServesPageWithClientScript(server.url);
         await expectTrpcServesProcedures(server.url, TRPC_VANILLA);
+        await expectTrpcGuards(server.url);
       } finally {
         await server.stop();
       }
