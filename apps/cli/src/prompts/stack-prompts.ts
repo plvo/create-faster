@@ -6,7 +6,8 @@ import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addo
 import { handlePromptCancel } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, S_RADIO_DISABLED, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
-import type { MetaProjectCategory, ProjectCategoryName, StackName } from '@/types/meta';
+import type { MetaProjectCategory, ProjectCategoryName } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 export async function selectStackPrompt(message: string): Promise<string> {
   const SelectStackPrompt = new SelectPrompt({

@@ -10,7 +10,8 @@ import {
 } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { ProjectCategoryName, StackName } from '@/types/meta';
+import type { ProjectCategoryName } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 interface ParsedFlags {
   projectName?: string;

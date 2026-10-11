@@ -7,8 +7,9 @@ import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils'
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
-import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { ProjectCategoryName, StackName } from '@/types/meta';
+import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
+import type { ProjectCategoryName } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
@@ -232,7 +233,7 @@ async function promptOrUsePackageManager(
     return { pm: partial.pm };
   }
 
-  const pm = await promptSelect(message, {
+  const pm = await promptSelect<PackageManager>(message, {
     options: [
       { label: 'Install with bun', value: 'bun' },
       { label: 'Install with pnpm', value: 'pnpm' },

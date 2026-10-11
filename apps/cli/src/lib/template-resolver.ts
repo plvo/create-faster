@@ -3,7 +3,8 @@ import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { MetaAddon, MonoScope, ProjectCategoryName, StackName, TemplateFrontmatter } from '@/types/meta';
+import type { MetaAddon, MonoScope, ProjectCategoryName, TemplateFrontmatter } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 import { scanDirectory, transformFilename } from './file-writer';
 import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
 

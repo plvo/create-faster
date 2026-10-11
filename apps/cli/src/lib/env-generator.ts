@@ -2,7 +2,8 @@ import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
 import { resolveAppPort } from '@/lib/utils';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvScope, MetaAddon, StackName } from '@/types/meta';
+import type { EnvScope, MetaAddon } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 interface EnvFileOutput {
   destination: string;
@@ -46,7 +47,8 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
 }
 
 function extractEnvKey(value: string): string {
-  return value.split('=')[0].trim();
+  const [key = ''] = value.split('=');
+  return key.trim();
 }
 
 function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {

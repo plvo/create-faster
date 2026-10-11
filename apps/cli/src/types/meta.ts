@@ -1,7 +1,6 @@
 import type { StackName } from '@/types/stack-name';
 import type { Conditional } from '@/types/when';
 
-export type { StackName };
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
