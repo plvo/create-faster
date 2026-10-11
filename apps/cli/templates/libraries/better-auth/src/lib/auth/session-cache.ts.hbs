@@ -10,10 +10,7 @@ type Session = Auth['$Infer']['Session'];
 
 const sessions = new WeakMap<Headers, Promise<Session | null>>();
 
-export function getRequestSession(
-  headers: Headers,
-  load: () => Promise<Session | null>,
-): Promise<Session | null> {
+export function getRequestSession(headers: Headers, load: () => Promise<Session | null>): Promise<Session | null> {
   const cached = sessions.get(headers);
   if (cached) return cached;
 

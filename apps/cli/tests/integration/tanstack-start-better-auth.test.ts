@@ -52,7 +52,7 @@ describe('TanStack Start + better-auth', () => {
     test('the factory is framework-agnostic, appends the cookie plugin last and never refreshes without it', async () => {
       const factory = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
       expect(factory).toContain('export function createAuth(cookiePlugin?: BetterAuthPlugin) {\n  return betterAuth({\n    baseURL: {');
-      expect(factory).toContain('    plugins: [\n      ...(cookiePlugin ? [cookiePlugin] : []),\n    ],');
+      expect(factory).toContain('    plugins: [...(cookiePlugin ? [cookiePlugin] : [])],');
       expect(factory).toContain('      disableSessionRefresh: !cookiePlugin,');
       expect(factory).toContain('export type Auth = ReturnType<typeof createAuth>');
       expect(factory).not.toContain('better-auth/next-js');
@@ -79,6 +79,9 @@ describe('TanStack Start + better-auth', () => {
       expect(cache).toContain('new WeakMap<Headers, Promise<Session | null>>()');
       expect(cache).toContain("import type { Auth } from './create-auth'");
       expect(cache).toContain("Auth['$Infer']['Session']");
+      expect(cache).toContain(
+        'export function getRequestSession(headers: Headers, load: () => Promise<Session | null>): Promise<Session | null> {',
+      );
     });
 
     test('getSession server function reads the session through the cache', async () => {
@@ -184,7 +187,7 @@ describe('TanStack Start + better-auth', () => {
       expect(auth).toContain("import { type BetterAuthPlugin, betterAuth } from 'better-auth'");
       expect(auth).toContain('export function createAuth(cookiePlugin?: BetterAuthPlugin)');
       expect(auth).toContain('export type Auth = ReturnType<typeof createAuth>');
-      expect(auth).toMatch(/\.\.\.\(cookiePlugin \? \[cookiePlugin\] : \[\]\),\n\s*\],/);
+      expect(auth).toContain('    plugins: [...(cookiePlugin ? [cookiePlugin] : [])],');
       expect(auth).not.toContain('Cookies()');
       expect(auth).not.toContain('better-auth/next-js');
       expect(auth).not.toContain('better-auth/tanstack-start');
@@ -283,7 +286,7 @@ describe('TanStack Start + better-auth', () => {
       const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
       expect(auth).not.toContain('better-auth/next-js');
       expect(auth).not.toContain('better-auth/tanstack-start');
-      expect(auth).toContain('...(cookiePlugin ? [cookiePlugin] : []),');
+      expect(auth).toContain('plugins: [...(cookiePlugin ? [cookiePlugin] : [])],');
     });
 
     test('each app builds its own instance with its own cookie plugin', async () => {
