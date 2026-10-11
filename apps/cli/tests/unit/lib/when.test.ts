@@ -360,18 +360,18 @@ describe('any-of alternatives', () => {
   });
 
   test('matches when any alternative holds', () => {
-    expect(resolveConditionals([sessionCache], withApp('tanstack-start', []))).toEqual(['session-cache']);
-    expect(resolveConditionals([sessionCache], withApp('nextjs', ['trpc']))).toEqual(['session-cache']);
+    expect(resolveValues([sessionCache], withApp('tanstack-start', []))).toEqual(['session-cache']);
+    expect(resolveValues([sessionCache], withApp('nextjs', ['trpc']))).toEqual(['session-cache']);
   });
 
   test('does not match when no alternative holds', () => {
-    expect(resolveConditionals([sessionCache], withApp('nextjs', ['better-auth']))).toEqual([]);
+    expect(resolveValues([sessionCache], withApp('nextjs', ['better-auth']))).toEqual([]);
   });
 
   test('keys inside one alternative must all hold', () => {
     const both = $when([{ stack: 'tanstack-start', library: 'trpc' }, { database: 'd1' }], 'v');
-    expect(resolveConditionals([both], withApp('tanstack-start', []))).toEqual([]);
-    expect(resolveConditionals([both], withApp('tanstack-start', ['trpc']))).toEqual(['v']);
-    expect(resolveConditionals([both], { ...withApp('nextjs', []), project: { tooling: [], database: 'd1' } })).toEqual(['v']);
+    expect(resolveValues([both], withApp('tanstack-start', []))).toEqual([]);
+    expect(resolveValues([both], withApp('tanstack-start', ['trpc']))).toEqual(['v']);
+    expect(resolveValues([both], { ...withApp('nextjs', []), project: { tooling: [], database: 'd1' } })).toEqual(['v']);
   });
 });
