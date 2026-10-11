@@ -7,10 +7,11 @@ import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-genera
 import { findMissingPackageManager, missingPackageManagerMessage } from '@/lib/package-manager';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
+import { printError } from '@/tui/print-error';
 import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 import { blueprintCli, cli } from './cli';
-import { parseFlags, printError } from './flags';
+import { parseFlags } from './flags';
 import { promptSelect } from './prompts/base-prompts';
 import { selectBlueprintPrompt } from './prompts/stack-prompts';
 

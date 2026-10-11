@@ -8,8 +8,9 @@ import {
   isServerRuntimeSatisfied,
   isSingletonDbSatisfied,
 } from '@/lib/addon-utils';
-import { ASCII } from '@/lib/constants';
-import { missingPackageManagerMessage, PACKAGE_MANAGERS, readPackageManagerVersion } from '@/lib/package-manager';
+import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
+import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
+import { printError } from '@/tui/print-error';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -87,7 +88,7 @@ export function parseFlags(): Partial<TemplateContext> {
     .option('--tooling <name>', 'Add tooling (repeatable)', collect, [])
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
-    .option('--pm <manager>', 'Package manager (bun, npm, pnpm)')
+    .option('--pm <manager>', `Package manager (${PACKAGE_MANAGERS.join(', ')})`)
     .option('--no-install', 'Skip dependency installation')
     .option('--no-agent-context', 'Skip AGENTS.md / CLAUDE.md generation')
     .addHelpText(
@@ -345,12 +346,4 @@ function validateContext(partial: Partial<TemplateContext>): void {
       process.exit(1);
     }
   }
-}
-
-export function printError(title: string, ...messages: string[]): void {
-  console.error(`\n${color.red('✖')} ${color.bold(color.red(title))}`);
-  for (const msg of messages) {
-    console.error(color.gray(msg));
-  }
-  console.error('');
 }

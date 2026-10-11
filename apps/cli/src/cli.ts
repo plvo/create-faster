@@ -4,8 +4,9 @@ import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils';
+import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
-import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
+import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
@@ -220,7 +221,7 @@ async function promptOrUseGit(partial: Partial<TemplateContext> | undefined, mes
 async function promptOrUsePackageManager(
   partial: Partial<TemplateContext> | undefined,
   message: string,
-): Promise<{ pm?: 'bun' | 'npm' | 'pnpm'; skipInstall?: boolean }> {
+): Promise<{ pm?: PackageManager; skipInstall?: boolean }> {
   if (partial?.skipInstall) {
     log.info(`${color.green('✓')} Skipping dependency installation`);
     if (partial.pm) {
@@ -234,24 +235,16 @@ async function promptOrUsePackageManager(
     return { pm: partial.pm };
   }
 
-  const pm = await promptSelect<PackageManager>(message, {
-    options: [
-      installOption('bun'),
-      installOption('pnpm'),
-      installOption('npm'),
-      { label: 'Skip installation', value: undefined },
-    ],
-  });
+  const pm = await promptSelectWithDisabled<PackageManager>(message, [
+    ...PACKAGE_MANAGERS.map((name) => ({
+      value: name,
+      label: `Install with ${name}`,
+      disabledReason: readPackageManagerVersion(name) ? undefined : 'not installed',
+    })),
+    { value: undefined, label: 'Skip installation' },
+  ]);
 
   return { pm };
-}
-
-function installOption(pm: NonNullable<PackageManager>) {
-  return {
-    label: `Install with ${pm}`,
-    value: pm,
-    hint: readPackageManagerVersion(pm) ? undefined : 'not installed',
-  };
 }
 
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
