@@ -58,19 +58,28 @@ export async function createTRPCContext(opts: { headers: Headers }) {
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
-  errorFormatter: ({ shape, error }) =>
-    process.env.NODE_ENV === 'development' || error.code !== 'INTERNAL_SERVER_ERROR'
-      ? shape
-      : { ...shape, message: 'Internal server error' },
+  isDev,
+  errorFormatter: ({ shape, error }) => {
+    if (isDev) return shape;
+    const data = { ...shape.data };
+    delete data.stack;
+    return {
+      ...shape,
+      message: error.code === 'INTERNAL_SERVER_ERROR' ? 'Internal server error' : shape.message,
+      data,
+    };
+  },
 });
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
 ```
 
-Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters. tRPC leaves stack traces out of error responses when `NODE_ENV` is `production`, which the production servers of both stacks set.
+Outside development, error responses carry no stack trace, and an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters. `isDev` is the `NODE_ENV` the build inlines, not tRPC's default, which reads `NODE_ENV` at runtime: some production servers leave it unset (Next.js on Cloudflare through OpenNext).
 
 The API route (`route.ts` on Next.js, `src/routes/api/trpc/$.ts` on TanStack Start) refuses with a 403 any request other than `GET` and `HEAD` whose `Origin` header names another origin, so a page on another site cannot run a mutation with the user's cookies. Requests without `Origin` (other servers, scripts) pass.
 

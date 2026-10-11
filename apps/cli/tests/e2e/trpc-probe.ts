@@ -297,15 +297,17 @@ export async function expectTrpcServesProcedures(baseUrl: string, { query }: Trp
 export async function expectTrpcGuards(baseUrl: string): Promise<void> {
   const invalid = await getProcedure(baseUrl, `hello.greet?input=${encodeURIComponent('{"json":{"name":""}}')}`);
   expect(invalid.status).toBe(400);
-  const validation = (await invalid.json()) as { error: { json: { data: Record<string, unknown> } } };
+  const invalidBody = await invalid.text();
+  expect(invalidBody).not.toContain('stack');
+  const validation = JSON.parse(invalidBody) as { error: { json: { data: Record<string, unknown> } } };
   expect(validation.error.json.data.code).toBe('BAD_REQUEST');
-  expect(validation.error.json.data).not.toHaveProperty('stack');
 
   const failing = await getProcedure(baseUrl, 'probe.fail');
   expect(failing.status).toBe(500);
   const failure = await failing.text();
   expect(failure).not.toContain('leak@example.com');
   expect(failure).not.toContain('select');
+  expect(failure).not.toContain('stack');
   const internal = JSON.parse(failure) as { error: { json: { message: string; data: Record<string, unknown> } } };
   expect(internal.error.json.message).toBe('Internal server error');
   expect(internal.error.json.data.code).toBe('INTERNAL_SERVER_ERROR');
