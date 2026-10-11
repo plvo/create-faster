@@ -149,6 +149,27 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
   });
 });
 
+describe('collectAgentContextFiles (Next.js on Cloudflare)', () => {
+  function cloudflareSection(): string {
+    const ctx = makeContext({
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+    });
+    const content = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md')?.content ?? '';
+    const start = content.indexOf('## Cloudflare Workers deploy (OpenNext)');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = content.indexOf('\n## ', start + 1);
+    return content.slice(start, end === -1 ? undefined : end);
+  }
+
+  test('documents that wrangler.jsonc vars carry NODE_ENV=production, which workerd leaves unset', () => {
+    const section = cloudflareSection();
+    expect(section).toContain('`NODE_ENV=production`');
+    expect(section).toContain('`wrangler.jsonc` `vars`');
+    expect(section).toContain('`next dev`');
+  });
+});
+
 describe('collectAgentContextFiles (blueprint)', () => {
   test('injects Architecture section from META.agentArchitecture', () => {
     const blueprintName = Object.keys(META.blueprints).find(

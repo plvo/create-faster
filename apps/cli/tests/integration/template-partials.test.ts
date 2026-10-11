@@ -36,6 +36,10 @@ const NEXTJS_ASSETS = `
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  // workerd leaves process.env.NODE_ENV unset, so dependencies reading it at runtime would behave as in development
+  "vars": {
+    "NODE_ENV": "production"
   }`;
 const WORKER_FLAGS = `  "compatibility_flags": ["nodejs_compat"]`;
 
