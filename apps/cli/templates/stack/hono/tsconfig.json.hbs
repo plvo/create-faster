@@ -30,6 +30,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts"{{#if (hasLibrary "vitest-node")}}, "tests/**/*.ts"{{/if}}],
+  "include": ["src/**/*.ts"{{#if (has "deployment" "cloudflare")}}, "cloudflare-env.d.ts"{{/if}}{{#if (hasLibrary "vitest-node")}}, "tests/**/*.ts"{{/if}}],
   "exclude": ["node_modules", "dist"]
 }

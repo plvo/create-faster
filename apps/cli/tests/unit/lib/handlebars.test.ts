@@ -102,6 +102,20 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('databaseBinding', () => {
+    const template = Handlebars.compile('{{#if (databaseBinding "hyperdrive")}}yes{{else}}no{{/if}}');
+
+    test('matches the binding META declares for the selected database', () => {
+      expect(template({ project: { database: 'postgres', tooling: [] } })).toBe('yes');
+      expect(template({ project: { database: 'mysql', tooling: [] } })).toBe('yes');
+    });
+
+    test('rejects a database with another binding, or no database', () => {
+      expect(template({ project: { database: 'd1', tooling: [] } })).toBe('no');
+      expect(template({ project: { tooling: [] } })).toBe('no');
+    });
+  });
+
   describe('has', () => {
     test('checks database value', () => {
       const template = Handlebars.compile('{{#if (has "database" "postgres")}}yes{{else}}no{{/if}}');

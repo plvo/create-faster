@@ -3,5 +3,5 @@
   "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-12",
-  "compatibility_flags": ["nodejs_compat"]{{> cloudflare/d1-binding}}
+  "compatibility_flags": ["nodejs_compat"]{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}
 }
