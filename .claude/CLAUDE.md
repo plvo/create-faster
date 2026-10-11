@@ -338,6 +338,8 @@ A template whose rendered output is empty or whitespace only is not written (`pr
 - the file exists only under a choice (`{{#if (has "deployment" "cloudflare")}}`) or a combination of choices, which `deploymentSkip` (a list of deployments to exclude) cannot express;
 - the file is a shared entry point that only exists when a library contributes to it (see below).
 
+Example: `repo/turborepo/pnpm-workspace.yaml.hbs` is wrapped in `{{#if (eq pm "pnpm")}}`. pnpm ignores the `workspaces` field of `package.json`, so a pnpm turborepo needs this file, while bun and npm get none. `linkWorkspacePackages: true` makes the `*` range of internal dependencies resolve to the workspace package, as it does under bun and npm. Its `packages` globs must match `workspaces` in `generateRootPackageJson`; an integration test checks it.
+
 #### Shared stack entry files with library sections
 A file several libraries extend (a framework entry, a global middleware list) is owned by the stack template, never by one library, so the next library adds a section instead of colliding on the same path. The stack template holds the unconditional skeleton, and each library contributes a `{{#if (hasLibrary "x")}}` section that wraps or extends it, like `stack/nextjs/src/proxy.ts.hbs`:
 - `stack/tanstack-start/src/server.ts.hbs` is the Cloudflare Worker entry. It is always generated under `cloudflare` (`wrangler.jsonc` `main` points to it unconditionally) and exports Start's handler; a library section wraps `fetch` inside it (evlog: `withEvlog` + `loggerStorage.run`).

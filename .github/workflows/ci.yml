@@ -27,6 +27,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: "🔧 Setup pnpm"
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+
       - name: "📦 Install Dependencies"
         run: bun install
 
