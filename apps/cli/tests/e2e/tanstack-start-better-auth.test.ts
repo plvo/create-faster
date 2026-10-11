@@ -25,10 +25,10 @@ import {
   startServer,
 } from './helpers';
 
-// better-auth on TanStack Start with Nitro: the auth route, the cached getSession server function, and the
-// per-app auth instance. The Cloudflare D1 scenarios are in tanstack-start-cloudflare.test.ts.
-// The mixed scenarios put a Next.js app and a Start app that both use better-auth in one turborepo: each app
-// owns its cookie plugin, so neither server bundle carries the other framework's.
+// better-auth on TanStack Start served by Nitro, alone and next to a Next.js app in one turborepo: the auth
+// route, the cached getSession server function and its per-user isolation, and the per-app auth instance.
+// Each app owns its cookie plugin, so the Next.js server bundle carries no Start code, and the Next.js tRPC
+// context reads sessions through a cookie-less instance that never refreshes them.
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_DB = 120_000;
@@ -47,8 +47,6 @@ interface Scenario {
   dbDir: string;
   /** False when no database server is available: only requests that never reach the database are exercised. */
   liveDatabase: boolean;
-  /** False when the Start app is built and type-checked but not served: libsql is inlined into the Nitro bundle of a turborepo. */
-  serveStart: boolean;
 }
 
 const MIXED_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'admin:tanstack-start:better-auth'];
@@ -60,7 +58,6 @@ const SCENARIOS: Scenario[] = [
     startAppDir: '.',
     dbDir: '.',
     liveDatabase: true,
-    serveStart: true,
   },
   {
     name: 'start-auth-nitro-turbo',
@@ -70,14 +67,13 @@ const SCENARIOS: Scenario[] = [
       '--app',
       'api:hono',
       '--database',
-      'postgres',
+      'sqlite',
       '--orm',
       'drizzle',
     ],
     startAppDir: 'apps/web',
     dbDir: 'packages/db',
-    liveDatabase: false,
-    serveStart: true,
+    liveDatabase: true,
   },
   {
     name: 'mixed-auth-sqlite',
@@ -86,7 +82,6 @@ const SCENARIOS: Scenario[] = [
     startAppDir: 'apps/admin',
     dbDir: 'packages/db',
     liveDatabase: true,
-    serveStart: false,
   },
   {
     name: 'mixed-auth-postgres',
@@ -95,7 +90,6 @@ const SCENARIOS: Scenario[] = [
     startAppDir: 'apps/admin',
     dbDir: 'packages/db',
     liveDatabase: false,
-    serveStart: true,
   },
 ];
 
@@ -112,14 +106,15 @@ async function filesContaining(dir: string, needles: string[]): Promise<string[]
 
 describe.each(SCENARIOS)(
   '$name',
-  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase, serveStart }) => {
+  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase }) => {
     let projectDir: string;
     let installResult: CommandResult;
     const servers: RunningServer[] = [];
 
     const appPath = (appDir: string) => join(projectDir, appDir);
     const dbPath = () => join(projectDir, dbDir, 'db.sqlite');
-    const serverEnv = (port: number) => ({
+    const serverEnv = (port: number): Record<string, string> => ({
+      PORT: String(port),
       DATABASE_URL: liveDatabase ? `file:${dbPath()}` : 'postgresql://postgres:password@127.0.0.1:1/unused',
       BETTER_AUTH_SECRET: AUTH_SECRET,
       BETTER_AUTH_URL: `http://127.0.0.1:${port}`,
@@ -192,13 +187,17 @@ describe.each(SCENARIOS)(
       TIMEOUT_TYPECHECK,
     );
 
-    if (startAppDir && serveStart) {
+    if (startAppDir) {
       test(
         liveDatabase
           ? 'start serves sign-up, sign-in, get-session and per-user cached sessions against the sqlite database'
           : 'start serves the auth route and the session server function without a database round trip',
         async () => {
-          const server = await startServer(['bun', 'run', 'start'], appPath(startAppDir), { env: serverEnv });
+          const port = await getFreePort();
+          const server = await startServer(['bun', 'run', 'start'], appPath(startAppDir), {
+            port,
+            env: serverEnv(port),
+          });
           servers.push(server);
 
           await expectServesPageWithClientScript(server.url);
@@ -224,7 +223,7 @@ describe.each(SCENARIOS)(
           const port = await getFreePort();
           const server = await startServer(['bunx', 'next', 'start', '--port', String(port)], appPath(nextAppDir), {
             port,
-            env: serverEnv,
+            env: serverEnv(port),
           });
           servers.push(server);
 
