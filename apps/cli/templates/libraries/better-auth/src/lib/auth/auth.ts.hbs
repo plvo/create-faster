@@ -71,6 +71,13 @@ export const auth = betterAuth({
     usePlural: false,
   }),
   {{/if}}
+  {{#if (has "database" "postgres")}}
+  advanced: {
+    database: {
+      generateId: () => crypto.randomUUID(),
+    },
+  },
+  {{/if}}
 
   plugins: [{{#if (has "stack" "nextjs")}}nextCookies(){{/if}}],
   emailAndPassword: {
