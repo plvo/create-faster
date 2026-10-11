@@ -150,9 +150,55 @@ describe('evlog Integration', () => {
 
     test('__root.tsx wires the evlog error middleware via server middleware', async () => {
       const content = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(content).toContain('EvlogError');
-      expect(content).toContain('createMiddleware');
+      expect(content).toContain('EvlogError.isEvlogError(error)');
+      expect(content).toContain('throw new Response(JSON.stringify(error.toJSON())');
+      expect(content).toContain('useLogger().error(error)');
+      expect(content).toContain("import { useLogger } from '@/lib/evlog'");
       expect(content).toContain('server: {');
+      expect(content).not.toContain('evlogErrorHandler');
+      expect(content).not.toContain('nitro/context');
+    });
+
+    test('src/lib/evlog.ts reads the request logger from the Nitro request context', async () => {
+      const content = await readTextFile(join(projectPath, 'src/lib/evlog.ts'));
+      expect(content).toContain("import { useRequest } from 'nitro/context'");
+      expect(content).toContain('useRequest().context?.log as RequestLogger | undefined');
+      expect(content).toContain('export function useLogger()');
+      expect(content).not.toContain('createLoggerStorage');
+    });
+
+    test('src/start.ts logs server function errors through useLogger', async () => {
+      const content = await readTextFile(join(projectPath, 'src/start.ts'));
+      expect(content).toContain("createMiddleware({ type: 'function' })");
+      expect(content).toContain('functionMiddleware: [');
+      expect(content).toContain('useLogger().error(error)');
+      expect(content).not.toContain('nitro/context');
+    });
+
+    test('generates no Workers entry', async () => {
+      expect(await fileExists(join(projectPath, 'src/server.ts'))).toBe(false);
+    });
+  });
+
+  describe('Single repo: TanStack Start without evlog', () => {
+    const projectName = 'test-noevlog-tss';
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = join(tempDir, projectName);
+      const result = await runCli(
+        [projectName, '--app', `${projectName}:tanstack-start`, '--no-git', '--no-install'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+    });
+
+    test('generates no Start-wide entry nor logger files', async () => {
+      expect(await fileExists(join(projectPath, 'src/start.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/server.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/lib/evlog.ts'))).toBe(false);
+      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
+      expect(root).not.toContain('evlog');
     });
   });
 

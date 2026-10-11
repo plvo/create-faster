@@ -21,43 +21,6 @@ describe('evlog + TanStack Start', () => {
     return join(tempDir, projectName);
   }
 
-  describe('single repo on Nitro', () => {
-    let projectPath: string;
-
-    beforeAll(async () => {
-      projectPath = await generate('evlog-start-nitro', ['--app', 'evlog-start-nitro:tanstack-start:evlog']);
-    });
-
-    test('registers the evlog Nitro module', async () => {
-      const config = await readTextFile(join(projectPath, 'nitro.config.ts'));
-      expect(config).toContain("from 'evlog/nitro/v3'");
-    });
-
-    test('generates no Workers entry nor project-local logger', async () => {
-      expect(await fileExists(join(projectPath, 'src/server.ts'))).toBe(false);
-      expect(await fileExists(join(projectPath, 'src/lib/evlog.ts'))).toBe(false);
-    });
-
-    test('root route replaces evlogErrorHandler with a middleware that logs into the Nitro request logger', async () => {
-      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(root).not.toContain('evlogErrorHandler');
-      expect(root).not.toContain('evlog/nitro/v3');
-      expect(root).toContain("import { useRequest } from 'nitro/context'");
-      expect(root).toContain('useRequest().context?.log');
-      expect(root).toContain('EvlogError.isEvlogError(error)');
-      expect(root).toContain('throw new Response(JSON.stringify(error.toJSON())');
-    });
-
-    test('start.ts logs server function errors into the Nitro request logger', async () => {
-      const start = await readTextFile(join(projectPath, 'src/start.ts'));
-      expect(start).toContain('createStart');
-      expect(start).toContain("createMiddleware({ type: 'function' })");
-      expect(start).toContain('functionMiddleware: [');
-      expect(start).toContain("import { useRequest } from 'nitro/context'");
-      expect(start).toContain('useRequest().context?.log');
-    });
-  });
-
   describe('single repo on cloudflare', () => {
     let projectPath: string;
 
@@ -98,9 +61,9 @@ describe('evlog + TanStack Start', () => {
       expect(logger).toContain('useLogger');
     });
 
-    test('root route middleware reads context.log, never Nitro', async () => {
+    test('root route middleware logs through the project-local useLogger, never Nitro', async () => {
       const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(root).toContain('context.log?.error(error)');
+      expect(root).toContain('useLogger().error(error)');
       expect(root).toContain('EvlogError.isEvlogError(error)');
       expect(root).not.toContain('nitro/context');
       expect(root).not.toContain('evlogErrorHandler');
@@ -112,11 +75,11 @@ describe('evlog + TanStack Start', () => {
       expect(agents).toContain("`useLogger()` from `@/lib/evlog`");
     });
 
-    test('start.ts logs server function errors from context.log', async () => {
+    test('start.ts logs server function errors through useLogger', async () => {
       const start = await readTextFile(join(projectPath, 'src/start.ts'));
       expect(start).toContain("createMiddleware({ type: 'function' })");
       expect(start).toContain('functionMiddleware: [');
-      expect(start).toContain('context.log?.error(error)');
+      expect(start).toContain('useLogger().error(error)');
       expect(start).not.toContain('nitro/context');
     });
   });
@@ -195,12 +158,14 @@ describe('evlog + TanStack Start', () => {
       ]);
     });
 
-    test('only the app with evlog gets the Nitro module and the error middlewares', async () => {
+    test('only the app with evlog gets the Nitro module, the logger and the error middlewares', async () => {
       expect(await fileExists(join(projectPath, 'apps/web/nitro.config.ts'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/web/src/start.ts'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/web/src/server.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'apps/admin/nitro.config.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'apps/admin/src/start.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'apps/web/src/lib/evlog.ts'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/admin/src/lib/evlog.ts'))).toBe(false);
       const adminRoot = await readTextFile(join(projectPath, 'apps/admin/src/routes/__root.tsx'));
       expect(adminRoot).not.toContain('EvlogError');
     });
