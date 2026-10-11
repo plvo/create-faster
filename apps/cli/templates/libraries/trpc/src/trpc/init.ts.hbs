@@ -54,17 +54,14 @@ export async function createTRPCContext(opts: { headers: Headers{{#if (and (has 
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
-// The build inlines NODE_ENV here: tRPC's own default reads it at runtime, where not every production server
-// sets it, and would then send stack traces.
-const isDev = process.env.NODE_ENV === 'development';
-
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
-  isDev,
   // Outside development an unexpected error (a failed query, a bug) reaches the client as a generic message:
   // its own message can carry SQL, parameters or other internals.
   errorFormatter: ({ shape, error }) =>
-    isDev || error.code !== 'INTERNAL_SERVER_ERROR' ? shape : { ...shape, message: 'Internal server error' },
+    process.env.NODE_ENV === 'development' || error.code !== 'INTERNAL_SERVER_ERROR'
+      ? shape
+      : { ...shape, message: 'Internal server error' },
 });
 
 export const router = t.router;

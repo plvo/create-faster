@@ -11,9 +11,8 @@ const COMMON_ARGS = ['--no-git', '--no-install', '--pm', 'bun'];
 const SESSION_READ_THROUGH_CACHE =
   'const session = await getRequestSession(opts.headers, () => sessionReader.api.getSession({ headers: opts.headers }));';
 const SESSION_READ = 'const session = await sessionReader.api.getSession({ headers: opts.headers });';
-const BUILD_TIME_DEV = "const isDev = process.env.NODE_ENV === 'development';";
-const GENERIC_INTERNAL_ERROR =
-  "isDev || error.code !== 'INTERNAL_SERVER_ERROR' ? shape : { ...shape, message: 'Internal server error' },";
+const GENERIC_INTERNAL_ERROR = "process.env.NODE_ENV === 'development' || error.code !== 'INTERNAL_SERVER_ERROR'";
+const GENERIC_MESSAGE = ": { ...shape, message: 'Internal server error' },";
 const CROSS_ORIGIN_GUARD = 'function isCrossOriginWrite(request: Request): boolean {';
 const FORBIDDEN = "return new Response('Forbidden', { status: 403 });";
 
@@ -66,11 +65,11 @@ describe('TanStack Start + tRPC', () => {
       expect(init).toContain('    headers: opts.headers,');
     });
 
-    test('outside development, errors carry no stack trace and unexpected errors a generic message', async () => {
+    test('outside development, unexpected errors reach the client as a generic message', async () => {
       const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
-      expect(init).toContain(BUILD_TIME_DEV);
-      expect(init).toContain('  isDev,');
+      expect(init).not.toContain('isDev');
       expect(init).toContain(GENERIC_INTERNAL_ERROR);
+      expect(init).toContain(GENERIC_MESSAGE);
     });
 
     test('the API route serves GET and POST through fetchRequestHandler with the request headers', async () => {
@@ -471,8 +470,9 @@ describe('Next.js + tRPC aligns on the explicit context signature', () => {
     expect(init).toContain(SESSION_READ);
     expect(init).not.toContain('next/headers');
     expect(init).not.toContain('getRequestSession');
-    expect(init).toContain(BUILD_TIME_DEV);
+    expect(init).not.toContain('isDev');
     expect(init).toContain(GENERIC_INTERNAL_ERROR);
+    expect(init).toContain(GENERIC_MESSAGE);
 
     const server = await readTextFile(join(projectPath, 'src/trpc/server.tsx'));
     expect(server).toContain('const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));');

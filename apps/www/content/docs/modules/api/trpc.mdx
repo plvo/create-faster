@@ -58,20 +58,19 @@ export async function createTRPCContext(opts: { headers: Headers }) {
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
-const isDev = process.env.NODE_ENV === 'development';
-
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
-  isDev,
   errorFormatter: ({ shape, error }) =>
-    isDev || error.code !== 'INTERNAL_SERVER_ERROR' ? shape : { ...shape, message: 'Internal server error' },
+    process.env.NODE_ENV === 'development' || error.code !== 'INTERNAL_SERVER_ERROR'
+      ? shape
+      : { ...shape, message: 'Internal server error' },
 });
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
 ```
 
-`isDev` is read when the app is built (the bundler inlines `NODE_ENV`), not at runtime: tRPC's default reads it at runtime, and a production server that does not set `NODE_ENV` would send stack traces. Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters.
+Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters. tRPC leaves stack traces out of error responses when `NODE_ENV` is `production`, which the production servers of both stacks set.
 
 The API route (`route.ts` on Next.js, `src/routes/api/trpc/$.ts` on TanStack Start) refuses with a 403 any request other than `GET` and `HEAD` whose `Origin` header names another origin, so a page on another site cannot run a mutation with the user's cookies. Requests without `Origin` (other servers, scripts) pass.
 
