@@ -14,7 +14,7 @@ import remarkFrontmatter from 'remark-frontmatter'
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
 {{/if}}
 
-const config = defineConfig({
+const config = defineConfig(({{#if (has "deployment" "cloudflare")}}{ command }{{/if}}) => ({
   server: {
     port: {{#if (isMono)}}{{appPort appName}}{{else}}3000{{/if}},
   },
@@ -23,7 +23,7 @@ const config = defineConfig({
   },
   plugins: [
 {{#if (has "deployment" "cloudflare")}}
-    cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../{{/if}}.wrangler' } }),
+    cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../{{/if}}.wrangler' }, config: { vars: { NODE_ENV: command === 'build' ? 'production' : 'development' } } }),
 {{/if}}
     tailwindcss(),
 {{#if (hasLibrary "mdx")}}
@@ -45,6 +45,6 @@ const config = defineConfig({
     nitro(),
 {{/unless}}
   ],
-})
+}))
 
 export default config

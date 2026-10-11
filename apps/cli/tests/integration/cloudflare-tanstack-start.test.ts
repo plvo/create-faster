@@ -32,6 +32,12 @@ describe('TanStack Start + cloudflare', () => {
       expect(config).not.toContain('nitro');
     });
 
+    test('vite config bakes NODE_ENV into the Worker vars: production for the build, development for dev', async () => {
+      const config = await readTextFile(join(projectPath, 'vite.config.ts'));
+      expect(config).toContain('defineConfig(({ command }) => ({');
+      expect(config).toContain("config: { vars: { NODE_ENV: command === 'build' ? 'production' : 'development' } }");
+    });
+
     test('wrangler.jsonc points at the Worker entry with nodejs_compat', async () => {
       const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
       expect(wrangler).toContain('"name": "start-cf"');

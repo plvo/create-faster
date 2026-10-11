@@ -11,6 +11,7 @@ import {
   runCommand,
   startServer,
 } from './helpers';
+import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_BUILD = 240_000;
@@ -40,6 +41,8 @@ describe('tanstack-start-turborepo', () => {
     expect(result.exitCode).toBe(0);
 
     projectDir = join(tempDir, 'tanstack-start-turborepo');
+    await writeNodeEnvProbeRoute(join(projectDir, 'apps/web'));
+    await writeNodeEnvProbeRoute(join(projectDir, 'apps/admin'));
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -75,7 +78,10 @@ describe('tanstack-start-turborepo', () => {
       const admin = await startServer(['bun', 'run', 'start'], adminDir, { port: 3001 });
       servers.push(admin);
 
-      for (const server of servers) await expectServesPageWithClientScript(server.url);
+      for (const server of servers) {
+        await expectServesPageWithClientScript(server.url);
+        await expectServerNodeEnv(server.url, 'production');
+      }
 
       await expectOnlyMissingEnvNoticeOnStderr((await web.stop()).stderr, webDir);
       await expectOnlyMissingEnvNoticeOnStderr((await admin.stop()).stderr, adminDir);

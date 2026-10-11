@@ -10,6 +10,7 @@ import {
   runCommand,
   startServer,
 } from './helpers';
+import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -29,6 +30,7 @@ describe('tanstack-start', () => {
     expect(result.exitCode).toBe(0);
 
     projectDir = join(tempDir, 'tanstack-start');
+    await writeNodeEnvProbeRoute(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -64,6 +66,19 @@ describe('tanstack-start', () => {
         ({ stderr } = await server.stop());
       }
       await expectOnlyMissingEnvNoticeOnStderr(stderr, projectDir);
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'start runs the server with NODE_ENV=production, which Node does not set on its own',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectServerNodeEnv(server.url, 'production');
+      } finally {
+        await server.stop();
+      }
     },
     TIMEOUT_START,
   );

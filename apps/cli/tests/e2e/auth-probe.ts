@@ -78,10 +78,17 @@ function cookieHeader(response: Response): string {
     .join('; ');
 }
 
+const randomOctet = (): number => Math.floor(Math.random() * 254) + 1;
+
+// Production rate limiting keys on the client IP header.
 function postJson(baseUrl: string, path: string, body: unknown): Promise<Response> {
   return fetch(new URL(path, baseUrl), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: baseUrl },
+    headers: {
+      'content-type': 'application/json',
+      origin: baseUrl,
+      'x-forwarded-for': `10.${randomOctet()}.${randomOctet()}.${randomOctet()}`,
+    },
     body: JSON.stringify(body),
   });
 }

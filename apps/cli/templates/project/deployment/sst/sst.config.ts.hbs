@@ -27,6 +27,7 @@ export default $config({
       path: 'apps/{{appName}}/',
 {{/if}}
       environment: {
+        NODE_ENV: $dev ? 'development' : 'production',
         NITRO_PRESET: 'aws-lambda',
       },
     });

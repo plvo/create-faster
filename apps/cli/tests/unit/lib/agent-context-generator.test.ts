@@ -114,6 +114,27 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
     expect(section).toContain('PORT');
   });
 
+  test('documents that .env.start sets NODE_ENV=production for the Nitro production server', () => {
+    expect(startSection()).toContain('`NODE_ENV=production`');
+  });
+
+  test('documents that the Cloudflare build bakes NODE_ENV=production into the Worker vars', () => {
+    const section = startSection('cloudflare');
+    expect(section).toContain('`NODE_ENV=production`');
+    expect(section).toContain('`vars`');
+  });
+
+  test('documents that SST sets NODE_ENV in the function environment, since the Lambda never loads .env.start', () => {
+    const section = startSection('sst');
+    expect(section).toContain('`sst.config.ts`');
+    expect(section).toContain('`environment`');
+    expect(section).toContain('`.env.start`');
+  });
+
+  test.each([undefined, 'cloudflare'] as const)('does not mention the SST environment under %p', (deployment) => {
+    expect(startSection(deployment)).not.toContain('`sst.config.ts`');
+  });
+
   test('names the notice Node prints on stderr when the optional .env is missing', () => {
     expect(startSection()).toContain('`.env not found. Continuing without it.`');
   });
