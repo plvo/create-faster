@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
-import { registerHandlebarsHelpers } from '@/lib/handlebars';
+import { setupTemplateEngine } from '@/lib/handlebars';
 import type { EnrichedTemplateContext } from '@/types/ctx';
 
 describe('Handlebars helpers', () => {
   beforeAll(() => {
-    registerHandlebarsHelpers();
+    setupTemplateEngine();
   });
 
   describe('eq', () => {

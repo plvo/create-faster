@@ -46,15 +46,15 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/ingest/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
+        destination: 'https://{{> posthog/asset-host}}/static/:path*',
       },
       {
         source: '/ingest/array/:path*',
-        destination: 'https://us-assets.i.posthog.com/array/:path*',
+        destination: 'https://{{> posthog/asset-host}}/array/:path*',
       },
       {
         source: '/ingest/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
+        destination: 'https://{{> posthog/api-host}}/:path*',
       },
     ];
   },

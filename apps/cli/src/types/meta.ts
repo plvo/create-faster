@@ -124,6 +124,10 @@ export interface TemplateFrontmatter {
   blueprintSkip?: string[];
 }
 
+export interface PartialFrontmatter {
+  inline?: boolean;
+}
+
 export interface MetaBlueprint {
   label: string;
   hint: string;

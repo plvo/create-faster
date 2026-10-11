@@ -1,9 +1,27 @@
+import { join } from 'node:path';
 import Handlebars from 'handlebars';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import type { PartialFrontmatter } from '@/types/meta';
+import { PARTIALS_DIR } from './constants';
 import { getErrorMessage } from './error-utils';
+import { scanDirectory } from './file-writer';
+import { readFrontmatterFile } from './frontmatter';
 import { resolveAppPort } from './utils';
 
-export function registerHandlebarsHelpers(): void {
+const COMPILE_OPTIONS: CompileOptions = {
+  noEscape: true,
+  strict: false,
+  preventIndent: false,
+};
+
+const PARTIAL_EXTENSION = '.hbs';
+
+export function setupTemplateEngine(partialsDir: string = PARTIALS_DIR): void {
+  registerHelpers();
+  registerPartials(partialsDir);
+}
+
+function registerHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
   Handlebars.registerHelper('ne', (a: unknown, b: unknown) => a !== b);
   Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
@@ -55,13 +73,28 @@ export function registerHandlebarsHelpers(): void {
   });
 }
 
+// A partial called alone on its line replaces that line, so it must end with exactly one line break;
+// a partial marked `inline: true` is inserted mid-line, so it must end with none. Normalizing here
+// keeps an editor's final newline from breaking the callers.
+function normalizePartialEnding(content: string, { inline }: PartialFrontmatter): string {
+  const body = content.replace(/(\r?\n)+$/, '');
+  return inline === true ? body : `${body}\n`;
+}
+
+// Each `.hbs` file under the partials directory becomes the partial `{{> <relative path without .hbs>}}`,
+// compiled with the same options as the templates that call it.
+function registerPartials(partialsDir: string): void {
+  for (const file of scanDirectory(partialsDir)) {
+    if (!file.endsWith(PARTIAL_EXTENSION)) continue;
+    const name = file.slice(0, -PARTIAL_EXTENSION.length);
+    const { data, content } = readFrontmatterFile<PartialFrontmatter>(join(partialsDir, file));
+    Handlebars.registerPartial(name, Handlebars.compile(normalizePartialEnding(content, data), COMPILE_OPTIONS));
+  }
+}
+
 export function renderTemplate(templateContent: string, context: TemplateContext): string {
   try {
-    const template = Handlebars.compile(templateContent, {
-      noEscape: true,
-      strict: false,
-      preventIndent: false,
-    });
+    const template = Handlebars.compile(templateContent, COMPILE_OPTIONS);
 
     return template(context);
   } catch (error) {

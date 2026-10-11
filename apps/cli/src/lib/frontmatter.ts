@@ -2,8 +2,8 @@ import matter from 'gray-matter';
 import type { TemplateContext } from '@/types/ctx';
 import type { TemplateFrontmatter } from '@/types/meta';
 
-export interface ParsedTemplate {
-  data: TemplateFrontmatter;
+export interface ParsedTemplate<T = TemplateFrontmatter> {
+  data: T;
   content: string;
 }
 
@@ -61,11 +61,11 @@ export function parseFrontmatter(rawContent: string): ParsedTemplate {
   };
 }
 
-export function readFrontmatterFile(filepath: string): ParsedTemplate {
+export function readFrontmatterFile<T = TemplateFrontmatter>(filepath: string): ParsedTemplate<T> {
   const { data, content } = matter.read(filepath);
 
   return {
-    data: data as TemplateFrontmatter,
+    data: data as T,
     content,
   };
 }

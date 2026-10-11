@@ -8,6 +8,8 @@ export const TEMPLATES_DIR = dirname.includes('/dist')
   ? path.resolve(dirname, '..', 'templates')
   : path.resolve(dirname, '..', '..', 'templates');
 
+export const PARTIALS_DIR = path.join(TEMPLATES_DIR, 'partials');
+
 export const DOCS_URL = 'https://create.plvo.dev';
 
 const emojis = ['🌱', '🚀', '💻', '🔥', '🔧', '🔨', '🔩', '🐱', '🤖'];
