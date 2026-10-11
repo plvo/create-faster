@@ -114,6 +114,16 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
     expect(section).toContain('PORT');
   });
 
+  test('documents that .env.start sets NODE_ENV=production for the Nitro production server', () => {
+    expect(startSection()).toContain('`NODE_ENV=production`');
+  });
+
+  test('documents that the Cloudflare build bakes NODE_ENV=production into the Worker vars', () => {
+    const section = startSection('cloudflare');
+    expect(section).toContain('`NODE_ENV=production`');
+    expect(section).toContain('`vars`');
+  });
+
   test('names the notice Node prints on stderr when the optional .env is missing', () => {
     expect(startSection()).toContain('`.env not found. Continuing without it.`');
   });
