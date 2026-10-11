@@ -42,7 +42,7 @@ jobs:
       - uses: pnpm/action-setup@v4
 {{/if}}
 
-      - run: {{#if (eq pm "bun")}}bun install --frozen-lockfile{{else if (eq pm "pnpm")}}pnpm install --frozen-lockfile{{else}}npm ci{{/if}}
+      - run: {{#if (eq pm "bun")}}bun install --frozen-lockfile{{else if (eq pm "pnpm")}}pnpm install --frozen-lockfile{{else if pm}}npm ci{{else}}npm install{{/if}}
 {{{{raw}}}}
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -53,7 +53,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
 
 {{{{/raw}}}}
-{{#if (or (has "linter" "biome") (has "linter" "oxc") (has "linter" "eslint") (has "linter" "eslint-prettier"))}}
+{{#if (hasRootScript "lint")}}
       - name: Lint
         run: {{#if pm}}{{pm}}{{else}}npm{{/if}} run lint
 

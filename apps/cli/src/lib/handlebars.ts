@@ -6,6 +6,7 @@ import { PARTIALS_DIR } from './constants';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { readFrontmatterFile } from './frontmatter';
+import { getRootScripts } from './package-json-generator';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -57,6 +58,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('hasContext', function (this: TemplateContext, contextName: keyof TemplateContext) {
     return contextName in this && this[contextName] !== undefined;
+  });
+
+  Handlebars.registerHelper('hasRootScript', function (this: TemplateContext, name: string) {
+    return name in getRootScripts(this);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

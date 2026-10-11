@@ -87,7 +87,7 @@ function resolveCompositeAddons(
   return parts;
 }
 
-export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
+function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): PackageJson {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
@@ -197,14 +197,12 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   scripts = resolveScriptPlaceholders(scripts, ctx);
 
-  const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
-
   const pkg: PackageJson = {
     name: isTurborepo ? app.appName : ctx.projectName,
     version: '0.1.0',
     private: true,
     type: stack.moduleType,
-    packageManager,
+    packageManager: undefined,
     scripts: sortObjectKeys(scripts),
     dependencies: sortObjectKeys(merged.dependencies ?? {}),
     devDependencies: sortObjectKeys(merged.devDependencies ?? {}),
@@ -212,9 +210,15 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
 
   spreadExtraKeys(pkg, merged);
 
+  return pkg;
+}
+
+export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
+  const isTurborepo = ctx.repo === 'turborepo';
+  const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
   const path = isTurborepo ? `apps/${app.appName}/package.json` : 'package.json';
 
-  return { path, content: cleanUndefined(pkg) };
+  return { path, content: cleanUndefined({ ...composeAppPackageJson(app, ctx, appIndex), packageManager }) };
 }
 
 export function generatePackagePackageJson(
@@ -251,7 +255,7 @@ export function getPackageManager(pm: NonNullable<PackageManager>): string {
   return `${pm}@${pmVersion}`;
 }
 
-export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
+function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
     build: 'turbo build',
@@ -274,8 +278,6 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
       scripts[script] = `turbo ${script}`;
     }
   }
-
-  const packageManager: string = getPackageManager(ctx.pm ?? 'npm');
 
   const rootConfigs: PackageJsonConfig[] = [];
 
@@ -317,7 +319,7 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
     name: ctx.projectName,
     version: '0.0.0',
     private: true,
-    packageManager,
+    packageManager: undefined,
     workspaces: ['apps/*', 'packages/*'],
     scripts: sortObjectKeys(resolvedScripts),
     dependencies: Object.keys(dependencies).length > 0 ? sortObjectKeys(dependencies) : undefined,
@@ -330,7 +332,20 @@ export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJ
 
   spreadExtraKeys(pkg, merged);
 
-  return { path: 'package.json', content: cleanUndefined(pkg) };
+  return pkg;
+}
+
+export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
+  const packageManager = getPackageManager(ctx.pm ?? 'npm');
+
+  return { path: 'package.json', content: cleanUndefined({ ...composeRootPackageJson(ctx), packageManager }) };
+}
+
+export function getRootScripts(ctx: TemplateContext): Record<string, string> {
+  const [firstApp] = ctx.apps;
+  const root =
+    ctx.repo === 'turborepo' || !firstApp ? composeRootPackageJson(ctx) : composeAppPackageJson(firstApp, ctx, 0);
+  return root.scripts ?? {};
 }
 
 export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJson[] {

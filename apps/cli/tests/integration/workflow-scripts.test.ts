@@ -9,8 +9,10 @@ const BLUEPRINTS_WITH_WORKFLOWS = readdirSync(BLUEPRINTS_DIR).filter((name) =>
   existsSync(join(BLUEPRINTS_DIR, name, '__github/workflows')),
 );
 const LINTERS = [undefined, ...Object.keys(META.project.linter.options)];
-const PACKAGE_MANAGERS = ['bun', 'npm', ...(Bun.which('pnpm') ? ['pnpm'] : [])];
+const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm', undefined];
+const PNPM_AVAILABLE = Boolean(Bun.which('pnpm'));
 const SCRIPT_INVOCATION = /\b(bun|npm|pnpm) run ([\w:-]+)/g;
+const NPM_INSTALL = /\bnpm install\b/;
 
 async function readWorkflows(projectDir: string): Promise<{ file: string; content: string }[]> {
   const workflowsDir = join(projectDir, '.github', 'workflows');
@@ -36,9 +38,14 @@ describe('workflows generated for blueprints', () => {
   for (const blueprint of BLUEPRINTS_WITH_WORKFLOWS) {
     for (const linter of LINTERS) {
       for (const pm of PACKAGE_MANAGERS) {
-        test(`${blueprint} with ${linter ?? 'no linter'} and ${pm} only runs scripts the project defines`, async () => {
-          const name = `${blueprint}-${linter ?? 'none'}-${pm}`;
-          const args = [name, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', pm];
+        const runner = pm ?? 'npm';
+        const skip = pm === 'pnpm' && !PNPM_AVAILABLE;
+        const title = `${blueprint} with ${linter ?? 'no linter'} and ${pm ?? 'no package manager'} runs exactly the scripts the project defines${skip ? ' (skipped: pnpm is not installed)' : ''}`;
+
+        test.skipIf(skip)(title, async () => {
+          const name = `${blueprint}-${linter ?? 'none'}-${pm ?? 'unset'}`;
+          const args = [name, '--blueprint', blueprint, '--no-git', '--no-install'];
+          if (pm) args.push('--pm', pm);
           if (linter) args.push('--linter', linter);
           const result = await runCli(args, tempDir);
           expect(result.exitCode).toBe(0);
@@ -50,13 +57,24 @@ describe('workflows generated for blueprints', () => {
           const workflows = await readWorkflows(projectDir);
           expect(workflows.length).toBeGreaterThan(0);
 
-          const invocations = workflows.flatMap(({ file, content }) =>
-            [...content.matchAll(SCRIPT_INVOCATION)].map(([, runner = '', script = '']) => ({ file, runner, script })),
-          );
-          expect(invocations.length).toBeGreaterThan(0);
-          for (const { file, runner, script } of invocations) {
-            expect({ file, script, defined: script in scripts }).toEqual({ file, script, defined: true });
-            expect({ file, script, runner }).toEqual({ file, script, runner: pm });
+          for (const { file, content } of workflows) {
+            const invoked = [...content.matchAll(SCRIPT_INVOCATION)].map(([, invokedRunner = '', script = '']) => ({
+              runner: invokedRunner,
+              script,
+            }));
+            expect(invoked.length).toBeGreaterThan(0);
+            for (const { runner: invokedRunner, script } of invoked) {
+              expect({ file, script, defined: script in scripts }).toEqual({ file, script, defined: true });
+              expect({ file, script, runner: invokedRunner }).toEqual({ file, script, runner });
+            }
+            expect({ file, runsLint: invoked.some(({ script }) => script === 'lint') }).toEqual({
+              file,
+              runsLint: 'lint' in scripts,
+            });
+            expect({ file, installsFromLockfile: !NPM_INSTALL.test(content) }).toEqual({
+              file,
+              installsFromLockfile: pm !== undefined,
+            });
           }
         });
       }
