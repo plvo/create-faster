@@ -3,6 +3,8 @@ import type { Meta } from '@/types/meta';
 
 const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
+const NODE_TYPES_VERSION = '^22';
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.2';
@@ -22,7 +24,7 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
-          '@types/node': '^20',
+          '@types/node': NODE_TYPES_VERSION,
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
           tailwindcss: '^4.3.3',
@@ -76,7 +78,7 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
-          '@types/node': '^22',
+          '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
           dev: 'bun run --hot src/index.ts',
@@ -92,7 +94,7 @@ export const META: Meta = {
         dependencies: {},
         devDependencies: {
           typescript: '^5.9.3',
-          '@types/node': '^22',
+          '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
           dev: 'bun run --hot src/index.ts',
@@ -114,7 +116,7 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
-          '@types/node': '^22',
+          '@types/node': NODE_TYPES_VERSION,
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.167.2',
@@ -726,7 +728,7 @@ export const META: Meta = {
             },
             devDependencies: {
               typescript: '^5',
-              '@types/node': '^22',
+              '@types/node': NODE_TYPES_VERSION,
               'drizzle-kit': '^0.31.10',
             },
             scripts: {
@@ -756,7 +758,7 @@ export const META: Meta = {
             },
             devDependencies: {
               typescript: '^5',
-              '@types/node': '^22',
+              '@types/node': NODE_TYPES_VERSION,
               dotenv: '^17.4.2',
               prisma: '^7.10.0',
             },
