@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand, startServer } from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
+const TIMEOUT_START = 60_000;
 
 describe('nextjs-mdx-pwa', () => {
   let projectDir: string;
@@ -50,6 +51,33 @@ describe('nextjs-mdx-pwa', () => {
       expect(result.exitCode).toBe(0);
     },
     TIMEOUT_BUILD,
+  );
+
+  test(
+    'start serves /mdx and a document page with their rendered content, and 404s an unknown document',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        const home = await fetch(`${server.url}/mdx`);
+        expect(home.status).toBe(200);
+        const homeHtml = await home.text();
+        expect(homeHtml).toContain('<h1 class="h1-mdx">Home</h1>');
+        expect(homeHtml).toContain('href="/mdx/cool"');
+
+        const cool = await fetch(`${server.url}/mdx/cool`);
+        expect(cool.status).toBe(200);
+        const coolHtml = await cool.text();
+        expect(coolHtml).toContain('<h1 class="h1-mdx">Cool</h1>');
+        expect(coolHtml).toContain('<blockquote class="blockquote-mdx">');
+
+        expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
+        expect((await fetch(`${server.url}/mdx/cool/nested`)).status).toBe(404);
+        expect((await fetch(`${server.url}/cool`)).status).toBe(404);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
   );
 });
 

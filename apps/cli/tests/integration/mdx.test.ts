@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
@@ -145,8 +146,17 @@ describe('MDX Integration', () => {
       expect(pkg.dependencies['remark-frontmatter']).toBeUndefined();
     });
 
-    test('keeps its example route, components and frontmatter parser', async () => {
-      expect(await fileExists(join(projectPath, 'src/app/[...mdxExampleSlug]/page.tsx'))).toBe(true);
+    test('serves the example under /mdx with an optional slug, like the Start route', async () => {
+      expect(await fileExists(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'))).toBe(true);
+      expect(await readTextFile(join(projectPath, 'src/app/page.tsx'))).toContain("href='/mdx'");
+    });
+
+    test('has no dynamic segment at the app root that would capture unrelated paths', async () => {
+      const rootEntries = await readdir(join(projectPath, 'src/app'));
+      expect(rootEntries.filter((entry) => entry.startsWith('['))).toEqual([]);
+    });
+
+    test('keeps its components and frontmatter parser', async () => {
       const components = await readTextFile(join(projectPath, 'src/mdx-components.tsx'));
       expect(components).toContain("import Link from 'next/link'");
       expect(components).toContain('<Link href={href}');
@@ -157,6 +167,28 @@ describe('MDX Integration', () => {
 
     test('contents no longer link to /hello/world', async () => {
       expect(await readTextFile(join(projectPath, 'contents/home.mdx'))).not.toContain('/hello/world');
+    });
+  });
+
+  describe('Turborepo: Next.js + mdx', () => {
+    const projectName = 'test-mdx-nextjs-turbo';
+    let appPath: string;
+
+    beforeAll(async () => {
+      appPath = join(tempDir, projectName, 'apps/web');
+      const result = await runCli(
+        [projectName, '--app', 'web:nextjs:mdx', '--app', 'api:hono', '--no-git', '--no-install'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+    });
+
+    test('serves the example under /mdx with no dynamic segment at the app root', async () => {
+      expect(await fileExists(join(appPath, 'src/app/mdx/[[...slug]]/page.tsx'))).toBe(true);
+      const rootEntries = await readdir(join(appPath, 'src/app'));
+      expect(rootEntries.filter((entry) => entry.startsWith('['))).toEqual([]);
+      expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(true);
+      expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(true);
     });
   });
 });
