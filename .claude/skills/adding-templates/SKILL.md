@@ -229,9 +229,15 @@ path: src/lib/feature.ts       # Output path (single repo)
 mono:
   scope: app | pkg | root      # Monorepo scope (overrides META)
   path: src/feature.ts          # Monorepo path (relative to scope)
-only: mono | single             # Repo type filter
+only: mono | single | no-blueprint  # Repo type filter
+deploymentPath:                 # Output path override keyed by deployment
+  cloudflare: src/middleware.ts
+deploymentSkip: [cloudflare-static]  # Deployments that do not get this file
+blueprintSkip: [org-dashboard]       # Blueprints that do not get this file
 ---
 ```
+
+`TemplateFrontmatter` in `apps/cli/src/types/meta.ts` lists the keys; `AGENTS.md` > Declarative choice logic describes each one.
 
 ### Stack-Specific File Suffix
 
@@ -345,6 +351,6 @@ When several templates must render the same block (a wrangler binding, a client 
 | Package.json | Programmatic | `package-json-generator.ts` reads META |
 | Env vars | Programmatic | `env-generator.ts` reads META `envs` |
 | File extensions | `KNOWN_EXTENSIONS` | `frontmatter.ts` |
-| Frontmatter | YAML in `.hbs` | `path`, `mono`, `only` |
+| Frontmatter | YAML in `.hbs` | `path`, `mono`, `only`, `deploymentPath`, `deploymentSkip`, `blueprintSkip` |
 | Helpers | `handlebars.ts` | See Available Handlebars Helpers |
 | Shared blocks | `templates/partials/{group}/{name}.hbs` | `{{> group/name}}` |

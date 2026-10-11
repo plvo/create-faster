@@ -77,6 +77,10 @@ describe('README of a single repo without database', () => {
     expect(readme).not.toContain('Libraries:');
     expect(readme).not.toContain('Linter:');
   });
+
+  test('omits the Development Tools heading when nothing belongs under it', () => {
+    expect(readme).not.toContain('## Development Tools');
+  });
 });
 
 describe('README of a turborepo', () => {
@@ -153,6 +157,10 @@ describe('README of a turborepo without database', () => {
     expect(readme).not.toContain('Shared Packages');
     expect(readme).not.toContain('db:migrate');
     expect(readme).not.toContain('Uses shared database package');
+  });
+
+  test('keeps the Development Tools heading for the Turborepo entry', () => {
+    expect(readme).toContain('## Development Tools\n\n- Turborepo for monorepo management');
   });
 });
 

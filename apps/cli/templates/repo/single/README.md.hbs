@@ -21,6 +21,7 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 {{/if}}
 
 {{/if}}
+{{#if (or git project.linter project.tooling.length)}}
 ## Development Tools
 
 {{#if git}}
@@ -33,6 +34,7 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 - {{this}}
 {{/each}}
 
+{{/if}}
 ## Getting Started
 
 Install dependencies:
