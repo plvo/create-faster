@@ -50,7 +50,9 @@ export default async function Page({ params }: PageProps) {
 }
 
 function readDocument(slug: string[] = []): string {
-  const isListed = generateStaticParams().some((params) => params.slug.join('/') === slug.join('/'));
+  const isListed = generateStaticParams().some(
+    (params) => params.slug.length === slug.length && params.slug.every((segment, index) => segment === slug[index]),
+  );
 
   if (!isListed) {
     notFound();

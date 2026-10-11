@@ -132,7 +132,7 @@ export default async function Page({ params }: PageProps) {
   const { metadata, content: mdxContent } = parseFrontmatter(readDocument(slug));
 
   return (
-    <main className='max-w-[650px] mx-auto px-4 py-4 md:py-8'>
+    <main className='max-w-162.5 mx-auto px-4 py-4 md:py-8'>
       <MDXRemote source={mdxContent} components={mdxComponents} />
       <pre>
         <code>{JSON.stringify({ metadata }, null, 2)}</code>
@@ -142,7 +142,9 @@ export default async function Page({ params }: PageProps) {
 }
 
 function readDocument(slug: string[] = []): string {
-  const isListed = generateStaticParams().some((params) => params.slug.join('/') === slug.join('/'));
+  const isListed = generateStaticParams().some(
+    (params) => params.slug.length === slug.length && params.slug.every((segment, index) => segment === slug[index]),
+  );
   if (!isListed) notFound();
 
   const name = slug[0] ?? HOME_DOCUMENT;
