@@ -94,7 +94,7 @@ function Time() {
 
 // getSession() and the tRPC context read the session during one SSR request: the shared cache hands both
 // the same object.
-const sessionProbeRoute = `import { createFileRoute } from '@tanstack/react-router';
+const sessionProbeRoute = ({ query }: TrpcProbeOptions): string => `import { createFileRoute } from '@tanstack/react-router';
 import { TRPCClientError } from '@trpc/client';
 import { getSession } from '@/lib/auth/session';
 
@@ -102,8 +102,8 @@ export const Route = createFileRoute('/trpc-session-probe')({
   loader: async ({ context }) => {
     const [session, trpcSession, me] = await Promise.all([
       getSession(),
-      context.queryClient.fetchQuery(context.trpc.probe.session.queryOptions()),
-      context.queryClient.fetchQuery(context.trpc.probe.me.queryOptions()).then(
+      ${query ? 'context.queryClient.fetchQuery(context.trpc.probe.session.queryOptions())' : 'context.trpc.probe.session.query()'},
+      ${query ? 'context.queryClient.fetchQuery(context.trpc.probe.me.queryOptions())' : 'context.trpc.probe.me.query()'}.then(
         (user) => user.email,
         (error: unknown) => (error instanceof TRPCClientError ? String(error.data?.code) : String(error)),
       ),
@@ -182,10 +182,8 @@ export async function writeTrpcProbe(projectDir: string, appDir: string, options
 
   const routes = join(appDir, 'src/routes');
   await writeProjectFile(join(routes, 'trpc-probe.tsx'), options.query ? streamedPrefetchRoute : vanillaLoaderRoute);
-  if (options.auth && options.query) {
-    await writeProjectFile(join(routes, 'trpc-session-probe.tsx'), sessionProbeRoute);
-    await writeProjectFile(join(routes, 'trpc-late-probe.tsx'), lateSessionRoute);
-  }
+  if (options.auth) await writeProjectFile(join(routes, 'trpc-session-probe.tsx'), sessionProbeRoute(options));
+  if (options.auth && options.query) await writeProjectFile(join(routes, 'trpc-late-probe.tsx'), lateSessionRoute);
 }
 
 async function fetchChunks(url: string, cookie = ''): Promise<{ status: number; chunks: ChunkArrival[] }> {
@@ -259,18 +257,22 @@ export async function readStartTrpcSession(baseUrl: string, cookie: string): Pro
   return rendered;
 }
 
-export async function expectAnonymousTrpcSession(baseUrl: string): Promise<void> {
+export async function expectAnonymousTrpcSession(baseUrl: string, { query }: TrpcProbeOptions): Promise<void> {
   const me = await getProcedure(baseUrl, 'probe.me');
   expect(me.status).toBe(401);
   const body = (await me.json()) as { error: { json: { data: { code: string } } } };
   expect(body.error.json.data.code).toBe('UNAUTHORIZED');
 
   expect(await readSessionProbe(baseUrl, '')).toEqual({ email: null, sharedSession: true, me: 'UNAUTHORIZED' });
-  expect(await readLateTrpcSession(baseUrl, '')).toBe('anonymous');
+  if (query) expect(await readLateTrpcSession(baseUrl, '')).toBe('anonymous');
 }
 
 /** The protected procedure returns the signed-in user, and getSession() shares its lookup with the context. */
-export async function expectSignedInTrpcSession(baseUrl: string, user: { email: string; cookie: string }): Promise<void> {
+export async function expectSignedInTrpcSession(
+  baseUrl: string,
+  user: { email: string; cookie: string },
+  { query }: TrpcProbeOptions,
+): Promise<void> {
   const me = await getProcedure(baseUrl, 'probe.me', user.cookie);
   expect(me.status, await me.clone().text()).toBe(200);
   const body = (await me.json()) as { result: { data: { json: { email: string } } } };
@@ -281,7 +283,7 @@ export async function expectSignedInTrpcSession(baseUrl: string, user: { email: 
     sharedSession: true,
     me: user.email,
   });
-  expect(await readLateTrpcSession(baseUrl, user.cookie)).toBe(user.email);
+  if (query) expect(await readLateTrpcSession(baseUrl, user.cookie)).toBe(user.email);
 }
 
 function chromeBinary(): string {

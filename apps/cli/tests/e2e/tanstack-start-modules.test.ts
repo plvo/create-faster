@@ -15,12 +15,22 @@ import {
 } from './helpers';
 import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
+import {
+  expectClientBundleWithoutServerCode,
+  expectDateSurvivesHydration,
+  expectTrpcServesProcedures,
+  SERVER_MARKER,
+  type TrpcProbeOptions,
+  writeTrpcProbe,
+} from './trpc-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 const TIMEOUT_START = 60_000;
 const MAX_INGEST_BODY_BYTES = 64 * 1024 * 1024;
+const TRPC_WITH_QUERY: TrpcProbeOptions = { auth: false, query: true };
+const TRPC_VANILLA: TrpcProbeOptions = { auth: false, query: false };
 
 describe('tanstack-start-loaded', () => {
   let projectDir: string;
@@ -32,7 +42,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog',
+        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog,trpc',
         '--no-git',
         '--no-install',
         '--pm',
@@ -45,6 +55,7 @@ describe('tanstack-start-loaded', () => {
     projectDir = join(tempDir, 'tanstack-start-loaded');
     await writeEvlogProbe(projectDir);
     await writeCsrfProbeRoute(projectDir);
+    await writeTrpcProbe(projectDir, projectDir, TRPC_WITH_QUERY);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -85,6 +96,25 @@ describe('tanstack-start-loaded', () => {
     TIMEOUT_START,
   );
 
+  test('the client assets carry no tRPC router', async () => {
+    const output = join(projectDir, '.output');
+    await expectClientBundleWithoutServerCode(join(output, 'public'), join(output, 'server'), [SERVER_MARKER]);
+  });
+
+  test(
+    'start serves tRPC over the API route and in a streamed render whose Date survives hydration',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectTrpcServesProcedures(server.url, TRPC_WITH_QUERY);
+        await expectDateSurvivesHydration(server.url);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
+  );
+
   test(
     'start rejects a cross-site server function call and serves a same-origin one, with start.ts generated',
     async () => {
@@ -120,6 +150,73 @@ describe('tanstack-start-loaded', () => {
       expect(result.exitCode).toBe(0);
     },
     TIMEOUT_TYPECHECK,
+  );
+});
+
+describe('tanstack-start-trpc', () => {
+  let projectDir: string;
+  let installResult: CommandResult;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      ['tanstack-start-trpc', '--app', 'tanstack-start-trpc:tanstack-start:trpc', '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+
+    projectDir = join(tempDir, 'tanstack-start-trpc');
+    await writeTrpcProbe(projectDir, projectDir, TRPC_VANILLA);
+    installResult = await runCommand(['bun', 'install'], projectDir);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'installs dependencies',
+    () => {
+      expect(installResult.exitCode).toBe(0);
+    },
+    TIMEOUT_INSTALL,
+  );
+
+  test(
+    'builds',
+    async () => {
+      const result = await runCommand(['bun', 'run', 'build'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_BUILD,
+  );
+
+  test(
+    'type-checks',
+    async () => {
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_TYPECHECK,
+  );
+
+  test('the client assets carry no tRPC router', async () => {
+    const output = join(projectDir, '.output');
+    await expectClientBundleWithoutServerCode(join(output, 'public'), join(output, 'server'), [SERVER_MARKER]);
+  });
+
+  test(
+    'start serves tRPC over the API route and through the router context client in a loader',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectServesPageWithClientScript(server.url);
+        await expectTrpcServesProcedures(server.url, TRPC_VANILLA);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
   );
 });
 

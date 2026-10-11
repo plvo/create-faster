@@ -255,10 +255,10 @@ describe.each(SCENARIOS)(
           if (startTrpc) {
             await expectTrpcServesProcedures(server.url, START_TRPC);
             await expectDateSurvivesHydration(server.url);
-            await expectAnonymousTrpcSession(server.url);
+            await expectAnonymousTrpcSession(server.url, START_TRPC);
             if (liveDatabase) {
               const user = await expectAuthApiFlow(server.url);
-              await expectSignedInTrpcSession(server.url, user);
+              await expectSignedInTrpcSession(server.url, user, START_TRPC);
               await expectTrpcReadsWithoutRefreshing(server.url, dbPath(), user, readStartTrpcSession);
             }
           }
