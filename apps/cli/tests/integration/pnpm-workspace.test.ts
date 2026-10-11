@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import matter from 'gray-matter';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 const TURBOREPO_APPS = ['--app', 'web:nextjs', '--app', 'api:hono'];
@@ -21,13 +22,13 @@ describe('pnpm workspace declaration', () => {
     return join(tempDir, name);
   }
 
-  test('turborepo with pnpm declares the workspace and links internal packages', async () => {
+  test('turborepo with pnpm declares the same workspaces as package.json and links internal packages', async () => {
     const projectPath = await generate('turbo-pnpm', TURBOREPO_APPS, 'pnpm');
+    const rootPackage = await readJsonFile<{ workspaces: string[] }>(join(projectPath, 'package.json'));
     const workspace = await readTextFile(join(projectPath, 'pnpm-workspace.yaml'));
-    expect(workspace).toContain('packages:');
-    expect(workspace).toContain('  - apps/*');
-    expect(workspace).toContain('  - packages/*');
-    expect(workspace).toContain('linkWorkspacePackages: true');
+    const { packages, linkWorkspacePackages } = matter(`---\n${workspace}---\n`).data;
+    expect(packages).toEqual(rootPackage.workspaces);
+    expect(linkWorkspacePackages).toBe(true);
   });
 
   test('turborepo with pnpm keeps internal dependencies on the version range shared with npm and bun', async () => {
