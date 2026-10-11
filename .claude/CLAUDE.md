@@ -318,9 +318,14 @@ blueprintSkip:                # Blueprints that do not get this file
 
 #### Empty-render skipping (conditional file content)
 A template whose rendered output is empty or whitespace only is not written (`processTemplate` in `template-processor.ts`, for every template kind, after Handlebars rendering). Wrap the whole body in `{{#if …}}` sections and the file simply does not exist when no section is active. Use it when:
-- the file is a shared entry point several libraries contribute to, each in its own `{{#if (hasLibrary "x")}}` section (`templates/stack/tanstack-start/src/start.ts.hbs` hosts the global middleware sections, `src/server.ts.hbs` the Cloudflare Worker entry, like `stack/nextjs/src/proxy.ts.hbs`), so the next library adds a section instead of colliding on the same path;
-- the file exists only under a choice (`{{#if (has "deployment" "cloudflare")}}`) or a combination of choices, which `deploymentSkip` (a list of deployments to exclude) cannot express.
-Whatever points at such a file (e.g. `wrangler.jsonc` `main` → `src/server.ts`) must repeat the same condition. Keep the condition in sync, there is no shared definition.
+- the file exists only under a choice (`{{#if (has "deployment" "cloudflare")}}`) or a combination of choices, which `deploymentSkip` (a list of deployments to exclude) cannot express;
+- the file is a shared entry point that only exists when a library contributes to it (see below).
+
+#### Shared stack entry files with library sections
+A file several libraries extend (a framework entry, a global middleware list) is owned by the stack template, never by one library, so the next library adds a section instead of colliding on the same path. The stack template holds the unconditional skeleton, and each library contributes a `{{#if (hasLibrary "x")}}` section that wraps or extends it, like `stack/nextjs/src/proxy.ts.hbs`:
+- `stack/tanstack-start/src/server.ts.hbs` is the Cloudflare Worker entry. It is always generated under `cloudflare` (`wrangler.jsonc` `main` points to it unconditionally) and exports Start's handler; a library section wraps `fetch` inside it (evlog: `withEvlog` + `loggerStorage.run`).
+- `stack/tanstack-start/src/start.ts.hbs` is Start's `createStart` instance. The gate lives at the top of this one file, as `{{#if (or (hasLibrary "x") …)}}` listing the libraries that contribute (a project with none gets no file). Libraries only add entries to `requestMiddleware` / `functionMiddleware`.
+Express "this file is useless here" with `deploymentSkip` frontmatter in the file itself (both files above skip `cloudflare-static`, where nothing runs per request).
 
 #### `blueprintSkip` (blueprint-specific exclusion)
 `blueprintSkip` is a list of blueprint names. When `ctx.blueprint` is in the list, the template is not generated (checked by `isSkippedForBlueprint()` in `template-resolver.ts` for every template kind). Use it only when a blueprint ships its own version of a file at a DIFFERENT destination than the generic template it supersedes, so the blueprint override-by-destination rule cannot replace it; when both land on the same destination, the blueprint file already wins and no entry is needed. Example: the drizzle `scripts/seed.ts.hbs` lands in `packages/db/scripts/` in a turborepo, while `org-dashboard`, `multitenant-saas` and `cloudflare-fullstack` keep their own root `scripts/seed.ts` there, so they list themselves (`dapp-privy` is single-repo, its seed shares the generic destination, so it does not).

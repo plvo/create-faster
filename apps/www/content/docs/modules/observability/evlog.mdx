@@ -91,11 +91,8 @@ Files added:
 src/lib/evlog.ts            # useLogger(), the request logger of the current request
 src/start.ts                # global request and server function middleware that log errors
 nitro.config.ts             # Nitro: evlog/nitro/v3 module registration
-src/server.ts               # Cloudflare: Worker entry wrapped with withEvlog
+src/server.ts               # Cloudflare: Worker entry (always generated), wrapped with withEvlog
 ```
-
-Modified files:
-- `wrangler.jsonc` - Cloudflare: `main` points to `src/server.ts`
 
 #### src/lib/evlog.ts
 
@@ -107,9 +104,11 @@ import { useLogger } from '@/lib/evlog'
 useLogger().set({ user: { plan: 'pro' } })
 ```
 
+It also exports `findLogger()`, which returns the logger or `undefined` instead of throwing. The error middlewares use it so that a missing logger never replaces the error being handled.
+
 #### src/start.ts
 
-Registers two global middlewares with `createStart`:
+Start's `createStart` instance (generated when a library contributes to it). evlog registers two global middlewares:
 
 - `requestMiddleware` records any error thrown while handling a request on the wide event, and returns an `EvlogError` as a JSON response that keeps its structured `data` fields (`why`, `fix`, `link`).
 - `functionMiddleware` records errors thrown by server functions, both when a loader calls them during SSR and over RPC.
@@ -140,7 +139,7 @@ Not generated under the `cloudflare` and `cloudflare-static` deployments, which 
 
 #### src/server.ts
 
-Cloudflare only. Wraps Start's `fetch` with `withEvlog`, which emits one wide event per request (with `cfRay`, `colo`, `country` and `asn`) and flushes drains through `ctx.waitUntil`. The logger is passed to Start as `context.log` and bound to `useLogger()`:
+Cloudflare only. The Worker entry exists with or without evlog (`wrangler.jsonc` `main` points to it); with evlog it wraps Start's `fetch` with `withEvlog`, which emits one wide event per request (with `cfRay`, `colo`, `country` and `asn`) and flushes drains through `ctx.waitUntil`. The logger is passed to Start as `context.log` and bound to `useLogger()`:
 
 ```ts title="src/server.ts"
 import handler from '@tanstack/react-start/server-entry'

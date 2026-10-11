@@ -68,13 +68,13 @@ TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro:
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "web",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "compatibility_date": "2026-06-12",
   "compatibility_flags": ["nodejs_compat"]
 }
 ```
 
-With the [evlog](/docs/modules/observability/evlog) module, `main` is `src/server.ts` instead: a Worker entry that wraps Start's `fetch` with `withEvlog`.
+`src/server.ts` is the Worker entry: it exports Start's handler (`@tanstack/react-start/server-entry`). Libraries wrap it, for example the [evlog](/docs/modules/observability/evlog) module wraps `fetch` with `withEvlog`.
 
 **Scripts:**
 - `build` - Build the client assets and the Worker (`vite build`)

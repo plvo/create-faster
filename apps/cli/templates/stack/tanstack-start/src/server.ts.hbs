@@ -1,6 +1,6 @@
 {{#if (has "deployment" "cloudflare")}}
-{{#if (hasLibrary "evlog")}}
 import handler from '@tanstack/react-start/server-entry'
+{{#if (hasLibrary "evlog")}}
 import type { RequestLogger } from 'evlog'
 import { initWorkersLogger, withEvlog } from 'evlog/workers'
 import { loggerStorage } from '@/lib/evlog'
@@ -12,9 +12,13 @@ declare module '@tanstack/react-start' {
 }
 
 initWorkersLogger({ env: { service: '{{appName}}' } })
+{{/if}}
 
+{{#if (hasLibrary "evlog")}}
 export default withEvlog((request, _env, _ctx, log) =>
   loggerStorage.run(log, () => handler.fetch(request, { context: { log } })),
 )
+{{else}}
+export default handler
 {{/if}}
 {{/if}}
