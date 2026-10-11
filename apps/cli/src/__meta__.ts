@@ -1091,7 +1091,7 @@ export const META: Meta = {
           '@types/aws-lambda': '^8.10.0',
         },
         scripts: {
-          build: 'bun build src/index.ts --outfile dist/index.js --target node',
+          build: 'bun build src/index.ts --outfile dist/index.mjs --target node',
         },
       },
     },
