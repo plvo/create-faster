@@ -258,7 +258,7 @@ When several templates must render the same block (a wrangler binding, a client 
 
 - The partial renders with the caller's context (helpers keep working); pass per-call values as hash parameters: `{{> posthog/client-options debug="import.meta.env.DEV"}}`.
 - By default it is called alone on its line, indented to the call, and ends with one line break. A partial called mid-line sets `inline: true` in its frontmatter and is inserted without a final line break. Registration normalizes the ending, so the file's final newline does not matter.
-- `setupTemplateEngine()` registers helpers and partials; partials are never generated as files. Details: `.claude/CLAUDE.md`, Template System > Partials.
+- `setupTemplateEngine()` registers helpers and partials; partials are never generated as files. Details: `AGENTS.md`, Template system > Partials.
 
 ### Special Filename Handling
 
