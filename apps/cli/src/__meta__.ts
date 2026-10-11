@@ -624,6 +624,13 @@ export const META: Meta = {
               '@libsql/client': '^0.17.4',
             },
           },
+          stackPackageJson: {
+            'tanstack-start': {
+              dependencies: {
+                libsql: $when(RUNS_NITRO, '^0.5.28'),
+              },
+            },
+          },
           envs: [
             {
               value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',

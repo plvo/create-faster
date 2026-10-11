@@ -120,10 +120,13 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
     }
   }
 
-  if (ctx.project.database && !isTurborepo) {
+  if (ctx.project.database) {
     const dbAddon = META.project.database.options[ctx.project.database];
     if (dbAddon) {
-      merged = mergeResolved(ctx, merged, dbAddon.packageJson, deploymentPackageJson(dbAddon, ctx));
+      const stackOverride = dbAddon.stackPackageJson?.[app.stackName];
+      merged = isTurborepo
+        ? mergeResolved(ctx, merged, stackOverride)
+        : mergeResolved(ctx, merged, dbAddon.packageJson, deploymentPackageJson(dbAddon, ctx), stackOverride);
     }
   }
 
