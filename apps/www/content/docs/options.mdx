@@ -40,7 +40,7 @@ Use a pre-composed starter project. Mutually exclusive with `--app`, `--database
 **Example**:
 ```bash
 bunx create-faster my-dashboard \
-  --blueprint dashboard \
+  --blueprint org-dashboard \
   --linter biome \
   --git \
   --pm bun
@@ -189,10 +189,10 @@ The CLI validates flag combinations to ensure compatibility:
 **Blueprint is exclusive**:
 ```bash
 # ❌ Invalid - Blueprint with --app, --database, or --orm
-bunx create-faster myapp --blueprint dashboard --app web:nextjs
+bunx create-faster myapp --blueprint org-dashboard --app web:nextjs
 
 # ✓ Valid - Blueprint with linter, tooling, git, pm
-bunx create-faster myapp --blueprint dashboard --linter biome --git --pm bun
+bunx create-faster myapp --blueprint org-dashboard --linter biome --git --pm bun
 ```
 
 **ORM requires Database**:
@@ -293,7 +293,7 @@ This creates:
 
 ```bash
 bunx create-faster my-dashboard \
-  --blueprint dashboard \
+  --blueprint org-dashboard \
   --linter biome \
   --tooling husky \
   --git \
