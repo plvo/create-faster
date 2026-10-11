@@ -1,7 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import Handlebars from 'handlebars';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import { PARTIALS_DIR } from './constants';
 import { getErrorMessage } from './error-utils';
+import { scanDirectory } from './file-writer';
 import { resolveAppPort } from './utils';
+
+const COMPILE_OPTIONS: CompileOptions = {
+  noEscape: true,
+  strict: false,
+  preventIndent: false,
+};
+
+const PARTIAL_EXTENSION = '.hbs';
 
 export function registerHandlebarsHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
@@ -55,13 +67,20 @@ export function registerHandlebarsHelpers(): void {
   });
 }
 
+// Each `.hbs` file under the partials directory becomes the partial `{{> <relative path without .hbs>}}`,
+// compiled with the same options as the templates that call it.
+export function registerHandlebarsPartials(partialsDir: string = PARTIALS_DIR): void {
+  for (const file of scanDirectory(partialsDir)) {
+    if (!file.endsWith(PARTIAL_EXTENSION)) continue;
+    const name = file.slice(0, -PARTIAL_EXTENSION.length);
+    const content = readFileSync(join(partialsDir, file), 'utf-8');
+    Handlebars.registerPartial(name, Handlebars.compile(content, COMPILE_OPTIONS));
+  }
+}
+
 export function renderTemplate(templateContent: string, context: TemplateContext): string {
   try {
-    const template = Handlebars.compile(templateContent, {
-      noEscape: true,
-      strict: false,
-      preventIndent: false,
-    });
+    const template = Handlebars.compile(templateContent, COMPILE_OPTIONS);
 
     return template(context);
   } catch (error) {
