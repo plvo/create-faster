@@ -70,6 +70,8 @@ only: mono | single           # Repo type filter
 
 **Rendering config** (`preventIndent: false`): Handlebars auto-indents block content to match the helper's indentation. This is a major source of double-indentation issues.
 
+**Partials** (`templates/partials/{group}/{name}.hbs`, inserted with `{{> group/name}}`): fix a shared block in its partial, never in one caller. A partial called alone on its line is indented to the call and must end with a newline; a blank line inside it gets that indentation as trailing spaces. A partial called mid-line is inserted as is, so its file must not end with a newline (an extra newline there shows up as a broken line in every caller).
+
 **Stack-specific suffix:** `file.ext.{stack}.hbs` (e.g., `route.ts.nextjs.hbs`) — only included for matching stack.
 
 ## Common Template Issues

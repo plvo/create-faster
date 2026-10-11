@@ -252,6 +252,14 @@ adapter.ts.hono.hbs → only for Hono apps
 | `appPort appName` | Get port for app (3000 + index) |
 | `eq`, `ne`, `and`, `or` | Logical operators |
 
+### Shared Blocks (Partials)
+
+When several templates must render the same block (a wrangler binding, a client options object, a host, a stack mapping), put it once in `templates/partials/{group}/{name}.hbs` and insert it with `{{> group/name}}`. Never copy the block.
+
+- The partial renders with the caller's context (helpers keep working); pass per-call values as hash parameters: `{{> posthog/client-options debug="import.meta.env.DEV"}}`.
+- Called alone on its line, it is indented to the call: end the file with a newline. Called mid-line, it is inserted as is: no final newline in the file.
+- Partials are registered at engine setup and never generated as files. Details and the list of partials: `.claude/CLAUDE.md`, Template System > Partials.
+
 ### Special Filename Handling
 
 - `__filename` → `.filename` (dotfiles like `.gitignore`)
@@ -333,3 +341,4 @@ adapter.ts.hono.hbs → only for Hono apps
 | File extensions | `KNOWN_EXTENSIONS` | `frontmatter.ts` |
 | Frontmatter | YAML in `.hbs` | `path`, `mono`, `only` |
 | Helpers | `handlebars.ts` | `isMono`, `hasLibrary`, `has`, `hasContext`, `appPort` |
+| Shared blocks | `templates/partials/{group}/{name}.hbs` | `{{> group/name}}` |

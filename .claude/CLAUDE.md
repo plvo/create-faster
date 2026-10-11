@@ -51,6 +51,7 @@ Forbidden:
 Required: choice-specific behavior is expressed through **reusable, documented operators** that the core logic applies generically:
 
 - **Handlebars helpers** (`apps/cli/src/lib/handlebars.ts`): `eq`, `ne`, `and`, `or`, `isMono`, `hasLibrary(name)`, `has(category, value)`, `hasContext(key)`, `camelCase`, `raw`, `appPort(name)`. Express conditionals INSIDE templates: `{{#if (has "deployment" "cloudflare")}}…{{/if}}`.
+- **Handlebars partials** (`apps/cli/templates/partials/`, registered by `registerHandlebarsPartials` in `apps/cli/src/lib/handlebars.ts`): `{{> group/name}}` inserts a block that several templates share, rendered with the caller's context plus optional hash parameters. A choice mapping written in several templates (e.g. stack to better-auth cookie plugin) lives once in a partial, expressed with the helpers above. See Template System > Partials.
 - **Frontmatter keys** (`TemplateFrontmatter` in `apps/cli/src/types/meta.ts`, applied generically in `template-resolver.ts`): `path`, `mono` (`scope`/`name`/`path`), `only` (`mono|single|no-blueprint`), `deploymentPath` (`Record<deployment, path>` — output path override keyed by deployment, NOT a hardcoded resolver branch), `deploymentSkip` (`deployment[]` — the file is not generated under a listed deployment), `blueprintSkip` (`blueprint[]` — the file is not generated for a listed blueprint). `only` and the deployment/blueprint skip keys are honored for every template kind (stack, library, project addon, stack-suffixed addon, repo, blueprint). These are the model: a generic key the resolver honors for ANY value.
 - **META data** (`__meta__.ts`): `support`, `require`, `mono`, `packageJson`, `stackPackageJson` (per-app-stack dependencies; honored for libraries, deployments and databases, and for a database it lands in each matching app in single and turborepo alike, e.g. `sqlite` adds `@libsql/client` (same version const as the db package) to TanStack Start apps running Nitro so the app resolves it and Nitro externalizes it and traces `libsql` with its native binding instead of bundling it), `deploymentPackageJson` (`Record<deployment, PackageJsonConfig>` — package.json contribution merged generically by `package-json-generator` when `ctx.project.deployment` matches a key; e.g. `postgres` adds `pg-cloudflare` under `cloudflare`), `envs` (`EnvVar`: `value`, `monoScope`, optional `stacks: StackName[]` — when set, the variable is emitted only for apps whose stack is listed; evaluated per app by `env-generator`, so one project can carry `NEXT_PUBLIC_X` on Next.js apps and `VITE_X` on TanStack Start apps; a root/pkg-scoped variable with `stacks` is emitted when at least one app (with the library, for library envs) has a listed stack), category-level and addon-level `require`. Compatibility/dependency rules live here as data, validated generically.
 - **`$when` conditions** (`apps/cli/src/lib/when.ts`, wrap package.json values/array items in `__meta__.ts`): keys `repo`, `stack`, `library` and any `ProjectContext` category (`database`, `orm`, `deployment`, `linter`, `tooling`); value is a string, a list (any-of) or `true` (category has a selection). Every key accepts a negation, `{ not: <value> }`, true when the positive match is false: `$when({ deployment: { not: 'cloudflare' } }, …)` or `$when({ deployment: { not: ['cloudflare', 'cloudflare-static'] } }, …)`. An unselected category satisfies any `not` (`{ not: 'cloudflare' }` is true when no deployment is chosen; `{ not: true }` is true only when the category is unselected); `stack`/`library` follow their any-app semantics (`{ not: 'nextjs' }` is true only when no app uses nextjs). All keys of one `$when` must hold.
@@ -183,6 +184,8 @@ Custom helpers:
 - Context: `hasContext(key)` - Check if key exists in context
 - Utils: `appPort(name)` - Get port for app (3000 + index)
 
+Partials: `registerHandlebarsPartials()` registers every `templates/partials/**/*.hbs` (see Template System > Partials).
+
 ### lib/env-generator.ts
 Programmatic `.env.example` file generation:
 - `collectEnvFiles(ctx)`: Collects envs from META, resolves scopes to paths, returns `{ destination, content }[]`
@@ -278,6 +281,7 @@ templates/
 ├── project/linter/{linter}/ # Biome, Oxc, ESLint, Prettier
 ├── project/tooling/{tool}/  # Husky
 ├── blueprints/{blueprint}/   # Blueprint application code (override semantics)
+├── partials/{group}/{name}.hbs # Shared blocks inserted with {{> group/name}}, never output files
 └── repo/{type}/             # Single, Turborepo configs
 ```
 
@@ -292,6 +296,18 @@ templates/
 - `{{stackName}}`, `{{modules}}` - Simplified app context
 - `{{orm}}`, `{{database}}`, `{{git}}`, `{{pm}}`, `{{extras}}`
 - Access stack metadata: `{{#with (app "myapp")}}{{stackName}}{{/with}}`
+
+### Partials (shared template blocks)
+A block that several templates render identically lives once in `templates/partials/`, and each template inserts it with `{{> group/name}}`.
+- **Naming**: the partial name is the file path relative to `templates/partials/`, without `.hbs`, grouped by domain: `partials/cloudflare/d1-binding.hbs` is `{{> cloudflare/d1-binding}}`.
+- **Registration**: `registerHandlebarsPartials()` (`lib/handlebars.ts`) registers every `.hbs` file there once, at engine setup in `generateProjectFiles` next to the helpers, so every template kind (stack, library, project addon, repo, blueprint, `__agent.md.hbs`) can call them. Code that renders templates outside `generateProjectFiles` (a unit test) calls it as well.
+- **Never output files**: `templates/partials/` is not a template root of the resolver, so a partial is never generated as a file.
+- **Context**: a partial renders with the caller's context, so `has`, `hasLibrary`, `isMono` and `{{appName}}` answer as in the caller. Hash parameters add per-call values: `{{> posthog/client-options debug="import.meta.env.DEV"}}` exposes `{{debug}}` inside the partial. Partials use the template compile options, so values are not HTML-escaped.
+- **Whitespace**: the file content is inserted as is.
+  - Called alone on its line (`    {{> posthog/client-options …}}`), the partial replaces that line and every line of it gets the call's indentation: end the file with a newline, and avoid blank lines inside it (they would get the indentation as trailing spaces).
+  - Called mid-line (`'https://{{> posthog/asset-host}}/static/:path*'`), it is inserted without indentation: the file must not end with a newline. A JSON fragment appended after a property carries its own leading comma (`cloudflare/d1-binding`, `cloudflare/hyperdrive-binding`).
+- **When to use**: a partial holds shared content (a config block, an options object, a host, an import and its call). A computed value belongs in a helper (`appPort`), whether a file exists or where it goes belongs in frontmatter or META. Choice conditionals inside a partial use the helpers like any template (`{{#if (has "database" "d1")}}`).
+- **Partials**: `cloudflare/d1-binding`, `cloudflare/hyperdrive-binding` (`localCommands`: the local commands that read `localConnectionString`), `posthog/client-options` (`debug`: the runtime's dev flag), `posthog/api-host`, `posthog/asset-host`, `better-auth/cookie-plugin-import` and `better-auth/cookie-plugin` (the app stack's cookie plugin import and call).
 
 ### Frontmatter
 YAML frontmatter for per-file configuration:
