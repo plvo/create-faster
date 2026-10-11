@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
+import { PARTIALS_DIR } from '@/lib/constants';
 import { getAllTemplatesForContext, resolveAddonNames, resolveDestination, scanTemplateFiles } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -354,5 +355,37 @@ describe('scanTemplateFiles', () => {
 
     expect(files).toContain('page.tsx.hbs');
     expect(files.some((f) => f.endsWith('__agent.md.hbs'))).toBe(false);
+  });
+});
+
+describe('partial templates', () => {
+  const contexts: TemplateContext[] = [
+    {
+      projectName: 'test',
+      repo: 'turborepo',
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: ['posthog', 'better-auth'] },
+        { appName: 'start', stackName: 'tanstack-start', libraries: ['posthog', 'better-auth'] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
+      ],
+      project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] },
+      git: false,
+    },
+    {
+      projectName: 'test',
+      repo: 'single',
+      apps: [{ appName: 'test', stackName: 'nextjs', libraries: ['posthog'] }],
+      project: { database: 'postgres', orm: 'drizzle', deployment: 'cloudflare', tooling: [] },
+      git: false,
+    },
+  ];
+
+  test('are never resolved as output files', () => {
+    expect(scanTemplateFiles(PARTIALS_DIR).length).toBeGreaterThan(0);
+
+    for (const ctx of contexts) {
+      const fromPartials = getAllTemplatesForContext(ctx).filter((t) => t.source.startsWith(`${PARTIALS_DIR}/`));
+      expect(fromPartials).toEqual([]);
+    }
   });
 });
