@@ -1,16 +1,22 @@
 ---
 title: PostHog
-description: Client-side PostHog initialization with a first-party /ingest reverse proxy wired into next.config.ts.
+description: Client-side PostHog initialization with a first-party /ingest reverse proxy, wired per framework.
 ---
 
-<Stacks names="nextjs" />
-<Dependencies packages="posthog-js" />
+<Stacks names="nextjs,tanstack-start" />
+<Dependencies packages="posthog-js,@posthog/react" />
 
 [→ PostHog Documentation](https://posthog.com/docs/libraries/next-js)
 
-**Requirements:** A server runtime. The `/ingest` proxy relies on Next.js rewrites, so PostHog is unavailable with the `cloudflare-static` deployment.
+**Requirements:** A server runtime. The `/ingest` proxy runs on the server (Next.js rewrites, or a TanStack Start server route), so PostHog is unavailable with the `cloudflare-static` deployment.
+
+`@posthog/react` is added to TanStack Start apps only.
 
 ## What create-faster adds
+
+The setup varies by stack. Events are sent to your own domain and proxied to PostHog Cloud (US), which keeps requests same-origin and avoids ad-blockers. PostHog is not initialized when the project token is unset. There is no server-side capture.
+
+### Next.js
 
 Files added:
 ```
@@ -23,9 +29,9 @@ Modified files:
 - `src/proxy.ts` - Excludes `/ingest` from the matcher
 
 **Environment variables:**
-- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app). PostHog is not initialized when it is unset.
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app).
 
-### instrumentation-client.ts
+#### instrumentation-client.ts
 
 Runs once on the client before hydration (Next.js 15.3+ convention):
 
@@ -43,9 +49,7 @@ if (process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) {
 }
 ```
 
-### next.config.ts
-
-Events are sent to your own domain and proxied to PostHog Cloud (US), which keeps requests same-origin and avoids ad-blockers:
+#### next.config.ts
 
 ```ts title="next.config.ts"
 async rewrites() {
@@ -69,5 +73,55 @@ skipTrailingSlashRedirect: true,
 
 `skipTrailingSlashRedirect` is required: PostHog endpoints such as `/e/` end with a slash, and Next.js would otherwise redirect them and drop events. For PostHog Cloud EU, replace `us` with `eu` in the destinations and `ui_host`.
 
+### TanStack Start
+
+Files added:
+```
+src/
+├── components/
+│   └── analytics-provider.tsx   # PostHogProvider, rendered by the root route
+└── routes/
+    └── ingest/
+        └── $.ts                 # /ingest reverse proxy (server route)
+```
+
+Modified files:
+- `src/routes/__root.tsx` - Wraps the page in `AnalyticsProvider` (inside the `ThemeProvider` when next-themes is selected)
+
+**Environment variables:**
+- `VITE_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app). Vite inlines it into client code at build time, hence the `VITE_` prefix.
+
+#### analytics-provider.tsx
+
+`PostHogProvider` calls `posthog.init` in an effect, so it never runs during server rendering. Page views are captured on client navigations through `defaults: '2026-05-30'`:
+
+```tsx title="src/components/analytics-provider.tsx"
+<PostHogProvider
+  apiKey={POSTHOG_PROJECT_TOKEN}
+  options={{
+    api_host: '/ingest',
+    ui_host: 'https://us.posthog.com',
+    defaults: '2026-05-30',
+    capture_exceptions: true,
+    debug: import.meta.env.DEV,
+  }}
+>
+  {children}
+</PostHogProvider>
+```
+
+#### routes/ingest/$.ts
+
+One splat server route (`ANY`) proxies every `/ingest/*` request. The same file runs on Nitro and on Cloudflare Workers:
+
+- strips the `/ingest` prefix and keeps the rest of the path (trailing slash included) and the query string;
+- sends `/static/*` and `/array/*` to `us-assets.i.posthog.com`, everything else to `us.i.posthog.com`;
+- forwards only an allowlist of request headers (`accept`, `accept-language`, `content-encoding`, `content-type`, `origin`, `referer`, `user-agent`), so cookies, credentials and gateway headers never reach PostHog;
+- sets `x-forwarded-for` from `cf-connecting-ip` on Cloudflare, where it cannot be spoofed, and from `x-forwarded-for` (leftmost entry, else the connection address) elsewhere, where the server usually sits behind a proxy or CDN;
+- streams the request body, rejects bodies over 64 MB with `413` and does not follow redirects;
+- drops `content-encoding`, `content-length`, `set-cookie`, `strict-transport-security` and `alt-svc` from the response.
+
+When evlog is selected, `/ingest` requests are logged like any other request. For PostHog Cloud EU, replace `us` with `eu` in the two hosts and in `ui_host`.
+
 **Turborepo mode:**
-Files are scoped to the app that selects PostHog (`apps/{appName}/`), and the env var lands in that app's `.env.example`.
+Files are scoped to the app that selects PostHog (`apps/{appName}/`), and the env var lands in that app's `.env.example`, named after the app's stack.

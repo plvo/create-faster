@@ -1,0 +1,22 @@
+import { PostHogProvider } from '@posthog/react'
+
+const POSTHOG_PROJECT_TOKEN = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN
+
+export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
+  if (!POSTHOG_PROJECT_TOKEN) return children
+
+  return (
+    <PostHogProvider
+      apiKey={POSTHOG_PROJECT_TOKEN}
+      options=\{{
+        api_host: '/ingest',
+        ui_host: 'https://us.posthog.com',
+        defaults: '2026-05-30',
+        capture_exceptions: true,
+        debug: import.meta.env.DEV,
+      }}
+    >
+      {children}
+    </PostHogProvider>
+  )
+}
