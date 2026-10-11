@@ -1,44 +1,35 @@
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
-import type { StackName } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
+import type { MatchValue, Resolved, WHEN_TAG, WhenItem, WhenMatch } from '@/types/when';
 
-const TAG = Symbol('when');
-
-type Negatable<T> = T | { not: T };
-
-type MatchValue = string | string[] | true;
-
-interface WhenItem<T = unknown> {
-  [TAG]: true;
-  match: Partial<Record<keyof ProjectContext, Negatable<MatchValue>>> & {
-    stack?: Negatable<StackName | StackName[]>;
-    library?: Negatable<string | string[]>;
-    repo?: Negatable<'single' | 'turborepo'>;
-  };
-  value: T;
-}
+const TAG: typeof WHEN_TAG = Symbol('when') as typeof WHEN_TAG;
 
 function isWhenItem(v: unknown): v is WhenItem {
   return !!v && typeof v === 'object' && TAG in v;
 }
 
-export function $when<T>(match: WhenItem['match'], value: T): WhenItem<T> {
+export function $when<T>(match: WhenMatch, value: T): WhenItem<T> {
   return { [TAG]: true, match, value };
 }
 
-export function resolveConditionals<T>(data: T, ctx: TemplateContext): T {
+export function resolveConditionals<T>(data: T, ctx: TemplateContext): Resolved<T> {
+  return resolve(data, ctx) as Resolved<T>;
+}
+
+function resolve(data: unknown, ctx: TemplateContext): unknown {
   if (isWhenItem(data)) {
-    return matches(data.match, ctx) ? resolveConditionals(data.value as T, ctx) : (undefined as T);
+    return matches(data.match, ctx) ? resolve(data.value, ctx) : undefined;
   }
 
   if (Array.isArray(data)) {
-    const out = data.map((item) => resolveConditionals(item, ctx)).filter((item) => item !== undefined);
-    return out as T;
+    const out = data.map((item) => resolve(item, ctx)).filter((item) => item !== undefined);
+    return out;
   }
 
   if (data !== null && typeof data === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(data)) {
-      const resolved = resolveConditionals(v, ctx);
+      const resolved = resolve(v, ctx);
       if (resolved === undefined) continue;
       if (Array.isArray(resolved) && resolved.length === 0) continue;
       if (
@@ -50,7 +41,7 @@ export function resolveConditionals<T>(data: T, ctx: TemplateContext): T {
         continue;
       out[k] = resolved;
     }
-    return out as T;
+    return out;
   }
 
   return data;
@@ -90,7 +81,7 @@ function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): bo
   return includesAny(actuals, expected as string | string[]);
 }
 
-function matches(match: WhenItem['match'], ctx: TemplateContext): boolean {
+function matches(match: WhenMatch, ctx: TemplateContext): boolean {
   for (const [key, expected] of Object.entries(match)) {
     if (expected === undefined) continue;
 

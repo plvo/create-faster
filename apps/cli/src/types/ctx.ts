@@ -1,4 +1,4 @@
-import type { StackName } from './meta';
+import type { StackName } from '@/types/stack-name';
 
 export interface AppContext {
   appName: string;
