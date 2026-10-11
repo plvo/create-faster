@@ -52,7 +52,7 @@ describe('evlog + TanStack Start', () => {
       const start = await readTextFile(join(projectPath, 'src/start.ts'));
       expect(start).toContain("createMiddleware({ type: 'request' })");
       expect(start).toContain("createMiddleware({ type: 'function' })");
-      expect(start).toContain('requestMiddleware: [logRequestErrors]');
+      expect(start).toContain('requestMiddleware: [csrfMiddleware, logRequestErrors]');
       expect(start).toContain('functionMiddleware: [logServerFnErrors]');
       expect(start).toContain("import { findLogger } from '@/lib/evlog'");
       expect(start).toContain('findLogger()?.error(error)');
@@ -61,6 +61,14 @@ describe('evlog + TanStack Start', () => {
       expect(start).toContain('throw new Response(JSON.stringify(error.toJSON())');
       expect(start).not.toContain('evlogErrorHandler');
       expect(start).not.toContain('nitro/context');
+    });
+
+    test('src/start.ts keeps the server function CSRF protection Start only applies when start.ts is absent', async () => {
+      const start = await readTextFile(join(projectPath, 'src/start.ts'));
+      expect(start).toContain(
+        "import { createCsrfMiddleware, createMiddleware, createStart } from '@tanstack/react-start'",
+      );
+      expect(start).toContain("createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })");
     });
 
     test('root route carries no evlog code', async () => {
@@ -137,10 +145,11 @@ describe('evlog + TanStack Start', () => {
 
     test('start.ts logs through the same findLogger as Nitro', async () => {
       const start = await readTextFile(join(projectPath, 'src/start.ts'));
-      expect(start).toContain('requestMiddleware: [logRequestErrors]');
+      expect(start).toContain('requestMiddleware: [csrfMiddleware, logRequestErrors]');
       expect(start).toContain('functionMiddleware: [logServerFnErrors]');
       expect(start).toContain("import { findLogger } from '@/lib/evlog'");
       expect(start).toContain('findLogger()?.error(error)');
+      expect(start).toContain("createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })");
       expect(start).not.toContain('nitro/context');
     });
 
