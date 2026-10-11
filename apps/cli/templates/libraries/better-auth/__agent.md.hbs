@@ -7,9 +7,9 @@ Add a social provider by editing `socialProviders` in `create-auth.ts`.
 {{/if}}
 {{#if (has "database" "d1")}}
 {{#if (eq stackName "nextjs")}}
-`getAuth()` in `src/lib/server.ts` builds this app's instance per request with `nextCookies()`: call it, never build one yourself.
+`getAuth()` in `src/lib/server.ts` builds this app's instance per request with `{{> better-auth/cookie-plugin}}`: call it, never build one yourself.
 {{else}}
-`src/lib/server.ts` builds this app's `auth` once at module scope with `createAuth(db, tanstackStartCookies())`: import it from there.
+`src/lib/server.ts` builds this app's `auth` once at module scope with `createAuth(db, {{> better-auth/cookie-plugin}})`: import it from there.
 {{/if}}
 {{else}}
 `src/lib/auth/auth.ts` exports this app's `auth`, built from the factory with `{{> better-auth/cookie-plugin}}`: import it from there.
@@ -22,7 +22,7 @@ The tRPC notes say which instance the tRPC context reads the session through, an
 
 **TanStack Start**
 - `src/routes/api/auth/$.ts` serves every `/api/auth/*` request through `auth.handler`.
-- `tanstackStartCookies()` is the cookie plugin of this app's instance and stays last in the plugins: it forwards the cookies set by auth calls made from server functions.
+- `{{> better-auth/cookie-plugin}}` is the cookie plugin of this app's instance and stays last in the plugins: it forwards the cookies set by auth calls made from server functions.
 - `getSession` (`src/lib/auth/session.ts`) is a server function returning the current session or `null`. Call it from a route `beforeLoad` or `loader`. No protected layout is generated: guard routes yourself.
 - Per-request session cache: `getRequestSession(headers, load)` ({{#if (isMono)}}`@repo/auth/session-cache`{{else}}`src/lib/auth/session-cache.ts`{{/if}}) memoizes the session **promise** in a `WeakMap<Headers, Promise<Session | null>>`. Loaders and server functions running in the same SSR request share one lookup, even when they start concurrently: the cache key is `request.headers`, the same `Headers` object for the whole request. Read the session through it (as `getSession` does), not with `auth.api.getSession` directly.
 {{#if (has "database" "d1")}}
