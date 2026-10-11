@@ -37,7 +37,7 @@ contents/
 
 ## Next.js
 
-Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` renders `/mdx` as `home.mdx` and `/mdx/cool` as `cool.mdx`, and returns 404 for an unknown document.
+Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` prerenders one page per document at build time, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page.
 
 Files added:
 ```
@@ -96,35 +96,41 @@ export function parseFrontmatter(fileContent: string): ParsedFrontmatterReturn {
 
 ### page.tsx
 
-Dynamic MDX route with metadata generation:
+MDX route prerendered for every document, with metadata generation:
 
 ```tsx title="src/app/mdx/[[...slug]]/page.tsx"
 import fs from 'node:fs';
 import path from 'node:path';
-import { notFound } from 'next/navigation';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { parseFrontmatter } from '@/lib/mdx';
 import { mdxComponents } from '@/mdx-components';
+
+const CONTENTS_DIR = path.join(process.cwd(), 'contents');
+const HOME_DOCUMENT = 'home';
 
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
 }
 
+export const dynamicParams = false;
+
+export function generateStaticParams(): { slug: string[] }[] {
+  return fs
+    .readdirSync(CONTENTS_DIR)
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => path.basename(file, '.mdx'))
+    .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
+}
+
 export const generateMetadata = async ({ params }: PageProps) => {
   const { slug } = await params;
-  const fileContent = getFileContent(slug);
-  if (fileContent === null) return notFound();
-
-  const { metadata } = parseFrontmatter(fileContent);
+  const { metadata } = parseFrontmatter(readDocument(slug));
   return { title: metadata.title, description: metadata.summary };
 };
 
 export default async function Page({ params }: PageProps) {
   const { slug } = await params;
-  const fileContent = getFileContent(slug);
-  if (fileContent === null) return notFound();
-
-  const { metadata, content: mdxContent } = parseFrontmatter(fileContent);
+  const { metadata, content: mdxContent } = parseFrontmatter(readDocument(slug));
 
   return (
     <main className='max-w-[650px] mx-auto px-4 py-4 md:py-8'>
@@ -136,11 +142,8 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function getFileContent(slug: string[] = ['home']): string | null {
-  if (slug.length !== 1) return null;
-  const contentPath = path.join(process.cwd(), 'contents', `${slug[0]}.mdx`);
-
-  if (!fs.existsSync(contentPath)) return null;
-  return fs.readFileSync(contentPath, 'utf-8');
+function readDocument(slug: string[] | undefined): string {
+  const name = slug?.[0] ?? HOME_DOCUMENT;
+  return fs.readFileSync(path.join(CONTENTS_DIR, `${name}.mdx`), 'utf-8');
 }
 ```
