@@ -4,12 +4,13 @@ import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/error-utils';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
+import { findMissingPackageManager, missingPackageManagerMessage } from '@/lib/package-manager';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 import { blueprintCli, cli } from './cli';
-import { parseFlags } from './flags';
+import { parseFlags, printError } from './flags';
 import { promptSelect } from './prompts/base-prompts';
 import { selectBlueprintPrompt } from './prompts/stack-prompts';
 
@@ -57,6 +58,12 @@ async function main() {
       repo: isTurborepo ? 'turborepo' : 'single',
       dbPort: config.project.database ? Math.floor(Math.random() * 50000) + 10000 : undefined,
     };
+
+    const missingPackageManager = findMissingPackageManager(ctx);
+    if (missingPackageManager) {
+      printError(missingPackageManagerMessage(missingPackageManager));
+      process.exit(1);
+    }
 
     const templates = getAllTemplatesForContext(ctx);
 

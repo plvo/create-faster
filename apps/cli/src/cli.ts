@@ -4,6 +4,7 @@ import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils';
+import { readPackageManagerVersion } from '@/lib/package-manager';
 import { promptConfirm, promptSelect, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
@@ -235,14 +236,22 @@ async function promptOrUsePackageManager(
 
   const pm = await promptSelect<PackageManager>(message, {
     options: [
-      { label: 'Install with bun', value: 'bun' },
-      { label: 'Install with pnpm', value: 'pnpm' },
-      { label: 'Install with npm', value: 'npm' },
+      installOption('bun'),
+      installOption('pnpm'),
+      installOption('npm'),
       { label: 'Skip installation', value: undefined },
     ],
   });
 
   return { pm };
+}
+
+function installOption(pm: NonNullable<PackageManager>) {
+  return {
+    label: `Install with ${pm}`,
+    value: pm,
+    hint: readPackageManagerVersion(pm) ? undefined : 'not installed',
+  };
 }
 
 function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {

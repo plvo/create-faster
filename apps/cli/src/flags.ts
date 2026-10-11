@@ -9,6 +9,7 @@ import {
   isSingletonDbSatisfied,
 } from '@/lib/addon-utils';
 import { ASCII } from '@/lib/constants';
+import { missingPackageManagerMessage, PACKAGE_MANAGERS, readPackageManagerVersion } from '@/lib/package-manager';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -188,12 +189,16 @@ ${color.bold('Examples:')}
   }
 
   if (flags.pm) {
-    const validPms = ['bun', 'npm', 'pnpm'];
-    if (!validPms.includes(flags.pm)) {
-      printError(`Invalid package manager '${flags.pm}'`, `Available: ${validPms.join(', ')}`);
+    const pm = PACKAGE_MANAGERS.find((name) => name === flags.pm);
+    if (!pm) {
+      printError(`Invalid package manager '${flags.pm}'`, `Available: ${PACKAGE_MANAGERS.join(', ')}`);
       process.exit(1);
     }
-    partial.pm = flags.pm as 'bun' | 'npm' | 'pnpm';
+    if (!readPackageManagerVersion(pm)) {
+      printError(missingPackageManagerMessage(pm));
+      process.exit(1);
+    }
+    partial.pm = pm;
   }
 
   if (flags.install === false) {
@@ -342,7 +347,7 @@ function validateContext(partial: Partial<TemplateContext>): void {
   }
 }
 
-function printError(title: string, ...messages: string[]): void {
+export function printError(title: string, ...messages: string[]): void {
   console.error(`\n${color.red('✖')} ${color.bold(color.red(title))}`);
   for (const msg of messages) {
     console.error(color.gray(msg));

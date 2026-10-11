@@ -1,6 +1,6 @@
-import { execSync } from 'node:child_process';
 import { META } from '@/__meta__';
 import { applyAppScripts, findRuntimeAddon, isLibraryCompatible, resolveScriptPlaceholders } from '@/lib/addon-utils';
+import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
@@ -252,7 +252,8 @@ export function generatePackagePackageJson(
 }
 
 export function getPackageManager(pm: NonNullable<PackageManager>): string {
-  const pmVersion = execSync(`${pm} --version`, { stdio: 'pipe' }).toString().trim();
+  const pmVersion = readPackageManagerVersion(pm);
+  if (!pmVersion) throw new Error(missingPackageManagerMessage(pm));
   return `${pm}@${pmVersion}`;
 }
 
