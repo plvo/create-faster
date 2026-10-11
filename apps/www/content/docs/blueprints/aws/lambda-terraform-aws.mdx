@@ -94,7 +94,7 @@ From blueprint `packageJson`:
 - `@repo/shared` — shared types package (workspace dependency)
 - `@types/aws-lambda` — Lambda event type definitions (dev)
 
-Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.js --target node`
+Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.mjs --target node`. Bun bundles the handler as an ES module, and Terraform zips only `dist/`, with no `package.json` declaring `"type": "module"`: the `.mjs` extension is what makes Lambda load it as ESM. The default `index.handler` resolves to `index.mjs`.
 
 ## CLI usage
 
