@@ -1,14 +1,14 @@
 import { createRouter } from '@tanstack/react-router'
-{{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+{{#if (hasLibrary "trpc")}}
+{{#if (hasLibrary "tanstack-query")}}
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 {{/if}}
-{{#if (hasLibrary "trpc")}}
 import { makeTRPCClient } from '@/trpc/client'
-{{/if}}
-{{#if (and (hasLibrary "trpc") (hasLibrary "tanstack-query"))}}
+{{#if (hasLibrary "tanstack-query")}}
 import { TRPCProvider } from '@/trpc/providers'
 import { makeQueryClient } from '@/trpc/query-client'
+{{/if}}
 {{/if}}
 
 // Import the generated route tree
