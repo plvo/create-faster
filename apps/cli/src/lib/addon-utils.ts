@@ -110,16 +110,8 @@ export function findRuntimeAddon(ctx: TemplateContext): MetaAddon | undefined {
   return undefined;
 }
 
-export function hasMonoPackage(name: string, ctx: TemplateContext): boolean {
-  const createsPackage = (addon: MetaAddon | undefined) => addon?.mono?.scope === 'pkg' && addon.mono.name === name;
-
-  const selectedProjectAddons = (Object.keys(META.project) as ProjectCategoryName[]).flatMap((category) =>
-    [ctx.project[category] ?? []].flat().map((option) => META.project[category].options[option]),
-  );
-  const selectedLibraries = ctx.apps.flatMap((app) => app.libraries.map((library) => META.libraries[library]));
-  const blueprintPackages = Object.keys(ctx.blueprint ? (META.blueprints[ctx.blueprint]?.pkgPackageJson ?? {}) : {});
-
-  return [...selectedProjectAddons, ...selectedLibraries].some(createsPackage) || blueprintPackages.includes(name);
+export function getMonoPackageName(addon: MetaAddon | undefined): string | null {
+  return addon?.mono?.scope === 'pkg' ? addon.mono.name : null;
 }
 
 export function resolveDeployAppDir(ctx: TemplateContext): string | undefined {

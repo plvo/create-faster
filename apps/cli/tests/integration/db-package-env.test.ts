@@ -2,22 +2,21 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
-const DATABASES = [
-  { database: 'postgres', extraArgs: [] },
-  { database: 'mysql', extraArgs: [] },
-  { database: 'sqlite', extraArgs: [] },
-  { database: 'd1', extraArgs: ['--deployment', 'cloudflare'] },
-];
-
 const TURBOREPO_ARGS = ['--app', 'web:nextjs', '--app', 'api:hono', '--no-git', '--no-install'];
 
-describe.each(DATABASES)('turborepo with $database and no ORM', ({ database, extraArgs }) => {
+async function expectNoDbPackage(project: string): Promise<void> {
+  expect(await fileExists(join(project, 'packages', 'db'))).toBe(false);
+  expect(await readTextFile(join(project, 'README.md'))).not.toContain('packages/db');
+  expect(await readTextFile(join(project, 'AGENTS.md'))).not.toContain('packages/db');
+}
+
+describe.each(['postgres', 'mysql', 'sqlite'])('turborepo with %s and no ORM', (database) => {
   let dir: string;
   let project: string;
 
   beforeAll(async () => {
     dir = await createTempDir();
-    await runCli(['mono', ...TURBOREPO_ARGS, '--database', database, ...extraArgs], dir);
+    await runCli(['mono', ...TURBOREPO_ARGS, '--database', database], dir);
     project = join(dir, 'mono');
   });
 
@@ -25,20 +24,15 @@ describe.each(DATABASES)('turborepo with $database and no ORM', ({ database, ext
     await cleanupTempDir(dir);
   });
 
-  test('has no packages/db, since only an ORM creates that package', async () => {
-    expect(await fileExists(join(project, 'packages', 'db'))).toBe(false);
+  test('has no packages/db, and neither README nor agent doc describe it', async () => {
+    await expectNoDbPackage(project);
   });
 
   test('keeps the database variables in each app env file', async () => {
     for (const app of ['web', 'api']) {
       const env = await readTextFile(join(project, 'apps', app, '.env.example'));
-      expect(env, `apps/${app}/.env.example`).toMatch(/^(DATABASE_URL|CLOUDFLARE_ACCOUNT_ID)=/m);
+      expect(env, `apps/${app}/.env.example`).toMatch(/^DATABASE_URL=/m);
     }
-  });
-
-  test('README and agent doc do not describe packages/db', async () => {
-    expect(await readTextFile(join(project, 'README.md'))).not.toContain('packages/db');
-    expect(await readTextFile(join(project, 'AGENTS.md'))).not.toContain('packages/db');
   });
 });
 
@@ -54,6 +48,10 @@ describe('turborepo with d1 and no ORM', () => {
 
   afterAll(async () => {
     await cleanupTempDir(dir);
+  });
+
+  test('has no packages/db, and neither README nor agent doc describe it', async () => {
+    await expectNoDbPackage(project);
   });
 
   test('wrangler binding has no migrations_dir pointing at a missing package', async () => {

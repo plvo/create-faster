@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { isLibraryCompatible } from '@/lib/addon-utils';
+import { getMonoPackageName, isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, MonoScope, ProjectCategoryName, TemplateFrontmatter } from '@/types/meta';
@@ -82,7 +82,7 @@ export function resolveDestination({
     case 'root':
       return filePath;
     case 'pkg': {
-      const name = frontmatter.mono?.name ?? (addon?.mono?.scope === 'pkg' ? addon.mono.name : 'unknown');
+      const name = frontmatter.mono?.name ?? getMonoPackageName(addon) ?? 'unknown';
       return `packages/${name}/${filePath}`;
     }
     default: {

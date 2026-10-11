@@ -1,5 +1,5 @@
 import type { StackName } from '@/types/stack-name';
-import type { Conditional } from '@/types/when';
+import type { Conditional, WhenMatch } from '@/types/when';
 
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
@@ -12,6 +12,7 @@ export interface EnvVar {
   value: string;
   monoScope: EnvScope[];
   stacks?: StackName[];
+  when?: WhenMatch;
 }
 
 export interface AddonSupport {
