@@ -252,10 +252,10 @@ async function fetchThroughPreview(url: URL, init: RequestInit): Promise<Respons
   return fetch(url, init);
 }
 
-function postMutation(baseUrl: string, path: string, origin?: string): Promise<Response> {
+function postMutation(baseUrl: string, path: string, headers: Record<string, string> = {}): Promise<Response> {
   return fetchThroughPreview(new URL(`/api/trpc/${path}`, baseUrl), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(origin && { origin }) },
+    headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify({ json: { value: 'probe' } }),
   });
 }
@@ -311,11 +311,17 @@ export async function expectTrpcGuards(baseUrl: string): Promise<void> {
   expect(internal.error.json.data.code).toBe('INTERNAL_SERVER_ERROR');
   expect(internal.error.json.data).not.toHaveProperty('stack');
 
-  const crossOrigin = await postMutation(baseUrl, 'probe.echo', FOREIGN_ORIGIN);
+  const crossOrigin = await postMutation(baseUrl, 'probe.echo', { origin: FOREIGN_ORIGIN });
   expect(crossOrigin.status).toBe(403);
-  for (const origin of [new URL(baseUrl).origin, undefined]) {
-    const accepted = await postMutation(baseUrl, 'probe.echo', origin);
-    expect(accepted.status, await accepted.clone().text()).toBe(200);
+  const accepted: Record<string, string>[] = [
+    { origin: new URL(baseUrl).origin },
+    {},
+    // Behind a proxy, the public host the page was served from arrives as X-Forwarded-Host.
+    { origin: 'https://app.example', 'x-forwarded-host': 'app.example' },
+  ];
+  for (const headers of accepted) {
+    const response = await postMutation(baseUrl, 'probe.echo', headers);
+    expect(response.status, `${JSON.stringify(headers)}: ${await response.clone().text()}`).toBe(200);
   }
   const crossOriginRead = await fetchThroughPreview(new URL('/api/trpc/probe.time', baseUrl), {
     headers: { origin: FOREIGN_ORIGIN },

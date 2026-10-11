@@ -385,6 +385,10 @@ describe('TanStack Start + tRPC', () => {
       expect(next).toContain(`if (isCrossOriginWrite(req)) ${FORBIDDEN}`);
       const start = await readTextFile(join(projectPath, 'apps/admin/src/routes/api/trpc/$.ts'));
       expect(start).toContain(CROSS_ORIGIN_GUARD);
+      for (const route of [next, start]) {
+        expect(route).toContain("request.headers.get('host')");
+        expect(route).not.toContain('new URL(request.url)');
+      }
     });
   });
 
