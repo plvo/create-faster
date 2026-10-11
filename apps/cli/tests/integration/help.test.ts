@@ -17,7 +17,7 @@ describe('--help output', () => {
 
   test('every blueprint used in an example exists in META', () => {
     const examples = [...help.matchAll(/--blueprint (\S+)/g)]
-      .map(([, name]) => name)
+      .map(([, name = '']) => name)
       .filter((name) => !name.startsWith('<'));
 
     expect(examples.length).toBeGreaterThan(0);
