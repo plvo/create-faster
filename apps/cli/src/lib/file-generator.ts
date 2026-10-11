@@ -5,7 +5,7 @@ import { collectAgentContextFiles } from './agent-context-generator';
 import { collectEnvFiles, collectEnvGroups } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { pathExists, writeFileContent } from './file-writer';
-import { registerHandlebarsHelpers, registerHandlebarsPartials } from './handlebars';
+import { setupTemplateEngine } from './handlebars';
 import { generateAllPackageJsons } from './package-json-generator';
 import { processTemplate } from './template-processor';
 
@@ -37,8 +37,7 @@ export async function generateProjectFiles(
   const { overwrite = false } = options;
   const projectPath = join(process.cwd(), context.projectName);
 
-  registerHandlebarsHelpers();
-  registerHandlebarsPartials();
+  setupTemplateEngine();
 
   if (!overwrite) {
     await validateProjectDirectory(projectPath);
