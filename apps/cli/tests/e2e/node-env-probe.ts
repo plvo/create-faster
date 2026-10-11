@@ -1,6 +1,6 @@
 import { expect } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const NODE_ENV_PROBE_PATH = '/api/node-env-probe';
 
@@ -18,9 +18,9 @@ export const Route = createFileRoute('${NODE_ENV_PROBE_PATH}')({
 `;
 
 export async function writeNodeEnvProbeRoute(appDir: string): Promise<void> {
-  const routesDir = join(appDir, 'src/routes');
-  await mkdir(routesDir, { recursive: true });
-  await writeFile(join(routesDir, 'api.node-env-probe.ts'), nodeEnvProbeRoute);
+  const routePath = join(appDir, 'src/routes', `${NODE_ENV_PROBE_PATH}.ts`);
+  await mkdir(dirname(routePath), { recursive: true });
+  await writeFile(routePath, nodeEnvProbeRoute);
 }
 
 export async function expectServerNodeEnv(url: string, expected: 'production' | 'development'): Promise<void> {

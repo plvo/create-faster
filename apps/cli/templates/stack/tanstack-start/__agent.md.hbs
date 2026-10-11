@@ -4,9 +4,17 @@ Import alias `@/*` maps to `src/*`.
 
 `build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (`NODE_ENV=production` and the app's default `PORT`, which win over the same variables in `.env`). Without a `.env`, Node prints `.env not found. Continuing without it.` on stderr and starts anyway.
 A variable exported in the shell wins over both files when `start` runs from the app directory.{{#if (isMono)}} `turbo start` from the root runs in turbo's strict env mode, which drops shell variables, so only the two files apply there.{{/if}}
-Node does not set `NODE_ENV` itself, and the build only replaces the literal `process.env.NODE_ENV` in bundled code. Server dependencies Nitro leaves external read the real variable at runtime, so `.env.start` sets `NODE_ENV=production`. `vite dev` keeps `development`.
 {{/unless}}
-{{#if (has "deployment" "cloudflare")}}
+{{#unless (has "deployment" "cloudflare-static")}}
 
-A Worker does not get `NODE_ENV` at runtime either. The Cloudflare Vite plugin replaces the literal `process.env.NODE_ENV` in the bundle, but code that reads it dynamically (`process.env[key]`, destructuring) sees nothing. `vite.config.ts` passes `vars: { NODE_ENV }` to the plugin so the built `wrangler.json` carries `NODE_ENV=production` into `vite preview` and `wrangler deploy`, and `vite dev` runs with `development`. This overrides a `NODE_ENV` set in `wrangler.jsonc` `vars`.
+The build only replaces the literal `process.env.NODE_ENV` in bundled code. Dependencies the server leaves external and dynamic reads (`process.env[key]`) see the real variable, which nothing sets by default, so each deployment sets it itself. `vite dev` keeps `development`.
+{{#unless (has "deployment" "cloudflare")}}
+- Nitro `start`: `.env.start` sets `NODE_ENV=production`.
+{{/unless}}
+{{#if (has "deployment" "sst")}}
+- SST: the Lambda never runs `start` or loads `.env.start`, so `sst.config.ts` sets `NODE_ENV` in the app's `environment` (`production` on deploy, `development` under `sst dev`).
 {{/if}}
+{{#if (has "deployment" "cloudflare")}}
+- Cloudflare Workers: `vite.config.ts` passes `vars: { NODE_ENV }` to the Cloudflare Vite plugin, so the built `wrangler.json` carries `NODE_ENV=production` into `vite preview` and `wrangler deploy` (`development` under `vite dev`). It overrides a `NODE_ENV` set in `wrangler.jsonc` `vars`.
+{{/if}}
+{{/unless}}
