@@ -6,6 +6,4 @@ import app from './app';
 {{#if (or (hasLibrary "aws-lambda") (has "deployment" "sst"))}}
 export const handler = handle(app);
 {{/if}}
-{{#unless (hasLibrary "aws-lambda")}}
 export default app;
-{{/unless}}
