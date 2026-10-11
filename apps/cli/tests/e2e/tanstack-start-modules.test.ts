@@ -13,6 +13,7 @@ import {
   type ServerOutput,
   startServer,
 } from './helpers';
+import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 
 const TIMEOUT_INSTALL = 180_000;
@@ -43,6 +44,7 @@ describe('tanstack-start-loaded', () => {
 
     projectDir = join(tempDir, 'tanstack-start-loaded');
     await writeEvlogProbe(projectDir);
+    await writeCsrfProbeRoute(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -79,6 +81,19 @@ describe('tanstack-start-loaded', () => {
         output = await server.stop();
       }
       expectEvlogProbeEvents(output, 'nitro', 'tanstack-start-loaded');
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'start rejects a cross-site server function call and serves a same-origin one, with start.ts generated',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectServerFnsRejectCrossSiteRequests(server.url);
+      } finally {
+        await server.stop();
+      }
     },
     TIMEOUT_START,
   );

@@ -10,6 +10,7 @@ import {
   runCommand,
   startServer,
 } from './helpers';
+import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
 
 const TIMEOUT_INSTALL = 180_000;
@@ -31,6 +32,7 @@ describe('tanstack-start', () => {
 
     projectDir = join(tempDir, 'tanstack-start');
     await writeNodeEnvProbeRoute(projectDir);
+    await writeCsrfProbeRoute(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -76,6 +78,19 @@ describe('tanstack-start', () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
       try {
         await expectServerNodeEnv(server.url, 'production');
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'start rejects a cross-site server function call and serves a same-origin one, with Start default protection',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        await expectServerFnsRejectCrossSiteRequests(server.url);
       } finally {
         await server.stop();
       }

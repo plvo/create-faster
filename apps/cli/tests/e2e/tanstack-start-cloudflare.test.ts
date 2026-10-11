@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import {
   expectAnonymousFlow,
   expectMixedUsersKeepTheirOwnSession,
@@ -55,6 +56,7 @@ interface Scenario {
   evlogProbe?: EvlogProbe;
   authProbe?: AuthProbe;
   nodeEnvProbe?: boolean;
+  csrfProbe?: boolean;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -138,6 +140,7 @@ const SCENARIOS: Scenario[] = [
     startAppDirs: ['.'],
     workerDirs: ['.'],
     nodeEnvProbe: true,
+    csrfProbe: true,
   },
   {
     name: 'tanstack-start-cloudflare-d1',
@@ -209,6 +212,7 @@ const SCENARIOS: Scenario[] = [
     startAppDirs: ['.'],
     workerDirs: ['.'],
     evlogProbe: { appDir: '.', service: 'tanstack-start-cloudflare-evlog' },
+    csrfProbe: true,
   },
   {
     name: 'tanstack-start-static',
@@ -241,7 +245,7 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe, nodeEnvProbe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe, nodeEnvProbe, csrfProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
@@ -269,6 +273,9 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     }
     if (nodeEnvProbe) {
       for (const dir of startAppDirs) await writeNodeEnvProbeRoute(join(projectDir, dir));
+    }
+    if (csrfProbe) {
+      for (const dir of startAppDirs) await writeCsrfProbeRoute(join(projectDir, dir));
     }
     installResult = await runCommand(['bun', 'install'], projectDir);
 
@@ -389,6 +396,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           servers.push(server);
           await expectServesPageWithClientScript(server.url);
           if (nodeEnvProbe) await expectServerNodeEnv(server.url, 'production');
+          if (csrfProbe) await expectServerFnsRejectCrossSiteRequests(server.url);
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
           if (authProbe?.appDir === dir) {
             await expectAnonymousFlow(server.url);

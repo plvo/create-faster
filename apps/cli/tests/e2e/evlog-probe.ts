@@ -88,7 +88,10 @@ export async function exerciseEvlogProbe(baseUrl: string): Promise<void> {
   expect((await fetch(`${baseUrl}/probe-loader`)).status).toBe(500);
 
   const { url: rpcUrl } = (await (await fetch(`${baseUrl}/api/probe?kind=rpc-url`)).json()) as { url: string };
-  const rpc = await fetch(new URL(rpcUrl, baseUrl), { method: 'POST', headers: { 'x-tsr-serverFn': 'true' } });
+  const rpc = await fetch(new URL(rpcUrl, baseUrl), {
+    method: 'POST',
+    headers: { 'x-tsr-serverFn': 'true', Origin: new URL(baseUrl).origin, 'Sec-Fetch-Site': 'same-origin' },
+  });
   expect(rpc.status).toBe(200);
   expect(await rpc.text()).toContain('server fn boom');
 
