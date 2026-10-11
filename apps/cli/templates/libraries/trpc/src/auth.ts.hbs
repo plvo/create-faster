@@ -1,15 +1,17 @@
 ---
-only: mono
+path: src/trpc/auth.ts
 mono:
   scope: pkg
   path: src/auth.ts
 ---
 {{#if (hasLibrary "better-auth")}}
 {{#unless (has "database" "d1")}}
-import { createAuth } from '@repo/auth/auth';
+{{#if (or (isMono) (has "stack" "tanstack-start"))}}
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/create-auth'{{/if}};
 
 // Reads sessions for the tRPC context. It has no framework cookie plugin (each app owns one):
 // never call endpoints that set cookies from here.
 export const auth = createAuth();
+{{/if}}
 {{/unless}}
 {{/if}}

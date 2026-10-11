@@ -11,7 +11,7 @@ import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/
 import type { Database } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{else}}
 {{#if (hasLibrary "better-auth")}}
-import { auth } from {{#if (isMono)}}'./auth'{{else}}'@/lib/auth/auth'{{/if}};
+import { auth } from {{#if (or (isMono) (has "stack" "tanstack-start"))}}'./auth'{{else}}'@/lib/auth/auth'{{/if}};
 {{/if}}
 {{#if project.orm}}
 import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};

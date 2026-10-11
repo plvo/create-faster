@@ -152,11 +152,17 @@ describe('TanStack Start + tRPC', () => {
 
     test('the context reads the session through the per-request cache shared with getSession', async () => {
       const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
-      expect(init).toContain("import { auth } from '@/lib/auth/auth'");
+      expect(init).toContain("import { auth } from './auth'");
       expect(init).toContain("import { getRequestSession } from '@/lib/auth/session-cache'");
       expect(init).toContain(SESSION_READ_THROUGH_CACHE);
       expect(init).toContain('protectedProcedure');
       expect(await fileExists(join(projectPath, 'src/lib/auth/session-cache.ts'))).toBe(true);
+    });
+
+    test('the context reads sessions through a cookie-less instance that never refreshes them', async () => {
+      const instance = await readTextFile(join(projectPath, 'src/trpc/auth.ts'));
+      expect(instance).toContain("import { createAuth } from '@/lib/auth/create-auth'");
+      expect(instance).toContain('export const auth = createAuth();');
     });
 
     test('package.json adds the router SSR query integration and no server-only', async () => {
@@ -211,6 +217,7 @@ describe('TanStack Start + tRPC', () => {
       const server = await readTextFile(join(projectPath, 'src/lib/server.ts'));
       expect(server).toContain('export const db = createDb(env.DB)');
       expect(server).toContain('export const auth = createAuth(db, tanstackStartCookies())');
+      expect(await fileExists(join(projectPath, 'src/trpc/auth.ts'))).toBe(false);
     });
   });
 
@@ -354,6 +361,8 @@ describe('Next.js + tRPC aligns on the explicit context signature', () => {
 
     const route = await readTextFile(join(projectPath, 'src/app/api/trpc/[trpc]/route.ts'));
     expect(route).toContain('createContext: ({ req }) => createTRPCContext({ headers: req.headers }),');
+    expect(init).toContain("import { auth } from '@/lib/auth/auth'");
+    expect(await fileExists(join(projectPath, 'src/trpc/auth.ts'))).toBe(false);
     expect(await fileExists(join(projectPath, 'src/lib/auth/session-cache.ts'))).toBe(false);
   });
 
