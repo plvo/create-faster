@@ -335,7 +335,7 @@ blueprintSkip:                # Blueprints that do not get this file
 
 #### Empty-render skipping (conditional file content)
 A template whose rendered output is empty or whitespace only is not written (`processTemplate` in `template-processor.ts`, for every template kind, after Handlebars rendering). Wrap the whole body in `{{#if …}}` sections and the file simply does not exist when no section is active. Use it when:
-- the file exists only under a choice (`{{#if (has "deployment" "cloudflare")}}`) or a combination of choices, which `deploymentSkip` (a list of deployments to exclude) cannot express;
+- the file exists only under a choice (`{{#if (has "deployment" "cloudflare")}}`) or a combination of choices, which `deploymentSkip` (a list of deployments to exclude) cannot express; (`repo/turborepo/pnpm-workspace.yaml.hbs` is gated by `{{#if (eq pm "pnpm")}}`: pnpm ignores the `workspaces` field of `package.json`, and `linkWorkspacePackages: true` makes the `*` range of internal dependencies resolve to the workspace package as under bun and npm);
 - the file is a shared entry point that only exists when a library contributes to it (see below).
 
 #### Shared stack entry files with library sections
