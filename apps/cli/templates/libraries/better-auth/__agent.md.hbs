@@ -1,11 +1,11 @@
 {{#if (isMono)}}
 Auth lives in `packages/auth`: `auth.ts` exports the `createAuth({{#if (has "database" "d1")}}db, {{/if}}cookiePlugin?)` factory and `type Auth`, `auth-client.ts` is the client. The package contains no framework cookie plugin. Each app builds its own instance with its framework's cookie plugin appended last, in {{#if (has "database" "d1")}}`src/lib/server.ts`{{else}}`src/lib/auth/auth.ts`{{/if}}; import `auth` from there, never from `@repo/auth/auth`. Plugins added in the factory run before the cookie plugin, which must stay last.
-Without a cookie plugin the factory disables session refresh: a refresh through an instance that cannot forward cookies would extend the session in the database but not in the browser.
 Add a social provider by editing `socialProviders` in `packages/auth/src/auth.ts`.
 {{else}}
 Auth config in `src/lib/auth/`. `create-auth.ts` exports the `createAuth({{#if (has "database" "d1")}}db, {{/if}}cookiePlugin?)` factory and `type Auth`, `auth-client.ts` is the client. The app's instance is built from the factory with the framework's cookie plugin, which stays last: in {{#if (has "database" "d1")}}`src/lib/server.ts`{{else}}`src/lib/auth/auth.ts`{{/if}}.
 Add a social provider by editing `socialProviders` in `create-auth.ts`.
 {{/if}}
+Without a cookie plugin the factory disables session refresh: a refresh through an instance that cannot forward cookies would extend the session in the database but not in the browser.
 {{#if (hasLibrary "trpc")}}
 {{#if (isMono)}}
 {{#unless (has "database" "d1")}}
