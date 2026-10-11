@@ -4,15 +4,6 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 {{#if (hasLibrary "next-themes")}}
 import { ThemeProvider } from 'next-themes'
 {{/if}}
-{{#if (hasLibrary "evlog")}}
-import { createMiddleware } from '@tanstack/react-start'
-{{#if (has "deployment" "cloudflare")}}
-import { EvlogError } from 'evlog'
-{{else}}
-import { EvlogError, type RequestLogger } from 'evlog'
-import { useRequest } from 'nitro/context'
-{{/if}}
-{{/if}}
 
 import { NotFound } from '@/components/not-found'
 {{#if (hasLibrary "posthog")}}
@@ -41,30 +32,6 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  {{#if (hasLibrary "evlog")}}
-  server: {
-    middleware: [
-      createMiddleware().server(async ({ next{{#if (has "deployment" "cloudflare")}}, context{{/if}} }) => {
-        try {
-          return await next()
-        } catch (error) {
-          {{#if (has "deployment" "cloudflare")}}
-          context.log?.error(error)
-          {{else}}
-          (useRequest().context?.log as RequestLogger | undefined)?.error(error)
-          {{/if}}
-          if (EvlogError.isEvlogError(error)) {
-            throw new Response(JSON.stringify(error.toJSON()), {
-              status: error.status || 500,
-              headers: { 'Content-Type': 'application/json' },
-            })
-          }
-          throw error
-        }
-      }),
-    ],
-  },
-  {{/if}}
   notFoundComponent: NotFound,
   shellComponent: RootDocument,
 })

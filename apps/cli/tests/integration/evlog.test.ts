@@ -148,15 +148,11 @@ describe('evlog Integration', () => {
       expect(content).toContain(`service: '${projectName}'`);
     });
 
-    test('__root.tsx wires the evlog error middleware via server middleware', async () => {
+    test('__root.tsx carries no evlog code', async () => {
       const content = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(content).toContain('EvlogError.isEvlogError(error)');
-      expect(content).toContain('throw new Response(JSON.stringify(error.toJSON())');
-      expect(content).toContain('useLogger().error(error)');
-      expect(content).toContain("import { useLogger } from '@/lib/evlog'");
-      expect(content).toContain('server: {');
-      expect(content).not.toContain('evlogErrorHandler');
-      expect(content).not.toContain('nitro/context');
+      expect(content).not.toContain('EvlogError');
+      expect(content).not.toContain('useLogger');
+      expect(content).not.toContain('server: {');
     });
 
     test('src/lib/evlog.ts reads the request logger from the Nitro request context', async () => {
@@ -167,11 +163,17 @@ describe('evlog Integration', () => {
       expect(content).not.toContain('createLoggerStorage');
     });
 
-    test('src/start.ts logs server function errors through useLogger', async () => {
+    test('src/start.ts logs request and server function errors through useLogger', async () => {
       const content = await readTextFile(join(projectPath, 'src/start.ts'));
+      expect(content).toContain("createMiddleware({ type: 'request' })");
       expect(content).toContain("createMiddleware({ type: 'function' })");
+      expect(content).toContain('requestMiddleware: [');
       expect(content).toContain('functionMiddleware: [');
+      expect(content).toContain("import { useLogger } from '@/lib/evlog'");
       expect(content).toContain('useLogger().error(error)');
+      expect(content).toContain('EvlogError.isEvlogError(error)');
+      expect(content).toContain('throw new Response(JSON.stringify(error.toJSON())');
+      expect(content).not.toContain('evlogErrorHandler');
       expect(content).not.toContain('nitro/context');
     });
 
@@ -181,7 +183,7 @@ describe('evlog Integration', () => {
   });
 
   describe('Single repo: TanStack Start without evlog', () => {
-    const projectName = 'test-noevlog-tss';
+    const projectName = 'test-plain-tss';
     let projectPath: string;
 
     beforeAll(async () => {

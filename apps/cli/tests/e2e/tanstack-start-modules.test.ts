@@ -13,6 +13,7 @@ import {
   type ServerOutput,
   startServer,
 } from './helpers';
+import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -41,6 +42,7 @@ describe('tanstack-start-loaded', () => {
     expect(result.exitCode).toBe(0);
 
     projectDir = join(tempDir, 'tanstack-start-loaded');
+    await writeEvlogProbe(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -66,16 +68,17 @@ describe('tanstack-start-loaded', () => {
   );
 
   test(
-    'start serves the built app and its client assets, with evlog logging each request',
+    'start serves the built app and its client assets, with evlog logging each request and error',
     async () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
       let output: ServerOutput;
       try {
         await expectServesPageWithClientScript(server.url);
+        await exerciseEvlogProbe(server.url);
       } finally {
         output = await server.stop();
       }
-      expect(output.stdout).toContain('"service":"tanstack-start-loaded"');
+      expectEvlogProbeEvents(output, 'nitro', 'tanstack-start-loaded');
     },
     TIMEOUT_START,
   );

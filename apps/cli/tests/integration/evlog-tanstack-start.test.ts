@@ -61,26 +61,45 @@ describe('evlog + TanStack Start', () => {
       expect(logger).toContain('useLogger');
     });
 
-    test('root route middleware logs through the project-local useLogger, never Nitro', async () => {
-      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(root).toContain('useLogger().error(error)');
-      expect(root).toContain('EvlogError.isEvlogError(error)');
-      expect(root).not.toContain('nitro/context');
-      expect(root).not.toContain('evlogErrorHandler');
-    });
-
     test('agent docs tell where the logger comes from', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
       expect(agents).toContain('`src/server.ts`');
       expect(agents).toContain("`useLogger()` from `@/lib/evlog`");
     });
 
-    test('start.ts logs server function errors through useLogger', async () => {
+    test('start.ts logs request and server function errors through the same useLogger as Nitro', async () => {
       const start = await readTextFile(join(projectPath, 'src/start.ts'));
-      expect(start).toContain("createMiddleware({ type: 'function' })");
+      expect(start).toContain('requestMiddleware: [');
       expect(start).toContain('functionMiddleware: [');
+      expect(start).toContain("import { useLogger } from '@/lib/evlog'");
       expect(start).toContain('useLogger().error(error)');
       expect(start).not.toContain('nitro/context');
+    });
+
+    test('root route carries no evlog code', async () => {
+      const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
+      expect(root).not.toContain('EvlogError');
+      expect(root).not.toContain('useLogger');
+    });
+  });
+
+  describe('cloudflare-static with evlog', () => {
+    let projectPath: string;
+
+    beforeAll(async () => {
+      projectPath = await generate('evlog-start-static', [
+        '--app',
+        'evlog-start-static:tanstack-start:evlog',
+        '--deployment',
+        'cloudflare-static',
+      ]);
+    });
+
+    test('generates no server-side logging files: nothing runs per request', async () => {
+      expect(await fileExists(join(projectPath, 'nitro.config.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/server.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/start.ts'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'src/lib/evlog.ts'))).toBe(false);
     });
   });
 
@@ -166,8 +185,6 @@ describe('evlog + TanStack Start', () => {
       expect(await fileExists(join(projectPath, 'apps/admin/src/start.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'apps/web/src/lib/evlog.ts'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/admin/src/lib/evlog.ts'))).toBe(false);
-      const adminRoot = await readTextFile(join(projectPath, 'apps/admin/src/routes/__root.tsx'));
-      expect(adminRoot).not.toContain('EvlogError');
     });
   });
 });
