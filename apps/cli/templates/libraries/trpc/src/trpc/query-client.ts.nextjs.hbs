@@ -1,0 +1,7 @@
+---
+mono:
+  scope: app
+---
+{{#if (hasLibrary "tanstack-query")}}
+{{> tanstack-query/query-client}}
+{{/if}}

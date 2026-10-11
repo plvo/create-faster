@@ -13,19 +13,19 @@ import { createTRPCContext } from '@/trpc/init';
 import { getDb } from '@/lib/server';
 {{/if}}
 
-const handler = (req: Request) =>
-  fetchRequestHandler({
+{{> trpc/cross-origin-write}}
+
+const handler = (req: Request) => {
+  if (isCrossOriginWrite(req)) return new Response('Forbidden', { status: 403 });
+
+  return fetchRequestHandler({
     endpoint: '/api/trpc',
     req,
     router: appRouter,
 {{#if (and (has "database" "d1") project.orm)}}
-    createContext: async ({ req }) => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: req.headers, {{/if}}db: await getDb() }),
+    createContext: async ({ req }) => createTRPCContext({ headers: req.headers, db: await getDb() }),
 {{else}}
-{{#if (or (isMono) (hasLibrary "better-auth"))}}
     createContext: ({ req }) => createTRPCContext({ headers: req.headers }),
-{{else}}
-    createContext: createTRPCContext,
-{{/if}}
 {{/if}}
     onError:
       process.env.NODE_ENV === 'development'
@@ -34,5 +34,6 @@ const handler = (req: Request) =>
           }
         : undefined,
   });
+};
 
 export { handler as GET, handler as POST };

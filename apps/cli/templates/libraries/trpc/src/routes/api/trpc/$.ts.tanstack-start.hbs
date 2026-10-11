@@ -1,0 +1,42 @@
+---
+mono:
+  scope: app
+---
+import { createFileRoute } from '@tanstack/react-router';
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+{{#if (isMono)}}
+import { appRouter, createTRPCContext } from '@repo/api';
+{{else}}
+import { createTRPCContext } from '@/trpc/init';
+import { appRouter } from '@/trpc/routers/_app';
+{{/if}}
+{{#if (and (has "database" "d1") project.orm)}}
+import { db } from '@/lib/server';
+{{/if}}
+
+{{> trpc/cross-origin-write}}
+
+function handler({ request }: { request: Request }) {
+  if (isCrossOriginWrite(request)) return new Response('Forbidden', { status: 403 });
+
+  return fetchRequestHandler({
+    endpoint: '/api/trpc',
+    req: request,
+    router: appRouter,
+    createContext: () => createTRPCContext({ headers: request.headers{{#if (and (has "database" "d1") project.orm)}}, db{{/if}} }),
+    onError: import.meta.env.DEV
+      ? ({ path, error }) => {
+          console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error.message);
+        }
+      : undefined,
+  });
+}
+
+export const Route = createFileRoute('/api/trpc/$')({
+  server: {
+    handlers: {
+      GET: handler,
+      POST: handler,
+    },
+  },
+});

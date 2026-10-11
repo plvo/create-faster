@@ -1,12 +1,25 @@
----
-mono:
-  scope: app
----
-{{#if (hasLibrary "tanstack-query")}}
 import { defaultShouldDehydrateQuery, QueryClient } from '@tanstack/react-query';
+{{#if (hasLibrary "trpc")}}
 import superjson from 'superjson';
+{{/if}}
 
 /**
+{{#if (eq stackName "tanstack-start")}}
+ * getRouter() builds one client per request on the server, and one for the browser.
+ * staleTime: With SSR, we usually want to set some default staleTime above 0
+ * to avoid refetching immediately on the client.
+ *
+ * shouldDehydrateQuery: This is a function that determines whether a query should be dehydrated or not.
+ * The router SSR query integration streams queries that are still pending when the page is sent,
+ * so we extend the defaultShouldDehydrateQuery function to also include them. This will allow us
+ * to start prefetching in a route loader without awaiting it, then consuming that query in a
+ * component further down. Failed queries are not dehydrated: the browser refetches them.
+{{#if (hasLibrary "trpc")}}
+ *
+ * serializeData / deserializeData: superjson carries the types tRPC procedures return (Date, Map, ...)
+ * from the server's cache to the browser's.
+{{/if}}
+{{else}}
  * https://trpc.io/docs/client/tanstack-react-query/server-components#3-create-a-query-client-factory
  * staleTime: With SSR, we usually want to set some default staleTime above 0
  * to avoid refetching immediately on the client.
@@ -16,6 +29,7 @@ import superjson from 'superjson';
  * the defaultShouldDehydrateQuery function to also include queries that are still pending.
  * This will allow us to start prefetching in a server component high up the tree,
  * then consuming that promise in a client component further down.
+{{/if}}
  */
 
 export function makeQueryClient() {
@@ -27,12 +41,15 @@ export function makeQueryClient() {
       dehydrate: {
         shouldDehydrateQuery: (query) =>
           defaultShouldDehydrateQuery(query) || query.state.status === 'pending',
+{{#if (hasLibrary "trpc")}}
         serializeData: superjson.serialize,
+{{/if}}
       },
+{{#if (hasLibrary "trpc")}}
       hydrate: {
         deserializeData: superjson.deserialize,
       },
+{{/if}}
     },
   });
 }
-{{/if}}

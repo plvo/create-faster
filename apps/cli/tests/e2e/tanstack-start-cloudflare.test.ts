@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import {
   expectAnonymousFlow,
+  expectAuthApiFlow,
   expectMixedUsersKeepTheirOwnSession,
   expectSignedInFlow,
   writeAuthEnv,
@@ -24,6 +25,19 @@ import {
 } from './helpers';
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
+import {
+  CHROME_AVAILABLE,
+  chromeTestTitle,
+  expectAnonymousTrpcSession,
+  expectClientBundleWithoutServerCode,
+  expectDateSurvivesHydration,
+  expectSignedInTrpcSession,
+  expectTrpcGuards,
+  expectTrpcServesProcedures,
+  SERVER_MARKER,
+  type TrpcProbeOptions,
+  writeTrpcProbe,
+} from './trpc-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -45,6 +59,11 @@ interface AuthProbe {
   appDir: string;
 }
 
+interface TrpcProbe {
+  appDir: string;
+  options: TrpcProbeOptions;
+}
+
 interface Scenario {
   name: string;
   deployment: 'cloudflare' | 'cloudflare-static';
@@ -57,6 +76,7 @@ interface Scenario {
   authProbe?: AuthProbe;
   nodeEnvProbe?: boolean;
   csrfProbe?: boolean;
+  trpcProbe?: TrpcProbe;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -206,6 +226,40 @@ const SCENARIOS: Scenario[] = [
     authProbe: { appDir: 'apps/web' },
   },
   {
+    name: 'tanstack-start-cloudflare-d1-trpc',
+    deployment: 'cloudflare',
+    args: [
+      '--app',
+      'tanstack-start-cloudflare-d1-trpc:tanstack-start:better-auth,trpc,tanstack-query',
+      '--database',
+      'd1',
+      '--orm',
+      'drizzle',
+    ],
+    startAppDirs: ['.'],
+    workerDirs: ['.'],
+    authProbe: { appDir: '.' },
+    trpcProbe: { appDir: '.', options: { auth: true, query: true } },
+  },
+  {
+    name: 'tanstack-start-cloudflare-turborepo-d1-trpc',
+    deployment: 'cloudflare',
+    args: [
+      '--app',
+      'web:tanstack-start:better-auth,trpc',
+      '--app',
+      'api:hono',
+      '--database',
+      'd1',
+      '--orm',
+      'drizzle',
+    ],
+    startAppDirs: ['apps/web'],
+    workerDirs: ['apps/web', 'apps/api'],
+    authProbe: { appDir: 'apps/web' },
+    trpcProbe: { appDir: 'apps/web', options: { auth: true, query: false } },
+  },
+  {
     name: 'tanstack-start-cloudflare-evlog',
     deployment: 'cloudflare',
     args: ['--app', 'tanstack-start-cloudflare-evlog:tanstack-start:evlog'],
@@ -245,12 +299,13 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe, nodeEnvProbe, csrfProbe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe, nodeEnvProbe, csrfProbe, trpcProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
   let installResult: CommandResult;
   let authPort: number;
+  let trpcAppUrl: string | undefined;
   const servers: RunningServer[] = [];
 
   beforeAll(async () => {
@@ -285,6 +340,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
       await writeSessionProbeRoute(authAppDir);
       await writeAuthEnv(authAppDir, authPort);
     }
+    if (trpcProbe) await writeTrpcProbe(projectDir, join(projectDir, trpcProbe.appDir), trpcProbe.options);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -355,6 +411,16 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     TIMEOUT_BUILD,
   );
 
+  if (trpcProbe) {
+    test('the client assets carry neither the tRPC router nor the db schema', async () => {
+      const dist = join(projectDir, trpcProbe.appDir, 'dist');
+      await expectClientBundleWithoutServerCode(join(dist, 'client'), join(dist, 'server'), [
+        SERVER_MARKER,
+        'user_sessions',
+      ]);
+    });
+  }
+
   test(
     'wrangler deploy --dry-run succeeds',
     async () => {
@@ -386,7 +452,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     );
   } else {
     test(
-      'vite preview serves the built app in workerd (answers a D1 query, runs the auth flow, proxies /ingest or logs wide events when selected)',
+      'vite preview serves the built app in workerd (answers a D1 query, runs the auth flow, serves tRPC, proxies /ingest or logs wide events when selected)',
       async () => {
         for (const dir of startAppDirs) {
           const port = authProbe?.appDir === dir ? authPort : await getFreePort();
@@ -402,6 +468,15 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
             await expectAnonymousFlow(server.url);
             await expectSignedInFlow(server.url);
             await expectMixedUsersKeepTheirOwnSession(server.url);
+          }
+          if (trpcProbe?.appDir === dir) {
+            trpcAppUrl = server.url;
+            await expectTrpcServesProcedures(server.url, trpcProbe.options);
+            await expectTrpcGuards(server.url);
+            if (trpcProbe.options.auth) {
+              await expectAnonymousTrpcSession(server.url, trpcProbe.options);
+              await expectSignedInTrpcSession(server.url, await expectAuthApiFlow(server.url), trpcProbe.options);
+            }
           }
           if (ingestProbe) await expectIngestProxiesToPostHog(server.url);
           if (evlogProbe?.appDir === dir) {
@@ -426,6 +501,17 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
         TIMEOUT_PREVIEW,
       );
     }
+  }
+
+  if (trpcProbe?.options.query) {
+    test.skipIf(!CHROME_AVAILABLE)(
+      chromeTestTitle('the previewed page keeps the prefetched Date through hydration in Chrome'),
+      async () => {
+        if (!trpcAppUrl) throw new Error('vite preview did not serve the tRPC app');
+        await expectDateSurvivesHydration(trpcAppUrl, '/trpc-probe');
+      },
+      TIMEOUT_PREVIEW,
+    );
   }
 
   test(

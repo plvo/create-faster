@@ -312,7 +312,7 @@ describe('TanStack Start + better-auth', () => {
       expect(readOnly).toContain("import { createAuth } from '@repo/auth/auth'");
       expect(readOnly).toContain('export const auth = createAuth()');
       const init = await readTextFile(join(projectPath, 'packages/api/src/trpc.ts'));
-      expect(init).toContain("import { auth } from './auth'");
+      expect(init).toContain("import { auth as sessionReader } from './auth'");
       expect(init).toContain('createTRPCContext(opts: { headers: Headers })');
     });
 
@@ -366,7 +366,12 @@ describe('TanStack Start + better-auth', () => {
       expect(agents).toContain(INSTANCE_IN_AUTH_TS);
       expect(await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'))).toContain('export const auth = ');
       expect(agents).toContain(TRPC_READ_EXTENDS);
-      expect(await readTextFile(join(projectPath, 'src/trpc/init.ts'))).toContain("import { auth } from '@/lib/auth/auth'");
+      expect(await readTextFile(join(projectPath, 'src/trpc/init.ts'))).toContain(
+        "import { sessionReader } from './session-reader'",
+      );
+      expect(await readTextFile(join(projectPath, 'src/trpc/session-reader.ts'))).toContain(
+        "export { auth as sessionReader } from '@/lib/auth/auth';",
+      );
     });
 
     test('single repo Next.js on D1: getAuth in server.ts, tRPC reads do not extend the session', async () => {

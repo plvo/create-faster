@@ -206,8 +206,9 @@ export async function expectTrpcReadsWithoutRefreshing(
   baseUrl: string,
   dbPath: string,
   user: { email: string; cookie: string },
+  readThroughTrpc: (baseUrl: string, cookie: string) => Promise<string | null | undefined> = readTrpcSession,
 ): Promise<void> {
-  expect(await readTrpcSession(baseUrl, user.cookie)).toBe(user.email);
+  expect(await readThroughTrpc(baseUrl, user.cookie)).toBe(user.email);
 
   const staleExpiry = Date.now() + SESSION_LIFETIME_MS - SESSION_REFRESH_AGE_MS - 60_000;
   const db = new Database(dbPath);
@@ -220,7 +221,7 @@ export async function expectTrpcReadsWithoutRefreshing(
     db.close();
   }
 
-  expect(await readTrpcSession(baseUrl, user.cookie)).toBe(user.email);
+  expect(await readThroughTrpc(baseUrl, user.cookie)).toBe(user.email);
   expect(sessionExpiries(dbPath, user.email).every((expiry) => expiry === staleExpiry)).toBe(true);
 
   const appRead = await readSession(baseUrl, user.cookie);

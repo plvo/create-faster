@@ -1,0 +1,11 @@
+// A browser sends Origin with the requests a page makes to another origin. A write from another origin may
+// ride on the user's cookies (a form another site posts here), so the handler refuses it; requests without
+// Origin come from clients other than a browser page. Origin is compared with the host the request was sent
+// to (the first X-Forwarded-Host behind a proxy, else Host): not every server puts it in request.url.
+function isCrossOriginWrite(request: Request): boolean {
+  if (request.method === 'GET' || request.method === 'HEAD') return false;
+  const origin = request.headers.get('origin');
+  if (origin === null) return false;
+  const host = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() || request.headers.get('host');
+  return !URL.canParse(origin) || new URL(origin).host !== host;
+}

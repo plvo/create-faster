@@ -1,16 +1,56 @@
 import { createRouter } from '@tanstack/react-router'
+{{#if (hasLibrary "tanstack-query")}}
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+{{#if (hasLibrary "trpc")}}
+import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
+{{/if}}
+import { makeQueryClient } from '@/lib/query-client'
+{{/if}}
+{{#if (hasLibrary "trpc")}}
+import { makeTRPCClient } from '@/trpc/client'
+{{#if (hasLibrary "tanstack-query")}}
+import { TRPCProvider } from '@/trpc/providers'
+{{/if}}
+{{/if}}
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
 // Create a new router instance
 export const getRouter = () => {
+{{#if (hasLibrary "tanstack-query")}}
+  const queryClient = makeQueryClient()
+{{#if (hasLibrary "trpc")}}
+  const trpcClient = makeTRPCClient()
+  const trpc = createTRPCOptionsProxy({ client: trpcClient, queryClient })
+{{/if}}
+
+{{/if}}
   const router = createRouter({
     routeTree,
+{{#if (hasLibrary "tanstack-query")}}
+    context: { queryClient{{#if (hasLibrary "trpc")}}, trpc{{/if}} },
+{{else if (hasLibrary "trpc")}}
+    context: { trpc: makeTRPCClient() },
+{{else}}
     context: {},
+{{/if}}
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+{{#if (hasLibrary "tanstack-query")}}
+{{#if (hasLibrary "trpc")}}
+    Wrap: ({ children }) => (
+      <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
+        {children}
+      </TRPCProvider>
+    ),
+{{/if}}
+{{/if}}
   })
+{{#if (hasLibrary "tanstack-query")}}
+
+  setupRouterSsrQueryIntegration({ router, queryClient })
+{{/if}}
 
   return router
 }

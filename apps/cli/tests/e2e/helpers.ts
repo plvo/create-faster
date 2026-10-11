@@ -1,4 +1,5 @@
 import { expect } from 'bun:test';
+import { readdir, readFile } from 'node:fs/promises';
 import { type AddressInfo, createServer } from 'node:net';
 import { join } from 'node:path';
 import { $ } from 'bun';
@@ -104,6 +105,18 @@ export async function startServer(
 
   const { stdout, stderr } = await stop();
   throw new Error(`Server "${args.join(' ')}" never answered on ${readyUrl}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+}
+
+/** Files under `dir` (source maps excluded) whose content contains one of `needles`. */
+export async function filesContaining(dir: string, needles: string[]): Promise<string[]> {
+  const matches: string[] = [];
+  for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || entry.name.endsWith('.map')) continue;
+    const path = join(entry.parentPath, entry.name);
+    const content = await readFile(path, 'utf8');
+    if (needles.some((needle) => content.includes(needle))) matches.push(path);
+  }
+  return matches;
 }
 
 export async function expectServesPageWithClientScript(url: string): Promise<void> {

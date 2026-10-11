@@ -1,0 +1,3 @@
+{{#if (eq stackName "tanstack-start")}}
+`getRouter()` (`src/router.tsx`) builds a `QueryClient` per request with `makeQueryClient()` (`src/lib/query-client.ts`) and puts it in the router context as `queryClient`; `setupRouterSsrQueryIntegration` wraps the app in its provider and sends the queries the server ran to the browser, streaming those still pending. Prefetch in a route loader without awaiting (`void context.queryClient.prefetchQuery(options)`), then read the query with `useSuspenseQuery(options)` inside a `Suspense` boundary: the page streams and the data follows it. Awaiting the prefetch (`ensureQueryData`) holds the page until the data is ready.
+{{/if}}
