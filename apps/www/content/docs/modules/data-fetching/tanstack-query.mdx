@@ -13,6 +13,8 @@ description: Pre-configured QueryClient with optimized defaults and provider set
 Modified files:
 - `src/components/app-providers.tsx` - Adds `QueryClientProvider`
 
+On TanStack Start, `@tanstack/react-router-ssr-query` is installed too: the [tRPC](/docs/modules/api/trpc) router integration uses it.
+
 **QueryClient configuration:**
 - Retry: 1 attempt
 - `refetchOnWindowFocus: false`
