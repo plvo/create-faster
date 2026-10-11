@@ -24,10 +24,24 @@ interface PostgresContainer {
   databaseUrl: string;
 }
 
+const dockerAvailable = Bun.spawnSync(['docker', 'info'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
+if (!dockerAvailable) {
+  console.warn('Skipping better-auth + postgres e2e: no Docker daemon reachable (`docker info` failed)');
+}
+const describeWithDocker = describe.skipIf(!dockerAvailable);
+
+const CONTAINER_LABEL = 'create-faster-e2e=better-auth-postgres';
+
+async function removeStaleContainers(): Promise<void> {
+  const stale = (await $`docker ps -aq --filter label=${CONTAINER_LABEL}`.quiet().text()).split('\n').filter(Boolean);
+  if (stale.length > 0) await $`docker rm -f ${stale}`.quiet().nothrow();
+}
+
 async function startPostgres(): Promise<PostgresContainer> {
+  await removeStaleContainers();
   const port = await getFreePort();
   const name = `create-faster-e2e-pg-${process.pid}-${port}`;
-  await $`docker run -d --rm --name ${name} -e POSTGRES_PASSWORD=password -p 127.0.0.1:${port}:5432 postgres:17-alpine`.quiet();
+  await $`docker run -d --rm --name ${name} --label ${CONTAINER_LABEL} -e POSTGRES_PASSWORD=password -p 127.0.0.1:${port}:5432 postgres:17-alpine`.quiet();
 
   const deadline = Date.now() + POSTGRES_READY_TIMEOUT;
   while (Date.now() < deadline) {
@@ -60,7 +74,7 @@ function sessionCookie(response: Response): string {
     .join('; ');
 }
 
-describe.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + postgres', (orm) => {
+describeWithDocker.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + postgres', (orm) => {
   let tempDir: string;
   let projectDir: string;
   let postgres: PostgresContainer;
@@ -112,7 +126,6 @@ describe.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + postgres', (or
     server = await startServer(['bunx', 'next', 'dev', '-p', String(port)], projectDir, {
       port,
       readyTimeout: TIMEOUT_SERVER,
-      env,
     });
   }, TIMEOUT_INSTALL + TIMEOUT_SERVER + 60_000);
 

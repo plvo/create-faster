@@ -19,6 +19,7 @@ const COMBINATIONS: Combination[] = [
 
 describe('better-auth ids match the database id column', () => {
   let tempDir: string;
+  let generatedProjects = 0;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -28,28 +29,33 @@ describe('better-auth ids match the database id column', () => {
     await cleanupTempDir(tempDir);
   });
 
+  async function generateAuthProject(database: string, orm: string): Promise<string> {
+    const projectName = `ids-${orm}-${database}-${generatedProjects++}`;
+    const result = await runCli(
+      [
+        projectName,
+        '--app',
+        'web:nextjs:better-auth',
+        '--database',
+        database,
+        '--orm',
+        orm,
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    return join(tempDir, projectName);
+  }
+
   for (const { database, orm, generatesUuids } of COMBINATIONS) {
     test(`${orm} + ${database}: auth ${generatesUuids ? 'generates uuids' : 'keeps the default id generator'}`, async () => {
-      const projectName = `ids-${orm}-${database}`;
-      const result = await runCli(
-        [
-          projectName,
-          '--app',
-          'web:nextjs:better-auth',
-          '--database',
-          database,
-          '--orm',
-          orm,
-          '--no-git',
-          '--no-install',
-          '--pm',
-          'bun',
-        ],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(0);
+      const projectPath = await generateAuthProject(database, orm);
 
-      const auth = await readTextFile(join(tempDir, projectName, 'src/lib/auth/auth.ts'));
+      const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
       if (generatesUuids) {
         expect(auth).toContain(UUID_ID_GENERATOR);
       } else {
@@ -59,7 +65,9 @@ describe('better-auth ids match the database id column', () => {
   }
 
   test('drizzle + postgres: the users id column is a uuid that better-auth ids must satisfy', async () => {
-    const schema = await readTextFile(join(tempDir, 'ids-drizzle-postgres', 'src/lib/db/schema.ts'));
+    const projectPath = await generateAuthProject('postgres', 'drizzle');
+
+    const schema = await readTextFile(join(projectPath, 'src/lib/db/schema.ts'));
     expect(schema).toContain("id: uuid('id').defaultRandom().primaryKey()");
     expect(schema).toContain("userId: uuid('user_id')");
   });
