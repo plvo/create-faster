@@ -24,11 +24,24 @@ import {
   runCommand,
   startServer,
 } from './helpers';
+import {
+  expectAnonymousTrpcSession,
+  expectClientBundleWithoutServerCode,
+  expectDateSurvivesHydration,
+  expectSignedInTrpcSession,
+  expectTrpcServesProcedures,
+  readStartTrpcSession,
+  SERVER_MARKER,
+  type TrpcProbeOptions,
+  writeTrpcProbe,
+} from './trpc-probe';
 
 // better-auth on TanStack Start served by Nitro, alone and next to a Next.js app in one turborepo: the auth
 // route, the cached getSession server function and its per-user isolation, and the per-app auth instance.
 // Each app owns its cookie plugin, so the Next.js server bundle carries no Start code, and the Next.js tRPC
 // context reads sessions through a cookie-less instance that never refreshes them.
+// With tRPC on the Start app: procedures over the API route and in a streamed SSR render, a Date kept through
+// hydration, the protected procedure, the session shared with getSession, and no server code in the client.
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_DB = 120_000;
@@ -38,6 +51,7 @@ const TIMEOUT_SERVE = 120_000;
 
 const COOKIE_ORDER_WARNING = 'should be placed last in the plugins array';
 const START_ONLY_MARKERS = ['@tanstack/react-start', 'tanstack-start-cookies'];
+const START_TRPC: TrpcProbeOptions = { auth: true, query: true };
 
 interface Scenario {
   name: string;
@@ -47,9 +61,11 @@ interface Scenario {
   dbDir: string;
   /** False when no database server is available: only requests that never reach the database are exercised. */
   liveDatabase: boolean;
+  /** The Start app also has trpc and tanstack-query. */
+  startTrpc?: boolean;
 }
 
-const MIXED_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'admin:tanstack-start:better-auth'];
+const MIXED_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'admin:tanstack-start:better-auth,trpc,tanstack-query'];
 
 const SCENARIOS: Scenario[] = [
   {
@@ -58,6 +74,21 @@ const SCENARIOS: Scenario[] = [
     startAppDir: '.',
     dbDir: '.',
     liveDatabase: true,
+  },
+  {
+    name: 'start-trpc-nitro',
+    args: [
+      '--app',
+      'start-trpc-nitro:tanstack-start:better-auth,trpc,tanstack-query',
+      '--database',
+      'sqlite',
+      '--orm',
+      'drizzle',
+    ],
+    startAppDir: '.',
+    dbDir: '.',
+    liveDatabase: true,
+    startTrpc: true,
   },
   {
     name: 'start-auth-nitro-turbo',
@@ -82,6 +113,7 @@ const SCENARIOS: Scenario[] = [
     startAppDir: 'apps/admin',
     dbDir: 'packages/db',
     liveDatabase: true,
+    startTrpc: true,
   },
   {
     name: 'mixed-auth-postgres',
@@ -90,6 +122,7 @@ const SCENARIOS: Scenario[] = [
     startAppDir: 'apps/admin',
     dbDir: 'packages/db',
     liveDatabase: false,
+    startTrpc: true,
   },
 ];
 
@@ -106,7 +139,7 @@ async function filesContaining(dir: string, needles: string[]): Promise<string[]
 
 describe.each(SCENARIOS)(
   '$name',
-  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase }) => {
+  ({ name, args, startAppDir, nextAppDir, dbDir, liveDatabase, startTrpc }) => {
     let projectDir: string;
     let installResult: CommandResult;
     const servers: RunningServer[] = [];
@@ -129,6 +162,7 @@ describe.each(SCENARIOS)(
       installResult = await runCommand(['bun', 'install'], projectDir);
       if (startAppDir) await writeSessionProbeRoute(appPath(startAppDir));
       if (nextAppDir) await writeTrpcSessionProbe(projectDir);
+      if (startAppDir && startTrpc) await writeTrpcProbe(projectDir, appPath(startAppDir), START_TRPC);
     }, TIMEOUT_INSTALL + 30_000);
 
     afterAll(async () => {
@@ -165,6 +199,16 @@ describe.each(SCENARIOS)(
       TIMEOUT_BUILD,
     );
 
+    if (startAppDir && startTrpc) {
+      test('the Start client assets carry neither the tRPC router nor the db schema', async () => {
+        const output = join(appPath(startAppDir), '.output');
+        await expectClientBundleWithoutServerCode(join(output, 'public'), join(output, 'server'), [
+          SERVER_MARKER,
+          'user_sessions',
+        ]);
+      });
+    }
+
     if (nextAppDir) {
       test(
         'the Next.js server output does not bundle the TanStack Start cookie plugin',
@@ -189,9 +233,11 @@ describe.each(SCENARIOS)(
 
     if (startAppDir) {
       test(
-        liveDatabase
-          ? 'start serves sign-up, sign-in, get-session and per-user cached sessions against the sqlite database'
-          : 'start serves the auth route and the session server function without a database round trip',
+        `${
+          liveDatabase
+            ? 'start serves sign-up, sign-in, get-session and per-user cached sessions against the sqlite database'
+            : 'start serves the auth route and the session server function without a database round trip'
+        }${startTrpc ? ', and the tRPC procedures' : ''}`,
         async () => {
           const port = await getFreePort();
           const server = await startServer(['bun', 'run', 'start'], appPath(startAppDir), {
@@ -205,6 +251,16 @@ describe.each(SCENARIOS)(
           if (liveDatabase) {
             await expectSignedInFlow(server.url);
             await expectMixedUsersKeepTheirOwnSession(server.url);
+          }
+          if (startTrpc) {
+            await expectTrpcServesProcedures(server.url, START_TRPC);
+            await expectDateSurvivesHydration(server.url);
+            await expectAnonymousTrpcSession(server.url);
+            if (liveDatabase) {
+              const user = await expectAuthApiFlow(server.url);
+              await expectSignedInTrpcSession(server.url, user);
+              await expectTrpcReadsWithoutRefreshing(server.url, dbPath(), user, readStartTrpcSession);
+            }
           }
 
           const { stdout, stderr } = await server.stop();
