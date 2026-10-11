@@ -37,7 +37,7 @@ contents/
 
 ## Next.js
 
-Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` prerenders one page per document at build time, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page.
+Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` prerenders one page per document at build time, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug. It also builds with `cloudflare-static`, where each document is exported as an HTML page.
 
 Files added:
 ```
@@ -101,6 +101,7 @@ MDX route prerendered for every document, with metadata generation:
 ```tsx title="src/app/mdx/[[...slug]]/page.tsx"
 import fs from 'node:fs';
 import path from 'node:path';
+import { notFound } from 'next/navigation';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { parseFrontmatter } from '@/lib/mdx';
 import { mdxComponents } from '@/mdx-components';
@@ -111,8 +112,6 @@ const HOME_DOCUMENT = 'home';
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
 }
-
-export const dynamicParams = false;
 
 export function generateStaticParams(): { slug: string[] }[] {
   return fs
@@ -142,8 +141,11 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function readDocument(slug: string[] | undefined): string {
-  const name = slug?.[0] ?? HOME_DOCUMENT;
+function readDocument(slug: string[] = []): string {
+  const isListed = generateStaticParams().some((params) => params.slug.join('/') === slug.join('/'));
+  if (!isListed) notFound();
+
+  const name = slug[0] ?? HOME_DOCUMENT;
   return fs.readFileSync(path.join(CONTENTS_DIR, `${name}.mdx`), 'utf-8');
 }
 ```
