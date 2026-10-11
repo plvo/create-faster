@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 
@@ -37,7 +37,7 @@ const NEXTJS_ASSETS = `
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  // workerd leaves process.env.NODE_ENV unset, so dependencies reading it at runtime would behave as in development
+  // The build only inlines the literal process.env.NODE_ENV: without this var, dependencies reading it at runtime see "development" in workerd
   "vars": {
     "NODE_ENV": "production"
   }`;

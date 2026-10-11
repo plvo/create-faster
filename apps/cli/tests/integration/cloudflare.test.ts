@@ -102,7 +102,7 @@ describe('Cloudflare deployment platform', () => {
       expect(content).toContain('.open-next/assets');
     });
 
-    test('wrangler.jsonc sets NODE_ENV=production in the Worker vars, which workerd leaves unset', async () => {
+    test('wrangler.jsonc sets NODE_ENV=production in the Worker vars', async () => {
       const content = await readTextFile(join(projectPath, 'wrangler.jsonc'));
       expect(content).toContain('"vars": {\n    "NODE_ENV": "production"\n  }');
     });

@@ -24,7 +24,7 @@
 | Binding (D1/R2/KV) | `wrangler.jsonc` + local persistence | `wrangler.jsonc` | `getCloudflareContext().env.X` **only** |
 
 **Key rules**
-- `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which workerd leaves unset, so they would behave as in development. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.
+- `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which reads `development` in workerd without the var. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.
 - Bindings are never on `process.env` — always use `getCloudflareContext().env`.
 - Do NOT add `.dev.vars` — Wrangler ignores `.env` when `.dev.vars` is present.
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.

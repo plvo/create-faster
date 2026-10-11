@@ -8,9 +8,5 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
-  // workerd leaves process.env.NODE_ENV unset, so dependencies reading it at runtime would behave as in development
-  "vars": {
-    "NODE_ENV": "production"
-  }{{>cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}
+  }{{> cloudflare/node-env-var}}{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}
 }
