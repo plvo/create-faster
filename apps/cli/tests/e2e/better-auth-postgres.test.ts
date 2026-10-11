@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { $ } from 'bun';
+import { type DatabaseContainer, describeWithDocker, removeDatabase, startDatabase } from './docker-database';
 import {
   cleanupTempDir,
   createTempDir,
@@ -14,50 +14,9 @@ import {
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_SERVER = 120_000;
-const POSTGRES_READY_TIMEOUT = 30_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const CREDENTIALS = { name: 'E2E User', email: 'e2e@example.com', password: 'password-e2e' };
-
-interface PostgresContainer {
-  name: string;
-  databaseUrl: string;
-}
-
-const dockerAvailable = Bun.spawnSync(['docker', 'info'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
-if (!dockerAvailable) {
-  console.warn('Skipping better-auth + postgres e2e: no Docker daemon reachable (`docker info` failed)');
-}
-const describeWithDocker = describe.skipIf(!dockerAvailable);
-
-const CONTAINER_LABEL = 'create-faster-e2e=better-auth-postgres';
-
-async function removeStaleContainers(): Promise<void> {
-  const stale = (await $`docker ps -aq --filter label=${CONTAINER_LABEL}`.quiet().text()).split('\n').filter(Boolean);
-  if (stale.length > 0) await $`docker rm -f ${stale}`.quiet().nothrow();
-}
-
-async function startPostgres(): Promise<PostgresContainer> {
-  await removeStaleContainers();
-  const port = await getFreePort();
-  const name = `create-faster-e2e-pg-${process.pid}-${port}`;
-  await $`docker run -d --rm --name ${name} --label ${CONTAINER_LABEL} -e POSTGRES_PASSWORD=password -p 127.0.0.1:${port}:5432 postgres:17-alpine`.quiet();
-
-  const deadline = Date.now() + POSTGRES_READY_TIMEOUT;
-  while (Date.now() < deadline) {
-    const ready = await $`docker exec ${name} pg_isready -U postgres -h 127.0.0.1`.quiet().nothrow();
-    if (ready.exitCode === 0) {
-      return { name, databaseUrl: `postgresql://postgres:password@127.0.0.1:${port}/postgres` };
-    }
-    await Bun.sleep(500);
-  }
-  await removePostgres(name);
-  throw new Error(`Postgres container ${name} never became ready`);
-}
-
-async function removePostgres(name: string): Promise<void> {
-  await $`docker rm -f ${name}`.quiet().nothrow();
-}
 
 async function postJson(url: string, path: string, body: unknown, cookie?: string): Promise<Response> {
   return fetch(new URL(path, url), {
@@ -74,14 +33,14 @@ function sessionCookie(response: Response): string {
     .join('; ');
 }
 
-describeWithDocker.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + postgres', (orm) => {
+describeWithDocker('better-auth + postgres e2e').each(['drizzle', 'prisma'])('nextjs + better-auth + %s + postgres', (orm) => {
   let tempDir: string;
   let projectDir: string;
-  let postgres: PostgresContainer;
+  let postgres: DatabaseContainer;
   let server: RunningServer;
 
   beforeAll(async () => {
-    postgres = await startPostgres();
+    postgres = await startDatabase('postgres', 'better-auth-postgres');
     tempDir = await createTempDir();
     const projectName = `auth-${orm}-pg`;
     const result = await runCli(
@@ -108,7 +67,7 @@ describeWithDocker.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + post
     const port = await getFreePort();
     const appUrl = `http://127.0.0.1:${port}`;
     const env = {
-      DATABASE_URL: postgres.databaseUrl,
+      DATABASE_URL: postgres.connectionString,
       BETTER_AUTH_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0123',
       BETTER_AUTH_URL: appUrl,
     };
@@ -131,7 +90,7 @@ describeWithDocker.each(['drizzle', 'prisma'])('nextjs + better-auth + %s + post
 
   afterAll(async () => {
     await server?.stop();
-    if (postgres) await removePostgres(postgres.name);
+    if (postgres) await removeDatabase(postgres.name);
     if (tempDir) await cleanupTempDir(tempDir);
   });
 
