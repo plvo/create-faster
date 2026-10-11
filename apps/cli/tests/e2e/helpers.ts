@@ -59,6 +59,8 @@ async function isResponding(url: string): Promise<boolean> {
 export interface StartServerOptions {
   /** Port the server must pick by itself. Without it, a free port is handed over through PORT. */
   port?: number;
+  /** Path that must answer 2xx before the server counts as ready. */
+  readyPath?: string;
   readyTimeout?: number;
   env?: Record<string, string>;
 }
@@ -66,7 +68,12 @@ export interface StartServerOptions {
 export async function startServer(
   args: string[],
   cwd: string,
-  { port: ownPort, readyTimeout = SERVER_READY_TIMEOUT, env: extraEnv = {} }: StartServerOptions = {},
+  {
+    port: ownPort,
+    readyPath = '/',
+    readyTimeout = SERVER_READY_TIMEOUT,
+    env: extraEnv = {},
+  }: StartServerOptions = {},
 ): Promise<RunningServer> {
   if (ownPort !== undefined && !(await isPortFree(ownPort))) {
     throw new Error(`Port ${ownPort} is already in use, so the server's own port cannot be tested`);
@@ -93,7 +100,7 @@ export async function startServer(
 
   const deadline = Date.now() + readyTimeout;
   while (Date.now() < deadline && proc.exitCode === null) {
-    if (await isResponding(url)) return { url, stop };
+    if (await isResponding(`${url}${readyPath}`)) return { url, stop };
     await Bun.sleep(SERVER_POLL_INTERVAL);
   }
 

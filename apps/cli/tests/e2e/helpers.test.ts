@@ -18,6 +18,14 @@ createServer((_request, response) => {
 }).listen(Number(process.env.PORT), '127.0.0.1');
 `;
 
+const API_SERVER = `
+import { createServer } from 'node:http';
+createServer((request, response) => {
+  response.statusCode = request.url === '/health' ? 200 : 404;
+  response.end();
+}).listen(Number(process.env.PORT), '127.0.0.1');
+`;
+
 async function isAnswering(url: string): Promise<boolean> {
   try {
     await fetch(url, { signal: AbortSignal.timeout(2_000) });
@@ -57,6 +65,15 @@ describe('startServer', () => {
     const { stdout } = await server.stop();
 
     expect(stdout).toContain('plain-server-served-request');
+  }, 15_000);
+
+  test('waits for readyPath when the root path does not answer 2xx', async () => {
+    const dir = await projectWithServer(API_SERVER);
+
+    const server = await startServer(['node', 'server.mjs'], dir, { readyPath: '/health', readyTimeout: 5_000 });
+    expect((await fetch(`${server.url}/health`)).status).toBe(200);
+
+    await server.stop();
   }, 15_000);
 
   test('stop ends the server that a wrapper command started', async () => {
