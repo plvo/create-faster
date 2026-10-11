@@ -37,6 +37,8 @@ contents/
 
 ## Next.js
 
+Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` prerenders one page per document at build time, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug. It also builds with `cloudflare-static`, where each document is exported as an HTML page.
+
 Files added:
 ```
 src/
@@ -45,8 +47,8 @@ src/
 ├── mdx-components.tsx          # Custom MDX component mappings
 ├── styles/
 │   └── mdx.css                 # MDX-specific styling
-└── app/[...mdxExampleSlug]/
-    └── page.tsx                # Dynamic MDX route example
+└── app/mdx/[[...slug]]/
+    └── page.tsx                # MDX route example
 
 contents/
 ├── home.mdx                    # Example content
@@ -94,9 +96,9 @@ export function parseFrontmatter(fileContent: string): ParsedFrontmatterReturn {
 
 ### page.tsx
 
-Dynamic MDX route with metadata generation:
+MDX route prerendered for every document, with metadata generation:
 
-```tsx title="src/app/[...mdxExampleSlug]/page.tsx"
+```tsx title="src/app/mdx/[[...slug]]/page.tsx"
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
@@ -104,30 +106,33 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import { parseFrontmatter } from '@/lib/mdx';
 import { mdxComponents } from '@/mdx-components';
 
+const CONTENTS_DIR = path.join(process.cwd(), 'contents');
+const HOME_DOCUMENT = 'home';
+
 interface PageProps {
-  params: Promise<{ mdxExampleSlug: string[] }>;
+  params: Promise<{ slug?: string[] }>;
+}
+
+export function generateStaticParams(): { slug: string[] }[] {
+  return fs
+    .readdirSync(CONTENTS_DIR)
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => path.basename(file, '.mdx'))
+    .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
 }
 
 export const generateMetadata = async ({ params }: PageProps) => {
-  const { mdxExampleSlug } = await params;
-  if (mdxExampleSlug === undefined) return undefined;
-
-  const fileContent = getFileContent(mdxExampleSlug);
-  if (fileContent === null) return notFound();
-
-  const { metadata } = parseFrontmatter(fileContent);
+  const { slug } = await params;
+  const { metadata } = parseFrontmatter(readDocument(slug));
   return { title: metadata.title, description: metadata.summary };
 };
 
 export default async function Page({ params }: PageProps) {
-  const { mdxExampleSlug } = await params;
-  const fileContent = getFileContent(mdxExampleSlug);
-  if (fileContent === null) return notFound();
-
-  const { metadata, content: mdxContent } = parseFrontmatter(fileContent);
+  const { slug } = await params;
+  const { metadata, content: mdxContent } = parseFrontmatter(readDocument(slug));
 
   return (
-    <main className='max-w-[650px] mx-auto px-4 py-4 md:py-8'>
+    <main className='max-w-162.5 mx-auto px-4 py-4 md:py-8'>
       <MDXRemote source={mdxContent} components={mdxComponents} />
       <pre>
         <code>{JSON.stringify({ metadata }, null, 2)}</code>
@@ -136,12 +141,13 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function getFileContent(slug: string[]): string | null {
-  const contentPath = slug === undefined
-    ? path.join(process.cwd(), 'contents', 'home.mdx')
-    : path.join(process.cwd(), 'contents', `${slug[0]}.mdx`);
+function readDocument(slug: string[] = []): string {
+  const isListed = generateStaticParams().some(
+    (params) => params.slug.length === slug.length && params.slug.every((segment, index) => segment === slug[index]),
+  );
+  if (!isListed) notFound();
 
-  if (!fs.existsSync(contentPath)) return null;
-  return fs.readFileSync(contentPath, 'utf-8');
+  const name = slug[0] ?? HOME_DOCUMENT;
+  return fs.readFileSync(path.join(CONTENTS_DIR, `${name}.mdx`), 'utf-8');
 }
 ```

@@ -175,6 +175,9 @@ describe('tanstack-start-mdx', () => {
 
         const missing = await fetch(`${server.url}/mdx/does-not-exist`);
         expect(missing.status).toBe(404);
+
+        const homeBySlug = await fetch(`${server.url}/mdx/home`);
+        expect(homeBySlug.status).toBe(404);
       } finally {
         await server.stop();
       }

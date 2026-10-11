@@ -1,10 +1,20 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import {
+  type CommandResult,
+  cleanupTempDir,
+  createTempDir,
+  runCli,
+  runCommand,
+  type ServerOutput,
+  startServer,
+} from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
+const TIMEOUT_START = 60_000;
 
 describe('nextjs-mdx-pwa', () => {
   let projectDir: string;
@@ -48,6 +58,105 @@ describe('nextjs-mdx-pwa', () => {
     async () => {
       const result = await runCommand(['bun', 'run', 'build'], projectDir);
       expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_BUILD,
+  );
+
+  test(
+    'start serves /mdx and a document page with their rendered content, and 404s an unknown document',
+    async () => {
+      const server = await startServer(['bun', 'run', 'start'], projectDir);
+      try {
+        const home = await fetch(`${server.url}/mdx`);
+        expect(home.status).toBe(200);
+        const homeHtml = await home.text();
+        expect(homeHtml).toContain('<h1 class="h1-mdx">Home</h1>');
+        expect(homeHtml).toContain('href="/mdx/cool"');
+
+        const cool = await fetch(`${server.url}/mdx/cool`);
+        expect(cool.status).toBe(200);
+        const coolHtml = await cool.text();
+        expect(coolHtml).toContain('<h1 class="h1-mdx">Cool</h1>');
+        expect(coolHtml).toContain('<blockquote class="blockquote-mdx">');
+
+        expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
+        expect((await fetch(`${server.url}/mdx/cool/nested`)).status).toBe(404);
+        expect((await fetch(`${server.url}/mdx/home`)).status).toBe(404);
+        expect((await fetch(`${server.url}/cool`)).status).toBe(404);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'dev 404s an unknown document without a listener leak warning',
+    async () => {
+      const server = await startServer(['bun', 'run', 'dev'], projectDir, { readyTimeout: TIMEOUT_START });
+      let output: ServerOutput | undefined;
+      try {
+        expect((await fetch(`${server.url}/mdx`)).status).toBe(200);
+        expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
+      } finally {
+        output = await server.stop();
+      }
+      expect(output.stderr).not.toContain('MaxListenersExceededWarning');
+    },
+    TIMEOUT_START * 2,
+  );
+});
+
+describe('nextjs-mdx-cloudflare-static', () => {
+  let projectDir: string;
+  let installResult: CommandResult;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'nextjs-mdx-cloudflare-static',
+        '--app',
+        'nextjs-mdx-cloudflare-static:nextjs:mdx',
+        '--deployment',
+        'cloudflare-static',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+
+    projectDir = join(tempDir, 'nextjs-mdx-cloudflare-static');
+    installResult = await runCommand(['bun', 'install'], projectDir);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'installs dependencies',
+    () => {
+      expect(installResult.exitCode).toBe(0);
+    },
+    TIMEOUT_INSTALL,
+  );
+
+  test(
+    'build exports one page per document',
+    async () => {
+      const result = await runCommand(['bun', 'run', 'build'], projectDir);
+      expect(result.exitCode, result.stderr).toBe(0);
+
+      const home = await readFile(join(projectDir, 'out/mdx.html'), 'utf-8');
+      expect(home).toContain('<h1 class="h1-mdx">Home</h1>');
+      expect(home).toContain('href="/mdx/cool"');
+
+      const cool = await readFile(join(projectDir, 'out/mdx/cool.html'), 'utf-8');
+      expect(cool).toContain('<h1 class="h1-mdx">Cool</h1>');
     },
     TIMEOUT_BUILD,
   );

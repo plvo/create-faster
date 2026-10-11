@@ -1,0 +1,63 @@
+---
+only: no-blueprint
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import { notFound } from 'next/navigation';
+import { MDXRemote } from 'next-mdx-remote/rsc';
+import { parseFrontmatter } from '@/lib/mdx';
+import { mdxComponents } from '@/mdx-components';
+
+const CONTENTS_DIR = path.join(process.cwd(), 'contents');
+const HOME_DOCUMENT = 'home';
+
+interface PageProps {
+  params: Promise<{ slug?: string[] }>;
+}
+
+export function generateStaticParams(): { slug: string[] }[] {
+  return fs
+    .readdirSync(CONTENTS_DIR)
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => path.basename(file, '.mdx'))
+    .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
+}
+
+export const generateMetadata = async ({ params }: PageProps) => {
+  const { slug } = await params;
+
+  const { metadata } = parseFrontmatter(readDocument(slug));
+
+  return {
+    title: metadata.title,
+    description: metadata.summary,
+  };
+};
+
+export default async function Page({ params }: PageProps) {
+  const { slug } = await params;
+
+  const { metadata, content: mdxContent } = parseFrontmatter(readDocument(slug));
+
+  return (
+    <main className='max-w-162.5 mx-auto px-4 py-4 md:py-8'>
+      <MDXRemote source={mdxContent} components={mdxComponents} />
+      <pre>
+        <code>{JSON.stringify({ metadata }, null, 2)}</code>
+      </pre>
+    </main>
+  );
+}
+
+function readDocument(slug: string[] = []): string {
+  const isListed = generateStaticParams().some(
+    (params) => params.slug.length === slug.length && params.slug.every((segment, index) => segment === slug[index]),
+  );
+
+  if (!isListed) {
+    notFound();
+  }
+
+  const name = slug[0] ?? HOME_DOCUMENT;
+  return fs.readFileSync(path.join(CONTENTS_DIR, `${name}.mdx`), 'utf-8');
+}
