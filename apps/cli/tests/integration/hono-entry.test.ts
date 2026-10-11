@@ -41,7 +41,9 @@ describe('Hono entry exports', () => {
     expect(result.exitCode).toBe(0);
 
     const entry = join(tempDir, name, 'src/index.ts');
+    const content = await readTextFile(entry);
     expect((await exportedNames(entry)).sort()).toEqual(exports);
-    expect((await readTextFile(entry)).includes("from 'hono/aws-lambda'")).toBe(exports.includes('handler'));
+    expect(content.includes("from 'hono/aws-lambda'")).toBe(exports.includes('handler'));
+    expect(content).toEndWith('export default app;\n');
   });
 });
