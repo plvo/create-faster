@@ -1,0 +1,18 @@
+import { Link } from '@tanstack/react-router'
+
+export function NotFound() {
+  return (
+    <section className="{{#if (hasLibrary "shadcn")}}bg-card text-card-foreground border{{else}}bg-slate-800 border border-slate-700{{/if}} rounded-lg p-8">
+      <h2 className="text-2xl font-semibold mb-4">Page not found</h2>
+      <p className="{{#if (hasLibrary "shadcn")}}text-muted-foreground{{else}}text-gray-400{{/if}} mb-4">
+        The page you are looking for does not exist.
+      </p>
+      <Link
+        to="/"
+        className="inline-block px-6 py-2 {{#if (hasLibrary "shadcn")}}bg-primary hover:bg-primary/90 text-primary-foreground{{else}}bg-cyan-500 hover:bg-cyan-600 text-white{{/if}} font-semibold rounded-lg transition-colors"
+      >
+        Back to home
+      </Link>
+    </section>
+  )
+}

@@ -6,6 +6,7 @@ import {
   cleanupTempDir,
   createTempDir,
   expectServesPageWithClientScript,
+  fileExists,
   getFreePort,
   type RunningServer,
   runCli,
@@ -26,6 +27,7 @@ interface D1Probe {
 
 interface Scenario {
   name: string;
+  deployment: 'cloudflare' | 'cloudflare-static';
   args: string[];
   startAppDirs: string[];
   workerDirs: string[];
@@ -65,15 +67,57 @@ async function expectProbeAnswers(url: string): Promise<void> {
   }
 }
 
+const NOT_FOUND_TEXT = 'Page not found';
+
+// The generated app only has a home page: these test-only routes give the static prerender a static page
+// and a dynamic page that is reachable through a link only.
+const STATIC_TEST_ROUTES: Record<string, string> = {
+  'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/about')({
+  component: () => (
+    <div>
+      <h2>About page</h2>
+      <a href="/posts/1">First post</a>
+    </div>
+  ),
+});
+`,
+  'src/routes/posts.$id.tsx': `import { createFileRoute } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/posts/$id')({
+  component: () => <h2>Post {Route.useParams().id}</h2>,
+});
+`,
+};
+
+async function expectServesStaticSite(url: string): Promise<void> {
+  await expectServesPageWithClientScript(url);
+
+  const about = await fetch(new URL('/about', url), { redirect: 'manual' });
+  expect(about.status).toBe(200);
+  expect(await about.text()).toContain('About page');
+
+  const post = await fetch(new URL('/posts/1', url), { redirect: 'manual' });
+  expect(post.status).toBe(200);
+  expect(await post.text()).toContain('Post');
+
+  const missing = await fetch(new URL('/does-not-exist', url));
+  expect(missing.status).toBe(404);
+  expect(await missing.text()).toContain(NOT_FOUND_TEXT);
+}
+
 const SCENARIOS: Scenario[] = [
   {
     name: 'tanstack-start-cloudflare',
+    deployment: 'cloudflare',
     args: ['--app', 'tanstack-start-cloudflare:tanstack-start'],
     startAppDirs: ['.'],
     workerDirs: ['.'],
   },
   {
     name: 'tanstack-start-cloudflare-d1',
+    deployment: 'cloudflare',
     args: ['--app', 'tanstack-start-cloudflare-d1:tanstack-start', '--database', 'd1', '--orm', 'drizzle'],
     startAppDirs: ['.'],
     workerDirs: ['.'],
@@ -81,26 +125,52 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'tanstack-start-cloudflare-postgres',
+    deployment: 'cloudflare',
     args: ['--app', 'tanstack-start-cloudflare-postgres:tanstack-start', '--database', 'postgres', '--orm', 'drizzle'],
     startAppDirs: ['.'],
     workerDirs: ['.'],
   },
   {
     name: 'tanstack-start-cloudflare-turborepo',
+    deployment: 'cloudflare',
     args: ['--app', 'web:tanstack-start', '--app', 'admin:tanstack-start'],
     startAppDirs: ['apps/web', 'apps/admin'],
     workerDirs: ['apps/web', 'apps/admin'],
   },
   {
     name: 'tanstack-start-cloudflare-turborepo-d1',
+    deployment: 'cloudflare',
     args: ['--app', 'web:tanstack-start', '--app', 'api:hono', '--database', 'd1', '--orm', 'drizzle'],
     startAppDirs: ['apps/web'],
     workerDirs: ['apps/web', 'apps/api'],
     d1Probe: { appDir: 'apps/web', dbImport: '@repo/db' },
   },
+  {
+    name: 'tanstack-start-static',
+    deployment: 'cloudflare-static',
+    args: ['--app', 'tanstack-start-static:tanstack-start:shadcn,evlog,mdx'],
+    startAppDirs: ['.'],
+    workerDirs: ['.'],
+  },
+  {
+    name: 'tanstack-start-static-turborepo',
+    deployment: 'cloudflare-static',
+    args: ['--app', 'web:tanstack-start', '--app', 'admin:tanstack-start'],
+    startAppDirs: ['apps/web', 'apps/admin'],
+    workerDirs: ['apps/web', 'apps/admin'],
+  },
+  {
+    name: 'tanstack-start-static-next-turborepo',
+    deployment: 'cloudflare-static',
+    args: ['--app', 'web:tanstack-start', '--app', 'docs:nextjs'],
+    startAppDirs: ['apps/web'],
+    workerDirs: ['apps/web', 'apps/docs'],
+  },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs, d1Probe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe }) => {
+  const isStatic = deployment === 'cloudflare-static';
+
   let projectDir: string;
   let installResult: CommandResult;
   const servers: RunningServer[] = [];
@@ -108,12 +178,21 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs, d1Pro
   beforeAll(async () => {
     const tempDir = await createTempDir();
     const result = await runCli(
-      [name, ...args, '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      [name, ...args, '--deployment', deployment, '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
 
     projectDir = join(tempDir, name);
+    if (isStatic) {
+      for (const dir of startAppDirs) {
+        for (const [path, content] of Object.entries(STATIC_TEST_ROUTES)) {
+          const routePath = join(projectDir, dir, path);
+          await mkdir(dirname(routePath), { recursive: true });
+          await writeFile(routePath, content);
+        }
+      }
+    }
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -163,6 +242,16 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs, d1Pro
     async () => {
       const result = await runCommand(['bun', 'run', 'build'], projectDir);
       expect(result.exitCode).toBe(0);
+
+      if (isStatic) {
+        for (const dir of startAppDirs) {
+          const client = join(projectDir, dir, 'dist/client');
+          for (const file of ['index.html', '404.html', 'about.html', 'posts/1.html']) {
+            expect(await fileExists(join(client, file))).toBe(true);
+          }
+          expect(await fileExists(join(client, 'about/index.html'))).toBe(false);
+        }
+      }
     },
     TIMEOUT_BUILD,
   );
@@ -173,26 +262,46 @@ describe.each(SCENARIOS)('$name', ({ name, args, startAppDirs, workerDirs, d1Pro
       for (const dir of workerDirs) {
         const result = await runCommand(['bunx', 'wrangler', 'deploy', '--dry-run'], join(projectDir, dir));
         expect(result.exitCode).toBe(0);
+        if (isStatic) expect(result.stdout + result.stderr).toContain('assets directory');
       }
     },
     TIMEOUT_DEPLOY_DRY_RUN,
   );
 
-  test(
-    'vite preview serves the built app in workerd (and answers a D1 query when there is a database)',
-    async () => {
-      for (const dir of startAppDirs) {
-        const port = await getFreePort();
-        const server = await startServer(['bunx', 'vite', 'preview', '--port', String(port)], join(projectDir, dir), {
-          port,
-        });
-        servers.push(server);
-        await expectServesPageWithClientScript(server.url);
-        if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
-      }
-    },
-    TIMEOUT_PREVIEW,
-  );
+  if (isStatic) {
+    test(
+      'wrangler dev serves the home page, the linked pages and a 404 page on unknown urls',
+      async () => {
+        for (const dir of startAppDirs) {
+          const port = await getFreePort();
+          const server = await startServer(
+            ['bunx', 'wrangler', 'dev', '--ip', '127.0.0.1', '--port', String(port)],
+            join(projectDir, dir),
+            { port },
+          );
+          servers.push(server);
+          await expectServesStaticSite(server.url);
+        }
+      },
+      TIMEOUT_PREVIEW,
+    );
+  } else {
+    test(
+      'vite preview serves the built app in workerd (and answers a D1 query when there is a database)',
+      async () => {
+        for (const dir of startAppDirs) {
+          const port = await getFreePort();
+          const server = await startServer(['bunx', 'vite', 'preview', '--port', String(port)], join(projectDir, dir), {
+            port,
+          });
+          servers.push(server);
+          await expectServesPageWithClientScript(server.url);
+          if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
+        }
+      },
+      TIMEOUT_PREVIEW,
+    );
+  }
 
   test(
     'type-checks',

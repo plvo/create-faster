@@ -16,8 +16,8 @@ import type { TemplateContext } from '@/types/ctx';
 describe('cloudflare-static declares its availability as META data', () => {
   const option = META.project.deployment.options['cloudflare-static'];
 
-  test('requires a nextjs app via require.stacks', () => {
-    expect(option?.require?.stacks).toEqual(['nextjs']);
+  test('requires a nextjs or tanstack-start app via require.stacks', () => {
+    expect(option?.require?.stacks).toEqual(['nextjs', 'tanstack-start']);
   });
 
   test('declares it provides no server runtime', () => {

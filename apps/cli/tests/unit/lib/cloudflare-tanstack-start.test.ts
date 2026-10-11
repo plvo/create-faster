@@ -47,6 +47,12 @@ describe('cloudflare deployment: tanstack-start generated paths', () => {
     expect(dests).not.toContain('.env.start');
   });
 
+  test('evlog nitro.config.ts is not emitted: the app has no nitro dependency', () => {
+    const ctx = singleCtx('cloudflare');
+    ctx.apps[0]!.libraries = ['evlog'];
+    expect(destinations(ctx)).not.toContain('nitro.config.ts');
+  });
+
   test('without cloudflare the app keeps .env.start and gets no wrangler.jsonc', () => {
     const dests = destinations(singleCtx());
     expect(dests).toContain('.env.start');
