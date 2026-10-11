@@ -3,6 +3,8 @@ import type { Meta } from '@/types/meta';
 
 const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
+const LIBSQL_CLIENT_VERSION = '^0.17.4';
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -621,7 +623,14 @@ export const META: Meta = {
           mono: { scope: 'root' },
           packageJson: {
             dependencies: {
-              '@libsql/client': '^0.17.4',
+              '@libsql/client': LIBSQL_CLIENT_VERSION,
+            },
+          },
+          stackPackageJson: {
+            'tanstack-start': {
+              dependencies: {
+                '@libsql/client': $when(RUNS_NITRO, LIBSQL_CLIENT_VERSION),
+              },
             },
           },
           envs: [
@@ -640,7 +649,7 @@ export const META: Meta = {
           serverlessConsumersWired: true,
           packageJson: {
             devDependencies: {
-              '@libsql/client': '^0.17.4',
+              '@libsql/client': LIBSQL_CLIENT_VERSION,
               '@types/bun': '^1.4.0',
             },
             scripts: {
