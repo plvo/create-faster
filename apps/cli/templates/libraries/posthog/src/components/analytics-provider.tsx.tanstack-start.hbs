@@ -9,11 +9,7 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
     <PostHogProvider
       apiKey={POSTHOG_PROJECT_TOKEN}
       options=\{{
-        api_host: '/ingest',
-        ui_host: 'https://us.posthog.com',
-        defaults: '2026-05-30',
-        capture_exceptions: true,
-        debug: import.meta.env.DEV,
+        {{> posthog/client-options debug="import.meta.env.DEV"}}
       }}
     >
       {children}

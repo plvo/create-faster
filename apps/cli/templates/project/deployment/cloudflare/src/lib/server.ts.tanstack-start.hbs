@@ -1,7 +1,7 @@
 {{#if (has "database" "d1")}}
 {{#if project.orm}}
 {{#if (hasLibrary "better-auth")}}
-import { tanstackStartCookies } from 'better-auth/tanstack-start';
+{{> better-auth/cookie-plugin-import}}
 {{/if}}
 import { env } from 'cloudflare:workers';
 import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
@@ -11,7 +11,7 @@ import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/
 
 export const db = createDb(env.DB);
 {{#if (hasLibrary "better-auth")}}
-export const auth = createAuth(db, tanstackStartCookies());
+export const auth = createAuth(db, {{> better-auth/cookie-plugin}});
 {{/if}}
 {{/if}}
 {{/if}}

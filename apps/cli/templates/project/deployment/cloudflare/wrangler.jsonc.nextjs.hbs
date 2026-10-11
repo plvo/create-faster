@@ -8,22 +8,5 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }{{#if (has "database" "d1")}},
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
-      "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"
-    }
-  ]{{/if}}{{#if (or (has "database" "postgres") (has "database" "mysql"))}},
-  // Run `wrangler hyperdrive create <name> --connection-string=...` and paste the id below.
-  // localConnectionString is used by `wrangler dev` only; it matches the local DATABASE_URL in .env.
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_HYPERDRIVE_ID",
-      "localConnectionString": "{{#if (has "database" "postgres")}}postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}{{/if}}{{#if (has "database" "mysql")}}mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}{{/if}}"
-    }
-  ]{{/if}}
+  }{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}
 }

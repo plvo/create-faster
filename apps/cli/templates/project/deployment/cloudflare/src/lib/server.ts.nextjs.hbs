@@ -2,7 +2,7 @@
 {{#if project.orm}}
 import 'server-only';
 {{#if (hasLibrary "better-auth")}}
-import { nextCookies } from 'better-auth/next-js';
+{{> better-auth/cookie-plugin-import}}
 {{/if}}
 import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{#if (hasLibrary "better-auth")}}
@@ -16,7 +16,7 @@ export async function getDb() {
 {{#if (hasLibrary "better-auth")}}
 
 export async function getAuth() {
-  return createAuth(await getDb(), nextCookies());
+  return createAuth(await getDb(), {{> better-auth/cookie-plugin}});
 }
 {{/if}}
 {{/if}}

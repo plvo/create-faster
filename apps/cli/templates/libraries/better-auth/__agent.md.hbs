@@ -12,7 +12,7 @@ Add a social provider by editing `socialProviders` in `create-auth.ts`.
 `src/lib/server.ts` builds this app's `auth` once at module scope with `createAuth(db, tanstackStartCookies())`: import it from there.
 {{/if}}
 {{else}}
-`src/lib/auth/auth.ts` exports this app's `auth`, built from the factory with {{#if (eq stackName "nextjs")}}`nextCookies()`{{else}}`tanstackStartCookies()`{{/if}}: import it from there.
+`src/lib/auth/auth.ts` exports this app's `auth`, built from the factory with `{{> better-auth/cookie-plugin}}`: import it from there.
 {{/if}}
 Without a cookie plugin the factory disables session refresh: a refresh through an instance that cannot forward cookies would extend the session in the database but not in the browser.
 {{#if (hasLibrary "trpc")}}

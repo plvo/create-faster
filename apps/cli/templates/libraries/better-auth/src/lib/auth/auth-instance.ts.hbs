@@ -5,18 +5,8 @@ mono:
   path: src/lib/auth/auth.ts
 ---
 {{#unless (has "database" "d1")}}
-{{#if (eq stackName "nextjs")}}
-import { nextCookies } from 'better-auth/next-js';
-{{/if}}
-{{#if (eq stackName "tanstack-start")}}
-import { tanstackStartCookies } from 'better-auth/tanstack-start';
-{{/if}}
+{{> better-auth/cookie-plugin-import}}
 import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'./create-auth'{{/if}};
 
-{{#if (eq stackName "nextjs")}}
-export const auth = createAuth(nextCookies());
-{{/if}}
-{{#if (eq stackName "tanstack-start")}}
-export const auth = createAuth(tanstackStartCookies());
-{{/if}}
+export const auth = createAuth({{> better-auth/cookie-plugin}});
 {{/unless}}

@@ -3,8 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getRequestIP } from '@tanstack/react-start/server'
 {{/unless}}
 
-const API_HOST = 'us.i.posthog.com'
-const ASSET_HOST = 'us-assets.i.posthog.com'
+const API_HOST = '{{> posthog/api-host}}'
+const ASSET_HOST = '{{> posthog/asset-host}}'
 const PROXY_PREFIX = '/ingest'
 
 // PostHog asks proxies to accept 64 MB bodies (session recordings). The bound keeps one request from exhausting memory.
