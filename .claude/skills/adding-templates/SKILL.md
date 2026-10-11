@@ -243,13 +243,19 @@ adapter.ts.hono.hbs → only for Hono apps
 
 ### Available Handlebars Helpers
 
+`apps/cli/src/lib/handlebars.ts` (`registerHelpers`) is the source of truth; `AGENTS.md` describes each helper.
+
 | Helper | Purpose |
 |--------|---------|
 | `isMono` | Check if turborepo |
-| `hasLibrary "name"` | Check if current app has library |
-| `has "category" "value"` | Check database/orm/tooling/stack |
+| `hasLibrary "name"` | Check if current app has library (any app outside an app-scoped file) |
+| `has "category" "value"` | Check database/orm/deployment/linter/tooling selection, or `has "stack" "x"` for any app on the stack |
+| `databaseBinding "name"` | Check if the selected database declares `serverlessBinding: name` in META |
 | `hasContext "key"` | Check if key exists in context |
+| `hasRootScript "name"` | Check if the generated root `package.json` defines the script |
 | `appPort appName` | Get port for app (3000 + index) |
+| `camelCase str` | Convert a kebab or snake case string to camelCase |
+| `raw` | Block: renders its body as is |
 | `eq`, `ne`, `and`, `or` | Logical operators |
 
 ### Shared Blocks (Partials)
@@ -340,5 +346,5 @@ When several templates must render the same block (a wrangler binding, a client 
 | Env vars | Programmatic | `env-generator.ts` reads META `envs` |
 | File extensions | `KNOWN_EXTENSIONS` | `frontmatter.ts` |
 | Frontmatter | YAML in `.hbs` | `path`, `mono`, `only` |
-| Helpers | `handlebars.ts` | `isMono`, `hasLibrary`, `has`, `hasContext`, `appPort` |
+| Helpers | `handlebars.ts` | See Available Handlebars Helpers |
 | Shared blocks | `templates/partials/{group}/{name}.hbs` | `{{> group/name}}` |
