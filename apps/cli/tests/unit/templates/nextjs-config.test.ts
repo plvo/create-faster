@@ -3,11 +3,11 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import { removeFrontmatter } from '@/lib/frontmatter';
-import { renderTemplate, registerHandlebarsHelpers } from '@/lib/handlebars';
+import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import type { TemplateContext } from '@/types/ctx';
 
 beforeAll(() => {
-  registerHandlebarsHelpers();
+  setupTemplateEngine();
 });
 
 function makeContext(tooling: string[]): TemplateContext {

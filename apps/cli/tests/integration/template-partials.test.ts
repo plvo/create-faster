@@ -97,6 +97,9 @@ export async function getAuth() {
   return createAuth(await getDb(), nextCookies());
 }
 `);
+      expect(await readTextFile(join(path, 'AGENTS.md'))).toContain(
+        "`getAuth()` in `src/lib/server.ts` builds this app's instance per request with `nextCookies()`: call it, never build one yourself.\n",
+      );
     });
 
     test('nextjs + postgres: wrangler.jsonc carries the Hyperdrive binding for wrangler dev', async () => {
@@ -185,6 +188,13 @@ import { createAuth } from '@/lib/auth/create-auth';
 export const db = createDb(env.DB);
 export const auth = createAuth(db, tanstackStartCookies());
 `);
+      const agentDoc = await readTextFile(join(path, 'AGENTS.md'));
+      expect(agentDoc).toContain(
+        "`src/lib/server.ts` builds this app's `auth` once at module scope with `createAuth(db, tanstackStartCookies())`: import it from there.\n",
+      );
+      expect(agentDoc).toContain(
+        "\n- `tanstackStartCookies()` is the cookie plugin of this app's instance and stays last in the plugins: it forwards the cookies set by auth calls made from server functions.\n",
+      );
     });
   });
 
