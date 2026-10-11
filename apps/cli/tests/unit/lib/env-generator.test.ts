@@ -114,7 +114,7 @@ describe('collectEnvFiles', () => {
     });
     const files = collectEnvFiles(ctx);
 
-    expect(files[0].content).toContain('BETTER_AUTH_URL=https://my-project.localhost:1355');
+    expect(files[0]!.content).toContain('BETTER_AUTH_URL=https://my-project.localhost:1355');
   });
 
   test('does not pollute .env.example with NEXT_PUBLIC_APP_URL when portless is selected', () => {
@@ -145,9 +145,9 @@ describe('collectEnvFiles', () => {
     const files = collectEnvFiles(ctx);
 
     expect(files).toHaveLength(1);
-    expect(files[0].destination).toBe('.env.example');
-    expect(files[0].content).toContain('DATABASE_URL');
-    expect(files[0].content).toContain('BETTER_AUTH_SECRET');
+    expect(files[0]!.destination).toBe('.env.example');
+    expect(files[0]!.content).toContain('DATABASE_URL');
+    expect(files[0]!.content).toContain('BETTER_AUTH_SECRET');
   });
 
   test('returns empty array when no addons have envs', () => {
@@ -180,7 +180,7 @@ describe('collectEnvGroups', () => {
     const groups = collectEnvGroups(ctx);
 
     expect(groups).toHaveLength(1);
-    expect(groups[0].path).toBe('.env');
+    expect(groups[0]!.path).toBe('.env');
   });
 });
 

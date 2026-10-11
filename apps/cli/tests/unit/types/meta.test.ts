@@ -81,8 +81,8 @@ describe('MetaAddon types', () => {
       envs: [{ value: 'DATABASE_URL="postgresql://localhost:5432/mydb"', monoScope: [{ pkg: 'db' }, 'app'] }],
     };
     expect(addon.envs).toHaveLength(1);
-    expect(addon.envs![0].value).toContain('DATABASE_URL');
-    expect(addon.envs![0].monoScope).toContain('app');
+    expect(addon.envs![0]!.value).toContain('DATABASE_URL');
+    expect(addon.envs![0]!.monoScope).toContain('app');
   });
 
   test('EnvScope supports root, app, and pkg with name', () => {

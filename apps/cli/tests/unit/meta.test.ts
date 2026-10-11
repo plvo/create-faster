@@ -25,7 +25,7 @@ describe('META.libraries validation', () => {
 
   test('shadcn is a library', () => {
     expect(META.libraries.shadcn).toBeDefined();
-    expect(META.libraries.shadcn.label).toBe('shadcn/ui');
+    expect(META.libraries.shadcn!.label).toBe('shadcn/ui');
   });
 });
 
@@ -59,7 +59,7 @@ describe('META.project validation', () => {
   });
 
   test('eslint has pkg-scoped mono with eslint-config name', () => {
-    const eslint = META.project.linter.options.eslint;
+    const eslint = META.project.linter.options.eslint!;
     expect(eslint.mono?.scope).toBe('pkg');
     if (eslint.mono?.scope === 'pkg') {
       expect(eslint.mono.name).toBe('eslint-config');
@@ -67,7 +67,7 @@ describe('META.project validation', () => {
   });
 
   test('eslint has all expected devDependencies', () => {
-    const eslint = META.project.linter.options.eslint;
+    const eslint = META.project.linter.options.eslint!;
     const devDeps = eslint.packageJson?.devDependencies;
     expect(devDeps?.eslint).toBeDefined();
     expect(devDeps?.['@eslint/js']).toBeDefined();
@@ -79,7 +79,7 @@ describe('META.project validation', () => {
   });
 
   test('eslint has shared config exports', () => {
-    const exports = META.project.linter.options.eslint.packageJson?.exports;
+    const exports = META.project.linter.options.eslint!.packageJson?.exports;
     expect(exports?.['./base']).toBeDefined();
     expect(exports?.['./next']).toBeDefined();
     expect(exports?.['./react']).toBeDefined();
@@ -88,17 +88,17 @@ describe('META.project validation', () => {
   });
 
   test('eslint has appPackageJson with lint script', () => {
-    const eslint = META.project.linter.options.eslint;
+    const eslint = META.project.linter.options.eslint!;
     expect(eslint.appPackageJson?.scripts?.lint).toBe('eslint .');
   });
 
   test('biome has root-scoped mono', () => {
-    const biome = META.project.linter.options.biome;
+    const biome = META.project.linter.options.biome!;
     expect(biome.mono?.scope).toBe('root');
   });
 
   test('oxc has root-scoped mono with oxlint and oxfmt', () => {
-    const oxc = META.project.linter.options.oxc;
+    const oxc = META.project.linter.options.oxc!;
     expect(oxc.mono?.scope).toBe('root');
     expect(oxc.packageJson?.devDependencies?.oxlint).toBeDefined();
     expect(oxc.packageJson?.devDependencies?.oxfmt).toBeDefined();
@@ -108,7 +108,7 @@ describe('META.project validation', () => {
   });
 
   test('prettier has root-scoped mono with formatter deps', () => {
-    const prettier = META.project.linter.options.prettier;
+    const prettier = META.project.linter.options.prettier!;
     expect(prettier.mono?.scope).toBe('root');
     expect(prettier.packageJson?.devDependencies?.prettier).toBeDefined();
     expect(prettier.packageJson?.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
@@ -117,7 +117,7 @@ describe('META.project validation', () => {
   });
 
   test('eslint-prettier composes eslint and prettier', () => {
-    const eslintPrettier = META.project.linter.options['eslint-prettier'];
+    const eslintPrettier = META.project.linter.options['eslint-prettier']!;
     expect(eslintPrettier.compose).toEqual(['eslint', 'prettier']);
     expect(eslintPrettier.mono?.scope).toBe('pkg');
     if (eslintPrettier.mono?.scope === 'pkg') {
@@ -127,7 +127,7 @@ describe('META.project validation', () => {
   });
 
   test('eslint-prettier compose references exist as linter options', () => {
-    const eslintPrettier = META.project.linter.options['eslint-prettier'];
+    const eslintPrettier = META.project.linter.options['eslint-prettier']!;
     for (const ref of eslintPrettier.compose ?? []) {
       expect(META.project.linter.options[ref], `compose ref '${ref}' should exist`).toBeDefined();
     }
@@ -137,7 +137,7 @@ describe('META.project validation', () => {
     expect(META.project.deployment).toBeDefined();
     expect(META.project.deployment.selection).toBe('single');
     expect(META.project.deployment.options.sst).toBeDefined();
-    expect(META.project.deployment.options.sst.packageJson?.devDependencies?.sst).toBeDefined();
+    expect(META.project.deployment.options.sst!.packageJson?.devDependencies?.sst).toBeDefined();
   });
 
   test('tooling category is multi-select', () => {
@@ -184,27 +184,27 @@ describe('META.stacks validation', () => {
 
 describe('META env vars', () => {
   test('postgres declares DATABASE_URL with pkg and app scope', () => {
-    const postgres = META.project.database.options.postgres;
+    const postgres = META.project.database.options.postgres!;
     expect(postgres.envs).toBeDefined();
     expect(postgres.envs).toHaveLength(1);
-    expect(postgres.envs![0].value).toContain('DATABASE_URL');
-    expect(postgres.envs![0].value).toContain('postgresql://');
-    expect(postgres.envs![0].monoScope).toContainEqual({ pkg: 'db' });
-    expect(postgres.envs![0].monoScope).toContain('app');
+    expect(postgres.envs![0]!.value).toContain('DATABASE_URL');
+    expect(postgres.envs![0]!.value).toContain('postgresql://');
+    expect(postgres.envs![0]!.monoScope).toContainEqual({ pkg: 'db' });
+    expect(postgres.envs![0]!.monoScope).toContain('app');
   });
 
   test('mysql declares DATABASE_URL with pkg and app scope', () => {
-    const mysql = META.project.database.options.mysql;
+    const mysql = META.project.database.options.mysql!;
     expect(mysql.envs).toBeDefined();
     expect(mysql.envs).toHaveLength(1);
-    expect(mysql.envs![0].value).toContain('DATABASE_URL');
-    expect(mysql.envs![0].value).toContain('mysql://');
-    expect(mysql.envs![0].monoScope).toContainEqual({ pkg: 'db' });
-    expect(mysql.envs![0].monoScope).toContain('app');
+    expect(mysql.envs![0]!.value).toContain('DATABASE_URL');
+    expect(mysql.envs![0]!.value).toContain('mysql://');
+    expect(mysql.envs![0]!.monoScope).toContainEqual({ pkg: 'db' });
+    expect(mysql.envs![0]!.monoScope).toContain('app');
   });
 
   test('better-auth declares BETTER_AUTH_SECRET and BETTER_AUTH_URL', () => {
-    const auth = META.libraries['better-auth'];
+    const auth = META.libraries['better-auth']!;
     expect(auth.envs).toBeDefined();
     expect(auth.envs).toHaveLength(2);
 
@@ -220,9 +220,9 @@ describe('META env vars', () => {
   });
 
   test('addons without env vars have no envs field', () => {
-    expect(META.libraries.shadcn.envs).toBeUndefined();
-    expect(META.libraries['tanstack-query'].envs).toBeUndefined();
-    expect(META.project.linter.options.biome.envs).toBeUndefined();
+    expect(META.libraries.shadcn!.envs).toBeUndefined();
+    expect(META.libraries['tanstack-query']!.envs).toBeUndefined();
+    expect(META.project.linter.options.biome!.envs).toBeUndefined();
   });
 });
 
@@ -232,12 +232,12 @@ describe('META.project.tooling.portless', () => {
   });
 
   test('portless has devDependency declared', () => {
-    const portless = META.project.tooling.options['portless'];
+    const portless = META.project.tooling.options['portless']!;
     expect(portless.packageJson?.devDependencies?.['portless']).toBeDefined();
   });
 
   test('portless has root mono scope', () => {
-    const portless = META.project.tooling.options['portless'];
+    const portless = META.project.tooling.options['portless']!;
     expect(portless.mono).toEqual({ scope: 'root' });
   });
 });
@@ -248,28 +248,28 @@ describe('META.blueprints.org-dashboard', () => {
   });
 
   test('org-dashboard has valid context with 2 apps', () => {
-    const bp = META.blueprints['org-dashboard'];
+    const bp = META.blueprints['org-dashboard']!;
     expect(bp.context.apps).toHaveLength(2);
-    expect(bp.context.apps[0].appName).toBe('web');
-    expect(bp.context.apps[0].stackName).toBe('nextjs');
-    expect(bp.context.apps[0].libraries).toContain('shadcn');
-    expect(bp.context.apps[0].libraries).toContain('better-auth');
-    expect(bp.context.apps[0].libraries).toContain('trpc');
-    expect(bp.context.apps[0].libraries).toContain('tanstack-query');
-    expect(bp.context.apps[0].libraries).toContain('tanstack-devtools');
-    expect(bp.context.apps[0].libraries).toContain('tanstack-form');
-    expect(bp.context.apps[0].libraries).toContain('next-themes');
-    expect(bp.context.apps[1].appName).toBe('batch');
-    expect(bp.context.apps[1].stackName).toBe('node');
+    expect(bp.context.apps[0]!.appName).toBe('web');
+    expect(bp.context.apps[0]!.stackName).toBe('nextjs');
+    expect(bp.context.apps[0]!.libraries).toContain('shadcn');
+    expect(bp.context.apps[0]!.libraries).toContain('better-auth');
+    expect(bp.context.apps[0]!.libraries).toContain('trpc');
+    expect(bp.context.apps[0]!.libraries).toContain('tanstack-query');
+    expect(bp.context.apps[0]!.libraries).toContain('tanstack-devtools');
+    expect(bp.context.apps[0]!.libraries).toContain('tanstack-form');
+    expect(bp.context.apps[0]!.libraries).toContain('next-themes');
+    expect(bp.context.apps[1]!.appName).toBe('batch');
+    expect(bp.context.apps[1]!.stackName).toBe('node');
     expect(bp.context.project.database).toBe('postgres');
     expect(bp.context.project.orm).toBe('drizzle');
   });
 
   test('org-dashboard libraries exist and are compatible with their stack', () => {
-    const bp = META.blueprints['org-dashboard'];
+    const bp = META.blueprints['org-dashboard']!;
     for (const app of bp.context.apps) {
       for (const lib of app.libraries) {
-        const library = META.libraries[lib];
+        const library = META.libraries[lib]!;
         expect(library, `library ${lib} must exist in META`).toBeDefined();
         const stacks = library.support?.stacks;
         if (stacks && stacks !== 'all') {

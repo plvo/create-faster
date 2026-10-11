@@ -15,32 +15,32 @@ function contextWithDatabase(database: string): TemplateContext {
 
 describe('sqlite database option', () => {
   test('declares the libsql driver as a runtime dependency, not a dev-only connector', () => {
-    const sqlite = META.project.database.options.sqlite;
+    const sqlite = META.project.database.options.sqlite!;
     expect(sqlite).toBeDefined();
     expect(Object.keys(sqlite.packageJson?.dependencies ?? {})).toEqual(['@libsql/client']);
     expect(sqlite.packageJson?.devDependencies ?? {}).toEqual({});
   });
 
   test('declares DATABASE_URL pointing to a local file with the libsql file: prefix', () => {
-    const envs = META.project.database.options.sqlite.envs ?? [];
+    const envs = META.project.database.options.sqlite!.envs ?? [];
     const dbUrl = envs.find((env) => env.value.startsWith('DATABASE_URL='));
     expect(dbUrl).toBeDefined();
     expect(dbUrl?.value).toContain('file:./db.sqlite');
   });
 
   test('prisma requirements are not met with sqlite', () => {
-    const prisma = META.project.orm.options.prisma;
+    const prisma = META.project.orm.options.prisma!;
     expect(isRequirementMet(prisma.require, contextWithDatabase('sqlite'))).toBe(false);
   });
 
   test('prisma requirements are met with postgres and mysql', () => {
-    const prisma = META.project.orm.options.prisma;
+    const prisma = META.project.orm.options.prisma!;
     expect(isRequirementMet(prisma.require, contextWithDatabase('postgres'))).toBe(true);
     expect(isRequirementMet(prisma.require, contextWithDatabase('mysql'))).toBe(true);
   });
 
   test('drizzle requirements are met with sqlite', () => {
-    const drizzle = META.project.orm.options.drizzle;
+    const drizzle = META.project.orm.options.drizzle!;
     expect(isRequirementMet(drizzle.require, contextWithDatabase('sqlite'))).toBe(true);
   });
 });
@@ -57,12 +57,12 @@ describe('better-auth database restriction', () => {
   }
 
   test('is satisfied with sqlite (drizzle adapter)', () => {
-    const betterAuth = META.libraries['better-auth'];
+    const betterAuth = META.libraries['better-auth']!;
     expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('sqlite'))).toBe(true);
   });
 
   test('is satisfied with postgres and mysql', () => {
-    const betterAuth = META.libraries['better-auth'];
+    const betterAuth = META.libraries['better-auth']!;
     expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('postgres'))).toBe(true);
     expect(isRequirementMet(betterAuth.require, contextWithBetterAuth('mysql'))).toBe(true);
   });
