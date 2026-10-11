@@ -12,6 +12,8 @@ export const PARTIALS_DIR = path.join(TEMPLATES_DIR, 'partials');
 
 export const DOCS_URL = 'https://create.plvo.dev';
 
+export const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
+
 const emojis = ['🌱', '🚀', '💻', '🔥', '🔧', '🔨', '🔩', '🐱', '🤖'];
 
 export const INTRO_MESSAGE = color.bgBlue(

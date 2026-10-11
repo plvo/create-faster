@@ -1,9 +1,9 @@
-import { execSync } from 'node:child_process';
 import { META } from '@/__meta__';
 import { applyAppScripts, findRuntimeAddon, isLibraryCompatible, resolveScriptPlaceholders } from '@/lib/addon-utils';
+import { getPackageManagerField } from '@/lib/package-manager';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
-import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
+import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
 
@@ -216,7 +216,7 @@ function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: 
 
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
   const isTurborepo = ctx.repo === 'turborepo';
-  const packageManager = !isTurborepo && ctx.pm ? getPackageManager(ctx.pm) : undefined;
+  const packageManager = isTurborepo ? undefined : getPackageManagerField(ctx);
   const path = isTurborepo ? `apps/${app.appName}/package.json` : 'package.json';
 
   return { path, content: cleanUndefined({ ...composeAppPackageJson(app, ctx, appIndex), packageManager }) };
@@ -249,11 +249,6 @@ export function generatePackagePackageJson(
     path: `packages/${packageName}/package.json`,
     content: cleanUndefined(pkg),
   };
-}
-
-export function getPackageManager(pm: NonNullable<PackageManager>): string {
-  const pmVersion = execSync(`${pm} --version`, { stdio: 'pipe' }).toString().trim();
-  return `${pm}@${pmVersion}`;
 }
 
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
@@ -337,7 +332,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
 }
 
 export function generateRootPackageJson(ctx: TemplateContext): GeneratedPackageJson {
-  const packageManager = getPackageManager(ctx.pm ?? 'npm');
+  const packageManager = getPackageManagerField(ctx);
 
   return { path: 'package.json', content: cleanUndefined({ ...composeRootPackageJson(ctx), packageManager }) };
 }

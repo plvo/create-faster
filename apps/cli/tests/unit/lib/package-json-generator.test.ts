@@ -3,7 +3,6 @@ import {
   generateAllPackageJsons,
   generateAppPackageJson,
   generateRootPackageJson,
-  getPackageManager,
   mergePackageJsonConfigs,
 } from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';
@@ -789,18 +788,6 @@ describe('syncpack (turborepo)', () => {
       dependencyTypes: ['!local'],
       lintFormatting: false,
     });
-  });
-});
-
-describe('getPackageManager', () => {
-  test('returns bun@<version> format', () => {
-    const result = getPackageManager('bun');
-    expect(result).toMatch(/^bun@\d+\.\d+\.\d+/);
-  });
-
-  test('returns npm@<version> format', () => {
-    const result = getPackageManager('npm');
-    expect(result).toMatch(/^npm@\d+\.\d+\.\d+/);
   });
 });
 

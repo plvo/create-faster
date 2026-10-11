@@ -3,8 +3,8 @@ import { groupMultiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
-import { handlePromptCancel } from '@/prompts/base-prompts';
-import { S_CONNECT_LEFT, S_GRAY_BAR, S_RADIO_DISABLED, symbol } from '@/tui/symbols';
+import { type DisableableChoice, handlePromptCancel, promptSelectWithDisabled } from '@/prompts/base-prompts';
+import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
 import type { MetaProjectCategory, ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -133,9 +133,7 @@ export async function promptProjectCategorySingle(
   categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
 ): Promise<string | undefined> {
-  type CategoryOption = { value: string | undefined; label: string; hint?: string; disabledReason?: string };
-
-  const fullList: CategoryOption[] = [
+  const choices: DisableableChoice[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
     ...Object.entries(category.options).map(([name, addon]) => ({
       value: name,
@@ -145,35 +143,7 @@ export async function promptProjectCategorySingle(
     })),
   ];
 
-  const selectable = fullList.filter((option) => !option.disabledReason);
-
-  const CategoryPrompt = new SelectPrompt({
-    options: selectable,
-
-    render() {
-      let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${category.prompt}`;
-      const active = this.options[this.cursor];
-
-      for (const option of fullList) {
-        if (option.disabledReason) {
-          output += `\n${S_GRAY_BAR} ${color.dim(S_RADIO_DISABLED)} ${color.dim(option.label)}  ${color.red('✕')} ${color.dim(option.disabledReason)}`;
-          continue;
-        }
-
-        const isActive = option.value === active?.value;
-        const hint = isActive && option.hint ? color.dim(`(${option.hint})`) : '';
-        output += `\n${S_GRAY_BAR} ${symbol(isActive ? 'active' : 'submit')} ${option.label} ${hint}`;
-      }
-
-      return output;
-    },
-  });
-
-  const result = await CategoryPrompt.prompt();
-
-  if (isCancel(result)) handlePromptCancel();
-
-  return result as string | undefined;
+  return promptSelectWithDisabled<string | undefined>(category.prompt, choices);
 }
 
 export async function promptProjectCategoryMulti(

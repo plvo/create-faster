@@ -1,3 +1,4 @@
+import type { PACKAGE_MANAGERS } from '@/lib/constants';
 import type { StackName } from '@/types/stack-name';
 
 export interface AppContext {
@@ -14,7 +15,9 @@ export interface ProjectContext {
   tooling: string[];
 }
 
-export type PackageManager = 'bun' | 'npm' | 'pnpm' | undefined;
+export type PackageManagerName = (typeof PACKAGE_MANAGERS)[number];
+
+export type PackageManager = PackageManagerName | undefined;
 
 export interface TemplateContext {
   projectName: string;
