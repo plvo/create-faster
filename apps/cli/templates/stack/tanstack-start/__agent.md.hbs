@@ -2,5 +2,6 @@ TanStack Start project. File-based routes in `src/routes/`, root layout in `src/
 Import alias `@/*` maps to `src/*`.
 {{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
 
-`build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (the app's default `PORT`, which wins over a `PORT` in `.env`). A variable exported in the shell wins over both files.
+`build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (the app's default `PORT`, which wins over a `PORT` in `.env`). Without a `.env`, Node prints `.env not found. Continuing without it.` on stderr and starts anyway.
+A variable exported in the shell wins over both files when `start` runs from the app directory.{{#if (isMono)}} `turbo start` from the root runs in turbo's strict env mode, which drops shell variables, so only the two files apply there.{{/if}}
 {{/unless}}

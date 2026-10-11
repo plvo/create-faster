@@ -93,12 +93,14 @@ describe('collectAgentContextFiles (turborepo)', () => {
 });
 
 describe('collectAgentContextFiles (TanStack Start)', () => {
-  function startSection(deployment?: ProjectContext['deployment']): string {
+  function startSection(deployment?: ProjectContext['deployment'], repo: TemplateContext['repo'] = 'single'): string {
     const ctx = makeContext({
-      apps: [{ appName: 'my-project', stackName: 'tanstack-start', libraries: [] }],
+      repo,
+      apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
       project: { deployment, tooling: [] },
     });
-    const content = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md')?.content ?? '';
+    const destination = repo === 'turborepo' ? 'apps/web/AGENTS.md' : 'AGENTS.md';
+    const content = collectAgentContextFiles(ctx).find((f) => f.destination === destination)?.content ?? '';
     const start = content.indexOf('## TanStack Start');
     expect(start).toBeGreaterThanOrEqual(0);
     const end = content.indexOf('\n## ', start + 1);
@@ -110,6 +112,15 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
     expect(section).toContain('`.env`');
     expect(section).toContain('`.env.start`');
     expect(section).toContain('PORT');
+  });
+
+  test('names the notice Node prints on stderr when the optional .env is missing', () => {
+    expect(startSection()).toContain('`.env not found. Continuing without it.`');
+  });
+
+  test('limits shell overrides to start run from the app directory, since turbo start drops shell variables', () => {
+    expect(startSection(undefined, 'turborepo')).toContain('`turbo start`');
+    expect(startSection()).not.toContain('turbo');
   });
 
   test.each(['cloudflare', 'cloudflare-static'] as const)('does not document the Nitro start script under %p', (deployment) => {
