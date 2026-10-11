@@ -13,9 +13,12 @@ description: Pre-configured QueryClient with optimized defaults and provider set
 Modified files:
 - `src/components/app-providers.tsx` - Adds `QueryClientProvider`
 
-On TanStack Start, `@tanstack/react-router-ssr-query` is installed too: the [tRPC](/docs/modules/api/trpc) router integration uses it.
+On TanStack Start, TanStack Query is wired into the router instead, with `@tanstack/react-router-ssr-query`:
+- `src/lib/query-client.ts` - `makeQueryClient()`: 30 second `staleTime`, and pending queries are dehydrated too so a loader can prefetch without awaiting (with [tRPC](/docs/modules/api/trpc), superjson serializers as well)
+- `src/router.tsx` - `getRouter()` builds a `QueryClient` per request, puts it in the router context as `queryClient` and calls `setupRouterSsrQueryIntegration`, which provides it to the app and streams the server's queries to the browser
+- `src/routes/__root.tsx` - Types the router context with `createRootRouteWithContext`
 
-**QueryClient configuration:**
+**QueryClient configuration (Next.js):**
 - Retry: 1 attempt
 - `refetchOnWindowFocus: false`
 - `staleTime: 5 minutes`

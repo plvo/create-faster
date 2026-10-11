@@ -16,6 +16,7 @@ Files added on Next.js (see [TanStack Start](#tanstack-start) for that stack):
 ```
 src/trpc/
 ├── init.ts              # createTRPCContext({ headers }) + procedure definitions
+├── session-reader.ts    # The instance the context reads sessions through (if Better Auth, single repo)
 ├── client.ts            # Standalone tRPC client with httpBatchLink
 ├── server.tsx           # Server-side utilities (RSC caller or Query proxy)
 ├── query-client.ts      # QueryClient factory (if TanStack Query)
@@ -25,7 +26,7 @@ src/trpc/
     └── hello.ts         # Example router with Zod validation
 
 src/app/api/trpc/
-└── [trpc]/route.ts      # Fetch adapter API handler
+└── [trpc]/route.ts      # Fetch adapter API handler, refuses cross-origin writes
 
 # Turborepo only:
 packages/api/
@@ -41,7 +42,7 @@ packages/api/
 
 ### init.ts
 
-Context creation and procedure definitions. Automatically includes `db` if ORM is selected, and `session` + `protectedProcedure` if Better Auth is installed. `createTRPCContext` takes the request headers explicitly on both stacks and in both repo types: the API route passes the request's headers, and server-side callers pass the current request's headers (`headers()` on Next.js, `getRequest().headers` on TanStack Start):
+Context creation and procedure definitions. The context carries the request `headers`, `db` if an ORM is selected, and `session` + `protectedProcedure` if Better Auth is installed. `createTRPCContext` takes the request headers explicitly on both stacks and in both repo types, plus the `db` on Cloudflare D1 (`{ headers, db }`): the API route passes the request's headers, and server-side callers pass the current request's headers (`headers()` on Next.js, `getRequest().headers` on TanStack Start):
 
 ```ts title="src/trpc/init.ts"
 import { db } from '@/lib/db';
@@ -50,21 +51,31 @@ import superjson from 'superjson';
 
 export async function createTRPCContext(opts: { headers: Headers }) {
   return {
+    headers: opts.headers,
     db,
   };
 }
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
+  isDev,
+  errorFormatter: ({ shape, error }) =>
+    isDev || error.code !== 'INTERNAL_SERVER_ERROR' ? shape : { ...shape, message: 'Internal server error' },
 });
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
 ```
 
-With Better Auth, the context includes `session` and a `protectedProcedure` middleware is exported:
+`isDev` is read when the app is built (the bundler inlines `NODE_ENV`), not at runtime: tRPC's default reads it at runtime, and a production server that does not set `NODE_ENV` would send stack traces. Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters.
+
+The API route (`route.ts` on Next.js, `src/routes/api/trpc/$.ts` on TanStack Start) refuses with a 403 any request other than `GET` and `HEAD` whose `Origin` header names another origin, so a page on another site cannot run a mutation with the user's cookies. Requests without `Origin` (other servers, scripts) pass.
+
+With Better Auth, the context includes `session` and a `protectedProcedure` middleware is exported. In a single repo, the context reads sessions through `sessionReader` from `src/trpc/session-reader.ts`: the app's own instance on Next.js, a cookie-less `createAuth()` on TanStack Start.
 
 ```ts
 export const protectedProcedure = publicProcedure.use(async (opts) => {
@@ -182,15 +193,14 @@ Creates `@repo/api` package depending on `@repo/db` and `@repo/auth`. App import
 
 ## TanStack Start
 
-On TanStack Start, procedures called during server rendering run in memory through `unstable_localLink`, and the browser calls the API route through `httpBatchLink`. One client is built per request in `getRouter()` and passed to routes through the router context. `init.ts` and the routers are the same as on Next.js, except that `init.ts` sets `isDev` from the build mode: Start's production server does not run with `NODE_ENV=production`, which tRPC otherwise reads at runtime to keep stack traces out of error responses.
+On TanStack Start, procedures called during server rendering run in memory through `unstable_localLink`, and the browser calls the API route through `httpBatchLink`. One client is built per request in `getRouter()` and passed to routes through the router context. `init.ts` and the routers are the same as on Next.js.
 
 Files added:
 ```
 src/trpc/
 ├── init.ts              # createTRPCContext({ headers }) + procedure definitions
 ├── client.ts            # makeTRPCClient(): localLink on the server, httpBatchLink in the browser
-├── auth.ts              # Cookie-less auth instance for the context (if Better Auth, single repo)
-├── query-client.ts      # QueryClient factory (if TanStack Query)
+├── session-reader.ts    # Cookie-less auth instance for the context (if Better Auth, single repo)
 ├── providers.tsx        # TRPCProvider, useTRPC, useTRPCClient (if TanStack Query)
 └── routers/
     ├── _app.ts
@@ -201,7 +211,8 @@ src/routes/api/trpc/
 ```
 
 **Modified files:**
-- `src/router.tsx` - `getRouter()` builds the per-request client and puts it in the router context; with TanStack Query it also builds the `QueryClient` and the options proxy, wraps the app in `TRPCProvider` and calls `setupRouterSsrQueryIntegration`
+- `src/router.tsx` - `getRouter()` builds the per-request client and puts it in the router context; with TanStack Query, next to the query client that [TanStack Query](/docs/modules/data-fetching/tanstack-query) builds, it adds the options proxy and wraps the app in `TRPCProvider`
+- `src/lib/query-client.ts` (TanStack Query's) - `makeQueryClient()` adds the superjson serializers tRPC needs
 - `src/routes/__root.tsx` - Types the router context with `createRootRouteWithContext`
 
 ```ts title="src/trpc/client.ts"
@@ -213,7 +224,10 @@ export const makeTRPCClient = createIsomorphicFn()
         unstable_localLink({
           router: appRouter,
           transformer: superjson,
-          createContext: () => (context ??= createTRPCContext({ headers: getRequest().headers })),
+          createContext: () => {
+            if (!context) context = createTRPCContext({ headers: getRequest().headers });
+            return context;
+          },
         }),
       ],
     });
@@ -227,7 +241,7 @@ export const makeTRPCClient = createIsomorphicFn()
 
 The server client memoizes the context promise, so the procedures of one request share one context; `createIsomorphicFn` keeps the router, the database client and the auth instance out of the client bundle.
 
-**With TanStack Query**, `getRouter()` builds the client, a `QueryClient` from `makeQueryClient()` and the options proxy per request, and puts `{ queryClient, trpc }` in the router context. `@tanstack/react-router-ssr-query` (installed by TanStack Query on TanStack Start) sends the server's queries to the browser with the superjson serializer of `makeQueryClient()`, streaming the ones still pending. Prefetch in the loader without awaiting, and read the query with `useSuspenseQuery` inside a `Suspense` boundary:
+**With TanStack Query**, `getRouter()` builds the client and the options proxy per request next to TanStack Query's `QueryClient`, and the router context holds `{ queryClient, trpc }`. The SSR query integration sends the server's queries to the browser with the superjson serializers of `makeQueryClient()`, streaming the ones still pending. Prefetch in the loader without awaiting, and read the query with `useSuspenseQuery` inside a `Suspense` boundary:
 
 ```tsx title="src/routes/greeting.tsx"
 export const Route = createFileRoute('/greeting')({
@@ -250,6 +264,6 @@ function Greeting() {
 
 **Without TanStack Query**, the router context holds the client as `trpc`: `context.trpc.hello.greet.query({ name: 'world' })` in a loader.
 
-**With Better Auth**, the context reads the session through `getRequestSession(headers, load)`, the per-request cache the `getSession` server function also reads, so a request calling both looks the session up once. It reads through a cookie-less instance that never refreshes the session (`src/trpc/auth.ts` in a single repo, `packages/api/src/auth.ts` in a turborepo, `createAuth(db)` per request on D1): a procedure prefetched without awaiting runs after the response headers are sent, where a refreshed cookie could not reach the browser.
+**With Better Auth**, the context reads the session through `getRequestSession(headers, load)`, the per-request cache the `getSession` server function also reads, so a request calling both looks the session up once. It reads through a cookie-less instance that never refreshes the session (`src/trpc/session-reader.ts` in a single repo, `packages/api/src/auth.ts` in a turborepo, `createAuth(db)` per request on D1): a procedure prefetched without awaiting runs after the response headers are sent, where a refreshed cookie could not reach the browser.
 
-On Cloudflare with D1, the API route and the server client pass the module-level `db` from `src/lib/server.ts` to the context. PostgreSQL and MySQL through Hyperdrive stay disabled with tRPC, like on Next.js.
+On Cloudflare with D1, the API route and the server client pass the module-level `db` from `src/lib/server.ts` to the context, next to the headers. PostgreSQL and MySQL through Hyperdrive stay disabled with tRPC, like on Next.js.
