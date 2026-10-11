@@ -37,6 +37,12 @@ describe('SST deployment with TanStack Start', () => {
       expect(config).toContain("'sst-start': sstStart.url");
     });
 
+    test('sets NODE_ENV in the function environment, production on deploy and development under sst dev', async () => {
+      const config = await readTextFile(join(projectPath, 'sst.config.ts'));
+      expect(config).toContain("NODE_ENV: $dev ? 'development' : 'production'");
+      expect(config).toContain("NITRO_PRESET: 'aws-lambda'");
+    });
+
     test('sets the aws-lambda Nitro preset in the SST config, not in the app build', async () => {
       const config = await readTextFile(join(projectPath, 'sst.config.ts'));
       expect(config).toContain("NITRO_PRESET: 'aws-lambda'");

@@ -124,6 +124,17 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
     expect(section).toContain('`vars`');
   });
 
+  test('documents that SST sets NODE_ENV in the function environment, since the Lambda never loads .env.start', () => {
+    const section = startSection('sst');
+    expect(section).toContain('`sst.config.ts`');
+    expect(section).toContain('`environment`');
+    expect(section).toContain('`.env.start`');
+  });
+
+  test.each([undefined, 'cloudflare'] as const)('does not mention the SST environment under %p', (deployment) => {
+    expect(startSection(deployment)).not.toContain('`sst.config.ts`');
+  });
+
   test('names the notice Node prints on stderr when the optional .env is missing', () => {
     expect(startSection()).toContain('`.env not found. Continuing without it.`');
   });
