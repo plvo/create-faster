@@ -33,13 +33,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
+
 {{{{/raw}}}}
-{{#if (eq pm "pnpm")}}
-
-      - uses: pnpm/action-setup@v4
-{{/if}}
-
-      - run: {{#if (eq pm "bun")}}bun install --frozen-lockfile{{else if (eq pm "pnpm")}}pnpm install --frozen-lockfile{{else if pm}}npm ci{{else}}npm install{{/if}}
+      - {{> github-actions/install-dependencies}}
 {{{{raw}}}}
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -48,13 +44,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
 {{{{/raw}}}}
-{{#if (hasRootScript "lint")}}
-      - name: Lint
-        run: {{#if pm}}{{pm}}{{else}}npm{{/if}} run lint
-
-{{/if}}
-      - name: Build
-        run: {{#if pm}}{{pm}}{{else}}npm{{/if}} run build
+      - {{> github-actions/lint-and-build}}
 {{{{raw}}}}
 
       - name: Deploy
