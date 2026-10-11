@@ -63,6 +63,7 @@ export function parseFlags(): Partial<TemplateContext> {
   const linterNames = Object.keys(META.project.linter.options).join(', ');
   const toolingNames = Object.keys(META.project.tooling.options).join(', ');
   const libraryNames = Object.keys(META.libraries).join(', ');
+  const [exampleBlueprint = '<name>'] = Object.keys(META.blueprints);
 
   program
     .addHelpText('before', ASCII)
@@ -100,7 +101,7 @@ ${color.bold('Examples:')}
     $ ${color.blue('npx create-faster mysaas')} --app web:nextjs --app api:hono --database postgres --orm drizzle
 
   ${color.gray('Blueprint:')}
-    $ ${color.blue('npx create-faster myapp')} --blueprint dashboard
+    $ ${color.blue('npx create-faster myapp')} --blueprint ${exampleBlueprint}
 
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
   ${color.gray('Available libraries:')} ${libraryNames}

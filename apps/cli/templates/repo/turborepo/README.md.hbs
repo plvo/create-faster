@@ -9,28 +9,30 @@ This is a monorepo managed with Turborepo containing {{apps.length}} application
 {{#each apps}}
 ### `apps/{{appName}}` - {{stackName}}
 
-{{#if modules.length}}
-**Modules** ({{modules.length}}): {{#each modules}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{#if libraries.length}}
+**Libraries** ({{libraries.length}}): {{#each libraries}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{else}}
-No additional modules configured.
+No additional libraries configured.
 {{/if}}
 
-{{#if ../database}}
+{{#if ../project.database}}
 {{#if (eq @index 0)}}
-Uses shared database package (`packages/db`) with {{../orm}} ORM.
+Uses shared database package (`packages/db`){{#if ../project.orm}} with {{../project.orm}} ORM{{/if}}.
 {{/if}}
 {{/if}}
 
 {{/each}}
 
-{{#if database}}
+{{#if project.database}}
 ## Shared Packages
 
 ### `packages/db`
 
 Shared database configuration and schema:
-- **Database**: {{database}}
-- **ORM**: {{orm}}
+- **Database**: {{project.database}}
+{{#if project.orm}}
+- **ORM**: {{project.orm}}
+{{/if}}
 
 {{/if}}
 ## Development Tools
@@ -38,11 +40,12 @@ Shared database configuration and schema:
 {{#if git}}
 - Git version control initialized
 {{/if}}
-{{#if extras}}
-{{#each extras}}
+{{#if project.linter}}
+- Linter: {{project.linter}}
+{{/if}}
+{{#each project.tooling}}
 - {{this}}
 {{/each}}
-{{/if}}
 - Turborepo for monorepo management
 
 ## Getting Started
@@ -63,7 +66,7 @@ cp {{path}}.example {{path}}
 ```
 
 {{/if}}
-{{#if database}}
+{{#if (hasRootScript "db:migrate")}}
 Run database migrations:
 
 ```bash
@@ -90,9 +93,13 @@ Start all applications in development mode:
 - `dev` - Start all apps in development mode
 - `build` - Build all apps for production
 - `start` - Start all apps in production mode
-{{#if database}}
+{{#if (hasRootScript "db:migrate")}}
 - `db:migrate` - Run database migrations
+{{/if}}
+{{#if (hasRootScript "db:push")}}
 - `db:push` - Push schema changes to database
+{{/if}}
+{{#if (hasRootScript "db:studio")}}
 - `db:studio` - Open database management UI
 {{/if}}
 {{#if (has "linter" "biome")}}

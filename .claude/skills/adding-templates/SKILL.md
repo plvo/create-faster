@@ -229,9 +229,15 @@ path: src/lib/feature.ts       # Output path (single repo)
 mono:
   scope: app | pkg | root      # Monorepo scope (overrides META)
   path: src/feature.ts          # Monorepo path (relative to scope)
-only: mono | single             # Repo type filter
+only: mono | single | no-blueprint  # Repo type filter
+deploymentPath:                 # Output path override keyed by deployment
+  cloudflare: src/middleware.ts
+deploymentSkip: [cloudflare-static]  # Deployments that do not get this file
+blueprintSkip: [org-dashboard]       # Blueprints that do not get this file
 ---
 ```
+
+`TemplateFrontmatter` in `apps/cli/src/types/meta.ts` lists the keys; `AGENTS.md` > Declarative choice logic describes each one.
 
 ### Stack-Specific File Suffix
 
@@ -243,13 +249,19 @@ adapter.ts.hono.hbs → only for Hono apps
 
 ### Available Handlebars Helpers
 
+`apps/cli/src/lib/handlebars.ts` (`registerHelpers`) is the source of truth; `AGENTS.md` describes each helper.
+
 | Helper | Purpose |
 |--------|---------|
 | `isMono` | Check if turborepo |
-| `hasLibrary "name"` | Check if current app has library |
-| `has "category" "value"` | Check database/orm/tooling/stack |
+| `hasLibrary "name"` | Check if current app has library (any app outside an app-scoped file) |
+| `has "category" "value"` | Check database/orm/deployment/linter/tooling selection, or `has "stack" "x"` for any app on the stack |
+| `databaseBinding "name"` | Check if the selected database declares `serverlessBinding: name` in META |
 | `hasContext "key"` | Check if key exists in context |
+| `hasRootScript "name"` | Check if the generated root `package.json` defines the script |
 | `appPort appName` | Get port for app (3000 + index) |
+| `camelCase str` | Convert a kebab or snake case string to camelCase |
+| `raw` | Block: renders its body as is |
 | `eq`, `ne`, `and`, `or` | Logical operators |
 
 ### Shared Blocks (Partials)
@@ -339,6 +351,6 @@ When several templates must render the same block (a wrangler binding, a client 
 | Package.json | Programmatic | `package-json-generator.ts` reads META |
 | Env vars | Programmatic | `env-generator.ts` reads META `envs` |
 | File extensions | `KNOWN_EXTENSIONS` | `frontmatter.ts` |
-| Frontmatter | YAML in `.hbs` | `path`, `mono`, `only` |
-| Helpers | `handlebars.ts` | `isMono`, `hasLibrary`, `has`, `hasContext`, `appPort` |
+| Frontmatter | YAML in `.hbs` | `path`, `mono`, `only`, `deploymentPath`, `deploymentSkip`, `blueprintSkip` |
+| Helpers | `handlebars.ts` | See Available Handlebars Helpers |
 | Shared blocks | `templates/partials/{group}/{name}.hbs` | `{{> group/name}}` |
