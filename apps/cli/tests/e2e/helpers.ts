@@ -98,14 +98,15 @@ export async function startServer(
     return output;
   };
 
+  const readyUrl = `${url}${readyPath}`;
   const deadline = Date.now() + readyTimeout;
   while (Date.now() < deadline && proc.exitCode === null) {
-    if (await isResponding(`${url}${readyPath}`)) return { url, stop };
+    if (await isResponding(readyUrl)) return { url, stop };
     await Bun.sleep(SERVER_POLL_INTERVAL);
   }
 
   const { stdout, stderr } = await stop();
-  throw new Error(`Server "${args.join(' ')}" never answered on ${url}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
+  throw new Error(`Server "${args.join(' ')}" never answered on ${readyUrl}\nstdout:\n${stdout}\nstderr:\n${stderr}`);
 }
 
 export async function expectServesPageWithClientScript(url: string): Promise<void> {
