@@ -9,17 +9,13 @@ import { parseFrontmatter } from '@/lib/mdx';
 import { mdxComponents } from '@/mdx-components';
 
 interface PageProps {
-  params: Promise<{ mdxExampleSlug: string[] }>;
+  params: Promise<{ slug?: string[] }>;
 }
 
 export const generateMetadata = async ({ params }: PageProps) => {
-  const { mdxExampleSlug } = await params;
+  const { slug } = await params;
 
-  if (mdxExampleSlug === undefined) {
-    return undefined;
-  }
-
-  const fileContent = getFileContent(mdxExampleSlug);
+  const fileContent = getFileContent(slug);
 
   if (fileContent === null) {
     return notFound();
@@ -34,9 +30,9 @@ export const generateMetadata = async ({ params }: PageProps) => {
 };
 
 export default async function Page({ params }: PageProps) {
-  const { mdxExampleSlug } = await params;
+  const { slug } = await params;
 
-  const fileContent = getFileContent(mdxExampleSlug);
+  const fileContent = getFileContent(slug);
 
   if (fileContent === null) {
     return notFound();
@@ -54,20 +50,19 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function getFileContent(slug: string[]): string | null {
+function getFileContent(slug: string[] = ['home']): string | null {
   const contentPath = getContentPath(slug);
 
-  if (!fs.existsSync(contentPath)) {
+  if (contentPath === null || !fs.existsSync(contentPath)) {
     return null;
   }
   return fs.readFileSync(contentPath, 'utf-8');
 }
 
-function getContentPath(slug: string[]) {
-  if (slug === undefined) {
-    return path.join(process.cwd(), 'contents', 'home.mdx');
-  } else {
-    const [name] = slug;
-    return path.join(process.cwd(), 'contents', `${name}.mdx`);
+function getContentPath(slug: string[]): string | null {
+  if (slug.length !== 1) {
+    return null;
   }
+  const [name] = slug;
+  return path.join(process.cwd(), 'contents', `${name}.mdx`);
 }

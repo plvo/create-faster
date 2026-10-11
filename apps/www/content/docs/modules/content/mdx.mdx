@@ -37,6 +37,8 @@ contents/
 
 ## Next.js
 
+Documents in `contents/` are read with `fs` and rendered by `next-mdx-remote/rsc`. The example route `/mdx/[[...slug]]` renders `/mdx` as `home.mdx` and `/mdx/cool` as `cool.mdx`, and returns 404 for an unknown document.
+
 Files added:
 ```
 src/
@@ -45,8 +47,8 @@ src/
 ├── mdx-components.tsx          # Custom MDX component mappings
 ├── styles/
 │   └── mdx.css                 # MDX-specific styling
-└── app/[...mdxExampleSlug]/
-    └── page.tsx                # Dynamic MDX route example
+└── app/mdx/[[...slug]]/
+    └── page.tsx                # MDX route example
 
 contents/
 ├── home.mdx                    # Example content
@@ -96,7 +98,7 @@ export function parseFrontmatter(fileContent: string): ParsedFrontmatterReturn {
 
 Dynamic MDX route with metadata generation:
 
-```tsx title="src/app/[...mdxExampleSlug]/page.tsx"
+```tsx title="src/app/mdx/[[...slug]]/page.tsx"
 import fs from 'node:fs';
 import path from 'node:path';
 import { notFound } from 'next/navigation';
@@ -105,14 +107,12 @@ import { parseFrontmatter } from '@/lib/mdx';
 import { mdxComponents } from '@/mdx-components';
 
 interface PageProps {
-  params: Promise<{ mdxExampleSlug: string[] }>;
+  params: Promise<{ slug?: string[] }>;
 }
 
 export const generateMetadata = async ({ params }: PageProps) => {
-  const { mdxExampleSlug } = await params;
-  if (mdxExampleSlug === undefined) return undefined;
-
-  const fileContent = getFileContent(mdxExampleSlug);
+  const { slug } = await params;
+  const fileContent = getFileContent(slug);
   if (fileContent === null) return notFound();
 
   const { metadata } = parseFrontmatter(fileContent);
@@ -120,8 +120,8 @@ export const generateMetadata = async ({ params }: PageProps) => {
 };
 
 export default async function Page({ params }: PageProps) {
-  const { mdxExampleSlug } = await params;
-  const fileContent = getFileContent(mdxExampleSlug);
+  const { slug } = await params;
+  const fileContent = getFileContent(slug);
   if (fileContent === null) return notFound();
 
   const { metadata, content: mdxContent } = parseFrontmatter(fileContent);
@@ -136,10 +136,9 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function getFileContent(slug: string[]): string | null {
-  const contentPath = slug === undefined
-    ? path.join(process.cwd(), 'contents', 'home.mdx')
-    : path.join(process.cwd(), 'contents', `${slug[0]}.mdx`);
+function getFileContent(slug: string[] = ['home']): string | null {
+  if (slug.length !== 1) return null;
+  const contentPath = path.join(process.cwd(), 'contents', `${slug[0]}.mdx`);
 
   if (!fs.existsSync(contentPath)) return null;
   return fs.readFileSync(contentPath, 'utf-8');
