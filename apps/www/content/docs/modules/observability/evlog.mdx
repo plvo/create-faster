@@ -84,17 +84,40 @@ The error handler uses `parseError()` for structured JSON responses with `why` a
 
 ### TanStack Start
 
+The wiring depends on the runtime. On Nitro (the default) the `evlog/nitro/v3` module emits the wide event. On [Cloudflare Workers](/docs/deployment/cloudflare) there is no Nitro, so a custom Worker entry wraps Start's `fetch` with `withEvlog`. Both runtimes share one project-local `useLogger()`, and the same error middleware. Under `cloudflare-static` nothing runs per request, so none of these files is generated.
+
 Files added:
 ```
-nitro.config.ts             # evlog/nitro/v3 module registration
+src/lib/evlog.ts            # useLogger(), the request logger of the current request
+src/start.ts                # global request and server function middleware that log errors
+nitro.config.ts             # Nitro: evlog/nitro/v3 module registration
+src/server.ts               # Cloudflare: Worker entry (always generated), wrapped with withEvlog
 ```
 
-Modified files:
-- `src/routes/__root.tsx` - Adds `evlogErrorHandler` server middleware
+#### src/lib/evlog.ts
+
+Exports `useLogger()`, which returns the logger of the current request in route middleware, server routes, server functions and your own code (it throws outside a request). On Workers it is backed by `AsyncLocalStorage` (the `nodejs_compat` flag is already set), like `useLogger()` in Next.js. On Nitro it reads the logger the evlog module attaches to the request (`useRequest().context.log` from `nitro/context`).
+
+```ts
+import { useLogger } from '@/lib/evlog'
+
+useLogger().set({ user: { plan: 'pro' } })
+```
+
+It also exports `findLogger()`, which returns the logger or `undefined` instead of throwing. The error middlewares use it so that a missing logger never replaces the error being handled.
+
+#### src/start.ts
+
+Start's `createStart` instance (generated when a library contributes to it). evlog registers two global middlewares:
+
+- `requestMiddleware` records any error thrown while handling a request on the wide event, and returns an `EvlogError` as a JSON response that keeps its structured `data` fields (`why`, `fix`, `link`).
+- `functionMiddleware` records errors thrown by server functions, both when a loader calls them during SSR and over RPC.
+
+An error thrown directly inside a route `loader`, without going through a server function, is not caught by any middleware: the event carries the 500 status but no `error`. Per-route `onError` is the only server-side hook for it.
 
 #### nitro.config.ts
 
-Registers the evlog Nitro v3 module with async context for request-scoped logging. `nitro` itself comes with the TanStack Start stack, whose `nitro()` Vite plugin loads this file when building the production server:
+Nitro only. Registers the evlog Nitro v3 module with async context for request-scoped logging. `nitro` itself comes with the TanStack Start stack, whose `nitro()` Vite plugin loads this file when building the production server:
 
 ```ts title="nitro.config.ts"
 import { defineConfig } from 'nitro';
@@ -112,22 +135,22 @@ export default defineConfig({
 });
 ```
 
-Not generated under the `cloudflare` and `cloudflare-static` deployments, which build without Nitro. evlog stays allowed there but inert: the `evlogErrorHandler` middleware only runs while the pages are prerendered at build time.
+Not generated under the `cloudflare` and `cloudflare-static` deployments, which build without Nitro.
 
-#### __root.tsx
+#### src/server.ts
 
-Wires `evlogErrorHandler` as a TanStack Start server middleware to preserve structured error `data` fields (`why`, `fix`, `link`) in responses:
+Cloudflare only. The Worker entry exists with or without evlog (`wrangler.jsonc` `main` points to it); with evlog it wraps Start's `fetch` with `withEvlog`, which emits one wide event per request (with `cfRay`, `colo`, `country` and `asn`) and flushes drains through `ctx.waitUntil`. The logger is passed to Start as `context.log` and bound to `useLogger()`:
 
-```tsx title="src/routes/__root.tsx"
-import { createMiddleware } from '@tanstack/react-start'
-import { evlogErrorHandler } from 'evlog/nitro/v3'
+```ts title="src/server.ts"
+import handler from '@tanstack/react-start/server-entry'
+import { initWorkersLogger, withEvlog } from 'evlog/workers'
+import { loggerStorage } from '@/lib/evlog'
 
-export const Route = createRootRoute({
-  server: {
-    middleware: [createMiddleware().server(evlogErrorHandler)],
-  },
-  // ...
-})
+initWorkersLogger({ env: { service: 'my-app' } })
+
+export default withEvlog((request, _env, _ctx, log) =>
+  loggerStorage.run(log, () => handler.fetch(request, { context: { log } })),
+)
 ```
 
 ### Node

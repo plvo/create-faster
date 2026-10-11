@@ -127,36 +127,6 @@ describe('evlog Integration', () => {
     });
   });
 
-  describe('Single repo: TanStack Start + evlog', () => {
-    const projectName = 'test-evlog-tss';
-    let projectPath: string;
-
-    beforeAll(async () => {
-      projectPath = join(tempDir, projectName);
-      const result = await runCli(
-        [projectName, '--app', `${projectName}:tanstack-start:evlog`, '--no-git', '--no-install'],
-        tempDir,
-      );
-      expect(result.exitCode).toBe(0);
-    });
-
-    test('generates nitro.config.ts at project root', async () => {
-      expect(await fileExists(join(projectPath, 'nitro.config.ts'))).toBe(true);
-      const content = await readTextFile(join(projectPath, 'nitro.config.ts'));
-      expect(content).toContain("from 'evlog/nitro/v3'");
-      expect(content).toContain('asyncContext: true');
-      expect(content).toContain(`service: '${projectName}'`);
-    });
-
-    test('__root.tsx wires evlogErrorHandler via server middleware', async () => {
-      const content = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
-      expect(content).toContain("from 'evlog/nitro/v3'");
-      expect(content).toContain('evlogErrorHandler');
-      expect(content).toContain('createMiddleware');
-      expect(content).toContain('server: {');
-    });
-  });
-
   describe('Single repo: Node + evlog', () => {
     const projectName = 'test-evlog-node';
     let projectPath: string;

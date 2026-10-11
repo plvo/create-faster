@@ -1,0 +1,30 @@
+---
+deploymentSkip:
+  - cloudflare-static
+---
+{{#if (has "deployment" "cloudflare")}}
+import { createLoggerStorage } from 'evlog/toolkit/storage'
+
+export const { storage: loggerStorage, useLogger } = createLoggerStorage(
+  'request context. useLogger() only works inside a request handled by src/server.ts.',
+)
+
+export const findLogger = () => loggerStorage.getStore()
+{{else}}
+import type { RequestLogger } from 'evlog'
+import { useRequest } from 'nitro/context'
+
+export function findLogger(): RequestLogger | undefined {
+  try {
+    return useRequest().context?.log as RequestLogger | undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function useLogger(): RequestLogger {
+  const log = findLogger()
+  if (!log) throw new Error('[evlog] useLogger() called outside a request handled by the evlog Nitro module.')
+  return log
+}
+{{/if}}

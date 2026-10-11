@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/server.ts",
   "compatibility_date": "2026-06-12",
   "compatibility_flags": ["nodejs_compat"]{{#if (has "database" "d1")}},
   "d1_databases": [

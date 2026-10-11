@@ -32,10 +32,10 @@ describe('TanStack Start + cloudflare', () => {
       expect(config).not.toContain('nitro');
     });
 
-    test('wrangler.jsonc points at the Start server entry with nodejs_compat', async () => {
+    test('wrangler.jsonc points at the Worker entry with nodejs_compat', async () => {
       const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
       expect(wrangler).toContain('"name": "start-cf"');
-      expect(wrangler).toContain('"main": "@tanstack/react-start/server-entry"');
+      expect(wrangler).toContain('"main": "src/server.ts"');
       expect(wrangler).toContain('"nodejs_compat"');
       expect(wrangler).not.toContain('d1_databases');
       expect(wrangler).not.toContain('hyperdrive');
@@ -150,7 +150,7 @@ describe('TanStack Start + cloudflare', () => {
     test('web app gets its own wrangler.jsonc with the monorepo migrations dir', async () => {
       const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
       expect(wrangler).toContain('"name": "web"');
-      expect(wrangler).toContain('"main": "@tanstack/react-start/server-entry"');
+      expect(wrangler).toContain('"main": "src/server.ts"');
       expect(wrangler).toContain('"migrations_dir": "../../packages/db/drizzle"');
     });
 

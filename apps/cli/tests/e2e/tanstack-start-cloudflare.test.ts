@@ -14,6 +14,7 @@ import {
   runCommand,
   startServer,
 } from './helpers';
+import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -26,6 +27,11 @@ interface D1Probe {
   dbImport: string;
 }
 
+interface EvlogProbe {
+  appDir: string;
+  service: string;
+}
+
 interface Scenario {
   name: string;
   deployment: 'cloudflare' | 'cloudflare-static';
@@ -34,6 +40,7 @@ interface Scenario {
   workerDirs: string[];
   d1Probe?: D1Probe;
   ingestProbe?: boolean;
+  evlogProbe?: EvlogProbe;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -148,6 +155,14 @@ const SCENARIOS: Scenario[] = [
     d1Probe: { appDir: 'apps/web', dbImport: '@repo/db' },
   },
   {
+    name: 'tanstack-start-cloudflare-evlog',
+    deployment: 'cloudflare',
+    args: ['--app', 'tanstack-start-cloudflare-evlog:tanstack-start:evlog'],
+    startAppDirs: ['.'],
+    workerDirs: ['.'],
+    evlogProbe: { appDir: '.', service: 'tanstack-start-cloudflare-evlog' },
+  },
+  {
     name: 'tanstack-start-static',
     deployment: 'cloudflare-static',
     args: ['--app', 'tanstack-start-static:tanstack-start:shadcn,evlog,mdx'],
@@ -178,7 +193,7 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
@@ -234,6 +249,12 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
       },
       TIMEOUT_BUILD,
     );
+  }
+
+  if (evlogProbe) {
+    test('adds the evlog probe routes', async () => {
+      await writeEvlogProbe(join(projectDir, evlogProbe.appDir));
+    });
   }
 
   test(
@@ -297,7 +318,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     );
   } else {
     test(
-      'vite preview serves the built app in workerd (and answers a D1 query or proxies /ingest when selected)',
+      'vite preview serves the built app in workerd (answers a D1 query, proxies /ingest or logs wide events when selected)',
       async () => {
         for (const dir of startAppDirs) {
           const port = await getFreePort();
@@ -308,6 +329,10 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           await expectServesPageWithClientScript(server.url);
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
           if (ingestProbe) await expectIngestProxiesToPostHog(server.url);
+          if (evlogProbe?.appDir === dir) {
+            await exerciseEvlogProbe(server.url);
+            expectEvlogProbeEvents(await server.stop(), 'workerd', evlogProbe.service);
+          }
         }
       },
       TIMEOUT_PREVIEW,

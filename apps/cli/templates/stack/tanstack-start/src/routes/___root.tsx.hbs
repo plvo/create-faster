@@ -4,10 +4,6 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 {{#if (hasLibrary "next-themes")}}
 import { ThemeProvider } from 'next-themes'
 {{/if}}
-{{#if (hasLibrary "evlog")}}
-import { createMiddleware } from '@tanstack/react-start'
-import { evlogErrorHandler } from 'evlog/nitro/v3'
-{{/if}}
 
 import { NotFound } from '@/components/not-found'
 {{#if (hasLibrary "posthog")}}
@@ -36,11 +32,6 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  {{#if (hasLibrary "evlog")}}
-  server: {
-    middleware: [createMiddleware().server(evlogErrorHandler)],
-  },
-  {{/if}}
   notFoundComponent: NotFound,
   shellComponent: RootDocument,
 })
