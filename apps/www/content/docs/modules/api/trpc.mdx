@@ -182,7 +182,7 @@ Creates `@repo/api` package depending on `@repo/db` and `@repo/auth`. App import
 
 ## TanStack Start
 
-On TanStack Start, procedures called during server rendering run in memory through `unstable_localLink`, and the browser calls the API route through `httpBatchLink`. One client is built per request in `getRouter()` and passed to routes through the router context. `init.ts` and the routers are the same as on Next.js.
+On TanStack Start, procedures called during server rendering run in memory through `unstable_localLink`, and the browser calls the API route through `httpBatchLink`. One client is built per request in `getRouter()` and passed to routes through the router context. `init.ts` and the routers are the same as on Next.js, except that `init.ts` sets `isDev` from the build mode: Start's production server does not run with `NODE_ENV=production`, which tRPC otherwise reads at runtime to keep stack traces out of error responses.
 
 Files added:
 ```
