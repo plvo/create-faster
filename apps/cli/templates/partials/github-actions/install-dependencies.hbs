@@ -1,0 +1,7 @@
+---
+inline: true
+---
+{{!-- Steps that install dependencies with the project package manager. Called after `      - ` in a workflow `steps:` list: it continues the step it is called in. --}}
+{{#if (eq pm "pnpm")}}uses: pnpm/action-setup@v4
+
+      - {{/if}}run: {{#if (eq pm "bun")}}bun install --frozen-lockfile{{else if (eq pm "pnpm")}}pnpm install --frozen-lockfile{{else if pm}}npm ci{{else}}npm install{{/if}}

@@ -16,7 +16,7 @@ All infrastructure is defined in `sst.config.ts` (SST Ion). The `app()` callback
 Handler paths point at `apps/*/src/index.handler` (the exported `handler` in each app's `src/index.ts`).
 
 ## Deploy (GitHub Actions)
-`.github/workflows/deploy.yml` runs on push to `main` (defaults to the `staging` stage) and on `workflow_dispatch` with a `stage` choice input (`staging` | `production`). AWS access uses OIDC: `permissions.id-token: write` plus `aws-actions/configure-aws-credentials@v4` assuming `secrets.AWS_ROLE_ARN` in `vars.AWS_REGION`. Steps run `bun install --frozen-lockfile`, `bun run lint`, `bun run build`, then `npx sst deploy --stage <stage>`. A `concurrency` group per stage prevents overlapping deploys.
+`.github/workflows/deploy.yml` runs on push to `main` (defaults to the `staging` stage) and on `workflow_dispatch` with a `stage` choice input (`staging` | `production`). AWS access uses OIDC: `permissions.id-token: write` plus `aws-actions/configure-aws-credentials@v4` assuming `secrets.AWS_ROLE_ARN` in `vars.AWS_REGION`. Steps install dependencies with the project package manager, run its `lint` script when the project has a linter, run `build`, then `npx sst deploy --stage <stage>`. A `concurrency` group per stage prevents overlapping deploys.
 
 ## Add a resource or function
 Create the function under `apps/<name>/src/index.ts` (export `handler`), then declare it in `run()` (e.g. another `sst.aws.Cron`, `Queue`, or `api.route(...)`). To grant access, pass it through SST's `link` so credentials surface via `sst-env.d.ts`.

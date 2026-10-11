@@ -279,3 +279,18 @@ describe('META.blueprints.org-dashboard', () => {
     }
   });
 });
+
+describe('META shared dependency versions', () => {
+  function collectPins(value: unknown, name: string): string[] {
+    if (typeof value !== 'object' || value === null) return [];
+    return Object.entries(value).flatMap(([key, child]) =>
+      key === name && typeof child === 'string' ? [child] : collectPins(child, name),
+    );
+  }
+
+  test('every stack and addon types Node with the same @types/node version', () => {
+    const pins = collectPins(META, '@types/node');
+    expect(pins.length).toBeGreaterThan(1);
+    expect(new Set(pins).size).toBe(1);
+  });
+});

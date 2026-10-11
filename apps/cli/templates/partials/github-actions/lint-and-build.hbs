@@ -1,0 +1,9 @@
+---
+inline: true
+---
+{{!-- Steps that run the root lint script when the project defines one, then the build script, through the project package manager. Called after `      - ` in a workflow `steps:` list: it continues the step it is called in. --}}
+{{#if (hasRootScript "lint")}}name: Lint
+        run: {{> github-actions/package-manager}} run lint
+
+      - {{/if}}name: Build
+        run: {{> github-actions/package-manager}} run build

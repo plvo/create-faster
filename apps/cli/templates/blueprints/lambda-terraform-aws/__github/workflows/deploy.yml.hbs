@@ -37,7 +37,9 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - run: bun install --frozen-lockfile
+{{{{/raw}}}}
+      - {{> github-actions/install-dependencies}}
+{{{{raw}}}}
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -46,11 +48,9 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Lint
-        run: bun run lint
-
-      - name: Build
-        run: bun run build
+{{{{/raw}}}}
+      - {{> github-actions/lint-and-build}}
+{{{{raw}}}}
 
       - name: Terraform Init
         working-directory: infra

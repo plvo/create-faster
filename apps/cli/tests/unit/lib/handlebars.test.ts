@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import Handlebars from 'handlebars';
 import { setupTemplateEngine } from '@/lib/handlebars';
-import type { EnrichedTemplateContext } from '@/types/ctx';
+import type { EnrichedTemplateContext, TemplateContext } from '@/types/ctx';
 
 describe('Handlebars helpers', () => {
   beforeAll(() => {
@@ -166,6 +166,51 @@ describe('Handlebars helpers', () => {
     test('returns false when context key is undefined', () => {
       const template = Handlebars.compile('{{#if (hasContext "project")}}yes{{else}}no{{/if}}');
       expect(template({})).toBe('no');
+    });
+  });
+
+  describe('hasRootScript', () => {
+    const template = Handlebars.compile('{{#if (hasRootScript "lint")}}yes{{else}}no{{/if}}');
+    const monorepo = (linter?: string): TemplateContext => ({
+      projectName: 'demo',
+      repo: 'turborepo',
+      apps: [
+        { appName: 'api', stackName: 'hono', libraries: [] },
+        { appName: 'worker', stackName: 'node', libraries: [] },
+      ],
+      project: { linter, tooling: [] },
+      git: false,
+    });
+    const singleApp = (linter?: string): TemplateContext => ({
+      projectName: 'demo',
+      repo: 'single',
+      apps: [{ appName: 'demo', stackName: 'nextjs', libraries: [] }],
+      project: { linter, tooling: [] },
+      git: false,
+    });
+
+    test('is true in a turborepo whose linter defines a lint script', () => {
+      for (const linter of ['biome', 'oxc', 'eslint', 'eslint-prettier']) {
+        expect(template(monorepo(linter))).toBe('yes');
+      }
+    });
+
+    test('is false in a turborepo without a linter or with a formatter only', () => {
+      expect(template(monorepo())).toBe('no');
+      expect(template(monorepo('prettier'))).toBe('no');
+    });
+
+    test('reads the single app package.json in a single repo', () => {
+      expect(template(singleApp('biome'))).toBe('yes');
+      expect(template(singleApp())).toBe('no');
+    });
+
+    test('finds scripts that do not come from the linter', () => {
+      const build = Handlebars.compile('{{#if (hasRootScript "build")}}yes{{else}}no{{/if}}');
+      expect(build(monorepo())).toBe('yes');
+      expect(build(singleApp())).toBe('yes');
+      const unknown = Handlebars.compile('{{#if (hasRootScript "nope")}}yes{{else}}no{{/if}}');
+      expect(unknown(monorepo('biome'))).toBe('no');
     });
   });
 
