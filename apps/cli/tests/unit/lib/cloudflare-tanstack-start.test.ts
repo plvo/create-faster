@@ -35,7 +35,7 @@ describe('cloudflare deployment: tanstack-start package.json', () => {
     const ctx = singleCtx(deployment);
     const { content } = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(content.devDependencies?.nitro).toBeDefined();
-    expect(content.scripts?.start).toBe('node --env-file=.env.start .output/server/index.mjs');
+    expect(content.scripts?.start).toBe('node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs');
     expect(content.devDependencies?.['@cloudflare/vite-plugin']).toBeUndefined();
   });
 });

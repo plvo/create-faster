@@ -47,7 +47,7 @@ describe('SST deployment with TanStack Start', () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
       expect(pkg.scripts.build).toBe('vite build');
       expect(pkg.scripts.build).not.toContain('NITRO_PRESET');
-      expect(pkg.scripts.start).toBe('node --env-file=.env.start .output/server/index.mjs');
+      expect(pkg.scripts.start).toBe('node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs');
     });
   });
 
