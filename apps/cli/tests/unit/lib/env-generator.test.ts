@@ -33,6 +33,16 @@ describe('collectEnvFiles', () => {
     expect(dbEnv).toBeDefined();
   });
 
+  test('does not generate a pkg scope .env.example when no addon creates that package', () => {
+    const ctx = makeContext({ project: { database: 'postgres', linter: 'biome', tooling: [] } });
+    const files = collectEnvFiles(ctx);
+
+    expect(files.map((f) => f.destination)).not.toContain('packages/db/.env.example');
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content).toContain('DATABASE_URL');
+    expect(files.find((f) => f.destination === 'apps/api/.env.example')?.content).toContain('DATABASE_URL');
+    expect(collectEnvGroups(ctx).map((g) => g.path)).not.toContain('packages/db/.env');
+  });
+
   test('generates .env.example for app scope per app with library', () => {
     const ctx = makeContext();
     const files = collectEnvFiles(ctx);
@@ -242,7 +252,7 @@ describe('EnvVar.stacks filter', () => {
       { appName: 'site', stackName: 'tanstack-start', libraries: [] },
       { appName: 'api', stackName: 'hono', libraries: [] },
     ],
-    project: { database: 'postgres', tooling: [] },
+    project: { database: 'postgres', orm: 'drizzle', tooling: [] },
     git: false,
   };
 
