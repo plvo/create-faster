@@ -4,14 +4,15 @@ description: Serverless deployment adapter for Hono with Lambda-compatible handl
 ---
 
 <Stacks names="hono" />
-<Dependencies packages="@hono/aws-lambda" />
 
 [→ AWS Lambda Documentation](https://aws.amazon.com/lambda)
 
 ## What create-faster adds
 
+No extra dependency: the adapter is the `hono/aws-lambda` subpath of `hono`.
+
 Modified files:
-- `src/index.ts` - Conditionally exports Lambda handler instead of raw app
+- `src/index.ts` - Exports a Lambda handler next to the app
 
 **When enabled:**
 ```typescript
@@ -19,13 +20,16 @@ import { handle } from 'hono/aws-lambda';
 import app from './app';
 
 export const handler = handle(app);  // Lambda entry point
+export default app;  // Served by dev and start
 ```
 
 **When disabled:**
 ```typescript
 import app from './app';
 
-export default app;  // Standard Node.js server
+export default app;  // Served by dev and start
 ```
 
-The `handle` adapter transforms Lambda events to Hono requests and Hono responses to Lambda responses. The `handler` export is the Lambda function entry point.
+The `handle` adapter transforms Lambda events to Hono requests and Hono responses to Lambda responses. The `handler` export is the Lambda function entry point. Lambda only reads `handler`; the default export keeps `dev` and `start` (`bun run src/index.ts`) serving the app locally, and is the Worker entry when the app is deployed to Cloudflare.
+
+With the [SST](/docs/deployment/sst) deployment, the entry exports `handler` even without this module, because `sst.config.ts` deploys every Hono app as a Lambda function.

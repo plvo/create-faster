@@ -54,3 +54,41 @@ export async function readJsonFile<T>(path: string): Promise<T> {
 export async function readTextFile(path: string): Promise<string> {
   return readFile(path, 'utf-8');
 }
+
+export interface SstHandler {
+  /** Handler as written in sst.config.ts, e.g. `apps/api/src/index.handler`. */
+  ref: string;
+  /** Source file SST bundles for it, or undefined when none exists. */
+  file: string | undefined;
+  exportName: string;
+}
+
+// Node.js handler strings in sst.config.ts: `handler: '...'` (Function, queue subscriber),
+// `function: '...'` (Cron) and the target of `.route('...', '...')` (ApiGatewayV2).
+const SST_HANDLER_PATTERNS = [
+  /\bhandler:\s*'([^']+)'/g,
+  /\bfunction:\s*'([^']+)'/g,
+  /\.route\(\s*'[^']*',\s*'([^']+)'/g,
+];
+
+// Extensions SST's Node.js runtime tries, in this order, to find a handler's file.
+const SST_HANDLER_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
+
+export async function readSstHandlers(projectPath: string): Promise<SstHandler[]> {
+  const config = await readTextFile(join(projectPath, 'sst.config.ts'));
+  const refs = SST_HANDLER_PATTERNS.flatMap((pattern) => [...config.matchAll(pattern)].map((match) => match[1] ?? ''));
+
+  return Promise.all(
+    refs.map(async (ref) => {
+      const separator = ref.lastIndexOf('.');
+      const base = join(projectPath, ref.slice(0, separator));
+      const candidates = SST_HANDLER_EXTENSIONS.map((extension) => base + extension);
+      const exists = await Promise.all(candidates.map(fileExists));
+      return { ref, file: candidates[exists.indexOf(true)], exportName: ref.slice(separator + 1) };
+    }),
+  );
+}
+
+export async function exportedNames(file: string): Promise<string[]> {
+  return new Bun.Transpiler({ loader: 'ts' }).scan(await readTextFile(file)).exports;
+}
