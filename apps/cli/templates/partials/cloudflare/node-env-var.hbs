@@ -1,0 +1,8 @@
+---
+inline: true
+---
+,
+  // The build only inlines the literal process.env.NODE_ENV: without this var, dependencies reading it at runtime see "development" in workerd
+  "vars": {
+    "NODE_ENV": "production"
+  }

@@ -34,6 +34,11 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(wrangler).toContain('"binding": "STORAGE"');
   });
 
+  test('web wrangler sets NODE_ENV=production in the Worker vars, as the generic Next.js template does', async () => {
+    const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
+    expect(wrangler).toContain('"vars": {\n    "NODE_ENV": "production"\n  }');
+  });
+
   test('cron wrangler ships a schedule + the R2 binding', async () => {
     const wrangler = await readTextFile(join(projectPath, 'apps/cron/wrangler.jsonc'));
     expect(wrangler).toContain('"crons"');

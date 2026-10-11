@@ -102,6 +102,11 @@ describe('Cloudflare deployment platform', () => {
       expect(content).toContain('.open-next/assets');
     });
 
+    test('wrangler.jsonc sets NODE_ENV=production in the Worker vars', async () => {
+      const content = await readTextFile(join(projectPath, 'wrangler.jsonc'));
+      expect(content).toContain('"vars": {\n    "NODE_ENV": "production"\n  }');
+    });
+
     test('generates open-next.config.ts', async () => {
       expect(await fileExists(join(projectPath, 'open-next.config.ts'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'open-next.config.ts'));
@@ -174,6 +179,7 @@ describe('Cloudflare deployment platform', () => {
       const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
       expect(content).toContain('"name": "web"');
       expect(content).toContain('"main": ".open-next/worker.js"');
+      expect(content).toContain('"NODE_ENV": "production"');
     });
 
     test('web app has open-next.config.ts and opennext deps/scripts', async () => {

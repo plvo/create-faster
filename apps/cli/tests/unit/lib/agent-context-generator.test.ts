@@ -20,6 +20,13 @@ function makeContext(overrides: Partial<TemplateContext> = {}): TemplateContext 
   };
 }
 
+function section(content: string, heading: string): string {
+  const start = content.indexOf(heading);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const end = content.indexOf('\n## ', start + 1);
+  return content.slice(start, end === -1 ? undefined : end);
+}
+
 describe('collectAgentContextFiles (single repo)', () => {
   test('emits a root AGENTS.md', () => {
     const files = collectAgentContextFiles(makeContext());
@@ -101,10 +108,7 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
     });
     const destination = repo === 'turborepo' ? 'apps/web/AGENTS.md' : 'AGENTS.md';
     const content = collectAgentContextFiles(ctx).find((f) => f.destination === destination)?.content ?? '';
-    const start = content.indexOf('## TanStack Start');
-    expect(start).toBeGreaterThanOrEqual(0);
-    const end = content.indexOf('\n## ', start + 1);
-    return content.slice(start, end === -1 ? undefined : end);
+    return section(content, '## TanStack Start');
   }
 
   test('documents that the Nitro start script loads the app .env, then .env.start for the port', () => {
@@ -146,6 +150,25 @@ describe('collectAgentContextFiles (TanStack Start)', () => {
 
   test.each(['cloudflare', 'cloudflare-static'] as const)('does not document the Nitro start script under %p', (deployment) => {
     expect(startSection(deployment)).not.toContain('.env.start');
+  });
+});
+
+describe('collectAgentContextFiles (Next.js on Cloudflare)', () => {
+  function cloudflareSection(): string {
+    const ctx = makeContext({
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+    });
+    const content = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md')?.content ?? '';
+    return section(content, '## Cloudflare Workers deploy (OpenNext)');
+  }
+
+  test('documents that wrangler.jsonc vars carry NODE_ENV=production, which dependencies read as development otherwise', () => {
+    const doc = cloudflareSection();
+    expect(doc).toContain('`NODE_ENV=production`');
+    expect(doc).toContain('`wrangler.jsonc` `vars`');
+    expect(doc).toContain('`development`');
+    expect(doc).toContain('`next dev`');
   });
 });
 
