@@ -1,10 +1,11 @@
-{{#if (hasLibrary "aws-lambda")}}
+{{#if (or (hasLibrary "aws-lambda") (has "deployment" "sst"))}}
 import { handle } from 'hono/aws-lambda';
 {{/if}}
 import app from './app';
 
-{{#if (hasLibrary "aws-lambda")}}
+{{#if (or (hasLibrary "aws-lambda") (has "deployment" "sst"))}}
 export const handler = handle(app);
-{{else}}
-export default app;
 {{/if}}
+{{#unless (hasLibrary "aws-lambda")}}
+export default app;
+{{/unless}}
