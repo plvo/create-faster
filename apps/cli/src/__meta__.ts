@@ -709,14 +709,17 @@ export const META: Meta = {
             {
               value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http, prod migrations)',
               monoScope: [{ pkg: 'db' }, 'app'],
+              when: { orm: true },
             },
             {
               value: 'CLOUDFLARE_D1_DATABASE_ID="" # D1 database id from `wrangler d1 create`',
               monoScope: [{ pkg: 'db' }, 'app'],
+              when: { orm: true },
             },
             {
               value: 'CLOUDFLARE_API_TOKEN="" # Cloudflare API token with D1 edit permission',
               monoScope: [{ pkg: 'db' }, 'app'],
+              when: { orm: true },
             },
           ],
         },

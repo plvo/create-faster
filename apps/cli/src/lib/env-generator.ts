@@ -1,8 +1,10 @@
 import { META } from '@/__meta__';
 import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
+import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
+import { matches } from '@/lib/when';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvScope, MetaAddon } from '@/types/meta';
+import type { EnvScope, EnvVar, MetaAddon } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 interface EnvFileOutput {
@@ -51,8 +53,21 @@ function extractEnvKey(value: string): string {
   return key.trim();
 }
 
+function resolveEnvScopes(env: EnvVar, packages: Map<string, unknown>): EnvScope[] {
+  const scopes = env.monoScope.filter((scope) => typeof scope !== 'object' || packages.has(scope.pkg));
+  return scopes.length > 0 ? scopes : ['app'];
+}
+
 function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const envs: CollectedEnv[] = [];
+  const packages = collectMonoPackages(ctx);
+
+  const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
+    if (env.when && !matches(env.when, ctx)) return;
+    for (const scope of resolveEnvScopes(env, packages)) {
+      envs.push({ value: env.value, scope, stacks: env.stacks, ...origin });
+    }
+  };
 
   for (const [, category] of Object.entries(META.project)) {
     for (const [optionName, addon] of Object.entries(category.options) as [string, MetaAddon][]) {
@@ -63,11 +78,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         ctx.project.tooling.includes(optionName);
 
       if (isSelected && addon.envs) {
-        for (const env of addon.envs) {
-          for (const scope of env.monoScope) {
-            envs.push({ value: env.value, scope, source: 'project', stacks: env.stacks });
-          }
-        }
+        for (const env of addon.envs) addEnv(env, { source: 'project' });
       }
     }
   }
@@ -77,22 +88,14 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
       const library = META.libraries[libraryName];
       if (!library?.envs || !isLibraryCompatible(library, app.stackName)) continue;
 
-      for (const env of library.envs) {
-        for (const scope of env.monoScope) {
-          envs.push({ value: env.value, scope, source: 'library', libraryName, stacks: env.stacks });
-        }
-      }
+      for (const env of library.envs) addEnv(env, { source: 'library', libraryName });
     }
   }
 
   if (ctx.blueprint) {
     const blueprint = META.blueprints[ctx.blueprint];
     if (blueprint?.envs) {
-      for (const env of blueprint.envs) {
-        for (const scope of env.monoScope) {
-          envs.push({ value: env.value, scope, source: 'project', stacks: env.stacks });
-        }
-      }
+      for (const env of blueprint.envs) addEnv(env, { source: 'project' });
     }
   }
 

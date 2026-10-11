@@ -1,5 +1,11 @@
 import { META } from '@/__meta__';
-import { applyAppScripts, findRuntimeAddon, isLibraryCompatible, resolveScriptPlaceholders } from '@/lib/addon-utils';
+import {
+  applyAppScripts,
+  findRuntimeAddon,
+  getMonoPackageName,
+  isLibraryCompatible,
+  resolveScriptPlaceholders,
+} from '@/lib/addon-utils';
 import { getPackageManagerField } from '@/lib/package-manager';
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
@@ -50,10 +56,6 @@ export function mergePackageJsonConfigs<Config extends PackageJsonConfig>(...con
   }
 
   return result as Config;
-}
-
-function getMonoPackageName(addon: MetaAddon): string | null {
-  return addon.mono?.scope === 'pkg' ? addon.mono.name : null;
 }
 
 function deploymentPackageJson(addon: MetaAddon, ctx: TemplateContext): PackageJsonConfig | undefined {
@@ -344,6 +346,63 @@ export function getRootScripts(ctx: TemplateContext): Record<string, string> {
   return root.scripts ?? {};
 }
 
+/** The workspace packages of a turborepo, keyed by name, each with its merged package.json config. */
+export function collectMonoPackages(ctx: TemplateContext): Map<string, PackageJsonConfig> {
+  const packages = new Map<string, PackageJsonConfig>();
+  if (ctx.repo !== 'turborepo') return packages;
+
+  for (const app of ctx.apps) {
+    for (const libraryName of app.libraries) {
+      const library = META.libraries[libraryName];
+      const pkgName = getMonoPackageName(library);
+      if (pkgName && !packages.has(pkgName)) {
+        packages.set(pkgName, library?.packageJson ?? {});
+      }
+    }
+  }
+
+  if (ctx.project.linter) {
+    const parts = resolveCompositeAddons('linter', ctx.project.linter);
+    for (const { addon } of parts) {
+      const pkgName = getMonoPackageName(addon);
+      if (!pkgName) continue;
+      const existing = packages.get(pkgName);
+      packages.set(
+        pkgName,
+        existing ? mergePackageJsonConfigs(existing, addon.packageJson ?? {}) : (addon.packageJson ?? {}),
+      );
+    }
+  }
+
+  if (ctx.project.orm) {
+    const ormAddon = META.project.orm.options[ctx.project.orm];
+    const pkgName = getMonoPackageName(ormAddon);
+    if (pkgName) {
+      let config = ormAddon?.packageJson ?? {};
+
+      if (ctx.project.database) {
+        const dbAddon = META.project.database.options[ctx.project.database];
+        if (dbAddon) {
+          const dbDeployment = deploymentPackageJson(dbAddon, ctx);
+          config = mergePackageJsonConfigs(config, dbAddon.packageJson, dbDeployment);
+        }
+      }
+
+      packages.set(pkgName, config);
+    }
+  }
+
+  if (ctx.blueprint) {
+    const blueprint = META.blueprints[ctx.blueprint];
+    for (const [pkgName, config] of Object.entries(blueprint?.pkgPackageJson ?? {})) {
+      const existing = packages.get(pkgName);
+      packages.set(pkgName, existing ? mergePackageJsonConfigs(existing, config) : config);
+    }
+  }
+
+  return packages;
+}
+
 export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJson[] {
   const results: GeneratedPackageJson[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
@@ -355,62 +414,7 @@ export function generateAllPackageJsons(ctx: TemplateContext): GeneratedPackageJ
       results.push(generateAppPackageJson(app, ctx, index));
     });
 
-    const extractedPackages = new Map<string, PackageJsonConfig>();
-
-    for (const app of ctx.apps) {
-      for (const libraryName of app.libraries) {
-        const library = META.libraries[libraryName];
-        if (library?.mono?.scope === 'pkg') {
-          const pkgName = library.mono.name;
-          if (!extractedPackages.has(pkgName)) {
-            extractedPackages.set(pkgName, library.packageJson ?? {});
-          }
-        }
-      }
-    }
-
-    if (ctx.project.linter) {
-      const parts = resolveCompositeAddons('linter', ctx.project.linter);
-      for (const { addon } of parts) {
-        if (addon.mono?.scope === 'pkg') {
-          const pkgName = addon.mono.name;
-          const existing = extractedPackages.get(pkgName);
-          if (existing) {
-            extractedPackages.set(pkgName, mergePackageJsonConfigs(existing, addon.packageJson ?? {}));
-          } else {
-            extractedPackages.set(pkgName, addon.packageJson ?? {});
-          }
-        }
-      }
-    }
-
-    if (ctx.project.orm) {
-      const ormAddon = META.project.orm.options[ctx.project.orm];
-      if (ormAddon?.mono?.scope === 'pkg') {
-        const pkgName = ormAddon.mono.name;
-        let config = ormAddon.packageJson ?? {};
-
-        if (ctx.project.database) {
-          const dbAddon = META.project.database.options[ctx.project.database];
-          if (dbAddon) {
-            const dbDeployment = deploymentPackageJson(dbAddon, ctx);
-            config = mergePackageJsonConfigs(config, dbAddon.packageJson, dbDeployment);
-          }
-        }
-
-        extractedPackages.set(pkgName, config);
-      }
-    }
-
-    if (ctx.blueprint) {
-      const blueprint = META.blueprints[ctx.blueprint];
-      for (const [pkgName, config] of Object.entries(blueprint?.pkgPackageJson ?? {})) {
-        const existing = extractedPackages.get(pkgName);
-        extractedPackages.set(pkgName, existing ? mergePackageJsonConfigs(existing, config) : config);
-      }
-    }
-
-    for (const [name, config] of extractedPackages) {
+    for (const [name, config] of collectMonoPackages(ctx)) {
       results.push(generatePackagePackageJson(name, config, ctx));
     }
   } else {

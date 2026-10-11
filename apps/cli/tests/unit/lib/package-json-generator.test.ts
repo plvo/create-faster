@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  collectMonoPackages,
   generateAllPackageJsons,
   generateAppPackageJson,
   generateRootPackageJson,
@@ -1130,5 +1131,37 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
     const result = generateRootPackageJson(noOrm);
     expect(result.content.dependencies?.['@repo/db']).toBeUndefined();
     expect(result.content.scripts?.['db:push']).toBeUndefined();
+  });
+});
+
+describe('collectMonoPackages', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-packages',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['shadcn', 'better-auth'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { database: 'postgres', orm: 'drizzle', linter: 'eslint-prettier', tooling: [] },
+    git: true,
+    pm: 'bun',
+  };
+
+  test('lists exactly the packages that get a package.json', () => {
+    const packageJsonPaths = generateAllPackageJsons(ctx)
+      .map((generated) => generated.path)
+      .filter((path) => path.startsWith('packages/'));
+    const collectedPaths = [...collectMonoPackages(ctx).keys()].map((name) => `packages/${name}/package.json`);
+
+    expect(collectedPaths.sort()).toEqual(packageJsonPaths.sort());
+  });
+
+  test('has the db package only when an ORM creates it', () => {
+    expect(collectMonoPackages(ctx).has('db')).toBe(true);
+    expect(collectMonoPackages({ ...ctx, project: { database: 'postgres', tooling: [] } }).has('db')).toBe(false);
+  });
+
+  test('has no package in a single repo', () => {
+    expect(collectMonoPackages({ ...ctx, repo: 'single', apps: ctx.apps.slice(0, 1) }).size).toBe(0);
   });
 });

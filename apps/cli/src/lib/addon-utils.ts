@@ -110,6 +110,10 @@ export function findRuntimeAddon(ctx: TemplateContext): MetaAddon | undefined {
   return undefined;
 }
 
+export function getMonoPackageName(addon: MetaAddon | undefined): string | null {
+  return addon?.mono?.scope === 'pkg' ? addon.mono.name : null;
+}
+
 export function resolveDeployAppDir(ctx: TemplateContext): string | undefined {
   const deployment = ctx.project.deployment;
   if (!deployment) return undefined;

@@ -33,6 +33,16 @@ describe('collectEnvFiles', () => {
     expect(dbEnv).toBeDefined();
   });
 
+  test('does not generate a pkg scope .env.example when no addon creates that package', () => {
+    const ctx = makeContext({ project: { database: 'postgres', linter: 'biome', tooling: [] } });
+    const files = collectEnvFiles(ctx);
+
+    expect(files.map((f) => f.destination)).not.toContain('packages/db/.env.example');
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content).toContain('DATABASE_URL');
+    expect(files.find((f) => f.destination === 'apps/api/.env.example')?.content).toContain('DATABASE_URL');
+    expect(collectEnvGroups(ctx).map((g) => g.path)).not.toContain('packages/db/.env');
+  });
+
   test('generates .env.example for app scope per app with library', () => {
     const ctx = makeContext();
     const files = collectEnvFiles(ctx);
@@ -217,6 +227,55 @@ describe('blueprint env generation', () => {
   });
 });
 
+describe('EnvVar scope and when', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const noOrmCtx = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { database: 'postgres', linter: 'biome', tooling: [] },
+  });
+
+  function withPostgresEnvs<T>(envs: EnvVar[], run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = envs;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('a variable scoped only to a missing package falls back to the app scope', () => {
+    const files = withPostgresEnvs([{ value: 'ONLY_PKG=1', monoScope: [{ pkg: 'db' }] }], () =>
+      collectEnvFiles(noOrmCtx),
+    );
+
+    expect(files.map((f) => f.destination).sort()).toEqual(['apps/api/.env.example', 'apps/web/.env.example']);
+    expect(files.every((f) => f.content.includes('ONLY_PKG=1'))).toBe(true);
+  });
+
+  test('a variable scoped only to an existing package stays in it', () => {
+    const files = withPostgresEnvs([{ value: 'ONLY_PKG=1', monoScope: [{ pkg: 'db' }] }], () =>
+      collectEnvFiles(makeContext()),
+    );
+
+    expect(files.find((f) => f.destination === 'packages/db/.env.example')?.content).toContain('ONLY_PKG=1');
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content ?? '').not.toContain('ONLY_PKG');
+  });
+
+  test('a variable with a when condition is emitted only when the condition holds', () => {
+    const envs: EnvVar[] = [{ value: 'NEEDS_ORM=1', monoScope: ['app'], when: { orm: true } }];
+
+    const withOrm = withPostgresEnvs(envs, () => collectEnvFiles(makeContext()));
+    const withoutOrm = withPostgresEnvs(envs, () => collectEnvFiles(noOrmCtx));
+
+    expect(withOrm.find((f) => f.destination === 'apps/web/.env.example')?.content).toContain('NEEDS_ORM=1');
+    expect(withoutOrm).toEqual([]);
+  });
+});
+
 describe('EnvVar.stacks filter', () => {
   const STACK_ENVS: EnvVar[] = [
     { value: 'NEXT_PUBLIC_TOKEN=next-token', monoScope: ['app'], stacks: ['nextjs'] },
@@ -242,7 +301,7 @@ describe('EnvVar.stacks filter', () => {
       { appName: 'site', stackName: 'tanstack-start', libraries: [] },
       { appName: 'api', stackName: 'hono', libraries: [] },
     ],
-    project: { database: 'postgres', tooling: [] },
+    project: { database: 'postgres', orm: 'drizzle', tooling: [] },
     git: false,
   };
 

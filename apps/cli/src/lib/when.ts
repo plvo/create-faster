@@ -81,7 +81,7 @@ function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): bo
   return includesAny(actuals, expected as string | string[]);
 }
 
-function matches(match: WhenMatch, ctx: TemplateContext): boolean {
+export function matches(match: WhenMatch, ctx: TemplateContext): boolean {
   for (const [key, expected] of Object.entries(match)) {
     if (expected === undefined) continue;
 

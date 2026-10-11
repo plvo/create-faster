@@ -228,6 +228,29 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('hasPackage', () => {
+    const template = Handlebars.compile('{{#each apps}}{{#if (hasPackage "db")}}yes{{else}}no{{/if}}{{/each}}');
+    const monorepo = (orm?: string): TemplateContext => ({
+      projectName: 'demo',
+      repo: 'turborepo',
+      apps: [{ appName: 'api', stackName: 'hono', libraries: [] }],
+      project: { database: 'postgres', orm, tooling: [] },
+      git: false,
+    });
+
+    test('is true when a selected addon creates the package, from inside a block', () => {
+      expect(template(monorepo('drizzle'))).toBe('yes');
+    });
+
+    test('is false when no selected addon creates the package', () => {
+      expect(template(monorepo())).toBe('no');
+    });
+
+    test('is false in a single repo, which has no packages', () => {
+      expect(template({ ...monorepo('drizzle'), repo: 'single' })).toBe('no');
+    });
+  });
+
   describe('raw', () => {
     test('preserves inner {{ }} sequences literally', () => {
       const template = Handlebars.compile('{{{{raw}}}}{{variable}}{{{{/raw}}}}');
