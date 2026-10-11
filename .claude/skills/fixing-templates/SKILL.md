@@ -70,7 +70,7 @@ only: mono | single           # Repo type filter
 
 **Rendering config** (`preventIndent: false`): Handlebars auto-indents block content to match the helper's indentation. This is a major source of double-indentation issues.
 
-**Stack-specific suffix:** `file.ext.{stack}.hbs` (e.g., `route-nextjs.ts.nextjs.hbs`) — only included for matching stack.
+**Stack-specific suffix:** `file.ext.{stack}.hbs` (e.g., `route.ts.nextjs.hbs`) — only included for matching stack.
 
 ## Common Template Issues
 
