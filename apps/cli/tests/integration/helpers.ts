@@ -17,11 +17,14 @@ export async function cleanupTempDir(dir: string): Promise<void> {
   await rm(dir, { recursive: true, force: true });
 }
 
-export async function runCli(args: string[], cwd: string): Promise<CliResult> {
+export async function runCli(args: string[], cwd: string, env?: Record<string, string>): Promise<CliResult> {
   const cliPath = join(import.meta.dir, '../../src/index.ts');
 
   try {
-    const result = await $`bun run ${cliPath} ${args}`.cwd(cwd).quiet();
+    const result = await $`${process.execPath} run ${cliPath} ${args}`
+      .cwd(cwd)
+      .env({ ...process.env, ...env })
+      .quiet();
     return {
       exitCode: result.exitCode,
       stdout: result.stdout.toString(),
