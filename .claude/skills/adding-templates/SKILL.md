@@ -257,8 +257,8 @@ adapter.ts.hono.hbs → only for Hono apps
 When several templates must render the same block (a wrangler binding, a client options object, a host, a stack mapping), put it once in `templates/partials/{group}/{name}.hbs` and insert it with `{{> group/name}}`. Never copy the block.
 
 - The partial renders with the caller's context (helpers keep working); pass per-call values as hash parameters: `{{> posthog/client-options debug="import.meta.env.DEV"}}`.
-- Called alone on its line, it is indented to the call: end the file with a newline. Called mid-line, it is inserted as is: no final newline in the file.
-- Partials are registered at engine setup and never generated as files. Details and the list of partials: `.claude/CLAUDE.md`, Template System > Partials.
+- By default it is called alone on its line, indented to the call, and ends with one line break. A partial called mid-line sets `inline: true` in its frontmatter and is inserted without a final line break. Registration normalizes the ending, so the file's final newline does not matter.
+- `setupTemplateEngine()` registers helpers and partials; partials are never generated as files. Details: `.claude/CLAUDE.md`, Template System > Partials.
 
 ### Special Filename Handling
 
