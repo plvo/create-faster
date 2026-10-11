@@ -22,6 +22,7 @@ import {
   startServer,
 } from './helpers';
 import { exerciseEvlogProbe, expectEvlogProbeEvents, writeEvlogProbe } from './evlog-probe';
+import { expectServerNodeEnv, writeNodeEnvProbeRoute } from './node-env-probe';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -53,6 +54,7 @@ interface Scenario {
   ingestProbe?: boolean;
   evlogProbe?: EvlogProbe;
   authProbe?: AuthProbe;
+  nodeEnvProbe?: boolean;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -135,6 +137,7 @@ const SCENARIOS: Scenario[] = [
     args: ['--app', 'tanstack-start-cloudflare:tanstack-start'],
     startAppDirs: ['.'],
     workerDirs: ['.'],
+    nodeEnvProbe: true,
   },
   {
     name: 'tanstack-start-cloudflare-d1',
@@ -157,6 +160,7 @@ const SCENARIOS: Scenario[] = [
     args: ['--app', 'web:tanstack-start', '--app', 'admin:tanstack-start'],
     startAppDirs: ['apps/web', 'apps/admin'],
     workerDirs: ['apps/web', 'apps/admin'],
+    nodeEnvProbe: true,
   },
   {
     name: 'tanstack-start-cloudflare-turborepo-d1',
@@ -237,7 +241,7 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe, nodeEnvProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
@@ -262,6 +266,9 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           await writeFile(routePath, content);
         }
       }
+    }
+    if (nodeEnvProbe) {
+      for (const dir of startAppDirs) await writeNodeEnvProbeRoute(join(projectDir, dir));
     }
     installResult = await runCommand(['bun', 'install'], projectDir);
 
@@ -381,6 +388,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           });
           servers.push(server);
           await expectServesPageWithClientScript(server.url);
+          if (nodeEnvProbe) await expectServerNodeEnv(server.url, 'production');
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
           if (authProbe?.appDir === dir) {
             await expectAnonymousFlow(server.url);
@@ -396,6 +404,20 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
       },
       TIMEOUT_PREVIEW,
     );
+
+    if (nodeEnvProbe) {
+      test(
+        'vite dev runs the Worker with NODE_ENV=development',
+        async () => {
+          const dir = join(projectDir, startAppDirs[0] ?? '.');
+          const port = await getFreePort();
+          const server = await startServer(['bunx', 'vite', 'dev', '--port', String(port)], dir, { port });
+          servers.push(server);
+          await expectServerNodeEnv(server.url, 'development');
+        },
+        TIMEOUT_PREVIEW,
+      );
+    }
   }
 
   test(

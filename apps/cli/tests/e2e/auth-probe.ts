@@ -78,10 +78,18 @@ function cookieHeader(response: Response): string {
     .join('; ');
 }
 
+const randomOctet = (): number => Math.floor(Math.random() * 254) + 1;
+
+// A production server rate limits the auth routes per client address (three sign-ups per ten seconds):
+// each request comes from its own address so the flows are not throttled.
 function postJson(baseUrl: string, path: string, body: unknown): Promise<Response> {
   return fetch(new URL(path, baseUrl), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: baseUrl },
+    headers: {
+      'content-type': 'application/json',
+      origin: baseUrl,
+      'x-forwarded-for': `10.${randomOctet()}.${randomOctet()}.${randomOctet()}`,
+    },
     body: JSON.stringify(body),
   });
 }

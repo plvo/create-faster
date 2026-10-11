@@ -62,7 +62,7 @@ export default defineCloudflareConfig({});
 
 ### TanStack Start apps
 
-TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro: `vite.config.ts` registers the plugin in place of `nitro()`, and `vite dev` and `vite preview` run the app in workerd with the bindings declared in `wrangler.jsonc`. The Nitro `start` script and the `.env.start` file are not generated.
+TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro: `vite.config.ts` registers the plugin in place of `nitro()`, and `vite dev` and `vite preview` run the app in workerd with the bindings declared in `wrangler.jsonc`. The Nitro `start` script and the `.env.start` file are not generated. The Vite config passes `vars: { NODE_ENV }` to the plugin, so the built `wrangler.json` sets `NODE_ENV=production` in `vite preview` and `wrangler deploy` while `vite dev` runs with `development`.
 
 ```jsonc title="wrangler.jsonc"
 {

@@ -3,4 +3,5 @@ deploymentSkip:
   - cloudflare
   - cloudflare-static
 ---
+NODE_ENV=production
 PORT={{#if (isMono)}}{{appPort appName}}{{else}}3000{{/if}}

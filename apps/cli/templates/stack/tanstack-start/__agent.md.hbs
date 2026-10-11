@@ -2,6 +2,11 @@ TanStack Start project. File-based routes in `src/routes/`, root layout in `src/
 Import alias `@/*` maps to `src/*`.
 {{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
 
-`build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (the app's default `PORT`, which wins over a `PORT` in `.env`). Without a `.env`, Node prints `.env not found. Continuing without it.` on stderr and starts anyway.
+`build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (`NODE_ENV=production` and the app's default `PORT`, which win over the same variables in `.env`). Without a `.env`, Node prints `.env not found. Continuing without it.` on stderr and starts anyway.
 A variable exported in the shell wins over both files when `start` runs from the app directory.{{#if (isMono)}} `turbo start` from the root runs in turbo's strict env mode, which drops shell variables, so only the two files apply there.{{/if}}
+Node does not set `NODE_ENV` itself, and the build only replaces the literal `process.env.NODE_ENV` in bundled code. Server dependencies Nitro leaves external read the real variable at runtime, so `.env.start` sets `NODE_ENV=production`. `vite dev` keeps `development`.
 {{/unless}}
+{{#if (has "deployment" "cloudflare")}}
+
+A Worker does not get `NODE_ENV` at runtime either. The Cloudflare Vite plugin replaces the literal `process.env.NODE_ENV` in the bundle, but code that reads it dynamically (`process.env[key]`, destructuring) sees nothing. `vite.config.ts` passes `vars: { NODE_ENV }` to the plugin so the built `wrangler.json` carries `NODE_ENV=production` into `vite preview` and `wrangler deploy`, and `vite dev` runs with `development`. This overrides a `NODE_ENV` set in `wrangler.jsonc` `vars`.
+{{/if}}
