@@ -208,7 +208,12 @@ const UPSTREAM_RESPONSE_HEADERS = {
   'alt-svc': 'h3=":443"',
 };
 
-function startUpstream(): { url: string; requests: RecordedRequest[]; stop: () => void } {
+function startUpstream(): {
+  url: string;
+  requests: RecordedRequest[];
+  requestAt: (index: number) => RecordedRequest;
+  stop: () => void;
+} {
   const requests: RecordedRequest[] = [];
   const server = Bun.serve({
     port: 0,
@@ -225,7 +230,12 @@ function startUpstream(): { url: string; requests: RecordedRequest[]; stop: () =
       return new Response('{"status":"Ok"}', { headers: UPSTREAM_RESPONSE_HEADERS });
     },
   });
-  return { url: `http://127.0.0.1:${server.port}`, requests, stop: () => void server.stop(true) };
+  const requestAt = (index: number): RecordedRequest => {
+    const recorded = requests[index];
+    if (!recorded) throw new Error(`The upstream received no request #${index}`);
+    return recorded;
+  };
+  return { url: `http://127.0.0.1:${server.port}`, requests, requestAt, stop: () => void server.stop(true) };
 }
 
 function bodyText(request: RecordedRequest): string {
@@ -353,7 +363,7 @@ describe('tanstack-start-posthog', () => {
         });
         expect(response.status).toBe(200);
 
-        const forwarded = upstream.requests[before];
+        const forwarded = upstream.requestAt(before);
         expect(forwarded.method).toBe('POST');
         expect(forwarded.path).toBe('/e/?ip=1');
         expect(forwarded.headers.get('x-test-upstream-host')).toBe('us.i.posthog.com');
@@ -389,7 +399,7 @@ describe('tanstack-start-posthog', () => {
           headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.9' },
           body: '{}',
         });
-        expect(upstream.requests[before].headers.get('x-forwarded-for')).toBe('203.0.113.7');
+        expect(upstream.requestAt(before).headers.get('x-forwarded-for')).toBe('203.0.113.7');
       },
       TIMEOUT_START,
     );
@@ -445,7 +455,7 @@ describe('tanstack-start-posthog', () => {
 
         expect(reachedUpstream).toBe(true);
         expect(response.status).toBe(200);
-        expect(bodyText(upstream.requests[before])).toBe('first-chunk;second-chunk');
+        expect(bodyText(upstream.requestAt(before))).toBe('first-chunk;second-chunk');
       },
       TIMEOUT_START,
     );

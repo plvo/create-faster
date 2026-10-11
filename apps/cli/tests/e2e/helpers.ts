@@ -142,7 +142,7 @@ const FAKE_TOKEN = 'phc_create_faster_e2e_fake_token';
 interface Ingestion {
   path: string;
   headers: Record<string, string>;
-  body: BodyInit;
+  body: string | Uint8Array;
   directUrl: string;
 }
 
@@ -164,7 +164,7 @@ const INGESTIONS: Ingestion[] = [
   {
     path: '/ingest/e/?compression=gzip-js',
     headers: { 'content-type': 'text/plain' },
-    body: Bun.gzipSync(eventPayload) as BodyInit,
+    body: Bun.gzipSync(eventPayload),
     directUrl: `${POSTHOG_EVENT_URL}?compression=gzip-js`,
   },
 ];
