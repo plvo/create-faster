@@ -15,24 +15,22 @@ This is a monorepo managed with Turborepo containing {{apps.length}} application
 No additional libraries configured.
 {{/if}}
 
-{{#if ../project.database}}
+{{#if ../project.orm}}
 {{#if (eq @index 0)}}
-Uses shared database package (`packages/db`){{#if ../project.orm}} with {{../project.orm}} ORM{{/if}}.
+Uses shared database package (`packages/db`) with {{../project.orm}} ORM.
 {{/if}}
 {{/if}}
 
 {{/each}}
 
-{{#if project.database}}
+{{#if project.orm}}
 ## Shared Packages
 
 ### `packages/db`
 
 Shared database configuration and schema:
 - **Database**: {{project.database}}
-{{#if project.orm}}
 - **ORM**: {{project.orm}}
-{{/if}}
 
 {{/if}}
 ## Development Tools

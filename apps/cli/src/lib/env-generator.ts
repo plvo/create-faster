@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
+import { findRuntimeAddon, hasMonoPackage, isLibraryCompatible } from '@/lib/addon-utils';
 import { resolveAppPort } from '@/lib/utils';
 import type { TemplateContext } from '@/types/ctx';
 import type { EnvScope, MetaAddon } from '@/types/meta';
@@ -114,6 +114,7 @@ function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: str
   }
 
   if (typeof scope === 'object' && 'pkg' in scope) {
+    if (!hasMonoPackage(scope.pkg, ctx)) return null;
     return `packages/${scope.pkg}/.env.example`;
   }
 
