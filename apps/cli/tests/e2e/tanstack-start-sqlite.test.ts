@@ -66,7 +66,9 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, appDir, dbPackageDir, dbImport
     projectDir = join(tempDir, name);
     await writeFile(join(projectDir, appDir, 'src/routes/api.db-probe.ts'), dbProbeRoute(dbImport));
     installResult = await runCommand(['bun', 'install'], projectDir);
-    await copyFile(join(projectDir, dbPackageDir, '.env.example'), join(projectDir, dbPackageDir, '.env'));
+    for (const envDir of new Set([appDir, dbPackageDir])) {
+      await copyFile(join(projectDir, envDir, '.env.example'), join(projectDir, envDir, '.env'));
+    }
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -100,11 +102,9 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, appDir, dbPackageDir, dbImport
   );
 
   test(
-    'the built Nitro server loads the native sqlite binding and answers a route that queries the database',
+    'the built Nitro server reads DATABASE_URL from the app .env, loads the native sqlite binding and answers a route that queries the database',
     async () => {
-      const server = await startServer(['bun', 'run', 'start'], join(projectDir, appDir), {
-        env: { DATABASE_URL: 'file:./db.sqlite' },
-      });
+      const server = await startServer(['bun', 'run', 'start'], join(projectDir, appDir));
       try {
         const response = await fetch(new URL('/api/db-probe', server.url));
         expect(response.status).toBe(200);

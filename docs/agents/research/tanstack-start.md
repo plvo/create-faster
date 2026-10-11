@@ -8,7 +8,7 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 
 - **Goal.** The `tanstack-start` stack reaches parity with `nextjs` for what the two can share: Cloudflare, better-auth and tRPC, SST and terraform-aws, evlog, theme switching, MDX, PostHog, static Cloudflare hosting. Spec 1 is published as an issue with every decision locked, ready for delivery.
 - **Runtimes.**
-  - Outside Cloudflare: Nitro, shipped in #168. `start` is `node --env-file=.env.start .output/server/index.mjs`; each app gets its own port.
+  - Outside Cloudflare: Nitro, shipped in #168. `start` is `node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs`: it loads the app's `.env`, and each app gets its own port.
   - Cloudflare: `@cloudflare/vite-plugin`, without Nitro. Rendering defaults to SSR. SPA mode is documented, not offered as an option.
 - **Acceptance bar per brick** (no real deploy in CI):
   - Nitro: generate, install, build, typecheck, then `start` serves the page, an asset and the brick's API route.

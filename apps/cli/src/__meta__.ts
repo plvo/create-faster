@@ -126,7 +126,7 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: $when(RUNS_NITRO, 'node --env-file=.env.start .output/server/index.mjs'),
+          start: $when(RUNS_NITRO, 'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs'),
         },
       },
     },

@@ -1,6 +1,8 @@
 import { expect } from 'bun:test';
 import { type AddressInfo, createServer } from 'node:net';
+import { join } from 'node:path';
 import { $ } from 'bun';
+import { readJsonFile } from '../integration/helpers';
 
 export type { CliResult } from '../integration/helpers';
 export { cleanupTempDir, createTempDir, fileExists, runCli } from '../integration/helpers';
@@ -111,6 +113,12 @@ export async function expectServesPageWithClientScript(url: string): Promise<voi
   const script = await fetch(new URL(scriptPath, url));
   expect(script.status).toBe(200);
   expect(script.headers.get('content-type')).toContain('javascript');
+}
+
+/** `bun run start` in an app without a .env: bun echoes the script, then Node notes the optional .env is missing. */
+export async function expectOnlyMissingEnvNoticeOnStderr(stderr: string, appDir: string): Promise<void> {
+  const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(join(appDir, 'package.json'));
+  expect(stderr.split('\n').filter(Boolean)).toEqual([`$ ${scripts.start}`, '.env not found. Continuing without it.']);
 }
 
 export async function runCommand(args: string[], cwd: string): Promise<CommandResult> {

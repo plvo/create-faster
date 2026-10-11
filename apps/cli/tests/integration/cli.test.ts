@@ -704,7 +704,7 @@ describe('CLI Integration', () => {
   });
 
   describe('TanStack Start production runtime', () => {
-    test('single repo wires nitro into the vite config and start script, defaults to port 3000 and ignores .output', async () => {
+    test('single repo wires nitro into the vite config and start script, loads .env, defaults to port 3000 and ignores .output', async () => {
       const projectName = 'test-runtime-tanstack-single';
       const projectPath = join(tempDir, projectName);
 
@@ -724,7 +724,7 @@ describe('CLI Integration', () => {
         scripts: Record<string, string>;
         devDependencies: Record<string, string>;
       }>(join(projectPath, 'package.json'));
-      expect(pkg.scripts.start).toBe('node --env-file=.env.start .output/server/index.mjs');
+      expect(pkg.scripts.start).toBe('node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs');
       expect(await readTextFile(join(projectPath, '.env.start'))).toBe('PORT=3000\n');
       expect(pkg.devDependencies.nitro).toBeDefined();
       expect(pkg.devDependencies['vite-tsconfig-paths']).toBeUndefined();
@@ -733,7 +733,7 @@ describe('CLI Integration', () => {
       expect(gitignore.split('\n')).toContain('.output/');
     });
 
-    test('turborepo gives each app its own dev and start port and caches the .output build', async () => {
+    test('turborepo gives each app its own dev and start port, loads the app .env on start and caches the .output build', async () => {
       const projectName = 'test-runtime-tanstack-turbo';
       const projectPath = join(tempDir, projectName);
 
@@ -748,6 +748,8 @@ describe('CLI Integration', () => {
       expect(await readTextFile(join(projectPath, 'apps/admin/vite.config.ts'))).toContain('port: 3001,');
       expect(await readTextFile(join(projectPath, 'apps/web/.env.start'))).toBe('PORT=3000\n');
       expect(await readTextFile(join(projectPath, 'apps/admin/.env.start'))).toBe('PORT=3001\n');
+      const webPkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'apps/web/package.json'));
+      expect(webPkg.scripts.start).toBe('node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs');
 
       const turbo = await readJsonFile<{ tasks: { build: { outputs: string[] } } }>(join(projectPath, 'turbo.json'));
       expect(turbo.tasks.build.outputs).toContain('.output/**');
