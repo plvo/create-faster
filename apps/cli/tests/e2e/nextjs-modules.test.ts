@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand, startServer } from './helpers';
 
@@ -78,6 +79,61 @@ describe('nextjs-mdx-pwa', () => {
       }
     },
     TIMEOUT_START,
+  );
+});
+
+describe('nextjs-mdx-cloudflare-static', () => {
+  let projectDir: string;
+  let installResult: CommandResult;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'nextjs-mdx-cloudflare-static',
+        '--app',
+        'nextjs-mdx-cloudflare-static:nextjs:mdx',
+        '--deployment',
+        'cloudflare-static',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+
+    projectDir = join(tempDir, 'nextjs-mdx-cloudflare-static');
+    installResult = await runCommand(['bun', 'install'], projectDir);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'installs dependencies',
+    () => {
+      expect(installResult.exitCode).toBe(0);
+    },
+    TIMEOUT_INSTALL,
+  );
+
+  test(
+    'build exports one page per document',
+    async () => {
+      const result = await runCommand(['bun', 'run', 'build'], projectDir);
+      expect(result.exitCode, result.stderr).toBe(0);
+
+      const home = await readFile(join(projectDir, 'out/mdx.html'), 'utf-8');
+      expect(home).toContain('<h1 class="h1-mdx">Home</h1>');
+      expect(home).toContain('href="/mdx/cool"');
+
+      const cool = await readFile(join(projectDir, 'out/mdx/cool.html'), 'utf-8');
+      expect(cool).toContain('<h1 class="h1-mdx">Cool</h1>');
+    },
+    TIMEOUT_BUILD,
   );
 });
 
