@@ -786,7 +786,7 @@ describe('CLI Integration', () => {
       expect(schema).toContain('userAccountTable');
       expect(schema).toContain('userVerificationTable');
 
-      const auth = await readTextFile(join(tempDir, 'auth-sqlite', 'src/lib/auth/auth.ts'));
+      const auth = await readTextFile(join(tempDir, 'auth-sqlite', 'src/lib/auth/create-auth.ts'));
       expect(auth).toContain("provider: 'sqlite'");
     });
 

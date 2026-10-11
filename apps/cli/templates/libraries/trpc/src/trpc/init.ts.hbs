@@ -6,13 +6,13 @@ mono:
 ---
 {{#if (and (has "database" "d1") project.orm)}}
 {{#if (hasLibrary "better-auth")}}
-import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/create-auth'{{/if}};
 {{/if}}
 import type { Database } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{else}}
 {{#if (hasLibrary "better-auth")}}
 {{#if (isMono)}}
-import { auth } from '@repo/auth/auth';
+import { auth } from './auth';
 {{else}}
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';

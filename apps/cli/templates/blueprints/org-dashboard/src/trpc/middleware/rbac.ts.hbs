@@ -5,7 +5,7 @@ mono:
   path: src/middleware/rbac.ts
 ---
 import { TRPCError } from '@trpc/server';
-import { auth } from '@repo/auth/auth';
+import { auth } from '../auth';
 import { protectedProcedure } from '../trpc';
 
 export const adminProcedure = protectedProcedure.use(async (opts) => {

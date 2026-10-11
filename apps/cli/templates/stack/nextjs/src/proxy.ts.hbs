@@ -15,11 +15,7 @@ import { headers } from 'next/headers';
 {{#if (has "database" "d1")}}
 import { getAuth } from '@/lib/server';
 {{else}}
-{{#if (isMono)}}
-import { auth } from '@repo/auth/auth';
-{{else}}
 import { auth } from '@/lib/auth/auth';
-{{/if}}
 {{/if}}
 {{/if}}
 

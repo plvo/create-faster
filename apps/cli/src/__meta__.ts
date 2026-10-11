@@ -217,7 +217,7 @@ export const META: Meta = {
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
       category: 'Auth',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite', 'd1'] },
       needsServerRuntime: true,
       needsSingletonDb: true,
@@ -233,12 +233,17 @@ export const META: Meta = {
           typescript: '^5',
         },
         exports: {
-          './route-nextjs': './src/route-nextjs.ts',
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
+          './session-cache': $when([{ stack: 'tanstack-start' }, { library: 'trpc' }], './src/session-cache.ts'),
           './types': './src/types.ts',
           './password': './src/password.ts',
           './permissions': './src/permissions.ts',
+        },
+      },
+      appPackageJson: {
+        dependencies: {
+          'better-auth': '^1.7.2',
         },
       },
       envs: [
@@ -1225,6 +1230,11 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        api: {
+          dependencies: {
+            'better-auth': '^1.7.2',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',

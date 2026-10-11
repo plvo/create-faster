@@ -47,8 +47,8 @@ describe('cloudflare-fullstack blueprint META', () => {
       join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/lib/auth/auth.ts.hbs'),
       'utf8',
     );
-    expect(auth).toContain('export function createAuth(db: Database)');
-    expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })");
+    expect(auth).toContain('export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)');
+    expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }),");
   });
 
   test('registers a documents router using d1 per-request auth', () => {

@@ -368,7 +368,7 @@ describe('tRPC Integration', () => {
 
     test('trpc.ts has auth and db imports', async () => {
       const content = await readTextFile(join(projectPath, 'packages/api/src/trpc.ts'));
-      expect(content).toContain("from '@repo/auth/auth'");
+      expect(content).toContain("from './auth'");
       expect(content).toContain("from '@repo/db'");
       expect(content).toContain('protectedProcedure');
     });

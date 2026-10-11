@@ -1,7 +1,7 @@
 {{{{raw}}}}
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { auth } from '@repo/auth/auth';
+import { auth } from '@/lib/auth/auth';
 import { roleDefinitions, statement } from '@repo/auth/permissions';
 
 const RESOURCES = Object.keys(statement) as Array<keyof typeof statement>;

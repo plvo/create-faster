@@ -3,7 +3,7 @@ title: Better Auth
 description: Pre-configured authentication with ORM adapter integration, API routes, and shared auth package for monorepos.
 ---
 
-<Stacks names="nextjs" />
+<Stacks names="nextjs,tanstack-start" />
 <Dependencies packages="better-auth" />
 
 [→ Better Auth Documentation](https://better-auth.com)
@@ -16,17 +16,19 @@ Files added:
 ```
 src/
 ├── lib/auth/
-│   ├── auth.ts              # Server auth config
-│   └── auth-client.ts       # Client auth helpers
+│   ├── create-auth.ts       # createAuth(cookiePlugin?) factory, Auth type
+│   ├── auth.ts              # The app's instance, built with its framework cookie plugin
+│   ├── auth-client.ts       # Client auth helpers
+│   └── session-cache.ts     # Per-request session cache, only with TanStack Start or tRPC
 └── app/api/auth/[...all]/
     └── route.ts             # Auth API handler
 
-# Turborepo only:
+# Turborepo only (each app also gets its own src/lib/auth/auth.ts instance):
 packages/auth/
 ├── src/
-│   ├── auth.ts
+│   ├── auth.ts              # createAuth() factory, no framework cookie plugin
 │   ├── auth-client.ts
-│   ├── route.ts
+│   ├── session-cache.ts     # Only with TanStack Start or tRPC
 │   └── types.ts
 ├── package.json             # @repo/auth
 └── tsconfig.json
@@ -36,20 +38,20 @@ packages/auth/
 - `BETTER_AUTH_SECRET` - Auth secret key (scoped to auth package + app)
 - `BETTER_AUTH_URL` - Auth URL (scoped to app)
 
-### auth.ts
+### create-auth.ts (`packages/auth/src/auth.ts` in a turborepo)
 
 Server-side auth configuration with ORM adapter. Shown here with Drizzle + PostgreSQL:
 
-```ts title="src/lib/auth/auth.ts"
+```ts title="src/lib/auth/create-auth.ts"
 import { db, userAccountTable, userSessionTable, userTable, userVerificationTable } from '@/lib/db';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { betterAuth } from 'better-auth';
-import { nextCookies } from 'better-auth/next-js';
+import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
-export const auth = betterAuth({
+export function createAuth(cookiePlugin?: BetterAuthPlugin) {
+  return betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
     usePlural: false,
@@ -61,7 +63,7 @@ export const auth = betterAuth({
     },
   }),
 
-  plugins: [nextCookies()],
+  plugins: [...(cookiePlugin ? [cookiePlugin] : [])],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6,
@@ -84,7 +86,23 @@ export const auth = betterAuth({
   },
   account: { modelName: 'account' },
   verification: { modelName: 'verification' },
-});
+  });
+}
+
+export type Auth = ReturnType<typeof createAuth>;
+```
+
+The factory knows no framework. It appends the cookie plugin after its own plugins and, without one, disables session refresh (a refresh through an instance that cannot forward cookies would extend the session in the database but not in the browser).
+
+### auth.ts
+
+The app's instance, built with its framework's cookie plugin (`apps/<app>/src/lib/auth/auth.ts` in a turborepo):
+
+```ts title="src/lib/auth/auth.ts"
+import { nextCookies } from 'better-auth/next-js';
+import { createAuth } from './create-auth';
+
+export const auth = createAuth(nextCookies());
 ```
 
 Adapts automatically based on ORM and database selection:
@@ -98,11 +116,11 @@ Client-side auth helpers with type inference:
 ```ts title="src/lib/auth/auth-client.ts"
 import { inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
-import type { auth } from './auth';
+import type { Auth } from './create-auth';
 
 export const authClient = createAuthClient({
   baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  plugins: [inferAdditionalFields<typeof auth>()],
+  plugins: [inferAdditionalFields<Auth>()],
 });
 ```
 
@@ -117,7 +135,50 @@ import { auth } from '@/lib/auth/auth';
 export const { GET, POST } = toNextJsHandler(auth.handler);
 ```
 
-In turborepo mode, the app re-exports from `@repo/auth/route-nextjs` instead.
-
 **Turborepo mode:**
-Creates `@repo/auth` package depending on `@repo/db` for database access. Auth config lives in the package, app imports handlers.
+Creates `@repo/auth` package depending on `@repo/db` for database access. The package exports a framework-agnostic factory, `createAuth(cookiePlugin?)` (`createAuth(db, cookiePlugin?)` on Cloudflare D1), that appends the cookie plugin after its own plugins. Each app builds its own instance with its framework's cookie plugin and imports it from `@/lib/auth/auth`:
+
+```ts title="apps/web/src/lib/auth/auth.ts"
+import { nextCookies } from 'better-auth/next-js';
+import { createAuth } from '@repo/auth/auth';
+
+export const auth = createAuth(nextCookies());
+```
+
+A TanStack Start app uses `tanstackStartCookies()` the same way, so a Next.js app and a Start app can share one auth package. The tRPC package reads sessions with its own cookie-less `createAuth()`; it must not call endpoints that set cookies.
+
+## TanStack Start
+
+On TanStack Start the module generates the handler, the cookie plugin, the client and a `getSession` server function instead of the Next.js route. No protected layout is generated: guard routes in `beforeLoad` or `loader`.
+
+```
+src/
+├── lib/auth/
+│   ├── create-auth.ts       # createAuth(cookiePlugin?) factory
+│   ├── auth.ts              # Instance built with tanstackStartCookies()
+│   ├── auth-client.ts       # Client auth helpers
+│   ├── session-cache.ts     # Per-request session cache
+│   └── session.ts           # getSession server function
+└── routes/api/auth/
+    └── $.ts                 # Auth API handler (GET and POST)
+```
+
+In turborepo mode `session-cache.ts` lives in `@repo/auth` (`@repo/auth/session-cache`) so an API package can import it; the route, `getSession` and the `auth` instance (with `tanstackStartCookies()`) stay in the app.
+
+```ts title="src/routes/api/auth/$.ts"
+import { createFileRoute } from '@tanstack/react-router';
+import { auth } from '@/lib/auth/auth';
+
+export const Route = createFileRoute('/api/auth/$')({
+  server: {
+    handlers: {
+      GET: ({ request }) => auth.handler(request),
+      POST: ({ request }) => auth.handler(request),
+    },
+  },
+});
+```
+
+`getRequestSession(headers, load)` memoizes the session promise in a `WeakMap<Headers, Promise<Session | null>>`, keyed on `request.headers` (the same `Headers` object for the whole request), so loaders and server functions of one SSR request share a single lookup. `getSession` reads through it. `session-cache.ts` is plain TypeScript typed from the `Auth` type exported by the factory; it is generated when an app uses TanStack Start or tRPC is selected.
+
+On Cloudflare with D1, `auth` is built once at module scope next to `db` in `src/lib/server.ts` with `createAuth(db, tanstackStartCookies())`. PostgreSQL and MySQL through Hyperdrive stay disabled with better-auth, like on Next.js.

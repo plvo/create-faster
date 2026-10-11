@@ -8,10 +8,11 @@ mono:
 #!/usr/bin/env bun
 import { parseArgs } from 'node:util';
 import { faker } from '@faker-js/faker';
-import { auth } from '@repo/auth/auth';
+import { createAuth } from '@repo/auth/auth';
 import { db, invitationTable, memberTable, organizationTable, project, userTable } from '@repo/db';
 
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
+const auth = createAuth();
 
 const { values: flags } = parseArgs({
   options: {

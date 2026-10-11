@@ -1,9 +1,12 @@
 {{#if (has "database" "d1")}}
 {{#if project.orm}}
 import 'server-only';
+{{#if (hasLibrary "better-auth")}}
+import { nextCookies } from 'better-auth/next-js';
+{{/if}}
 import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{#if (hasLibrary "better-auth")}}
-import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/auth'{{/if}};
+import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/create-auth'{{/if}};
 {{/if}}
 import { getEnv } from '@/lib/env';
 
@@ -13,7 +16,7 @@ export async function getDb() {
 {{#if (hasLibrary "better-auth")}}
 
 export async function getAuth() {
-  return createAuth(await getDb());
+  return createAuth(await getDb(), nextCookies());
 }
 {{/if}}
 {{/if}}
