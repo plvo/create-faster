@@ -4,6 +4,12 @@ import matter from 'gray-matter';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 const TURBOREPO_APPS = ['--app', 'web:nextjs', '--app', 'api:hono'];
+const PNPM_AVAILABLE = Boolean(Bun.which('pnpm'));
+
+// Generating with --pm pnpm reads the installed pnpm version for the packageManager field.
+function pnpmTest(title: string, run: () => Promise<void>): void {
+  test.skipIf(!PNPM_AVAILABLE)(PNPM_AVAILABLE ? title : `${title} (skipped: pnpm is not installed)`, run);
+}
 
 describe('pnpm workspace declaration', () => {
   let tempDir: string;
@@ -22,7 +28,7 @@ describe('pnpm workspace declaration', () => {
     return join(tempDir, name);
   }
 
-  test('turborepo with pnpm declares the same workspaces as package.json and links internal packages', async () => {
+  pnpmTest('turborepo with pnpm declares the same workspaces as package.json and links internal packages', async () => {
     const projectPath = await generate('turbo-pnpm', TURBOREPO_APPS, 'pnpm');
     const rootPackage = await readJsonFile<{ workspaces: string[] }>(join(projectPath, 'package.json'));
     const workspace = await readTextFile(join(projectPath, 'pnpm-workspace.yaml'));
@@ -31,13 +37,13 @@ describe('pnpm workspace declaration', () => {
     expect(linkWorkspacePackages).toBe(true);
   });
 
-  test('turborepo with pnpm keeps internal dependencies on the version range shared with npm and bun', async () => {
+  pnpmTest('turborepo with pnpm keeps internal dependencies on the version range shared with npm and bun', async () => {
     const projectPath = await generate('turbo-pnpm-deps', [...TURBOREPO_APPS, '--database', 'postgres', '--orm', 'drizzle'], 'pnpm');
     const api = await readJsonFile<{ dependencies: Record<string, string> }>(join(projectPath, 'apps/api/package.json'));
     expect(api.dependencies['@repo/db']).toBe('*');
   });
 
-  test('blueprint turborepo with pnpm declares the workspace', async () => {
+  pnpmTest('blueprint turborepo with pnpm declares the workspace', async () => {
     const projectPath = await generate('bp-pnpm', ['--blueprint', 'org-dashboard'], 'pnpm');
     expect(await fileExists(join(projectPath, 'pnpm-workspace.yaml'))).toBe(true);
   });
@@ -49,7 +55,7 @@ describe('pnpm workspace declaration', () => {
     expect(rootPackage.workspaces).toEqual(['apps/*', 'packages/*']);
   });
 
-  test('single repo with pnpm has no pnpm-workspace.yaml', async () => {
+  pnpmTest('single repo with pnpm has no pnpm-workspace.yaml', async () => {
     const projectPath = await generate('single-pnpm', ['--app', 'single-pnpm:nextjs'], 'pnpm');
     expect(await fileExists(join(projectPath, 'pnpm-workspace.yaml'))).toBe(false);
   });
