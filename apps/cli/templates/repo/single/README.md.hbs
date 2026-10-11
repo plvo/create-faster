@@ -5,19 +5,19 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 ## Stack
 
 {{#each apps}}
-**{{stackName}}**{{#if modules.length}} with {{modules.length}} module{{#if (ne modules.length 1)}}s{{/if}}{{/if}}
-{{#if modules}}
-- Modules: {{#each modules}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+**{{stackName}}**{{#if libraries.length}} with {{libraries.length}} librar{{#if (eq libraries.length 1)}}y{{else}}ies{{/if}}{{/if}}
+{{#if libraries}}
+- Libraries: {{#each libraries}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 
 {{/each}}
 
-{{#if database}}
+{{#if project.database}}
 ## Database & ORM
 
-- **Database**: {{database}}
-{{#if orm}}
-- **ORM**: {{orm}}
+- **Database**: {{project.database}}
+{{#if project.orm}}
+- **ORM**: {{project.orm}}
 {{/if}}
 
 {{/if}}
@@ -26,11 +26,12 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 {{#if git}}
 - Git version control initialized
 {{/if}}
-{{#if extras}}
-{{#each extras}}
+{{#if project.linter}}
+- Linter: {{project.linter}}
+{{/if}}
+{{#each project.tooling}}
 - {{this}}
 {{/each}}
-{{/if}}
 
 ## Getting Started
 
@@ -50,7 +51,7 @@ cp {{path}}.example {{path}}
 ```
 
 {{/if}}
-{{#if database}}
+{{#if (hasRootScript "db:migrate")}}
 Run database migrations:
 
 ```bash
