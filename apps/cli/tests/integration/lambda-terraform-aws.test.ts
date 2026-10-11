@@ -11,6 +11,7 @@ import {
 } from './helpers';
 
 const BUILD_OUTFILE = /--outfile[= ](\S+)/;
+const NODE_RUNTIME_MAJOR = /^nodejs(\d+)\./;
 
 describe('lambda-terraform-aws blueprint', () => {
   let tempDir: string;
@@ -44,6 +45,21 @@ describe('lambda-terraform-aws blueprint', () => {
       { name: 'cron', timeout: 30 },
       { name: 'worker', timeout: 60 },
     ]);
+  });
+
+  test('every app types Node against the Lambda runtime major', async () => {
+    const nodeTypes = await Promise.all(
+      lambdas.map(async ({ name, sourceDir }) => {
+        const { devDependencies } = await readJsonFile<{ devDependencies: Record<string, string> }>(
+          join(dirname(sourceDir), 'package.json'),
+        );
+        return { name, nodeTypes: devDependencies['@types/node'] };
+      }),
+    );
+
+    expect(nodeTypes).toEqual(
+      lambdas.map(({ name, runtime }) => ({ name, nodeTypes: `^${runtime.match(NODE_RUNTIME_MAJOR)?.[1]}` })),
+    );
   });
 
   // Terraform zips only `source_dir`, so no package.json `"type": "module"` reaches Lambda:

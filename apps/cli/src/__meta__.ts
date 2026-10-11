@@ -76,7 +76,7 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
-          '@types/node': '^20',
+          '@types/node': '^22',
         },
         scripts: {
           dev: 'bun run --hot src/index.ts',

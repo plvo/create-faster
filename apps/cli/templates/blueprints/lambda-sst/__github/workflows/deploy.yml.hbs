@@ -33,19 +33,29 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
+{{{{/raw}}}}
+{{#if (eq pm "pnpm")}}
 
-      - run: bun install --frozen-lockfile
+      - uses: pnpm/action-setup@v4
+{{/if}}
+
+      - run: {{#if (eq pm "bun")}}bun install --frozen-lockfile{{else if (eq pm "pnpm")}}pnpm install --frozen-lockfile{{else}}npm ci{{/if}}
+{{{{raw}}}}
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+{{{{/raw}}}}
+{{#if (or (has "linter" "biome") (has "linter" "oxc") (has "linter" "eslint") (has "linter" "eslint-prettier"))}}
       - name: Lint
-        run: bun run lint
+        run: {{#if pm}}{{pm}}{{else}}npm{{/if}} run lint
 
+{{/if}}
       - name: Build
-        run: bun run build
+        run: {{#if pm}}{{pm}}{{else}}npm{{/if}} run build
+{{{{raw}}}}
 
       - name: Deploy
         run: npx sst deploy --stage ${{ github.event_name == 'workflow_dispatch' && inputs.stage || 'staging' }}
