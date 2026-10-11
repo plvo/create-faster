@@ -56,7 +56,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 {{/if}}
 
 {{/if}}
-{{#if (and (or (has "stack" "nextjs") (has "stack" "tanstack-start")) (or (has "database" "postgres") (has "database" "mysql")))}}
+{{#if (and (or (has "stack" "nextjs") (has "stack" "tanstack-start") (has "stack" "hono")) (or (has "database" "postgres") (has "database" "mysql")))}}
 **Database — Hyperdrive**: the Workers runtime cannot open a raw TCP connection to {{#if (has "database" "postgres")}}Postgres{{/if}}{{#if (has "database" "mysql")}}MySQL{{/if}}, and forbids reusing a connection across requests. The DB goes through the Cloudflare **Hyperdrive** binding (a pooling proxy), so the `db` package exports a per-request `createDb(hyperdrive)` factory — there is no module-level `db` singleton.
 
 {{#if (has "stack" "nextjs")}}
@@ -65,7 +65,10 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 {{#if (has "stack" "tanstack-start")}}
 - Build a client per request inside each server function or route handler: `const db = await createDb(env.HYPERDRIVE)`. Never create a client or read `env.HYPERDRIVE` properties at module level.
 {{/if}}
-- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by {{#if (has "stack" "nextjs")}}`wrangler dev`/local only{{else}}`vite dev` and `vite preview` only{{/if}} and matches your local `DATABASE_URL`.
+{{#if (has "stack" "hono")}}
+- Hono: build a client per request inside each route handler, `const db = await createDb(c.env.HYPERDRIVE)`, never at module level. `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()`, so `c.env.HYPERDRIVE` is typed once `bun run cf-typegen` has generated `cloudflare-env.d.ts` (run it after install and after every change to `wrangler.jsonc`). Routes that query the db run under `bun run preview` (`wrangler dev`): `bun run dev` runs Bun without the Workers runtime, so there is no `c.env.HYPERDRIVE`.
+{{/if}}
+- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by {{#if (or (has "stack" "nextjs") (has "stack" "hono"))}}`wrangler dev`/local only{{else}}`vite dev` and `vite preview` only{{/if}} and matches your local `DATABASE_URL`.
 - **Migrations** run on Node (not the Worker) via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
 {{#if (has "stack" "nextjs")}}
 - better-auth / tRPC over this binding (per-request consumers) is not wired yet — see #153.

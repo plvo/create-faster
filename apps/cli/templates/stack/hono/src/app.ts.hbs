@@ -14,7 +14,11 @@ initLogger({
 });
 {{/if}}
 
+{{#if (and (has "deployment" "cloudflare") (or (has "database" "postgres") (has "database" "mysql")))}}
+const app = new Hono<{{#if (hasLibrary "evlog")}}EvlogVariables & {{/if}}{ Bindings: CloudflareEnv }>();
+{{else}}
 const app = new Hono{{#if (hasLibrary "evlog")}}<EvlogVariables>{{/if}}();
+{{/if}}
 
 {{#if (hasLibrary "evlog")}}
 app.use(evlog());

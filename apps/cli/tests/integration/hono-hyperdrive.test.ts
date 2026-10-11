@@ -46,7 +46,7 @@ describe.each(SINGLE_REPO_CASES)('Hono + cloudflare + $database', ({ name, datab
 
   test('agent doc describes the per-request Hyperdrive pattern for Hono', async () => {
     const agent = await readTextFile(join(projectPath, 'AGENTS.md'));
-    expect(agent).toContain('**Database: Hyperdrive**');
+    expect(agent).toContain('**Database — Hyperdrive**');
     expect(agent).toContain('await createDb(c.env.HYPERDRIVE)');
     expect(agent).toContain('bun run preview');
   });
