@@ -65,7 +65,11 @@ export interface SstHandler {
 
 // Node.js handler strings in sst.config.ts: `handler: '...'` (Function, queue subscriber),
 // `function: '...'` (Cron) and the target of `.route('...', '...')` (ApiGatewayV2).
-const SST_HANDLER_PATTERNS = [/\bhandler:\s*'([^']+)'/g, /\bfunction:\s*'([^']+)'/g, /\.route\(\s*'[^']*',\s*'([^']+)'/g];
+const SST_HANDLER_PATTERNS = [
+  /\bhandler:\s*'([^']+)'/g,
+  /\bfunction:\s*'([^']+)'/g,
+  /\.route\(\s*'[^']*',\s*'([^']+)'/g,
+];
 
 // Extensions SST's Node.js runtime tries, in this order, to find a handler's file.
 const SST_HANDLER_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];

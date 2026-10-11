@@ -68,12 +68,7 @@ export interface StartServerOptions {
 export async function startServer(
   args: string[],
   cwd: string,
-  {
-    port: ownPort,
-    readyPath = '/',
-    readyTimeout = SERVER_READY_TIMEOUT,
-    env: extraEnv = {},
-  }: StartServerOptions = {},
+  { port: ownPort, readyPath = '/', readyTimeout = SERVER_READY_TIMEOUT, env: extraEnv = {} }: StartServerOptions = {},
 ): Promise<RunningServer> {
   if (ownPort !== undefined && !(await isPortFree(ownPort))) {
     throw new Error(`Port ${ownPort} is already in use, so the server's own port cannot be tested`);
@@ -98,7 +93,7 @@ export async function startServer(
     return output;
   };
 
-  const readyUrl = `${url}${readyPath}`;
+  const readyUrl = new URL(readyPath, url).href;
   const deadline = Date.now() + readyTimeout;
   while (Date.now() < deadline && proc.exitCode === null) {
     if (await isResponding(readyUrl)) return { url, stop };

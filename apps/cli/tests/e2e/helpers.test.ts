@@ -71,9 +71,11 @@ describe('startServer', () => {
     const dir = await projectWithServer(API_SERVER);
 
     const server = await startServer(['node', 'server.mjs'], dir, { readyPath: '/health', readyTimeout: 5_000 });
-    expect((await fetch(`${server.url}/health`)).status).toBe(200);
-
-    await server.stop();
+    try {
+      expect((await fetch(new URL('/health', server.url))).status).toBe(200);
+    } finally {
+      await server.stop();
+    }
   }, 15_000);
 
   test('stop ends the server that a wrapper command started', async () => {

@@ -5,7 +5,11 @@ import { cleanupTempDir, createTempDir, exportedNames, readTextFile, runCli } fr
 // `default` is what `bun run src/index.ts` (dev, start) and wrangler (`main`) serve; `handler` is the Lambda entry.
 const ENTRIES = [
   { name: 'hono-plain', args: ['--app', 'hono-plain:hono'], exports: ['default'] },
-  { name: 'hono-cloudflare', args: ['--app', 'hono-cloudflare:hono', '--deployment', 'cloudflare'], exports: ['default'] },
+  {
+    name: 'hono-cloudflare',
+    args: ['--app', 'hono-cloudflare:hono', '--deployment', 'cloudflare'],
+    exports: ['default'],
+  },
   { name: 'hono-sst', args: ['--app', 'hono-sst:hono', '--deployment', 'sst'], exports: ['default', 'handler'] },
   { name: 'hono-lambda', args: ['--app', 'hono-lambda:hono:aws-lambda'], exports: ['default', 'handler'] },
   {
