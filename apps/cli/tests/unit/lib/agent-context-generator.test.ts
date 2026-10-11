@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { collectAgentContextFiles } from '@/lib/agent-context-generator';
 import { registerHandlebarsHelpers } from '@/lib/handlebars';
-import type { TemplateContext } from '@/types/ctx';
+import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 beforeAll(() => {
   registerHandlebarsHelpers();
@@ -55,7 +55,7 @@ describe('collectAgentContextFiles (turborepo)', () => {
       repo: 'turborepo',
       apps: [
         { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
-        { appName: 'api', stackName: 'tanstack-start', libraries: [] },
+        { appName: 'api', stackName: 'node', libraries: [] },
       ],
       project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling: [] },
       git: true,
@@ -86,9 +86,34 @@ describe('collectAgentContextFiles (turborepo)', () => {
 
   test('apps with no fiche-bearing addon get no AGENTS.md', () => {
     const files = collectAgentContextFiles(monoContext());
-    // api (tanstack-start, no libs) has no stack/lib fiche → no apps/api/AGENTS.md.
-    // If a tanstack-start fiche is added later, switch this app to a fiche-less stack.
+    // api (node, no libs) has no stack/lib fiche → no apps/api/AGENTS.md.
+    // If a node fiche is added later, switch this app to a fiche-less stack.
     expect(files.some((f) => f.destination === 'apps/api/AGENTS.md')).toBe(false);
+  });
+});
+
+describe('collectAgentContextFiles (TanStack Start)', () => {
+  function startSection(deployment?: ProjectContext['deployment']): string {
+    const ctx = makeContext({
+      apps: [{ appName: 'my-project', stackName: 'tanstack-start', libraries: [] }],
+      project: { deployment, tooling: [] },
+    });
+    const content = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md')?.content ?? '';
+    const start = content.indexOf('## TanStack Start');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = content.indexOf('\n## ', start + 1);
+    return content.slice(start, end === -1 ? undefined : end);
+  }
+
+  test('documents that the Nitro start script loads the app .env, then .env.start for the port', () => {
+    const section = startSection();
+    expect(section).toContain('`.env`');
+    expect(section).toContain('`.env.start`');
+    expect(section).toContain('PORT');
+  });
+
+  test.each(['cloudflare', 'cloudflare-static'] as const)('does not document the Nitro start script under %p', (deployment) => {
+    expect(startSection(deployment)).not.toContain('.env.start');
   });
 });
 
