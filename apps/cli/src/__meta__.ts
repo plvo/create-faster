@@ -300,11 +300,6 @@ export const META: Meta = {
             'server-only': '^0.0.1',
           },
         },
-        'tanstack-start': {
-          dependencies: {
-            '@tanstack/react-router-ssr-query': $when({ library: 'tanstack-query' }, '^1.167.3'),
-          },
-        },
       },
     },
     'tanstack-query': {
@@ -315,6 +310,13 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           '@tanstack/react-query': '^5.102.8',
+        },
+      },
+      stackPackageJson: {
+        'tanstack-start': {
+          dependencies: {
+            '@tanstack/react-router-ssr-query': '^1.167.3',
+          },
         },
       },
     },
