@@ -8,23 +8,23 @@ describe('META blueprint category grouping', () => {
     const grouped: Record<string, string[]> = {};
     for (const [name, bp] of Object.entries(META.blueprints)) {
       if (!grouped[bp.category]) grouped[bp.category] = [];
-      grouped[bp.category].push(name);
+      grouped[bp.category]!.push(name);
     }
 
     expect(Object.keys(grouped).length).toBeGreaterThan(0);
 
     for (const category of Object.keys(grouped)) {
       expect(category.length).toBeGreaterThan(0);
-      expect(grouped[category].length).toBeGreaterThan(0);
+      expect(grouped[category]!.length).toBeGreaterThan(0);
     }
   });
 
   test('dapp-privy is in Web3 category', () => {
-    expect(META.blueprints['dapp-privy'].category).toBe('Web3');
+    expect(META.blueprints['dapp-privy']!.category).toBe('Web3');
   });
 
   test('org-dashboard is in Business category', () => {
-    expect(META.blueprints['org-dashboard'].category).toBe('Business');
+    expect(META.blueprints['org-dashboard']!.category).toBe('Business');
   });
 });
 

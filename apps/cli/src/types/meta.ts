@@ -1,4 +1,6 @@
-export type StackName = 'nextjs' | 'expo' | 'hono' | 'node' | 'tanstack-start';
+import type { StackName } from '@/types/stack-name';
+import type { Conditional } from '@/types/when';
+
 export type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
@@ -28,13 +30,19 @@ export interface AddonRequire {
   stacks?: StackName[];
 }
 
-export interface PackageJsonConfig {
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  scripts?: Record<string, string>;
-  exports?: Record<string, string>;
+interface PackageJsonShape<Value> {
+  dependencies?: Record<string, Value>;
+  devDependencies?: Record<string, Value>;
+  scripts?: Record<string, Value>;
+  exports?: Record<string, Value>;
   [key: string]: unknown;
 }
+
+/** Package.json contribution as authored in META: values may be `$when` conditionals. */
+export type PackageJsonConfig = PackageJsonShape<Conditional<string>>;
+
+/** Package.json contribution after `$when` conditionals are resolved against a context. */
+export type ResolvedPackageJsonConfig = PackageJsonShape<string>;
 
 export interface AppUrlContext {
   projectName: string;
@@ -101,13 +109,13 @@ export interface MetaRepoStack {
   hint?: string;
 }
 
-export interface MetaProject {
+export type MetaProject = {
   database: MetaProjectCategory;
   orm: MetaProjectCategory;
   deployment: MetaProjectCategory;
   linter: MetaProjectCategory;
   tooling: MetaProjectCategory;
-}
+};
 
 export type ProjectCategoryName = keyof MetaProject;
 

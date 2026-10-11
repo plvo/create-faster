@@ -61,22 +61,22 @@ describe('isServerRuntimeSatisfied', () => {
 
 describe('isLibraryCompatible', () => {
   test('shadcn is compatible with nextjs', () => {
-    expect(isLibraryCompatible(META.libraries.shadcn, 'nextjs')).toBe(true);
+    expect(isLibraryCompatible(META.libraries.shadcn!, 'nextjs')).toBe(true);
   });
 
   test('shadcn is not compatible with expo', () => {
-    expect(isLibraryCompatible(META.libraries.shadcn, 'expo')).toBe(false);
+    expect(isLibraryCompatible(META.libraries.shadcn!, 'expo')).toBe(false);
   });
 
   test('tanstack-query is compatible with all', () => {
-    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'nextjs')).toBe(true);
-    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'expo')).toBe(true);
-    expect(isLibraryCompatible(META.libraries['tanstack-query'], 'hono')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query']!, 'nextjs')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query']!, 'expo')).toBe(true);
+    expect(isLibraryCompatible(META.libraries['tanstack-query']!, 'hono')).toBe(true);
   });
 
   test('nativewind is only compatible with expo', () => {
-    expect(isLibraryCompatible(META.libraries.nativewind, 'expo')).toBe(true);
-    expect(isLibraryCompatible(META.libraries.nativewind, 'nextjs')).toBe(false);
+    expect(isLibraryCompatible(META.libraries.nativewind!, 'expo')).toBe(true);
+    expect(isLibraryCompatible(META.libraries.nativewind!, 'nextjs')).toBe(false);
   });
 });
 
@@ -346,7 +346,13 @@ describe('isSingletonDbSatisfied', () => {
 
 describe('resolveDeployAppDir picks the deployment app that consumes the db', () => {
   const ctx = (apps: TemplateContext['apps'], deployment?: string): TemplateContext =>
-    ({ apps, project: { tooling: [], ...(deployment ? { deployment } : {}) }, repo: 'turborepo' }) as TemplateContext;
+    ({
+      projectName: 'test',
+      apps,
+      project: { tooling: [], ...(deployment ? { deployment } : {}) },
+      repo: 'turborepo',
+      git: false,
+    });
 
   test('prefers the app carrying a singleton-db consumer over declaration order', () => {
     const apps = [
@@ -373,10 +379,12 @@ describe('resolveDeployAppDir picks the deployment app that consumes the db', ()
 describe('resolveScriptPlaceholders substitutes generic topology tokens', () => {
   const ctx = (repo: 'single' | 'turborepo'): TemplateContext =>
     ({
+      projectName: 'test',
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
       project: { tooling: [], deployment: 'cloudflare' },
       repo,
-    }) as TemplateContext;
+      git: false,
+    });
 
   test('workspaceRoot resolves relative to the repo layout', () => {
     expect(resolveScriptPlaceholders({ x: 'persist {{workspaceRoot}}/.wrangler' }, ctx('turborepo')).x).toBe(

@@ -175,10 +175,10 @@ describe('collectAgentContextFiles (Next.js on Cloudflare)', () => {
 describe('collectAgentContextFiles (blueprint)', () => {
   test('injects Architecture section from META.agentArchitecture', () => {
     const blueprintName = Object.keys(META.blueprints).find(
-      (n) => META.blueprints[n].agentArchitecture,
+      (n) => META.blueprints[n]!.agentArchitecture,
     );
     if (!blueprintName) return; // no blueprint annotated yet
-    const blueprint = META.blueprints[blueprintName];
+    const blueprint = META.blueprints[blueprintName]!;
     const ctx: TemplateContext = {
       projectName: 'demo',
       repo: blueprint.context.apps.length > 1 ? 'turborepo' : 'single',
@@ -196,8 +196,8 @@ describe('collectAgentContextFiles (blueprint)', () => {
     const ctx: TemplateContext = {
       projectName: 'demo',
       repo: 'turborepo',
-      apps: META.blueprints['org-dashboard'].context.apps.map((a) => ({ ...a })),
-      project: { ...META.blueprints['org-dashboard'].context.project, tooling: [] },
+      apps: META.blueprints['org-dashboard']!.context.apps.map((a) => ({ ...a })),
+      project: { ...META.blueprints['org-dashboard']!.context.project, tooling: [] },
       git: true,
       pm: 'bun',
       blueprint: 'org-dashboard',

@@ -11,36 +11,36 @@ describe('Testing libraries', () => {
 
   for (const { key, stacks, testScript } of cases) {
     test(`${key} exists in the Testing category`, () => {
-      const lib = META.libraries[key];
+      const lib = META.libraries[key]!;
       expect(lib).toBeDefined();
       expect(lib.category).toBe('Testing');
     });
 
     test(`${key} supports ${stacks.join(', ')}`, () => {
-      const lib = META.libraries[key];
+      const lib = META.libraries[key]!;
       expect(lib.support?.stacks).toEqual([...stacks]);
     });
 
     test(`${key} declares its ${testScript} script`, () => {
-      const lib = META.libraries[key];
+      const lib = META.libraries[key]!;
       const scripts = lib.packageJson?.scripts ?? {};
       expect(Object.keys(scripts)).toContain(testScript);
     });
   }
 
   test('vitest keeps the test script when combined with playwright', () => {
-    expect(META.libraries.vitest.packageJson?.scripts?.test).toBe('vitest run');
-    expect(META.libraries.playwright.packageJson?.scripts?.test).toBeUndefined();
+    expect(META.libraries.vitest!.packageJson?.scripts?.test).toBe('vitest run');
+    expect(META.libraries.playwright!.packageJson?.scripts?.test).toBeUndefined();
   });
 
   test('playwright resolves its base URL from the app URL env var', () => {
-    const env = META.libraries.playwright.envs?.[0];
+    const env = META.libraries.playwright!.envs?.[0];
     expect(env?.value).toBe('BASE_URL={{appUrl}}');
   });
 
   test('vitest and vitest-node have disjoint stack support', () => {
-    const react = META.libraries.vitest.support?.stacks as string[];
-    const node = META.libraries['vitest-node'].support?.stacks as string[];
+    const react = META.libraries.vitest!.support?.stacks as string[];
+    const node = META.libraries['vitest-node']!.support?.stacks as string[];
     expect(react.some((s) => node.includes(s))).toBe(false);
   });
 });

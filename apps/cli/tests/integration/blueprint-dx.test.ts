@@ -7,7 +7,7 @@ interface RootPkg {
   devDependencies: Record<string, string>;
 }
 
-const BLUEPRINTS = ['org-dashboard', 'multitenant-saas'] as const;
+const BLUEPRINTS: string[] = ['org-dashboard', 'multitenant-saas'];
 
 describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
   let tempDir: string;

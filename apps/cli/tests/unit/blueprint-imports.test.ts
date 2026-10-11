@@ -27,7 +27,7 @@ function getEffectiveContent(content: string, isMono: boolean): string {
     }
 
     if (trimmed === '{{else}}' && stack.length > 0) {
-      const top = stack[stack.length - 1];
+      const top = stack[stack.length - 1]!;
       if (top.isMonoBlock) {
         top.skipping = !top.skipping;
       }
@@ -51,7 +51,7 @@ function extractAtSlashImports(content: string): string[] {
   const imports: string[] = [];
   const regex = /from\s+['"](@\/[^'"]+)['"]/g;
   for (const match of content.matchAll(regex)) {
-    imports.push(match[1]);
+    imports.push(match[1]!);
   }
   return [...new Set(imports)];
 }
@@ -63,7 +63,7 @@ function extractExternalPackageImports(content: string): string[] {
 
   for (const regex of patterns) {
     for (const match of content.matchAll(regex)) {
-      const importPath = match[1];
+      const importPath = match[1]!;
 
       if (
         importPath.startsWith('.') ||
@@ -81,7 +81,7 @@ function extractExternalPackageImports(content: string): string[] {
         ? importPath.split('/').slice(0, 2).join('/')
         : importPath.split('/')[0];
 
-      packages.add(packageName);
+      packages.add(packageName!);
     }
   }
 
@@ -89,7 +89,7 @@ function extractExternalPackageImports(content: string): string[] {
 }
 
 function buildContextFromBlueprint(name: string): TemplateContext {
-  const blueprint = META.blueprints[name];
+  const blueprint = META.blueprints[name]!;
   return {
     projectName: 'test',
     repo: blueprint.context.apps.length > 1 ? 'turborepo' : 'single',
@@ -176,7 +176,7 @@ describe('Blueprint template relative imports', () => {
         const content = getEffectiveContent(rawContent, isMono);
 
         const regex = /from\s+['"](\.\.?\/[^'"]+)['"]/g;
-        const relativeImports = [...new Set([...content.matchAll(regex)].map((m) => m[1]))];
+        const relativeImports = [...new Set([...content.matchAll(regex)].map((m) => m[1]!))];
 
         const dir = dirname(template.destination);
 
@@ -228,7 +228,7 @@ describe('Blueprint template external dependencies', () => {
         const appMatch = template.destination.match(/^apps\/([^/]+)\//);
         if (!appMatch) continue;
 
-        const appName = appMatch[1];
+        const appName = appMatch[1]!;
         const deps = appDeps.get(appName);
         if (!deps) continue;
 

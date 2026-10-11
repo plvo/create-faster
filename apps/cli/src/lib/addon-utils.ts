@@ -1,6 +1,7 @@
 import { META } from '@/__meta__';
 import type { TemplateContext } from '@/types/ctx';
-import type { AddonRequire, AppScriptTransform, MetaAddon, ProjectCategoryName, StackName } from '@/types/meta';
+import type { AddonRequire, AppScriptTransform, MetaAddon, ProjectCategoryName } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
   if (!library.support?.stacks) return true;
@@ -115,10 +116,11 @@ export function resolveDeployAppDir(ctx: TemplateContext): string | undefined {
 
   const deployStacks = Object.keys(META.project.deployment.options[deployment]?.stackPackageJson ?? {});
   const candidates = ctx.apps.filter((app) => deployStacks.includes(app.stackName));
-  if (candidates.length === 0) return undefined;
+  const first = candidates[0];
+  if (!first) return undefined;
 
   const consumer = candidates.find((app) => app.libraries.some((lib) => META.libraries[lib]?.needsSingletonDb));
-  return (consumer ?? candidates[0]).appName;
+  return (consumer ?? first).appName;
 }
 
 export function resolveScriptPlaceholders(
@@ -144,9 +146,11 @@ export function applyAppScripts(
   const next = { ...scripts };
   for (const [key, transform] of Object.entries(transforms)) {
     if (typeof transform === 'function') {
-      if (next[key]) next[key] = transform(next[key]);
-    } else if (next[transform.from]) {
-      next[key] = transform.wrap(next[transform.from]);
+      const current = next[key];
+      if (current) next[key] = transform(current);
+    } else {
+      const source = next[transform.from];
+      if (source) next[key] = transform.wrap(source);
     }
   }
   return next;

@@ -38,6 +38,9 @@ jobs:
       - name: "🔍 Lint & Format"
         run: bun run check
 
+      - name: "🔎 Typecheck"
+        run: bun run typecheck
+
       - name: "🏗️ Build Check"
         id: build
         run: bun run build:cli

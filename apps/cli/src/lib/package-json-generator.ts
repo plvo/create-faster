@@ -4,7 +4,8 @@ import { applyAppScripts, findRuntimeAddon, isLibraryCompatible, resolveScriptPl
 import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
-import type { MetaAddon, PackageJsonConfig, ProjectCategoryName } from '@/types/meta';
+import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
+import type { Conditional } from '@/types/when';
 
 export interface PackageJson {
   name: string;
@@ -26,11 +27,11 @@ export interface GeneratedPackageJson {
   content: PackageJson;
 }
 
-function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
+function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | undefined)[]): ResolvedPackageJsonConfig {
   return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
 }
 
-export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefined)[]): PackageJsonConfig {
+export function mergePackageJsonConfigs<Config extends PackageJsonConfig>(...configs: (Config | undefined)[]): Config {
   const result: PackageJsonConfig = {};
 
   for (const config of configs) {
@@ -39,8 +40,8 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
     for (const [key, value] of Object.entries(config)) {
       if (MERGE_KEYS.has(key)) {
         result[key] = {
-          ...(result[key] as Record<string, string> | undefined),
-          ...(value as Record<string, string>),
+          ...(result[key] as Record<string, Conditional<string>> | undefined),
+          ...(value as Record<string, Conditional<string>>),
         };
       } else {
         result[key] = value;
@@ -48,7 +49,7 @@ export function mergePackageJsonConfigs(...configs: (PackageJsonConfig | undefin
     }
   }
 
-  return result;
+  return result as Config;
 }
 
 function getMonoPackageName(addon: MetaAddon): string | null {
@@ -66,7 +67,7 @@ function addRepoRef(
 ): boolean {
   const name = getMonoPackageName(addon);
   if (!name) return false;
-  config[depType] = { ...(config[depType] as Record<string, string>), [`@repo/${name}`]: '*' };
+  config[depType] = { ...config[depType], [`@repo/${name}`]: '*' };
   return true;
 }
 

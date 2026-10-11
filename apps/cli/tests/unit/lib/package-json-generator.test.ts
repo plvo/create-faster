@@ -33,30 +33,30 @@ describe('generateAppPackageJson (turborepo)', () => {
   };
 
   test('generates correct name and path', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.path).toBe('apps/web/package.json');
     expect(result.content.name).toBe('web');
   });
 
   test('includes stack dependencies', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.next).toBeDefined();
     expect(result.content.dependencies?.react).toBeDefined();
   });
 
   test('references workspace packages for libraries with package destination', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['@repo/ui']).toBe('*');
     expect(result.content.dependencies?.['radix-ui']).toBeUndefined();
   });
 
   test('references @repo/db when orm is selected', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['@repo/db']).toBe('*');
   });
 
   test('resolves port placeholder in scripts', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.dev).toContain('--port 3000');
   });
 });
@@ -71,26 +71,26 @@ describe('generateAppPackageJson (single repo)', () => {
   };
 
   test('generates at root with project name', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.path).toBe('package.json');
     expect(result.content.name).toBe('test-single');
   });
 
   test('includes library dependencies directly (no workspace)', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['radix-ui']).toBeDefined();
     expect(result.content.dependencies?.['@repo/ui']).toBeUndefined();
   });
 
   test('includes orm and database dependencies directly', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['drizzle-orm']).toBeDefined();
     expect(result.content.dependencies?.pg).toBeDefined();
     expect(result.content.scripts?.['db:generate']).toBeDefined();
   });
 
   test('includes linter dependencies', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.['@biomejs/biome']).toBeDefined();
     expect(result.content.scripts?.format).toBeDefined();
   });
@@ -106,24 +106,24 @@ describe('generateAppPackageJson (portless, single repo)', () => {
   };
 
   test('wraps dev script using portless run auto-detection', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.dev).toBe('portless run next dev');
   });
 
   test('adds start:portless as a separate script, leaving start untouched', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.start).toBe('next start');
     expect(result.content.scripts?.['start:portless']).toBe('portless run next start');
   });
 
   test('strips --port flag in portless-wrapped scripts', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.dev).not.toContain('--port');
     expect(result.content.scripts?.['start:portless']).not.toContain('--port');
   });
 
   test('adds portless devDependency', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.portless).toBeDefined();
   });
 });
@@ -141,31 +141,31 @@ describe('generateAppPackageJson (portless, turborepo)', () => {
   };
 
   test('wraps dev script via portless run per app', () => {
-    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    const api = generateAppPackageJson(ctx.apps[1], ctx, 1);
+    const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    const api = generateAppPackageJson(ctx.apps[1]!, ctx, 1);
     expect(web.content.scripts?.dev).toBe('portless run next dev');
     expect(api.content.scripts?.dev).toBe('portless run bun run --hot src/index.ts');
   });
 
   test('adds start:portless for apps with a start script', () => {
-    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(web.content.scripts?.['start:portless']).toBe('portless run next start');
   });
 
   test('leaves original start script unchanged (including --port in turbo)', () => {
-    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(web.content.scripts?.start).toBe('next start --port 3000');
   });
 
   test('strips --port flag in portless-wrapped scripts', () => {
-    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(web.content.scripts?.dev).not.toContain('--port');
     expect(web.content.scripts?.['start:portless']).not.toContain('--port');
   });
 
   test('adds portless as devDependency in each app', () => {
-    const web = generateAppPackageJson(ctx.apps[0], ctx, 0);
-    const api = generateAppPackageJson(ctx.apps[1], ctx, 1);
+    const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    const api = generateAppPackageJson(ctx.apps[1]!, ctx, 1);
     expect(web.content.devDependencies?.portless).toBeDefined();
     expect(api.content.devDependencies?.portless).toBeDefined();
   });
@@ -205,7 +205,7 @@ describe('generateAllPackageJsons', () => {
 
     const results = generateAllPackageJsons(ctx);
     expect(results).toHaveLength(1);
-    expect(results[0].path).toBe('package.json');
+    expect(results[0]!.path).toBe('package.json');
   });
 });
 
@@ -287,7 +287,7 @@ describe('internal @repo/* dependencies (turborepo)', () => {
     };
 
     const results = generateAllPackageJsons(singleCtx);
-    const pkg = results[0];
+    const pkg = results[0]!;
     const allDeps = { ...pkg.content.dependencies, ...pkg.content.devDependencies };
     const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
 
@@ -349,7 +349,7 @@ describe('appPackageJson for pkg-scoped libraries', () => {
     };
 
     const results = generateAllPackageJsons(ctx);
-    const pkg = results[0];
+    const pkg = results[0]!;
 
     // Both server and client deps merged flat
     expect(pkg.content.dependencies?.['@trpc/server']).toBeDefined();
@@ -477,7 +477,7 @@ describe('ESLint linter (single repo)', () => {
   };
 
   test('includes base eslint deps directly in package.json', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
 
     expect(result.content.devDependencies?.eslint).toBeDefined();
     expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
@@ -486,7 +486,7 @@ describe('ESLint linter (single repo)', () => {
   });
 
   test('includes react and next plugins for nextjs stack', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
 
     expect(result.content.devDependencies?.['eslint-plugin-react']).toBeDefined();
     expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeDefined();
@@ -501,7 +501,7 @@ describe('ESLint linter (single repo)', () => {
       project: { linter: 'eslint', tooling: [] },
       git: true,
     };
-    const result = generateAppPackageJson(honoCtx.apps[0], honoCtx, 0);
+    const result = generateAppPackageJson(honoCtx.apps[0]!, honoCtx, 0);
 
     expect(result.content.devDependencies?.['eslint-plugin-react']).toBeUndefined();
     expect(result.content.devDependencies?.['eslint-plugin-react-hooks']).toBeUndefined();
@@ -509,19 +509,19 @@ describe('ESLint linter (single repo)', () => {
   });
 
   test('includes lint script', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.lint).toBe('eslint .');
   });
 
   test('does not have @repo/eslint-config reference', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.['@repo/eslint-config']).toBeUndefined();
   });
 
   test('does not generate eslint-config package', () => {
     const results = generateAllPackageJsons(ctx);
     expect(results).toHaveLength(1);
-    expect(results[0].path).toBe('package.json');
+    expect(results[0]!.path).toBe('package.json');
   });
 });
 
@@ -535,13 +535,13 @@ describe('Prettier linter (single repo)', () => {
   };
 
   test('includes prettier devDependencies', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.prettier).toBeDefined();
     expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
   });
 
   test('includes format scripts', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.format).toContain('prettier');
     expect(result.content.scripts?.['format:check']).toContain('prettier');
   });
@@ -585,7 +585,7 @@ describe('ESLint + Prettier composite (single repo)', () => {
   };
 
   test('includes all eslint deps', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.eslint).toBeDefined();
     expect(result.content.devDependencies?.['@eslint/js']).toBeDefined();
     expect(result.content.devDependencies?.['typescript-eslint']).toBeDefined();
@@ -593,18 +593,18 @@ describe('ESLint + Prettier composite (single repo)', () => {
   });
 
   test('includes prettier deps', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.prettier).toBeDefined();
     expect(result.content.devDependencies?.['prettier-plugin-tailwindcss']).toBeDefined();
   });
 
   test('includes eslint-config-prettier', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.devDependencies?.['eslint-config-prettier']).toBeDefined();
   });
 
   test('includes both lint and format scripts', () => {
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.lint).toBe('eslint .');
     expect(result.content.scripts?.format).toContain('prettier');
     expect(result.content.scripts?.['format:check']).toContain('prettier');
@@ -673,7 +673,7 @@ describe('lucide-react conditional on shadcn', () => {
       project: { tooling: [] },
       git: true,
     };
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['lucide-react']).toBeUndefined();
   });
 
@@ -685,7 +685,7 @@ describe('lucide-react conditional on shadcn', () => {
       project: { tooling: [] },
       git: true,
     };
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.['lucide-react']).toBeDefined();
   });
 });
@@ -730,7 +730,7 @@ describe('@repo/* deps via $when (turborepo)', () => {
       git: true,
     };
     const results = generateAllPackageJsons(ctx);
-    const allDeps = { ...results[0].content.dependencies, ...results[0].content.devDependencies };
+    const allDeps = { ...results[0]!.content.dependencies, ...results[0]!.content.devDependencies };
     const repoRefs = Object.keys(allDeps).filter((k) => k.startsWith('@repo/'));
     expect(repoRefs).toEqual([]);
   });
@@ -916,7 +916,7 @@ describe('packageManager in single repo', () => {
       git: true,
       pm: 'bun',
     };
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.packageManager).toMatch(/^bun@\d+\.\d+\.\d+/);
   });
 
@@ -929,7 +929,7 @@ describe('packageManager in single repo', () => {
       git: true,
       pm: undefined,
     };
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.packageManager).toBeUndefined();
   });
 
@@ -942,7 +942,7 @@ describe('packageManager in single repo', () => {
       git: true,
       pm: 'bun',
     };
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.packageManager).toBeUndefined();
   });
 });
@@ -959,7 +959,7 @@ describe('Husky lint-staged (single repo)', () => {
   }
 
   test('biome: lint-staged has only biome command', () => {
-    const result = generateAppPackageJson(makeSingleCtx('biome').apps[0], makeSingleCtx('biome'), 0);
+    const result = generateAppPackageJson(makeSingleCtx('biome').apps[0]!, makeSingleCtx('biome'), 0);
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
     expect(lintStaged).toBeDefined();
     const commands = Object.values(lintStaged)[0];
@@ -968,7 +968,7 @@ describe('Husky lint-staged (single repo)', () => {
 
   test('eslint: lint-staged has only eslint command', () => {
     const ctx = makeSingleCtx('eslint');
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
     expect(lintStaged).toBeDefined();
     const commands = Object.values(lintStaged)[0];
@@ -977,7 +977,7 @@ describe('Husky lint-staged (single repo)', () => {
 
   test('prettier: lint-staged has only prettier command', () => {
     const ctx = makeSingleCtx('prettier');
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
     expect(lintStaged).toBeDefined();
     const commands = Object.values(lintStaged)[0];
@@ -986,7 +986,7 @@ describe('Husky lint-staged (single repo)', () => {
 
   test('eslint-prettier: lint-staged has both eslint and prettier commands', () => {
     const ctx = makeSingleCtx('eslint-prettier');
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
     expect(lintStaged).toBeDefined();
     const commands = Object.values(lintStaged)[0];
@@ -995,7 +995,7 @@ describe('Husky lint-staged (single repo)', () => {
 
   test('oxc: lint-staged has oxlint and oxfmt commands', () => {
     const ctx = makeSingleCtx('oxc');
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
     expect(lintStaged).toBeDefined();
     const commands = Object.values(lintStaged)[0];
@@ -1004,7 +1004,7 @@ describe('Husky lint-staged (single repo)', () => {
 
   test('no linter: no lint-staged key in output', () => {
     const ctx = makeSingleCtx();
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content['lint-staged']).toBeUndefined();
   });
 });
@@ -1023,7 +1023,7 @@ describe('Oxc linter package.json', () => {
 
   test('adds @shadcn/lint when an app uses shadcn (single repo)', () => {
     const ctx = makeCtx('single', ['shadcn']);
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const devDependencies = result.content.devDependencies as Record<string, string>;
     expect(devDependencies.oxlint).toBeDefined();
     expect(devDependencies.oxfmt).toBeDefined();
@@ -1040,7 +1040,7 @@ describe('Oxc linter package.json', () => {
 
   test('omits @shadcn/lint without shadcn', () => {
     const ctx = makeCtx('single', []);
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     const devDependencies = result.content.devDependencies as Record<string, string>;
     expect(devDependencies.oxlint).toBeDefined();
     expect(devDependencies['@shadcn/lint']).toBeUndefined();
@@ -1110,7 +1110,7 @@ describe('blueprint package.json generation', () => {
       blueprint: 'org-dashboard',
     };
 
-    const result = generateAppPackageJson(ctx.apps[0], ctx, 0);
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.dependencies?.sonner).toBeDefined();
   });
 });
