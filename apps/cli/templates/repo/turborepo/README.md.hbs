@@ -17,7 +17,7 @@ No additional libraries configured.
 
 {{#if (hasPackage "db")}}
 {{#if (eq @index 0)}}
-Uses shared database package (`packages/db`) with {{../project.orm}} ORM.
+Uses shared database package (`packages/db`){{#if ../project.orm}} with {{../project.orm}} ORM{{/if}}.
 {{/if}}
 {{/if}}
 
@@ -30,7 +30,9 @@ Uses shared database package (`packages/db`) with {{../project.orm}} ORM.
 
 Shared database configuration and schema:
 - **Database**: {{project.database}}
+{{#if project.orm}}
 - **ORM**: {{project.orm}}
+{{/if}}
 
 {{/if}}
 ## Development Tools
