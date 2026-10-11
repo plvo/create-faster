@@ -3,7 +3,7 @@ mono:
   scope: pkg
   path: src/session-cache.ts
 ---
-{{#if (or (has "stack" "tanstack-start") (hasLibrary "trpc"))}}
+{{#if (has "stack" "tanstack-start")}}
 import type { Auth } from {{#if (isMono)}}'./auth'{{else}}'./create-auth'{{/if}};
 
 type Session = Auth['$Infer']['Session'];

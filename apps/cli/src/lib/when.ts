@@ -7,15 +7,13 @@ type Negatable<T> = T | { not: T };
 
 type MatchValue = string | string[] | true;
 
-type Conditions = Partial<Record<keyof ProjectContext, Negatable<MatchValue>>> & {
-  stack?: Negatable<StackName | StackName[]>;
-  library?: Negatable<string | string[]>;
-  repo?: Negatable<'single' | 'turborepo'>;
-};
-
 interface WhenItem<T = unknown> {
   [TAG]: true;
-  match: Conditions | Conditions[];
+  match: Partial<Record<keyof ProjectContext, Negatable<MatchValue>>> & {
+    stack?: Negatable<StackName | StackName[]>;
+    library?: Negatable<string | string[]>;
+    repo?: Negatable<'single' | 'turborepo'>;
+  };
   value: T;
 }
 
@@ -93,11 +91,6 @@ function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): bo
 }
 
 function matches(match: WhenItem['match'], ctx: TemplateContext): boolean {
-  if (Array.isArray(match)) return match.some((alternative) => matchesAll(alternative, ctx));
-  return matchesAll(match, ctx);
-}
-
-function matchesAll(match: Conditions, ctx: TemplateContext): boolean {
   for (const [key, expected] of Object.entries(match)) {
     if (expected === undefined) continue;
 

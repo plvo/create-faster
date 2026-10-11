@@ -364,7 +364,7 @@ describe('TanStack Start + better-auth', () => {
   describe('session cache generation matches its export', () => {
     const combos = [
       { name: 'next-only', apps: ['web:nextjs:better-auth'], cache: false },
-      { name: 'next-trpc', apps: ['web:nextjs:better-auth,trpc'], cache: true },
+      { name: 'next-trpc', apps: ['web:nextjs:better-auth,trpc'], cache: false },
       { name: 'start', apps: ['web:tanstack-start:better-auth'], cache: true },
       { name: 'next-auth-start-plain', apps: ['web:nextjs:better-auth', 'admin:tanstack-start'], cache: true },
     ];
