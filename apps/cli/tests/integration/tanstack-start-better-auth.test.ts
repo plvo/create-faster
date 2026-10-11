@@ -319,10 +319,10 @@ describe('TanStack Start + better-auth', () => {
     test('the agent docs explain the per-app instance and the read-only tRPC instance', async () => {
       const agents = await readTextFile(join(projectPath, 'apps/web/AGENTS.md'));
       expect(agents).toContain('createAuth(cookiePlugin?)');
-      expect(agents).toContain("import `auth` from there, never from `@repo/auth/auth`");
-      expect(agents).toContain('`packages/api/src/auth.ts` builds its own `auth` with `createAuth()` and no framework cookie plugin');
-      expect(agents).toContain('never call endpoints that set cookies');
-      expect(agents).toContain('a tRPC read never extends a session');
+      expect(agents).toContain('`@repo/auth/auth` only exports the factory');
+      expect(agents).toContain('that instance is `createAuth()` with no cookie plugin');
+      expect(agents).toContain('would lose its `Set-Cookie` headers');
+      expect(agents).toContain('tRPC reads do not extend the session');
     });
   });
 
@@ -343,6 +343,113 @@ describe('TanStack Start + better-auth', () => {
       const server = await readTextFile(join(projectPath, 'apps/web/src/lib/server.ts'));
       expect(server).toContain("import { nextCookies } from 'better-auth/next-js'");
       expect(server).toContain('return createAuth(await getDb(), nextCookies())');
+    });
+  });
+
+  describe('agent docs name what the generated code exports', () => {
+    const INSTANCE_IN_AUTH_TS = '`src/lib/auth/auth.ts` exports this app\'s `auth`';
+    const GET_AUTH_IN_SERVER_TS = '`getAuth()` in `src/lib/server.ts` builds this app\'s instance per request';
+    const AUTH_IN_SERVER_TS = '`src/lib/server.ts` builds this app\'s `auth` once at module scope';
+    const TRPC_READ_EXTENDS = 'a tRPC read extends the session';
+    const TRPC_READ_DOES_NOT_EXTEND = 'tRPC reads do not extend the session';
+
+    test('single repo Next.js + tRPC: instance in auth.ts, tRPC reads through it and extend the session', async () => {
+      const projectPath = await generate('docs-next-single', [
+        '--app',
+        'docs-next-single:nextjs:better-auth,trpc',
+        '--database',
+        'sqlite',
+        '--orm',
+        'drizzle',
+      ]);
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain(INSTANCE_IN_AUTH_TS);
+      expect(await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'))).toContain('export const auth = ');
+      expect(agents).toContain(TRPC_READ_EXTENDS);
+      expect(await readTextFile(join(projectPath, 'src/trpc/init.ts'))).toContain("import { auth } from '@/lib/auth/auth'");
+    });
+
+    test('single repo Next.js on D1: getAuth in server.ts, tRPC reads do not extend the session', async () => {
+      const projectPath = await generate('docs-next-d1', [
+        '--app',
+        'docs-next-d1:nextjs:better-auth,trpc',
+        '--database',
+        'd1',
+        '--orm',
+        'drizzle',
+        '--deployment',
+        'cloudflare',
+      ]);
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain(GET_AUTH_IN_SERVER_TS);
+      expect(await readTextFile(join(projectPath, 'src/lib/server.ts'))).toContain('export async function getAuth()');
+      expect(agents).toContain(TRPC_READ_DOES_NOT_EXTEND);
+      expect(await readTextFile(join(projectPath, 'src/trpc/init.ts'))).toContain('createAuth(opts.db)');
+    });
+
+    test('turborepo Next.js on D1: the app doc points at getAuth, which server.ts exports', async () => {
+      const projectPath = await generate('docs-next-d1-turbo', [
+        '--app',
+        'web:nextjs:better-auth',
+        '--app',
+        'api:hono',
+        '--database',
+        'd1',
+        '--orm',
+        'drizzle',
+        '--deployment',
+        'cloudflare',
+      ]);
+      const agents = await readTextFile(join(projectPath, 'apps/web/AGENTS.md'));
+      expect(agents).toContain(GET_AUTH_IN_SERVER_TS);
+      expect(agents).not.toContain('import `auth`');
+      expect(await readTextFile(join(projectPath, 'apps/web/src/lib/server.ts'))).toContain('export async function getAuth()');
+    });
+
+    test('single repo Start on D1: the doc shows the call server.ts makes', async () => {
+      const projectPath = await generate('docs-start-d1', [
+        '--app',
+        'docs-start-d1:tanstack-start:better-auth',
+        '--database',
+        'd1',
+        '--orm',
+        'drizzle',
+        '--deployment',
+        'cloudflare',
+      ]);
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain(AUTH_IN_SERVER_TS);
+      expect(agents).toContain('`createAuth(db, tanstackStartCookies())`');
+      expect(await readTextFile(join(projectPath, 'src/lib/server.ts'))).toContain(
+        'export const auth = createAuth(db, tanstackStartCookies())',
+      );
+    });
+
+    test('multitenant-saas: the blueprint doc states the cookie plugin its tRPC package binds', async () => {
+      const projectPath = await generate('docs-multitenant', ['--blueprint', 'multitenant-saas', '--linter', 'biome']);
+      expect(await readTextFile(join(projectPath, 'packages/api/src/auth.ts'))).toContain('createAuth(nextCookies())');
+      const agents = await readTextFile(join(projectPath, 'apps/web/AGENTS.md'));
+      expect(agents).toContain('bind that framework\'s plugin in this file');
+      const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth-rbac.md'));
+      expect(authDoc).toContain('`packages/api/src/auth.ts` builds the tRPC package\'s instance with `createAuth(nextCookies())`');
+      expect(authDoc).not.toContain('exported as `auth`');
+    });
+
+    test('org-dashboard: the blueprint doc names the factory the package exports', async () => {
+      const projectPath = await generate('docs-org-dashboard', ['--blueprint', 'org-dashboard', '--linter', 'biome']);
+      const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth.md'));
+      expect(authDoc).toContain('exports the `createAuth(cookiePlugin?)` factory');
+      expect(authDoc).not.toContain('exported as `auth`');
+      expect(await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'))).toContain(
+        'export function createAuth(cookiePlugin?: BetterAuthPlugin)',
+      );
+    });
+
+    test('dapp-rainbowkit: the blueprint doc names the file that registers siwe', async () => {
+      const projectPath = await generate('docs-dapp', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const walletDoc = await readTextFile(join(projectPath, 'docs/agents/wallet-auth.md'));
+      expect(walletDoc).toContain('The `siwe()` plugin is registered in `src/lib/auth/create-auth.ts`');
+      expect(await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'))).toContain('siwe({');
     });
   });
 
