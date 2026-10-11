@@ -6,7 +6,7 @@ mono:
 ---
 # Auth & RBAC
 
-Better Auth is configured in `packages/auth/src/auth.ts` (exported as `auth` from `@repo/auth/auth`) with the `organization` plugin and `dynamicAccessControl` enabled. The browser client is `packages/auth/src/auth-client.ts` (`@repo/auth/auth-client`). Sessions persist in PostgreSQL via Drizzle — tables live in `packages/db/src/schema.ts` (`user`, `session`, `account`, `organization`, `member`, `invitation`, `organizationRole`).
+Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `createAuth(cookiePlugin?)` factory (from `@repo/auth/auth`) with the `organization` plugin and `dynamicAccessControl` enabled. The web app builds its instance in `apps/web/src/lib/auth/auth.ts` with `createAuth(nextCookies())`. `packages/api/src/auth.ts` builds the tRPC package's instance with `createAuth(nextCookies())` too, not the cookie-less default: the routers call endpoints that set cookies (`changePassword` with `revokeOtherSessions`, `updateUser`, ...), and the plugin forwards those cookies to the browser. Its session reads also extend the session. The browser client is `packages/auth/src/auth-client.ts` (`@repo/auth/auth-client`). Sessions persist in PostgreSQL via Drizzle — tables live in `packages/db/src/schema.ts` (`user`, `session`, `account`, `organization`, `member`, `invitation`, `organizationRole`).
 
 ## Access control model
 `packages/auth/src/permissions.ts` defines the `statement` (resources → actions) and built-in roles:

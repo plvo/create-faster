@@ -145,7 +145,7 @@ import { createAuth } from '@repo/auth/auth';
 export const auth = createAuth(nextCookies());
 ```
 
-A TanStack Start app uses `tanstackStartCookies()` the same way, so a Next.js app and a Start app can share one auth package. The tRPC package reads sessions with its own cookie-less `createAuth()`; it must not call endpoints that set cookies.
+A TanStack Start app uses `tanstackStartCookies()` the same way, so a Next.js app and a Start app can share one auth package. The tRPC package reads sessions with its own cookie-less `createAuth()`, which never refreshes: tRPC reads do not extend the session, and it must not call endpoints that set cookies. A single-repo app's tRPC context reads through the app's instance instead, so its reads extend the session; on D1 the context builds a cookie-less `createAuth(db)` per request.
 
 ## TanStack Start
 

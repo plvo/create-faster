@@ -445,6 +445,19 @@ describe('TanStack Start + better-auth', () => {
       );
     });
 
+    test('cloudflare-fullstack: the blueprint doc shows the factory signature and the getAuth call', async () => {
+      const projectPath = await generate('docs-cf-fullstack', ['--blueprint', 'cloudflare-fullstack', '--linter', 'biome']);
+      const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth-rbac.md'));
+      expect(authDoc).toContain('exports `createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)`');
+      expect(authDoc).toContain('calls `createAuth(db, nextCookies())`');
+      expect(await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'))).toContain(
+        'export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)',
+      );
+      expect(await readTextFile(join(projectPath, 'apps/web/src/lib/server.ts'))).toContain(
+        'createAuth(await getDb(), nextCookies())',
+      );
+    });
+
     test('dapp-rainbowkit: the blueprint doc names the file that registers siwe', async () => {
       const projectPath = await generate('docs-dapp', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
       const walletDoc = await readTextFile(join(projectPath, 'docs/agents/wallet-auth.md'));

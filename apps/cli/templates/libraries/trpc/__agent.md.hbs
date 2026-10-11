@@ -1,9 +1,13 @@
 tRPC router is defined in `src/trpc/`. Add a procedure to a router, then call it from the client via the typed `trpc` hooks. Input validation uses the router's schema, not manual checks.
 {{#if (hasLibrary "better-auth")}}
-{{#if (isMono)}}
-{{#unless (has "database" "d1")}}
 
-**Session in the context.** `packages/api/src/auth.ts` builds its own `auth` with `createAuth()` and no framework cookie plugin, because the cookie plugin belongs to each app and the package cannot import an app instance. `createTRPCContext({ headers })` only calls `auth.api.getSession({ headers })` on it. Keep it read-only unless you add the app's cookie plugin to it (`createAuth(nextCookies())`, as a blueprint whose procedures change sessions does): never call endpoints that set cookies (sign-in, sign-up, sign-out, password change with `revokeOtherSessions`, ...) through this instance, because their `Set-Cookie` headers would be lost. Do those from the app's own `auth`. The factory disables session refresh on a cookie-less instance, so a tRPC read never extends a session (the refreshed cookie could not reach the browser); the app's own `auth` extends it, through `/api/auth/get-session` and server code.
-{{/unless}}
+{{#if (has "database" "d1")}}
+**Session in the context.** `createTRPCContext` builds `createAuth(db)` per request, without a cookie plugin, to read the session. An instance without a cookie plugin never refreshes, so tRPC reads do not extend the session; the app's own instance extends it, through `/api/auth/get-session` (the auth client's `useSession`/`getSession`) and server code calling `getAuth()`. Only read sessions through the context's instance: an endpoint that sets cookies (sign-in, sign-up, sign-out, password change with `revokeOtherSessions`, ...) called through it would lose its `Set-Cookie` headers, so call those from the app.
+{{else}}
+{{#if (isMono)}}
+**Session in the context.** `createTRPCContext({ headers })` reads the session through the tRPC package's own instance, `packages/api/src/auth.ts`, because the package cannot import an app instance. As the tRPC library generates it, that instance is `createAuth()` with no cookie plugin: it never refreshes, so tRPC reads do not extend the session; the app's own `auth` extends it, through `/api/auth/get-session` (the auth client's `useSession`/`getSession`) and app server code. Only read sessions through it: an endpoint that sets cookies (sign-in, sign-up, sign-out, password change with `revokeOtherSessions`, ...) called through it would lose its `Set-Cookie` headers. When every app using the package runs one framework and procedures must set cookies, bind that framework's plugin in this file (`createAuth(nextCookies())`): cookie-setting endpoints then work and reads extend the session. The file shows which applies.
+{{else}}
+**Session in the context.** `createTRPCContext` reads the session through the app's instance (`src/lib/auth/auth.ts`, with `nextCookies()`), so a tRPC read extends the session like any app read: in a route handler the plugin writes the refreshed cookie, and in a Server Component, where cookies cannot be written, it skips the refresh.
+{{/if}}
 {{/if}}
 {{/if}}

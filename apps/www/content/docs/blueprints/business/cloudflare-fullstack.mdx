@@ -68,7 +68,7 @@ packages/
 ├── ui/src/components/                  # shuip data-table block, search-input, inline-edit + base shadcn (registry)
 ├── db/src/schema.ts                    # D1/sqlite schema: auth tables + documents
 ├── auth/src/
-│   ├── auth.ts                         # createAuth(db) factory + admin plugin
+│   ├── auth.ts                         # createAuth(db, cookiePlugin?) factory + admin plugin
 │   ├── permissions.ts                  # ac/roles statements (admin/manager/user)
 │   ├── email.ts                        # reset-password email stub (TODO: wire provider)
 │   └── auth-client.ts                  # authClient with adminClient
