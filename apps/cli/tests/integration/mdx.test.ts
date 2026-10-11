@@ -160,7 +160,6 @@ describe('MDX Integration', () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
       expect(route).toContain('export function generateStaticParams()');
       expect(route).toContain('notFound()');
-      expect(route).not.toContain('dynamicParams');
     });
 
     test('keeps its components and frontmatter parser', async () => {

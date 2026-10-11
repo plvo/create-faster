@@ -81,6 +81,7 @@ describe('nextjs-mdx-pwa', () => {
 
         expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
         expect((await fetch(`${server.url}/mdx/cool/nested`)).status).toBe(404);
+        expect((await fetch(`${server.url}/mdx/home`)).status).toBe(404);
         expect((await fetch(`${server.url}/cool`)).status).toBe(404);
       } finally {
         await server.stop();
