@@ -98,24 +98,29 @@ export interface TerraformLambda {
   handler: string;
   /** e.g. `nodejs22.x`. */
   runtime: string;
+  /** Seconds. */
+  timeout: number;
 }
 
 interface HclBlock {
   type: string;
   label: string;
+  /** String and number attributes, numbers kept as written. */
   attributes: Record<string, string>;
 }
 
 // Top-level blocks such as `module "api" {` ... `}`, closed by a `}` at the start of a line.
 const HCL_BLOCK = /^(\w+)(?: "([^"]+)")? \{\n([\s\S]*?)^\}/gm;
-const HCL_STRING_ATTRIBUTE = /^\s*(\w+)\s*=\s*"([^"]*)"\s*$/gm;
+const HCL_LITERAL_ATTRIBUTE = /^\s*(\w+)\s*=\s*(?:"([^"]*)"|(\d+))\s*$/gm;
 const HCL_INTERPOLATION = /\$\{([^}]+)\}/g;
 
 function parseHclBlocks(source: string): HclBlock[] {
   return [...source.matchAll(HCL_BLOCK)].map(([, type = '', label = '', body = '']) => ({
     type,
     label,
-    attributes: Object.fromEntries([...body.matchAll(HCL_STRING_ATTRIBUTE)].map(([, key, value]) => [key, value])),
+    attributes: Object.fromEntries(
+      [...body.matchAll(HCL_LITERAL_ATTRIBUTE)].map(([, key, text, number]) => [key, text ?? number]),
+    ),
   }));
 }
 
@@ -133,20 +138,30 @@ export async function readTerraformLambdas(projectPath: string): Promise<Terrafo
       type === 'variable' && attributes.default !== undefined ? [[label, attributes.default]] : [],
     ),
   );
+  const resolveReference = (reference: string): string => {
+    if (reference === 'path.module') return infraDir;
+    const local = reference.startsWith('local.') ? locals[reference.slice('local.'.length)] : undefined;
+    if (local === undefined) throw new Error(`Cannot resolve \${${reference}} in ${join(infraDir, 'main.tf')}`);
+    return interpolate(local);
+  };
   const interpolate = (value: string): string =>
-    value.replace(HCL_INTERPOLATION, (_, reference: string) =>
-      reference === 'path.module' ? infraDir : interpolate(locals[reference.replace(/^local\./, '')] ?? ''),
-    );
+    value.replace(HCL_INTERPOLATION, (_, reference: string) => resolveReference(reference));
 
   return main
     .filter(({ type, attributes }) => type === 'module' && attributes.source === './modules/lambda')
     .map(({ label, attributes }) => {
       const config = { ...defaults, ...attributes };
+      const read = (key: string): string => {
+        const value = config[key];
+        if (value === undefined) throw new Error(`Lambda module "${label}" sets no ${key} and has no default for it`);
+        return value;
+      };
       return {
         name: label,
-        sourceDir: normalize(interpolate(config.source_dir ?? '')),
-        handler: config.handler ?? '',
-        runtime: config.runtime ?? '',
+        sourceDir: normalize(interpolate(read('source_dir'))),
+        handler: read('handler'),
+        runtime: read('runtime'),
+        timeout: Number(read('timeout')),
       };
     });
 }

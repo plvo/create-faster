@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   cleanupTempDir,
@@ -37,6 +38,14 @@ describe('lambda-terraform-aws blueprint', () => {
     );
   });
 
+  test('reads each function timeout, the module default or its override', () => {
+    expect(lambdas.map(({ name, timeout }) => ({ name, timeout }))).toEqual([
+      { name: 'api', timeout: 30 },
+      { name: 'cron', timeout: 30 },
+      { name: 'worker', timeout: 60 },
+    ]);
+  });
+
   // Terraform zips only `source_dir`, so no package.json `"type": "module"` reaches Lambda:
   // the bundled ES module loads only as `.mjs`, which the handler's module name resolves to.
   test('each app builds the module of its Lambda handler as an .mjs file', async () => {
@@ -54,5 +63,30 @@ describe('lambda-terraform-aws blueprint', () => {
         outfile: join(sourceDir, `${handler.slice(0, handler.lastIndexOf('.'))}.mjs`),
       })),
     );
+  });
+});
+
+describe('readTerraformLambdas', () => {
+  let projectDir: string;
+
+  beforeAll(async () => {
+    projectDir = await createTempDir();
+    await mkdir(join(projectDir, 'infra/modules/lambda'), { recursive: true });
+    await writeFile(
+      join(projectDir, 'infra/main.tf'),
+      'module "cron" {\n  source     = "./modules/lambda"\n  source_dir = "${var.apps_dir}/cron/dist"\n}\n',
+    );
+    await writeFile(
+      join(projectDir, 'infra/modules/lambda/variables.tf'),
+      'variable "handler" {\n  default = "index.handler"\n}\n\nvariable "runtime" {\n  default = "nodejs22.x"\n}\n\nvariable "timeout" {\n  default = 30\n}\n',
+    );
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(projectDir);
+  });
+
+  test('rejects a reference it cannot resolve instead of dropping it from the path', async () => {
+    await expect(readTerraformLambdas(projectDir)).rejects.toThrow('var.apps_dir');
   });
 });
