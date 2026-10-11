@@ -1,0 +1,19 @@
+---
+only: single
+---
+{{#if (hasLibrary "better-auth")}}
+{{#unless (has "database" "d1")}}
+{{#if (eq stackName "tanstack-start")}}
+import { createAuth } from '@/lib/auth/create-auth';
+
+// Reads sessions for the tRPC context without a cookie plugin, so it never refreshes them: a procedure
+// prefetched without awaiting runs after the response headers are sent, where a refreshed cookie would be lost.
+// Never call endpoints that set cookies from here.
+export const sessionReader = createAuth();
+{{else}}
+// Reads sessions for the tRPC context through the app's instance: nextCookies() refreshes the session where
+// cookies can be written and skips the refresh in Server Components.
+export { auth as sessionReader } from '@/lib/auth/auth';
+{{/if}}
+{{/unless}}
+{{/if}}

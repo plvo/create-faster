@@ -14,16 +14,16 @@ import { appRouter } from '@/trpc/routers/_app';
 import { db } from '@/lib/server';
 {{/if}}
 
+{{> trpc/cross-origin-write}}
+
 function handler({ request }: { request: Request }) {
+  if (isCrossOriginWrite(request)) return new Response('Forbidden', { status: 403 });
+
   return fetchRequestHandler({
     endpoint: '/api/trpc',
     req: request,
     router: appRouter,
-{{#if (and (has "database" "d1") project.orm)}}
-    createContext: () => createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: request.headers, {{/if}}db }),
-{{else}}
-    createContext: () => createTRPCContext({ headers: request.headers }),
-{{/if}}
+    createContext: () => createTRPCContext({ headers: request.headers{{#if (and (has "database" "d1") project.orm)}}, db{{/if}} }),
     onError: import.meta.env.DEV
       ? ({ path, error }) => {
           console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error.message);

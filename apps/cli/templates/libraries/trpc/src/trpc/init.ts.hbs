@@ -11,7 +11,11 @@ import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/
 import type { Database } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{else}}
 {{#if (hasLibrary "better-auth")}}
-import { auth } from {{#if (or (isMono) (has "stack" "tanstack-start"))}}'./auth'{{else}}'@/lib/auth/auth'{{/if}};
+{{#if (isMono)}}
+import { auth as sessionReader } from './auth';
+{{else}}
+import { sessionReader } from './session-reader';
+{{/if}}
 {{/if}}
 {{#if project.orm}}
 import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
@@ -23,23 +27,23 @@ import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{el
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 
-export async function createTRPCContext(opts: { {{#if (and (has "database" "d1") project.orm)}}{{#if (hasLibrary "better-auth")}}headers: Headers; {{/if}}db: Database{{else}}headers: Headers{{/if}} }) {
+export async function createTRPCContext(opts: { headers: Headers{{#if (and (has "database" "d1") project.orm)}}; db: Database{{/if}} }) {
 {{#if (hasLibrary "better-auth")}}
 {{#if (and (has "database" "d1") project.orm)}}
-  const auth = createAuth(opts.db);
+  const sessionReader = createAuth(opts.db);
 {{/if}}
 {{#if (has "stack" "tanstack-start")}}
-  const session = await getRequestSession(opts.headers, () => auth.api.getSession({ headers: opts.headers }));
+  const session = await getRequestSession(opts.headers, () => sessionReader.api.getSession({ headers: opts.headers }));
 {{else}}
-  const session = await auth.api.getSession({ headers: opts.headers });
+  const session = await sessionReader.api.getSession({ headers: opts.headers });
 {{/if}}
 
 {{/if}}
   return {
 {{#if (hasLibrary "better-auth")}}
     session,
-    headers: opts.headers,
 {{/if}}
+    headers: opts.headers,
 {{#if (and (has "database" "d1") project.orm)}}
     db: opts.db,
 {{else if project.orm}}
@@ -50,13 +54,17 @@ export async function createTRPCContext(opts: { {{#if (and (has "database" "d1")
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
+// The build inlines NODE_ENV here: tRPC's own default reads it at runtime, where not every production server
+// sets it, and would then send stack traces.
+const isDev = process.env.NODE_ENV === 'development';
+
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
-{{#if (has "stack" "tanstack-start")}}
-  // tRPC adds stack traces to error responses unless NODE_ENV is 'production' at runtime, which TanStack
-  // Start's production server does not set: the build inlines this check instead.
-  isDev: process.env.NODE_ENV === 'development',
-{{/if}}
+  isDev,
+  // Outside development an unexpected error (a failed query, a bug) reaches the client as a generic message:
+  // its own message can carry SQL, parameters or other internals.
+  errorFormatter: ({ shape, error }) =>
+    isDev || error.code !== 'INTERNAL_SERVER_ERROR' ? shape : { ...shape, message: 'Internal server error' },
 });
 
 export const router = t.router;

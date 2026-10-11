@@ -26,11 +26,10 @@ export const makeTRPCClient = createIsomorphicFn()
         unstable_localLink({
           router: appRouter,
           transformer: superjson,
-{{#if (and (has "database" "d1") project.orm)}}
-          createContext: () => (context ??= createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: getRequest().headers, {{/if}}db })),
-{{else}}
-          createContext: () => (context ??= createTRPCContext({ headers: getRequest().headers })),
-{{/if}}
+          createContext: () => {
+            if (!context) context = createTRPCContext({ headers: getRequest().headers{{#if (and (has "database" "d1") project.orm)}}, db{{/if}} });
+            return context;
+          },
         }),
       ],
     });

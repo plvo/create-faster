@@ -17,13 +17,7 @@ import { cache } from 'react';
 {{#if (hasLibrary "tanstack-query")}}
 import { makeQueryClient } from '@/trpc/query-client';
 {{/if}}
-{{#if (and (has "database" "d1") project.orm)}}
-{{#if (hasLibrary "better-auth")}}
 import { headers } from 'next/headers';
-{{/if}}
-{{else}}
-import { headers } from 'next/headers';
-{{/if}}
 {{#if (isMono)}}
 import { appRouter, createTRPCContext } from '@repo/api';
 {{else}}
@@ -42,7 +36,7 @@ const getQueryClient = cache(makeQueryClient);
 {{/if}}
 {{#if (and (has "database" "d1") project.orm)}}
 const getTRPCContext = cache(async () =>
-  createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
+  createTRPCContext({ headers: await headers(), db: await getDb() }),
 );
 {{else}}
 const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));

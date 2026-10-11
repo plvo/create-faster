@@ -238,7 +238,7 @@ describe('Non-d1 databases keep the singleton wiring (regression guard)', () => 
 
   test('trpc init.ts imports the singletons, no per-request db param', async () => {
     const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
-    expect(init).toContain("import { auth }");
+    expect(init).toContain("import { sessionReader }");
     expect(init).toContain("import { db }");
     expect(init).not.toContain('createAuth');
     expect(init).not.toContain('db: Database');

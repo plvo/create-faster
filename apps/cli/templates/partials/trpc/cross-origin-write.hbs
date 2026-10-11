@@ -1,0 +1,8 @@
+// A browser sends Origin with the requests a page makes to another origin. A write from another origin may
+// ride on the user's cookies (a form another site posts here), so the handler refuses it; requests without
+// Origin come from clients other than a browser page.
+function isCrossOriginWrite(request: Request): boolean {
+  if (request.method === 'GET' || request.method === 'HEAD') return false;
+  const origin = request.headers.get('origin');
+  return origin !== null && origin !== new URL(request.url).origin;
+}

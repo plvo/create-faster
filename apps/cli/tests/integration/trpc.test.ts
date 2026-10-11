@@ -156,7 +156,7 @@ describe('tRPC Integration', () => {
 
     test('init.ts has auth context and protectedProcedure', async () => {
       const content = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
-      expect(content).toContain('auth');
+      expect(content).toContain('sessionReader');
       expect(content).toContain('session');
       expect(content).toContain('protectedProcedure');
       expect(content).toContain('UNAUTHORIZED');
