@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import Handlebars from 'handlebars';
+import { getProjectAddon } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import { PARTIALS_DIR } from './constants';
@@ -54,6 +55,11 @@ function registerHelpers(): void {
     } else {
       return categoryValue === value;
     }
+  });
+
+  Handlebars.registerHelper('databaseBinding', function (this: EnrichedTemplateContext, binding: string) {
+    const { database } = this.project;
+    return database !== undefined && getProjectAddon('database', database)?.serverlessBinding === binding;
   });
 
   Handlebars.registerHelper('hasContext', function (this: TemplateContext, contextName: keyof TemplateContext) {

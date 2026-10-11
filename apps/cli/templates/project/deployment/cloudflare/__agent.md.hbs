@@ -56,7 +56,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 {{/if}}
 
 {{/if}}
-{{#if (and (or (has "stack" "nextjs") (has "stack" "tanstack-start") (has "stack" "hono")) (or (has "database" "postgres") (has "database" "mysql")))}}
+{{#if (and (or (has "stack" "nextjs") (has "stack" "tanstack-start") (has "stack" "hono")) (databaseBinding "hyperdrive"))}}
 **Database — Hyperdrive**: the Workers runtime cannot open a raw TCP connection to {{#if (has "database" "postgres")}}Postgres{{/if}}{{#if (has "database" "mysql")}}MySQL{{/if}}, and forbids reusing a connection across requests. The DB goes through the Cloudflare **Hyperdrive** binding (a pooling proxy), so the `db` package exports a per-request `createDb(hyperdrive)` factory — there is no module-level `db` singleton.
 
 {{#if (has "stack" "nextjs")}}
@@ -66,9 +66,19 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 - Build a client per request inside each server function or route handler: `const db = await createDb(env.HYPERDRIVE)`. Never create a client or read `env.HYPERDRIVE` properties at module level.
 {{/if}}
 {{#if (has "stack" "hono")}}
-- Hono: build a client per request inside each route handler, `const db = await createDb(c.env.HYPERDRIVE)`, never at module level. `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()`, so `c.env.HYPERDRIVE` is typed once `bun run cf-typegen` has generated `cloudflare-env.d.ts` (run it after install and after every change to `wrangler.jsonc`). Routes that query the db run under `bun run preview` (`wrangler dev`): `bun run dev` runs Bun without the Workers runtime, so there is no `c.env.HYPERDRIVE`.
+- Hono: build a client per request inside each route handler, `const db = await createDb(c.env.HYPERDRIVE)`, never at module level. Routes that query the db run under `bun run preview` (`wrangler dev`): `bun run dev` runs Bun without the Workers runtime, so there is no `c.env.HYPERDRIVE`.
 {{/if}}
-- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by {{#if (or (has "stack" "nextjs") (has "stack" "hono"))}}`wrangler dev`/local only{{else}}`vite dev` and `vite preview` only{{/if}} and matches your local `DATABASE_URL`.
+- **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by {{#if (and (or (has "stack" "nextjs") (has "stack" "hono")) (has "stack" "tanstack-start"))}}the local runtime of each app and matches your local `DATABASE_URL`:
+{{#if (has "stack" "nextjs")}}
+  - Next.js: `wrangler dev`/local only
+{{/if}}
+{{#if (has "stack" "hono")}}
+  - Hono: `wrangler dev` only
+{{/if}}
+  - TanStack Start: `vite dev` and `vite preview` only
+{{else}}
+{{#if (or (has "stack" "nextjs") (has "stack" "hono"))}}`wrangler dev`/local only{{else}}`vite dev` and `vite preview` only{{/if}} and matches your local `DATABASE_URL`.
+{{/if}}
 - **Migrations** run on Node (not the Worker) via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
 {{#if (has "stack" "nextjs")}}
 - better-auth / tRPC over this binding (per-request consumers) is not wired yet — see #153.
@@ -80,7 +90,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 
 - `bun run deploy` — `wrangler deploy`
 - `bun run preview` — `wrangler dev` (local Wrangler)
-- `bun run cf-typegen` — regenerate `cloudflare-env.d.ts`
+- `bun run cf-typegen` — regenerate `cloudflare-env.d.ts`. Run it after install and after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
-Env vars are available on `c.env.MY_VAR` in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
+Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
 {{/if}}

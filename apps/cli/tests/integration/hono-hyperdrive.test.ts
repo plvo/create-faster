@@ -63,16 +63,18 @@ describe('Hono + cloudflare without a Hyperdrive database', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('no database: no hyperdrive binding, no Bindings generic, no Hyperdrive docs', async () => {
+  test('no database: typed bindings and cf-typegen docs, no hyperdrive binding or docs', async () => {
     const result = await runCli(['hono-hd-none', '--app', 'hono-hd-none:hono', '--deployment', 'cloudflare', ...COMMON], tempDir);
     expect(result.exitCode).toBe(0);
     const root = join(tempDir, 'hono-hd-none');
     expect(await readTextFile(join(root, 'wrangler.jsonc'))).not.toContain('hyperdrive');
-    expect(await readTextFile(join(root, 'src/app.ts'))).not.toContain('Bindings');
-    expect(await readTextFile(join(root, 'AGENTS.md'))).not.toContain('Hyperdrive');
+    expect(await readTextFile(join(root, 'src/app.ts'))).toContain('new Hono<{ Bindings: CloudflareEnv }>()');
+    const agent = await readTextFile(join(root, 'AGENTS.md'));
+    expect(agent).toContain('Run it after install');
+    expect(agent).not.toContain('Hyperdrive');
   });
 
-  test('d1: keeps its D1 binding and gets no hyperdrive binding', async () => {
+  test('d1: keeps its D1 binding, types c.env, gets no hyperdrive binding', async () => {
     const result = await runCli(
       ['hono-hd-d1', '--app', 'hono-hd-d1:hono', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare', ...COMMON],
       tempDir,
@@ -81,9 +83,10 @@ describe('Hono + cloudflare without a Hyperdrive database', () => {
     const wrangler = await readTextFile(join(tempDir, 'hono-hd-d1', 'wrangler.jsonc'));
     expect(wrangler).toContain('"d1_databases"');
     expect(wrangler).not.toContain('hyperdrive');
+    expect(await readTextFile(join(tempDir, 'hono-hd-d1', 'src/app.ts'))).toContain('Bindings: CloudflareEnv');
   });
 
-  test('postgres off cloudflare: no wrangler config, no worker types in tsconfig', async () => {
+  test('postgres off cloudflare: no wrangler config, no worker types in tsconfig or app', async () => {
     const result = await runCli(
       ['hono-hd-node', '--app', 'hono-hd-node:hono', '--database', 'postgres', '--orm', 'drizzle', ...COMMON],
       tempDir,
@@ -131,5 +134,57 @@ describe('Turborepo: Next.js + Hono + cloudflare + postgres', () => {
     expect(await readTextFile(join(projectPath, 'apps/api/tsconfig.json'))).toContain('"cloudflare-env.d.ts"');
     expect(await readTextFile(join(projectPath, 'apps/api/src/app.ts'))).toContain('Bindings: CloudflareEnv');
     expect(await readTextFile(join(projectPath, 'apps/web/tsconfig.json'))).not.toContain('"cloudflare-env.d.ts"');
+  });
+});
+
+describe('Agent doc: localConnectionString runtime per stack', () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('a Next.js + Start + Hono turborepo names the right runtime for each app', async () => {
+    const result = await runCli(
+      [
+        'hono-hd-mixed',
+        '--app', 'web:nextjs',
+        '--app', 'start:tanstack-start',
+        '--app', 'api:hono',
+        '--database', 'postgres',
+        '--orm', 'drizzle',
+        '--deployment', 'cloudflare',
+        ...COMMON,
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    const agent = await readTextFile(join(tempDir, 'hono-hd-mixed', 'AGENTS.md'));
+    expect(agent).toContain('  - Next.js: `wrangler dev`/local only');
+    expect(agent).toContain('  - Hono: `wrangler dev` only');
+    expect(agent).toContain('  - TanStack Start: `vite dev` and `vite preview` only');
+  });
+
+  test('an Expo-only project gets no Hyperdrive section, no stack deploys through it', async () => {
+    const result = await runCli(
+      ['hono-hd-expo', '--app', 'mobile:expo', '--database', 'postgres', '--orm', 'drizzle', '--deployment', 'cloudflare', ...COMMON],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(await readTextFile(join(tempDir, 'hono-hd-expo', 'AGENTS.md'))).not.toContain('Hyperdrive');
+  });
+
+  test('a Start app alone keeps the single-stack sentence', async () => {
+    const result = await runCli(
+      ['hono-hd-start', '--app', 'web:tanstack-start', '--database', 'postgres', '--orm', 'drizzle', '--deployment', 'cloudflare', ...COMMON],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    const agent = await readTextFile(join(tempDir, 'hono-hd-start', 'AGENTS.md'));
+    expect(agent).toContain('`localConnectionString` is used by `vite dev` and `vite preview` only and matches your local `DATABASE_URL`.');
   });
 });
