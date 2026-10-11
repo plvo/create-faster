@@ -18,7 +18,7 @@ import { sessionReader } from './session-reader';
 {{/if}}
 {{/if}}
 {{#if project.orm}}
-import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
+import { {{#if (has "orm" "prisma")}}prisma as db{{else}}db{{/if}} } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{/if}}
 {{/if}}
 {{#if (and (hasLibrary "better-auth") (has "stack" "tanstack-start"))}}
