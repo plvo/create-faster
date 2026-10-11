@@ -5,6 +5,8 @@ const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflar
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
+const BETTER_AUTH_VERSION = '^1.7.2';
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -224,9 +226,9 @@ export const META: Meta = {
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
-          'better-auth': '^1.7.2',
-          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, '^1.7.2'),
-          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.7.2'),
+          'better-auth': BETTER_AUTH_VERSION,
+          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, BETTER_AUTH_VERSION),
+          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, BETTER_AUTH_VERSION),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         devDependencies: {
@@ -243,7 +245,7 @@ export const META: Meta = {
       },
       appPackageJson: {
         dependencies: {
-          'better-auth': '^1.7.2',
+          'better-auth': BETTER_AUTH_VERSION,
         },
       },
       envs: [
@@ -1232,7 +1234,7 @@ export const META: Meta = {
       pkgPackageJson: {
         api: {
           dependencies: {
-            'better-auth': '^1.7.2',
+            'better-auth': BETTER_AUTH_VERSION,
           },
         },
         db: {
