@@ -560,7 +560,7 @@ describe('Next.js + tRPC aligns on the explicit context signature', () => {
 
     const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
     expect(init).toContain('createTRPCContext(opts: { headers: Headers; db: Database })');
-    // Next.js on Cloudflare (OpenNext) leaves NODE_ENV unset at runtime: the build-time isDev keeps stacks out.
+    // Without the NODE_ENV var, a dependency's runtime read on Cloudflare (OpenNext) sees development: the build-time isDev keeps stacks out.
     expectFormatterHidesInternals(init);
     const route = await readTextFile(join(projectPath, 'src/app/api/trpc/[trpc]/route.ts'));
     expect(route).toContain('createTRPCContext({ headers: req.headers, db: await getDb() })');
