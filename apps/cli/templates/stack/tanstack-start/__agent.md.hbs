@@ -18,3 +18,7 @@ The build only replaces the literal `process.env.NODE_ENV` in bundled code. Depe
 - Cloudflare Workers: `vite.config.ts` passes `vars: { NODE_ENV }` to the Cloudflare Vite plugin, so the built `wrangler.json` carries `NODE_ENV=production` into `vite preview` and `wrangler deploy` (`development` under `vite dev`). It overrides a `NODE_ENV` set in `wrangler.jsonc` `vars`.
 {{/if}}
 {{/unless}}
+{{#unless (has "deployment" "cloudflare-static")}}
+
+Server functions are same-origin RPC endpoints. Start applies its CSRF middleware to them by default, but only when `src/start.ts` does not exist: once the file exists, `requestMiddleware` is exactly what it lists. Keep `csrfMiddleware` first in `requestMiddleware` of `src/start.ts` (generated when a library such as evlog adds middleware), and add it to any `src/start.ts` you create.
+{{/unless}}

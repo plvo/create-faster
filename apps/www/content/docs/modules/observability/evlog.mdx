@@ -108,7 +108,7 @@ It also exports `findLogger()`, which returns the logger or `undefined` instead 
 
 #### src/start.ts
 
-Start's `createStart` instance (generated when a library contributes to it). evlog registers two global middlewares:
+Start's `createStart` instance (generated when a library contributes to it). Start only applies its default server function CSRF protection when this file is absent, so the file always registers `createCsrfMiddleware` first in `requestMiddleware`. evlog adds two global middlewares after it:
 
 - `requestMiddleware` records any error thrown while handling a request on the wide event, and returns an `EvlogError` as a JSON response that keeps its structured `data` fields (`why`, `fix`, `link`).
 - `functionMiddleware` records errors thrown by server functions, both when a loader calls them during SSR and over RPC.

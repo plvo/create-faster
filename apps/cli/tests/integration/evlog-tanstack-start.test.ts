@@ -71,6 +71,11 @@ describe('evlog + TanStack Start', () => {
       expect(start).toContain("createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })");
     });
 
+    test('agent docs tell to keep csrfMiddleware first in start.ts', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('Keep `csrfMiddleware` first in `requestMiddleware` of `src/start.ts`');
+    });
+
     test('root route carries no evlog code', async () => {
       const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
       expect(root).not.toContain('EvlogError');
@@ -177,6 +182,11 @@ describe('evlog + TanStack Start', () => {
       expect(await fileExists(join(projectPath, 'src/server.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'src/start.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'src/lib/evlog.ts'))).toBe(false);
+    });
+
+    test('agent docs carry no start.ts CSRF note', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).not.toContain('csrfMiddleware');
     });
   });
 
