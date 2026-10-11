@@ -11,25 +11,28 @@ import { createAuth } from {{#if (isMono)}}'@repo/auth/auth'{{else}}'@/lib/auth/
 import type { Database } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{else}}
 {{#if (hasLibrary "better-auth")}}
-{{#if (isMono)}}
-import { auth } from './auth';
-{{else}}
-import { headers } from 'next/headers';
-import { auth } from '@/lib/auth/auth';
-{{/if}}
+import { auth } from {{#if (isMono)}}'./auth'{{else}}'@/lib/auth/auth'{{/if}};
 {{/if}}
 {{#if project.orm}}
 import { db } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{/if}}
 {{/if}}
+{{#if (and (hasLibrary "better-auth") (has "stack" "tanstack-start"))}}
+import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{else}}'@/lib/auth/session-cache'{{/if}};
+{{/if}}
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 
+export async function createTRPCContext(opts: { {{#if (and (has "database" "d1") project.orm)}}{{#if (hasLibrary "better-auth")}}headers: Headers; {{/if}}db: Database{{else}}headers: Headers{{/if}} }) {
+{{#if (hasLibrary "better-auth")}}
 {{#if (and (has "database" "d1") project.orm)}}
-export async function createTRPCContext(opts: { {{#if (hasLibrary "better-auth")}}headers: Headers; {{/if}}db: Database }) {
-{{#if (hasLibrary "better-auth")}}
   const auth = createAuth(opts.db);
+{{/if}}
+{{#if (has "stack" "tanstack-start")}}
+  const session = await getRequestSession(opts.headers, () => auth.api.getSession({ headers: opts.headers }));
+{{else}}
   const session = await auth.api.getSession({ headers: opts.headers });
+{{/if}}
 
 {{/if}}
   return {
@@ -37,45 +40,13 @@ export async function createTRPCContext(opts: { {{#if (hasLibrary "better-auth")
     session,
     headers: opts.headers,
 {{/if}}
+{{#if (and (has "database" "d1") project.orm)}}
     db: opts.db,
-  };
-}
-{{else}}
-{{#if (isMono)}}
-export async function createTRPCContext(opts: { headers: Headers }) {
-{{#if (hasLibrary "better-auth")}}
-  const session = await auth.api.getSession({ headers: opts.headers });
-
-{{/if}}
-  return {
-{{#if (hasLibrary "better-auth")}}
-    session,
-    headers: opts.headers,
-{{/if}}
-{{#if project.orm}}
+{{else if project.orm}}
     db,
 {{/if}}
   };
 }
-{{else}}
-export async function createTRPCContext({{#if (hasLibrary "better-auth")}}opts?: { headers: Headers }{{/if}}) {
-{{#if (hasLibrary "better-auth")}}
-  const requestHeaders = opts?.headers ?? await headers();
-  const session = await auth.api.getSession({ headers: requestHeaders });
-
-{{/if}}
-  return {
-{{#if (hasLibrary "better-auth")}}
-    session,
-    headers: requestHeaders,
-{{/if}}
-{{#if project.orm}}
-    db,
-{{/if}}
-  };
-}
-{{/if}}
-{{/if}}
 
 type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 

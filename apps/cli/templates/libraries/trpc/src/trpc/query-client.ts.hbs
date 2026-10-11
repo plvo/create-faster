@@ -12,10 +12,17 @@ import superjson from 'superjson';
  * to avoid refetching immediately on the client.
  *
  * shouldDehydrateQuery: This is a function that determines whether a query should be dehydrated or not.
+{{#if (eq stackName "tanstack-start")}}
+ * The router SSR query integration streams queries that are still pending when the page is sent,
+ * so we extend the defaultShouldDehydrateQuery function to also include them. This will allow us
+ * to start prefetching in a route loader without awaiting it, then consuming that query in a
+ * component further down. Failed queries are not dehydrated: the browser refetches them.
+{{else}}
  * Since the RSC transport protocol supports hydrating promises over the network, we extend
  * the defaultShouldDehydrateQuery function to also include queries that are still pending.
  * This will allow us to start prefetching in a server component high up the tree,
  * then consuming that promise in a client component further down.
+{{/if}}
  */
 
 export function makeQueryClient() {

@@ -22,9 +22,7 @@ import { makeQueryClient } from '@/trpc/query-client';
 import { headers } from 'next/headers';
 {{/if}}
 {{else}}
-{{#if (isMono)}}
 import { headers } from 'next/headers';
-{{/if}}
 {{/if}}
 {{#if (isMono)}}
 import { appRouter, createTRPCContext } from '@repo/api';
@@ -47,11 +45,7 @@ const getTRPCContext = cache(async () =>
   createTRPCContext({ {{#if (hasLibrary "better-auth")}}headers: await headers(), {{/if}}db: await getDb() }),
 );
 {{else}}
-{{#if (isMono)}}
 const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
-{{else}}
-const getTRPCContext = cache(createTRPCContext);
-{{/if}}
 {{/if}}
 
 {{#if (hasLibrary "tanstack-query")}}

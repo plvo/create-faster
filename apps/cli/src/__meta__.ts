@@ -265,7 +265,7 @@ export const META: Meta = {
       label: 'tRPC',
       hint: 'End-to-end typesafe APIs',
       category: 'API',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       needsServerRuntime: true,
       needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'api' },
@@ -291,8 +291,19 @@ export const META: Meta = {
           '@trpc/client': '^11.18.0',
           '@trpc/server': '^11.18.0',
           '@trpc/tanstack-react-query': '^11.18.0',
-          'server-only': '^0.0.1',
           superjson: '^2.2.6',
+        },
+      },
+      stackPackageJson: {
+        nextjs: {
+          dependencies: {
+            'server-only': '^0.0.1',
+          },
+        },
+        'tanstack-start': {
+          dependencies: {
+            '@tanstack/react-router-ssr-query': $when({ library: 'tanstack-query' }, '^1.167.3'),
+          },
         },
       },
     },
