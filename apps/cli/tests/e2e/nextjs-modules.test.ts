@@ -1,7 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand, startServer } from './helpers';
+import {
+  type CommandResult,
+  cleanupTempDir,
+  createTempDir,
+  runCli,
+  runCommand,
+  type ServerOutput,
+  startServer,
+} from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
@@ -79,6 +87,22 @@ describe('nextjs-mdx-pwa', () => {
       }
     },
     TIMEOUT_START,
+  );
+
+  test(
+    'dev 404s an unknown document without a listener leak warning',
+    async () => {
+      const server = await startServer(['bun', 'run', 'dev'], projectDir, { readyTimeout: TIMEOUT_START });
+      let output: ServerOutput | undefined;
+      try {
+        expect((await fetch(`${server.url}/mdx`)).status).toBe(200);
+        expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
+      } finally {
+        output = await server.stop();
+      }
+      expect(output.stderr).not.toContain('MaxListenersExceededWarning');
+    },
+    TIMEOUT_START * 2,
   );
 });
 

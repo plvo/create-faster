@@ -156,10 +156,11 @@ describe('MDX Integration', () => {
       expect(rootEntries.filter((entry) => entry.startsWith('['))).toEqual([]);
     });
 
-    test('prerenders every document at build time and 404s any other slug', async () => {
+    test('prerenders every document at build time and 404s any other slug from the page', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
       expect(route).toContain('export function generateStaticParams()');
-      expect(route).toContain('export const dynamicParams = false;');
+      expect(route).toContain('notFound()');
+      expect(route).not.toContain('dynamicParams');
     });
 
     test('keeps its components and frontmatter parser', async () => {
