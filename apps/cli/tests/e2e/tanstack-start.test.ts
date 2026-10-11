@@ -4,6 +4,7 @@ import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
+  expectOnlyMissingEnvNoticeOnStderr,
   expectServesPageWithClientScript,
   runCli,
   runCommand,
@@ -53,14 +54,16 @@ describe('tanstack-start', () => {
   );
 
   test(
-    'start serves the built app and its client assets',
+    'start serves the built app and its client assets, and only reports the missing .env on stderr',
     async () => {
       const server = await startServer(['bun', 'run', 'start'], projectDir);
+      let stderr = '';
       try {
         await expectServesPageWithClientScript(server.url);
       } finally {
-        await server.stop();
+        ({ stderr } = await server.stop());
       }
+      await expectOnlyMissingEnvNoticeOnStderr(stderr, projectDir);
     },
     TIMEOUT_START,
   );

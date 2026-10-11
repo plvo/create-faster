@@ -4,6 +4,7 @@ import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
+  expectOnlyMissingEnvNoticeOnStderr,
   expectServesPageWithClientScript,
   type RunningServer,
   runCli,
@@ -65,12 +66,19 @@ describe('tanstack-start-turborepo', () => {
   );
 
   test(
-    'every app serves its build on its own port at the same time',
+    'every app serves its build on its own port at the same time, and only reports the missing .env on stderr',
     async () => {
-      servers.push(await startServer(['bun', 'run', 'start'], join(projectDir, 'apps/web'), { port: 3000 }));
-      servers.push(await startServer(['bun', 'run', 'start'], join(projectDir, 'apps/admin'), { port: 3001 }));
+      const webDir = join(projectDir, 'apps/web');
+      const adminDir = join(projectDir, 'apps/admin');
+      const web = await startServer(['bun', 'run', 'start'], webDir, { port: 3000 });
+      servers.push(web);
+      const admin = await startServer(['bun', 'run', 'start'], adminDir, { port: 3001 });
+      servers.push(admin);
 
       for (const server of servers) await expectServesPageWithClientScript(server.url);
+
+      await expectOnlyMissingEnvNoticeOnStderr((await web.stop()).stderr, webDir);
+      await expectOnlyMissingEnvNoticeOnStderr((await admin.stop()).stderr, adminDir);
     },
     TIMEOUT_START,
   );
