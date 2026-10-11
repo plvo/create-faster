@@ -3,7 +3,7 @@ deploymentSkip:
   - cloudflare-static
 ---
 {{#if (or (hasLibrary "evlog"))}}
-import { createMiddleware, createStart } from '@tanstack/react-start'
+import { createCsrfMiddleware, {{#if (hasLibrary "evlog")}}createMiddleware, {{/if}}createStart } from '@tanstack/react-start'
 {{#if (hasLibrary "evlog")}}
 import { EvlogError } from 'evlog'
 import { findLogger } from '@/lib/evlog'
@@ -33,8 +33,10 @@ const logServerFnErrors = createMiddleware({ type: 'function' }).server(async ({
 })
 {{/if}}
 
+const csrfMiddleware = createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [{{#if (hasLibrary "evlog")}}logRequestErrors{{/if}}],
+  requestMiddleware: [csrfMiddleware{{#if (hasLibrary "evlog")}}, logRequestErrors{{/if}}],
   functionMiddleware: [{{#if (hasLibrary "evlog")}}logServerFnErrors{{/if}}],
 }))
 {{/if}}
