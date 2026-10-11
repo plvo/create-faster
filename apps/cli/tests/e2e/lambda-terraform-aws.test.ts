@@ -104,12 +104,12 @@ describeWithDocker('lambda-terraform-aws blueprint in the Lambda runtime', () =>
   });
 
   test.each(INVOCATIONS)(
-    '%s answers its trigger with the handler and runtime Terraform deploys',
+    '%s answers its trigger with the handler, runtime and timeout Terraform deploys',
     async (name, event, reply) => {
       const lambda = lambdas.find((candidate) => candidate.name === name);
       if (!lambda) throw new Error(`infra/main.tf declares no "${name}" Lambda`);
 
-      expect(await invokeInLambdaRuntime(lambda.sourceDir, lambda.handler, lambda.runtime, event)).toEqual(reply);
+      expect(await invokeInLambdaRuntime(lambda, event)).toEqual(reply);
     },
     TIMEOUT_INVOKE,
   );
