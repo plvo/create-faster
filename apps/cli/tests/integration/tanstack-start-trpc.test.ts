@@ -55,6 +55,11 @@ describe('TanStack Start + tRPC', () => {
       expect(init).toContain('transformer: superjson');
     });
 
+    test('stack traces leave error responses only in development, decided at build time', async () => {
+      const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
+      expect(init).toContain("isDev: process.env.NODE_ENV === 'development',");
+    });
+
     test('the API route serves GET and POST through fetchRequestHandler with the request headers', async () => {
       const route = await readTextFile(join(projectPath, 'src/routes/api/trpc/$.ts'));
       expect(route).toContain("createFileRoute('/api/trpc/$')");
@@ -355,6 +360,7 @@ describe('Next.js + tRPC aligns on the explicit context signature', () => {
     expect(init).toContain('const session = await auth.api.getSession({ headers: opts.headers });');
     expect(init).not.toContain('next/headers');
     expect(init).not.toContain('getRequestSession');
+    expect(init).not.toContain('isDev');
 
     const server = await readTextFile(join(projectPath, 'src/trpc/server.tsx'));
     expect(server).toContain('const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));');

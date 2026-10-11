@@ -52,6 +52,11 @@ type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
+{{#if (has "stack" "tanstack-start")}}
+  // tRPC adds stack traces to error responses unless NODE_ENV is 'production' at runtime, which TanStack
+  // Start's production server does not set: the build inlines this check instead.
+  isDev: process.env.NODE_ENV === 'development',
+{{/if}}
 });
 
 export const router = t.router;

@@ -207,6 +207,13 @@ async function getProcedure(baseUrl: string, path: string, cookie = ''): Promise
 
 /** The API route answers with superjson, the SSR page renders the procedure's Date. */
 export async function expectTrpcServesProcedures(baseUrl: string, { query }: TrpcProbeOptions): Promise<void> {
+  // A production build answers errors without the server's stack trace.
+  const invalid = await getProcedure(baseUrl, `hello.greet?input=${encodeURIComponent('{"json":{"name":""}}')}`);
+  expect(invalid.status).toBe(400);
+  const error = (await invalid.json()) as { error: { json: { data: Record<string, unknown> } } };
+  expect(error.error.json.data.code).toBe('BAD_REQUEST');
+  expect(error.error.json.data).not.toHaveProperty('stack');
+
   const response = await getProcedure(baseUrl, 'probe.time');
   expect(response.status, await response.clone().text()).toBe(200);
   const body = (await response.json()) as {
@@ -260,8 +267,9 @@ export async function readStartTrpcSession(baseUrl: string, cookie: string): Pro
 export async function expectAnonymousTrpcSession(baseUrl: string, { query }: TrpcProbeOptions): Promise<void> {
   const me = await getProcedure(baseUrl, 'probe.me');
   expect(me.status).toBe(401);
-  const body = (await me.json()) as { error: { json: { data: { code: string } } } };
+  const body = (await me.json()) as { error: { json: { data: Record<string, unknown> } } };
   expect(body.error.json.data.code).toBe('UNAUTHORIZED');
+  expect(body.error.json.data).not.toHaveProperty('stack');
 
   expect(await readSessionProbe(baseUrl, '')).toEqual({ email: null, sharedSession: true, me: 'UNAUTHORIZED' });
   if (query) expect(await readLateTrpcSession(baseUrl, '')).toBe('anonymous');
