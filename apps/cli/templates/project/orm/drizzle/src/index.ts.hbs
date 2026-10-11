@@ -89,7 +89,6 @@ function createDb() {
     schema,
     connection: {
       connectionString: databaseUrl,
-      ssl: process.env.NODE_ENV === 'production',
     },
   });
 {{/if}}

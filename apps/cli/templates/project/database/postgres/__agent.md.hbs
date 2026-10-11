@@ -1,1 +1,3 @@
 PostgreSQL via Docker Compose. Start it with `docker compose up -d`. The connection string is in `DATABASE_URL` (see `.env.example`).
+
+TLS follows the `sslmode` parameter of `DATABASE_URL`, not `NODE_ENV`. The local URL has none, so connections to the Docker database skip TLS, from the dev server and from a production build alike. A managed database (Neon, Supabase, RDS) needs TLS: keep the `sslmode` its connection string ships with, or append `?sslmode=verify-full` (TLS with certificate checks). A URL without `sslmode` connects in plain text even with `NODE_ENV=production`, unless `PGSSLMODE` is set.

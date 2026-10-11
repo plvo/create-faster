@@ -48,3 +48,13 @@ docker.compose.yml          # PostgreSQL service configuration
 ```
 postgresql://postgres:password@localhost:5432/postgres-{projectName}
 ```
+
+## TLS
+
+The generated database clients take TLS from the `sslmode` parameter of `DATABASE_URL`, not from `NODE_ENV`. The local URL has none, so the app connects to the Docker database without TLS, from the dev server and from a production build alike.
+
+A managed database (Neon, Supabase, RDS) needs TLS: keep the `sslmode` its connection string ships with, or append `?sslmode=verify-full` (TLS with certificate checks). A URL without `sslmode` connects in plain text even with `NODE_ENV=production`, unless `PGSSLMODE` is set.
+
+```
+postgresql://user:password@host:5432/database?sslmode=verify-full
+```
