@@ -6,6 +6,7 @@ import {
   createTempDir,
   expectOnlyMissingEnvNoticeOnStderr,
   expectServesPageWithClientScript,
+  getFreePort,
   runCli,
   runCommand,
   startServer,
@@ -94,6 +95,39 @@ describe('tanstack-start', () => {
       } finally {
         await server.stop();
       }
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'dev serves the page',
+    async () => {
+      const port = await getFreePort();
+      const server = await startServer(['bunx', 'vite', 'dev', '--port', String(port)], projectDir, { port });
+      try {
+        expect((await fetch(server.url)).status).toBe(200);
+      } finally {
+        await server.stop();
+      }
+    },
+    TIMEOUT_START,
+  );
+
+  test(
+    'after install, build and dev, git tracks no dependency, build output or router temp directory',
+    async () => {
+      expect((await runCommand(['git', 'init', '--quiet'], projectDir)).exitCode).toBe(0);
+      expect((await runCommand(['git', 'add', '--all'], projectDir)).exitCode).toBe(0);
+
+      const status = await runCommand(['git', 'status', '--porcelain', '--untracked-files=all'], projectDir);
+      expect(status.exitCode).toBe(0);
+      const staged = status.stdout.split('\n').filter(Boolean);
+      expect(staged.filter((line) => /node_modules|\.output|\.tanstack/.test(line))).toEqual([]);
+      expect(staged).toContain('A  src/routeTree.gen.ts');
+
+      // .tanstack/tmp is an empty directory after a clean run, which git never lists, so ask git directly.
+      const ignored = await runCommand(['git', 'check-ignore', '--quiet', '.tanstack/tmp/probe'], projectDir);
+      expect(ignored.exitCode).toBe(0);
     },
     TIMEOUT_START,
   );
