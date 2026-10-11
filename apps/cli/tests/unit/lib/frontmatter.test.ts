@@ -62,7 +62,7 @@ describe('shouldSkipTemplate', () => {
     projectName: 'test',
     repo: 'turborepo',
     apps: [],
-    globalAddons: [],
+    project: { tooling: [] },
     git: true,
   };
 
@@ -70,7 +70,7 @@ describe('shouldSkipTemplate', () => {
     projectName: 'test',
     repo: 'single',
     apps: [],
-    globalAddons: [],
+    project: { tooling: [] },
     git: true,
   };
 

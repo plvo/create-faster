@@ -21,7 +21,7 @@ describe('sortObjectKeys', () => {
 describe('cleanUndefined', () => {
   test('removes undefined values', () => {
     const result = cleanUndefined({ a: 1, b: undefined, c: 'hello' });
-    expect(result).toEqual({ a: 1, c: 'hello' });
+    expect<unknown>(result).toEqual({ a: 1, c: 'hello' });
   });
 
   test('keeps null values', () => {

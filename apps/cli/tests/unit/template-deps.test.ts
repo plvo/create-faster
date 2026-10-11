@@ -93,7 +93,7 @@ function extractImportedPackages(content: string): ImportEntry[] {
 
       const packageName = importPath.startsWith('@')
         ? importPath.split('/').slice(0, 2).join('/')
-        : importPath.split('/')[0];
+        : importPath.split('/')[0]!;
 
       const key = `${packageName}:${typeOnly}`;
       if (seen.has(key)) continue;
@@ -111,7 +111,7 @@ async function getAllTemplateFiles(): Promise<string[]> {
   const entries = await readdir(TEMPLATES_DIR, { withFileTypes: true, recursive: true });
   for (const entry of entries) {
     if (entry.isFile() && entry.name.endsWith('.hbs')) {
-      files.push(join(entry.parentPath ?? entry.path, entry.name));
+      files.push(join(entry.parentPath, entry.name));
     }
   }
   return files;
@@ -156,14 +156,15 @@ describe('Template imports vs META dependencies', () => {
       let inRawBlock = false;
 
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('{{{{raw}}}}')) inRawBlock = true;
-        if (lines[i].includes('{{{{/raw}}}}')) {
+        const line = lines[i]!;
+        if (line.includes('{{{{raw}}}}')) inRawBlock = true;
+        if (line.includes('{{{{/raw}}}}')) {
           inRawBlock = false;
           continue;
         }
         if (inRawBlock) continue;
-        if (jsxBracesRegex.test(lines[i])) {
-          conflicts.push({ file: relative(TEMPLATES_DIR, filePath), line: i + 1, text: lines[i].trim() });
+        if (jsxBracesRegex.test(line)) {
+          conflicts.push({ file: relative(TEMPLATES_DIR, filePath), line: i + 1, text: line.trim() });
         }
       }
     }

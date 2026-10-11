@@ -109,13 +109,13 @@ export interface MetaRepoStack {
   hint?: string;
 }
 
-export interface MetaProject {
+export type MetaProject = {
   database: MetaProjectCategory;
   orm: MetaProjectCategory;
   deployment: MetaProjectCategory;
   linter: MetaProjectCategory;
   tooling: MetaProjectCategory;
-}
+};
 
 export type ProjectCategoryName = keyof MetaProject;
 
