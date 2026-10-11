@@ -5,6 +5,8 @@ const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflar
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
+const BETTER_AUTH_VERSION = '^1.7.2';
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -217,28 +219,33 @@ export const META: Meta = {
       label: 'Better Auth',
       hint: 'The most comprehensive authentication framework for TypeScript',
       category: 'Auth',
-      support: { stacks: ['nextjs'] },
+      support: { stacks: ['nextjs', 'tanstack-start'] },
       require: { orm: ['drizzle', 'prisma'], database: ['postgres', 'mysql', 'sqlite', 'd1'] },
       needsServerRuntime: true,
       needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'auth' },
       packageJson: {
         dependencies: {
-          'better-auth': '^1.7.2',
-          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, '^1.7.2'),
-          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, '^1.7.2'),
+          'better-auth': BETTER_AUTH_VERSION,
+          '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, BETTER_AUTH_VERSION),
+          '@better-auth/prisma-adapter': $when({ orm: 'prisma' }, BETTER_AUTH_VERSION),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         devDependencies: {
           typescript: '^5',
         },
         exports: {
-          './route-nextjs': './src/route-nextjs.ts',
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
+          './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
           './types': './src/types.ts',
           './password': './src/password.ts',
           './permissions': './src/permissions.ts',
+        },
+      },
+      appPackageJson: {
+        dependencies: {
+          'better-auth': BETTER_AUTH_VERSION,
         },
       },
       envs: [
@@ -1225,6 +1232,11 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        api: {
+          dependencies: {
+            'better-auth': BETTER_AUTH_VERSION,
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',

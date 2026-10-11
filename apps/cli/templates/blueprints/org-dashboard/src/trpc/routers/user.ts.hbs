@@ -6,7 +6,7 @@ mono:
 ---
 import { z } from 'zod';
 import { eq, userTable } from '@repo/db';
-import { auth } from '@repo/auth/auth';
+import { auth } from '../auth';
 import { generatePassword } from '@repo/auth/password';
 import { protectedProcedure, router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';

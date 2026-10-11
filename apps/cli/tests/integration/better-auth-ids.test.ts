@@ -55,7 +55,7 @@ describe('better-auth ids match the database id column', () => {
     test(`${orm} + ${database}: auth ${generatesUuids ? 'generates uuids' : 'keeps the default id generator'}`, async () => {
       const projectPath = await generateAuthProject(database, orm);
 
-      const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
+      const auth = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
       if (generatesUuids) {
         expect(auth).toContain(UUID_ID_GENERATOR);
       } else {
@@ -63,6 +63,38 @@ describe('better-auth ids match the database id column', () => {
       }
     });
   }
+
+  test('turborepo drizzle + postgres: the shared factory generates uuids for the app and tRPC instances', async () => {
+    const projectName = `ids-turbo-${generatedProjects++}`;
+    const result = await runCli(
+      [
+        projectName,
+        '--app',
+        'web:nextjs:better-auth,trpc',
+        '--app',
+        'api:hono',
+        '--database',
+        'postgres',
+        '--orm',
+        'drizzle',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    const projectPath = join(tempDir, projectName);
+
+    expect(await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'))).toContain(UUID_ID_GENERATOR);
+    expect(await readTextFile(join(projectPath, 'apps/web/src/lib/auth/auth.ts'))).toContain(
+      "import { createAuth } from '@repo/auth/auth'",
+    );
+    expect(await readTextFile(join(projectPath, 'packages/api/src/auth.ts'))).toContain(
+      "import { createAuth } from '@repo/auth/auth'",
+    );
+  });
 
   test('drizzle + postgres: the users id column is a uuid that better-auth ids must satisfy', async () => {
     const projectPath = await generateAuthProject('postgres', 'drizzle');

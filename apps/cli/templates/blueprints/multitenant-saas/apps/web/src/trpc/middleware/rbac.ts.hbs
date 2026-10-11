@@ -6,7 +6,7 @@ mono:
   path: src/middleware/rbac.ts
 ---
 import { TRPCError } from '@trpc/server';
-import { auth } from '@repo/auth/auth';
+import { auth } from '../auth';
 {{#if (isMono)}}
 import { protectedProcedure } from '../trpc';
 {{else}}

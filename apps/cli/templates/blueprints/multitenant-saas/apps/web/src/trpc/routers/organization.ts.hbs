@@ -5,7 +5,7 @@ mono:
   name: api
   path: src/router/organization.ts
 ---
-import { auth } from '@repo/auth/auth';
+import { auth } from '../auth';
 {{#if (isMono)}}
 import { protectedProcedure, router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';

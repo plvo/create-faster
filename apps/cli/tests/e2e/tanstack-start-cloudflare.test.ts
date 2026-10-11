@@ -2,6 +2,13 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
+  expectAnonymousFlow,
+  expectMixedUsersKeepTheirOwnSession,
+  expectSignedInFlow,
+  writeAuthEnv,
+  writeSessionProbeRoute,
+} from './auth-probe';
+import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
@@ -32,6 +39,10 @@ interface EvlogProbe {
   service: string;
 }
 
+interface AuthProbe {
+  appDir: string;
+}
+
 interface Scenario {
   name: string;
   deployment: 'cloudflare' | 'cloudflare-static';
@@ -41,6 +52,7 @@ interface Scenario {
   d1Probe?: D1Probe;
   ingestProbe?: boolean;
   evlogProbe?: EvlogProbe;
+  authProbe?: AuthProbe;
 }
 
 const PROBE_ROUTE_PATH = '/api/d1-probe';
@@ -155,6 +167,38 @@ const SCENARIOS: Scenario[] = [
     d1Probe: { appDir: 'apps/web', dbImport: '@repo/db' },
   },
   {
+    name: 'tanstack-start-cloudflare-d1-auth',
+    deployment: 'cloudflare',
+    args: [
+      '--app',
+      'tanstack-start-cloudflare-d1-auth:tanstack-start:better-auth',
+      '--database',
+      'd1',
+      '--orm',
+      'drizzle',
+    ],
+    startAppDirs: ['.'],
+    workerDirs: ['.'],
+    authProbe: { appDir: '.' },
+  },
+  {
+    name: 'tanstack-start-cloudflare-turborepo-d1-auth',
+    deployment: 'cloudflare',
+    args: [
+      '--app',
+      'web:tanstack-start:better-auth',
+      '--app',
+      'api:hono',
+      '--database',
+      'd1',
+      '--orm',
+      'drizzle',
+    ],
+    startAppDirs: ['apps/web'],
+    workerDirs: ['apps/web', 'apps/api'],
+    authProbe: { appDir: 'apps/web' },
+  },
+  {
     name: 'tanstack-start-cloudflare-evlog',
     deployment: 'cloudflare',
     args: ['--app', 'tanstack-start-cloudflare-evlog:tanstack-start:evlog'],
@@ -193,11 +237,12 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe }) => {
+describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, workerDirs, d1Probe, ingestProbe, evlogProbe, authProbe }) => {
   const isStatic = deployment === 'cloudflare-static';
 
   let projectDir: string;
   let installResult: CommandResult;
+  let authPort: number;
   const servers: RunningServer[] = [];
 
   beforeAll(async () => {
@@ -219,6 +264,13 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
       }
     }
     installResult = await runCommand(['bun', 'install'], projectDir);
+
+    if (authProbe) {
+      const authAppDir = join(projectDir, authProbe.appDir);
+      authPort = await getFreePort();
+      await writeSessionProbeRoute(authAppDir);
+      await writeAuthEnv(authAppDir, authPort);
+    }
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -234,13 +286,15 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     TIMEOUT_INSTALL,
   );
 
-  if (d1Probe) {
+  if (d1Probe || authProbe) {
     test(
       'migrates the local D1 database with the generated scripts',
       async () => {
-        const routePath = join(projectDir, d1Probe.appDir, 'src/routes', `${PROBE_ROUTE_PATH}.ts`);
-        await mkdir(dirname(routePath), { recursive: true });
-        await writeFile(routePath, probeRoute(d1Probe.dbImport));
+        if (d1Probe) {
+          const routePath = join(projectDir, d1Probe.appDir, 'src/routes', `${PROBE_ROUTE_PATH}.ts`);
+          await mkdir(dirname(routePath), { recursive: true });
+          await writeFile(routePath, probeRoute(d1Probe.dbImport));
+        }
 
         const generate = await runCommand(['bun', 'run', 'db:generate'], projectDir);
         expect(generate.exitCode).toBe(0);
@@ -318,16 +372,21 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     );
   } else {
     test(
-      'vite preview serves the built app in workerd (answers a D1 query, proxies /ingest or logs wide events when selected)',
+      'vite preview serves the built app in workerd (answers a D1 query, runs the auth flow, proxies /ingest or logs wide events when selected)',
       async () => {
         for (const dir of startAppDirs) {
-          const port = await getFreePort();
+          const port = authProbe?.appDir === dir ? authPort : await getFreePort();
           const server = await startServer(['bunx', 'vite', 'preview', '--port', String(port)], join(projectDir, dir), {
             port,
           });
           servers.push(server);
           await expectServesPageWithClientScript(server.url);
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
+          if (authProbe?.appDir === dir) {
+            await expectAnonymousFlow(server.url);
+            await expectSignedInFlow(server.url);
+            await expectMixedUsersKeepTheirOwnSession(server.url);
+          }
           if (ingestProbe) await expectIngestProxiesToPostHog(server.url);
           if (evlogProbe?.appDir === dir) {
             await exerciseEvlogProbe(server.url);

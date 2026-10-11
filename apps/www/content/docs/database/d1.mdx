@@ -64,14 +64,15 @@ const env = await getEnv();
 const db = createDb(env.DB);
 ```
 
-**`src/lib/server.ts` (Next.js only) — per-request `getDb`/`getAuth`:**
+**`src/lib/server.ts` — the app's `db` and `auth`:**
 
-When the app also selects an ORM (and optionally Better Auth), create-faster generates an app-side accessor that composes the binding into ready-to-use per-request instances:
+When the app also selects an ORM (and optionally Better Auth), create-faster generates an app-side module that composes the binding into ready-to-use instances. Next.js builds them per request:
 
 ```ts
 import 'server-only';
+import { nextCookies } from 'better-auth/next-js';
 import { createDb } from '@/lib/db';
-import { createAuth } from '@/lib/auth/auth';
+import { createAuth } from '@/lib/auth/create-auth';
 import { getEnv } from '@/lib/env';
 
 export async function getDb() {
@@ -79,16 +80,30 @@ export async function getDb() {
 }
 
 export async function getAuth() {
-  return createAuth(await getDb());
+  return createAuth(await getDb(), nextCookies());
 }
 ```
 
+TanStack Start reads the binding from `cloudflare:workers` and builds them once at module scope, which the D1 binding allows:
+
+```ts
+import { tanstackStartCookies } from 'better-auth/tanstack-start';
+import { env } from 'cloudflare:workers';
+import { createDb } from '@/lib/db';
+import { createAuth } from '@/lib/auth/create-auth';
+
+export const db = createDb(env.DB);
+export const auth = createAuth(db, tanstackStartCookies());
+```
+
+In a turborepo the factories come from `@repo/db` and `@repo/auth/auth`.
+
 ## Better Auth & tRPC on D1
 
-Because D1 has no module-level `db` singleton, Better Auth and tRPC are wired **per request** instead of importing a singleton:
+Because the db package exports a `createDb(d1)` factory instead of a module-level `db`, Better Auth and tRPC receive the database instead of importing a singleton:
 
-- **Better Auth** (`auth.ts`) exports a `createAuth(db: Database)` factory (with the shared config) instead of `export const auth`. The auth route handler resolves it per request via `await getAuth()`.
-- **tRPC** (`init.ts` / `packages/api/src/trpc.ts`) takes the `db` in its context and builds `auth = createAuth(db)` inside `createTRPCContext`. The Server Component caller and the route handler supply it with `db: await getDb()`.
+- **Better Auth** exports a `createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)` factory (`src/lib/auth/create-auth.ts`, or `packages/auth/src/auth.ts` in a turborepo) with the shared config. The app builds its instance in `src/lib/server.ts` with its framework's cookie plugin: the Next.js auth route handler resolves it per request via `await getAuth()`, the TanStack Start route imports the module-level `auth`.
+- **tRPC** (`init.ts` / `packages/api/src/trpc.ts`) takes the `db` in its context and builds `auth = createAuth(db)` inside `createTRPCContext`, without a cookie plugin, so tRPC session reads never refresh the session. The Server Component caller and the route handler supply it with `db: await getDb()`.
 
 This is fully supported in both single-repo and turborepo modes:
 

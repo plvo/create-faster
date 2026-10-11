@@ -33,15 +33,15 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('auth.ts exposes a createAuth(db) factory, not a module singleton', async () => {
-    const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
-    expect(auth).toContain('export function createAuth(db: Database)');
+  test('create-auth.ts exposes a createAuth(db, cookiePlugin?) factory, not a module singleton', async () => {
+    const auth = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
+    expect(auth).toContain('export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)');
     expect(auth).toContain('export type Auth = ReturnType<typeof createAuth>');
     expect(auth).not.toContain('export const auth');
   });
 
-  test('auth.ts drizzle adapter uses the sqlite provider for d1', async () => {
-    const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
+  test('create-auth.ts drizzle adapter uses the sqlite provider for d1', async () => {
+    const auth = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
     expect(auth).toContain("provider: 'sqlite'");
   });
 
@@ -51,7 +51,7 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
     expect(server).toContain('export async function getDb()');
     expect(server).toContain('createDb((await getEnv()).DB)');
     expect(server).toContain('export async function getAuth()');
-    expect(server).toContain('createAuth(await getDb())');
+    expect(server).toContain('createAuth(await getDb(), nextCookies())');
   });
 
   test('auth route handler resolves auth per-request via getAuth()', async () => {
@@ -70,7 +70,7 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
 
   test('auth-client infers fields from the Auth type, not the singleton', async () => {
     const client = await readTextFile(join(projectPath, 'src/lib/auth/auth-client.ts'));
-    expect(client).toContain("import type { Auth } from './auth'");
+    expect(client).toContain("import type { Auth } from './create-auth'");
     expect(client).toContain('inferAdditionalFields<Auth>()');
     expect(client).not.toContain('typeof auth');
   });
@@ -164,7 +164,7 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1 + trpc + better-auth', () 
 
   test('auth package exposes the createAuth factory', async () => {
     const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
-    expect(auth).toContain('export function createAuth(db: Database)');
+    expect(auth).toContain('export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)');
     expect(auth).not.toContain('export const auth');
   });
 
@@ -184,7 +184,7 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1 + trpc + better-auth', () 
     expect(server).toContain("from '@repo/db'");
     expect(server).toContain("from '@repo/auth/auth'");
     expect(server).toContain('createDb((await getEnv()).DB)');
-    expect(server).toContain('createAuth(await getDb())');
+    expect(server).toContain('createAuth(await getDb(), nextCookies())');
   });
 
   test('web app callers supply the per-request db', async () => {
@@ -227,11 +227,13 @@ describe('Non-d1 databases keep the singleton wiring (regression guard)', () => 
     await cleanupTempDir(tempDir);
   });
 
-  test('auth.ts keeps the module singleton', async () => {
-    const auth = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
-    expect(auth).toContain('export const auth = betterAuth({');
-    expect(auth).toContain("import { db,");
-    expect(auth).not.toContain('createAuth');
+  test('the app instance is a module singleton built from the factory', async () => {
+    const instance = await readTextFile(join(projectPath, 'src/lib/auth/auth.ts'));
+    expect(instance).toContain("import { createAuth } from './create-auth'");
+    expect(instance).toContain('export const auth = createAuth(nextCookies())');
+    const factory = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
+    expect(factory).toContain("import { db,");
+    expect(factory).toContain('export function createAuth(cookiePlugin?: BetterAuthPlugin)');
   });
 
   test('trpc init.ts imports the singletons, no per-request db param', async () => {

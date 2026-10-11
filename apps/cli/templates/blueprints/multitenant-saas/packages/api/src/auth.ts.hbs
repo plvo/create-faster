@@ -1,0 +1,12 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/auth.ts
+---
+import { createAuth } from '@repo/auth/auth';
+import { nextCookies } from 'better-auth/next-js';
+
+// The routers call endpoints that set cookies (changePassword, revokeOtherSessions...):
+// this instance carries the Next.js cookie plugin so those cookies reach the browser.
+export const auth = createAuth(nextCookies());

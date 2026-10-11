@@ -27,7 +27,8 @@ src/
 │   └── header.tsx                      # Header component
 ├── lib/
 │   ├── auth/
-│   │   ├── auth.ts                     # Better Auth with SIWE plugin
+│   │   ├── create-auth.ts              # createAuth(cookiePlugin?) factory with the SIWE plugin
+│   │   ├── auth.ts                     # App instance: createAuth(nextCookies())
 │   │   └── auth-client.ts             # Auth client with SIWE
 │   ├── db/
 │   │   ├── schema.ts                   # Schema with walletAddress column
