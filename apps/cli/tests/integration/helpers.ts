@@ -1,6 +1,6 @@
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, normalize } from 'node:path';
 import { $ } from 'bun';
 
 export interface CliResult {
@@ -87,6 +87,68 @@ export async function readSstHandlers(projectPath: string): Promise<SstHandler[]
       return { ref, file: candidates[exists.indexOf(true)], exportName: ref.slice(separator + 1) };
     }),
   );
+}
+
+export interface TerraformLambda {
+  /** Name of the `./modules/lambda` module block in infra/main.tf, e.g. `api`. */
+  name: string;
+  /** Directory Terraform zips as the function's code. */
+  sourceDir: string;
+  /** e.g. `index.handler`. */
+  handler: string;
+  /** e.g. `nodejs22.x`. */
+  runtime: string;
+}
+
+interface HclBlock {
+  type: string;
+  label: string;
+  attributes: Record<string, string>;
+}
+
+// Top-level blocks such as `module "api" {` ... `}`, closed by a `}` at the start of a line.
+const HCL_BLOCK = /^(\w+)(?: "([^"]+)")? \{\n([\s\S]*?)^\}/gm;
+const HCL_STRING_ATTRIBUTE = /^\s*(\w+)\s*=\s*"([^"]*)"\s*$/gm;
+const HCL_INTERPOLATION = /\$\{([^}]+)\}/g;
+
+function parseHclBlocks(source: string): HclBlock[] {
+  return [...source.matchAll(HCL_BLOCK)].map(([, type = '', label = '', body = '']) => ({
+    type,
+    label,
+    attributes: Object.fromEntries([...body.matchAll(HCL_STRING_ATTRIBUTE)].map(([, key, value]) => [key, value])),
+  }));
+}
+
+/** Reads the Lambda functions infra/main.tf declares through `./modules/lambda`, with the module's defaults. */
+export async function readTerraformLambdas(projectPath: string): Promise<TerraformLambda[]> {
+  const infraDir = join(projectPath, 'infra');
+  const main = parseHclBlocks(await readTextFile(join(infraDir, 'main.tf')));
+  const variables = parseHclBlocks(await readTextFile(join(infraDir, 'modules/lambda/variables.tf')));
+
+  const locals: Record<string, string> = Object.fromEntries(
+    main.filter(({ type }) => type === 'locals').flatMap(({ attributes }) => Object.entries(attributes)),
+  );
+  const defaults: Record<string, string> = Object.fromEntries(
+    variables.flatMap(({ type, label, attributes }) =>
+      type === 'variable' && attributes.default !== undefined ? [[label, attributes.default]] : [],
+    ),
+  );
+  const interpolate = (value: string): string =>
+    value.replace(HCL_INTERPOLATION, (_, reference: string) =>
+      reference === 'path.module' ? infraDir : interpolate(locals[reference.replace(/^local\./, '')] ?? ''),
+    );
+
+  return main
+    .filter(({ type, attributes }) => type === 'module' && attributes.source === './modules/lambda')
+    .map(({ label, attributes }) => {
+      const config = { ...defaults, ...attributes };
+      return {
+        name: label,
+        sourceDir: normalize(interpolate(config.source_dir ?? '')),
+        handler: config.handler ?? '',
+        runtime: config.runtime ?? '',
+      };
+    });
 }
 
 export async function exportedNames(file: string): Promise<string[]> {
