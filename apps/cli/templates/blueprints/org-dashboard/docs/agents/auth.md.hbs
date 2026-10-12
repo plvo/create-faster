@@ -53,4 +53,4 @@ New roles are immediately assignable (admin → Users → row actions → "Set r
 Gating on both sides matters: the client gate prevents UI leaks, the server procedure prevents route bypass.
 
 ## Creating users & passwords
-Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`) and returns it once so the admin can share it. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
+Public sign-up is closed: `emailAndPassword.disableSignUp` is set in `packages/auth/src/auth.ts`, so the `/api/auth/sign-up/email` endpoint rejects every call. Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`) and returns it once so the admin can share it. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
