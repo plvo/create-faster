@@ -149,6 +149,13 @@ Production rate limiting keys on a client address header, which better-auth read
 - With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`), plus `auth = createAuth(db, tanstackStartCookies())` when better-auth is selected. With Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.
 - Every Hono app on `cloudflare` types `new Hono<{ Bindings: CloudflareEnv }>()` and includes `cloudflare-env.d.ts` in its tsconfig, so `tsc` needs `cf-typegen` first (as for Start). With Hyperdrive, `wrangler.jsonc.hono.hbs` declares the `HYPERDRIVE` binding (the `cloudflare/hyperdrive-binding` partial) and route handlers call `await createDb(c.env.HYPERDRIVE)` per request.
 
+### Expo
+
+- The `expo` stack, `nativewind` and `jest-expo` move together with the Expo SDK. Take every version from `bundledNativeModules.json` of the `expo` package (`react` and `react-native` exact, as React Native checks the renderer version), and verify with `expo-doctor` and `expo export` on a generated project, not only `tsc`.
+- `main` is `expo-router/entry`; without it Metro falls back to `expo/AppEntry`. The generated `tsconfig.json` lists its `types` because TypeScript 6 no longer loads every `@types` package.
+- Isolated installs (bun and pnpm workspaces) only expose declared dependencies to Babel and Metro: NativeWind's setup resolves `react-native-css-interop`, `babel-preset-expo` and `@babel/plugin-transform-react-jsx` from the app root, so `nativewind` declares them. `jest-expo` only lets the `.pnpm` store through `transformIgnorePatterns`, so `jest.config.js` adds `.bun` when `pm` is bun.
+- A turborepo may hold Expo next to a Next.js or TanStack Start app on another React patch version. Each app keeps its own React and Expo's Metro config bundles a single one. `expo-doctor` reports `expo-constants`, `expo-font` and `expo-linking` as duplicates in a bun turborepo (bun's peer-suffixed copies of one version, absent from the Metro bundle), which is expected.
+
 ## Template system
 
 ### Structure

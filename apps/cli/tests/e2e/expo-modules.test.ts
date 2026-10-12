@@ -4,6 +4,7 @@ import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand }
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
+const TIMEOUT_BUNDLE = 240_000;
 
 describe('expo-nativewind', () => {
   let projectDir: string;
@@ -40,5 +41,14 @@ describe('expo-nativewind', () => {
       expect(result.exitCode).toBe(0);
     },
     TIMEOUT_TYPECHECK,
+  );
+
+  test(
+    'bundles with Metro',
+    async () => {
+      const result = await runCommand(['bunx', 'expo', 'export', '--platform', 'ios'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_BUNDLE,
   );
 });

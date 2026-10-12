@@ -57,21 +57,29 @@ export const META: Meta = {
       label: 'Expo',
       hint: 'React Native framework',
       packageJson: {
+        main: 'expo-router/entry',
         dependencies: {
-          expo: '~52.0.0',
-          'expo-dev-client': '~5.0.0',
-          'expo-font': '~13.0.0',
-          'expo-router': '~4.0.0',
-          'expo-splash-screen': '~0.29.0',
-          'expo-status-bar': '~2.0.0',
-          react: '^18.3.1',
-          'react-native': '0.76.5',
-          'react-native-gesture-handler': '~2.20.0',
-          'react-native-safe-area-context': '~4.12.0',
+          expo: '~57.0.28',
+          'expo-constants': '~57.0.21',
+          'expo-dev-client': '~57.0.20',
+          'expo-font': '~57.0.4',
+          'expo-linking': '~57.0.12',
+          'expo-router': '~57.0.26',
+          'expo-splash-screen': '~57.0.10',
+          'expo-status-bar': '~57.0.1',
+          react: '19.2.3',
+          'react-dom': '19.2.3',
+          'react-native': '0.86.3',
+          'react-native-gesture-handler': '~2.32.0',
+          'react-native-reanimated': '4.5.1',
+          'react-native-safe-area-context': '~5.7.0',
+          'react-native-screens': '~4.26.0',
+          'react-native-web': '~0.21.0',
+          'react-native-worklets': '0.10.1',
         },
         devDependencies: {
-          typescript: '^5.3.0',
-          '@types/react': '~18.3.12',
+          typescript: '~6.0.3',
+          '@types/react': '~19.2.4',
         },
         scripts: {
           start: 'expo start',
@@ -386,10 +394,14 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
-          nativewind: '^4.2.6',
+          nativewind: '^4.2.7',
+          // Same version nativewind pins: its babel setup imports react-native-css-interop/jsx-runtime from the app root.
+          'react-native-css-interop': '0.2.7',
         },
         devDependencies: {
-          tailwindcss: '^3.4.17',
+          '@babel/plugin-transform-react-jsx': '^7.28.6',
+          'babel-preset-expo': '~57.0.15',
+          tailwindcss: '^3.4.19',
         },
       },
     },
@@ -507,11 +519,13 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         devDependencies: {
-          'jest-expo': '~52.0.6',
+          'jest-expo': '~57.0.6',
           jest: '^29.7.0',
-          'babel-preset-expo': '^12.0.12',
-          '@testing-library/react-native': '^13.3.3',
-          'react-test-renderer': '^18.3.1',
+          '@babel/runtime': '^7.29.10',
+          '@react-native/jest-preset': '^0.86.3',
+          '@testing-library/react-native': '^14.1.0',
+          // react-reconciler of test-renderer 1.2 matches React 19.2
+          'test-renderer': '~1.2.0',
           '@types/jest': '^29.5.14',
         },
         scripts: {
