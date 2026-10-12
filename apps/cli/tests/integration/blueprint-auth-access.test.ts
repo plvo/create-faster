@@ -54,12 +54,19 @@ describe('blueprint auth access', () => {
   });
 
   describe('multitenant-saas', () => {
-    test('the login page sends a signed-in user away', async () => {
+    test.each(['login', 'signup'])('the %s page sends a signed-in user away', async (route) => {
       const projectPath = await generate('multitenant-saas');
-      const page = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/login/page.tsx'));
+      const page = await readTextFile(join(projectPath, `apps/web/src/app/(auth)/${route}/page.tsx`));
       expect(page).toContain("from '@/lib/auth/auth'");
       expect(page).toMatch(/auth\.api\.getSession\(\{ headers: await headers\(\) \}\)/);
       expect(page).toMatch(/if \(session\) redirect\('\/'\)/);
+    });
+
+    test('the invitation page stays open to a signed-in invitee', async () => {
+      const projectPath = await generate('multitenant-saas');
+      const page = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx'));
+      expect(page).not.toMatch(/if \(session\) redirect/);
+      expect(page).toMatch(/if \(!session\) \{/);
     });
   });
 });
