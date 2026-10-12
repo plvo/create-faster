@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 
 interface PackageJson {
   scripts: Record<string, string>;
@@ -60,5 +60,16 @@ describe('Hono app port', () => {
   test('the cloudflare-fullstack cron app does not take the port of the web app', async () => {
     const scripts = await appScripts('hono-port-cron', 'cron', ['--blueprint', 'cloudflare-fullstack']);
     expect(scripts.dev).toBe('bun run --port 3001 --hot src/index.ts');
+  });
+
+  test('the generated agent context states the port the app listens on', async () => {
+    await appScripts('hono-port-agents-mono', 'api', ['--app', 'web:nextjs', '--app', 'api:hono']);
+    const mono = await readTextFile(join(tempDir, 'hono-port-agents-mono', 'apps/api/AGENTS.md'));
+    expect(mono).toContain('listen on port 3001. The `PORT` environment variable overrides it.');
+    expect(await readTextFile(join(tempDir, 'hono-port-agents-mono', 'AGENTS.md'))).toContain('(port 3001)');
+
+    await appScripts('hono-port-agents-single', null, ['--app', 'api:hono']);
+    const single = await readTextFile(join(tempDir, 'hono-port-agents-single', 'AGENTS.md'));
+    expect(single).toContain('listen on port 3000. The `PORT` environment variable overrides it.');
   });
 });

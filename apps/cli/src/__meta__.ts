@@ -84,8 +84,8 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
-          dev: 'bun run --hot src/index.ts',
-          start: 'NODE_ENV=production bun run src/index.ts',
+          dev: 'bun run --port {{port}} --hot src/index.ts',
+          start: 'NODE_ENV=production bun run --port {{port}} src/index.ts',
         },
       },
     },
