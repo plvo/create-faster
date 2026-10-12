@@ -1,0 +1,21 @@
+{{!-- The caller imports initTRPC and superjson and declares the TRPCContext type --}}
+// The build inlines this literal: tRPC's own default reads NODE_ENV at runtime, which some production
+// servers leave unset (Next.js on Cloudflare through OpenNext).
+const isDev = process.env.NODE_ENV === 'development';
+
+const t = initTRPC.context<TRPCContext>().create({
+  transformer: superjson,
+  isDev,
+  // Outside development an error carries no stack trace, and an unexpected one (a failed query, a bug) reaches
+  // the client as a generic message: its own message can carry SQL, parameters or other internals.
+  errorFormatter: ({ shape, error }) => {
+    if (isDev) return shape;
+    const data = { ...shape.data };
+    delete data.stack;
+    return {
+      ...shape,
+      message: error.code === 'INTERNAL_SERVER_ERROR' ? 'Internal server error' : shape.message,
+      data,
+    };
+  },
+});
