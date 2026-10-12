@@ -1,5 +1,5 @@
-Prisma schema lives in the db package (`schema.prisma`). After editing it, run `{{pm}} db:push` to sync and `{{pm}} db:generate` to regenerate the client. Inspect data with `{{pm}} db:studio`.
+Prisma schema lives in the db package (`schema.prisma`). After editing it, run `{{runScript "db:push"}}` to sync and `{{runScript "db:generate"}}` to regenerate the client. Inspect data with `{{runScript "db:studio"}}`.
 
-The client is generated into `generated/prisma`, which is not committed. `{{pm}} db:generate` runs before `dev` and `build` ({{#if (isMono)}}Turborepo `dependsOn` on `^db:generate`{{else}}the `predev` and `prebuild` scripts{{/if}}) and needs `DATABASE_URL` in `.env`. Run it by hand after a schema edit while `dev` is running.
+The client is generated into `generated/prisma`, which is not committed. `{{runScript "db:generate"}}` runs before `dev` and `build` ({{#if (isMono)}}Turborepo `dependsOn` on `^db:generate`{{else}}the `predev` and `prebuild` scripts{{/if}}) and needs `DATABASE_URL` in `.env`. Run it by hand after a schema edit while `dev` is running.
 
-`{{pm}} db:migrate` (`prisma migrate dev`) asks for a migration name, so run it from a terminal.
+`{{runScript "db:migrate"}}` (`prisma migrate dev`) asks for a migration name, so run it from a terminal.

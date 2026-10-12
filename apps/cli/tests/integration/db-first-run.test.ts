@@ -68,7 +68,7 @@ describe('Prisma turborepo: first run from a fresh clone', () => {
 
   test('the Prisma note says the client is generated before dev and build', async () => {
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
-    expect(agents).toContain('`bun db:generate`');
+    expect(agents).toContain('`bun run db:generate`');
     expect(agents).toContain('before `dev` and `build`');
   });
 });

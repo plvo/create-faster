@@ -251,6 +251,33 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('runScript and packageRunner', () => {
+    const template = Handlebars.compile('{{runScript "db:push"}} | {{packageRunner}} shadcn@latest');
+    const ctx = (pm?: TemplateContext['pm'], repo: TemplateContext['repo'] = 'single'): TemplateContext => ({
+      projectName: 'demo',
+      repo,
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      pm,
+    });
+
+    test('writes the script as the selected package manager runs it', () => {
+      expect(template(ctx('bun'))).toBe('bun run db:push | bunx shadcn@latest');
+      expect(template(ctx('npm'))).toBe('npm run db:push | npx shadcn@latest');
+      expect(template(ctx('pnpm'))).toBe('pnpm run db:push | pnpm dlx shadcn@latest');
+    });
+
+    test('falls back to npm when no package manager is selected', () => {
+      expect(template(ctx(undefined))).toBe('npm run db:push | npx shadcn@latest');
+    });
+
+    test('resolves from inside a block', () => {
+      const inBlock = Handlebars.compile('{{#each apps}}{{runScript "dev"}}{{/each}}');
+      expect(inBlock(ctx('pnpm'))).toBe('pnpm run dev');
+    });
+  });
+
   describe('raw', () => {
     test('preserves inner {{ }} sequences literally', () => {
       const template = Handlebars.compile('{{{{raw}}}}{{variable}}{{{{/raw}}}}');

@@ -8,8 +8,8 @@ Generated with [create-faster](https://github.com/plvo/create-faster) using the 
 ## Getting started
 
 ```bash
-bun install
-bun run dev
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+{{runScript "dev"}}
 ```
 
 ## TODO — Customize for your brand

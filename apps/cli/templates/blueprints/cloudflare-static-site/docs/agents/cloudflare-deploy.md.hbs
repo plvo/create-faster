@@ -20,7 +20,7 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 ## First deploy
 
 ```bash
-bun run deploy   # next build && wrangler deploy
+{{runScript "deploy"}}   # next build && wrangler deploy
 ```
 
 `wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at `https://<name>.<your-subdomain>.workers.dev`.
