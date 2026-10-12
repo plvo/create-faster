@@ -178,7 +178,6 @@ export const META: Meta = {
           './': './src/components/',
           './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
-          './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
           './postcss.config.mjs': './postcss.config.mjs',
         },
@@ -253,9 +252,6 @@ export const META: Meta = {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
-          './types': './src/types.ts',
-          './password': './src/password.ts',
-          './permissions': './src/permissions.ts',
         },
       },
       appPackageJson: {
@@ -1191,12 +1187,22 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './password': './src/password.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
             'react-dom': '^19.2.8',
@@ -1276,6 +1282,12 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         api: {
           dependencies: {
             'better-auth': BETTER_AUTH_VERSION,
@@ -1287,6 +1299,9 @@ export const META: Meta = {
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
           },
@@ -1395,12 +1410,21 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
