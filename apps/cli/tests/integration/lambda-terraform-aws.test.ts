@@ -12,6 +12,7 @@ import {
 
 const BUILD_OUTFILE = /--outfile[= ](\S+)/;
 const NODE_RUNTIME_MAJOR = /^nodejs(\d+)\./;
+const PRODUCTION_BUN_BUILD = /^NODE_ENV=production bun build /;
 
 describe('lambda-terraform-aws blueprint', () => {
   let tempDir: string;
@@ -79,6 +80,21 @@ describe('lambda-terraform-aws blueprint', () => {
         outfile: join(sourceDir, `${handler.slice(0, handler.lastIndexOf('.'))}.mjs`),
       })),
     );
+  });
+
+  // `bun build` inlines `process.env.NODE_ENV` into the bundle, `development` unless the build runs in production:
+  // Lambda sets no NODE_ENV of its own, so the deployed zip would behave as a development build.
+  test('each app builds its bundle in production mode', async () => {
+    const scripts = await Promise.all(
+      lambdas.map(async ({ name, sourceDir }) => {
+        const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(
+          join(dirname(sourceDir), 'package.json'),
+        );
+        return { name, build: scripts.build };
+      }),
+    );
+
+    expect(scripts.filter(({ build }) => !PRODUCTION_BUN_BUILD.test(build ?? ''))).toEqual([]);
   });
 });
 

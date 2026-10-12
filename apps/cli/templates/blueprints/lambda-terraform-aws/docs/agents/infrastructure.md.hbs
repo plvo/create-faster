@@ -28,6 +28,6 @@ Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is O
 
 ## Add a Lambda function
 
-1. Create `apps/<name>/` (build to `dist/index.mjs`: Terraform zips only `dist/`, so the ES module bundle loads as `.mjs` only).
+1. Create `apps/<name>/` (build to `dist/index.mjs`: Terraform zips only `dist/`, so the ES module bundle loads as `.mjs` only). Build it with `NODE_ENV=production bun build`: `bun build` inlines `process.env.NODE_ENV` into the bundle, `development` by default, and Lambda sets no `NODE_ENV` of its own, so a plain build ships a development bundle (the API error handler would return stack traces).
 2. Add a `module "<name>"` block in `infra/main.tf` using `source = "./modules/lambda"`.
 3. Wire any trigger (new `api-gateway`/`sqs`/`eventbridge` module call) and expose outputs in `infra/outputs.tf`.
