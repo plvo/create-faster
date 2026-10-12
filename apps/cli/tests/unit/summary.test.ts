@@ -38,7 +38,7 @@ describe('summary note', () => {
   });
 
   test('lists Git and the remote steps when git init succeeded', () => {
-    displaySummaryNote(ctx, false);
+    displaySummaryNote(ctx, undefined);
     const output = stripVTControlCharacters(written.join(''));
 
     expect(output).toContain('Git, AGENTS.md');
@@ -47,7 +47,7 @@ describe('summary note', () => {
   });
 
   test('drops the Git line and the remote steps and hints at git init when it failed', () => {
-    displaySummaryNote(ctx, true);
+    displaySummaryNote(ctx, { output: 'fatal: git failed' });
     const output = stripVTControlCharacters(written.join(''));
 
     expect(output).not.toContain('Git');
