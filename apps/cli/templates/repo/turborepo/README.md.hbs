@@ -88,7 +88,9 @@ Start all applications in development mode:
 
 - `dev` - Start all apps in development mode
 - `build` - Build all apps for production
+{{#if (hasRootScript "start")}}
 - `start` - Start all apps in production mode
+{{/if}}
 {{#if (hasRootScript "db:migrate")}}
 - `db:migrate` - Run database migrations
 {{/if}}
