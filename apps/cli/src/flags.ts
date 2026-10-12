@@ -283,7 +283,7 @@ function validateContext(partial: Partial<TemplateContext>): void {
   for (const app of partial.apps ?? []) {
     for (const libraryName of app.libraries) {
       const library = META.libraries[libraryName];
-      if (library?.require && !isRequirementMet(library.require, partial as TemplateContext)) {
+      if (library?.require && !isRequirementMet(library.require, partial)) {
         printError(`library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require)}`);
         process.exit(1);
       }
@@ -297,7 +297,7 @@ function validateContext(partial: Partial<TemplateContext>): void {
       category.selection === 'single' ? (selected ? [selected as string] : []) : ((selected as string[]) ?? []);
     for (const value of values) {
       const addon = category.options[value];
-      if (addon?.require && !isRequirementMet(addon.require, partial as TemplateContext)) {
+      if (addon?.require && !isRequirementMet(addon.require, partial)) {
         printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
         process.exit(1);
       }

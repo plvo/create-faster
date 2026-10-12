@@ -252,7 +252,7 @@ function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
     const addon = META.project.tooling.options[toolingName];
     if (!addon) return false;
 
-    if (!isRequirementMet(addon.require, ctx as TemplateContext)) {
+    if (!isRequirementMet(addon.require, ctx)) {
       const missing: string[] = [];
       if (addon.require?.git && !ctx.git) missing.push('git');
       if (addon.require?.linter && !ctx.project.linter) missing.push('a linter');
