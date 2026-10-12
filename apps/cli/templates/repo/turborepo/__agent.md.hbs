@@ -5,8 +5,8 @@ Generated with create-faster. Turborepo monorepo.
 ## Apps
 {{#each apps}}- `apps/{{appName}}` — {{stackName}}{{#if (appUrl appName)}} ({{appUrl appName}}){{/if}}
 {{/each}}
-
 {{#if (monoPackages)}}
+
 ## Packages
 {{#each (monoPackages)}}
 {{#unless (eq this "db")}}
@@ -16,7 +16,6 @@ Generated with create-faster. Turborepo monorepo.
 {{#if (hasPackage "db")}}
 - `packages/db`{{#if (has "orm" "drizzle")}} — Drizzle schema and client{{/if}}{{#if (has "orm" "prisma")}} — Prisma schema and client{{/if}}
 {{/if}}
-
 {{/if}}
 
 ## Stack

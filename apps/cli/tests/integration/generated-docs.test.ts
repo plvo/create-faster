@@ -147,6 +147,18 @@ describe('turborepo docs and summary list every app and package', () => {
       expect(agents).toContain(`- \`packages/${name}\``);
     }
     expect(agents).toContain('- `packages/db` — Drizzle schema and client');
+    expect(agents).not.toContain('\n\n\n');
+  });
+
+  test('AGENTS.md has no Packages section when the turborepo generates none', async () => {
+    const result = await runCli(
+      ['bare', '--app', 'web:nextjs', '--app', 'api:hono', '--no-git', '--no-install', '--pm', 'npm'],
+      dir,
+    );
+    expect(result.exitCode).toBe(0);
+    const bare = await readTextFile(join(dir, 'bare', 'AGENTS.md'));
+    expect(bare).not.toContain('## Packages');
+    expect(bare).not.toContain('\n\n\n');
   });
 
   test('the CLI summary lists every generated package', () => {
