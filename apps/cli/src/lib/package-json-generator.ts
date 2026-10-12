@@ -13,7 +13,7 @@ import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
 
-export interface PackageJson {
+interface PackageJson {
   name: string;
   version: string;
   private?: boolean;
@@ -28,7 +28,7 @@ export interface PackageJson {
   [key: string]: unknown;
 }
 
-export interface GeneratedPackageJson {
+interface GeneratedPackageJson {
   path: string;
   content: PackageJson;
 }
@@ -224,7 +224,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   return { path, content: cleanUndefined({ ...composeAppPackageJson(app, ctx, appIndex), packageManager }) };
 }
 
-export function generatePackagePackageJson(
+function generatePackagePackageJson(
   packageName: string,
   config: PackageJsonConfig,
   ctx: TemplateContext,

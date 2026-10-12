@@ -128,7 +128,7 @@ export async function selectBlueprintPrompt(message: string): Promise<string> {
   return result;
 }
 
-export async function promptProjectCategorySingle(
+async function promptProjectCategorySingle(
   category: MetaProjectCategory,
   categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
@@ -146,10 +146,7 @@ export async function promptProjectCategorySingle(
   return promptSelectWithDisabled<string | undefined>(category.prompt, choices);
 }
 
-export async function promptProjectCategoryMulti(
-  category: MetaProjectCategory,
-  categoryName: string,
-): Promise<string[]> {
+async function promptProjectCategoryMulti(category: MetaProjectCategory, categoryName: string): Promise<string[]> {
   const groupLabel = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
 
   const groupedOptions: Record<string, Option<string>[]> = {

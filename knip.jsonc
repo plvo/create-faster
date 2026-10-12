@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  // "next" is the TypeScript language-service plugin of a consuming Next.js app, not an import of this package
+  "ignoreUnresolved": ["next"],
+  "workspaces": {
+    ".": {
+      // required by the normalize-pr-title workflow through actions/github-script
+      "entry": [".github/scripts/*.cjs"]
+    },
+    "apps/cli": {
+      // run as a node subprocess by tests/e2e/lambda-handler.ts, by file path
+      "entry": ["tests/e2e/lambda-invoke.mjs"],
+      // resolved at runtime: tests/integration/hono-app.test.ts imports a generated app that imports evlog through a symlink to this node_modules
+      "ignoreDependencies": ["evlog"]
+    },
+    "apps/www": {
+      // loaded by the fumadocs-mdx Next.js plugin
+      "entry": ["source.config.ts"]
+    }
+  }
+}

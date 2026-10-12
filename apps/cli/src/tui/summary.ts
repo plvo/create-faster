@@ -57,13 +57,14 @@ ${color.gray('🔥 You can recreate this project with the following command:')}
 ${color.bold(flagsCommand)}`);
 }
 
-export function displaySummaryNote(ctx: TemplateContext): void {
-  const texts = [...buildProjectStructure(ctx), ...buildStepsNote(ctx)];
+export function displaySummaryNote(ctx: TemplateContext, gitInitFailed: boolean): void {
+  const hasGitRepository = ctx.git && !gitInitFailed;
+  const texts = [...buildProjectStructure(ctx, hasGitRepository), ...buildStepsNote(ctx, hasGitRepository)];
 
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
 
-function buildProjectStructure(ctx: TemplateContext): string[] {
+function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean): string[] {
   const lines: string[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
 
@@ -101,7 +102,7 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
 
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
-  if (ctx.git) configs.push('Git');
+  if (hasGitRepository) configs.push('Git');
   if (ctx.project.linter) {
     configs.push(META.project.linter.options[ctx.project.linter]?.label ?? ctx.project.linter);
   }
@@ -120,7 +121,7 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   return lines;
 }
 
-function buildStepsNote(ctx: TemplateContext): string[] {
+function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string[] {
   const steps: string[] = [];
 
   steps.push('');
@@ -135,11 +136,15 @@ function buildStepsNote(ctx: TemplateContext): string[] {
   steps.push('# Build:');
   steps.push(`${ctx.pm ?? 'npm'} run build      # Build for production`);
 
-  if (ctx.git) {
+  if (hasGitRepository) {
     steps.push('');
     steps.push('# Git:');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
+  } else if (ctx.git) {
+    steps.push('');
+    steps.push('# git init failed, run it manually:');
+    steps.push('git init');
   }
 
   return steps;
