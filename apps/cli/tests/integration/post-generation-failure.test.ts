@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { cleanupTempDir, createTempDir, fileExists, runCli } from './helpers';
 
 const NOISY_LINE_COUNT = 200;
@@ -66,10 +67,11 @@ exit 1`,
     const { result, projectPath } = await generate('git-fails', ['--git', '--no-install']);
 
     expect(result.exitCode).toBe(0);
-    const output = result.stdout + result.stderr;
+    const output = stripVTControlCharacters(result.stdout + result.stderr);
     expect(output).toContain('Failed to initialize git');
     expect(output).toContain('Project created successfully');
-    expect(output).not.toMatch(/⚙️\s+Git/);
+    expect(output).toContain('AGENTS.md');
+    expect(output).not.toContain('Git, AGENTS.md');
     expect(output).not.toContain('git remote add origin');
     expect(output).toContain('# git init failed');
     expect(await fileExists(join(projectPath, 'package.json'))).toBe(true);
