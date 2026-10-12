@@ -9,7 +9,7 @@ mono:
 Organizations are the tenants. The active org is stored on the session as `activeOrganizationId` — set in the `databaseHooks.session.create.before` hook in `packages/auth/src/auth.ts` (first membership) and switched via the org switcher.
 
 ## Onboarding redirect
-`apps/web/src/proxy.ts` runs on every non-public route: it redirects unauthenticated users to `/login`, then sends users with zero organizations to `/onboarding` (`apps/web/src/app/(onboarding)/onboarding/page.tsx`). The dashboard layout (`apps/web/src/app/(dashboard)/layout.tsx`) re-checks `activeOrganizationId` server-side.
+`apps/web/src/proxy.ts` runs on every non-public page route (API routes are not matched, so a tRPC procedure answers `UNAUTHORIZED` itself): it redirects requests without a session cookie to `/login`, with no database query. The dashboard layout (`apps/web/src/app/(dashboard)/layout.tsx`) validates the session and sends users without an `activeOrganizationId` to `/onboarding` (`apps/web/src/app/(onboarding)/onboarding/page.tsx`).
 
 ## Org-scoping data
 Every tenant-owned table carries `organizationId` (see `project` in `packages/db/src/schema.ts`). Procedures read the tenant from `ctx.orgId` (provided by `orgProcedure`), filter queries by it, and guard single-row reads with `assertInScope` — see `packages/api/src/middleware/rbac.ts` and `packages/api/src/router/project.ts`.
