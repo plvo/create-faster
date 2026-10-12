@@ -50,6 +50,9 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
     }),
     {{/if}}
 
+    advanced: {
+      {{> better-auth/client-ip}}
+    },
     plugins: [
       admin({
         ac,

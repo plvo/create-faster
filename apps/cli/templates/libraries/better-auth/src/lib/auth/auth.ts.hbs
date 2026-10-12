@@ -65,13 +65,14 @@ export function createAuth({{#if (has "database" "d1")}}db: Database, {{/if}}coo
       usePlural: false,
     }),
     {{/if}}
-    {{#if (has "database" "postgres")}}
     advanced: {
+      {{> better-auth/client-ip}}
+      {{#if (has "database" "postgres")}}
       database: {
         generateId: () => crypto.randomUUID(),
       },
+      {{/if}}
     },
-    {{/if}}
 
     plugins: [...(cookiePlugin ? [cookiePlugin] : [])],
     emailAndPassword: {

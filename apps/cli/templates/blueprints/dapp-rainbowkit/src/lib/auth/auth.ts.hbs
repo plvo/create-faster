@@ -38,6 +38,9 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
       },
     }),
 
+    advanced: {
+      {{> better-auth/client-ip}}
+    },
     plugins: [
       siwe({
         domain: new URL(getAppUrl()).host,

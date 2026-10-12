@@ -1,0 +1,7 @@
+{{#if (has "deployment" "cloudflare")}}
+// Cloudflare sets cf-connecting-ip on every request, so a client cannot choose the address rate limiting keys on
+ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
+{{else}}
+// Rate limiting keys on x-forwarded-for: the proxy or CDN in front of the app must overwrite it
+ipAddress: { ipAddressHeaders: ['x-forwarded-for'] },
+{{/if}}
