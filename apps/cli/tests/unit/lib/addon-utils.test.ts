@@ -5,6 +5,7 @@ import {
   getProjectAddon,
   isCategoryValueAllowedByLibraries,
   isLibraryCompatible,
+  isLocalFilesystemSatisfied,
   isRequirementMet,
   isServerRuntimeSatisfied,
   isSingletonDbSatisfied,
@@ -360,6 +361,35 @@ describe('isSingletonDbSatisfied', () => {
     expect(META.project.database.options.d1?.serverlessConsumersWired).toBe(true);
     expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['better-auth'], 'cloudflare'))).toBe(true);
     expect(isSingletonDbSatisfied(META.project.database.options.d1, withLibsAndDeployment(['trpc'], 'cloudflare'))).toBe(true);
+  });
+});
+
+describe('isLocalFilesystemSatisfied', () => {
+  const withDeployment = (deployment?: string): Partial<TemplateContext> => ({
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [], ...(deployment ? { deployment } : {}) },
+  });
+
+  test('sqlite declares it needs a local filesystem; cloudflare declares it provides none', () => {
+    expect(META.project.database.options.sqlite?.needsLocalFilesystem).toBe(true);
+    expect(META.project.deployment.options.cloudflare?.providesLocalFilesystem).toBe(false);
+  });
+
+  test('false only when a filesystem database meets a deployment without a filesystem', () => {
+    const sqlite = META.project.database.options.sqlite;
+    expect(isLocalFilesystemSatisfied(sqlite, withDeployment('cloudflare'))).toBe(false);
+    expect(isLocalFilesystemSatisfied(sqlite, withDeployment())).toBe(true);
+    expect(isLocalFilesystemSatisfied(sqlite, withDeployment('sst'))).toBe(true);
+    expect(isLocalFilesystemSatisfied(META.project.database.options.postgres, withDeployment('cloudflare'))).toBe(true);
+    expect(isLocalFilesystemSatisfied(META.project.database.options.d1, withDeployment('cloudflare'))).toBe(true);
+  });
+
+  test('sqlite is disabled on cloudflare with a reason naming the deployment, and available elsewhere', () => {
+    const sqlite = META.project.database.options.sqlite;
+    const reason = getCategoryOptionUnavailability('database', 'sqlite', sqlite, withDeployment('cloudflare'));
+    expect(reason).toContain('local filesystem');
+    expect(reason).toContain('Cloudflare Workers');
+    expect(getCategoryOptionUnavailability('database', 'sqlite', sqlite, withDeployment())).toBeUndefined();
   });
 });
 
