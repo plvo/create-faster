@@ -63,6 +63,12 @@ describe('D1 turborepo: every Worker shares one database and one local state', (
       'wrangler dev --persist-to ../../.wrangler',
     ]);
   });
+
+  test('agent context tells where to paste the single database id', async () => {
+    const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+    expect(agents).toContain(`wrangler d1 create ${projectName}-db`);
+    expect(agents).toContain("into the `d1_databases` entry of each app's `wrangler.jsonc`");
+  });
 });
 
 describe('D1 single repo: the Hono Worker previews on the state db:migrate writes', () => {

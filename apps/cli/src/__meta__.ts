@@ -522,7 +522,7 @@ export const META: Meta = {
             hono: {
               scripts: {
                 deploy: 'wrangler deploy',
-                preview: 'wrangler dev',
+                preview: 'wrangler dev --persist-to {{workspaceRoot}}/.wrangler',
                 'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
               },
             },

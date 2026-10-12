@@ -93,8 +93,12 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 ## Cloudflare Workers deploy (Wrangler)
 
 - `bun run deploy` — `wrangler deploy`
-- `bun run preview` — `wrangler dev` (local Wrangler)
+- `bun run preview` — `wrangler dev` (local Wrangler), persisting local state in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
 - `bun run cf-typegen` — regenerate `cloudflare-env.d.ts`. Run it after install and after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
+{{/if}}
+{{#if (and (has "database" "d1") (isMono))}}
+
+**Database — D1 across apps**: every app's `wrangler.jsonc` binds the same D1 database, `{{projectName}}-db`, so the apps see the same data and the migrations target one database. Run `wrangler d1 create {{projectName}}-db` once and paste the returned `database_id` into the `d1_databases` entry of each app's `wrangler.jsonc`.
 {{/if}}
