@@ -29,7 +29,7 @@ const timeColumns = {
 {{#if (or (has "database" "sqlite") (has "database" "d1"))}}
 export const userTable = sqliteTable('users', {
   id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
-  username: text('username').notNull().unique(),
+  name: text('name').notNull(),
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   avatarUrl: text('avatar_url'),
@@ -52,7 +52,7 @@ export const userTable = mysqlTable('users', {
 {{#if (has "database" "mysql")}}
   id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
 {{/if}}
-  username: varchar('username', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   avatarUrl: text('avatar_url'),

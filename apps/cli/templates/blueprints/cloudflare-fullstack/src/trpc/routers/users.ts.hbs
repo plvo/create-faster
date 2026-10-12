@@ -14,7 +14,7 @@ import { adminProcedure } from '../middleware/rbac';
 
 const userColumns = {
   id: userTable.id,
-  name: userTable.username,
+  name: userTable.name,
   email: userTable.email,
   role: userTable.role,
   banned: userTable.banned,
@@ -84,7 +84,7 @@ export const usersRouter = router({
       await ctx.db
         .update(userTable)
         .set({
-          username: input.name,
+          name: input.name,
           firstName: input.firstName || null,
           lastName: input.lastName || null,
           phone: input.phone || null,

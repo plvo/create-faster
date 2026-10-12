@@ -15,8 +15,10 @@ async function listFiles(dir: string): Promise<string[]> {
 
 async function filesNamingUsername(projectPath: string): Promise<string[]> {
   const files = (await listFiles(projectPath)).filter((file) => /\.(ts|tsx|prisma|md)$/.test(file));
-  const contents = await Promise.all(files.map((file) => readTextFile(file)));
-  return files.filter((_, index) => USERNAME_IDENTIFIER.test(contents[index])).map((file) => file.slice(projectPath.length));
+  const sources = await Promise.all(files.map(async (file) => ({ file, content: await readTextFile(file) })));
+  return sources
+    .filter(({ content }) => USERNAME_IDENTIFIER.test(content))
+    .map(({ file }) => file.slice(projectPath.length));
 }
 
 describe('better-auth display name is stored in a non-unique name column', () => {
@@ -69,7 +71,7 @@ describe('better-auth display name is stored in a non-unique name column', () =>
       const projectPath = await generate(['--app', 'web:nextjs:better-auth', '--database', database, '--orm', 'prisma']);
 
       const schema = await readTextFile(join(projectPath, 'prisma/schema.prisma'));
-      expect(schema).toMatch(/^ {2}name {6}String\n {2}email/m);
+      expect(schema).toMatch(/^ {2}name {10}String\n {2}email/m);
       expect(await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'))).not.toMatch(/\bname:\s*'/);
       expect(await filesNamingUsername(projectPath)).toEqual([]);
     });

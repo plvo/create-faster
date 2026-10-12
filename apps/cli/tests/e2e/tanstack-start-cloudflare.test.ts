@@ -93,7 +93,7 @@ export const Route = createFileRoute('${PROBE_ROUTE_PATH}')({
   server: {
     handlers: {
       GET: async () => {
-        await db.insert(userTable).values({ username: crypto.randomUUID(), email: \`\${crypto.randomUUID()}@example.com\` });
+        await db.insert(userTable).values({ name: crypto.randomUUID(), email: \`\${crypto.randomUUID()}@example.com\` });
         const rows = await db.select().from(userTable);
         return Response.json({ count: rows.length });
       },

@@ -117,7 +117,7 @@ const timeColumns = {
 
 export const userTable = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  username: varchar('username', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   avatarUrl: text('avatar_url'),
@@ -238,8 +238,8 @@ async function seed() {
   const [alice, bob] = await db
     .insert(userTable)
     .values([
-      { username: 'alice', email: 'alice@example.com' },
-      { username: 'bob', email: 'bob@example.com' },
+      { name: 'alice', email: 'alice@example.com' },
+      { name: 'bob', email: 'bob@example.com' },
     ])
     .returning();
 

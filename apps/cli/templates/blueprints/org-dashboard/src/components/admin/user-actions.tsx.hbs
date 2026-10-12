@@ -16,7 +16,7 @@ import { authClient } from '@repo/auth/auth-client';
 
 type User = {
   id: string;
-  username: string;
+  name: string;
   role: string;
   banned: boolean | null;
 };
@@ -39,7 +39,7 @@ export function UserActions({ user }: { user: User }) {
         toast.error(res.error.message ?? 'Failed to ban user');
         return;
       }
-      toast.success(`${user.username} has been banned`);
+      toast.success(`${user.name} has been banned`);
       invalidateUsers();
     } catch {
       toast.error('Failed to ban user');
@@ -56,7 +56,7 @@ export function UserActions({ user }: { user: User }) {
         toast.error(res.error.message ?? 'Failed to unban user');
         return;
       }
-      toast.success(`${user.username} has been unbanned`);
+      toast.success(`${user.name} has been unbanned`);
       invalidateUsers();
     } catch {
       toast.error('Failed to unban user');
@@ -73,7 +73,7 @@ export function UserActions({ user }: { user: User }) {
         toast.error(res.error.message ?? 'Failed to update role');
         return;
       }
-      toast.success(`${user.username} is now ${role}`);
+      toast.success(`${user.name} is now ${role}`);
       invalidateUsers();
     } catch {
       toast.error('Failed to update role');
