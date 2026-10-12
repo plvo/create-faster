@@ -21,8 +21,8 @@ describe('Expo app', () => {
     await cleanupTempDir(tempDir);
   });
 
-  async function generate(projectName: string, args: string[]): Promise<string> {
-    const result = await runCli([projectName, ...args, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+  async function generate(projectName: string, args: string[], pm = 'bun'): Promise<string> {
+    const result = await runCli([projectName, ...args, '--no-git', '--no-install', '--pm', pm], tempDir);
     expect(result.exitCode).toBe(0);
     return join(tempDir, projectName);
   }
@@ -47,7 +47,15 @@ describe('Expo app', () => {
 
     test('declares the peer dependencies expo-router requires', async () => {
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
-      for (const name of ['expo-constants', 'expo-linking', 'react-native-screens', 'react-native-web', 'react-dom']) {
+      for (const name of [
+        'expo-constants',
+        'expo-linking',
+        'react-native-screens',
+        'react-native-web',
+        'react-dom',
+        'react-native-reanimated',
+        'react-native-worklets',
+      ]) {
         expect(pkg.dependencies).toHaveProperty([name]);
       }
     });
@@ -88,8 +96,6 @@ describe('Expo app', () => {
 
     test('declares every package its babel and runtime setup resolves from the app root', async () => {
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
-      expect(pkg.dependencies).toHaveProperty(['react-native-reanimated']);
-      expect(pkg.dependencies).toHaveProperty(['react-native-worklets']);
       expect(pkg.dependencies).toHaveProperty(['react-native-css-interop']);
       expect(pkg.devDependencies).toHaveProperty(['babel-preset-expo']);
       expect(pkg.devDependencies).toHaveProperty(['@babel/plugin-transform-react-jsx']);
@@ -111,6 +117,7 @@ describe('Expo app', () => {
     test('declares the packages jest-expo and Testing Library require', async () => {
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
       expect(pkg.devDependencies).toHaveProperty(['@react-native/jest-preset']);
+      expect(pkg.devDependencies).toHaveProperty(['@babel/runtime']);
       expect(pkg.devDependencies).toHaveProperty(['test-renderer']);
       expect(pkg.devDependencies).not.toHaveProperty(['react-test-renderer']);
     });
@@ -122,6 +129,17 @@ describe('Expo app', () => {
 
     test('does not generate a babel config', async () => {
       expect(await fileExists(join(projectPath, 'babel.config.js'))).toBe(false);
+    });
+
+    test('lets the bun store through the transform ignore list, since jest-expo only knows the pnpm one', async () => {
+      const jestConfig = await readTextFile(join(projectPath, 'jest.config.js'));
+      expect(jestConfig).toContain('.bun|');
+    });
+
+    test('keeps the bare jest-expo preset with pnpm', async () => {
+      const pnpmPath = await generate('expo-jest-pnpm', ['--app', 'expo-jest-pnpm:expo:jest-expo'], 'pnpm');
+      const jestConfig = await readTextFile(join(pnpmPath, 'jest.config.js'));
+      expect(jestConfig).not.toContain('transformIgnorePatterns');
     });
   });
 

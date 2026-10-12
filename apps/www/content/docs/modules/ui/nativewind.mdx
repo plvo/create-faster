@@ -4,7 +4,7 @@ description: Pre-configured Tailwind CSS for React Native with Metro bundler int
 ---
 
 <Stacks names="expo" />
-<Dependencies packages="nativewind" dev="tailwindcss" />
+<Dependencies packages="nativewind,react-native-css-interop,react-native-reanimated,react-native-worklets" dev="tailwindcss,babel-preset-expo,@babel/plugin-transform-react-jsx" />
 
 [→ NativeWind Documentation](https://nativewind.dev)
 
@@ -12,11 +12,27 @@ description: Pre-configured Tailwind CSS for React Native with Metro bundler int
 
 Files added:
 ```
+babel.config.js            # Babel presets that compile className
 metro.config.js            # Metro bundler with NativeWind transformer
 tailwind.config.js         # Tailwind config with NativeWind preset
 nativewind-env.d.ts        # TypeScript types for className prop
 src/styles/globals.css     # Tailwind directives entry point
 ```
+
+### babel.config.js
+
+`className` is compiled by the NativeWind Babel preset, with the JSX import source of `babel-preset-expo` pointed at NativeWind:
+
+```js title="babel.config.js"
+module.exports = (api) => {
+  api.cache(true);
+  return {
+    presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }], 'nativewind/babel'],
+  };
+};
+```
+
+`react-native-css-interop`, `babel-preset-expo` and `@babel/plugin-transform-react-jsx` are listed as direct dependencies because NativeWind resolves them from the app root, which isolated installs (the default of bun and pnpm workspaces) do not expose through `nativewind` alone.
 
 ### metro.config.js
 
@@ -36,12 +52,10 @@ module.exports = withNativeWind(config, { input: './src/styles/globals.css' });
 Tailwind CSS configured with NativeWind preset:
 
 ```js title="tailwind.config.js"
-const { nativewindPreset } = require('nativewind/tailwind/preset');
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
-  presets: [nativewindPreset],
+  presets: [require('nativewind/preset')],
   theme: {
     extend: {},
   },
