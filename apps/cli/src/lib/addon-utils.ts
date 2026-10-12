@@ -49,40 +49,43 @@ export function isSingletonDbSatisfied(addon: MetaAddon | undefined, ctx: Partia
   return !selectedLibraries.some((lib) => META.libraries[lib]?.needsSingletonDb);
 }
 
-export function isRequirementMet(require: AddonRequire | undefined, ctx: TemplateContext): boolean {
+export function isRequirementMet(require: AddonRequire | undefined, ctx: Partial<TemplateContext>): boolean {
   if (!require) return true;
+
+  const project = ctx.project;
+  const apps = ctx.apps ?? [];
 
   if (require.git && !ctx.git) return false;
 
   if (require.linter) {
-    if (!ctx.project.linter) return false;
-    if (Array.isArray(require.linter) && !require.linter.includes(ctx.project.linter)) return false;
+    if (!project?.linter) return false;
+    if (Array.isArray(require.linter) && !require.linter.includes(project.linter)) return false;
   }
 
-  if (require.database && (!ctx.project.database || !require.database.includes(ctx.project.database))) {
+  if (require.database && (!project?.database || !require.database.includes(project.database))) {
     return false;
   }
 
-  if (require.orm && (!ctx.project.orm || !require.orm.includes(ctx.project.orm))) {
+  if (require.orm && (!project?.orm || !require.orm.includes(project.orm))) {
     return false;
   }
 
-  if (require.deployment && (!ctx.project.deployment || !require.deployment.includes(ctx.project.deployment))) {
+  if (require.deployment && (!project?.deployment || !require.deployment.includes(project.deployment))) {
     return false;
   }
 
-  if (require.tooling && !require.tooling.some((t) => ctx.project.tooling.includes(t))) {
+  if (require.tooling && !require.tooling.some((t) => project?.tooling.includes(t))) {
     return false;
   }
 
   if (require.libraries) {
-    const allLibraries = ctx.apps.flatMap((app) => app.libraries);
+    const allLibraries = apps.flatMap((app) => app.libraries);
     if (!require.libraries.some((lib) => allLibraries.includes(lib))) {
       return false;
     }
   }
 
-  if (require.stacks && !ctx.apps.some((app) => require.stacks?.includes(app.stackName))) {
+  if (require.stacks && !apps.some((app) => require.stacks?.includes(app.stackName))) {
     return false;
   }
 
@@ -181,7 +184,7 @@ export function getCategoryOptionUnavailability(
 ): string | undefined {
   if (!addon) return undefined;
 
-  if (addon.require && !isRequirementMet(addon.require, ctx as TemplateContext)) {
+  if (addon.require && !isRequirementMet(addon.require, ctx)) {
     return `requires ${describeRequire(addon.require)}`;
   }
 
