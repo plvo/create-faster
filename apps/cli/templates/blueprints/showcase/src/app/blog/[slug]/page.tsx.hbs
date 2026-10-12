@@ -4,7 +4,7 @@ import { mdxComponents } from '@/mdx-components';
 import { getAllPosts, getPost } from '@/lib/blog';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { ArticleJsonLd } from '@/components/seo/json-ld';
-import { siteConfig } from '@/lib/data/site-config';
+import { createPageMetadata } from '@/lib/seo';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -20,25 +20,13 @@ export async function generateMetadata({ params }: PageProps) {
 
   if (!post) return {};
 
-  const image = post.metadata.imageUrl ?? siteConfig.ogImage;
-
-  return {
+  return createPageMetadata({
     title: post.metadata.title,
     description: post.metadata.summary,
-    openGraph: {
-      title: post.metadata.title,
-      description: post.metadata.summary,
-      type: 'article',
-      publishedTime: post.metadata.publishedAt,
-      images: [image],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: post.metadata.title,
-      description: post.metadata.summary,
-      images: [image],
-    },
-  };
+    path: `/blog/${slug}`,
+    image: post.metadata.imageUrl,
+    publishedTime: post.metadata.publishedAt,
+  });
 }
 
 export default async function BlogPostPage({ params }: PageProps) {

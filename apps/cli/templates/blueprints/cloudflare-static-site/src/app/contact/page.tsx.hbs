@@ -1,15 +1,16 @@
-import type { Metadata } from 'next';
 {{#if (isMono)}}
 import { Button } from '@repo/ui/components/button';
 {{else}}
 import { Button } from '@/components/ui/button';
 {{/if}}
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: 'Contact',
   description: 'Get in touch with our team for a free flock assessment and consultation.',
-};
+  path: '/contact',
+});
 
 export default function ContactPage() {
   return (
