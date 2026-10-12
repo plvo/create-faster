@@ -7,6 +7,86 @@ import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 const BARE_PM_COMMAND = /`(?:bun|npm|pnpm) (?:dev|build|start|check|lint|format|db:[\w:-]+)\b/;
 const BUN_FORM = /\bbunx?\b/;
 
+describe('generated AGENTS.md places the schema and names the database', () => {
+  let dir: string;
+
+  async function agentsOf(name: string, args: string[]): Promise<string> {
+    const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'bun'], dir);
+    expect(result.exitCode).toBe(0);
+    return readTextFile(join(dir, name, 'AGENTS.md'));
+  }
+
+  beforeAll(async () => {
+    dir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  test('a single repo has no db package: the Drizzle schema is in src/lib/db', async () => {
+    const agents = await agentsOf('drizzle-single', [
+      '--app',
+      'drizzle-single:nextjs',
+      '--database',
+      'postgres',
+      '--orm',
+      'drizzle',
+    ]);
+    expect(agents).toContain('`src/lib/db/schema.ts`');
+    expect(agents).not.toContain('db package');
+  });
+
+  test('a turborepo keeps the Drizzle schema in packages/db', async () => {
+    const agents = await agentsOf('drizzle-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'postgres',
+      '--orm',
+      'drizzle',
+    ]);
+    expect(agents).toContain('`packages/db/src/schema.ts`');
+  });
+
+  test('a single repo has no db package: the Prisma schema is in prisma/', async () => {
+    const agents = await agentsOf('prisma-single', [
+      '--app',
+      'prisma-single:nextjs',
+      '--database',
+      'postgres',
+      '--orm',
+      'prisma',
+    ]);
+    expect(agents).toContain('`prisma/schema.prisma`');
+    expect(agents).not.toContain('db package');
+  });
+
+  test('a turborepo keeps the Prisma schema in packages/db', async () => {
+    const agents = await agentsOf('prisma-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'postgres',
+      '--orm',
+      'prisma',
+    ]);
+    expect(agents).toContain('`packages/db/prisma/schema.prisma`');
+  });
+
+  test.each([
+    ['single', ['--app', 'd1-single:nextjs'], 'd1-single'],
+    ['turborepo', ['--app', 'web:nextjs', '--app', 'api:hono'], 'd1-turbo'],
+  ])('the %s Stack list names Cloudflare D1', async (_repo, apps, name) => {
+    const agents = await agentsOf(name, [...apps, '--deployment', 'cloudflare', '--database', 'd1', '--orm', 'drizzle']);
+    expect(agents).toContain('- Database: Cloudflare D1');
+  });
+});
+
 describe('generated docs write commands every package manager runs', () => {
   let dir: string;
 

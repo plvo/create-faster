@@ -20,6 +20,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 {{#if (has "database" "sqlite")~}}
 - Database: SQLite (local file)
 {{/if~}}
+{{#if (has "database" "d1")~}}
+- Database: Cloudflare D1
+{{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}

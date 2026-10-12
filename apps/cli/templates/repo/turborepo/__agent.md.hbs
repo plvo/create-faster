@@ -24,6 +24,9 @@ Generated with create-faster. Turborepo monorepo.
 {{#if (has "database" "sqlite")~}}
 - Database: SQLite{{#if (hasPackage "db")}} (local file in `packages/db`){{/if}}
 {{/if~}}
+{{#if (has "database" "d1")~}}
+- Database: Cloudflare D1
+{{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}
