@@ -53,7 +53,7 @@ describe('Hono app port', () => {
       'portless',
     ]);
     expect(scripts.dev).toBe('portless run bun run --hot src/index.ts');
-    expect(scripts['start:portless']).toBe('portless run NODE_ENV=production bun run src/index.ts');
+    expect(scripts['start:portless']).toBe('NODE_ENV=production portless run bun run src/index.ts');
     expect(scripts.start).toBe('NODE_ENV=production bun run --port 3001 src/index.ts');
   });
 
