@@ -5,6 +5,7 @@ mono:
 ---
 {{#if (has "database" "postgres")}}
 import { PrismaPg } from '@prisma/adapter-pg';
+import { parse as parseConnectionString } from 'pg-connection-string';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';

@@ -9,6 +9,9 @@ const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.2';
 
+// The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
+const PG_CONNECTION_STRING_VERSION = '^2.14.1';
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -741,6 +744,10 @@ export const META: Meta = {
             files: $when({ repo: 'turborepo' }, ['dist/**']),
             dependencies: {
               'drizzle-orm': '^0.45.2',
+              'pg-connection-string': $when(
+                { database: 'postgres', deployment: { not: 'cloudflare' } },
+                PG_CONNECTION_STRING_VERSION,
+              ),
             },
             devDependencies: {
               typescript: '^5',
@@ -769,6 +776,7 @@ export const META: Meta = {
             dependencies: {
               '@prisma/client': '^7.10.0',
               '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.10.0'),
+              'pg-connection-string': $when({ database: 'postgres' }, PG_CONNECTION_STRING_VERSION),
               '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.10.0'),
               mariadb: $when({ database: 'mysql' }, '^3.5.3'),
             },

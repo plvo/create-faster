@@ -52,6 +52,7 @@ export * from './types';
 {{else}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { parse as parseConnectionString } from 'pg-connection-string';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
