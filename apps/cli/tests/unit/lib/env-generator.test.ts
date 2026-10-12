@@ -305,7 +305,7 @@ describe('EnvVar.file', () => {
     const files = collect(() => collectEnvFiles(makeContext()));
 
     expect(files.map((f) => f.destination)).toContain('apps/web/.env.secrets.example');
-    expect(files.find((f) => f.destination === 'apps/web/.env.example')).toBeUndefined();
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content ?? '').not.toContain('IN_DEDICATED');
   });
 
   test('single repo collapses a variable with a file into the root .env.<file>.example', () => {

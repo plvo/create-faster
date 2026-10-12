@@ -13,6 +13,7 @@ export interface EnvVar {
   monoScope: EnvScope[];
   stacks?: StackName[];
   when?: WhenMatch;
+  file?: string;
 }
 
 export interface AddonSupport {

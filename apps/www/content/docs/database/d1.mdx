@@ -141,15 +141,17 @@ export default defineConfig({
 
 ## Environment Variables
 
-Generated in `.env.example` (turborepo: `packages/db/.env.example` and `apps/{appName}/.env.example` for each app with D1; single repo: root `.env.example`):
+Generated in `.env.d1.example` (turborepo: `packages/db/.env.d1.example`; single repo: root `.env.d1.example`):
 
 ```bash
-CLOUDFLARE_ACCOUNT_ID=""          # Cloudflare account id (drizzle-kit d1-http, prod migrations)
+CLOUDFLARE_ACCOUNT_ID=""          # Cloudflare account id (drizzle-kit d1-http)
 CLOUDFLARE_D1_DATABASE_ID=""      # D1 database id from `wrangler d1 create`
 CLOUDFLARE_API_TOKEN=""           # Cloudflare API token with D1 edit permission
 ```
 
-These are only needed for `db:migrate:remote` (production migrations via `d1-http`). Local development uses the miniflare SQLite file automatically.
+These are account credentials that only `drizzle-kit` needs, when it runs with `NODE_ENV=production` against the remote D1 database through `d1-http`. Copy the file to `.env.d1`, which `drizzle.config.ts` loads (variables already set in the shell win) and which is git-ignored. The file is deliberately not named `.env`: Wrangler and the frameworks load `.env` into the Worker environment (a Next.js build through OpenNext even bundles it into the Worker), so the token would be readable by Worker code and end up in build output such as `dist/server/.dev.vars`. Local development uses the miniflare SQLite file and needs none of this.
+
+`db:migrate:remote` runs `wrangler`, which authenticates on its own: `wrangler login`, or `CLOUDFLARE_API_TOKEN` exported in the shell (CI).
 
 ## Workflow Scripts
 

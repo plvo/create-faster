@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 const CREDENTIALS = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_D1_DATABASE_ID', 'CLOUDFLARE_API_TOKEN'];
 
@@ -31,16 +31,14 @@ describe.each([
     args: ['--app', 'web:tanstack-start:better-auth,trpc', '--app', 'worker:hono'],
     credentialsFile: 'packages/db/.env.d1.example',
     drizzleConfig: 'packages/db/drizzle.config.ts',
-    migrateScriptOwner: 'packages/db/package.json',
   },
   {
     name: 'single repo',
     args: ['--app', 'web:nextjs'],
     credentialsFile: '.env.d1.example',
     drizzleConfig: 'drizzle.config.ts',
-    migrateScriptOwner: 'package.json',
   },
-])('$name with d1 and drizzle on cloudflare', ({ args, credentialsFile, drizzleConfig, migrateScriptOwner }) => {
+])('$name with d1 and drizzle on cloudflare', ({ args, credentialsFile, drizzleConfig }) => {
   let dir: string;
   let project: string;
 
@@ -64,11 +62,6 @@ describe.each([
 
   test('drizzle-kit reads the credentials file', async () => {
     expect(await readTextFile(join(project, drizzleConfig))).toContain("'.env.d1'");
-  });
-
-  test('the remote migration hands the credentials file to wrangler', async () => {
-    const pkg = await readJsonFile<{ scripts: Record<string, string> }>(join(project, migrateScriptOwner));
-    expect(pkg.scripts['db:migrate:remote']).toContain('--env-file .env.d1');
   });
 
   test('the credentials file is git-ignored', async () => {

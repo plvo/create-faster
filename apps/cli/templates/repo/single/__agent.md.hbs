@@ -50,7 +50,7 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 ## Environment
 {{#if envGroups.length~}}
 
-Copy `.env.example` to `.env` and fill in:
+Copy each `.env*.example` file to the same name without `.example` and fill in:
 {{#each envGroups}}{{#each vars~}}
 - `{{this}}`
 {{/each}}{{/each~}}
