@@ -1,6 +1,7 @@
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
+import { format } from 'node:util';
 import { expect } from 'bun:test';
 import { $ } from 'bun';
 
@@ -218,4 +219,45 @@ export function expectFormatterHidesInternals(init: string): void {
   expect(development({ shape: internalErrorShape(), error: { code: 'INTERNAL_SERVER_ERROR' } })).toEqual(
     internalErrorShape(),
   );
+}
+
+const DEV_EXPRESSIONS = ['import.meta.env.DEV', "process.env.NODE_ENV === 'development'"];
+
+type TrpcError = Error & { code: string };
+type OnError = (opts: { path: string | undefined; error: TrpcError }) => void;
+
+/** Runs the onError of a generated tRPC fetch handler, with the development expression set as the runtime would. */
+function generatedOnError(handler: string, isDev: boolean, log: (...args: unknown[]) => void): OnError {
+  const source = handler.match(/onError: (\(\{ path, error \}\) => \{[\s\S]*?\n {4}\}),/)?.[1];
+  expect(source).toBeDefined();
+  const devExpression = DEV_EXPRESSIONS.find((expression) => source?.includes(expression));
+  expect(devExpression).toBeDefined();
+  const runnable = (source as string).replace(devExpression as string, 'isDev');
+  return new Function('console', 'isDev', `return (${runnable});`)({ error: log }, isDev) as OnError;
+}
+
+const trpcError = (code: string, message: string): TrpcError => Object.assign(new Error(message), { code });
+
+/** The onError of a generated tRPC handler always logs unexpected errors and logs the expected ones only in development. */
+export function expectOnErrorLogsInternals(handler: string): void {
+  const logged = (isDev: boolean, path: string | undefined, error: TrpcError): string[] => {
+    const lines: string[] = [];
+    generatedOnError(handler, isDev, (...args) => lines.push(format(...args)))({ path, error });
+    return lines;
+  };
+
+  for (const isDev of [false, true]) {
+    const error = trpcError('INTERNAL_SERVER_ERROR', "select * from users where email = 'a@b.c'");
+    const lines = logged(isDev, 'user.list', error);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('tRPC failed on user.list');
+    expect(lines[0]).toContain(error.message);
+    expect(lines[0]).toContain(error.stack?.split('\n')[1]?.trim() ?? 'no stack');
+  }
+
+  expect(logged(false, 'user.me', trpcError('UNAUTHORIZED', 'UNAUTHORIZED'))).toEqual([]);
+  expect(logged(false, undefined, trpcError('BAD_REQUEST', 'Too small'))).toEqual([]);
+  expect(logged(true, 'user.me', trpcError('UNAUTHORIZED', 'UNAUTHORIZED'))).toEqual([
+    'tRPC failed on user.me: UNAUTHORIZED',
+  ]);
 }
