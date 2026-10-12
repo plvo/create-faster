@@ -46,5 +46,27 @@ docker.compose.yml          # PostgreSQL service configuration
 
 **Connection String:**
 ```
-postgresql://postgres:password@localhost:5432/postgres-{projectName}
+postgresql://postgres:password@localhost:5432/postgres-{projectName}?sslmode=disable
 ```
+
+## TLS
+
+The generated database client (Drizzle or Prisma) connects with TLS and verifies the server certificate when `NODE_ENV=production`, the same as pg's `ssl: true`. In development it connects without TLS. An `sslmode` in `DATABASE_URL` always wins over that default.
+
+Where `NODE_ENV=production` comes from in production:
+- **Next.js**: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle, so every deployment of the build uses TLS.
+- **TanStack Start**: `vite build` does the same in the server bundle.
+- **Hono and Node**: Bun runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production bun run src/index.ts`), SST sets it in the Hono function `environment`, and `wrangler deploy` replaces it in a Hono Worker bundle. Any other production entry of a Bun app (a Lambda created next to the Terraform `infra/`, a container or process manager running `bun src/index.ts`) must set `NODE_ENV=production` itself, or put `sslmode=verify-full` in `DATABASE_URL`. A bundle made with `bun build` gets the variable inlined at build time instead: a plain `bun build` inlines `development` and turns the TLS default off whatever the runtime environment says, so build it with `bun build --production` or `NODE_ENV=production bun build`.
+
+**What `sslmode` does with pg 8** (the `pg` driver behind both clients):
+- `disable`: no TLS.
+- `verify-full`: TLS, with the certificate and the host name verified.
+- `require`, `prefer` and `verify-ca`: treated exactly like `verify-full`, and pg prints a one-time `SECURITY WARNING` about it. `prefer` never falls back to plaintext: a server without TLS fails the connection.
+- `no-verify` (pg only): TLS without certificate verification.
+- pg 9 will switch `require`, `prefer` and `verify-ca` to the libpq semantics, where `require` encrypts without verifying the certificate.
+
+In production, use the managed database's connection string (Neon, Supabase, RDS) with `sslmode=verify-full` or without `sslmode`: both connect with TLS and verify the certificate, now and with pg 9. Avoid `sslmode=require`, which prints the warning today and stops verifying with pg 9.
+
+The local Docker database has no TLS, so the generated `.env.example` URL ends with `?sslmode=disable`, and a production build runs against it locally. Keep `sslmode=disable` for local or other non-TLS databases only, and never copy the local `DATABASE_URL` to production: in production, the generated client logs a warning when `DATABASE_URL` turns TLS off for a host other than localhost. It reads the URL with `pg-connection-string`, the parser pg uses, so it sees what pg connects to: the last `sslmode` wins, and a `host` query parameter replaces the host of the URL.
+
+With Drizzle on Cloudflare, the Worker reaches the database through the `HYPERDRIVE` binding instead, whose connection to the database is configured on the Hyperdrive side. `DATABASE_URL` then only serves `drizzle-kit` and the seed script.

@@ -78,6 +78,22 @@ Empty file where you add your infrastructure resources.
 
 To get the function, bucket and CloudFront provisioned for you, use the [SST](/docs/deployment/sst) deployment instead.
 
+## NODE_ENV on Lambda
+
+A Lambda you create never runs the app's `start` script. Next.js and TanStack Start builds already replace `process.env.NODE_ENV` with `production` in their server bundle. A Hono or Node app has to get it from the way you bundle it:
+
+- With `bun build`, Bun inlines `process.env.NODE_ENV` at build time, and a plain `bun build` inlines `development`. With PostgreSQL that compiles the generated client's TLS default to off, whatever the Lambda environment says. Build with `--production` (which also minifies) or with `NODE_ENV=production` in the build environment:
+
+  ```bash
+  bun build src/index.ts --target node --production --outfile dist/index.mjs
+  # or, unminified
+  NODE_ENV=production bun build src/index.ts --target node --outfile dist/index.mjs
+  ```
+
+- A bundler that leaves `process.env.NODE_ENV` to runtime reads the function environment: set `NODE_ENV=production` in its `environment` block.
+
+Otherwise the `DATABASE_URL` must set `sslmode=verify-full` (see [PostgreSQL](/docs/database/postgresql#tls)).
+
 ## CLI usage
 
 ```bash

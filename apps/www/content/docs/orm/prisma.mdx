@@ -157,7 +157,7 @@ model Verification {
 
 ### index.ts
 
-PrismaClient singleton with global caching to prevent hot-reload issues:
+PrismaClient singleton with global caching to prevent hot-reload issues. With PostgreSQL it uses the `PrismaPg` adapter, which connects with TLS in production unless `DATABASE_URL` sets `sslmode` (see [PostgreSQL](/docs/database/postgresql#tls)):
 
 ```ts title="src/index.ts"
 import { PrismaClient } from '../generated/prisma'; // or '@prisma/client' in single repo

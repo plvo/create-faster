@@ -5,6 +5,7 @@ mono:
 ---
 {{#if (has "database" "postgres")}}
 import { PrismaPg } from '@prisma/adapter-pg';
+import { parse as parseConnectionString } from 'pg-connection-string';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
@@ -12,7 +13,14 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
 
 {{#if (has "database" "postgres")}}
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+{{> postgres/tls-warning}}
+
+warnIfProductionTlsDisabled(process.env.DATABASE_URL);
+// TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  ssl: process.env.NODE_ENV === 'production',
+});
 {{/if}}
 {{#if (has "database" "mysql")}}
 const _dbUrl = new URL(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');

@@ -19,6 +19,9 @@ export default $config({
     const {{camelCase appName}} = new sst.aws.Function('{{appName}}', {
       url: true,
       handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}src/index.handler',
+      environment: {
+        NODE_ENV: $dev ? 'development' : 'production',
+      },
     });
 {{/if}}
 {{#if (eq stackName "tanstack-start")}}

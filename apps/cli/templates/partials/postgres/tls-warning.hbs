@@ -1,0 +1,17 @@
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
+// Catches the local .env.example URL (sslmode=disable) reaching a remote database in production.
+// pg reads DATABASE_URL with pg-connection-string, so host and TLS resolve here exactly as pg resolves them.
+function warnIfProductionTlsDisabled(databaseUrl: string | undefined): void {
+  if (process.env.NODE_ENV !== 'production' || !databaseUrl) return;
+  try {
+    const { host, ssl } = parseConnectionString(databaseUrl);
+    if (ssl === false && host && !host.startsWith('/') && !LOCAL_HOSTS.has(host)) {
+      console.warn(
+        `[db] DATABASE_URL disables TLS for ${host} in production, so the connection is not encrypted: use sslmode=verify-full or drop sslmode unless this database has no TLS.`,
+      );
+    }
+  } catch {
+    // pg reports a malformed DATABASE_URL itself when it connects.
+  }
+}

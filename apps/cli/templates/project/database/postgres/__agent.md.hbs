@@ -1,1 +1,25 @@
 PostgreSQL via Docker Compose. Start it with `docker compose up -d`. The connection string is in `DATABASE_URL` (see `.env.example`).
+
+The local `DATABASE_URL` ends with `?sslmode=disable` because the Docker database has no TLS. Keep `sslmode=disable` for local or other non-TLS databases only. Never copy the local `DATABASE_URL` to production.
+{{#if project.orm}}
+{{#unless (and (has "orm" "drizzle") (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+
+TLS in production: the generated client connects with TLS and verifies the server certificate when `NODE_ENV=production`, unless `DATABASE_URL` sets `sslmode`, which always wins. For a managed database (Neon, Supabase, RDS), use its connection string with `sslmode=verify-full` or without `sslmode`; `sslmode=require` makes pg print a security warning. In production, the client logs a warning when `DATABASE_URL` turns TLS off (`sslmode=disable`, read the way pg reads it) for a host other than localhost. Where `NODE_ENV=production` comes from:
+{{#if (has "stack" "nextjs")}}
+- Next.js: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle, so every deployment of the build uses TLS.
+{{/if}}
+{{#if (has "stack" "tanstack-start")}}
+- TanStack Start: `vite build` replaces it in the server bundle the same way.
+{{/if}}
+{{#if (has "stack" "hono")}}
+- Hono: Bun runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production bun run src/index.ts`){{#if (has "deployment" "sst")}}, and `sst.config.ts` sets it in the Lambda function `environment` (`development` under `sst dev`){{/if}}{{#if (has "deployment" "cloudflare")}}, and `wrangler deploy` replaces it in the Worker bundle{{/if}}.
+{{/if}}
+{{#if (has "stack" "node")}}
+- Node: Bun runs the source too, and the `start` script sets it the same way.
+{{/if}}
+{{#if (or (has "stack" "hono") (has "stack" "node"))}}
+
+Any other production entry of a Bun app ({{#if (has "deployment" "terraform-aws")}}the Lambda you create next to `infra/`, {{/if}}a container or a process manager running `bun src/index.ts`) must set `NODE_ENV=production` itself, or `DATABASE_URL` must set `sslmode=verify-full`. A bundle made with `bun build` (a Lambda zip, for instance) gets `process.env.NODE_ENV` inlined at build time instead: a plain `bun build` inlines `development` and turns the TLS default off whatever the runtime environment says, so build it with `bun build --production` or `NODE_ENV=production bun build`.
+{{/if}}
+{{/unless}}
+{{/if}}

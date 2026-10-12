@@ -17,7 +17,7 @@ Beyond a bare Node.js setup, we include:
 
 **Development Scripts:**
 - `dev` - Hot reload development server (`bun run --hot`)
-- `start` - Production server (`bun run src/index.ts`)
+- `start` - Production server (`NODE_ENV=production bun run src/index.ts`): Bun runs the source without a build, so the script sets `NODE_ENV` for code that reads it at runtime
 
 Files created:
 ```

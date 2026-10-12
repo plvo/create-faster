@@ -74,7 +74,7 @@ export default defineConfig({
 
 ### index.ts
 
-Database connection instance with SSL config. Shown here with PostgreSQL:
+Database connection instance with SSL config. Shown here with PostgreSQL, where TLS is on in production unless `DATABASE_URL` sets `sslmode` (see [PostgreSQL](/docs/database/postgresql#tls)):
 
 ```ts title="src/index.ts"
 import { drizzle } from 'drizzle-orm/node-postgres';

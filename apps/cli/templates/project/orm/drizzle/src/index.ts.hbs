@@ -14,7 +14,7 @@ export * from 'drizzle-orm';
 export * from './schema';
 export * from './types';
 {{else}}
-{{#if (and (or (has "database" "postgres") (has "database" "mysql")) (has "deployment" "cloudflare"))}}
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
@@ -52,6 +52,7 @@ export * from './types';
 {{else}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { parse as parseConnectionString } from 'pg-connection-string';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { drizzle } from 'drizzle-orm/mysql2';
@@ -67,6 +68,10 @@ import { drizzle } from 'drizzle-orm/libsql';
 {{/if}}
 import * as schema from './schema';
 
+{{#if (has "database" "postgres")}}
+{{> postgres/tls-warning}}
+
+{{/if}}
 {{#if (has "database" "sqlite")}}
 {{#if (isMono)}}
 function findMonoRoot(start: string): string {
@@ -85,8 +90,10 @@ function createDb() {
   // Only called once DATABASE_URL is confirmed set by the db proxy below.
   const databaseUrl = process.env.DATABASE_URL as string;
 {{#if (has "database" "postgres")}}
+  warnIfProductionTlsDisabled(databaseUrl);
   return drizzle({
     schema,
+    // TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
     connection: {
       connectionString: databaseUrl,
       ssl: process.env.NODE_ENV === 'production',

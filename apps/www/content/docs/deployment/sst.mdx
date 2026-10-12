@@ -22,7 +22,7 @@ sst-env.d.ts                # TypeScript augmentation for SST env variables
 The configuration maps each app to the appropriate SST component based on its stack:
 
 - **Next.js** apps use `sst.aws.Nextjs` with optimized OpenNext deployment
-- **Hono** apps use `sst.aws.Function` with `url: true`, pointing to `src/index.handler`
+- **Hono** apps use `sst.aws.Function` with `url: true`, pointing to `src/index.handler`, and `environment: { NODE_ENV: $dev ? 'development' : 'production' }`: the Lambda never runs the `start` script, which sets `NODE_ENV` otherwise
 - **TanStack Start** apps use `sst.aws.TanStackStart` (Lambda server function, S3 assets bucket and CloudFront)
 
 In a turborepo, each app's `path` or `handler` is prefixed with `apps/{appName}/`.

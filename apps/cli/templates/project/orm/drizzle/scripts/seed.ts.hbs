@@ -33,7 +33,7 @@ if (!localPath) {
 
 const db = drizzle(new Database(localPath), { schema });
 {{else}}
-{{#if (and (or (has "database" "postgres") (has "database" "mysql")) (has "deployment" "cloudflare"))}}
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
 {{/if}}
