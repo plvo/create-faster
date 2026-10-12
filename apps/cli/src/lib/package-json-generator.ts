@@ -7,7 +7,14 @@ import {
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
 import { getPackageManagerField } from '@/lib/package-manager';
-import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
+import {
+  cleanUndefined,
+  MERGE_KEYS,
+  processScriptPorts,
+  sortObjectKeys,
+  spreadExtraKeys,
+  usesPortPlaceholder,
+} from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
@@ -90,7 +97,23 @@ function resolveCompositeAddons(
   return parts;
 }
 
+interface ComposedApp {
+  packageJson: PackageJson;
+  listensOnPort: boolean;
+}
+
 function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): PackageJson {
+  return composeApp(app, ctx, appIndex).packageJson;
+}
+
+/** Whether the app serves on a port the generator assigns: one of its scripts carries the `{{port}}` placeholder. */
+export function appListensOnPort(ctx: TemplateContext, appName: string): boolean {
+  const appIndex = ctx.apps.findIndex((app) => app.appName === appName);
+  const app = ctx.apps[appIndex];
+  return app !== undefined && composeApp(app, ctx, appIndex).listensOnPort;
+}
+
+function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): ComposedApp {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
@@ -192,6 +215,7 @@ function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: 
     }
   }
 
+  const listensOnPort = Object.values(merged.scripts ?? {}).some(usesPortPlaceholder);
   let scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
 
   if (runtimeAddon?.runtime?.appScripts) {
@@ -213,7 +237,7 @@ function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: 
 
   spreadExtraKeys(pkg, merged);
 
-  return pkg;
+  return { packageJson: pkg, listensOnPort };
 }
 
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {

@@ -25,6 +25,10 @@ export function sortObjectKeys<T extends Record<string, unknown>>(obj: T): T {
   return sorted;
 }
 
+export function usesPortPlaceholder(script: string): boolean {
+  return /\{\{port\}\}/.test(script);
+}
+
 export function processScriptPorts(scripts: Record<string, string>, port?: number): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(scripts)) {

@@ -3,15 +3,20 @@
 Generated with create-faster. Turborepo monorepo.
 
 ## Apps
-{{#each apps}}- `apps/{{appName}}` — {{stackName}} (port {{appPort appName}})
+{{#each apps}}- `apps/{{appName}}` — {{stackName}}{{#if (appUrl appName)}} ({{appUrl appName}}){{/if}}
 {{/each}}
 
+{{#if (monoPackages)}}
 ## Packages
-{{#if (has "orm" "drizzle")~}}
-- `packages/db` — Drizzle schema and client
-{{/if~}}
-{{#if (has "orm" "prisma")~}}
-- `packages/db` — Prisma schema and client
+{{#each (monoPackages)}}
+{{#unless (eq this "db")}}
+- `packages/{{this}}`
+{{/unless}}
+{{/each}}
+{{#if (hasPackage "db")}}
+- `packages/db`{{#if (has "orm" "drizzle")}} — Drizzle schema and client{{/if}}{{#if (has "orm" "prisma")}} — Prisma schema and client{{/if}}
+{{/if}}
+
 {{/if}}
 
 ## Stack

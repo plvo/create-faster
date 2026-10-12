@@ -87,6 +87,76 @@ describe('generated AGENTS.md places the schema and names the database', () => {
   });
 });
 
+describe('turborepo docs and summary list every app and package', () => {
+  let dir: string;
+  let stdout: string;
+  let readme: string;
+  let agents: string;
+
+  beforeAll(async () => {
+    dir = await createTempDir();
+    const result = await runCli(
+      [
+        'mono',
+        '--app',
+        'web:nextjs:shadcn,better-auth',
+        '--app',
+        'api:hono',
+        '--app',
+        'worker:node',
+        '--app',
+        'mobile:expo',
+        '--database',
+        'postgres',
+        '--orm',
+        'drizzle',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'npm',
+      ],
+      dir,
+    );
+    expect(result.exitCode).toBe(0);
+    stdout = result.stdout;
+    readme = await readTextFile(join(dir, 'mono', 'README.md'));
+    agents = await readTextFile(join(dir, 'mono', 'AGENTS.md'));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  test('README gives the dev URL of every app that serves, not of the ones that do not', () => {
+    expect(readme).toContain('- web: [http://localhost:3000](http://localhost:3000)');
+    expect(readme).toContain('- api: [http://localhost:3001](http://localhost:3001)');
+    expect(readme).not.toContain('- worker:');
+    expect(readme).not.toContain('- mobile:');
+  });
+
+  test('AGENTS.md gives the dev URL of every app that serves', () => {
+    expect(agents).toContain('- `apps/web` — nextjs (http://localhost:3000)');
+    expect(agents).toContain('- `apps/api` — hono (http://localhost:3001)');
+    expect(agents).toContain('- `apps/worker` — node\n');
+    expect(agents).toContain('- `apps/mobile` — expo\n');
+  });
+
+  test('README and AGENTS.md list every generated package', () => {
+    for (const name of ['ui', 'auth', 'db']) {
+      expect(readme).toContain(`- \`packages/${name}\``);
+      expect(agents).toContain(`- \`packages/${name}\``);
+    }
+    expect(agents).toContain('- `packages/db` — Drizzle schema and client');
+  });
+
+  test('the CLI summary lists every generated package', () => {
+    expect(stdout).toContain('├─ 📦 packages/');
+    expect(stdout).toMatch(/ui\/\s/);
+    expect(stdout).toMatch(/auth\/\s/);
+    expect(stdout).toContain('db/ (Drizzle + PostgreSQL)');
+  });
+});
+
 describe('generated docs write commands every package manager runs', () => {
   let dir: string;
 
