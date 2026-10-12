@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
-import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { chmod, mkdir, writeFile } from 'node:fs/promises';
+import { delimiter, join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { runPostGeneration } from '@/lib/post-generation';
 import { buildInstallFailureMessage } from '@/tui/install-failure';
+import { displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 import { cleanupTempDir, createTempDir } from '../../integration/helpers';
 
@@ -70,6 +72,31 @@ describe('runPostGeneration', () => {
 
     expect(result.gitFailure).toBeDefined();
     expect(result.installFailure).toBeUndefined();
+  });
+
+  test('reports a git init that fails with no output as a failure and hints at the manual git init', async () => {
+    const silentGitDirectory = join(projectPath, 'silent-git-bin');
+    await mkdir(silentGitDirectory);
+    await writeFile(join(silentGitDirectory, 'git'), '#!/bin/sh\nexit 1\n');
+    await chmod(join(silentGitDirectory, 'git'), 0o755);
+    const originalPath = process.env.PATH;
+    process.env.PATH = `${silentGitDirectory}${delimiter}${originalPath}`;
+    const ctx = contextWith({ git: true, skipInstall: true });
+    const written: string[] = [];
+    spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
+      written.push(String(chunk));
+      return true;
+    });
+
+    try {
+      const result = await runPostGeneration(ctx, projectPath);
+      displaySummaryNote(ctx, result.gitFailure);
+
+      expect(result.gitFailure).toEqual({ output: '' });
+      expect(stripVTControlCharacters(written.join(''))).toContain('# git init failed');
+    } finally {
+      process.env.PATH = originalPath;
+    }
   });
 });
 

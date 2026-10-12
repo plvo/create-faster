@@ -1,6 +1,7 @@
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import type { GitFailure } from '@/lib/post-generation';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
@@ -57,8 +58,8 @@ ${color.gray('🔥 You can recreate this project with the following command:')}
 ${color.bold(flagsCommand)}`);
 }
 
-export function displaySummaryNote(ctx: TemplateContext, gitInitFailed: boolean): void {
-  const hasGitRepository = ctx.git && !gitInitFailed;
+export function displaySummaryNote(ctx: TemplateContext, gitFailure: GitFailure | undefined): void {
+  const hasGitRepository = ctx.git && gitFailure === undefined;
   const texts = [...buildProjectStructure(ctx, hasGitRepository), ...buildStepsNote(ctx, hasGitRepository)];
 
   note(texts.join('\n'), color.bold('📂 Summary'));
