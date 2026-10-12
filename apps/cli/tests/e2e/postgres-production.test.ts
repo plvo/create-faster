@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { type DatabaseContainer, describeWithDocker, removeDatabase, startDatabase } from './docker-database';
 import {
   type CommandResult,
   cleanupTempDir,
@@ -10,15 +11,16 @@ import {
   runCommand,
   startServer,
 } from './helpers';
-import { describeWithDocker, type PostgresContainer, removePostgres, startPostgres } from './postgres-container';
 
 const TIMEOUT_INSTALL = 180_000;
+const TIMEOUT_DB = 120_000;
 const TIMEOUT_BUILD = 300_000;
-const TIMEOUT_START = 60_000;
+const TIMEOUT_SERVER = 120_000;
+const SSL_REFUSED = 'The server does not support SSL connections';
 
-const CONTAINER_LABEL = 'create-faster-e2e=postgres-production';
-
-type ProbedStack = 'nextjs' | 'tanstack-start';
+type Orm = 'drizzle' | 'prisma';
+type ProbedStack = 'nextjs' | 'tanstack-start' | 'hono';
+type ServerMode = 'dev' | 'start';
 
 interface ProbedApp {
   dir: string;
@@ -27,78 +29,139 @@ interface ProbedApp {
 
 interface Topology {
   name: string;
+  orm: Orm;
   args: string[];
   dbPackageDir: string;
   dbImport: string;
   apps: ProbedApp[];
 }
 
-interface DbProbe {
-  path: string;
-  source: (dbImport: string) => string;
-  start: (port: number) => string[];
+interface DbQuery {
+  imports: string;
+  rows: string;
 }
 
+interface StackProbe {
+  path: string;
+  source: (dbImport: string, query: DbQuery) => string;
+  command: Record<ServerMode, (port: number) => string[]>;
+  readyPath: string;
+}
+
+interface ProbeResult {
+  status: number;
+  body: string;
+  serverOutput: string;
+}
+
+// `select 1` through the generated client, which needs no schema.
+const DB_QUERIES: Record<Orm, DbQuery> = {
+  drizzle: { imports: 'db, sql', rows: '(await db.execute(sql`select 1 as ok`)).rows' },
+  prisma: { imports: 'prisma', rows: 'await prisma.$queryRaw`select 1 as ok`' },
+};
+
 // Test-only routes: the generated apps have no route that queries the database.
-const DB_PROBES: Record<ProbedStack, DbProbe> = {
+const STACK_PROBES: Record<ProbedStack, StackProbe> = {
   nextjs: {
     path: 'src/app/api/db-probe/route.ts',
-    source: (dbImport) => `import { db, sql } from '${dbImport}';
+    source: (dbImport, { imports, rows }) => `import { ${imports} } from '${dbImport}';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const { rows } = await db.execute(sql\`select 1 as ok\`);
-  return Response.json({ rows });
+  return Response.json({ rows: ${rows} });
 }
 `,
-    // The turborepo start script pins its own port, so next start runs with the test's port instead.
-    start: (port) => ['bunx', 'next', 'start', '--port', String(port)],
+    // The turborepo app scripts pin their own port, so next runs with the test's port.
+    command: {
+      dev: (port) => ['bunx', 'next', 'dev', '--port', String(port)],
+      start: (port) => ['bunx', 'next', 'start', '--port', String(port)],
+    },
+    readyPath: '/',
   },
   'tanstack-start': {
     path: 'src/routes/api.db-probe.ts',
-    source: (dbImport) => `import { createFileRoute } from '@tanstack/react-router'
-import { db, sql } from '${dbImport}'
+    source: (dbImport, { imports, rows }) => `import { createFileRoute } from '@tanstack/react-router'
+import { ${imports} } from '${dbImport}'
 
 export const Route = createFileRoute('/api/db-probe')({
   server: {
     handlers: {
-      GET: async () => {
-        const { rows } = await db.execute(sql\`select 1 as ok\`)
-        return Response.json({ rows })
-      },
+      GET: async () => Response.json({ rows: ${rows} }),
     },
   },
 })
 `,
-    start: () => ['bun', 'run', 'start'],
+    command: {
+      dev: (port) => ['bunx', 'vite', 'dev', '--port', String(port)],
+      start: () => ['bun', 'run', 'start'],
+    },
+    readyPath: '/',
+  },
+  hono: {
+    path: 'src/index.ts',
+    source: (dbImport, { imports, rows }) => `import { ${imports} } from '${dbImport}';
+import app from './app';
+
+app.get('/api/db-probe', async (c) => c.json({ rows: ${rows} }));
+
+export default app;
+`,
+    command: {
+      dev: () => ['bun', 'run', 'dev'],
+      start: () => ['bun', 'run', 'start'],
+    },
+    readyPath: '/health/1',
   },
 };
 
+const TURBO_APPS: ProbedApp[] = [
+  { dir: 'apps/web', stack: 'nextjs' },
+  { dir: 'apps/start', stack: 'tanstack-start' },
+  { dir: 'apps/api', stack: 'hono' },
+];
+const TURBO_ARGS = ['--app', 'web:nextjs', '--app', 'start:tanstack-start', '--app', 'api:hono'];
+
 const TOPOLOGIES: Topology[] = [
   {
-    name: 'pg-prod-nextjs',
-    args: ['--app', 'pg-prod-nextjs:nextjs'],
+    name: 'pg-prod-drizzle-next',
+    orm: 'drizzle',
+    args: ['--app', 'pg-prod-drizzle-next:nextjs'],
     dbPackageDir: '.',
     dbImport: '@/lib/db',
     apps: [{ dir: '.', stack: 'nextjs' }],
   },
   {
-    name: 'pg-prod-start',
-    args: ['--app', 'pg-prod-start:tanstack-start'],
+    name: 'pg-prod-drizzle-start',
+    orm: 'drizzle',
+    args: ['--app', 'pg-prod-drizzle-start:tanstack-start'],
     dbPackageDir: '.',
     dbImport: '@/lib/db',
     apps: [{ dir: '.', stack: 'tanstack-start' }],
   },
   {
-    name: 'pg-prod-turbo',
-    args: ['--app', 'web:nextjs', '--app', 'start:tanstack-start'],
+    name: 'pg-prod-drizzle-turbo',
+    orm: 'drizzle',
+    args: TURBO_ARGS,
     dbPackageDir: 'packages/db',
     dbImport: '@repo/db',
-    apps: [
-      { dir: 'apps/web', stack: 'nextjs' },
-      { dir: 'apps/start', stack: 'tanstack-start' },
-    ],
+    apps: TURBO_APPS,
+  },
+  {
+    name: 'pg-prod-prisma-next',
+    orm: 'prisma',
+    args: ['--app', 'pg-prod-prisma-next:nextjs'],
+    dbPackageDir: '.',
+    dbImport: '@/lib/db',
+    apps: [{ dir: '.', stack: 'nextjs' }],
+  },
+  {
+    name: 'pg-prod-prisma-turbo',
+    orm: 'prisma',
+    args: TURBO_ARGS,
+    dbPackageDir: 'packages/db',
+    dbImport: '@repo/db',
+    apps: TURBO_APPS,
   },
 ];
 
@@ -109,77 +172,144 @@ async function readGeneratedDatabaseUrl(envExamplePath: string): Promise<string>
   return databaseUrl;
 }
 
-describeWithDocker('postgres production').each(TOPOLOGIES)('$name', ({ name, args, dbPackageDir, dbImport, apps }) => {
-  let tempDir: string;
-  let projectDir: string;
-  let databaseUrl: string;
-  let postgres: PostgresContainer;
-  let installResult: CommandResult;
+/** The generated URL pointed at the container: credentials and query string stay as generated. */
+function pointAtContainer(generatedUrl: string, containerUrl: string): string {
+  const url = new URL(generatedUrl);
+  const container = new URL(containerUrl);
+  url.host = container.host;
+  url.pathname = container.pathname;
+  return url.toString();
+}
 
-  beforeAll(async () => {
-    tempDir = await createTempDir();
-    const result = await runCli(
-      [name, ...args, '--database', 'postgres', '--orm', 'drizzle', '--no-git', '--no-install', '--pm', 'bun'],
-      tempDir,
+async function callDbProbe(appDir: string, app: ProbedApp, mode: ServerMode, databaseUrl: string): Promise<ProbeResult> {
+  const probe = STACK_PROBES[app.stack];
+  const port = await getFreePort();
+  const server = await startServer(probe.command[mode](port), appDir, {
+    port,
+    readyPath: probe.readyPath,
+    readyTimeout: TIMEOUT_SERVER,
+    // A deployed server runs with NODE_ENV=production, whether or not its start script sets it.
+    env: { PORT: String(port), DATABASE_URL: databaseUrl, ...(mode === 'start' && { NODE_ENV: 'production' }) },
+  });
+  try {
+    const response = await fetch(new URL('/api/db-probe', server.url));
+    const body = await response.text();
+    const { stdout, stderr } = await server.stop();
+    return { status: response.status, body, serverOutput: `${stdout}\n${stderr}` };
+  } finally {
+    await server.stop();
+  }
+}
+
+describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
+  '$name',
+  ({ name, orm, args, dbPackageDir, dbImport, apps }) => {
+    let tempDir: string;
+    let projectDir: string;
+    let localUrl: string;
+    let postgres: DatabaseContainer;
+    let installResult: CommandResult;
+
+    beforeAll(async () => {
+      tempDir = await createTempDir();
+      const result = await runCli(
+        [name, ...args, '--database', 'postgres', '--orm', orm, '--no-git', '--no-install', '--pm', 'bun'],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+      projectDir = join(tempDir, name);
+
+      for (const app of apps) {
+        const probe = STACK_PROBES[app.stack];
+        const probePath = join(projectDir, app.dir, probe.path);
+        await mkdir(dirname(probePath), { recursive: true });
+        await writeFile(probePath, probe.source(dbImport, DB_QUERIES[orm]));
+      }
+
+      postgres = await startDatabase('postgres', 'postgres-production');
+      const generatedUrl = await readGeneratedDatabaseUrl(join(projectDir, dbPackageDir, '.env.example'));
+      localUrl = pointAtContainer(generatedUrl, postgres.connectionString);
+      await writeFile(join(projectDir, dbPackageDir, '.env'), `DATABASE_URL="${localUrl}"\n`);
+
+      installResult = await runCommand(['bun', 'install'], projectDir);
+    }, TIMEOUT_INSTALL + 120_000);
+
+    afterAll(async () => {
+      if (postgres) await removeDatabase(postgres.name);
+      if (tempDir) await cleanupTempDir(tempDir);
+    });
+
+    test(
+      'installs dependencies',
+      () => {
+        expect(installResult.exitCode).toBe(0);
+      },
+      TIMEOUT_INSTALL,
     );
-    expect(result.exitCode).toBe(0);
-    projectDir = join(tempDir, name);
 
-    for (const app of apps) {
-      const probe = DB_PROBES[app.stack];
-      const probePath = join(projectDir, app.dir, probe.path);
-      await mkdir(dirname(probePath), { recursive: true });
-      await writeFile(probePath, probe.source(dbImport));
+    if (orm === 'prisma') {
+      test(
+        'generates the Prisma client',
+        async () => {
+          const result = await runCommand(['bun', 'run', 'db:generate'], join(projectDir, dbPackageDir));
+          expect(result.exitCode, result.stderr).toBe(0);
+        },
+        TIMEOUT_DB,
+      );
     }
 
-    databaseUrl = await readGeneratedDatabaseUrl(join(projectDir, dbPackageDir, '.env.example'));
-    const { port, pathname } = new URL(databaseUrl);
-    postgres = await startPostgres({ label: CONTAINER_LABEL, port: Number(port), database: pathname.slice(1) });
+    test(
+      'db:push applies the schema through the generated local DATABASE_URL',
+      async () => {
+        const push = ['bun', 'run', 'db:push', ...(orm === 'drizzle' ? ['--force'] : [])];
+        const result = await runCommand(push, join(projectDir, dbPackageDir));
+        expect(result.exitCode, result.stderr).toBe(0);
+      },
+      TIMEOUT_DB,
+    );
 
-    installResult = await runCommand(['bun', 'install'], projectDir);
-  }, TIMEOUT_INSTALL + 60_000);
-
-  afterAll(async () => {
-    if (postgres) await removePostgres(postgres.name);
-    if (tempDir) await cleanupTempDir(tempDir);
-  });
-
-  test(
-    'installs dependencies',
-    () => {
-      expect(installResult.exitCode).toBe(0);
-    },
-    TIMEOUT_INSTALL,
-  );
-
-  test(
-    'builds',
-    async () => {
-      const result = await runCommand(['bun', 'run', 'build'], projectDir);
-      expect(result.exitCode, result.stderr).toBe(0);
-    },
-    TIMEOUT_BUILD,
-  );
-
-  test.each(apps)(
-    '$dir production server queries the local database through the generated DATABASE_URL',
-    async ({ dir, stack }) => {
-      const port = await getFreePort();
-      const server = await startServer(DB_PROBES[stack].start(port), join(projectDir, dir), {
-        port,
-        // A deployed server runs with NODE_ENV=production, whether or not its start script sets it.
-        env: { PORT: String(port), DATABASE_URL: databaseUrl, NODE_ENV: 'production' },
-      });
-      try {
-        const response = await fetch(new URL('/api/db-probe', server.url));
-        const body = await response.text();
-        const serverOutput = response.ok ? '' : JSON.stringify(await server.stop(), null, 2);
-        expect(response.status, `${body}\n${serverOutput}`).toBe(200);
+    test.each(apps)(
+      '$dir dev server queries the database through the generated local DATABASE_URL',
+      async (app) => {
+        const { status, body, serverOutput } = await callDbProbe(join(projectDir, app.dir), app, 'dev', localUrl);
+        expect(status, `${body}\n${serverOutput}`).toBe(200);
         expect(JSON.parse(body)).toEqual({ rows: [{ ok: 1 }] });
-      } finally {
-        await server.stop();
-      }
-    },
-    TIMEOUT_START,
-  );
-});
+      },
+      TIMEOUT_SERVER,
+    );
+
+    test(
+      'builds',
+      async () => {
+        const result = await runCommand(['bun', 'run', 'build'], projectDir);
+        expect(result.exitCode, result.stderr).toBe(0);
+      },
+      TIMEOUT_BUILD,
+    );
+
+    test.each(apps)(
+      '$dir production server queries the database through the generated local DATABASE_URL',
+      async (app) => {
+        const { status, body, serverOutput } = await callDbProbe(join(projectDir, app.dir), app, 'start', localUrl);
+        expect(status, `${body}\n${serverOutput}`).toBe(200);
+        expect(JSON.parse(body)).toEqual({ rows: [{ ok: 1 }] });
+      },
+      TIMEOUT_SERVER,
+    );
+
+    test.each(apps)(
+      '$dir production server requires TLS when DATABASE_URL has no sslmode',
+      async (app) => {
+        const { status, serverOutput } = await callDbProbe(
+          join(projectDir, app.dir),
+          app,
+          'start',
+          postgres.connectionString,
+        );
+        expect(status).toBe(500);
+        expect(serverOutput).toContain(SSL_REFUSED);
+      },
+      TIMEOUT_SERVER,
+    );
+  },
+);
