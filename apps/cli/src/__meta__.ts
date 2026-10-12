@@ -5,6 +5,9 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 
 const NODE_TYPES_VERSION = '^22';
 
+// Workspace packages type-check on their own, without the app's wrangler-generated binding types.
+const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
@@ -189,7 +192,6 @@ export const META: Meta = {
           './': './src/components/',
           './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
-          './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
           './postcss.config.mjs': './postcss.config.mjs',
         },
@@ -259,14 +261,13 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
         },
         exports: {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
-          './types': './src/types.ts',
-          './password': './src/password.ts',
-          './permissions': './src/permissions.ts',
         },
       },
       appPackageJson: {
@@ -304,6 +305,8 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
@@ -788,6 +791,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
             },
             scripts: {
@@ -823,6 +827,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
               prisma: '^7.10.0',
             },
@@ -1208,12 +1213,22 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './password': './src/password.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
             'react-dom': '^19.2.8',
@@ -1293,6 +1308,12 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         api: {
           dependencies: {
             'better-auth': BETTER_AUTH_VERSION,
@@ -1304,6 +1325,9 @@ export const META: Meta = {
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
           },
@@ -1412,12 +1436,21 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
