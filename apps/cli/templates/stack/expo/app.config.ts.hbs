@@ -18,12 +18,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   web: {
     bundler: 'metro',
+    favicon: './assets/favicon.png',
   },
   // ios: {
   //   supportsTablet: true,
-  // },
-  // web: {
-  //   favicon: './assets/favicon.png',
   // },
   plugins: [
     'expo-router',
