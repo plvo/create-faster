@@ -253,6 +253,8 @@ export function generatePackagePackageJson(
   };
 }
 
+const APP_SCRIPTS_RUN_BY_TURBO = ['test', 'test:e2e'];
+
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
@@ -277,6 +279,11 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
         ? `cd packages/${ormAddon.mono.name} && ${ctx.pm ?? 'npm'} run ${script}`
         : `turbo ${script}`;
     }
+  }
+
+  const appScripts = ctx.apps.map((app, index) => composeAppPackageJson(app, ctx, index).scripts ?? {});
+  for (const script of APP_SCRIPTS_RUN_BY_TURBO) {
+    if (appScripts.some((scripts) => script in scripts)) scripts[script] = `turbo ${script}`;
   }
 
   const rootConfigs: PackageJsonConfig[] = [];
