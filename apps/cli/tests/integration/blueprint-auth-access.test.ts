@@ -52,4 +52,14 @@ describe('blueprint auth access', () => {
       expect(prefetchingPages.length).toBeGreaterThan(0);
     });
   });
+
+  describe('multitenant-saas', () => {
+    test('the login page sends a signed-in user away', async () => {
+      const projectPath = await generate('multitenant-saas');
+      const page = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/login/page.tsx'));
+      expect(page).toContain("from '@/lib/auth/auth'");
+      expect(page).toMatch(/auth\.api\.getSession\(\{ headers: await headers\(\) \}\)/);
+      expect(page).toMatch(/if \(session\) redirect\('\/'\)/);
+    });
+  });
 });
