@@ -30,6 +30,7 @@ export const makeTRPCClient = createIsomorphicFn()
             if (!context) context = createTRPCContext({ headers: getRequest().headers{{#if (and (has "database" "d1") project.orm)}}, db{{/if}} });
             return context;
           },
+          {{> trpc/on-error dev="import.meta.env.DEV"}}
         }),
       ],
     });
