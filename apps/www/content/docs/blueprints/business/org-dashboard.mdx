@@ -107,7 +107,7 @@ src/
 
 ### Authentication
 
-Email/password login with Better Auth. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role.
+Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query.
 
 ### Role-based access control
 

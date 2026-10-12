@@ -64,6 +64,22 @@ describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, p
   let setup: CommandResult;
   let server: RunningServer;
 
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: server.url, ...headers },
+      body: JSON.stringify(body),
+    });
+
+  const signIn = async (email: string, password: string, clientIp: string): Promise<string> => {
+    const response = await post('/api/auth/sign-in/email', { email, password }, { 'x-forwarded-for': clientIp });
+    expect(response.status, await response.clone().text()).toBe(200);
+    return response.headers
+      .getSetCookie()
+      .map((entry) => entry.split(';')[0])
+      .join('; ');
+  };
+
   beforeAll(async () => {
     projectDir = await generateInstalledBlueprint('org-dashboard', 'bp-seed-org-dashboard');
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
@@ -103,17 +119,7 @@ describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, p
         readyTimeout: TIMEOUT_SERVER,
       });
 
-      const signIn = await fetch(new URL('/api/auth/sign-in/email', appUrl), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', origin: appUrl, 'x-forwarded-for': '10.0.0.1' },
-        body: JSON.stringify({ email: SEEDED_ADMIN, password: SEED_PASSWORD }),
-      });
-      expect(signIn.status, await signIn.clone().text()).toBe(200);
-
-      const cookie = signIn.headers
-        .getSetCookie()
-        .map((entry) => entry.split(';')[0])
-        .join('; ');
+      const cookie = await signIn(SEEDED_ADMIN, SEED_PASSWORD, '10.0.0.1');
       const session = await fetch(new URL('/api/auth/get-session', appUrl), { headers: { cookie } });
       expect(session.status).toBe(200);
       const body = (await session.json()) as { user: { email: string; role: string } } | null;
@@ -121,4 +127,41 @@ describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, p
     },
     TIMEOUT_BUILD + TIMEOUT_SERVER,
   );
+
+  test('public sign-up is rejected, a user created by an admin signs in', async () => {
+    const signUp = await post(
+      '/api/auth/sign-up/email',
+      { email: 'stranger@example.com', password: 'stranger-password', name: 'Stranger' },
+      { 'x-forwarded-for': '10.0.0.2' },
+    );
+    expect(signUp.status).toBe(400);
+    expect(await signUp.json()).toMatchObject({ code: 'EMAIL_PASSWORD_SIGN_UP_DISABLED' });
+
+    const adminCookie = await signIn(SEEDED_ADMIN, SEED_PASSWORD, '10.0.0.3');
+    const created = await post(
+      '/api/trpc/user.create',
+      { json: { name: 'Created', email: 'created@example.com', role: 'user' } },
+      { cookie: adminCookie },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { result } = (await created.json()) as { result: { data: { json: { password: string } } } };
+
+    await signIn('created@example.com', result.data.json.password, '10.0.0.4');
+  });
+
+  test('anonymous visits redirect to login, a signed-in visit to login redirects home, and the server logs no error', async () => {
+    for (const path of ['/', '/contacts', '/admin/users', '/profile/account']) {
+      const response = await fetch(new URL(path, server.url), { redirect: 'manual' });
+      expect([path, response.status, response.headers.get('location')]).toEqual([path, 307, '/login']);
+    }
+
+    const login = await fetch(new URL('/login', server.url), {
+      redirect: 'manual',
+      headers: { cookie: await signIn(SEEDED_ADMIN, SEED_PASSWORD, '10.0.0.5') },
+    });
+    expect([login.status, login.headers.get('location')]).toEqual([307, '/']);
+
+    const { stdout, stderr } = await server.stop();
+    expect(`${stdout}\n${stderr}`).not.toMatch(/Error|⨯/);
+  });
 });

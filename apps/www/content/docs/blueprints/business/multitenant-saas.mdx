@@ -127,7 +127,7 @@ src/
 
 Email/password auth backed by Better Auth, with all four standard flows pre-wired:
 
-- **Sign-in** (`/login`) — honors `?redirect=…` and pushes the user to the requested page after login.
+- **Sign-in** (`/login`) — honors `?redirect=…` and pushes the user to the requested page after login. A user who is already signed in is redirected to `/` instead of seeing the form.
 - **Sign-up** (`/signup`) — same `?redirect` behavior, creates the user via `authClient.signUp.email`.
 - **Forgot password** (`/forgot-password`) — calls `authClient.requestPasswordReset` and shows a success state without leaking whether the email exists.
 - **Reset password** (`/reset-password?token=…`) — reads the token from search params, calls `authClient.resetPassword`, and routes errors via `?error=…`.
