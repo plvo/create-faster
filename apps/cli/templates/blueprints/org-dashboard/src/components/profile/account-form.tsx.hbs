@@ -26,7 +26,7 @@ export function AccountForm() {
   const [isPending, startTransition] = useTransition();
 
   const form = useAppForm({
-    defaultValues: { name: user?.username ?? '' },
+    defaultValues: { name: user?.name ?? '' },
     validators: { onChange: schema },
     onSubmit: async ({ value }) => {
       await new Promise<void>((resolve) => {

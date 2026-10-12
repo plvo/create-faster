@@ -13,7 +13,7 @@ import { adminProcedure } from '../middleware/rbac';
 
 const editUserInput = z.object({
   id: z.string(),
-  username: z.string().min(1),
+  name: z.string().min(1),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional(),

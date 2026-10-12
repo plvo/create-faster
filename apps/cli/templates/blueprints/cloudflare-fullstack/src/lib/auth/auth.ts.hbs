@@ -55,7 +55,7 @@ export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin) {
     },
     user: {
       modelName: 'user',
-      fields: { name: 'username', email: 'email', emailVerified: 'emailVerified', image: 'avatarUrl', createdAt: 'createdAt', updatedAt: 'updatedAt' },
+      fields: { email: 'email', emailVerified: 'emailVerified', image: 'avatarUrl', createdAt: 'createdAt', updatedAt: 'updatedAt' },
     },
     session: {
       modelName: 'session',
