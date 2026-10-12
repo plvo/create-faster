@@ -6,6 +6,7 @@ import {
   cleanupTempDir,
   createTempDir,
   expectIngestProxiesToPostHog,
+  filesContaining,
   expectServesPageWithClientScript,
   runCli,
   type RunningServer,
@@ -34,6 +35,7 @@ const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 const TIMEOUT_START = 60_000;
 const MAX_INGEST_BODY_BYTES = 64 * 1024 * 1024;
+const DEVTOOLS_MARKERS = ['tanstack_devtools', 'Open TanStack Devtools', 'TanStack Router v1'];
 const TRPC_VANILLA: TrpcProbeOptions = { auth: false, query: false };
 
 describe('tanstack-start-loaded', () => {
@@ -46,7 +48,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog',
+        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-form,tanstack-devtools,evlog',
         '--no-git',
         '--no-install',
         '--pm',
@@ -83,6 +85,11 @@ describe('tanstack-start-loaded', () => {
     },
     TIMEOUT_BUILD,
   );
+
+  test('the production build ships no devtools code', async () => {
+    const output = join(projectDir, '.output');
+    expect(await filesContaining(output, DEVTOOLS_MARKERS)).toEqual([]);
+  });
 
   test(
     'start serves the built app and its client assets, with evlog logging each request and error',
