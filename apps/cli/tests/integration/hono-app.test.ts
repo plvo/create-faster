@@ -88,4 +88,27 @@ describe.each(APPS)('generated Hono app, $name', ({ name, args }) => {
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ ok: false, message: 'Missing token' });
   });
+
+  test('a preflight from any origin is allowed', async () => {
+    const res = await app.request('/health/1', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://app.example',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type, Authorization',
+      },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET,POST');
+    expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type,Authorization');
+  });
+
+  test('a cross-origin response carries the allowed origin, error responses included', async () => {
+    process.env.NODE_ENV = 'production';
+    const ok = await app.request('/health/1', { headers: { Origin: 'https://app.example' } });
+    expect(ok.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    const failed = await app.request('/boom', { headers: { Origin: 'https://app.example' } });
+    expect(failed.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
 });

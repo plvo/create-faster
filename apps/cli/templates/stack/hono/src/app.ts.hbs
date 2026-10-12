@@ -31,7 +31,7 @@ app.use(timeout(15000));
 app.use(
   '*',
   cors({
-    origin: ['*'],
+    origin: '*',
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['GET', 'POST'],
   }),
