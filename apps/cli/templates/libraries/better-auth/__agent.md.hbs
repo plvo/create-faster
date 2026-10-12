@@ -15,6 +15,15 @@ Add a social provider by editing `socialProviders` in `create-auth.ts`.
 `src/lib/auth/auth.ts` exports this app's `auth`, built from the factory with `{{> better-auth/cookie-plugin}}`: import it from there.
 {{/if}}
 Without a cookie plugin the factory disables session refresh: a refresh through an instance that cannot forward cookies would extend the session in the database but not in the browser.
+{{#if (has "deployment" "cloudflare")}}
+Rate limiting keys on the client address read from `cf-connecting-ip` (`advanced.ipAddress.ipAddressHeaders` in the factory). Cloudflare sets it on every request and a client cannot choose it. A request without it (a local run outside the Cloudflare edge) falls into one shared bucket.
+{{else}}
+Rate limiting keys on the client address read from `x-forwarded-for` (`advanced.ipAddress.ipAddressHeaders` in the factory, {{#if (isMono)}}`packages/auth/src/auth.ts`{{else}}`src/lib/auth/create-auth.ts`{{/if}}). Better-auth trusts only a single-value header: a header carrying several addresses is rejected and the request falls into one shared `no-trusted-ip` bucket. What that means depends on what sits in front of the app:
+- **No proxy (the app is exposed directly, for example `next start` or Nitro)**: any client can send a different `x-forwarded-for` on every request and is never rate limited, so password guesses are unlimited. The app must sit behind a reverse proxy or CDN that overwrites the header with the real client address.
+- **One proxy that appends (nginx `$proxy_add_x_forwarded_for`, an ALB, CloudFront)**: safe. A client-supplied value turns the header into several addresses, which better-auth rejects, so a spoofing client lands in the shared bucket instead of escaping the limit.
+- **A chain of proxies (a CDN, then a load balancer)**: every legitimate request carries several addresses, so all clients share the `no-trusted-ip` bucket and one client can make every sign-in answer 429. Set `advanced.ipAddress.trustedProxies` next to `ipAddressHeaders` in the factory to the addresses or CIDR ranges of your own proxies (`trustedProxies: ['192.0.2.10', '10.0.0.0/24']`): better-auth then walks the header from the right, skips them, and keys on the first untrusted address. Never list a range that also covers clients.
+If the platform in front of the app sets another header, put that one in `ipAddressHeaders`.
+{{/if}}
 {{#if (hasLibrary "trpc")}}
 The tRPC notes say which instance the tRPC context reads the session through, and whether that read extends the session.
 {{/if}}

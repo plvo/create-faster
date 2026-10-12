@@ -78,19 +78,54 @@ function cookieHeader(response: Response): string {
     .join('; ');
 }
 
-const randomOctet = (): number => Math.floor(Math.random() * 254) + 1;
+export type ClientIpHeader = 'x-forwarded-for' | 'cf-connecting-ip';
 
-// Production rate limiting keys on the client IP header.
-function postJson(baseUrl: string, path: string, body: unknown): Promise<Response> {
+const randomOctet = (): number => Math.floor(Math.random() * 254) + 1;
+const randomIp = (): string => `10.${randomOctet()}.${randomOctet()}.${randomOctet()}`;
+
+// Production rate limiting keys on one client address header: x-forwarded-for by default, cf-connecting-ip
+// on Cloudflare. Nothing in front of the test server sets it, so the probe plays the proxy or the edge and
+// gives each request its own address on both headers: the multi-user flows stay under the limit on any
+// runtime, and the header the generated config does not trust is ignored.
+function postJson(baseUrl: string, path: string, body: unknown, headers: Record<string, string> = distinctClientIp()): Promise<Response> {
   return fetch(new URL(path, baseUrl), {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      origin: baseUrl,
-      'x-forwarded-for': `10.${randomOctet()}.${randomOctet()}.${randomOctet()}`,
-    },
+    headers: { 'content-type': 'application/json', origin: baseUrl, ...headers },
     body: JSON.stringify(body),
   });
+}
+
+function distinctClientIp(): Record<ClientIpHeader, string> {
+  const ip = randomIp();
+  return { 'x-forwarded-for': ip, 'cf-connecting-ip': ip };
+}
+
+const SIGN_UP_LIMIT = 3;
+const SIGN_UP_ATTEMPTS = SIGN_UP_LIMIT + 3;
+const SHARED_CLIENT_IP = '203.0.113.7';
+
+async function signUpStatuses(baseUrl: string, headers: () => Record<string, string>): Promise<number[]> {
+  const statuses: number[] = [];
+  for (let attempt = 0; attempt < SIGN_UP_ATTEMPTS; attempt++) {
+    const email = `${crypto.randomUUID()}@example.com`;
+    const response = await postJson(baseUrl, '/api/auth/sign-up/email', { email, password: PASSWORD, name: email }, headers());
+    statuses.push(response.status);
+  }
+  return statuses;
+}
+
+// Sign-up is limited to SIGN_UP_LIMIT requests per client address and window. Rotating the header the
+// config does not trust must not buy more sign-ups, while distinct addresses on the trusted header are
+// counted separately.
+export async function expectRateLimitKeysOn(baseUrl: string, trusted: ClientIpHeader): Promise<void> {
+  const ignored: ClientIpHeader = trusted === 'cf-connecting-ip' ? 'x-forwarded-for' : 'cf-connecting-ip';
+
+  const rotatingIgnored = await signUpStatuses(baseUrl, () => ({ [trusted]: SHARED_CLIENT_IP, [ignored]: randomIp() }));
+  expect(rotatingIgnored.filter((status) => status === 200)).toHaveLength(SIGN_UP_LIMIT);
+  expect(rotatingIgnored).toContain(429);
+
+  const rotatingTrusted = await signUpStatuses(baseUrl, () => ({ [trusted]: randomIp() }));
+  expect(rotatingTrusted).toEqual(Array(SIGN_UP_ATTEMPTS).fill(200));
 }
 
 function readSession(baseUrl: string, cookie: string): Promise<Response> {
