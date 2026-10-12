@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   type CommandResult,
@@ -320,6 +320,69 @@ describe('nextjs-evlog', () => {
     async () => {
       const result = await runCommand(['bun', 'run', 'build'], projectDir);
       expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_BUILD,
+  );
+});
+
+describe('nextjs-devtools-only', () => {
+  let projectDir: string;
+  let installResult: CommandResult;
+
+  beforeAll(async () => {
+    const tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'nextjs-devtools-only',
+        '--app',
+        'nextjs-devtools-only:nextjs:tanstack-devtools',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+
+    projectDir = join(tempDir, 'nextjs-devtools-only');
+    installResult = await runCommand(['bun', 'install'], projectDir);
+  }, TIMEOUT_INSTALL + 30_000);
+
+  afterAll(async () => {
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
+  });
+
+  test(
+    'installs dependencies',
+    () => {
+      expect(installResult.exitCode).toBe(0);
+    },
+    TIMEOUT_INSTALL,
+  );
+
+  test(
+    'type-checks',
+    async () => {
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_TYPECHECK,
+  );
+
+  test(
+    'builds without shipping the devtools to the browser',
+    async () => {
+      const result = await runCommand(['bun', 'run', 'build'], projectDir);
+      expect(result.exitCode).toBe(0);
+
+      const staticDir = join(projectDir, '.next/static');
+      const bundles = (await readdir(staticDir, { recursive: true })).filter((file) => file.endsWith('.js'));
+      expect(bundles.length).toBeGreaterThan(0);
+      for (const bundle of bundles) {
+        const content = await readFile(join(staticDir, bundle), 'utf-8');
+        expect(content).not.toContain('TanStackDevtools');
+      }
     },
     TIMEOUT_BUILD,
   );

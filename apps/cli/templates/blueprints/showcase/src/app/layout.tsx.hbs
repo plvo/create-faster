@@ -7,10 +7,6 @@ import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/json-ld';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { siteConfig } from '@/lib/data/site-config';
-{{#if (hasLibrary "tanstack-devtools")}}
-import { TanStackDevtools } from '@tanstack/react-devtools';
-import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
-{{/if}}
 
 const geistSans = localFont({
   src: '../styles/fonts/geist-sans-vf.woff',
@@ -50,11 +46,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default {{#if (hasLibrary "tanstack-devtools")}}async {{/if}}function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  {{#if (hasLibrary "tanstack-devtools")}}
+  const Devtools = process.env.NODE_ENV === 'development' ? (await import('@/components/devtools')).Devtools : null;
+
+  {{/if}}
   return (
     <html lang='en' className='scroll-smooth' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
@@ -65,13 +65,7 @@ export default function RootLayout({
           <main>{children}</main>
           <Footer />
           {{#if (hasLibrary "tanstack-devtools")}}
-          {process.env.NODE_ENV === 'development' && (
-            <TanStackDevtools
-              config=\{{ position: 'top-left' }}
-              eventBusConfig=\{{ connectToServerBus: true }}
-              plugins={[{ name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> }]}
-            />
-          )}
+          {Devtools && <Devtools />}
           {{/if}}
         </AppProviders>
       </body>

@@ -341,14 +341,14 @@ export const META: Meta = {
       packageJson: {
         devDependencies: {
           '@tanstack/react-devtools': '^0.10.12',
-          '@tanstack/react-query-devtools': '^5.102.8',
+          '@tanstack/react-query-devtools': $when({ library: 'tanstack-query' }, '^5.102.8'),
+          '@tanstack/react-form-devtools': $when({ library: 'tanstack-form' }, '^0.2.34'),
         },
       },
       stackPackageJson: {
         'tanstack-start': {
           devDependencies: {
             '@tanstack/devtools-vite': '^0.8.5',
-            '@tanstack/react-form-devtools': $when({ library: 'tanstack-form' }, '^0.2.34'),
           },
         },
       },

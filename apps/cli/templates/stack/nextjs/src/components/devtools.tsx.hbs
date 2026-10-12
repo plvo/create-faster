@@ -1,0 +1,27 @@
+{{#if (hasLibrary "tanstack-devtools")}}
+'use client';
+
+import { TanStackDevtools } from '@tanstack/react-devtools';
+{{#if (hasLibrary "tanstack-query")}}
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
+{{/if}}
+{{#if (hasLibrary "tanstack-form")}}
+import { formDevtoolsPlugin } from '@tanstack/react-form-devtools';
+{{/if}}
+
+export function Devtools() {
+  return (
+    <TanStackDevtools
+      config=\{{ position: 'top-left' }}
+      plugins={[
+        {{#if (hasLibrary "tanstack-query")}}
+        { name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> },
+        {{/if}}
+        {{#if (hasLibrary "tanstack-form")}}
+        formDevtoolsPlugin(),
+        {{/if}}
+      ]}
+    />
+  );
+}
+{{/if}}
