@@ -34,7 +34,7 @@ interface SeoModule {
 }
 
 interface SiteConfigModule {
-  siteConfig: { name: string; description: string; ogImage: string };
+  siteConfig: { name: string; description: string; url: string; ogImage: string };
 }
 
 describe('Open Graph and Twitter metadata of the SEO blueprints', () => {
