@@ -55,7 +55,7 @@ export default defineCloudflareConfig({});
 ```
 
 **Scripts:**
-- `build:cf` - Generate binding types, Next.js build, then the OpenNext adapter build (`wrangler types … && next build && opennextjs-cloudflare build`). Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during `next build`.
+- `build:cf` - Generate binding types, then the OpenNext adapter build (`wrangler types … && opennextjs-cloudflare build`). `opennextjs-cloudflare build` runs the project's `build` script (`next build`) itself, in standalone mode, so `next build` is not repeated in `build:cf`. Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during that build.
 - `preview` - Local Wrangler preview of the built output (`opennextjs-cloudflare preview`)
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
 

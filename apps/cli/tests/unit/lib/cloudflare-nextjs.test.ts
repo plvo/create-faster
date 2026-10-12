@@ -47,6 +47,13 @@ describe('deployment cloudflare: nextjs app package.json (single repo)', () => {
     expect(result.content.scripts?.['build:cf']).toContain('opennextjs-cloudflare');
   });
 
+  test('build:cf leaves the Next.js build to opennextjs-cloudflare, which runs the build script itself', () => {
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(result.content.scripts?.build).toBe('next build');
+    expect(result.content.scripts?.['build:cf']).not.toContain('next build');
+    expect(result.content.scripts?.['build:cf']).toMatch(/opennextjs-cloudflare build$/);
+  });
+
   test('has preview script using opennextjs-cloudflare', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.preview).toContain('opennextjs-cloudflare');
