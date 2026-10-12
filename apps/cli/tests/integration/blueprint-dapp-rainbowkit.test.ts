@@ -34,4 +34,21 @@ describe('dapp-rainbowkit blueprint', () => {
       expect(config).not.toContain(CDP_SDK);
     });
   });
+
+  describe('SIWE domain', () => {
+    test('is the host of the server-side BETTER_AUTH_URL, not a build-time public variable', async () => {
+      const projectPath = await generate('rainbowkit-siwe', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const factory = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
+      expect(factory).toMatch(/const siweDomain = new URL\(process\.env\.BETTER_AUTH_URL \?\? '[^']+'\)\.host;/);
+      expect(factory).toContain('domain: siweDomain,');
+      expect(factory).not.toContain('getAppUrl');
+      expect(factory).not.toContain('NEXT_PUBLIC_APP_URL');
+    });
+
+    test('BETTER_AUTH_URL is declared in .env.example', async () => {
+      const projectPath = await generate('rainbowkit-env', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const env = await readTextFile(join(projectPath, '.env.example'));
+      expect(env).toMatch(/^BETTER_AUTH_URL=http:\/\/localhost:3000$/m);
+    });
+  });
 });
