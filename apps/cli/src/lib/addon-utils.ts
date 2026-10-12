@@ -49,6 +49,14 @@ export function isSingletonDbSatisfied(addon: MetaAddon | undefined, ctx: Partia
   return !selectedLibraries.some((lib) => META.libraries[lib]?.needsSingletonDb);
 }
 
+export function isLocalFilesystemSatisfied(addon: MetaAddon | undefined, ctx: Partial<TemplateContext>): boolean {
+  if (!addon?.needsLocalFilesystem) return true;
+
+  const deployment = ctx.project?.deployment;
+  const deploymentAddon = deployment ? META.project.deployment.options[deployment] : undefined;
+  return deploymentAddon?.providesLocalFilesystem !== false;
+}
+
 export function isRequirementMet(require: AddonRequire | undefined, ctx: Partial<TemplateContext>): boolean {
   if (!require) return true;
 
@@ -176,6 +184,12 @@ export function describeRequire(require: AddonRequire): string {
   return parts.join(', ');
 }
 
+function getDeploymentLabel(ctx: Partial<TemplateContext>): string {
+  const deployment = ctx.project?.deployment;
+  if (!deployment) return 'this deployment';
+  return META.project.deployment.options[deployment]?.label ?? deployment;
+}
+
 export function getCategoryOptionUnavailability(
   categoryName: ProjectCategoryName,
   name: string,
@@ -203,15 +217,17 @@ export function getCategoryOptionUnavailability(
   }
 
   if (!isSingletonDbSatisfied(addon, ctx)) {
-    const deploymentLabel = ctx.project?.deployment
-      ? (META.project.deployment.options[ctx.project.deployment]?.label ?? ctx.project.deployment)
-      : 'this deployment';
+    const deploymentLabel = getDeploymentLabel(ctx);
     const blocking = (ctx.apps ?? [])
       .flatMap((app) => app.libraries)
       .find((lib) => META.libraries[lib]?.needsSingletonDb);
     return blocking
       ? `not yet supported with ${blocking} on ${deploymentLabel} (per-request binding — see #153)`
       : `not yet supported with the selected library on ${deploymentLabel}`;
+  }
+
+  if (!isLocalFilesystemSatisfied(addon, ctx)) {
+    return `needs a local filesystem, which ${getDeploymentLabel(ctx)} does not provide`;
   }
 
   return undefined;

@@ -4,6 +4,7 @@ import { META } from '@/__meta__';
 import {
   describeRequire,
   isLibraryCompatible,
+  isLocalFilesystemSatisfied,
   isRequirementMet,
   isServerRuntimeSatisfied,
   isSingletonDbSatisfied,
@@ -322,6 +323,14 @@ function validateContext(partial: Partial<TemplateContext>): void {
         printError(
           `${categoryName} '${value}' is not yet supported with library '${blocking}' on this deployment`,
           `'${blocking}' uses a module-singleton database; '${value}' is a per-request Cloudflare binding (see #153)`,
+        );
+        process.exit(1);
+      }
+      if (!isLocalFilesystemSatisfied(addon, partial)) {
+        const deployment = partial.project?.deployment;
+        printError(
+          `${categoryName} '${value}' is incompatible with deployment '${deployment}'`,
+          `'${value}' needs a local filesystem, which '${deployment}' does not provide`,
         );
         process.exit(1);
       }

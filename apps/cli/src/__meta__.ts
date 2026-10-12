@@ -512,6 +512,7 @@ export const META: Meta = {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
           providesDbBindings: true,
+          providesLocalFilesystem: false,
           packageJson: {
             devDependencies: {
               wrangler: '^4.127.1',
@@ -646,6 +647,7 @@ export const META: Meta = {
           label: 'SQLite',
           hint: 'Local file database, no server needed',
           mono: { scope: 'root' },
+          needsLocalFilesystem: true,
           packageJson: {
             dependencies: {
               '@libsql/client': LIBSQL_CLIENT_VERSION,

@@ -29,6 +29,10 @@ The Drizzle client anchors relative paths to the db package root, so `db:push`, 
 - Client uses `drizzle-orm/libsql` with the `@libsql/client` driver — a runtime dependency that works on any JavaScript runtime
 - The same `@libsql/client` driver powers `db:push` and `db:studio`
 
+## Deployment constraint
+
+SQLite reads and writes a file on disk, so it is rejected with `--deployment cloudflare` (Workers have no filesystem). Use [Cloudflare D1](/docs/database/d1), the same SQLite dialect as a managed binding.
+
 ## Driver choice
 
 The runtime driver is `@libsql/client` (via `drizzle-orm/libsql`):
