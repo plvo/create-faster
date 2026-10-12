@@ -2,68 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Glob } from 'bun';
-import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
-
-interface Combination {
-  name: string;
-  args: string[];
-}
-
-const COMBINATIONS: Combination[] = [
-  {
-    name: 'next + start + hono, better-auth trpc shadcn, postgres drizzle',
-    args: [
-      '--app',
-      'web:nextjs:better-auth,trpc,shadcn',
-      '--app',
-      'docs:tanstack-start:better-auth,trpc,shadcn',
-      '--app',
-      'api:hono',
-      '--database',
-      'postgres',
-      '--orm',
-      'drizzle',
-    ],
-  },
-  {
-    name: 'two next apps, better-auth trpc shadcn, mysql prisma, eslint',
-    args: [
-      '--app',
-      'web:nextjs:better-auth,trpc,shadcn',
-      '--app',
-      'admin:nextjs:shadcn',
-      '--database',
-      'mysql',
-      '--orm',
-      'prisma',
-      '--linter',
-      'eslint-prettier',
-    ],
-  },
-  {
-    name: 'start + hono on cloudflare d1, better-auth trpc',
-    args: [
-      '--app',
-      'web:tanstack-start:better-auth,trpc',
-      '--app',
-      'api:hono',
-      '--database',
-      'd1',
-      '--orm',
-      'drizzle',
-      '--deployment',
-      'cloudflare',
-    ],
-  },
-  {
-    name: 'next + node, shadcn only, sqlite drizzle',
-    args: ['--app', 'web:nextjs:shadcn', '--app', 'worker:node', '--database', 'sqlite', '--orm', 'drizzle'],
-  },
-  ...Object.entries(META.blueprints)
-    .filter(([, blueprint]) => blueprint.context.apps.length > 1)
-    .map(([name]) => ({ name: `blueprint ${name}`, args: ['--blueprint', name] })),
-];
+import { COMBINATIONS } from './workspace-combinations';
 
 function exportTargets(value: unknown): string[] {
   if (typeof value === 'string') return [value];
