@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import { $ } from 'bun';
 import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 
 const WORKERD_GENERATOR = `generator client {
@@ -12,6 +13,14 @@ generator nodeClient {
   provider = "prisma-client"
   output   = "../generated/prisma-node"
 }`;
+
+const POSTGRES_NODE_ADAPTER = `const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  ssl: process.env.NODE_ENV === 'production',
+});`;
+const MYSQL_NODE_ADAPTER = "const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');";
+const TYPE_HELPERS = `export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;`;
 
 let tempDir: string;
 
@@ -47,6 +56,14 @@ describe('Prisma + Postgres + Cloudflare (Hyperdrive)', () => {
     expect(index).not.toContain('globalForPrisma');
   });
 
+  test('db client keeps the shared generated-client export and the type helpers', async () => {
+    const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
+    expect(index.match(/^export \* from /gm)).toHaveLength(1);
+    expect(index).toContain("import { PrismaClient } from '../../../generated/prisma/client';");
+    expect(index).toContain('type Client = Database;');
+    expect(index).toContain(TYPE_HELPERS);
+  });
+
   test('the Worker client is generated for workerd, with a Node client for scripts', async () => {
     const schema = await readTextFile(join(projectPath, 'prisma/schema.prisma'));
     expect(schema).toContain(WORKERD_GENERATOR);
@@ -56,7 +73,7 @@ describe('Prisma + Postgres + Cloudflare (Hyperdrive)', () => {
     const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
     expect(seed).toContain("import { PrismaPg } from '@prisma/adapter-pg';");
     expect(seed).toContain("import { PrismaClient } from '../generated/prisma-node/client';");
-    expect(seed).toContain('connectionString: process.env.DATABASE_URL');
+    expect(seed).toContain(POSTGRES_NODE_ADAPTER);
     expect(seed).not.toContain("from '../src/lib/db'");
   });
 
@@ -90,7 +107,7 @@ describe('Prisma + MySQL + Cloudflare (Hyperdrive)', () => {
 
     const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
     expect(seed).toContain("import { PrismaMariaDb } from '@prisma/adapter-mariadb';");
-    expect(seed).toContain('new PrismaMariaDb(process.env.DATABASE_URL');
+    expect(seed).toContain(MYSQL_NODE_ADAPTER);
   });
 });
 
@@ -126,6 +143,9 @@ describe('Prisma off Cloudflare stays a Node singleton', () => {
     const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
     expect(index).toContain('export const prisma =');
     expect(index).not.toContain('createDb');
+    expect(index).toContain(POSTGRES_NODE_ADAPTER);
+    expect(index).toContain('type Client = typeof prisma;');
+    expect(index).toContain(TYPE_HELPERS);
 
     const schema = await readTextFile(join(projectPath, 'prisma/schema.prisma'));
     expect(schema).not.toContain('workerd');
@@ -138,8 +158,40 @@ describe('Prisma off Cloudflare stays a Node singleton', () => {
   test('mysql hands DATABASE_URL to the adapter whole so its TLS settings reach the driver', async () => {
     const projectPath = await generate('prisma-my-node', ['--app', 'api:hono', '--database', 'mysql', '--orm', 'prisma']);
     const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
-    expect(index).toContain("new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db')");
+    expect(index).toContain(MYSQL_NODE_ADAPTER);
     expect(index).not.toContain('new URL(');
     expect(index).not.toContain('hostname');
+  });
+});
+
+describe('Prisma generated clients are gitignored', () => {
+  const GENERATED_CLIENTS = ['generated/prisma/client.ts', 'generated/prisma-node/client.ts'];
+
+  async function ignoredPaths(projectPath: string, paths: string[]): Promise<string[]> {
+    await $`git init -q`.cwd(projectPath).quiet();
+    const ignored = await $`git check-ignore ${paths}`.cwd(projectPath).nothrow().quiet().text();
+    return ignored.split('\n').filter(Boolean);
+  }
+
+  test('single repo ignores both generated clients', async () => {
+    const projectPath = await generate('prisma-ignore-single', ['--app', 'api:hono', '--database', 'postgres', '--orm', 'prisma', '--deployment', 'cloudflare']);
+    expect(await ignoredPaths(projectPath, GENERATED_CLIENTS)).toEqual(GENERATED_CLIENTS);
+  });
+
+  test('turborepo ignores both generated clients of the db package', async () => {
+    const projectPath = await generate('prisma-ignore-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'postgres',
+      '--orm',
+      'prisma',
+      '--deployment',
+      'cloudflare',
+    ]);
+    const paths = GENERATED_CLIENTS.map((path) => `packages/db/${path}`);
+    expect(await ignoredPaths(projectPath, paths)).toEqual(paths);
   });
 });
