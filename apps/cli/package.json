@@ -64,6 +64,8 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@repo/config": "*"
+    "@repo/config": "*",
+    "evlog": "^2.28.0",
+    "hono": "^4.7.4"
   }
 }

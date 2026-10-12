@@ -1,1 +1,3 @@
 Hono server. Routes are registered in `src/index.ts`. Handlers stay thin; shared logic goes in `src/lib/`.
+
+The error handler in `src/app.ts` keeps the status and message of an `HTTPException` and answers any other error with a generic 500; the real error is always logged with its stack. It returns the message and stack only when `NODE_ENV=development`, so run `NODE_ENV=development bun run dev` to see them in responses. Throw `HTTPException` for errors meant for the client.

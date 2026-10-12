@@ -25,9 +25,10 @@ Beyond the official setup, we include:
 - `start` - Production server (`NODE_ENV=production bun run src/index.ts`): Bun runs the source without a build, so the script sets `NODE_ENV` for code that reads it at runtime (the database client turns TLS on with it)
 
 **Error Handling:**
-- Global error handler with stack traces in development
+- Global error handler: an `HTTPException` keeps its status and message, any other error returns a generic `Internal server error` with status 500
+- The message and stack of an unexpected error are returned only when `NODE_ENV=development` (SST sets it under `sst dev`, `wrangler dev` and `wrangler deploy` inline it at bundle time; `bun run dev` leaves it unset, so run `NODE_ENV=development bun run dev` to see them in responses)
+- Every error is logged server side with its stack, in every environment
 - Structured JSON error responses
-- Console logging for debugging
 
 Files created:
 ```
