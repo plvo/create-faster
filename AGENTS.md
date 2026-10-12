@@ -36,7 +36,7 @@ docs/agents/               # Research, plans and audits written by agents
 | `lib/agent-context-generator.ts` | `AGENTS.md` and `CLAUDE.md` of generated projects |
 | `lib/addon-utils.ts` | Compatibility and requirement checks, script placeholders |
 | `lib/when.ts` | `$when` conditions |
-| `lib/file-generator.ts`, `lib/post-generation.ts` | Generation orchestration; dependency install and `git init` |
+| `lib/file-generator.ts`, `lib/post-generation.ts` | Generation orchestration; dependency install and `git init`; a failed install makes the run exit 1 (files kept, retry command printed), a failed `git init` only warns |
 | `tui/` | Progress display, summary, and the copy-paste command that recreates the project |
 
 ## Commands
