@@ -138,7 +138,7 @@ describe('tRPC server context is built once per request', () => {
       expect(server.includes('await headers()')).toBe(importsHeaders);
 
       if (testCase.usesOptionsProxy) {
-        expect(server).toContain('ctx: getTRPCContext,');
+        expect(server).toContain('createContext: getTRPCContext,');
       } else {
         expect(server).toContain('createCaller(getTRPCContext)');
       }
