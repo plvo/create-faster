@@ -776,7 +776,10 @@ export const META: Meta = {
             dependencies: {
               '@prisma/client': '^7.10.0',
               '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.10.0'),
-              'pg-connection-string': $when({ database: 'postgres' }, PG_CONNECTION_STRING_VERSION),
+              'pg-connection-string': $when(
+                { database: 'postgres', deployment: { not: 'cloudflare' } },
+                PG_CONNECTION_STRING_VERSION,
+              ),
               '@prisma/adapter-mariadb': $when({ database: 'mysql' }, '^7.10.0'),
               mariadb: $when({ database: 'mysql' }, '^3.5.3'),
             },

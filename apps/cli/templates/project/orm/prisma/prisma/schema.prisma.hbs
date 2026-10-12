@@ -3,8 +3,18 @@ path: prisma/schema.prisma
 ---
 generator client {
   provider = "prisma-client"
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+  runtime  = "workerd"
+{{/if}}
   output   = "../generated/prisma"
 }
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+
+generator nodeClient {
+  provider = "prisma-client"
+  output   = "../generated/prisma-node"
+}
+{{/if}}
 
 datasource db {
   {{#if (has "database" "postgres")}}

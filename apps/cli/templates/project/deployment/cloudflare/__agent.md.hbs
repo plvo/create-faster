@@ -59,9 +59,12 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 {{/if}}
 {{#if (and (or (has "stack" "nextjs") (has "stack" "tanstack-start") (has "stack" "hono")) (databaseBinding "hyperdrive"))}}
 **Database — Hyperdrive**: the Workers runtime cannot open a raw TCP connection to {{#if (has "database" "postgres")}}Postgres{{/if}}{{#if (has "database" "mysql")}}MySQL{{/if}}, and forbids reusing a connection across requests. The DB goes through the Cloudflare **Hyperdrive** binding (a pooling proxy), so the `db` package exports a per-request `createDb(hyperdrive)` factory — there is no module-level `db` singleton.
+{{#if (has "orm" "prisma")}}
+The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` in `schema.prisma`) and `createDb(hyperdrive)` returns a `PrismaClient` for the request. Scripts that run on Node, like `db:seed`, use the second generated client (`generated/prisma-node`) through `DATABASE_URL`.
+{{/if}}
 
 {{#if (has "stack" "nextjs")}}
-- Build resolves the driver's `cloudflare:sockets` transport ({{#if (has "database" "postgres")}}`pg-cloudflare`{{/if}}{{#if (has "database" "mysql")}}`mysql2` with `disableEval: true`{{/if}}); the connection itself is created per request via `await createDb((await getEnv()).HYPERDRIVE)`.
+- Build resolves the driver's `cloudflare:sockets` transport ({{#if (has "database" "postgres")}}`pg-cloudflare`{{/if}}{{#if (has "database" "mysql")}}{{#if (has "orm" "prisma")}}`mariadb`{{else}}`mysql2` with `disableEval: true`{{/if}}{{/if}}); the connection itself is created per request via `await createDb((await getEnv()).HYPERDRIVE)`.
 {{/if}}
 {{#if (has "stack" "tanstack-start")}}
 - Build a client per request inside each server function or route handler: `const db = await createDb(env.HYPERDRIVE)`. Never create a client or read `env.HYPERDRIVE` properties at module level.
@@ -80,7 +83,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 {{else}}
 {{#if (or (has "stack" "nextjs") (has "stack" "hono"))}}`wrangler dev`/local only{{else}}`vite dev` and `vite preview` only{{/if}} and matches your local `DATABASE_URL`.
 {{/if}}
-- **Migrations** run on Node (not the Worker) via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
+- **Migrations** run on Node (not the Worker) via {{#if (has "orm" "prisma")}}the `prisma` CLI{{else}}`drizzle-kit`{{/if}} against `DATABASE_URL` — unchanged by Hyperdrive.
 {{#if (has "stack" "nextjs")}}
 - better-auth / tRPC over this binding (per-request consumers) is not wired yet — see #153.
 {{/if}}

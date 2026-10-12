@@ -56,13 +56,12 @@ Database schema with User and Post models. Shown here with PostgreSQL:
 
 ```prisma title="prisma/schema.prisma"
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma" // turborepo only
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql" // or "mysql" based on database selection
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -157,39 +156,52 @@ model Verification {
 
 ### index.ts
 
-PrismaClient singleton with global caching to prevent hot-reload issues. With PostgreSQL it uses the `PrismaPg` adapter, which connects with TLS in production unless `DATABASE_URL` sets `sslmode` (see [PostgreSQL](/docs/database/postgresql#tls)):
+PrismaClient singleton with global caching to prevent hot-reload issues. The client always runs through a driver adapter: `PrismaPg` for PostgreSQL, `PrismaMariaDb` for MySQL. Shown here with PostgreSQL:
 
-```ts title="src/index.ts"
-import { PrismaClient } from '../generated/prisma'; // or '@prisma/client' in single repo
+```ts title="src/lib/db/index.ts"
+import { PrismaPg } from '@prisma/adapter-pg';
+import { parse as parseConnectionString } from 'pg-connection-string';
+import { PrismaClient } from '../../../generated/prisma/client'; // '../generated/prisma/client' in a turborepo
+
+// warnIfProductionTlsDisabled() is generated here too: it logs a warning in production when DATABASE_URL turns TLS off
+warnIfProductionTlsDisabled(process.env.DATABASE_URL);
+// TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  ssl: process.env.NODE_ENV === 'production',
+});
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-export * from '../generated/prisma'; // or '@prisma/client' in single repo
+type Client = typeof prisma;
 
-export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
-export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
-export type UserWithPosts = Awaited<
-  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
->;
-export type PostWithAuthor = Awaited<
-  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
->;
+export * from '../../../generated/prisma/client';
+
+// Type helpers
+export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
+```
+
+With PostgreSQL, TLS follows `sslmode` in `DATABASE_URL` and defaults to on in production (see [PostgreSQL](/docs/database/postgresql#tls)). With MySQL, the whole `DATABASE_URL` goes to the adapter, so the driver reads its TLS settings from the URL, for example `?ssl=true` to connect over TLS and verify the server certificate. The local Docker MySQL has no TLS parameter and connects in plain text.
+
+```ts title="src/lib/db/index.ts (MySQL)"
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
 ```
 
 **With Better Auth**, additional type helpers are exported:
 
-```ts title="src/index.ts (Better Auth additions)"
-export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
-export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
-export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+```ts title="src/lib/db/index.ts (Better Auth additions)"
+export type Session = Awaited<ReturnType<Client['session']['findUnique']>>;
+export type Account = Awaited<ReturnType<Client['account']['findUnique']>>;
+export type Verification = Awaited<ReturnType<Client['verification']['findUnique']>>;
 ```
 
 ### seed.ts
@@ -202,48 +214,52 @@ import { prisma } from '@repo/db'; // or '../src/lib/db' in single repo
 async function seed() {
   console.log('🌱 Seeding database...');
 
+  // Clear existing data
   await prisma.post.deleteMany();
   await prisma.user.deleteMany();
 
+  // Create users
   const alice = await prisma.user.create({
     data: {
-      name: 'Alice Johnson',
+      username: 'alice',
       email: 'alice@example.com',
-      bio: 'Software engineer and open source enthusiast',
     },
   });
 
   const bob = await prisma.user.create({
     data: {
-      name: 'Bob Smith',
+      username: 'bob',
       email: 'bob@example.com',
-      bio: 'Tech writer and developer advocate',
     },
   });
 
+  console.log(`✅ Created 2 users`);
+
+  // Create posts
   await prisma.post.createMany({
     data: [
       {
         title: 'Getting Started with Prisma',
-        content: 'Prisma is a next-generation ORM...',
+        content: 'Prisma is a next-generation ORM that provides excellent type safety...',
         published: true,
         authorId: alice.id,
       },
       {
         title: 'Building Modern APIs',
-        content: 'Modern API development requires...',
+        content: 'Modern API development requires careful consideration of many factors...',
         published: true,
         authorId: alice.id,
       },
       {
         title: 'Draft: Upcoming Features',
-        content: 'This is a draft post...',
+        content: 'This is a draft post about upcoming features...',
         published: false,
         authorId: bob.id,
       },
     ],
   });
 
+  console.log(`✅ Created ${3} posts`);
   console.log('🎉 Seeding completed!');
 }
 
@@ -257,3 +273,45 @@ seed()
     process.exit(0);
   });
 ```
+
+## On Cloudflare Workers
+
+With `--deployment cloudflare`, PostgreSQL and MySQL are reached through a [Hyperdrive](/docs/deployment/cloudflare#postgres--mysql-via-hyperdrive) binding, and the Worker cannot hold a client across requests. The `db` module exports a per-request `createDb(hyperdrive)` factory instead of the `prisma` singleton:
+
+```ts title="src/lib/db/index.ts (Cloudflare, PostgreSQL)"
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../../generated/prisma/client';
+
+export function createDb(hyperdrive: Hyperdrive) {
+  const adapter = new PrismaPg({ connectionString: hyperdrive.connectionString });
+  return new PrismaClient({ adapter });
+}
+export type Database = ReturnType<typeof createDb>;
+type Client = Database;
+
+export * from '../../../generated/prisma/client';
+
+export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
+```
+
+With MySQL the adapter is `new PrismaMariaDb({ host, port, user, password, database })`, with each field read from the binding (`hyperdrive.host`, `hyperdrive.port`, and so on).
+
+Call it inside each request handler (`const db = await createDb(env.HYPERDRIVE)`), never at module level.
+
+The Worker bundle needs a client generated for the `workerd` runtime, which loads the query compiler as a WebAssembly module and cannot run on Bun. `schema.prisma` therefore declares two generators:
+
+```prisma title="prisma/schema.prisma (Cloudflare)"
+generator client {
+  provider = "prisma-client"
+  runtime  = "workerd"
+  output   = "../generated/prisma"
+}
+
+generator nodeClient {
+  provider = "prisma-client"
+  output   = "../generated/prisma-node"
+}
+```
+
+`scripts/seed.ts` imports the second client instead of `prisma` and builds it on `DATABASE_URL` with the same adapter as the Node client above, because the seed runs on Bun. Migrations (`db:migrate`, `db:push`) also run on Node against `DATABASE_URL` and are unchanged.
