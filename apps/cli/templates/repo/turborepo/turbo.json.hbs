@@ -6,11 +6,14 @@
   },
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build"{{#if (has "orm" "prisma")}}, "^db:generate"{{/if}}],
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**"]
     },
     "dev": {
+{{#if (has "orm" "prisma")}}
+      "dependsOn": ["^db:generate"],
+{{/if}}
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "cache": false,
       "persistent": true
@@ -22,7 +25,13 @@
     "db:push": {
       "cache": false
     },
-    "db:generate": {},
+    "db:generate": {
+{{#if (has "orm" "prisma")}}
+      "outputs": ["generated/**"]
+{{else}}
+      "cache": false
+{{/if}}
+    },
     "db:migrate": {
       "cache": false
     },

@@ -53,12 +53,8 @@ cp {{path}}.example {{path}}
 ```
 
 {{/if}}
-{{#if (hasRootScript "db:migrate")}}
-Run database migrations:
-
-```bash
-{{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
-```
+{{#if project.orm}}
+{{> readme/database-setup}}
 
 {{/if}}
 Start the development server:

@@ -92,6 +92,8 @@ export interface MetaAddon {
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
+  /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
+  interactiveScripts?: string[];
 }
 
 export interface MetaProjectCategory {

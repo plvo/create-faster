@@ -114,6 +114,14 @@ This keeps the tool extensible: adding the next stack, library or deployment req
 - Local-filesystem capability: a database declares `needsLocalFilesystem: true` (`sqlite` opens a `file:` URL); a deployment declares `providesLocalFilesystem: false` when its runtime has no writable disk (`cloudflare`, Workers). Read generically by `isLocalFilesystemSatisfied`: a filesystem database is unavailable under a deployment without one (`d1` is the SQLite database there). `validateContext` rejects it in flags and `getCategoryOptionUnavailability` disables it in the prompt.
 - Single-select project prompts show incompatibility instead of hiding it: `getCategoryOptionUnavailability` (`addon-utils.ts`) returns a generic, META-derived reason for any option, and `promptProjectCategorySingle` renders unavailable options disabled with that reason. No hardcoded choice value.
 
+### Database first run
+
+Turbo's `ui: stream` never forwards stdin, so a script that prompts hangs behind an invisible prompt (`prisma migrate dev` asks for a migration name) or fails while turbo still reports success (`drizzle-kit push` asks for confirmation and aborts without a TTY). An ORM declares such scripts in `interactiveScripts` (Drizzle `db:push`, Prisma `db:migrate`); `composeRootPackageJson` writes their turborepo root script as `cd packages/<db> && <pm> run <script>` instead of `turbo <script>`. A blueprint `rootPackageJson` must not redefine the `db:*` scripts the ORM already provides.
+
+The Prisma client is generated into `generated/prisma` and not committed, and `prisma generate` reads `DATABASE_URL` through `prisma.config.ts`, so it cannot be a `postinstall` (the install runs before `.env` exists). It runs before `dev` and `build` instead: `repo/turborepo/turbo.json.hbs` adds `^db:generate` to both under `has "orm" "prisma"` and caches `generated/**`; in a single repo the Prisma ORM scripts define `predev` and `prebuild` through `$when({ repo: 'single' })`. Drizzle `db:generate` writes migration files into the source tree, so its task has `cache: false`.
+
+The README first-run step lives once in the `readme/database-setup` partial, with the commands that never prompt: `docker compose up -d --wait` for a Docker database, then `db:push` for Prisma, or `db:generate` then `db:migrate` for Drizzle (every database, D1 included). The template ships no migration, so `db:migrate` alone has nothing to apply. The `local-setup` script of D1 runs `db:generate` first for the same reason.
+
 ### Prompts, testing libraries and linters
 
 - Library prompts group libraries by their `category` field (`UI`, `Content`, `Auth`, `API`, `Data Fetching`, `Forms`, `Runtime`, `Observability`, `Analytics`, `Testing`); `multiselectLibrariesPrompt` in `prompts/stack-prompts.ts` builds the groups from META.

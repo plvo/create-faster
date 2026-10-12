@@ -670,7 +670,7 @@ export const META: Meta = {
           },
           envs: [
             {
-              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',
+              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:migrate',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],
@@ -693,7 +693,7 @@ export const META: Meta = {
               'db:migrate:local': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
               'local-setup':
-                'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                'bun run db:generate && wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
             },
           },
           deploymentPackageJson: {
@@ -713,7 +713,7 @@ export const META: Meta = {
                 ),
                 'local-setup': $when(
                   { repo: 'turborepo' },
-                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                  'bun run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
                 ),
               },
             },
@@ -747,6 +747,7 @@ export const META: Meta = {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
           mono: { scope: 'pkg', name: 'db' },
+          interactiveScripts: ['db:push'],
           packageJson: {
             main: $when({ repo: 'turborepo' }, './dist/index.js'),
             module: $when({ repo: 'turborepo' }, './dist/index.mjs'),
@@ -782,6 +783,7 @@ export const META: Meta = {
           hint: 'Type-safe ORM with migrations',
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
+          interactiveScripts: ['db:migrate'],
           packageJson: {
             dependencies: {
               '@prisma/client': '^7.10.0',
@@ -805,6 +807,8 @@ export const META: Meta = {
               'db:push': 'prisma db push',
               'db:studio': 'prisma studio',
               'db:seed': 'prisma db seed',
+              predev: $when({ repo: 'single' }, 'prisma generate'),
+              prebuild: $when({ repo: 'single' }, 'prisma generate'),
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
@@ -1209,10 +1213,6 @@ export const META: Meta = {
         },
         scripts: {
           'local-setup': 'bun scripts/local-setup.ts',
-          'db:push': 'turbo db:push',
-          'db:generate': 'turbo db:generate',
-          'db:migrate': 'turbo db:migrate',
-          'db:studio': 'turbo db:studio',
           'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
@@ -1297,10 +1297,6 @@ export const META: Meta = {
         },
         scripts: {
           'local-setup': 'bun scripts/local-setup.ts',
-          'db:push': 'turbo db:push',
-          'db:generate': 'turbo db:generate',
-          'db:migrate': 'turbo db:migrate',
-          'db:studio': 'turbo db:studio',
           'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },

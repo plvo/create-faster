@@ -59,7 +59,7 @@ describe('Prisma turborepo: first run from a fresh clone', () => {
 
   test('README starts the database then pushes the schema, without the interactive migrate', async () => {
     const readme = await readTextFile(join(projectPath, 'README.md'));
-    const docker = readme.indexOf('docker compose up -d');
+    const docker = readme.indexOf('docker compose up -d --wait');
     const push = readme.indexOf('bun run db:push');
     expect(docker).toBeGreaterThan(-1);
     expect(push).toBeGreaterThan(docker);
@@ -105,15 +105,20 @@ describe('Drizzle turborepo: first run from a fresh clone', () => {
     expect(tasks['db:generate']?.cache).toBe(false);
   });
 
-  test('db:migrate stays a turbo task, drizzle-kit migrate never prompts', async () => {
+  test('db:push runs in the db package, drizzle-kit asks for confirmation; generate and migrate never prompt', async () => {
     const root = await readJsonFile<PackageManifest>(join(projectPath, 'package.json'));
+    expect(root.scripts['db:push']).toBe('cd packages/db && bun run db:push');
+    expect(root.scripts['db:generate']).toBe('turbo db:generate');
     expect(root.scripts['db:migrate']).toBe('turbo db:migrate');
   });
 
-  test('README starts the database then pushes the schema', async () => {
+  test('README starts the database, generates the migrations, then applies them', async () => {
     const readme = await readTextFile(join(projectPath, 'README.md'));
-    expect(readme.indexOf('bun run db:push')).toBeGreaterThan(readme.indexOf('docker compose up -d'));
-    expect(readme).not.toContain('bun run db:migrate');
+    const docker = readme.indexOf('docker compose up -d --wait');
+    const generateStep = readme.indexOf('bun run db:generate');
+    expect(generateStep).toBeGreaterThan(docker);
+    expect(readme.indexOf('bun run db:migrate')).toBeGreaterThan(generateStep);
+    expect(readme).not.toContain('bun run db:push');
   });
 });
 
@@ -149,7 +154,7 @@ describe('Prisma single repo: first run from a fresh clone', () => {
 
   test('README starts the database then pushes the schema', async () => {
     const readme = await readTextFile(join(projectPath, 'README.md'));
-    expect(readme.indexOf('bun run db:push')).toBeGreaterThan(readme.indexOf('docker compose up -d'));
+    expect(readme.indexOf('bun run db:push')).toBeGreaterThan(readme.indexOf('docker compose up -d --wait'));
     expect(readme).not.toContain('bun run db:migrate');
   });
 });
@@ -179,11 +184,11 @@ describe('Drizzle single repo with SQLite: first run from a fresh clone', () => 
     expect(pkg.scripts.prebuild).toBeUndefined();
   });
 
-  test('README pushes the schema and has no container step', async () => {
+  test('README generates the migrations then applies them, with no container step', async () => {
     const readme = await readTextFile(join(projectPath, 'README.md'));
-    expect(readme).toContain('bun run db:push');
+    expect(readme.indexOf('bun run db:migrate')).toBeGreaterThan(readme.indexOf('bun run db:generate'));
     expect(readme).not.toContain('docker compose');
-    expect(readme).not.toContain('bun run db:migrate');
+    expect(readme).not.toContain('bun run db:push');
   });
 });
 
@@ -215,5 +220,30 @@ describe('Drizzle on D1: first run from a fresh clone', () => {
     expect(readme.indexOf('bun run db:migrate')).toBeGreaterThan(generateStep);
     expect(readme).not.toContain('docker compose');
     expect(readme).not.toContain('bun run db:push');
+  });
+
+  test('local-setup generates the migrations it applies', async () => {
+    const pkg = await readJsonFile<PackageManifest>(join(projectPath, 'package.json'));
+    expect(pkg.scripts['local-setup']).toStartWith('bun run db:generate && wrangler d1 migrations apply');
+  });
+});
+
+describe('Blueprint: the root db scripts come from the ORM, not from a blueprint copy', () => {
+  let tempDir: string;
+  let projectPath: string;
+
+  beforeAll(async () => {
+    ({ tempDir, projectPath } = await generate('blueprint-db', ['--blueprint', 'org-dashboard']));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test('db:push keeps stdin, the other db scripts go through turbo', async () => {
+    const root = await readJsonFile<PackageManifest>(join(projectPath, 'package.json'));
+    expect(root.scripts['db:push']).toBe('cd packages/db && bun run db:push');
+    expect(root.scripts['db:migrate']).toBe('turbo db:migrate');
+    expect(root.scripts['db:studio']).toBe('turbo db:studio');
   });
 });

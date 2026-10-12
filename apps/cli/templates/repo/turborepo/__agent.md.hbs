@@ -39,7 +39,8 @@ Generated with create-faster. Turborepo monorepo.
 - `{{pm}} dev` — run all apps via Turborepo
 - `{{pm}} build` — build all apps
 {{#if (has "orm" "drizzle")~}}
-- `{{pm}} db:push` — sync the Drizzle schema (from `packages/db`)
+- `{{pm}} db:generate` — write a SQL migration from the schema (from `packages/db`)
+- `{{pm}} db:migrate` — apply the migrations (from `packages/db`)
 {{/if~}}
 {{#if (has "orm" "prisma")~}}
 - `{{pm}} db:push` — sync the Prisma schema (from `packages/db`)

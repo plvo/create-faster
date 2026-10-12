@@ -52,7 +52,8 @@ describe('README of a single repo', () => {
     expect(readme).toContain('- husky');
   });
 
-  test('documents the migration command the project defines', () => {
+  test('documents the commands that create the tables', () => {
+    expect(readme).toContain('bun run db:generate');
     expect(readme).toContain('bun run db:migrate');
   });
 });

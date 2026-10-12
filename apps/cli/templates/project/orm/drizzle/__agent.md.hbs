@@ -1,1 +1,3 @@
-Drizzle schema lives in the db package. Run `{{pm}} db:push` to sync the schema and `{{pm}} db:studio` to inspect data.
+Drizzle schema lives in the db package. After editing it, run `{{pm}} db:generate` to write a SQL migration and `{{pm}} db:migrate` to apply it. Inspect data with `{{pm}} db:studio`.
+
+`{{pm}} db:push` syncs the schema without a migration file. drizzle-kit asks for confirmation, so run it from a terminal; `{{pm}} db:push --force` skips the prompt for scripts.
