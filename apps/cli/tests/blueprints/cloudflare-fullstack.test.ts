@@ -127,9 +127,9 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(layout).toContain("redirect('/login')");
   });
 
-  test('documents page references tRPC documents.list/delete and upload endpoint', () => {
+  test('documents client component references tRPC documents.list/delete and upload endpoint', () => {
     const page = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/page.tsx.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/documents.client.tsx.hbs'),
       'utf8',
     );
     expect(page).toContain('documents.list');
@@ -488,7 +488,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     const account = bpFile('src/components/profile/account-form.tsx.hbs');
     expect(account).toContain('f.InlineEditField');
     expect(account).toContain('authClient.updateUser({ name: value.name })');
-    const docs = bpFile('src/app/(dashboard)/page.tsx.hbs');
+    const docs = bpFile('src/app/(dashboard)/documents.client.tsx.hbs');
     expect(docs).toContain("import { useAppForm } from '@repo/ui/lib/form'");
     expect(docs).toContain('f.InputField');
   });
