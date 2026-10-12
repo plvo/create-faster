@@ -55,6 +55,8 @@ An assets-only Worker: it points `assets.directory` at the static export output 
 - `preview` - Serve the build locally on the Workers runtime (`wrangler dev`)
 - `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
 
+The `start` script is not generated: `next start` rejects `output: export`.
+
 ### TanStack Start apps
 
 A TanStack Start app is fully prerendered by Start itself, without Nitro and without `@cloudflare/vite-plugin` (the Cloudflare plugin builds a Worker, which is the opposite of a static deploy). `vite build` renders every static route and every page reachable through a link, and writes flat HTML files into `dist/client/`.
