@@ -72,6 +72,17 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(await fileExists(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'))).toBe(true);
   });
 
+  test('the upload route enforces the document:create permission after the session check', async () => {
+    const route = await readTextFile(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'));
+    const sessionCheck = route.indexOf('status: 401');
+    const permissionCheck = route.indexOf('userHasPermission');
+    const forbidden = route.indexOf('status: 403');
+    expect(permissionCheck).toBeGreaterThan(sessionCheck);
+    expect(route).toContain("permissions: { document: ['create'] }");
+    expect(forbidden).toBeGreaterThan(permissionCheck);
+    expect(route.indexOf('req.formData()')).toBeGreaterThan(forbidden);
+  });
+
   test('root layout mounts AppProviders + Toaster', async () => {
     const layout = await readTextFile(join(projectPath, 'apps/web/src/app/layout.tsx'));
     expect(layout).toContain('<AppProviders>');

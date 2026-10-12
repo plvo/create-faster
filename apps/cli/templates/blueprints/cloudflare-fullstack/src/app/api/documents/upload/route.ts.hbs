@@ -16,6 +16,11 @@ export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
 
+  const { success: canCreate } = await auth.api.userHasPermission({
+    body: { userId: session.user.id, permissions: { document: ['create'] } },
+  });
+  if (!canCreate) return new NextResponse('Forbidden', { status: 403 });
+
   let form: FormData;
   try {
     form = await req.formData();
