@@ -12,6 +12,16 @@ const BETTER_AUTH_VERSION = '^1.7.7';
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';
 
+const LEADING_ENV_ASSIGNMENTS = /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+/;
+
+// portless single-quotes each argument it runs, so a leading `VAR=value` would be executed as a command name.
+// The assignments stay in front of `portless`, which hands its environment down to the app.
+const wrapWithPortless = (cmd: string): string => {
+  const envAssignments = cmd.match(LEADING_ENV_ASSIGNMENTS)?.[0] ?? '';
+  const command = cmd.slice(envAssignments.length).replace(/\s*--port\s+\S+/g, '');
+  return `${envAssignments}portless run ${command}`;
+};
+
 export const META: Meta = {
   stacks: {
     nextjs: {
@@ -948,11 +958,8 @@ export const META: Meta = {
           },
           runtime: {
             appScripts: {
-              dev: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
-              'start:portless': {
-                from: 'start',
-                wrap: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
-              },
+              dev: wrapWithPortless,
+              'start:portless': { from: 'start', wrap: wrapWithPortless },
             },
             resolveAppUrl: ({ projectName, appName, isTurborepo }) =>
               `https://${isTurborepo ? appName : projectName}.localhost:1355`,
