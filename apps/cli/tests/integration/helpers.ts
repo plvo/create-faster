@@ -1,6 +1,7 @@
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
+import { expect } from 'bun:test';
 import { $ } from 'bun';
 
 export interface CliResult {
@@ -171,4 +172,50 @@ export async function readTerraformLambdas(projectPath: string): Promise<Terrafo
 
 export async function exportedNames(file: string): Promise<string[]> {
   return new Bun.Transpiler({ loader: 'ts' }).scan(await readTextFile(file)).exports;
+}
+
+const BUILD_TIME_DEV = "const isDev = process.env.NODE_ENV === 'development';";
+
+interface ErrorShape {
+  message: string;
+  code: number;
+  data: { code: string; httpStatus: number; path?: string; stack?: string };
+}
+
+type ErrorFormatter = (opts: { shape: ErrorShape; error: { code: string } }) => ErrorShape;
+
+/** Runs the errorFormatter of a generated init.ts, with isDev set as the build would set it. */
+function generatedErrorFormatter(init: string, isDev: boolean): ErrorFormatter {
+  const source = init.match(/errorFormatter: (\(\{ shape, error \}\) => \{[\s\S]*?\n {2}\}),\n\}\);/)?.[1];
+  expect(source).toBeDefined();
+  return new Function('isDev', `return (${source});`)(isDev) as ErrorFormatter;
+}
+
+const internalErrorShape = (): ErrorShape => ({
+  message: "select * from users where email = 'leak@example.com'",
+  code: -32603,
+  data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500, path: 'probe.fail', stack: 'Error: select * from users' },
+});
+
+/** The formatter of a generated init.ts hides internals outside development and keeps them in development. */
+export function expectFormatterHidesInternals(init: string): void {
+  expect(init).toContain(BUILD_TIME_DEV);
+  expect(init).toContain('  isDev,');
+
+  const production = generatedErrorFormatter(init, false);
+  expect(production({ shape: internalErrorShape(), error: { code: 'INTERNAL_SERVER_ERROR' } })).toEqual({
+    message: 'Internal server error',
+    code: -32603,
+    data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500, path: 'probe.fail' },
+  });
+  const badRequest = production({
+    shape: { message: 'Too small', code: -32600, data: { code: 'BAD_REQUEST', httpStatus: 400, stack: 'Error: x' } },
+    error: { code: 'BAD_REQUEST' },
+  });
+  expect(badRequest).toEqual({ message: 'Too small', code: -32600, data: { code: 'BAD_REQUEST', httpStatus: 400 } });
+
+  const development = generatedErrorFormatter(init, true);
+  expect(development({ shape: internalErrorShape(), error: { code: 'INTERNAL_SERVER_ERROR' } })).toEqual(
+    internalErrorShape(),
+  );
 }
