@@ -250,7 +250,36 @@ describeWithDocker('multitenant-saas blueprint e2e')('multitenant-saas: signup a
 
     const accepted = await post(server, '/api/auth/organization/accept-invitation', { invitationId }, { cookie: inviteeCookie });
     expect(accepted.status, await accepted.clone().text()).toBe(200);
+  });
 
+  test('pages that prefetch redirect a forged cookie to login and a user without an organization to onboarding', async () => {
+    const forgedCookie = 'better-auth.session_token=forged-token.forged-signature';
+    for (const path of ['/profile/account', '/profile/sessions', '/projects']) {
+      const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie: forgedCookie } });
+      expect([path, response.status, response.headers.get('location')]).toEqual([path, 307, '/login']);
+    }
+
+    const signUp = await post(
+      server,
+      '/api/auth/sign-up/email',
+      { email: 'drifter@example.com', password: 'drifter-password', name: 'Drifter' },
+      { 'x-forwarded-for': '10.1.0.4' },
+    );
+    expect(signUp.status, await signUp.clone().text()).toBe(200);
+    const drifterCookie = await signIn(server, 'drifter@example.com', 'drifter-password', '10.1.0.5');
+    for (const path of ['/profile/account', '/profile/sessions']) {
+      const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie: drifterCookie } });
+      expect([path, response.status, response.headers.get('location')]).toEqual([path, 307, '/onboarding']);
+    }
+
+    const ownerCookie = await signIn(server, 'owner@example.com', SEED_PASSWORD, '10.1.0.6');
+    for (const path of ['/profile/account', '/profile/sessions']) {
+      const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie: ownerCookie } });
+      expect([path, response.status]).toEqual([path, 200]);
+    }
+  });
+
+  test('the server logs no error', async () => {
     const { stdout, stderr } = await server.stop();
     expect(`${stdout}\n${stderr}`).not.toMatch(/Error|⨯/);
   });
