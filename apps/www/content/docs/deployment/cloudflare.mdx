@@ -99,7 +99,7 @@ A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and for
 ```
 
 - **Setup:** `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc`. `localConnectionString` is used by local runs only (`wrangler dev`, `vite dev`, `vite preview`) and matches your local `DATABASE_URL`.
-- **Migrations** run on Node via `drizzle-kit` against `DATABASE_URL` — unchanged by Hyperdrive.
+- **Migrations** run on Node via `drizzle-kit` or the `prisma` CLI against `DATABASE_URL` — unchanged by Hyperdrive.
 - better-auth / tRPC over a Cloudflare binding database (per-request consumers) is not wired yet, so those combinations are disabled with a reason on Cloudflare (tracked in [#153](https://github.com/plvo/create-faster/issues/153)).
 
 ## Shared behavior
