@@ -358,7 +358,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     const router = bpFile('src/trpc/routers/documents.ts.hbs');
     expect(router).not.toContain("import('@/lib/env')");
     expect(router).toContain("import('@opennextjs/cloudflare')");
-    expect(router).toContain('env.STORAGE.delete');
+    expect(router).toContain('.STORAGE.delete(doc.r2Key)');
   });
 
   test('dashboard shell mounts the sidebar provider, app sidebar, and header', () => {
