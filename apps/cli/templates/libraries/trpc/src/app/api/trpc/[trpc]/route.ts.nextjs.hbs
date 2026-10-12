@@ -27,12 +27,7 @@ const handler = (req: Request) => {
 {{else}}
     createContext: ({ req }) => createTRPCContext({ headers: req.headers }),
 {{/if}}
-    onError:
-      process.env.NODE_ENV === 'development'
-        ? ({ path, error }) => {
-            console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error.message);
-          }
-        : undefined,
+    {{> trpc/on-error dev="process.env.NODE_ENV === 'development'"}}
   });
 };
 
