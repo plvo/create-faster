@@ -450,7 +450,6 @@ export const META: Meta = {
           '@vitest/coverage-v8': '^4.1.11',
           '@vitejs/plugin-react': '^6.1.2',
           vite: '^8.3.4',
-          'vite-tsconfig-paths': '^6.1.1',
           jsdom: '^30.0.1',
           '@testing-library/react': '^16.3.3',
           '@testing-library/dom': '^10.4.1',
@@ -474,7 +473,6 @@ export const META: Meta = {
           vitest: '^4.1.11',
           '@vitest/coverage-v8': '^4.1.11',
           vite: '^8.2.2',
-          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           test: 'vitest run',
