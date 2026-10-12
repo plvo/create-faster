@@ -90,6 +90,8 @@ src/
 ├── hooks/
 │   └── use-permission.ts                             # usePermission({ resource: ['action'] }) → { allowed, loading }
 ├── lib/
+│   ├── auth/
+│   │   └── session.ts                                # requireSession(): cached session check, redirects to /login or /onboarding
 │   └── constants.ts                                  # ROUTES with per-route { resource, action } permission gating
 └── proxy.ts                                          # Next.js middleware (proxy export): session cookie guard
 ```
@@ -132,7 +134,7 @@ Email/password auth backed by Better Auth, with all four standard flows pre-wire
 - **Forgot password** (`/forgot-password`) — calls `authClient.requestPasswordReset` and shows a success state without leaking whether the email exists.
 - **Reset password** (`/reset-password?token=…`) — reads the token from search params, calls `authClient.resetPassword`, and routes errors via `?error=…`.
 
-`src/proxy.ts` exposes a single `proxy` export (Next.js middleware) that allow-lists `/login`, `/signup`, `/forgot-password`, `/reset-password` and `/accept-invitation`, and redirects every other page without a session cookie to `/login` (preserving the original path as `?redirect`). It runs no database query and does not match `/api` routes, so an anonymous tRPC call gets a `401` from the procedure. The cookie check is optimistic: the dashboard layout validates the session and sends users without an active organization to `/onboarding`.
+`src/proxy.ts` exposes a single `proxy` export (Next.js middleware) that allow-lists `/login`, `/signup`, `/forgot-password`, `/reset-password` and `/accept-invitation`, and redirects every other page without a session cookie to `/login` (preserving the original path as `?redirect`). It runs no database query and does not match `/api` routes, so an anonymous tRPC call gets a `401` from the procedure. The cookie check is optimistic: the dashboard layout validates the session through `requireSession()` (`src/lib/auth/session.ts`) and sends users without an active organization to `/onboarding`. Pages that prefetch tRPC data call it before the prefetch, because a layout and its page render in parallel and a forged or expired cookie must redirect without a failed query.
 
 ### Multi-tenant organizations
 

@@ -17,6 +17,7 @@ const getSession = cache(async () => auth.api.getSession({ headers: await header
 export async function requireSession() {
   const session = await getSession();
   if (!session) redirect('/login');
-  if (!session.session.activeOrganizationId) redirect('/onboarding');
-  return session;
+  const { activeOrganizationId } = session.session;
+  if (!activeOrganizationId) redirect('/onboarding');
+  return { ...session, activeOrganizationId };
 }

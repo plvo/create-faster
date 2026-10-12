@@ -96,7 +96,7 @@ describe('blueprint auth access', () => {
       const session = await readTextFile(join(projectPath, 'apps/web/src/lib/auth/session.ts'));
       expect(session).toMatch(/const getSession = cache\(/);
       expect(session).toMatch(/if \(!session\) redirect\('\/login'\)/);
-      expect(session).toMatch(/if \(!session\.session\.activeOrganizationId\) redirect\('\/onboarding'\)/);
+      expect(session).toMatch(/if \(!activeOrganizationId\) redirect\('\/onboarding'\)/);
     });
 
     test('the dashboard layout uses the same guard as the pages', async () => {
