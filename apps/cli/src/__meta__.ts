@@ -8,6 +8,8 @@ const NODE_TYPES_VERSION = '^22';
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
 const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
 
+const WRANGLER_VERSION = '^4.127.1';
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
@@ -551,7 +553,7 @@ export const META: Meta = {
           providesLocalFilesystem: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.127.1',
+              wrangler: WRANGLER_VERSION,
             },
           },
           stackPackageJson: {
@@ -592,7 +594,7 @@ export const META: Meta = {
           providesServerRuntime: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.127.1',
+              wrangler: WRANGLER_VERSION,
             },
           },
           stackPackageJson: {
@@ -726,6 +728,9 @@ export const META: Meta = {
           },
           deploymentPackageJson: {
             cloudflare: {
+              devDependencies: {
+                wrangler: WRANGLER_VERSION,
+              },
               scripts: {
                 'db:migrate': $when(
                   { repo: 'turborepo' },
