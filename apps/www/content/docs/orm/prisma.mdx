@@ -179,11 +179,13 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
+type Client = typeof prisma;
+
 export * from '../../../generated/prisma/client';
 
 // Type helpers
-export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
-export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
+export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
 ```
 
 With PostgreSQL, TLS follows `sslmode` in `DATABASE_URL` and defaults to on in production (see [PostgreSQL](/docs/database/postgresql#tls)). With MySQL, the whole `DATABASE_URL` goes to the adapter, so the driver reads its TLS settings from the URL, for example `?ssl=true` to connect over TLS and verify the server certificate. The local Docker MySQL has no TLS parameter and connects in plain text.
@@ -194,98 +196,12 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
 ```
 
-**With Better Auth**, the schema adds Session, Account, and Verification models:
-
-```prisma title="prisma/schema.prisma (Better Auth additions)"
-model User {
-  // ... base fields
-  accounts      Account[]
-  sessions      Session[]
-  posts         Post[]
-}
-
-model Session {
-  id        String   @id
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
-model Account {
-  id                      String    @id
-  userId                  String    @map("user_id")
-  accountId               String    @map("account_id")
-  providerId              String    @map("provider_id")
-  accessToken             String?   @map("access_token") @db.Text
-  refreshToken            String?   @map("refresh_token") @db.Text
-  accessTokenExpiresAt    DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt   DateTime? @map("refresh_token_expires_at")
-  scope                   String?
-  idToken                 String?   @map("id_token") @db.Text
-  password                String?
-  createdAt               DateTime  @default(now()) @map("created_at")
-  updatedAt               DateTime  @updatedAt @map("updated_at")
-
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("accounts")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@map("verifications")
-}
-```
-
-### index.ts
-
-PrismaClient singleton with global caching to prevent hot-reload issues. With PostgreSQL it uses the `PrismaPg` adapter, which connects with TLS in production unless `DATABASE_URL` sets `sslmode` (see [PostgreSQL](/docs/database/postgresql#tls)):
-
-```ts title="src/index.ts"
-import { PrismaClient } from '../generated/prisma'; // or '@prisma/client' in single repo
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-export * from '../generated/prisma'; // or '@prisma/client' in single repo
-
-export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
-export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
-export type UserWithPosts = Awaited<
-  ReturnType<typeof prisma.user.findUnique<{ where: { id: string }; include: { posts: true } }>>
->;
-export type PostWithAuthor = Awaited<
-  ReturnType<typeof prisma.post.findUnique<{ where: { id: string }; include: { author: true } }>>
->;
-```
-
 **With Better Auth**, additional type helpers are exported:
 
-```ts title="src/index.ts (Better Auth additions)"
-export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
-export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
-export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+```ts title="src/lib/db/index.ts (Better Auth additions)"
+export type Session = Awaited<ReturnType<Client['session']['findUnique']>>;
+export type Account = Awaited<ReturnType<Client['account']['findUnique']>>;
+export type Verification = Awaited<ReturnType<Client['verification']['findUnique']>>;
 ```
 
 ### seed.ts
@@ -298,48 +214,52 @@ import { prisma } from '@repo/db'; // or '../src/lib/db' in single repo
 async function seed() {
   console.log('🌱 Seeding database...');
 
+  // Clear existing data
   await prisma.post.deleteMany();
   await prisma.user.deleteMany();
 
+  // Create users
   const alice = await prisma.user.create({
     data: {
-      name: 'Alice Johnson',
+      username: 'alice',
       email: 'alice@example.com',
-      bio: 'Software engineer and open source enthusiast',
     },
   });
 
   const bob = await prisma.user.create({
     data: {
-      name: 'Bob Smith',
+      username: 'bob',
       email: 'bob@example.com',
-      bio: 'Tech writer and developer advocate',
     },
   });
 
+  console.log(`✅ Created 2 users`);
+
+  // Create posts
   await prisma.post.createMany({
     data: [
       {
         title: 'Getting Started with Prisma',
-        content: 'Prisma is a next-generation ORM...',
+        content: 'Prisma is a next-generation ORM that provides excellent type safety...',
         published: true,
         authorId: alice.id,
       },
       {
         title: 'Building Modern APIs',
-        content: 'Modern API development requires...',
+        content: 'Modern API development requires careful consideration of many factors...',
         published: true,
         authorId: alice.id,
       },
       {
         title: 'Draft: Upcoming Features',
-        content: 'This is a draft post...',
+        content: 'This is a draft post about upcoming features...',
         published: false,
         authorId: bob.id,
       },
     ],
   });
 
+  console.log(`✅ Created ${3} posts`);
   console.log('🎉 Seeding completed!');
 }
 
@@ -367,8 +287,12 @@ export function createDb(hyperdrive: Hyperdrive) {
   return new PrismaClient({ adapter });
 }
 export type Database = ReturnType<typeof createDb>;
+type Client = Database;
 
 export * from '../../../generated/prisma/client';
+
+export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
 ```
 
 With MySQL the adapter is `new PrismaMariaDb({ host, port, user, password, database })`, with each field read from the binding (`hyperdrive.host`, `hyperdrive.port`, and so on).
@@ -390,4 +314,4 @@ generator nodeClient {
 }
 ```
 
-`scripts/seed.ts` imports the second client, built on `DATABASE_URL` with the same adapter, because the seed runs on Bun. Migrations (`db:migrate`, `db:push`) also run on Node against `DATABASE_URL` and are unchanged.
+`scripts/seed.ts` imports the second client instead of `prisma` and builds it on `DATABASE_URL` with the same adapter as the Node client above, because the seed runs on Bun. Migrations (`db:migrate`, `db:push`) also run on Node against `DATABASE_URL` and are unchanged.
