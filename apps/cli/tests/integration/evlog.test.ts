@@ -82,9 +82,9 @@ describe('evlog Integration', () => {
       expect(result.exitCode).toBe(0);
     });
 
-    test('proxy.ts has both better-auth session and evlog middleware', async () => {
+    test('proxy.ts wraps the request with evlog and leaves the session to the page', async () => {
       const content = await readTextFile(join(projectPath, 'src/proxy.ts'));
-      expect(content).toContain('auth.api.getSession');
+      expect(content).not.toContain('auth.api.getSession');
       expect(content).toContain('evlogMiddleware');
       expect(content).toContain('withEvlog(request)');
     });
