@@ -275,7 +275,7 @@ describe('Cloudflare deployment platform', () => {
           '--app',
           `${projectName}:nextjs:better-auth,evlog`,
           '--database',
-          'sqlite',
+          'd1',
           '--orm',
           'drizzle',
           '--deployment',

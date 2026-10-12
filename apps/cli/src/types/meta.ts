@@ -78,6 +78,10 @@ export interface MetaAddon {
   serverlessConsumersWired?: boolean;
   /** Deployment that exposes databases as per-request bindings (e.g. Cloudflare D1/Hyperdrive). */
   providesDbBindings?: boolean;
+  /** Database stored in files on the local disk (e.g. SQLite), so it needs a deployment that provides a filesystem. */
+  needsLocalFilesystem?: boolean;
+  /** Deployment with a writable local filesystem. Defaults to true; set false for runtimes without one (e.g. Cloudflare Workers). */
+  providesLocalFilesystem?: boolean;
   /** Library that consumes a module-singleton `db` and cannot use a per-request binding database yet. */
   needsSingletonDb?: boolean;
   mono?: AddonMono;

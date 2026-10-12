@@ -57,9 +57,9 @@ describe('SQLite with TanStack Start on Nitro', () => {
     expect(pkg.dependencies?.[SQLITE_CLIENT]).toBeUndefined();
   });
 
-  test('turborepo on Cloudflare (no Nitro): the TanStack Start app does not get the sqlite client', async () => {
+  test('turborepo on Cloudflare static (no Nitro): the TanStack Start app does not get the sqlite client', async () => {
     const result = await runCli(
-      ['start-sqlite-cf', '--app', 'web:tanstack-start', '--app', 'api:hono', '--database', 'sqlite', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+      ['start-sqlite-cf', '--app', 'web:tanstack-start', '--app', 'api:hono', '--database', 'sqlite', '--orm', 'drizzle', '--deployment', 'cloudflare-static', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
