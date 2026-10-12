@@ -1,47 +1,46 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { spinner } from '@clack/prompts';
 import color from 'picocolors';
-import { getErrorMessage } from '@/lib/error-utils';
+import { runCommand } from '@/lib/run-command';
 import type { TemplateContext } from '@/types/ctx';
 
-const execAsync = promisify(exec);
+export interface InstallFailure {
+  command: string;
+  output: string;
+}
 
-export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<void> {
-  if (ctx.pm && !ctx.skipInstall) {
-    const s = spinner();
-    try {
-      s.start(`Installing dependencies with ${ctx.pm}...`);
+interface PostGenerationResult {
+  installFailure?: InstallFailure;
+  gitFailure?: string;
+}
 
-      const installCommand = `${ctx.pm} install`;
-
-      await execAsync(installCommand, {
-        cwd: projectPath,
-        timeout: 300000,
-      });
-      s.stop(`Dependencies installed successfully!`);
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      s.stop(
-        color.yellow(
-          `⚠ Warning: Failed to install dependencies: ${errorMessage}\nYou can manually run the install command later.`,
-        ),
-      );
-    }
+async function installDependencies(ctx: TemplateContext, projectPath: string): Promise<InstallFailure | undefined> {
+  const command = `${ctx.pm} install`;
+  const s = spinner();
+  s.start(`Installing dependencies with ${ctx.pm}...`);
+  const result = await runCommand(command, projectPath);
+  if (result.success) {
+    s.stop(`Dependencies installed successfully!`);
+    return undefined;
   }
+  s.stop(color.red('Failed to install dependencies'), 1);
+  return { command, output: result.output };
+}
 
-  if (ctx.git) {
-    const s = spinner();
-    try {
-      s.start('Initializing git repository...');
-
-      await execAsync('git init', { cwd: projectPath, timeout: 10000 });
-      s.stop('Git repository initialized successfully!');
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      s.stop(
-        color.yellow(`⚠ Warning: Failed to initialize git: ${errorMessage}\nYou can manually run "git init" later.`),
-      );
-    }
+async function initializeGit(projectPath: string): Promise<string | undefined> {
+  const s = spinner();
+  s.start('Initializing git repository...');
+  const result = await runCommand('git init', projectPath);
+  if (result.success) {
+    s.stop('Git repository initialized successfully!');
+    return undefined;
   }
+  s.stop(color.yellow(`⚠ Warning: Failed to initialize git: ${result.output}\nYou can manually run "git init" later.`));
+  return result.output;
+}
+
+export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {
+  const installFailure = ctx.pm && !ctx.skipInstall ? await installDependencies(ctx, projectPath) : undefined;
+  const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
+
+  return { installFailure, gitFailure };
 }
