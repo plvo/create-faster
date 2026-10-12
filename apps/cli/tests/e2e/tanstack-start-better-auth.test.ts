@@ -7,6 +7,7 @@ import {
   expectAnonymousSession,
   expectAuthApiFlow,
   expectMixedUsersKeepTheirOwnSession,
+  expectRateLimitKeysOn,
   expectSignedInFlow,
   expectTrpcAnonymousSession,
   expectTrpcReadsWithoutRefreshing,
@@ -259,6 +260,7 @@ describe.each(SCENARIOS)(
           await expectServesPageWithClientScript(server.url);
           await expectAnonymousFlow(server.url);
           if (liveDatabase) {
+            await expectRateLimitKeysOn(server.url, 'x-forwarded-for');
             await expectSignedInFlow(server.url);
             await expectMixedUsersKeepTheirOwnSession(server.url);
           }
@@ -316,6 +318,7 @@ describe.each(SCENARIOS)(
           await expectAnonymousSession(server.url);
           await expectTrpcAnonymousSession(server.url);
           if (liveDatabase) {
+            await expectRateLimitKeysOn(server.url, 'x-forwarded-for');
             const user = await expectAuthApiFlow(server.url);
             await expectTrpcReadsWithoutRefreshing(server.url, dbPath(), user);
           }

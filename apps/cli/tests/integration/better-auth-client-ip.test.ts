@@ -12,10 +12,22 @@ interface Generation {
   trustedHeader: string;
 }
 
+const NEXTJS_SQLITE_ARGS = ['--app', 'web:nextjs:better-auth', '--database', 'sqlite', '--orm', 'drizzle'];
+const START_CLOUDFLARE_D1_ARGS = [
+  '--app',
+  'web:tanstack-start:better-auth',
+  '--database',
+  'd1',
+  '--orm',
+  'drizzle',
+  '--deployment',
+  'cloudflare',
+];
+
 const GENERATIONS: Generation[] = [
   {
     name: 'nextjs-none',
-    args: ['--app', 'web:nextjs:better-auth', '--database', 'sqlite', '--orm', 'drizzle'],
+    args: NEXTJS_SQLITE_ARGS,
     authFile: 'src/lib/auth/create-auth.ts',
     trustedHeader: FORWARDED_HEADER,
   },
@@ -27,16 +39,7 @@ const GENERATIONS: Generation[] = [
   },
   {
     name: 'start-cloudflare-d1',
-    args: [
-      '--app',
-      'web:tanstack-start:better-auth',
-      '--database',
-      'd1',
-      '--orm',
-      'drizzle',
-      '--deployment',
-      'cloudflare',
-    ],
+    args: START_CLOUDFLARE_D1_ARGS,
     authFile: 'src/lib/auth/create-auth.ts',
     trustedHeader: CLOUDFLARE_HEADER,
   },
@@ -138,14 +141,14 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
   }
 
   test('the agent notes tell a non-Cloudflare deployment to run behind a proxy that overwrites x-forwarded-for', async () => {
-    const projectPath = await generate('notes-none', GENERATIONS[0].args);
+    const projectPath = await generate('notes-none', NEXTJS_SQLITE_ARGS);
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
     expect(agents).toContain('x-forwarded-for');
     expect(agents).toContain('reverse proxy or CDN');
   });
 
   test('the agent notes name cf-connecting-ip on Cloudflare', async () => {
-    const projectPath = await generate('notes-cloudflare', GENERATIONS[2].args);
+    const projectPath = await generate('notes-cloudflare', START_CLOUDFLARE_D1_ARGS);
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
     expect(agents).toContain('cf-connecting-ip');
     expect(agents).not.toContain('reverse proxy or CDN');

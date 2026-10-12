@@ -6,6 +6,7 @@ import {
   expectAnonymousFlow,
   expectAuthApiFlow,
   expectMixedUsersKeepTheirOwnSession,
+  expectRateLimitKeysOn,
   expectSignedInFlow,
   writeAuthEnv,
   writeSessionProbeRoute,
@@ -466,6 +467,7 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
           if (d1Probe?.appDir === dir) await expectProbeAnswers(server.url);
           if (authProbe?.appDir === dir) {
             await expectAnonymousFlow(server.url);
+            await expectRateLimitKeysOn(server.url, 'cf-connecting-ip');
             await expectSignedInFlow(server.url);
             await expectMixedUsersKeepTheirOwnSession(server.url);
           }
