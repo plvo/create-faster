@@ -100,8 +100,16 @@ describe.each(APPS)('generated Hono app, $name', ({ name, args }) => {
     });
     expect(res.status).toBe(204);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET,POST');
     expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type,Authorization');
+  });
+
+  test.each(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])('a preflight for %s allows the method', async (method) => {
+    const res = await app.request('/health/1', {
+      method: 'OPTIONS',
+      headers: { Origin: 'https://app.example', 'Access-Control-Request-Method': method },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get('Access-Control-Allow-Methods')?.split(',')).toContain(method);
   });
 
   test('a cross-origin response carries the allowed origin, error responses included', async () => {
