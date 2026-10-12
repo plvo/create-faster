@@ -26,7 +26,7 @@ packages/db/
 ├── src/
 │   ├── schema.ts           # Database schema with User, Post, auth tables
 │   ├── types.ts            # Inferred TypeScript types
-│   └── index.ts            # Database connection
+│   └── index.ts            # Database connection with SSL config
 ├── scripts/
 │   └── seed.ts             # Seed script with sample data
 ├── drizzle.config.ts       # Drizzle Kit configuration
@@ -74,7 +74,7 @@ export default defineConfig({
 
 ### index.ts
 
-Database connection instance. Shown here with PostgreSQL, where TLS follows the `sslmode` parameter of `DATABASE_URL` (see [PostgreSQL](/docs/database/postgresql#tls)):
+Database connection instance with SSL config. Shown here with PostgreSQL, where TLS is on in production unless `DATABASE_URL` sets `sslmode` (see [PostgreSQL](/docs/database/postgresql#tls)):
 
 ```ts title="src/index.ts"
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -88,6 +88,7 @@ export const db = drizzle({
   schema,
   connection: {
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production',
   },
 });
 

@@ -616,7 +616,7 @@ export const META: Meta = {
           envs: [
             {
               value:
-                'DATABASE_URL="postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}" # Local Docker PostgreSQL',
+                'DATABASE_URL="postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}?sslmode=disable" # Local Docker PostgreSQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],

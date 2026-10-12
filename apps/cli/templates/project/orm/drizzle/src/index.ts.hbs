@@ -87,8 +87,10 @@ function createDb() {
 {{#if (has "database" "postgres")}}
   return drizzle({
     schema,
+    // TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
     connection: {
       connectionString: databaseUrl,
+      ssl: process.env.NODE_ENV === 'production',
     },
   });
 {{/if}}

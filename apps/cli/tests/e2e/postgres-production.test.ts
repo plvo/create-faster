@@ -287,8 +287,12 @@ describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
       TIMEOUT_BUILD,
     );
 
+    test('the generated local DATABASE_URL disables TLS', () => {
+      expect(new URL(localUrl).searchParams.get('sslmode')).toBe('disable');
+    });
+
     test.each(apps)(
-      '$dir production server queries the database through the generated local DATABASE_URL',
+      '$dir production server reaches the non-TLS database: sslmode=disable in DATABASE_URL wins over the TLS default',
       async (app) => {
         const { status, body, serverOutput } = await callDbProbe(join(projectDir, app.dir), app, 'start', localUrl);
         expect(status, `${body}\n${serverOutput}`).toBe(200);
@@ -298,7 +302,7 @@ describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
     );
 
     test.each(apps)(
-      '$dir production server requires TLS when DATABASE_URL has no sslmode',
+      '$dir production server requires TLS by default: a DATABASE_URL without sslmode fails against the non-TLS database',
       async (app) => {
         const { status, serverOutput } = await callDbProbe(
           join(projectDir, app.dir),
