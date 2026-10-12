@@ -1,5 +1,5 @@
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { auth } from '@/lib/auth/auth';
 
@@ -7,9 +7,25 @@ const getSession = cache(async () => auth.api.getSession({ headers: await header
 
 // Layouts and pages render in parallel: a layout redirect does not stop the page from running. Every
 // page that prefetches protected data awaits this first, so an anonymous visit redirects before any
-// protected query starts.
+// protected query starts. A page whose prefetch needs more than a session awaits the matching guard below
+// instead (it includes requireSession), so a rejected query never starts and nothing is logged.
 export async function requireSession() {
   const session = await getSession();
   if (!session?.user.role) redirect('/login');
+  return session;
+}
+
+export async function requireAdmin() {
+  const session = await requireSession();
+  if (session.user.role !== 'admin') redirect('/');
+  return session;
+}
+
+export async function requirePermission(resource: string, action: string) {
+  const session = await requireSession();
+  const { success } = await auth.api.userHasPermission({
+    body: { userId: session.user.id, permissions: { [resource]: [action] } },
+  });
+  if (!success) notFound();
   return session;
 }

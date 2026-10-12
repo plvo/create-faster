@@ -1,7 +1,5 @@
 {{{{raw}}}}
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/auth';
+import { requireAdmin } from '@/lib/auth/session';
 import { roleDefinitions, statement } from '@repo/auth/permissions';
 
 const RESOURCES = Object.keys(statement) as Array<keyof typeof statement>;
@@ -13,8 +11,7 @@ function grantedActions(role: keyof typeof roleDefinitions, resource: string): r
 }
 
 export default async function RolesPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (session?.user.role !== 'admin') redirect('/');
+  await requireAdmin();
 
   const roleNames = Object.keys(roleDefinitions) as Array<keyof typeof roleDefinitions>;
 
