@@ -12,13 +12,17 @@ description: Pre-configured devtools shell with TanStack Query, Router and Form 
 
 ### Next.js
 
+New files:
+- `src/components/devtools.tsx` - The `TanStackDevtools` shell and its panels
+
 Modified files:
-- `src/app/layout.tsx` - Adds devtools panel (development only)
+- `src/app/layout.tsx` - Loads the devtools component with a dynamic import in development only, so a production build never bundles it
 
 **Configuration:**
 - Position: top-left
-- TanStack Query plugin integrated
-- Server bus connection enabled
+- TanStack Query panel with [TanStack Query](/docs/modules/data-fetching/tanstack-query) (`@tanstack/react-query-devtools` is added only then)
+- TanStack Form panel with [TanStack Form](/docs/modules/forms/tanstack-form) (`@tanstack/react-form-devtools` is added only then)
+- No panel without those libraries: the shell opens empty, ready for custom devtools
 
 ### TanStack Start
 
