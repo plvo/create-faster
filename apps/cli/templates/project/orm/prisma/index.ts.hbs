@@ -3,15 +3,18 @@ path: src/lib/db/index.ts
 mono:
   path: src/index.ts
 ---
-{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { PrismaPg } from '@prisma/adapter-pg';
+{{#unless (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+import { parse as parseConnectionString } from 'pg-connection-string';
+{{/unless}}
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 {{/if}}
 import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
 
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 export function createDb(hyperdrive: Hyperdrive) {
 {{#if (has "database" "postgres")}}
   const adapter = new PrismaPg({ connectionString: hyperdrive.connectionString });
@@ -28,31 +31,14 @@ export function createDb(hyperdrive: Hyperdrive) {
   return new PrismaClient({ adapter });
 }
 export type Database = ReturnType<typeof createDb>;
-
-export * from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
+type Client = Database;
 {{else}}
-{{#if (has "database" "postgres")}}
-import { PrismaPg } from '@prisma/adapter-pg';
-import { parse as parseConnectionString } from 'pg-connection-string';
-{{/if}}
-{{#if (has "database" "mysql")}}
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-{{/if}}
-import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
-
 {{#if (has "database" "postgres")}}
 {{> postgres/tls-warning}}
 
 warnIfProductionTlsDisabled(process.env.DATABASE_URL);
-// TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-  ssl: process.env.NODE_ENV === 'production',
-});
 {{/if}}
-{{#if (has "database" "mysql")}}
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
-{{/if}}
+{{> prisma/node-adapter}}
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -62,16 +48,18 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
+type Client = typeof prisma;
+{{/if}}
+
 export * from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
 
 // Type helpers
-export type User = Awaited<ReturnType<typeof prisma.user.findUnique>>;
-export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
+export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
+export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
 
 {{#if (hasLibrary "better-auth")}}
 // Auth types
-export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
-export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
-export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
-{{/if}}
+export type Session = Awaited<ReturnType<Client['session']['findUnique']>>;
+export type Account = Awaited<ReturnType<Client['account']['findUnique']>>;
+export type Verification = Awaited<ReturnType<Client['verification']['findUnique']>>;
 {{/if}}
