@@ -35,7 +35,8 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 - `{{pm}} dev` — start the dev server
 - `{{pm}} build` — production build
 {{#if (has "orm" "drizzle")~}}
-- `{{pm}} db:push` — sync the Drizzle schema
+- `{{pm}} db:generate` — write a SQL migration from the schema
+- `{{pm}} db:migrate` — apply the migrations
 {{/if~}}
 {{#if (has "orm" "prisma")~}}
 - `{{pm}} db:push` — sync the Prisma schema

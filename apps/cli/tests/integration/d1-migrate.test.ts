@@ -77,10 +77,10 @@ describe('Turborepo: d1 migrate workflow points at the deploy app config and a s
     expect(root.devDependencies?.['drizzle-orm']).toBeUndefined();
   });
 
-  test('local-setup seeds from the db package that owns the seed script', async () => {
+  test('local-setup generates the migrations, applies them and seeds from the db package that owns the seed script', async () => {
     const pkg = JSON.parse(await readTextFile(join(projectPath, 'packages/db/package.json')));
     expect(pkg.scripts['local-setup']).toBe(
-      'wrangler --config ../../apps/web/wrangler.jsonc d1 migrations apply DB --local --persist-to ../../.wrangler && bun run db:seed',
+      'bun run db:generate && wrangler --config ../../apps/web/wrangler.jsonc d1 migrations apply DB --local --persist-to ../../.wrangler && bun run db:seed',
     );
   });
 });
@@ -120,6 +120,9 @@ describe('Single repo: d1 migrate workflow stays self-consistent on one local st
     const pkg = JSON.parse(await readTextFile(join(projectPath, 'package.json')));
     expect(pkg.scripts['db:migrate']).toBe('wrangler d1 migrations apply DB --local --persist-to ./.wrangler');
     expect(pkg.scripts.preview).toBe('opennextjs-cloudflare preview -- --persist-to ./.wrangler');
+    expect(pkg.scripts['local-setup']).toBe(
+      'bun run db:generate && wrangler d1 migrations apply DB --local --persist-to ./.wrangler && bun run db:seed',
+    );
 
     const wrangler = await readTextFile(join(projectPath, 'wrangler.jsonc'));
     expect(wrangler).toContain('"migrations_dir": "drizzle"');

@@ -158,7 +158,7 @@ These are only needed for `db:migrate:remote` (production migrations via `d1-htt
 | `db:generate` | Generate migration SQL from schema changes (`drizzle-kit generate`) |
 | `db:migrate` / `db:migrate:local` | Apply migrations to the local D1 |
 | `db:migrate:remote` | Apply migrations to the production D1 database |
-| `local-setup` | First-time local setup: migrate + seed |
+| `local-setup` | First-time local setup: generate the migrations, apply them, seed |
 
 **Single repo** — everything is co-located at the project root, so migrate runs against the root `wrangler.jsonc` and the local state at `./.wrangler`.
 

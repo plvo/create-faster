@@ -14,8 +14,8 @@ description: Prisma is a next-generation ORM with an intuitive data model, autom
 Beyond the official setup, we include:
 
 **Development Scripts:**
-- `db:generate` - Generate Prisma Client from schema
-- `db:migrate` - Create and apply migrations
+- `db:generate` - Generate Prisma Client from schema (runs automatically before `dev` and `build`)
+- `db:migrate` - Create and apply migrations (asks for a migration name, so run it from a terminal)
 - `db:push` - Push schema to database (dev)
 - `db:studio` - Launch Prisma Studio visual editor
 - `db:seed` - Populate database with sample data
