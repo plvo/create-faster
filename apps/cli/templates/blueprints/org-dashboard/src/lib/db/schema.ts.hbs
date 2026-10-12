@@ -66,6 +66,7 @@ export const userSessionTable = mysqlTable('user_sessions', {
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: varchar('ip_address', { length: 255 }),
   userAgent: varchar('user_agent', { length: 255 }),
+  impersonatedBy: varchar('impersonated_by', { length: 36 }),
   ...timeColumns,
 });
 

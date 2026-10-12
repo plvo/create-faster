@@ -45,6 +45,7 @@ export const userSessionTable = sqliteTable('user_sessions', {
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  impersonatedBy: text('impersonated_by'),
   ...timeColumns,
 });
 
