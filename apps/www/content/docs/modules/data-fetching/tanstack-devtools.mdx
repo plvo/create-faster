@@ -1,14 +1,16 @@
 ---
 title: TanStack Devtools
-description: Pre-configured devtools panel with TanStack Query plugin integration.
+description: Pre-configured devtools shell with TanStack Query, Router and Form panels.
 ---
 
 <Stacks names="nextjs,tanstack-start" />
-<Dependencies dev="@tanstack/react-devtools,@tanstack/react-query-devtools" />
+<Dependencies dev="@tanstack/react-devtools,@tanstack/react-query-devtools,@tanstack/devtools-vite,@tanstack/react-form-devtools" />
 
 [→ TanStack Devtools Documentation](https://tanstack.com/devtools)
 
 ## What create-faster adds
+
+### Next.js
 
 Modified files:
 - `src/app/layout.tsx` - Adds devtools panel (development only)
@@ -17,3 +19,15 @@ Modified files:
 - Position: top-left
 - TanStack Query plugin integrated
 - Server bus connection enabled
+
+### TanStack Start
+
+Modified files:
+- `src/routes/__root.tsx` - Replaces the standalone router devtools with the `TanStackDevtools` shell, rendered inside the document body
+- `vite.config.ts` - Adds the `@tanstack/devtools-vite` plugin first in the plugins list, which removes the devtools from production builds
+
+**Configuration:**
+- Position: bottom-right
+- TanStack Router panel always
+- TanStack Query panel with [TanStack Query](/docs/modules/data-fetching/tanstack-query)
+- TanStack Form panel with [TanStack Form](/docs/modules/forms/tanstack-form) (`@tanstack/react-form-devtools` is added only then)

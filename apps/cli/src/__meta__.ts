@@ -334,6 +334,14 @@ export const META: Meta = {
           '@tanstack/react-query-devtools': '^5.102.8',
         },
       },
+      stackPackageJson: {
+        'tanstack-start': {
+          devDependencies: {
+            '@tanstack/devtools-vite': '^0.8.5',
+            '@tanstack/react-form-devtools': $when({ library: 'tanstack-form' }, '^0.2.34'),
+          },
+        },
+      },
     },
     'react-hook-form': {
       label: 'React Hook Form',
