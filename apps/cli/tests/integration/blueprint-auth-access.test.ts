@@ -1,14 +1,24 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 describe('blueprint auth access', () => {
   let tempDir: string;
 
-  const generate = async (blueprint: string): Promise<string> => {
-    const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-    expect(result.exitCode).toBe(0);
-    return join(tempDir, blueprint);
+  const generated = new Map<string, Promise<string>>();
+
+  const generate = (blueprint: string): Promise<string> => {
+    const existing = generated.get(blueprint);
+    if (existing) return existing;
+    const created = runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir).then(
+      (result) => {
+        expect(result.exitCode).toBe(0);
+        return join(tempDir, blueprint);
+      },
+    );
+    generated.set(blueprint, created);
+    return created;
   };
 
   beforeAll(async () => {
@@ -24,6 +34,22 @@ describe('blueprint auth access', () => {
       const projectPath = await generate('org-dashboard');
       const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
       expect(auth).toMatch(/emailAndPassword: \{[^}]*disableSignUp: true/);
+    });
+
+    test('every page that prefetches protected data requires the session first', async () => {
+      const projectPath = await generate('org-dashboard');
+      const appDir = join(projectPath, 'apps/web/src/app');
+      const pages = (await readdir(appDir, { recursive: true })).filter((file) => file.endsWith('page.tsx'));
+      const prefetchingPages = [];
+      for (const page of pages) {
+        const source = await readTextFile(join(appDir, page));
+        if (!source.includes('prefetch(')) continue;
+        prefetchingPages.push(page);
+        const guard = source.indexOf('await requireSession()');
+        expect(guard, `${page} must await requireSession() before prefetching`).toBeGreaterThan(-1);
+        expect(guard).toBeLessThan(source.indexOf('prefetch('));
+      }
+      expect(prefetchingPages.length).toBeGreaterThan(0);
     });
   });
 });

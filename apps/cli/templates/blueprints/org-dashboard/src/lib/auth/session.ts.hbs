@@ -1,0 +1,15 @@
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { cache } from 'react';
+import { auth } from '@/lib/auth/auth';
+
+const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
+
+// Layouts and pages render in parallel: a layout redirect does not stop the page from running. Every
+// page that prefetches protected data awaits this first, so an anonymous visit redirects before any
+// protected query starts.
+export async function requireSession() {
+  const session = await getSession();
+  if (!session?.user.role) redirect('/login');
+  return session;
+}
