@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 
@@ -233,13 +233,13 @@ export const auth = createAuth(db, tanstackStartCookies());
     test('every wrangler.jsonc binds the one project D1 database and points at the shared migrations', async () => {
       const migrationsDir = '../../packages/db/drizzle';
       expect(await readTextFile(join(path, 'apps/web/wrangler.jsonc'))).toBe(
-        d1Wrangler('web', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, migrationsDir, 'cf-turbo-d1'),
+        d1Wrangler('cf-turbo-d1-web', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, migrationsDir, 'cf-turbo-d1'),
       );
       expect(await readTextFile(join(path, 'apps/start/wrangler.jsonc'))).toBe(
-        d1Wrangler('start', 'src/server.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
+        d1Wrangler('cf-turbo-d1-start', 'src/server.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
       );
       expect(await readTextFile(join(path, 'apps/api/wrangler.jsonc'))).toBe(
-        d1Wrangler('api', 'src/index.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
+        d1Wrangler('cf-turbo-d1-api', 'src/index.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
       );
     });
 

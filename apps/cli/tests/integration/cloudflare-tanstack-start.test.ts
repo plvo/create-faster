@@ -155,7 +155,7 @@ describe('TanStack Start + cloudflare', () => {
 
     test('web app gets its own wrangler.jsonc with the monorepo migrations dir', async () => {
       const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(wrangler).toContain('"name": "web"');
+      expect(wrangler).toContain('"name": "start-turbo-web"');
       expect(wrangler).toContain('"main": "src/server.ts"');
       expect(wrangler).toContain('"migrations_dir": "../../packages/db/drizzle"');
     });

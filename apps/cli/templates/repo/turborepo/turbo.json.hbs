@@ -21,7 +21,18 @@
     "start": {
       "cache": false,
       "persistent": true
-    }{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
+    }{{#if (hasRootScript "test")}},
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env"]
+    }{{/if}}{{#if (hasRootScript "test:e2e")}},
+    "test:e2e": {
+{{#if (has "orm" "prisma")}}
+      "dependsOn": ["^db:generate"],
+{{/if}}
+      "inputs": ["$TURBO_DEFAULT$", ".env"],
+      "cache": false
+    }{{/if}}{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
     "db:push": {
       "cache": false
     },

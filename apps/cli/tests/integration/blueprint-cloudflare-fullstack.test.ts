@@ -34,6 +34,13 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(wrangler).toContain('"binding": "STORAGE"');
   });
 
+  test('Worker names carry the project name so two projects on one account do not overwrite each other', async () => {
+    const web = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
+    const cron = await readTextFile(join(projectPath, 'apps/cron/wrangler.jsonc'));
+    expect(web).toContain(`"name": "${projectName}-web"`);
+    expect(cron).toContain(`"name": "${projectName}-cron"`);
+  });
+
   test('web wrangler sets NODE_ENV=production in the Worker vars, as the generic Next.js template does', async () => {
     const wrangler = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
     expect(wrangler).toContain('"vars": {\n    "NODE_ENV": "production"\n  }');

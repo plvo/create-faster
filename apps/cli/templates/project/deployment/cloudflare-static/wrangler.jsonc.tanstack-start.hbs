@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
+  "name": "{{> cloudflare/worker-name}}",
   "compatibility_date": "2026-06-12",
   "assets": {
     "directory": "dist/client",
