@@ -70,4 +70,17 @@ describe('Next.js proxy', () => {
       expect(proxy).not.toContain('user.id');
     });
   });
+
+  describe('blueprints with a protecting proxy', () => {
+    test.each([
+      ['multitenant-saas', 'apps/web/src/proxy.ts'],
+      ['dapp-rainbowkit', 'src/proxy.ts'],
+    ])('%s: the proxy checks the session cookie and leaves API routes alone', async (blueprint, file) => {
+      const projectPath = await generate(`proxy-${blueprint}`, ['--blueprint', blueprint]);
+      const proxy = await readTextFile(join(projectPath, file));
+      expect(proxy).toContain("import { getSessionCookie } from 'better-auth/cookies'");
+      expect(proxy).not.toMatch(SESSION_LOOKUP);
+      expect(proxy).toMatch(/matcher: \['\/\(\(\?!api\|/);
+    });
+  });
 });
