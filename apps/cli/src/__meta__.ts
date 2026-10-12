@@ -5,6 +5,9 @@ const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflar
 
 const NODE_TYPES_VERSION = '^22';
 
+// Workspace packages type-check on their own, without the app's wrangler-generated binding types.
+const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
@@ -247,6 +250,8 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
         },
         exports: {
           './auth': './src/auth.ts',
@@ -289,6 +294,8 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
@@ -767,6 +774,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
             },
             scripts: {
@@ -802,6 +810,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
               prisma: '^7.10.0',
             },

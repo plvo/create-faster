@@ -5,7 +5,7 @@ only: mono
   "extends": "@repo/config/ts/base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "types": ["node"{{#if (has "database" "d1")}}, "bun"{{/if}}]
+    "types": ["node"{{#if (has "database" "d1")}}, "bun"{{/if}}{{#if (has "deployment" "cloudflare")}}, "@cloudflare/workers-types"{{/if}}]
   },
   "include": ["."],
   "exclude": ["node_modules"]
