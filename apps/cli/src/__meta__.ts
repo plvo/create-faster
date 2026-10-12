@@ -33,7 +33,7 @@ export const META: Meta = {
       hint: 'React framework with SSR',
       packageJson: {
         dependencies: {
-          next: '^16.1.1',
+          next: '^16.3.0',
           react: '^19.2.8',
           'react-dom': '^19.2.8',
           'tw-animate-css': '^1.4.0',

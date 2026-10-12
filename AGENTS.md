@@ -276,6 +276,8 @@ A workspace package is generated from META (`collectMonoPackages`): library and 
 
 Every generated project gets an `AGENTS.md` plus a `CLAUDE.md` containing exactly `@AGENTS.md`, next to every `AGENTS.md` (the root one and, in a turborepo, `apps/{app}/`). `--no-agent-context` skips them and any blueprint `docs/agents/` file. `lib/agent-context-generator.ts` assembles them from `__agent.md.hbs` fiches placed beside the stack, library and project addon templates (frontmatter `scope`, `heading`, `order`; a fiche rendering empty is dropped), under the header `repo/{single,turborepo}/__agent.md.hbs`. Blueprints add an About section and the `agentArchitecture` text from META.
 
+The Next.js `next.config.ts.hbs` sets `agentRules: false` (option of Next.js 16.3 and later, hence `next: ^16.3.0`). Without it `next dev` run by a coding agent appends its own managed block to `AGENTS.md` (or creates the file under `--no-agent-context`), leaving a fresh project dirty in git. The Next.js fiche points to `node_modules/next/dist/docs/` instead.
+
 ## Conventions
 
 ### Naming
