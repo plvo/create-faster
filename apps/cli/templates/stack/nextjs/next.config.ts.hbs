@@ -8,7 +8,10 @@ import type { NextConfig } from 'next';
 
 {{#if (and (has "deployment" "cloudflare") (eq stackName "nextjs"))}}
 {{!-- d1: point getPlatformProxy at the same local state the `d1 migrations apply --persist-to` CLI writes (.wrangler/v3), so `next dev` sees the migrated/seeded database --}}
-initOpenNextCloudflareForDev({{#if (has "database" "d1")}}{ persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' } }{{/if}});
+{{!-- development only: the call starts a local workerd on the persisted state, and `next build` loads this config too, where it would hold the shared local D1 while OpenNext builds and previews --}}
+if (process.env.NODE_ENV === 'development') {
+  initOpenNextCloudflareForDev({{#if (has "database" "d1")}}{ persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' } }{{/if}});
+}
 
 {{/if}}
 const withBundleAnalyzer = require('@next/bundle-analyzer')({

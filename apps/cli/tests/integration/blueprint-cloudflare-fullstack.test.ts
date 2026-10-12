@@ -72,6 +72,38 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(await fileExists(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'))).toBe(true);
   });
 
+  test('the upload route enforces the document:create permission after the session check', async () => {
+    const route = await readTextFile(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'));
+    const sessionCheck = route.indexOf('status: 401');
+    const permissionCheck = route.indexOf('userHasPermission');
+    const forbidden = route.indexOf('status: 403');
+    expect(permissionCheck).toBeGreaterThan(sessionCheck);
+    expect(route).toContain("permissions: { document: ['create'] }");
+    expect(forbidden).toBeGreaterThan(permissionCheck);
+    expect(route.indexOf('req.formData()')).toBeGreaterThan(forbidden);
+  });
+
+  test('the documents page prefetches the list on the server and hydrates it into the client component', async () => {
+    const dashboard = join(projectPath, 'apps/web/src/app/(dashboard)');
+    const page = await readTextFile(join(dashboard, 'page.tsx'));
+    expect(page).not.toContain("'use client'");
+    expect(page).toContain("import { HydrateClient, prefetch, trpc } from '@/trpc/server'");
+    expect(page).toContain('prefetch(trpc.documents.list.queryOptions())');
+    expect(page).toContain('<HydrateClient>');
+    expect(page).toContain('<DocumentsClient />');
+
+    const client = await readTextFile(join(dashboard, 'documents.client.tsx'));
+    expect(client).toContain("'use client'");
+    expect(client).toContain('useSuspenseQuery(trpc.documents.list.queryOptions())');
+  });
+
+  test('getEnv leaves prerendering before it reads the Cloudflare context', async () => {
+    const env = await readTextFile(join(projectPath, 'apps/web/src/lib/env.ts'));
+    expect(env).toContain("import { connection } from 'next/server'");
+    expect(env.indexOf('await connection()')).toBeGreaterThan(-1);
+    expect(env.indexOf('await connection()')).toBeLessThan(env.indexOf('getCloudflareContext({ async: true })'));
+  });
+
   test('root layout mounts AppProviders + Toaster', async () => {
     const layout = await readTextFile(join(projectPath, 'apps/web/src/app/layout.tsx'));
     expect(layout).toContain('<AppProviders>');

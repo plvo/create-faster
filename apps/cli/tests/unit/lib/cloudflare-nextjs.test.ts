@@ -197,3 +197,25 @@ describe('deployment cloudflare: hono app package.json (single repo)', () => {
     expect(result.content.scripts?.['build:cf']).toBeUndefined();
   });
 });
+
+describe('nextjs start script by deployment', () => {
+  const nextjsCtx = (deployment?: 'cloudflare' | 'cloudflare-static' | 'sst'): TemplateContext => ({
+    projectName: 'site',
+    repo: 'single',
+    apps: [{ appName: 'site', stackName: 'nextjs', libraries: [] }],
+    project: { deployment, tooling: [] },
+    git: false,
+  });
+
+  test.each(['cloudflare', 'cloudflare-static'] as const)('has no next start script on %p', (deployment) => {
+    const ctx = nextjsCtx(deployment);
+    const { content } = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(content.scripts?.start).toBeUndefined();
+  });
+
+  test.each([undefined, 'sst'] as const)('keeps next start when the deployment is %p', (deployment) => {
+    const ctx = nextjsCtx(deployment);
+    const { content } = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(content.scripts?.start).toBe('next start');
+  });
+});

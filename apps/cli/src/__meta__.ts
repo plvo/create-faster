@@ -1,7 +1,7 @@
 import { $when } from '@/lib/when';
 import type { Meta } from '@/types/meta';
 
-const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
+const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
 const NODE_TYPES_VERSION = '^22';
 
@@ -48,7 +48,7 @@ export const META: Meta = {
           analyze: 'next experimental-analyze',
           dev: 'next dev --port {{port}}',
           build: 'next build',
-          start: 'next start --port {{port}}',
+          start: $when(RUNS_NODE_SERVER, 'next start --port {{port}}'),
         },
       },
     },
@@ -135,7 +135,7 @@ export const META: Meta = {
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: $when(RUNS_NITRO, '^3.0.260903-beta'),
+          nitro: $when(RUNS_NODE_SERVER, '^3.0.260903-beta'),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -143,7 +143,10 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: $when(RUNS_NITRO, 'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs'),
+          start: $when(
+            RUNS_NODE_SERVER,
+            'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs',
+          ),
         },
       },
     },
@@ -672,7 +675,7 @@ export const META: Meta = {
           stackPackageJson: {
             'tanstack-start': {
               dependencies: {
-                '@libsql/client': $when(RUNS_NITRO, LIBSQL_CLIENT_VERSION),
+                '@libsql/client': $when(RUNS_NODE_SERVER, LIBSQL_CLIENT_VERSION),
               },
             },
           },

@@ -7,7 +7,9 @@
 - `bun run deploy` — deploy the built output to Cloudflare Workers
 - `bun run cf:typegen` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`
 
-**Local dev**: `bun run dev` runs `next dev` with `initOpenNextCloudflareForDev()` active (wired in `next.config.ts`), making Cloudflare bindings available through `wrangler.jsonc`.
+There is no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `bun run build:cf` then `bun run preview` to serve the production build in workerd.
+
+**Local dev**: `bun run dev` runs `next dev` with `initOpenNextCloudflareForDev()` active (wired in `next.config.ts`, development only), making Cloudflare bindings available through `wrangler.jsonc`.
 
 **Environment variables — two phases**
 
@@ -26,6 +28,9 @@
 **Key rules**
 - `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which reads `development` in workerd without the var. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.
 - Bindings are never on `process.env` — always use `getCloudflareContext().env`.
+{{#if (or (has "database" "d1") (databaseBinding "hyperdrive"))}}
+- `getEnv()` (`src/lib/env.ts`) calls `connection()` before reading the context, so `next build` never prerenders a page that reads a binding: during a build the context comes from a local workerd started per build worker, and several of them opening the same local D1 fail with `SQLITE_BUSY`. A page that must read a binding at build time cannot go through `getEnv()`.
+{{/if}}
 - Do NOT add `.dev.vars` — Wrangler ignores `.env` when `.dev.vars` is present.
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
 - Use `.prod.env` (gitignored) for bulk secrets: `bun run deploy --secrets-file .prod.env`.

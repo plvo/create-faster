@@ -65,6 +65,22 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
     expect(rendered).toContain('initOpenNextCloudflareForDev()');
   });
 
+  test('initialises the OpenNext dev platform only under next dev, not during next build', () => {
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare'));
+    expect(rendered).toMatch(/if \(process\.env\.NODE_ENV === 'development'\) \{\s+initOpenNextCloudflareForDev\(\);\s+\}/);
+  });
+
+  test('keeps the shared D1 persist path inside the development gate', () => {
+    const ctx = makeCloudflareContext('cloudflare');
+    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', {
+      ...ctx,
+      project: { ...ctx.project, database: 'd1', orm: 'drizzle' },
+    });
+    expect(rendered).toMatch(
+      /if \(process\.env\.NODE_ENV === 'development'\) \{\s+initOpenNextCloudflareForDev\(\{ persist: \{ path: '\.wrangler\/v3' \} \}\);\s+\}/,
+    );
+  });
+
   test('does NOT include cloudflare import when not deploying to cloudflare', () => {
     const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext());
     expect(rendered).not.toContain('initOpenNextCloudflareForDev');

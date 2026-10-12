@@ -33,7 +33,7 @@ Hono already exports a Workers-compatible fetch handler (`export default app`), 
 
 ### Next.js apps
 
-Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` so Cloudflare bindings are available during `next dev`, and the build emits the Worker output under `.open-next/`.
+Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` under `next dev` only (`NODE_ENV` is `development`), so Cloudflare bindings are available there and `next build` does not start a local workerd. The build emits the Worker output under `.open-next/`.
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -58,6 +58,8 @@ export default defineCloudflareConfig({});
 - `build:cf` - Generate binding types, Next.js build, then the OpenNext adapter build (`wrangler types … && next build && opennextjs-cloudflare build`). Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during `next build`.
 - `preview` - Local Wrangler preview of the built output (`opennextjs-cloudflare preview`)
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
+
+A Next.js app on Workers has no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `build:cf` then `preview` to serve the production build in workerd.
 - `cf:typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
 
 ### TanStack Start apps

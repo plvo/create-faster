@@ -48,14 +48,18 @@ For Next.js apps, a `getEnv` helper retrieves the binding from the OpenNext Clou
 ```ts
 import 'server-only';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { connection } from 'next/server';
 
 export type Env = { DB: D1Database };
 
 export async function getEnv(): Promise<Env> {
+  await connection();
   const { env } = await getCloudflareContext({ async: true });
   return { DB: env.DB };
 }
 ```
+
+`connection()` makes `next build` skip prerendering a page that reads the binding. Without it, every build worker that renders such a page starts a local workerd on the local D1 state, and several of them opening it at once can fail with `SQLITE_BUSY`.
 
 Call `getEnv()` in Server Components or Route Handlers, then pass `env.DB` to `createDb`:
 
