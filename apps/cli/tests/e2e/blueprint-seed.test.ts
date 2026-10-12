@@ -149,6 +149,35 @@ describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, p
     await signIn('created@example.com', result.data.json.password, '10.0.0.4');
   });
 
+  test('admin pages redirect a signed-in non-admin home and still serve an admin', async () => {
+    const adminCookie = await signIn(SEEDED_ADMIN, SEED_PASSWORD, '10.0.0.6');
+    const created = await post(
+      '/api/trpc/user.create',
+      { json: { name: 'Member', email: 'member@example.com', role: 'user' } },
+      { cookie: adminCookie },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { result } = (await created.json()) as { result: { data: { json: { password: string } } } };
+    const memberCookie = await signIn('member@example.com', result.data.json.password, '10.0.0.7');
+
+    const sessionResponse = await fetch(new URL('/api/auth/get-session', server.url), { headers: { cookie: adminCookie } });
+    const { user } = (await sessionResponse.json()) as { user: { id: string } };
+
+    for (const path of ['/admin/users', `/admin/users/${user.id}`, '/admin/roles']) {
+      const forbidden = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie: memberCookie } });
+      expect([path, forbidden.status, forbidden.headers.get('location')]).toEqual([path, 307, '/']);
+
+      const allowed = await fetch(new URL(path, server.url), { headers: { cookie: adminCookie } });
+      expect([path, allowed.status]).toEqual([path, 200]);
+    }
+
+    const users = await fetch(new URL('/admin/users', server.url), { headers: { cookie: adminCookie } });
+    expect(await users.text()).toContain(SEEDED_ADMIN);
+
+    const contacts = await fetch(new URL('/contacts', server.url), { headers: { cookie: memberCookie } });
+    expect(contacts.status).toBe(200);
+  });
+
   test('anonymous visits redirect to login, a signed-in visit to login redirects home, and the server logs no error', async () => {
     for (const path of ['/', '/contacts', '/admin/users', '/profile/account']) {
       const response = await fetch(new URL(path, server.url), { redirect: 'manual' });

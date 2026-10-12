@@ -1,11 +1,11 @@
-import { requireSession } from '@/lib/auth/session';
+import { requireAdmin } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { UserDetail } from './user-detail';
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireSession();
+  await requireAdmin();
   void prefetch(trpc.user.getById.queryOptions({ id }));
 
   return (
