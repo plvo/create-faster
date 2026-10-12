@@ -5,21 +5,18 @@ mono:
   path: src/app/(dashboard)/layout.tsx
 ---
 import { auth } from '@/lib/auth/auth';
+import { requireSession } from '@/lib/auth/session';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@repo/ui/components/ui/sidebar';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 
 {{{{raw}}}}
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const hdrs = await headers();
-  const session = await auth.api.getSession({ headers: hdrs });
-  if (!session) redirect('/login');
-  if (!session.session.activeOrganizationId) redirect('/onboarding');
+  const session = await requireSession();
 
   const members = await auth.api.listMembers({
-    headers: hdrs,
+    headers: await headers(),
     query: { organizationId: session.session.activeOrganizationId },
   });
   const me = members?.members?.find((m) => m.userId === session.user.id);
