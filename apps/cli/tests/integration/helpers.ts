@@ -5,7 +5,7 @@ import { format } from 'node:util';
 import { expect } from 'bun:test';
 import { $ } from 'bun';
 
-export interface CliResult {
+interface CliResult {
   exitCode: number;
   stdout: string;
   stderr: string;

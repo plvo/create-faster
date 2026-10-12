@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { ServerOutput } from './helpers';
 
-export type EvlogRuntime = 'nitro' | 'workerd';
+type EvlogRuntime = 'nitro' | 'workerd';
 
 interface WideEvent {
   path: string;

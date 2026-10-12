@@ -38,6 +38,9 @@ jobs:
       - name: "🔍 Lint & Format"
         run: bun run check
 
+      - name: "🧹 Unused Code"
+        run: bun run check:unused
+
       - name: "🔎 Typecheck"
         run: bun run typecheck
 

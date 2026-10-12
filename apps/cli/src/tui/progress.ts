@@ -1,6 +1,6 @@
 import color from 'picocolors';
 
-export type ProgressStep = {
+type ProgressStep = {
   label: string;
   status: 'pending' | 'active' | 'done';
 };

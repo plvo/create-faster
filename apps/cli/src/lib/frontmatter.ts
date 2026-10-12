@@ -2,12 +2,12 @@ import matter from 'gray-matter';
 import type { TemplateContext } from '@/types/ctx';
 import type { TemplateFrontmatter } from '@/types/meta';
 
-export interface ParsedTemplate<T = TemplateFrontmatter> {
+interface ParsedTemplate<T = TemplateFrontmatter> {
   data: T;
   content: string;
 }
 
-export interface StackSuffixResult {
+interface StackSuffixResult {
   stackName: string | null;
   cleanFilename: string;
 }

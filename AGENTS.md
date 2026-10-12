@@ -50,7 +50,7 @@ bun run build:cli            # Build apps/cli to dist/
 bun run check                # Biome format + lint check (CI runs it)
 bun run lint                 # Biome lint with auto-fix
 bun run format               # Biome format
-bun run check:unused         # knip
+bun run check:unused         # knip (CI runs it; config in knip.jsonc)
 bun run typecheck            # tsc --noEmit on apps/cli (CI runs it)
 cd apps/cli && bun test tests/unit tests/integration
 cd apps/cli && bun test tests/e2e/<file> --timeout 600000
@@ -292,7 +292,7 @@ Every generated project gets an `AGENTS.md` plus a `CLAUDE.md` containing exactl
 ### Tooling
 - Format and lint rules are in `biome.json`, checked by `bun run check` (CI and the pre-commit lint-staged hook run Biome).
 - Commit types are enforced by `.husky/commit-msg`.
-- CI (`.github/workflows/ci.yml`) runs `bun run check`, `bun run typecheck`, `bun run build:cli`, unit and integration tests. Releases are automated by `.github/workflows/release.yml` (release-please, then `npm publish`).
+- CI (`.github/workflows/ci.yml`) runs `bun run check`, `bun run check:unused`, `bun run typecheck`, `bun run build:cli`, unit and integration tests. Releases are automated by `.github/workflows/release.yml` (release-please, then `npm publish`).
 
 ## Agent-generated documentation
 

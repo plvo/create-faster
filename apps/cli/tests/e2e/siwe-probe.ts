@@ -4,7 +4,7 @@ import { runCommand } from './helpers';
 
 const PROBE_FILE = 'siwe-probe.mjs';
 
-export interface SiweAttempt {
+interface SiweAttempt {
   status: number;
   body: { code?: string; user?: { id: string } };
   sessionCookie: string;

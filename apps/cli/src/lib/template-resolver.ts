@@ -52,7 +52,7 @@ export function resolveAddonNames(category: ProjectCategoryName, addonName: stri
   return [addonName];
 }
 
-export interface DestinationParams {
+interface DestinationParams {
   relativePath: string;
   ctx: TemplateContext;
   frontmatter?: TemplateFrontmatter;
