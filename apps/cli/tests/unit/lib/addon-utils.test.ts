@@ -206,6 +206,25 @@ describe('isRequirementMet', () => {
   });
 });
 
+describe('isRequirementMet on a context without project answers', () => {
+  const appsOnly: Partial<TemplateContext> = {
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
+  };
+
+  test('database, orm, deployment, linter and tooling requirements are unmet instead of throwing', () => {
+    expect(isRequirementMet({ database: ['postgres'] }, appsOnly)).toBe(false);
+    expect(isRequirementMet({ orm: ['drizzle'] }, appsOnly)).toBe(false);
+    expect(isRequirementMet({ deployment: ['cloudflare'] }, appsOnly)).toBe(false);
+    expect(isRequirementMet({ linter: true }, appsOnly)).toBe(false);
+    expect(isRequirementMet({ tooling: ['husky'] }, appsOnly)).toBe(false);
+  });
+
+  test('requirements on apps and libraries still resolve', () => {
+    expect(isRequirementMet({ stacks: ['nextjs'] }, appsOnly)).toBe(true);
+    expect(isRequirementMet({ libraries: ['better-auth'] }, appsOnly)).toBe(true);
+  });
+});
+
 describe('isCategoryValueAllowedByLibraries', () => {
   const ctxWithBetterAuth: Partial<TemplateContext> = {
     apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
