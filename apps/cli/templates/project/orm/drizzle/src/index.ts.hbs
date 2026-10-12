@@ -67,6 +67,10 @@ import { drizzle } from 'drizzle-orm/libsql';
 {{/if}}
 import * as schema from './schema';
 
+{{#if (has "database" "postgres")}}
+{{> postgres/tls-warning}}
+
+{{/if}}
 {{#if (has "database" "sqlite")}}
 {{#if (isMono)}}
 function findMonoRoot(start: string): string {
@@ -85,6 +89,7 @@ function createDb() {
   // Only called once DATABASE_URL is confirmed set by the db proxy below.
   const databaseUrl = process.env.DATABASE_URL as string;
 {{#if (has "database" "postgres")}}
+  warnIfProductionTlsDisabled(databaseUrl);
   return drizzle({
     schema,
     // TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.

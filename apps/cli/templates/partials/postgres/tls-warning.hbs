@@ -1,0 +1,12 @@
+const LOCAL_HOSTS = new Set(['', 'localhost', '127.0.0.1', '[::1]']);
+
+// Catches the local .env.example URL (sslmode=disable) reaching a remote database in production.
+function warnIfProductionTlsDisabled(databaseUrl: string | undefined): void {
+  if (process.env.NODE_ENV !== 'production' || !databaseUrl || !URL.canParse(databaseUrl)) return;
+  const { hostname, searchParams } = new URL(databaseUrl);
+  if (searchParams.get('sslmode') === 'disable' && !LOCAL_HOSTS.has(hostname)) {
+    console.warn(
+      `[db] DATABASE_URL sets sslmode=disable for ${hostname} in production, so the connection is not encrypted: use sslmode=verify-full or drop sslmode unless this database has no TLS.`,
+    );
+  }
+}

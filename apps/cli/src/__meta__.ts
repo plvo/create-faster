@@ -82,7 +82,7 @@ export const META: Meta = {
         },
         scripts: {
           dev: 'bun run --hot src/index.ts',
-          start: 'bun run src/index.ts',
+          start: 'NODE_ENV=production bun run src/index.ts',
         },
       },
     },
@@ -98,7 +98,7 @@ export const META: Meta = {
         },
         scripts: {
           dev: 'bun run --hot src/index.ts',
-          start: 'bun run src/index.ts',
+          start: 'NODE_ENV=production bun run src/index.ts',
         },
       },
     },

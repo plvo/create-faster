@@ -12,6 +12,9 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
 
 {{#if (has "database" "postgres")}}
+{{> postgres/tls-warning}}
+
+warnIfProductionTlsDisabled(process.env.DATABASE_URL);
 // TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,

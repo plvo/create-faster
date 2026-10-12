@@ -15,7 +15,9 @@ const LOCAL_URL_WITHOUT_TLS = /^DATABASE_URL="postgresql:\/\/postgres:password@l
 const PRODUCTION_TLS_WARNING = 'function warnIfProductionTlsDisabled(databaseUrl: string | undefined): void {';
 const DRIZZLE_WARNING_CALL = `  warnIfProductionTlsDisabled(databaseUrl);
   return drizzle({`;
-const PRISMA_WARNING_CALL = 'warnIfProductionTlsDisabled(process.env.DATABASE_URL);\nconst adapter = new PrismaPg({';
+const PRISMA_WARNING_CALL = `warnIfProductionTlsDisabled(process.env.DATABASE_URL);
+// TLS in production unless DATABASE_URL sets sslmode: pg applies the parsed URL over these options.
+const adapter = new PrismaPg({`;
 
 const NODE_ENV_SOURCES = {
   nextjs: '- Next.js: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle',
