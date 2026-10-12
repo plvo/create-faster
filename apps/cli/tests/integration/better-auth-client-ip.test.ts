@@ -140,11 +140,13 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
     });
   }
 
-  test('the agent notes tell a non-Cloudflare deployment to run behind a proxy that overwrites x-forwarded-for', async () => {
+  test('the agent notes tell a non-Cloudflare deployment to run behind a proxy that overwrites x-forwarded-for and how to set trustedProxies for a chain', async () => {
     const projectPath = await generate('notes-none', NEXTJS_SQLITE_ARGS);
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
     expect(agents).toContain('x-forwarded-for');
     expect(agents).toContain('reverse proxy or CDN');
+    expect(agents).toContain('no-trusted-ip');
+    expect(agents).toContain('advanced.ipAddress.trustedProxies');
   });
 
   test('the agent notes name cf-connecting-ip on Cloudflare', async () => {
