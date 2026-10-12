@@ -15,7 +15,7 @@ Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNe
 4. **Remote migrations:** `bun run db:migrate:remote` to apply the schema to the live D1 database.
 
 ## Build & deploy
-- **Web:** `bun run build:cf` (wrangler types → `next build` → `opennextjs-cloudflare build`) then `bun run deploy` (`opennextjs-cloudflare deploy`).
+- **Web:** `bun run build:cf` (wrangler types → `opennextjs-cloudflare build`, which runs `next build` once through the `build` script) then `bun run deploy` (`opennextjs-cloudflare deploy`).
 - **Cron:** from `apps/cron`, `bunx wrangler deploy`. The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
 
 ## Local development

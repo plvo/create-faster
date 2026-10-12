@@ -577,7 +577,7 @@ export const META: Meta = {
               },
               scripts: {
                 'build:cf':
-                  'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && next build && opennextjs-cloudflare build',
+                  'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && opennextjs-cloudflare build',
                 preview: 'opennextjs-cloudflare preview -- --persist-to {{workspaceRoot}}/.wrangler',
                 deploy: 'opennextjs-cloudflare deploy',
                 'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',

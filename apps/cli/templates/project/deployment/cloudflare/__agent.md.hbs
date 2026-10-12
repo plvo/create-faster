@@ -2,7 +2,7 @@
 ## Cloudflare Workers deploy (OpenNext)
 
 **Build & deploy**
-- `bun run build:cf` — Next.js build → OpenNext adapter build
+- `bun run build:cf` — binding types → OpenNext adapter build (it runs the `build` script, `next build`, once itself)
 - `bun run preview` — local Wrangler preview of the built output
 - `bun run deploy` — deploy the built output to Cloudflare Workers
 - `bun run cf:typegen` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`

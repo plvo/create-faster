@@ -41,6 +41,7 @@ describe(NAME, () => {
     async () => {
       const result = await runCommand(['bun', 'run', 'build:cf'], projectDir);
       expect(result.exitCode).toBe(0);
+      expect(result.stdout.match(/▲ Next\.js/g)).toHaveLength(1);
     },
     TIMEOUT_BUILD,
   );
