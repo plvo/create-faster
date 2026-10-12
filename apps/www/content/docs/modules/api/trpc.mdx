@@ -81,6 +81,8 @@ export const publicProcedure = t.procedure;
 
 Outside development, error responses carry no stack trace, and an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters. `isDev` is the `NODE_ENV` the build inlines, not tRPC's default, which reads `NODE_ENV` at runtime: some production servers leave it unset (Next.js on Cloudflare through OpenNext).
 
+The API route's `onError` writes every unexpected error to the server log in every environment, with the procedure path, the message and the stack, since the client no longer receives them. Expected errors (`UNAUTHORIZED`, `BAD_REQUEST`, `NOT_FOUND`, ...) are logged only in development.
+
 The API route (`route.ts` on Next.js, `src/routes/api/trpc/$.ts` on TanStack Start) refuses with a 403 any request other than `GET` and `HEAD` whose `Origin` header names another origin, so a page on another site cannot run a mutation with the user's cookies. Requests without `Origin` (other servers, scripts) pass.
 
 With Better Auth, the context includes `session` and a `protectedProcedure` middleware is exported. In a single repo, the context reads sessions through `sessionReader` from `src/trpc/session-reader.ts`: the app's own instance on Next.js, a cookie-less `createAuth()` on TanStack Start.

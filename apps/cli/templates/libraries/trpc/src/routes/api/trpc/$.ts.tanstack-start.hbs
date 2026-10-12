@@ -24,11 +24,7 @@ function handler({ request }: { request: Request }) {
     req: request,
     router: appRouter,
     createContext: () => createTRPCContext({ headers: request.headers{{#if (and (has "database" "d1") project.orm)}}, db{{/if}} }),
-    onError: import.meta.env.DEV
-      ? ({ path, error }) => {
-          console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error.message);
-        }
-      : undefined,
+    {{> trpc/on-error dev="import.meta.env.DEV"}}
   });
 }
 

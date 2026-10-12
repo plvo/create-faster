@@ -1,0 +1,9 @@
+{{!-- dev: the caller runtime's expression that is true in development --}}
+// An unexpected error reaches the client as a generic message, so the server log is the only place it stays visible.
+onError: ({ path, error }) => {
+  if (error.code === 'INTERNAL_SERVER_ERROR') {
+    console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error);
+  } else if ({{dev}}) {
+    console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error.message);
+  }
+},
