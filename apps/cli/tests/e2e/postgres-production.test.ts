@@ -19,8 +19,19 @@ const TIMEOUT_SERVER = 120_000;
 const SSL_REFUSED = 'The server does not support SSL connections';
 // A copied local URL pointed at a remote host: `.invalid` never resolves, the warning comes first.
 const REMOTE_URL_WITHOUT_TLS = 'postgresql://postgres:password@db.invalid:5432/postgres?sslmode=disable';
-const REMOTE_TLS_WARNING = 'DATABASE_URL sets sslmode=disable for db.invalid in production';
-const ANY_TLS_WARNING = 'DATABASE_URL sets sslmode=disable for';
+const REMOTE_TLS_WARNING = 'DATABASE_URL disables TLS for db.invalid in production';
+const ANY_TLS_WARNING = 'DATABASE_URL disables TLS for';
+
+// pg keeps the last sslmode and lets a host query parameter replace the URL host.
+const TLS_WARNING_CASES = [
+  { url: 'postgresql://u:p@db.invalid:5432/d?sslmode=disable', warns: true },
+  { url: 'postgresql://u:p@db.invalid:5432/d?sslmode=require&sslmode=disable', warns: true },
+  { url: 'postgresql://u:p@localhost:5432/d?host=db.invalid&sslmode=disable', warns: true },
+  { url: 'postgresql://u:p@db.invalid:5432/d?sslmode=disable&sslmode=require', warns: false },
+  { url: 'postgresql://u:p@db.invalid:5432/d?host=localhost&sslmode=disable', warns: false },
+  { url: 'postgresql://u:p@[::1]:5432/d?sslmode=disable', warns: false },
+  { url: 'postgresql://u:p@db.invalid:5432/d', warns: false },
+];
 
 type Orm = 'drizzle' | 'prisma';
 type ProbedStack = 'nextjs' | 'tanstack-start' | 'hono';
@@ -37,6 +48,7 @@ interface Topology {
   args: string[];
   dbPackageDir: string;
   dbImport: string;
+  client: string;
   apps: ProbedApp[];
 }
 
@@ -133,6 +145,7 @@ const TOPOLOGIES: Topology[] = [
     args: ['--app', 'pg-prod-drizzle-next:nextjs'],
     dbPackageDir: '.',
     dbImport: '@/lib/db',
+    client: 'src/lib/db/index.ts',
     apps: [{ dir: '.', stack: 'nextjs' }],
   },
   {
@@ -141,6 +154,7 @@ const TOPOLOGIES: Topology[] = [
     args: ['--app', 'pg-prod-drizzle-start:tanstack-start'],
     dbPackageDir: '.',
     dbImport: '@/lib/db',
+    client: 'src/lib/db/index.ts',
     apps: [{ dir: '.', stack: 'tanstack-start' }],
   },
   {
@@ -149,6 +163,7 @@ const TOPOLOGIES: Topology[] = [
     args: TURBO_ARGS,
     dbPackageDir: 'packages/db',
     dbImport: '@repo/db',
+    client: 'packages/db/src/index.ts',
     apps: TURBO_APPS,
   },
   {
@@ -157,6 +172,7 @@ const TOPOLOGIES: Topology[] = [
     args: ['--app', 'pg-prod-prisma-next:nextjs'],
     dbPackageDir: '.',
     dbImport: '@/lib/db',
+    client: 'src/lib/db/index.ts',
     apps: [{ dir: '.', stack: 'nextjs' }],
   },
   {
@@ -165,6 +181,7 @@ const TOPOLOGIES: Topology[] = [
     args: TURBO_ARGS,
     dbPackageDir: 'packages/db',
     dbImport: '@repo/db',
+    client: 'packages/db/src/index.ts',
     apps: TURBO_APPS,
   },
 ];
@@ -183,6 +200,21 @@ function pointAtContainer(generatedUrl: string, containerUrl: string): string {
   url.host = container.host;
   url.pathname = container.pathname;
   return url.toString();
+}
+
+// Loads the generated client under NODE_ENV=production without querying: drizzle builds it on first property access.
+function clientLogsTlsWarning(clientPath: string, orm: Orm, databaseUrl: string): boolean {
+  const load = `const db = await import(${JSON.stringify(clientPath)});${orm === 'drizzle' ? ' void db.db.select;' : ''}`;
+  const { NODE_ENV: _testRunnerMode, ...env } = process.env;
+  const result = Bun.spawnSync(['bun', '-e', load], {
+    cwd: dirname(clientPath),
+    env: { ...env, NODE_ENV: 'production', DATABASE_URL: databaseUrl },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const output = `${result.stdout.toString()}${result.stderr.toString()}`;
+  if (result.exitCode !== 0) throw new Error(`Loading ${clientPath} failed:\n${output}`);
+  return output.includes(ANY_TLS_WARNING);
 }
 
 async function callDbProbe(appDir: string, app: ProbedApp, mode: ServerMode, databaseUrl: string): Promise<ProbeResult> {
@@ -207,7 +239,7 @@ async function callDbProbe(appDir: string, app: ProbedApp, mode: ServerMode, dat
 
 describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
   '$name',
-  ({ name, orm, args, dbPackageDir, dbImport, apps }) => {
+  ({ name, orm, args, dbPackageDir, dbImport, client, apps }) => {
     let tempDir: string;
     let projectDir: string;
     let localUrl: string;
@@ -268,6 +300,14 @@ describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
         const push = ['bun', 'run', 'db:push', ...(orm === 'drizzle' ? ['--force'] : [])];
         const result = await runCommand(push, join(projectDir, dbPackageDir));
         expect(result.exitCode, result.stderr).toBe(0);
+      },
+      TIMEOUT_DB,
+    );
+
+    test.each(TLS_WARNING_CASES)(
+      'the client warns in production exactly when pg would reach a remote host without TLS: $url',
+      ({ url, warns }) => {
+        expect(clientLogsTlsWarning(join(projectDir, client), orm, url)).toBe(warns);
       },
       TIMEOUT_DB,
     );

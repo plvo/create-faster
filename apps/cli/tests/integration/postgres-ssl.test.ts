@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 
 const DRIZZLE_TLS_IN_PRODUCTION = `connection: {
       connectionString: databaseUrl,
@@ -26,6 +26,12 @@ const NODE_ENV_SOURCES = {
 };
 type ProbedStack = keyof typeof NODE_ENV_SOURCES;
 const BUN_APPS_ELSEWHERE = 'Any other production entry of a Bun app';
+const BUN_BUILD_INLINES = 'a plain `bun build` inlines `development`';
+const CONNECTION_STRING_PARSER = "import { parse as parseConnectionString } from 'pg-connection-string';";
+
+interface PackageJson {
+  dependencies?: Record<string, string>;
+}
 
 let tempDir: string;
 
@@ -53,6 +59,7 @@ const TOPOLOGIES = [
     args: ['--app', 'pg-ssl-next-drizzle:nextjs', '--orm', 'drizzle'],
     stacks: ['nextjs'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
+    dbPackageJson: 'package.json',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
     warningCall: DRIZZLE_WARNING_CALL,
     envFiles: ['.env.example'],
@@ -62,6 +69,7 @@ const TOPOLOGIES = [
     args: ['--app', 'pg-ssl-start-drizzle:tanstack-start', '--orm', 'drizzle'],
     stacks: ['tanstack-start'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
+    dbPackageJson: 'package.json',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
     warningCall: DRIZZLE_WARNING_CALL,
     envFiles: ['.env.example'],
@@ -71,6 +79,7 @@ const TOPOLOGIES = [
     args: [...TURBO_APPS, '--orm', 'drizzle'],
     stacks: TURBO_STACKS,
     client: 'packages/db/src/index.ts',
+    dbPackageJson: 'packages/db/package.json',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
     warningCall: DRIZZLE_WARNING_CALL,
     envFiles: TURBO_ENV_FILES,
@@ -80,6 +89,7 @@ const TOPOLOGIES = [
     args: ['--app', 'pg-ssl-next-prisma:nextjs', '--orm', 'prisma'],
     stacks: ['nextjs'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
+    dbPackageJson: 'package.json',
     clientConfig: PRISMA_TLS_IN_PRODUCTION,
     warningCall: PRISMA_WARNING_CALL,
     envFiles: ['.env.example'],
@@ -89,13 +99,14 @@ const TOPOLOGIES = [
     args: [...TURBO_APPS, '--orm', 'prisma'],
     stacks: TURBO_STACKS,
     client: 'packages/db/src/index.ts',
+    dbPackageJson: 'packages/db/package.json',
     clientConfig: PRISMA_TLS_IN_PRODUCTION,
     warningCall: PRISMA_WARNING_CALL,
     envFiles: TURBO_ENV_FILES,
   },
 ];
 
-describe.each(TOPOLOGIES)('$name', ({ name, args, stacks, client, clientConfig, warningCall, envFiles }) => {
+describe.each(TOPOLOGIES)('$name', ({ name, args, stacks, client, dbPackageJson, clientConfig, warningCall, envFiles }) => {
   let projectDir: string;
 
   beforeAll(async () => {
@@ -110,6 +121,13 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, stacks, client, clientConfig, 
     const index = await readTextFile(join(projectDir, client));
     expect(index).toContain(PRODUCTION_TLS_WARNING);
     expect(index).toContain(warningCall);
+  });
+
+  test('the warning reads DATABASE_URL with the parser pg uses, declared next to pg', async () => {
+    expect(await readTextFile(join(projectDir, client))).toContain(CONNECTION_STRING_PARSER);
+    const pkg = await readJsonFile<PackageJson>(join(projectDir, dbPackageJson));
+    expect(pkg.dependencies?.['pg-connection-string']).toBe('^2.14.1');
+    expect(pkg.dependencies?.pg).toBeDefined();
   });
 
   test('the local DATABASE_URL disables TLS for the Docker database', async () => {
@@ -132,8 +150,13 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, stacks, client, clientConfig, 
       if (stacks.includes(stack as ProbedStack)) expect(agents).toContain(source);
       else expect(agents).not.toContain(source);
     }
-    if (stacks.includes('hono')) expect(agents).toContain(BUN_APPS_ELSEWHERE);
-    else expect(agents).not.toContain(BUN_APPS_ELSEWHERE);
+    if (stacks.includes('hono')) {
+      expect(agents).toContain(BUN_APPS_ELSEWHERE);
+      expect(agents).toContain(BUN_BUILD_INLINES);
+    } else {
+      expect(agents).not.toContain(BUN_APPS_ELSEWHERE);
+      expect(agents).not.toContain(BUN_BUILD_INLINES);
+    }
   });
 });
 
@@ -141,6 +164,8 @@ describe('postgres without an ORM', () => {
   test('the local DATABASE_URL disables TLS for the Docker database', async () => {
     const projectDir = await generate('pg-ssl-no-orm', ['--app', 'pg-ssl-no-orm:nextjs', '--database', 'postgres']);
     expect(await readTextFile(join(projectDir, '.env.example'))).toMatch(LOCAL_URL_WITHOUT_TLS);
+    const pkg = await readJsonFile<PackageJson>(join(projectDir, 'package.json'));
+    expect(pkg.dependencies?.['pg-connection-string']).toBeUndefined();
   });
 });
 
@@ -160,6 +185,8 @@ describe('postgres through Hyperdrive', () => {
     expect(index).toContain('new Client({ connectionString: hyperdrive.connectionString })');
     expect(index).not.toContain('ssl');
     expect(await readTextFile(join(projectDir, '.env.example'))).toMatch(LOCAL_URL_WITHOUT_TLS);
+    const pkg = await readJsonFile<PackageJson>(join(projectDir, 'package.json'));
+    expect(pkg.dependencies?.['pg-connection-string']).toBeUndefined();
   });
 });
 
