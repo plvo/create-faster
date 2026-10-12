@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { runPostGeneration } from '@/lib/post-generation';
@@ -21,10 +21,12 @@ describe('runPostGeneration', () => {
   let projectPath: string;
 
   beforeEach(async () => {
+    spyOn(process.stdout, 'write').mockImplementation(() => true);
     projectPath = await createTempDir();
   });
 
   afterEach(async () => {
+    mock.restore();
     await cleanupTempDir(projectPath);
   });
 
