@@ -97,6 +97,13 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(client).toContain('useSuspenseQuery(trpc.documents.list.queryOptions())');
   });
 
+  test('getEnv leaves prerendering before it reads the Cloudflare context', async () => {
+    const env = await readTextFile(join(projectPath, 'apps/web/src/lib/env.ts'));
+    expect(env).toContain("import { connection } from 'next/server'");
+    expect(env.indexOf('await connection()')).toBeGreaterThan(-1);
+    expect(env.indexOf('await connection()')).toBeLessThan(env.indexOf('getCloudflareContext({ async: true })'));
+  });
+
   test('root layout mounts AppProviders + Toaster', async () => {
     const layout = await readTextFile(join(projectPath, 'apps/web/src/app/layout.tsx'));
     expect(layout).toContain('<AppProviders>');

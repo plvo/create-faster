@@ -33,7 +33,7 @@ Hono already exports a Workers-compatible fetch handler (`export default app`), 
 
 ### Next.js apps
 
-Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` so Cloudflare bindings are available during `next dev`, and the build emits the Worker output under `.open-next/`.
+Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` under `next dev` only (`NODE_ENV` is `development`), so Cloudflare bindings are available there and `next build` does not start a local workerd. The build emits the Worker output under `.open-next/`.
 
 ```jsonc title="wrangler.jsonc"
 {
