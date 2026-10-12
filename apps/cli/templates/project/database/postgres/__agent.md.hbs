@@ -2,7 +2,7 @@ PostgreSQL via Docker Compose. Start it with `docker compose up -d`. The connect
 
 The local `DATABASE_URL` ends with `?sslmode=disable` because the Docker database has no TLS. Keep `sslmode=disable` for local or other non-TLS databases only. Never copy the local `DATABASE_URL` to production.
 {{#if project.orm}}
-{{#unless (and (has "orm" "drizzle") (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+{{#unless (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 
 TLS in production: the generated client connects with TLS and verifies the server certificate when `NODE_ENV=production`, unless `DATABASE_URL` sets `sslmode`, which always wins. For a managed database (Neon, Supabase, RDS), use its connection string with `sslmode=verify-full` or without `sslmode`; `sslmode=require` makes pg print a security warning. In production, the client logs a warning when `DATABASE_URL` turns TLS off (`sslmode=disable`, read the way pg reads it) for a host other than localhost. Where `NODE_ENV=production` comes from:
 {{#if (has "stack" "nextjs")}}

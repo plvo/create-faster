@@ -3,6 +3,34 @@ path: src/lib/db/index.ts
 mono:
   path: src/index.ts
 ---
+{{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+{{#if (has "database" "postgres")}}
+import { PrismaPg } from '@prisma/adapter-pg';
+{{/if}}
+{{#if (has "database" "mysql")}}
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+{{/if}}
+import { PrismaClient } from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
+
+export function createDb(hyperdrive: Hyperdrive) {
+{{#if (has "database" "postgres")}}
+  const adapter = new PrismaPg({ connectionString: hyperdrive.connectionString });
+{{/if}}
+{{#if (has "database" "mysql")}}
+  const adapter = new PrismaMariaDb({
+    host: hyperdrive.host,
+    port: hyperdrive.port,
+    user: hyperdrive.user,
+    password: hyperdrive.password,
+    database: hyperdrive.database,
+  });
+{{/if}}
+  return new PrismaClient({ adapter });
+}
+export type Database = ReturnType<typeof createDb>;
+
+export * from '{{#if (isMono)}}../generated/prisma/client{{else}}../../../generated/prisma/client{{/if}}';
+{{else}}
 {{#if (has "database" "postgres")}}
 import { PrismaPg } from '@prisma/adapter-pg';
 import { parse as parseConnectionString } from 'pg-connection-string';
@@ -23,14 +51,7 @@ const adapter = new PrismaPg({
 });
 {{/if}}
 {{#if (has "database" "mysql")}}
-const _dbUrl = new URL(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
-const adapter = new PrismaMariaDb({
-  host: _dbUrl.hostname,
-  port: Number(_dbUrl.port) || 3306,
-  user: _dbUrl.username,
-  password: _dbUrl.password,
-  database: _dbUrl.pathname.slice(1),
-});
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
 {{/if}}
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
@@ -52,4 +73,5 @@ export type Post = Awaited<ReturnType<typeof prisma.post.findUnique>>;
 export type Session = Awaited<ReturnType<typeof prisma.session.findUnique>>;
 export type Account = Awaited<ReturnType<typeof prisma.account.findUnique>>;
 export type Verification = Awaited<ReturnType<typeof prisma.verification.findUnique>>;
+{{/if}}
 {{/if}}

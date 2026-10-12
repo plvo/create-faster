@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 
 const WORKERD_GENERATOR = `generator client {
   provider = "prisma-client"
@@ -58,6 +58,12 @@ describe('Prisma + Postgres + Cloudflare (Hyperdrive)', () => {
     expect(seed).toContain("import { PrismaClient } from '../generated/prisma-node/client';");
     expect(seed).toContain('connectionString: process.env.DATABASE_URL');
     expect(seed).not.toContain("from '../src/lib/db'");
+  });
+
+  test('drops the pg-connection-string dependency only the singleton TLS warning used', async () => {
+    const pkg = await readJsonFile<{ dependencies: Record<string, string> }>(join(projectPath, 'package.json'));
+    expect(pkg.dependencies['pg-connection-string']).toBeUndefined();
+    expect(pkg.dependencies['pg-cloudflare']).toBeDefined();
   });
 
   test('agent notes describe the per-request client, not the singleton TLS default', async () => {
