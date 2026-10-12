@@ -48,7 +48,7 @@ describe('Cloudflare deployment platform', () => {
     test('package.json has wrangler scripts and devDependency, no opennext', async () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
       expect(pkg.scripts.deploy).toBe('wrangler deploy');
-      expect(pkg.scripts.preview).toBe('wrangler dev');
+      expect(pkg.scripts.preview).toBe('wrangler dev --persist-to ./.wrangler');
       expect(pkg.scripts['cf-typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
       expect(pkg.dependencies?.['@opennextjs/cloudflare']).toBeUndefined();
@@ -207,7 +207,7 @@ describe('Cloudflare deployment platform', () => {
     test('api app has wrangler scripts, no opennext', async () => {
       const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'apps/api/package.json'));
       expect(pkg.scripts.deploy).toBe('wrangler deploy');
-      expect(pkg.scripts.preview).toBe('wrangler dev');
+      expect(pkg.scripts.preview).toBe('wrangler dev --persist-to ../../.wrangler');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
       expect(pkg.dependencies?.['@opennextjs/cloudflare']).toBeUndefined();
     });

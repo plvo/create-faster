@@ -150,7 +150,7 @@ describe('deployment cloudflare: turborepo per-app resolution', () => {
   test('hono app gets wrangler Workers scripts, not opennext', () => {
     const result = generateAppPackageJson(ctx.apps[1]!, ctx, 1);
     expect(result.content.scripts?.deploy).toBe('wrangler deploy');
-    expect(result.content.scripts?.preview).toBe('wrangler dev');
+    expect(result.content.scripts?.preview).toBe('wrangler dev --persist-to ../../.wrangler');
     expect(result.content.devDependencies?.wrangler).toMatch(/^\^4/);
     expect(result.content.dependencies?.['@opennextjs/cloudflare']).toBeUndefined();
   });
@@ -170,9 +170,9 @@ describe('deployment cloudflare: hono app package.json (single repo)', () => {
     expect(result.content.scripts?.deploy).toBe('wrangler deploy');
   });
 
-  test('preview script is wrangler dev', () => {
+  test('preview script runs wrangler dev on the shared local state', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
-    expect(result.content.scripts?.preview).toBe('wrangler dev');
+    expect(result.content.scripts?.preview).toBe('wrangler dev --persist-to ./.wrangler');
   });
 
   test('cf-typegen script present', () => {

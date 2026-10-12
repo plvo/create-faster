@@ -15,14 +15,14 @@ D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Wo
 "d1_databases": [
   {
     "binding": "DB",
-    "database_name": "{appName}-db",
+    "database_name": "{projectName}-db",
     "database_id": "REPLACE_WITH_D1_DATABASE_ID",
     "migrations_dir": "drizzle"
   }
 ]
 ```
 
-Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`.
+Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`. In a Turborepo every app binds the same database (`{projectName}-db`) so the apps see the same data and migrations target one database: paste the same id into each app's `wrangler.jsonc`.
 
 **`src/lib/db/index.ts` — factory, not singleton:**
 
