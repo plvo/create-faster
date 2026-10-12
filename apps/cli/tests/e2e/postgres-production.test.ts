@@ -17,6 +17,10 @@ const TIMEOUT_DB = 120_000;
 const TIMEOUT_BUILD = 300_000;
 const TIMEOUT_SERVER = 120_000;
 const SSL_REFUSED = 'The server does not support SSL connections';
+// A copied local URL pointed at a remote host: `.invalid` never resolves, the warning comes first.
+const REMOTE_URL_WITHOUT_TLS = 'postgresql://postgres:password@db.invalid:5432/postgres?sslmode=disable';
+const REMOTE_TLS_WARNING = 'DATABASE_URL sets sslmode=disable for db.invalid in production';
+const ANY_TLS_WARNING = 'DATABASE_URL sets sslmode=disable for';
 
 type Orm = 'drizzle' | 'prisma';
 type ProbedStack = 'nextjs' | 'tanstack-start' | 'hono';
@@ -188,8 +192,8 @@ async function callDbProbe(appDir: string, app: ProbedApp, mode: ServerMode, dat
     port,
     readyPath: probe.readyPath,
     readyTimeout: TIMEOUT_SERVER,
-    // A deployed server runs with NODE_ENV=production, whether or not its start script sets it.
-    env: { PORT: String(port), DATABASE_URL: databaseUrl, ...(mode === 'start' && { NODE_ENV: 'production' }) },
+    // No NODE_ENV here: each stack's own dev and start commands decide it.
+    env: { PORT: String(port), DATABASE_URL: databaseUrl },
   });
   try {
     const response = await fetch(new URL('/api/db-probe', server.url));
@@ -297,6 +301,7 @@ describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
         const { status, body, serverOutput } = await callDbProbe(join(projectDir, app.dir), app, 'start', localUrl);
         expect(status, `${body}\n${serverOutput}`).toBe(200);
         expect(JSON.parse(body)).toEqual({ rows: [{ ok: 1 }] });
+        expect(serverOutput).not.toContain(ANY_TLS_WARNING);
       },
       TIMEOUT_SERVER,
     );
@@ -312,6 +317,16 @@ describeWithDocker('postgres production e2e').each(TOPOLOGIES)(
         );
         expect(status).toBe(500);
         expect(serverOutput).toContain(SSL_REFUSED);
+      },
+      TIMEOUT_SERVER,
+    );
+
+    test.each(apps)(
+      '$dir production server warns when DATABASE_URL disables TLS for a remote host',
+      async (app) => {
+        const { status, serverOutput } = await callDbProbe(join(projectDir, app.dir), app, 'start', REMOTE_URL_WITHOUT_TLS);
+        expect(status).toBe(500);
+        expect(serverOutput).toContain(REMOTE_TLS_WARNING);
       },
       TIMEOUT_SERVER,
     );

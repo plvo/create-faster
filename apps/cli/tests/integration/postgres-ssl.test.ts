@@ -12,6 +12,18 @@ const PRISMA_TLS_IN_PRODUCTION = `new PrismaPg({
   ssl: process.env.NODE_ENV === 'production',
 });`;
 const LOCAL_URL_WITHOUT_TLS = /^DATABASE_URL="postgresql:\/\/postgres:password@localhost:\d+\/postgres-[\w-]+\?sslmode=disable"/m;
+const PRODUCTION_TLS_WARNING = 'function warnIfProductionTlsDisabled(databaseUrl: string | undefined): void {';
+const DRIZZLE_WARNING_CALL = `  warnIfProductionTlsDisabled(databaseUrl);
+  return drizzle({`;
+const PRISMA_WARNING_CALL = 'warnIfProductionTlsDisabled(process.env.DATABASE_URL);\nconst adapter = new PrismaPg({';
+
+const NODE_ENV_SOURCES = {
+  nextjs: '- Next.js: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle',
+  'tanstack-start': '- TanStack Start: `vite build` replaces it in the server bundle the same way',
+  hono: '- Hono: Bun runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production bun run src/index.ts`)',
+};
+type ProbedStack = keyof typeof NODE_ENV_SOURCES;
+const BUN_APPS_ELSEWHERE = 'Any other production entry of a Bun app';
 
 let tempDir: string;
 
@@ -30,46 +42,58 @@ async function generate(projectName: string, args: string[]): Promise<string> {
 }
 
 const TURBO_APPS = ['--app', 'web:nextjs', '--app', 'start:tanstack-start', '--app', 'api:hono'];
+const TURBO_STACKS: ProbedStack[] = ['nextjs', 'tanstack-start', 'hono'];
+const TURBO_ENV_FILES = ['packages/db/.env.example', 'apps/web/.env.example', 'apps/start/.env.example', 'apps/api/.env.example'];
 
 const TOPOLOGIES = [
   {
     name: 'pg-ssl-next-drizzle',
     args: ['--app', 'pg-ssl-next-drizzle:nextjs', '--orm', 'drizzle'],
+    stacks: ['nextjs'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
+    warningCall: DRIZZLE_WARNING_CALL,
     envFiles: ['.env.example'],
   },
   {
     name: 'pg-ssl-start-drizzle',
     args: ['--app', 'pg-ssl-start-drizzle:tanstack-start', '--orm', 'drizzle'],
+    stacks: ['tanstack-start'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
+    warningCall: DRIZZLE_WARNING_CALL,
     envFiles: ['.env.example'],
   },
   {
     name: 'pg-ssl-turbo-drizzle',
     args: [...TURBO_APPS, '--orm', 'drizzle'],
+    stacks: TURBO_STACKS,
     client: 'packages/db/src/index.ts',
     clientConfig: DRIZZLE_TLS_IN_PRODUCTION,
-    envFiles: ['packages/db/.env.example', 'apps/web/.env.example', 'apps/start/.env.example', 'apps/api/.env.example'],
+    warningCall: DRIZZLE_WARNING_CALL,
+    envFiles: TURBO_ENV_FILES,
   },
   {
     name: 'pg-ssl-next-prisma',
     args: ['--app', 'pg-ssl-next-prisma:nextjs', '--orm', 'prisma'],
+    stacks: ['nextjs'] as ProbedStack[],
     client: 'src/lib/db/index.ts',
     clientConfig: PRISMA_TLS_IN_PRODUCTION,
+    warningCall: PRISMA_WARNING_CALL,
     envFiles: ['.env.example'],
   },
   {
     name: 'pg-ssl-turbo-prisma',
     args: [...TURBO_APPS, '--orm', 'prisma'],
+    stacks: TURBO_STACKS,
     client: 'packages/db/src/index.ts',
     clientConfig: PRISMA_TLS_IN_PRODUCTION,
-    envFiles: ['packages/db/.env.example', 'apps/web/.env.example', 'apps/start/.env.example', 'apps/api/.env.example'],
+    warningCall: PRISMA_WARNING_CALL,
+    envFiles: TURBO_ENV_FILES,
   },
 ];
 
-describe.each(TOPOLOGIES)('$name', ({ name, args, client, clientConfig, envFiles }) => {
+describe.each(TOPOLOGIES)('$name', ({ name, args, stacks, client, clientConfig, warningCall, envFiles }) => {
   let projectDir: string;
 
   beforeAll(async () => {
@@ -78,6 +102,12 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, client, clientConfig, envFiles
 
   test('the client turns TLS on in production unless DATABASE_URL sets sslmode', async () => {
     expect(await readTextFile(join(projectDir, client))).toContain(clientConfig);
+  });
+
+  test('the client warns when production disables TLS for a remote host', async () => {
+    const index = await readTextFile(join(projectDir, client));
+    expect(index).toContain(PRODUCTION_TLS_WARNING);
+    expect(index).toContain(warningCall);
   });
 
   test('the local DATABASE_URL disables TLS for the Docker database', async () => {
@@ -91,6 +121,17 @@ describe.each(TOPOLOGIES)('$name', ({ name, args, client, clientConfig, envFiles
     expect(agents).toContain('`NODE_ENV=production`');
     expect(agents).toContain('`?sslmode=disable`');
     expect(agents).toContain('Never copy the local `DATABASE_URL` to production');
+    expect(agents).toContain('the client logs a warning');
+  });
+
+  test('AGENTS.md says where each stack gets NODE_ENV=production', async () => {
+    const agents = await readTextFile(join(projectDir, 'AGENTS.md'));
+    for (const [stack, source] of Object.entries(NODE_ENV_SOURCES)) {
+      if (stacks.includes(stack as ProbedStack)) expect(agents).toContain(source);
+      else expect(agents).not.toContain(source);
+    }
+    if (stacks.includes('hono')) expect(agents).toContain(BUN_APPS_ELSEWHERE);
+    else expect(agents).not.toContain(BUN_APPS_ELSEWHERE);
   });
 });
 
