@@ -157,6 +157,35 @@ describe('turborepo docs and summary list every app and package', () => {
   });
 });
 
+describe('recreate command', () => {
+  let dir: string;
+
+  beforeAll(async () => {
+    dir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  test.each([
+    ['bun', 'bunx create-faster'],
+    ['npm', 'npx create-faster'],
+  ])('is run with the runner of --pm %s', async (pm, runner) => {
+    const name = `recreate-${pm}`;
+    const result = await runCli([name, '--app', `${name}:nextjs`, '--no-git', '--no-install', '--pm', pm], dir);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(`${runner} ${name} --app ${name}:nextjs`);
+  });
+
+  test.skipIf(!Bun.which('pnpm'))('is run with pnpm dlx under --pm pnpm', async () => {
+    const args = ['recreate-pnpm', '--app', 'recreate-pnpm:nextjs', '--no-git', '--no-install', '--pm', 'pnpm'];
+    const result = await runCli(args, dir);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('pnpm dlx create-faster recreate-pnpm --app');
+  });
+});
+
 describe('generated docs write commands every package manager runs', () => {
   let dir: string;
 

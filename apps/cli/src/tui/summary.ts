@@ -3,11 +3,12 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getMonoPackageName } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
+import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure } from '@/lib/post-generation';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
-  let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
+  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${ctx.projectName}`;
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
