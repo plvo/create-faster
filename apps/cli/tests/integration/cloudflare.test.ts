@@ -177,7 +177,7 @@ describe('Cloudflare deployment platform', () => {
     test('web app gets open-next wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(content).toContain('"name": "web"');
+      expect(content).toContain(`"name": "${projectName}-web"`);
       expect(content).toContain('"main": ".open-next/worker.js"');
       expect(content).toContain('"NODE_ENV": "production"');
     });
@@ -200,7 +200,7 @@ describe('Cloudflare deployment platform', () => {
     test('api app gets Workers wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/api/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/api/wrangler.jsonc'));
-      expect(content).toContain('"name": "api"');
+      expect(content).toContain(`"name": "${projectName}-api"`);
       expect(content).toContain('"main": "src/index.ts"');
     });
 

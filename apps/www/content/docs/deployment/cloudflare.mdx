@@ -106,7 +106,7 @@ A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and for
 
 ## Shared behavior
 
-The Worker `name` is the app name in turborepo mode and the project name in single mode.
+The Worker `name` is the project name in single mode and `<project>-<app>` in turborepo mode, so two projects deployed to one Cloudflare account never share a Worker.
 
 **Modified files:**
 - `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`; for Next.js apps it also ignores `.open-next/` and `.prod.env`.
@@ -116,4 +116,4 @@ The Worker `name` is the app name in turborepo mode and the project name in sing
 Wrangler 4.x and the Vite plugin read local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
 
 **Turborepo mode:**
-`wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.
+`wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named `<project>-<app>`. Run the scripts from the app directory.

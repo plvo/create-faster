@@ -119,7 +119,7 @@ Keep loaders to plain client-safe code (or data fetched from an external API) in
 
 ## Shared behavior
 
-The Worker `name` is the app name in turborepo mode and the project name in single mode.
+The Worker `name` is the project name in single mode and `<project>-<app>` in turborepo mode, so two projects deployed to one Cloudflare account never share a Worker.
 
 **Omitted files:**
 - The Next.js request interceptor (`proxy.ts` / `middleware.ts`) is not generated — a static export has no server to run it.
@@ -129,4 +129,4 @@ The Worker `name` is the app name in turborepo mode and the project name in sing
 - `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`. The build outputs `out/` (Next.js) and `dist/` (TanStack Start) are already ignored.
 
 **Turborepo mode:**
-`wrangler.jsonc` is placed in `apps/<name>/` and the Worker is named after the app. Run the scripts from the app directory.
+`wrangler.jsonc` is placed in `apps/<name>/` and the Worker is named `<project>-<app>`. Run the scripts from the app directory.
