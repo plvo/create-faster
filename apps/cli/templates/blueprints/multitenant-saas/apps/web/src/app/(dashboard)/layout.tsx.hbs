@@ -18,16 +18,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session) redirect('/login');
   if (!session.session.activeOrganizationId) redirect('/onboarding');
 
-  const members = await auth.api.listMembers({
-    headers: hdrs,
-    query: { organizationId: session.session.activeOrganizationId },
-  });
-  const me = members?.members?.find((m) => m.userId === session.user.id);
-  const role = me?.role ?? 'member';
-
   return (
     <SidebarProvider>
-      <AppSidebar session={session} role={role} />
+      <AppSidebar session={session} />
       <SidebarInset>
         <header className='flex h-14 shrink-0 items-center gap-2 border-b px-4'>
           <SidebarTrigger />

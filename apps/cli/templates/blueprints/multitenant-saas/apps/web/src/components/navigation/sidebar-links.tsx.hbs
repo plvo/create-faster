@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
 {{{{raw}}}}
-export function SidebarLinks({ role: _role }: { role: string }) {
+export function SidebarLinks() {
   const pathname = usePathname();
   const [visibleUrls, setVisibleUrls] = useState<Set<string>>(new Set());
 
@@ -52,7 +52,7 @@ export function SidebarLinks({ role: _role }: { role: string }) {
   const ungrouped = visible.filter((r) => !r.category);
   const grouped = visible.reduce<Record<string, RouteProps[]>>((acc, r) => {
     if (!r.category) return acc;
-    (acc[r.category] ??= []).push(r);
+    acc[r.category] = [...(acc[r.category] ?? []), r];
     return acc;
   }, {});
 

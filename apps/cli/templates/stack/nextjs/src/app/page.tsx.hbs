@@ -1,6 +1,10 @@
 ---
 only: no-blueprint
 ---
+{{#if (hasLibrary "mdx")}}
+import Link from 'next/link';
+
+{{/if}}
 export default function HomePage() {
   return (
     <div className='flex flex-col items-center justify-center h-screen'>
@@ -8,7 +12,7 @@ export default function HomePage() {
 
       {{#if (hasLibrary "mdx")}}
       <p>
-        MDX module is enabled, you can see the <a href='/mdx'>example MDX page</a>.
+        MDX module is enabled, you can see the <Link href='/mdx'>example MDX page</Link>.
       </p>
       {{/if}}
     </div>

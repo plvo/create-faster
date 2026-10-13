@@ -43,20 +43,23 @@ export function SessionList() {
   const [pending, setPending] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     const res = await authClient.listSessions();
     if (res.error) {
       toast.error('Failed to load sessions');
-      setLoading(false);
-      return;
+    } else {
+      setSessions((res.data ?? []) as SessionRow[]);
     }
-    setSessions((res.data ?? []) as SessionRow[]);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  function reload() {
+    setLoading(true);
+    load();
+  }
 
   const currentToken = current?.session.token;
 
@@ -69,7 +72,7 @@ export function SessionList() {
       return;
     }
     toast.success('Session revoked');
-    load();
+    reload();
   }
 
   async function revokeOthers() {
@@ -81,7 +84,7 @@ export function SessionList() {
       return;
     }
     toast.success('All other sessions revoked');
-    load();
+    reload();
   }
 
   return (

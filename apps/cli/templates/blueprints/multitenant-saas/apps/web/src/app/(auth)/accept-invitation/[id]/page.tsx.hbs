@@ -35,7 +35,7 @@ export default async function AcceptInvitationPage({ params }: { params: Promise
             <CardTitle>Invitation unavailable</CardTitle>
             <CardDescription>
               This invitation may have expired, been cancelled, or was sent to a different email address. Make sure
-              you're signed in with the email the invitation was sent to.
+              you&apos;re signed in with the email the invitation was sent to.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -49,7 +49,7 @@ export default async function AcceptInvitationPage({ params }: { params: Promise
         <CardHeader>
           <CardTitle>Join {invitation.organizationName ?? 'this organization'}</CardTitle>
           <CardDescription>
-            You've been invited to join as <strong>{invitation.role}</strong>.
+            You&apos;ve been invited to join as <strong>{invitation.role}</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>

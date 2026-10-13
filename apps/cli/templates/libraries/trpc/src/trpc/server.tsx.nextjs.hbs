@@ -11,7 +11,7 @@ import 'server-only';
 {{#if (hasLibrary "tanstack-query")}}
 import type React from 'react';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import { createTRPCOptionsProxy, type ResolverDef, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
 {{/if}}
 import { cache } from 'react';
 {{#if (hasLibrary "tanstack-query")}}
@@ -57,10 +57,12 @@ export function HydrateClient(props: { children: React.ReactNode }) {
   return <HydrationBoundary state={state}>{props.children}</HydrationBoundary>;
 }
 
-export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
+export function prefetch<T extends ReturnType<TRPCQueryOptions<ResolverDef>>>(queryOptions: T) {
   const queryClient = getQueryClient();
   if (queryOptions.queryKey[1]?.type === 'infinite') {
-    void queryClient.prefetchInfiniteQuery(queryOptions as any);
+    void queryClient.prefetchInfiniteQuery(
+      queryOptions as unknown as Parameters<typeof queryClient.prefetchInfiniteQuery>[0],
+    );
   } else {
     void queryClient.prefetchQuery(queryOptions);
   }

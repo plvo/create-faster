@@ -30,23 +30,23 @@ export const mdxComponents = {
   li: ({ ...props }: ListItemProps) => <li className={'li-mdx'} {...props} />,
   code: ({ ...props }: CodeProps) => <code className='code-mdx' {...props} />,
   blockquote: ({ ...props }: BlockquoteProps) => <blockquote className={'blockquote-mdx'} {...props} />,
-  a: ({ href, children, className, ...props }: AnchorProps) => {
+  a: ({ href, children, ...props }: AnchorProps) => {
     if (href?.startsWith('/')) {
       return (
-        <Link {{#if (eq stackName "tanstack-start")}}to{{else}}href{{/if}}={href} className={'a-mdx'} {...props}>
+        <Link {{#if (eq stackName "tanstack-start")}}to{{else}}href{{/if}}={href} {...props} className={'a-mdx'}>
           {children}
         </Link>
       );
     }
     if (href?.startsWith('#')) {
       return (
-        <a href={href} className={'a-mdx'} {...props}>
+        <a href={href} {...props} className={'a-mdx'}>
           {children}
         </a>
       );
     }
     return (
-      <a href={href} target='_blank' rel='noopener noreferrer' className={'a-mdx'} {...props}>
+      <a href={href} target='_blank' rel='noopener noreferrer' {...props} className={'a-mdx'}>
         {children}
       </a>
     );
