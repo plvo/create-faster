@@ -64,9 +64,9 @@ describe('deployment cloudflare: nextjs app package.json (single repo)', () => {
     expect(result.content.scripts?.deploy).toContain('opennextjs-cloudflare');
   });
 
-  test('has cf:typegen script', () => {
+  test('has cf-typegen script', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
-    expect(result.content.scripts?.['cf:typegen']).toBe(
+    expect(result.content.scripts?.['cf-typegen']).toBe(
       'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
     );
   });

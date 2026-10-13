@@ -418,7 +418,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(setup).toContain('db:migrate');
     // wrangler d1 migrations apply prompts for confirmation; CI forces the non-interactive "yes".
     expect(setup).toContain("{ CI: 'true' }");
-    expect(setup).toContain('cf:typegen');
+    expect(setup).toContain('cf-typegen');
     expect(setup).toContain('apps/web');
     expect(setup).toContain('db:seed');
     expect(setup).not.toContain('#!/usr/bin/env');

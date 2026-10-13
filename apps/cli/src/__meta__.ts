@@ -10,6 +10,8 @@ const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudfl
 
 const WRANGLER_VERSION = '^4.127.1';
 
+const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
@@ -561,7 +563,8 @@ export const META: Meta = {
               scripts: {
                 deploy: 'wrangler deploy',
                 preview: 'wrangler dev --persist-to {{workspaceRoot}}/.wrangler',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: CLOUDFLARE_TYPEGEN,
               },
             },
             'tanstack-start': {
@@ -570,7 +573,8 @@ export const META: Meta = {
               },
               scripts: {
                 deploy: 'vite build && wrangler deploy',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: CLOUDFLARE_TYPEGEN,
               },
             },
             nextjs: {
@@ -578,11 +582,11 @@ export const META: Meta = {
                 '@opennextjs/cloudflare': '^1.20.5',
               },
               scripts: {
-                'build:cf':
-                  'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && opennextjs-cloudflare build',
+                'build:cf': `${CLOUDFLARE_TYPEGEN} && opennextjs-cloudflare build`,
                 preview: 'opennextjs-cloudflare preview -- --persist-to {{workspaceRoot}}/.wrangler',
                 deploy: 'opennextjs-cloudflare deploy',
-                'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: CLOUDFLARE_TYPEGEN,
               },
             },
           },
@@ -602,14 +606,14 @@ export const META: Meta = {
               scripts: {
                 deploy: 'next build && wrangler deploy',
                 preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
               },
             },
             'tanstack-start': {
               scripts: {
                 deploy: 'vite build && wrangler deploy',
                 preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
               },
             },
           },

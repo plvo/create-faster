@@ -49,19 +49,12 @@ const PROJECTS: Project[] = [
       '--deployment',
       'cloudflare',
     ],
-    setup: [
-      { appDir: 'apps/web', command: ['bun', 'run', 'cf-typegen'] },
-      { appDir: 'apps/api', command: ['bun', 'run', 'cf-typegen'] },
-      { appDir: 'apps/web', command: ['bunx', 'vite', 'build'] },
-    ],
+    setup: [{ appDir: 'apps/web', command: ['bunx', 'vite', 'build'] }],
   },
   {
     name: 'blueprint cloudflare-fullstack',
     args: ['--blueprint', 'cloudflare-fullstack'],
-    setup: [
-      { appDir: 'apps/web', command: ['bun', 'run', 'cf:typegen'] },
-      { appDir: 'apps/cron', command: ['bun', 'run', 'cf-typegen'] },
-    ],
+    setup: [],
   },
 ];
 
