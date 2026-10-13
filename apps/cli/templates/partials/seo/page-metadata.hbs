@@ -30,7 +30,7 @@ interface PageMetadataInput {
   publishedTime?: string;
 }
 
-/** Metadata of a page: its values over the site defaults, for `<head>`, Open Graph and Twitter. */
+/** Metadata of a page: its values over the site defaults, for `<head>`, canonical URL, Open Graph and Twitter. */
 export function createPageMetadata({ title, description, path, image, publishedTime }: PageMetadataInput): Metadata {
   const shared = {
     title: title ?? siteConfig.name,
@@ -41,6 +41,7 @@ export function createPageMetadata({ title, description, path, image, publishedT
   return {
     ...(title ? { title } : {}),
     description,
+    alternates: { canonical: path },
     openGraph: {
       ...siteOpenGraph,
       ...shared,

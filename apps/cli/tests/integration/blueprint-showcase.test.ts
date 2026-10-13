@@ -66,10 +66,10 @@ describe('Blueprint generation - showcase', () => {
     expect(pkg.dependencies['posthog-js']).toMatch(/^\^1\.435/);
   });
 
-  test('.env.example has the PostHog token and the site URL', async () => {
+  test('.env.example has the PostHog token and the app URL', async () => {
     const env = await readTextFile(join(projectPath, '.env.example'));
     expect(env).toContain('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=');
-    expect(env).toContain('NEXT_PUBLIC_SITE_URL=');
+    expect(env).toContain('NEXT_PUBLIC_APP_URL=');
     expect(env).not.toContain('NEXT_PUBLIC_POSTHOG_KEY');
   });
 
