@@ -15,7 +15,7 @@ generator nodeClient {
 }`;
 
 const POSTGRES_NODE_ADAPTER = `const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production',
 });`;
 const MYSQL_NODE_ADAPTER = "const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');";

@@ -21,14 +21,16 @@ biome.json                  # Complete Biome configuration
 
 **Turborepo mode:** `biome.json` is placed at the project root and applies to all apps.
 
+**Ignored files:** Biome reads the generated `.gitignore` (`vcs.useIgnoreFile`), so build and generated output such as `.next/`, `.output/`, `.wrangler/` and `cloudflare-env.d.ts` is never linted or rewritten by `check`. The `$schema` points at the installed Biome package, so it always matches the CLI version.
+
 ### biome.json
 
 ```json title="biome.json"
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "vcs": {
-    "enabled": false,
+    "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true,
     "defaultBranch": "main"
@@ -73,7 +75,7 @@ biome.json                  # Complete Biome configuration
   },
   "linter": {
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off",

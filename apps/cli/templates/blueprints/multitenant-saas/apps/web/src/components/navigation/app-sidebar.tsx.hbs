@@ -19,17 +19,16 @@ import { SidebarLinks } from './sidebar-links';
 {{{{raw}}}}
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   session: Session;
-  role: string;
 };
 
-export function AppSidebar({ session, role, ...props }: AppSidebarProps) {
+export function AppSidebar({ session, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible='icon' variant='sidebar' {...props}>
       <SidebarHeader>
         <OrgSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarLinks role={role} />
+        <SidebarLinks />
       </SidebarContent>
       <SidebarFooter>
         <NavUser session={session} />

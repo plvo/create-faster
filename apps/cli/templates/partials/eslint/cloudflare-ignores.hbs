@@ -1,0 +1,4 @@
+---
+inline: true
+---
+{{#if (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}, ".wrangler/**", "cloudflare-env.d.ts"{{/if}}

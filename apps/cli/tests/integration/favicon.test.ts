@@ -21,7 +21,9 @@ describe('Generated favicon', () => {
 
   test('a single Next.js app ships an icon through the app directory convention', async () => {
     const projectPath = await generate('next-single', ['--app', 'next-single:nextjs']);
-    expect(await readTextFile(join(projectPath, 'src/app/icon.svg'))).toStartWith('<svg');
+    const icon = await readTextFile(join(projectPath, 'src/app/icon.svg'));
+    expect(icon).toStartWith('<svg');
+    expect(icon).toMatch(/<title>[^<]+<\/title>/);
   });
 
   test('every Next.js app of a turborepo ships its own icon', async () => {
@@ -37,7 +39,9 @@ describe('Generated favicon', () => {
 
   test('a TanStack Start app serves a public favicon linked from the root route head', async () => {
     const projectPath = await generate('start-single', ['--app', 'start-single:tanstack-start']);
-    expect(await readTextFile(join(projectPath, 'public/favicon.svg'))).toStartWith('<svg');
+    const favicon = await readTextFile(join(projectPath, 'public/favicon.svg'));
+    expect(favicon).toStartWith('<svg');
+    expect(favicon).toMatch(/<title>[^<]+<\/title>/);
     const rootRoute = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
     expect(rootRoute).toContain("rel: 'icon'");
     expect(rootRoute).toContain("href: '/favicon.svg'");

@@ -61,7 +61,7 @@ export function AppProviders({ children }: AppProvidersProps) {
         await authClient.signOut();
       },
     });
-  }, []);
+  }, [router]);
 
   return (
     <WagmiProvider config={wagmiConfig}>

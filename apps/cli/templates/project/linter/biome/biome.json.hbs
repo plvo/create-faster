@@ -1,8 +1,8 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "vcs": {
-    "enabled": false,
+    "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true,
     "defaultBranch": "main"
@@ -18,7 +18,8 @@
       "!**/dist/**/*",
       "!**/out/**/*",
       "!**/generated/**/*",
-      "!**/.turbo/**/*"
+      "!**/.turbo/**/*"{{#if (has "stack" "tanstack-start")}},
+      "!**/routeTree.gen.ts"{{/if}}
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
@@ -47,7 +48,7 @@
   },
   "linter": {
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "off",
         "noArrayIndexKey": "off",
