@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, test } from 'bun:test';
 import { existsSync, readdirSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { copyFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
 
@@ -120,8 +120,12 @@ function workspaceDirs(projectDir: string): string[] {
   return [projectDir, ...nested];
 }
 
-// Steps a developer runs by hand before the first build: Wrangler binding types and the Prisma client.
+// Steps a developer runs by hand before the first build: the .env files, Wrangler binding types and the Prisma client.
 async function prepareBuild(projectDir: string): Promise<void> {
+  for (const dir of workspaceDirs(projectDir)) {
+    if (existsSync(join(dir, '.env.example'))) await copyFile(join(dir, '.env.example'), join(dir, '.env'));
+  }
+
   for (const dir of workspaceDirs(projectDir)) {
     const scripts = (await readManifest(dir))?.scripts ?? {};
     const steps = ['cf-typegen', 'cf:typegen'].filter((name) => scripts[name]);
@@ -134,7 +138,7 @@ async function prepareBuild(projectDir: string): Promise<void> {
 }
 
 // A Cloudflare Next.js app is built for Workers by `build:cf` (OpenNext), which writes `.open-next` and `.wrangler`.
-async function buildProject(projectDir: string): Promise<boolean> {
+async function buildProject(projectDir: string): Promise<string[]> {
   const dirs = workspaceDirs(projectDir);
   const manifests = await Promise.all(dirs.map(readManifest));
   const workersBuilds = dirs.filter((_, index) => manifests[index]?.scripts?.['build:cf']);
@@ -143,8 +147,12 @@ async function buildProject(projectDir: string): Promise<boolean> {
     builds.unshift({ script: 'build', dir: projectDir });
   }
 
-  for (const { script, dir } of builds) await runCommand(['bun', 'run', script], dir);
-  return builds.length > 0;
+  const outcomes: string[] = [];
+  for (const { script, dir } of builds) {
+    const { exitCode } = await runCommand(['bun', 'run', script], dir);
+    outcomes.push(`${script} exit ${exitCode}`);
+  }
+  return outcomes;
 }
 
 async function expectLintPasses(projectDir: string, moment: string): Promise<void> {
@@ -154,7 +162,7 @@ async function expectLintPasses(projectDir: string, moment: string): Promise<voi
   throw new Error(`\`bun run lint\` exited ${result.exitCode} ${moment}:\n${tail}`);
 }
 
-// The build outcome is not asserted: the other e2e files own it. What matters here is that
+// The build outcome is logged, not asserted: the other e2e files own it. What matters here is that
 // whatever the build writes (or leaves half written) is never linted.
 describe('generated projects pass their own lint script', () => {
   let tempDir: string;
@@ -181,11 +189,13 @@ describe('generated projects pass their own lint script', () => {
           const projectDir = join(tempDir, name);
           const install = await runCommand(['bun', 'install'], projectDir);
           if (install.exitCode !== 0) throw new Error(`install failed:\n${install.stderr}`);
-          await prepareBuild(projectDir);
 
           try {
+            await prepareBuild(projectDir);
             await expectLintPasses(projectDir, 'before the build');
-            if (await buildProject(projectDir)) await expectLintPasses(projectDir, 'after the build');
+            const builds = await buildProject(projectDir);
+            if (builds.length > 0) await expectLintPasses(projectDir, 'after the build');
+            console.log(`${linter}: ${name}: ${builds.join(', ') || 'no build script'}`);
           } finally {
             await cleanupTempDir(projectDir);
           }
