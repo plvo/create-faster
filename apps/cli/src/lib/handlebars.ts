@@ -9,7 +9,7 @@ import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { readFrontmatterFile } from './frontmatter';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
-import { getPackageRunner, getScriptCommand } from './package-manager';
+import { getAppScriptCommand, getPackageRunner, getScriptCommand } from './package-manager';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -87,6 +87,14 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('runScript', (script: string, options: Handlebars.HelperOptions) => {
     return getScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('runAppScript', (script: string, options: Handlebars.HelperOptions) => {
+    return getAppScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('stackApps', (stack: string, options: Handlebars.HelperOptions) => {
+    return (options.data.root as TemplateContext).apps.filter((app) => app.stackName === stack);
   });
 
   Handlebars.registerHelper('packageRunner', (options: Handlebars.HelperOptions) => {

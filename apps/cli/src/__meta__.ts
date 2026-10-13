@@ -12,6 +12,8 @@ const WRANGLER_VERSION = '^4.127.1';
 
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 
+const GENERATE_ROUTE_TREE = 'tsr generate';
+
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
@@ -148,6 +150,7 @@ export const META: Meta = {
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.167.2',
+          '@tanstack/router-cli': '^1.167.43',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
           nitro: $when(RUNS_NODE_SERVER, '^3.0.260903-beta'),
@@ -158,6 +161,7 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
+          postinstall: GENERATE_ROUTE_TREE,
           start: $when(
             RUNS_NODE_SERVER,
             'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs',
@@ -574,7 +578,7 @@ export const META: Meta = {
               scripts: {
                 deploy: 'vite build && wrangler deploy',
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
-                postinstall: CLOUDFLARE_TYPEGEN,
+                postinstall: `${CLOUDFLARE_TYPEGEN} && ${GENERATE_ROUTE_TREE}`,
               },
             },
             nextjs: {
