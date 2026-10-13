@@ -150,6 +150,15 @@ describe('turborepo docs and summary list every app and package', () => {
     expect(agents).not.toContain('\n\n\n');
   });
 
+  test('a Cloudflare turborepo of Next.js apps has no root start script and its README does not list one', async () => {
+    const args = ['cf', '--app', 'web:nextjs', '--app', 'docs:nextjs', '--deployment', 'cloudflare'];
+    const result = await runCli([...args, '--no-git', '--no-install', '--pm', 'npm'], dir);
+    expect(result.exitCode).toBe(0);
+    const root = JSON.parse(await readTextFile(join(dir, 'cf', 'package.json'))) as { scripts: Record<string, string> };
+    expect(root.scripts.start).toBeUndefined();
+    expect(await readTextFile(join(dir, 'cf', 'README.md'))).not.toContain('- `start`');
+  });
+
   test('AGENTS.md has no Packages section when the turborepo generates none', async () => {
     const result = await runCli(
       ['bare', '--app', 'web:nextjs', '--app', 'api:hono', '--no-git', '--no-install', '--pm', 'npm'],

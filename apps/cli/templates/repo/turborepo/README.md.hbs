@@ -79,7 +79,7 @@ cp {{path}}.example {{path}}
 Start all applications in development mode:
 
 ```bash
-{{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
+{{runScript "dev"}}
 ```
 
 {{#each apps}}
