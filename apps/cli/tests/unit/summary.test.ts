@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { stripVTControlCharacters } from 'node:util';
 import { displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -39,7 +38,7 @@ describe('summary note', () => {
 
   test('lists Git and the remote steps when git init succeeded', () => {
     displaySummaryNote(ctx, undefined);
-    const output = stripVTControlCharacters(written.join(''));
+    const output = written.join('');
 
     expect(output).toContain('Git, AGENTS.md');
     expect(output).toContain('git remote add origin');
@@ -48,7 +47,7 @@ describe('summary note', () => {
 
   test('drops the Git line and the remote steps and hints at git init when it failed', () => {
     displaySummaryNote(ctx, { output: 'fatal: git failed' });
-    const output = stripVTControlCharacters(written.join(''));
+    const output = written.join('');
 
     expect(output).not.toContain('Git');
     expect(output).toContain('AGENTS.md');

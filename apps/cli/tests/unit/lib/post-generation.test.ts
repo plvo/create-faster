@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
-import { stripVTControlCharacters } from 'node:util';
 import { runPostGeneration } from '@/lib/post-generation';
 import { buildInstallFailureMessage } from '@/tui/install-failure';
 import { displaySummaryNote } from '@/tui/summary';
@@ -93,7 +92,7 @@ describe('runPostGeneration', () => {
       displaySummaryNote(ctx, result.gitFailure);
 
       expect(result.gitFailure).toEqual({ output: '' });
-      expect(stripVTControlCharacters(written.join(''))).toContain('# git init failed');
+      expect(written.join('')).toContain('# git init failed');
     } finally {
       process.env.PATH = originalPath;
     }

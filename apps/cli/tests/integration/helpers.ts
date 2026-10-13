@@ -4,6 +4,7 @@ import { join, normalize } from 'node:path';
 import { format } from 'node:util';
 import { expect } from 'bun:test';
 import { $ } from 'bun';
+import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 
 interface CliResult {
   exitCode: number;
@@ -25,7 +26,7 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   try {
     const result = await $`${process.execPath} run ${cliPath} ${args}`
       .cwd(cwd)
-      .env({ ...process.env, ...env })
+      .env({ ...process.env, ...PLAIN_OUTPUT_ENV, ...env })
       .quiet();
     return {
       exitCode: result.exitCode,
