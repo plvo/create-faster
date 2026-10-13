@@ -41,7 +41,7 @@ describe('cloudflare binding types, first run', () => {
 
     for (const app of ['web', 'docs', 'api']) {
       const pkg = await readJsonFile<PackageJsonShape>(join(root, 'apps', app, 'package.json'));
-      expect(pkg.scripts.postinstall, app).toBe(pkg.scripts['cf-typegen']);
+      expect(pkg.scripts.postinstall, app).toStartWith(pkg.scripts['cf-typegen'] as string);
     }
     const rootPkg = await readJsonFile<PackageJsonShape>(join(root, 'package.json'));
     expect(rootPkg.scripts['cf-typegen']).toBe('turbo cf-typegen');

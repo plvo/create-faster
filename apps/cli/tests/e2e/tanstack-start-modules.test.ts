@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   type CommandResult,
@@ -41,6 +41,7 @@ const TRPC_VANILLA: TrpcProbeOptions = { auth: false, query: false };
 describe('tanstack-start-loaded', () => {
   let projectDir: string;
   let installResult: CommandResult;
+  let routeTreeAfterInstall: string;
 
   beforeAll(async () => {
     const tempDir = await createTempDir();
@@ -63,6 +64,7 @@ describe('tanstack-start-loaded', () => {
     await writeCsrfProbeRoute(projectDir);
     await writeQueryProbe(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
+    routeTreeAfterInstall = await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8');
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -85,6 +87,10 @@ describe('tanstack-start-loaded', () => {
     },
     TIMEOUT_BUILD,
   );
+
+  test('the build leaves the route tree written on install unchanged, start file footer included', async () => {
+    expect(await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8')).toBe(routeTreeAfterInstall);
+  });
 
   test('the production build ships no devtools code', async () => {
     const output = join(projectDir, '.output');

@@ -15,11 +15,11 @@ const singleCtx = (stackName: StackName, deployment?: 'cloudflare' | 'sst'): Tem
 });
 
 describe('cloudflare binding types', () => {
-  test.each(STACKS)('%s: one cf-typegen script, run after every install', (stackName) => {
+  test.each(STACKS)('%s: one cf-typegen script, run first on every install', (stackName) => {
     const ctx = singleCtx(stackName, 'cloudflare');
     const { scripts } = generateAppPackageJson(ctx.apps[0]!, ctx, 0).content;
     expect(scripts?.['cf-typegen']).toBe(TYPEGEN);
-    expect(scripts?.postinstall).toBe(TYPEGEN);
+    expect(scripts?.postinstall).toStartWith(TYPEGEN);
     expect(scripts?.['cf:typegen']).toBeUndefined();
   });
 
