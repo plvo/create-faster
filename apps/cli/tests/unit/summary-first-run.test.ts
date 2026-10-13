@@ -121,6 +121,7 @@ describe('summary first-run steps', () => {
 
   test('a blueprint with its own orchestrator replaces the database steps with it', () => {
     const blueprint = META.blueprints['cloudflare-fullstack'];
+    if (!blueprint) throw new Error('cloudflare-fullstack blueprint is missing from META');
     const output = summarize({
       projectName: 'demo',
       repo: 'turborepo',
