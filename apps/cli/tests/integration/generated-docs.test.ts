@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 // A command written as `<pm> <script>` is only valid for scripts the package manager owns
@@ -118,7 +119,7 @@ describe('turborepo docs and summary list every app and package', () => {
       dir,
     );
     expect(result.exitCode).toBe(0);
-    stdout = result.stdout;
+    stdout = stripVTControlCharacters(result.stdout);
     readme = await readTextFile(join(dir, 'mono', 'README.md'));
     agents = await readTextFile(join(dir, 'mono', 'AGENTS.md'));
   });
@@ -196,14 +197,14 @@ describe('recreate command', () => {
     const name = `recreate-${pm}`;
     const result = await runCli([name, '--app', `${name}:nextjs`, '--no-git', '--no-install', '--pm', pm], dir);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(`${runner} ${name} --app ${name}:nextjs`);
+    expect(stripVTControlCharacters(result.stdout)).toContain(`${runner} ${name} --app ${name}:nextjs`);
   });
 
   test.skipIf(!Bun.which('pnpm'))('is run with pnpm dlx under --pm pnpm', async () => {
     const args = ['recreate-pnpm', '--app', 'recreate-pnpm:nextjs', '--no-git', '--no-install', '--pm', 'pnpm'];
     const result = await runCli(args, dir);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('pnpm dlx create-faster recreate-pnpm --app');
+    expect(stripVTControlCharacters(result.stdout)).toContain('pnpm dlx create-faster recreate-pnpm --app');
   });
 });
 
