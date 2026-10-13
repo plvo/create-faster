@@ -21,9 +21,9 @@ import { makeQueryClient } from '@/trpc/query-client';
 {{/if}}
 import { headers } from 'next/headers';
 {{#if (isMono)}}
-import { type AppRouter, appRouter, createTRPCContext } from '@repo/api';
+import { {{#if (hasLibrary "tanstack-query")}}type AppRouter, {{/if}}appRouter, createTRPCContext } from '@repo/api';
 {{else}}
-import { type AppRouter, appRouter } from '@/trpc/routers/_app';
+import { {{#if (hasLibrary "tanstack-query")}}type AppRouter, {{/if}}appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 {{/if}}
 {{#if (and (has "database" "d1") project.orm)}}
