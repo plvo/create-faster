@@ -71,6 +71,12 @@ export function getScriptCommand(ctx: TemplateContext, script: string): string {
   return `${resolveCommandPackageManager(ctx)} run ${script}`;
 }
 
+/** A script only the apps define: a turborepo root has none, so it runs from the app directory. */
+export function getAppScriptCommand(ctx: TemplateContext, script: string): string {
+  const command = getScriptCommand(ctx, script);
+  return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
+}
+
 /** The command that runs a package binary without installing it. */
 export function getPackageRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];

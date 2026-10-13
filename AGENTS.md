@@ -90,6 +90,8 @@ Required: choice-specific behavior is expressed through reusable operators that 
   - `hasRootScript(name)`: the generated root `package.json` (the turborepo root, or the single app's) defines the script, derived from META by `getRootScripts` in `package-json-generator.ts`; renders a CI step only when the script exists
 >>>>>>> fe2e046 (fix(docs): list every app, URL and package in the README, AGENTS.md and summary)
   - `runScript(name)`: a package.json script as the selected package manager runs it (`bun run build`, `npm run build`, `pnpm run build`; `npm` when none is selected). Docs and notes written into generated projects never write `{{pm}} build`: a bare `bun build` is Bun's bundler and `npm build` is an unknown command
+  - `runAppScript(name)`: a script only the apps define (`deploy`, `preview`, `build:cf`: a turborepo root has none) as a user runs it: `runScript` in a single repo, `cd apps/<app> && <runScript>` in a turborepo, valid under every package manager. A script the root forwards to every app through turbo (`dev`, `build`, `cf-typegen`) stays `runScript`
+  - `stackApps(stack)`: the apps on a stack, for `{{#each (stackApps "nextjs")}}`; inside the block `this` is the app, so `has` and `hasLibrary` do not work there. `{{> cloudflare/app-list stack="nextjs"}}` renders their names, for the note that tells which apps a per-app command applies to
   - `packageRunner`: the selected package manager's binary runner (`bunx`, `npx`, `pnpm dlx`; `npx` when none is selected), data in `package-manager.ts`
   - `camelCase`, `raw`, `appPort(name)` (3000 + app index)
   - Express conditionals inside templates: `{{#if (has "deployment" "cloudflare")}}...{{/if}}`.

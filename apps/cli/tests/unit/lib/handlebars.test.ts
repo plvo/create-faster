@@ -278,6 +278,38 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('runAppScript and stackApps', () => {
+    const template = Handlebars.compile('{{runAppScript "deploy"}}', { noEscape: true });
+    const ctx = (repo: TemplateContext['repo'], pm?: TemplateContext['pm']): TemplateContext => ({
+      projectName: 'demo',
+      repo,
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: [] },
+        { appName: 'docs', stackName: 'nextjs', libraries: [] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
+      ],
+      project: { tooling: [] },
+      git: false,
+      pm,
+    });
+
+    test('a single repo runs the script from the root', () => {
+      expect(template(ctx('single', 'bun'))).toBe('bun run deploy');
+    });
+
+    test('a turborepo runs the script from the app directory, whatever the package manager', () => {
+      expect(template(ctx('turborepo', 'bun'))).toBe('cd apps/<app> && bun run deploy');
+      expect(template(ctx('turborepo', 'npm'))).toBe('cd apps/<app> && npm run deploy');
+      expect(template(ctx('turborepo', 'pnpm'))).toBe('cd apps/<app> && pnpm run deploy');
+    });
+
+    test('stackApps lists the apps on a stack and nothing for an unused one', () => {
+      const list = Handlebars.compile('{{#each (stackApps stack)}}{{appName}};{{/each}}');
+      expect(list({ ...ctx('turborepo'), stack: 'nextjs' })).toBe('web;docs;');
+      expect(list({ ...ctx('turborepo'), stack: 'expo' })).toBe('');
+    });
+  });
+
   describe('appUrl and monoPackages', () => {
     const monorepo = (tooling: string[] = []): TemplateContext => ({
       projectName: 'demo',
