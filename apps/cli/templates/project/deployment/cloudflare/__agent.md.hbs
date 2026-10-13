@@ -37,7 +37,7 @@ There is no `start` script: `next start` runs Next's Node server, where `getClou
 {{/if}}
 - Do NOT add `.dev.vars` — Wrangler ignores `.env` when `.dev.vars` is present.
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
-- Use `.prod.env` (gitignored) for bulk secrets: `{{runAppScript "deploy"}} --secrets-file .prod.env`.
+- Use `.prod.env` (gitignored) for bulk secrets: `{{runAppScript "deploy"}} -- --secrets-file .prod.env`.
 
 **Adding bindings (D1, R2, KV)**: declare them in `wrangler.jsonc`, then read via `getCloudflareContext({ async: true }).env.BINDING_NAME`.
 

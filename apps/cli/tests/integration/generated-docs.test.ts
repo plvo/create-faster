@@ -273,7 +273,7 @@ describe('generated docs write commands every package manager runs', () => {
     );
     const agents = await readTextFile(join(project, 'AGENTS.md'));
     expect(agents).toContain('`npm run build:cf`');
-    expect(agents).toContain('npm run deploy --secrets-file .prod.env');
+    expect(agents).toContain('npm run deploy -- --secrets-file .prod.env');
     expect(agents).not.toMatch(BUN_FORM);
   });
 
