@@ -5,9 +5,6 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 
 const NODE_TYPES_VERSION = '^22';
 
-// @next/bundle-analyzer is released in lockstep with next.
-const NEXT_VERSION = '^16.3.0';
-
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
 const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
 
@@ -42,7 +39,7 @@ export const META: Meta = {
       hint: 'React framework with SSR',
       packageJson: {
         dependencies: {
-          next: NEXT_VERSION,
+          next: '^16.3.0',
           react: '^19.2.8',
           'react-dom': '^19.2.8',
           'tw-animate-css': '^1.4.0',
@@ -54,7 +51,6 @@ export const META: Meta = {
           '@types/react-dom': '^19.2.5',
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
-          '@next/bundle-analyzer': NEXT_VERSION,
         },
         scripts: {
           analyze: 'next experimental-analyze',

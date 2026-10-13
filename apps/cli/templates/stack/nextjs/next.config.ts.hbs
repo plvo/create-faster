@@ -14,10 +14,6 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 {{/if}}
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
 const nextConfig: NextConfig = {
   {{#if (isMono)}}
   transpilePackages: [
@@ -106,7 +102,7 @@ const withMDX = createMDX({
 {{/if}}
 
 {{#if (hasLibrary "mdx")}}
-export default withMDX(withBundleAnalyzer(nextConfig));
+export default withMDX(nextConfig);
 {{else}}
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;
 {{/if}}
