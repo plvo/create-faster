@@ -17,6 +17,7 @@ interface SocialMetadata {
 interface PageMetadata {
   title?: string;
   description?: string;
+  alternates?: { canonical?: string };
   openGraph: SocialMetadata;
   twitter: SocialMetadata;
 }
@@ -86,6 +87,44 @@ describe('Open Graph and Twitter metadata of the SEO blueprints', () => {
         });
         expect(metadata.twitter.card).toBe('summary_large_image');
         expect(metadata.twitter.images).toEqual([siteConfig.ogImage]);
+      });
+
+      test('a page declares its own canonical url, relative to metadataBase', () => {
+        const metadata = seo.createPageMetadata({ title: 'About', description: 'About us.', path: '/about' });
+
+        expect(metadata.alternates).toEqual({ canonical: '/about' });
+        expect(seo.createPageMetadata({ description: 'Home.', path: '/' }).alternates).toEqual({ canonical: '/' });
+      });
+
+      test('the layout declares no canonical that every page would inherit', async () => {
+        expect(await readPage('layout.tsx')).not.toContain('canonical');
+      });
+
+      test('the site url comes from NEXT_PUBLIC_APP_URL through getAppUrl, declared in .env.example', async () => {
+        const config = await readTextFile(join(projectPath, 'src/lib/data/site-config.ts'));
+        const env = await readTextFile(join(projectPath, '.env.example'));
+
+        expect(config).toContain('url: getAppUrl()');
+        expect(config).not.toContain('process.env');
+        expect(env).toContain('NEXT_PUBLIC_APP_URL=');
+        expect(env).not.toContain('NEXT_PUBLIC_SITE_URL');
+      });
+
+      test('no generated file reads NEXT_PUBLIC_SITE_URL', async () => {
+        const files = await Array.fromAsync(new Bun.Glob('**/*').scan({ cwd: projectPath, dot: true, onlyFiles: true }));
+        const readers: string[] = [];
+        for (const file of files) {
+          if ((await Bun.file(join(projectPath, file)).text()).includes('NEXT_PUBLIC_SITE_URL')) readers.push(file);
+        }
+        expect(readers).toEqual([]);
+      });
+
+      test('the sitemap and robots build their urls from siteConfig.url', async () => {
+        for (const file of ['sitemap.ts', 'robots.ts']) {
+          const source = await readPage(file);
+          expect(source).toContain('siteConfig.url');
+          expect(source).not.toContain('process.env');
+        }
       });
 
       test('a dated page is an article with its publication time and image', () => {
