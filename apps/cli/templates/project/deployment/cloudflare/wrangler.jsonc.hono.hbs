@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
+  "name": "{{> cloudflare/worker-name}}",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-12",
   "compatibility_flags": ["nodejs_compat"]{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}

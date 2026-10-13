@@ -12,7 +12,7 @@ The Drizzle + PostgreSQL schema lives in `src/lib/db/schema.ts`, exported (with 
 Better Auth's tables back authentication: `userTable` (`users`), `userSessionTable`, `userAccountTable`, `userVerificationTable`. SIWE adds `walletAddressTable` (`wallet_addresses`) with `address`, `chainId`, `isPrimary`, and a `userId` FK; one user has many wallet addresses (see `userTableRelations`). These table names are mapped to Better Auth models in `src/lib/auth/auth.ts`.
 
 ## Sessions & users
-On SIWE verify, Better Auth persists a row in `userTable` and a session in `userSessionTable` (15-day expiry). Server checks read it via `auth.api.getSession` (`src/proxy.ts`, `src/app/protected/layout.tsx`).
+On SIWE verify, Better Auth persists a row in `userTable` and a session in `userSessionTable` (15-day expiry). Server checks read it via `auth.api.getSession` (`src/app/protected/layout.tsx`); `src/proxy.ts` only checks that the session cookie exists.
 
 ## Types
 `src/lib/db/types.ts` infers `User`, `WalletAddress`, `UserSession`, etc. via `InferSelectModel`, plus composed types like `UserWithRelations`.

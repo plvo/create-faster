@@ -4,6 +4,7 @@ import { mdxComponents } from '@/mdx-components';
 import { getAllPosts, getPost } from '@/lib/blog';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { ArticleJsonLd } from '@/components/seo/json-ld';
+import { createPageMetadata } from '@/lib/seo';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,16 +20,13 @@ export async function generateMetadata({ params }: PageProps) {
 
   if (!post) return {};
 
-  return {
+  return createPageMetadata({
     title: post.metadata.title,
     description: post.metadata.summary,
-    openGraph: {
-      title: post.metadata.title,
-      description: post.metadata.summary,
-      type: 'article',
-      publishedTime: post.metadata.publishedAt,
-    },
-  };
+    path: `/blog/${slug}`,
+    image: post.metadata.imageUrl,
+    publishedTime: post.metadata.publishedAt,
+  });
 }
 
 export default async function BlogPostPage({ params }: PageProps) {

@@ -61,13 +61,6 @@ describe('Single repo: Next.js + cloudflare + d1 + better-auth', () => {
     expect(route).not.toContain("import { auth }");
   });
 
-  test('middleware resolves auth per-request via getAuth()', async () => {
-    const mw = await readTextFile(join(projectPath, 'src/middleware.ts'));
-    expect(mw).toContain("import { getAuth } from '@/lib/server'");
-    expect(mw).toContain('const auth = await getAuth()');
-    expect(mw).not.toContain("import { auth }");
-  });
-
   test('auth-client infers fields from the Auth type, not the singleton', async () => {
     const client = await readTextFile(join(projectPath, 'src/lib/auth/auth-client.ts'));
     expect(client).toContain("import type { Auth } from './create-auth'");

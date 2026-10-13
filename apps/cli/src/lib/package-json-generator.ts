@@ -7,13 +7,20 @@ import {
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
 import { getPackageManagerField } from '@/lib/package-manager';
-import { cleanUndefined, MERGE_KEYS, processScriptPorts, sortObjectKeys, spreadExtraKeys } from '@/lib/utils';
+import {
+  cleanUndefined,
+  MERGE_KEYS,
+  processScriptPorts,
+  sortObjectKeys,
+  spreadExtraKeys,
+  usesPortPlaceholder,
+} from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
 
-export interface PackageJson {
+interface PackageJson {
   name: string;
   version: string;
   private?: boolean;
@@ -28,7 +35,7 @@ export interface PackageJson {
   [key: string]: unknown;
 }
 
-export interface GeneratedPackageJson {
+interface GeneratedPackageJson {
   path: string;
   content: PackageJson;
 }
@@ -90,7 +97,23 @@ function resolveCompositeAddons(
   return parts;
 }
 
+interface ComposedApp {
+  packageJson: PackageJson;
+  listensOnPort: boolean;
+}
+
 function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): PackageJson {
+  return composeApp(app, ctx, appIndex).packageJson;
+}
+
+/** Whether the app serves on a port the generator assigns: one of its scripts carries the `{{port}}` placeholder. */
+export function appListensOnPort(ctx: TemplateContext, appName: string): boolean {
+  const appIndex = ctx.apps.findIndex((app) => app.appName === appName);
+  const app = ctx.apps[appIndex];
+  return app !== undefined && composeApp(app, ctx, appIndex).listensOnPort;
+}
+
+function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): ComposedApp {
   const stack = META.stacks[app.stackName];
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
@@ -192,6 +215,7 @@ function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: 
     }
   }
 
+  const listensOnPort = Object.values(merged.scripts ?? {}).some(usesPortPlaceholder);
   let scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
 
   if (runtimeAddon?.runtime?.appScripts) {
@@ -213,7 +237,7 @@ function composeAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: 
 
   spreadExtraKeys(pkg, merged);
 
-  return pkg;
+  return { packageJson: pkg, listensOnPort };
 }
 
 export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, appIndex: number): GeneratedPackageJson {
@@ -224,7 +248,7 @@ export function generateAppPackageJson(app: AppContext, ctx: TemplateContext, ap
   return { path, content: cleanUndefined({ ...composeAppPackageJson(app, ctx, appIndex), packageManager }) };
 }
 
-export function generatePackagePackageJson(
+function generatePackagePackageJson(
   packageName: string,
   config: PackageJsonConfig,
   ctx: TemplateContext,
@@ -253,6 +277,8 @@ export function generatePackagePackageJson(
   };
 }
 
+const APP_SCRIPTS_RUN_BY_TURBO = ['start', 'test', 'test:e2e', 'cf-typegen'];
+
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {
     dev: 'turbo dev',
@@ -273,8 +299,15 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const ormAddon = ctx.project.orm ? META.project.orm.options[ctx.project.orm] : undefined;
   if (ormAddon?.mono?.scope === 'pkg') {
     for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio']) {
-      scripts[script] = `turbo ${script}`;
+      scripts[script] = ormAddon.interactiveScripts?.includes(script)
+        ? `cd packages/${ormAddon.mono.name} && ${ctx.pm ?? 'npm'} run ${script}`
+        : `turbo ${script}`;
     }
+  }
+
+  const appScripts = ctx.apps.map((app, index) => composeAppPackageJson(app, ctx, index).scripts ?? {});
+  for (const script of APP_SCRIPTS_RUN_BY_TURBO) {
+    if (appScripts.some((scripts) => script in scripts)) scripts[script] = `turbo ${script}`;
   }
 
   const rootConfigs: PackageJsonConfig[] = [];

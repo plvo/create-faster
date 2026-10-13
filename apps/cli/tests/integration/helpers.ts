@@ -4,8 +4,9 @@ import { join, normalize } from 'node:path';
 import { format } from 'node:util';
 import { expect } from 'bun:test';
 import { $ } from 'bun';
+import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 
-export interface CliResult {
+interface CliResult {
   exitCode: number;
   stdout: string;
   stderr: string;
@@ -25,7 +26,7 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   try {
     const result = await $`${process.execPath} run ${cliPath} ${args}`
       .cwd(cwd)
-      .env({ ...process.env, ...env })
+      .env({ ...process.env, ...PLAIN_OUTPUT_ENV, ...env })
       .quiet();
     return {
       exitCode: result.exitCode,
@@ -226,9 +227,9 @@ const DEV_EXPRESSIONS = ['import.meta.env.DEV', "process.env.NODE_ENV === 'devel
 type TrpcError = Error & { code: string };
 type OnError = (opts: { path: string | undefined; error: TrpcError }) => void;
 
-/** Runs the onError of a generated tRPC fetch handler, with the development expression set as the runtime would. */
+/** Runs the onError of a generated tRPC server call site, with the development expression set as the runtime would. */
 function generatedOnError(handler: string, isDev: boolean, log: (...args: unknown[]) => void): OnError {
-  const source = handler.match(/onError: (\(\{ path, error \}\) => \{[\s\S]*?\n {4}\}),/)?.[1];
+  const source = handler.match(/onError: (\(\{ path, error \}\) => \{[\s\S]*?\n\s*\}),/)?.[1];
   expect(source).toBeDefined();
   const devExpression = DEV_EXPRESSIONS.find((expression) => source?.includes(expression));
   expect(devExpression).toBeDefined();
@@ -238,7 +239,7 @@ function generatedOnError(handler: string, isDev: boolean, log: (...args: unknow
 
 const trpcError = (code: string, message: string): TrpcError => Object.assign(new Error(message), { code });
 
-/** The onError of a generated tRPC handler always logs unexpected errors and logs the expected ones only in development. */
+/** The onError of a generated tRPC server call site always logs unexpected errors and logs the expected ones only in development. */
 export function expectOnErrorLogsInternals(handler: string): void {
   const logged = (isDev: boolean, path: string | undefined, error: TrpcError): string[] => {
     const lines: string[] = [];

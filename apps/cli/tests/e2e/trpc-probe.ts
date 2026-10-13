@@ -339,7 +339,7 @@ async function readSessionProbe(baseUrl: string, cookie: string): Promise<unknow
 }
 
 /** Reads the session through the tRPC context the way a page does: first called late in a streamed render. */
-export async function readLateTrpcSession(baseUrl: string, cookie: string): Promise<string | undefined> {
+async function readLateTrpcSession(baseUrl: string, cookie: string): Promise<string | undefined> {
   const { status, chunks } = await fetchChunks(new URL('/trpc-late-probe', baseUrl).href, cookie);
   expect(status).toBe(200);
   const html = chunks.map((chunk) => chunk.text).join('');

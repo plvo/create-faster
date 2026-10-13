@@ -38,7 +38,7 @@ export interface DatabaseContainer {
   connectionString: string;
 }
 
-export const dockerAvailable = Bun.spawnSync(['docker', 'info'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
+const dockerAvailable = Bun.spawnSync(['docker', 'info'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
 
 /** `describe` that is skipped, with a visible warning, when no Docker daemon is reachable. */
 export function describeWithDocker(subject: string): typeof describe {

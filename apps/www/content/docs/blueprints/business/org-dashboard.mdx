@@ -107,7 +107,7 @@ src/
 
 ### Authentication
 
-Email/password login with Better Auth. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role.
+Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query. Pages that prefetch an admin-only or permission-gated query call `requireAdmin()` (non-admins are redirected home) or `requirePermission()` (not-found page) in the same place.
 
 ### Role-based access control
 
@@ -121,7 +121,7 @@ Enforcement is on both sides: the server gates data routes with `permissionProce
 
 ### Admin panel
 
-User list with clickable rows linking to detail pages. Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing username, name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban.
+User list with clickable rows linking to detail pages. Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing name, first name, last name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban.
 
 ### CRUD example (Contacts)
 

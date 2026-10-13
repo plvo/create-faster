@@ -11,7 +11,9 @@ import 'server-only';
 {{#if (hasLibrary "tanstack-query")}}
 import type React from 'react';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { createTRPCClient, unstable_localLink } from '@trpc/client';
 import { createTRPCOptionsProxy, type ResolverDef, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import superjson from 'superjson';
 {{/if}}
 import { cache } from 'react';
 {{#if (hasLibrary "tanstack-query")}}
@@ -19,9 +21,9 @@ import { makeQueryClient } from '@/trpc/query-client';
 {{/if}}
 import { headers } from 'next/headers';
 {{#if (isMono)}}
-import { appRouter, createTRPCContext } from '@repo/api';
+import { type AppRouter, appRouter, createTRPCContext } from '@repo/api';
 {{else}}
-import { appRouter } from '@/trpc/routers/_app';
+import { type AppRouter, appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 {{/if}}
 {{#if (and (has "database" "d1") project.orm)}}
@@ -44,8 +46,16 @@ const getTRPCContext = cache(async () => createTRPCContext({ headers: await head
 
 {{#if (hasLibrary "tanstack-query")}}
 export const trpc = createTRPCOptionsProxy({
-  ctx: getTRPCContext,
-  router: appRouter,
+  client: createTRPCClient<AppRouter>({
+    links: [
+      unstable_localLink({
+        router: appRouter,
+        transformer: superjson,
+        createContext: getTRPCContext,
+        {{> trpc/on-error dev="process.env.NODE_ENV === 'development'"}}
+      }),
+    ],
+  }),
   queryClient: getQueryClient,
 });
 
@@ -68,5 +78,7 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<ResolverDef>>>(qu
   }
 }
 {{else}}
-export const trpc = appRouter.createCaller(getTRPCContext);
+export const trpc = appRouter.createCaller(getTRPCContext, {
+  {{> trpc/on-error dev="process.env.NODE_ENV === 'development'"}}
+});
 {{/if}}

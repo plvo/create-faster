@@ -72,12 +72,12 @@ async function seed() {
   await db.insert(userTable).values([
     {
       id: alice.id,
-      username: 'alice',
+      name: 'alice',
       email: 'alice@example.com',
     },
     {
       id: bob.id,
-      username: 'bob',
+      name: 'bob',
       email: 'bob@example.com',
     },
   ]);
@@ -86,11 +86,11 @@ async function seed() {
     .insert(userTable)
     .values([
       {
-        username: 'alice',
+        name: 'alice',
         email: 'alice@example.com',
       },
       {
-        username: 'bob',
+        name: 'bob',
         email: 'bob@example.com',
       },
     ])

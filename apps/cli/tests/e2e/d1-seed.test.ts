@@ -10,13 +10,13 @@ const TIMEOUT_DB = 120_000;
 
 const LOCAL_D1_DIR = '.wrangler/v3/d1/miniflare-D1DatabaseObject';
 
-async function generateInstalledProject(name: string, flags: string[]): Promise<string> {
+async function generateInstalledProject(name: string, flags: string[], pm = 'bun'): Promise<string> {
   const tempDir = await createTempDir();
-  const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+  const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', pm], tempDir);
   expect(result.exitCode).toBe(0);
 
   const projectDir = join(tempDir, name);
-  const install = await runCommand(['bun', 'install'], projectDir);
+  const install = await runCommand([pm, 'install'], projectDir);
   expect(install.exitCode).toBe(0);
   return projectDir;
 }
@@ -36,13 +36,21 @@ function countRows(projectDir: string, table: string): number {
 const D1_FLAGS = ['--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare'];
 
 const D1_PROJECTS = [
-  { name: 'd1-seed-hono', appFlags: ['--app', 'api:hono'], seedDirs: ['.'], localSetupDir: '.' },
-  { name: 'd1-seed-nextjs', appFlags: ['--app', 'web:nextjs'], seedDirs: ['.'], localSetupDir: '.' },
+  { name: 'd1-seed-hono', appFlags: ['--app', 'api:hono'], seedDirs: ['.'], localSetupDir: '.', pm: 'bun' },
+  { name: 'd1-seed-nextjs', appFlags: ['--app', 'web:nextjs'], seedDirs: ['.'], localSetupDir: '.', pm: 'bun' },
   {
     name: 'd1-seed-turbo',
     appFlags: ['--app', 'api:hono', '--app', 'web:nextjs'],
     seedDirs: ['.', 'packages/db'],
     localSetupDir: 'packages/db',
+    pm: 'bun',
+  },
+  {
+    name: 'd1-seed-turbo-pnpm',
+    appFlags: ['--app', 'api:hono', '--app', 'web:nextjs'],
+    seedDirs: ['.', 'packages/db'],
+    localSetupDir: 'packages/db',
+    pm: 'pnpm',
   },
 ];
 
@@ -51,11 +59,12 @@ describe.each(D1_PROJECTS)('$name: db:seed reads the database that db:migrate wr
   appFlags,
   seedDirs,
   localSetupDir,
+  pm,
 }) => {
   let projectDir: string;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledProject(name, [...appFlags, ...D1_FLAGS]);
+    projectDir = await generateInstalledProject(name, [...appFlags, ...D1_FLAGS], pm);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -65,13 +74,13 @@ describe.each(D1_PROJECTS)('$name: db:seed reads the database that db:migrate wr
   test(
     'db:seed fills the migrated local database',
     async () => {
-      const generate = await runCommand(['bun', 'run', 'db:generate'], projectDir);
+      const generate = await runCommand([pm, 'run', 'db:generate'], projectDir);
       expect(generate.exitCode, generate.stderr).toBe(0);
-      const migrate = await runCommand(['bun', 'run', 'db:migrate'], projectDir);
+      const migrate = await runCommand([pm, 'run', 'db:migrate'], projectDir);
       expect(migrate.exitCode, migrate.stderr).toBe(0);
 
       for (const dir of seedDirs) {
-        const seed = await runCommand(['bun', 'run', 'db:seed'], join(projectDir, dir));
+        const seed = await runCommand([pm, 'run', 'db:seed'], join(projectDir, dir));
         expect(seed.exitCode, `${dir}\n${seed.stdout}\n${seed.stderr}`).toBe(0);
         expect(countRows(projectDir, 'users')).toBe(2);
         expect(countRows(projectDir, 'posts')).toBe(3);
@@ -83,7 +92,7 @@ describe.each(D1_PROJECTS)('$name: db:seed reads the database that db:migrate wr
   test(
     'local-setup migrates and seeds in one go',
     async () => {
-      const result = await runCommand(['bun', 'run', 'local-setup'], join(projectDir, localSetupDir));
+      const result = await runCommand([pm, 'run', 'local-setup'], join(projectDir, localSetupDir));
       expect(result.exitCode, `${result.stdout}\n${result.stderr}`).toBe(0);
       expect(countRows(projectDir, 'users')).toBe(2);
     },

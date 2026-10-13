@@ -1,0 +1,52 @@
+import type { Metadata } from 'next';
+import { siteConfig } from '@/lib/data/site-config';
+
+export const siteOpenGraph = {
+  type: 'website' as const,
+  locale: 'en_US',
+  url: siteConfig.url,
+  siteName: siteConfig.name,
+  title: siteConfig.name,
+  description: siteConfig.description,
+  images: [siteConfig.ogImage],
+};
+
+export const siteTwitter = {
+  card: 'summary_large_image' as const,
+  title: siteConfig.name,
+  description: siteConfig.description,
+  images: [siteConfig.ogImage],
+};
+
+interface PageMetadataInput {
+  /** Page title, completed by the layout title template. Omit it to use the layout default title. */
+  title?: string;
+  description: string;
+  /** Path of the page, resolved against `metadataBase`. */
+  path: string;
+  /** Share image, defaults to the site image. */
+  image?: string;
+  /** Publication date: makes the page an `article`. */
+  publishedTime?: string;
+}
+
+/** Metadata of a page: its values over the site defaults, for `<head>`, Open Graph and Twitter. */
+export function createPageMetadata({ title, description, path, image, publishedTime }: PageMetadataInput): Metadata {
+  const shared = {
+    title: title ?? siteConfig.name,
+    description,
+    images: [image ?? siteConfig.ogImage],
+  };
+
+  return {
+    ...(title ? { title } : {}),
+    description,
+    openGraph: {
+      ...siteOpenGraph,
+      ...shared,
+      url: path,
+      ...(publishedTime ? { type: 'article' as const, publishedTime } : {}),
+    },
+    twitter: { ...siteTwitter, ...shared },
+  };
+}

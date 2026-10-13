@@ -24,10 +24,13 @@ Beyond the official setup, we include:
 - `dev` - Hot reload development server (`bun run --hot`)
 - `start` - Production server (`NODE_ENV=production bun run src/index.ts`): Bun runs the source without a build, so the script sets `NODE_ENV` for code that reads it at runtime (the database client turns TLS on with it)
 
+In a turborepo, `dev` and `start` pass `--port` with the port of the app (3000 plus its index among the apps), so a Hono app never takes the port of a web app declared before it. A single repo uses Bun's default, 3000. The `PORT` environment variable overrides both.
+
 **Error Handling:**
-- Global error handler with stack traces in development
+- Global error handler: an `HTTPException` keeps its status and message, any other error returns a generic `Internal server error` with status 500
+- The message and stack of an unexpected error are returned only when `NODE_ENV=development` (SST sets it under `sst dev`, `wrangler dev` and `wrangler deploy` inline it at bundle time; `bun run dev` leaves it unset, so run `NODE_ENV=development bun run dev` to see them in responses)
+- Every error is logged server side with its stack, in every environment
 - Structured JSON error responses
-- Console logging for debugging
 
 Files created:
 ```

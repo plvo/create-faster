@@ -7,6 +7,7 @@ import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-genera
 import { findMissingPackageManager, missingPackageManagerMessage } from '@/lib/package-manager';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
+import { displayInstallFailure } from '@/tui/install-failure';
 import { printError } from '@/tui/print-error';
 import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
@@ -80,9 +81,14 @@ async function main() {
     }
 
     const projectPath = join(process.cwd(), ctx.projectName);
-    await runPostGeneration(ctx, projectPath);
+    const postGeneration = await runPostGeneration(ctx, projectPath);
 
-    displaySummaryNote(ctx);
+    if (postGeneration.installFailure) {
+      displayInstallFailure(ctx.projectName, postGeneration.installFailure);
+      process.exit(1);
+    }
+
+    displaySummaryNote(ctx, postGeneration.gitFailure);
     displayOutroCliCommand(ctx, projectPath);
   } catch (error) {
     log.error(`An error occurred:\n${getErrorMessage(error)}`);

@@ -1,8 +1,10 @@
+import { requireSession } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { AccountForm } from '@/components/profile/account-form';
 
 export default async function AccountPage() {
+  await requireSession();
   void prefetch(trpc.user.me.queryOptions());
 
   return (

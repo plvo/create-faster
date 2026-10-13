@@ -81,7 +81,7 @@ export const publicProcedure = t.procedure;
 
 Outside development, error responses carry no stack trace, and an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message, which can carry SQL or parameters. `isDev` is the `NODE_ENV` the build inlines, not tRPC's default, which reads `NODE_ENV` at runtime: some production servers leave it unset (Next.js on Cloudflare through OpenNext).
 
-The API route's `onError` writes every unexpected error to the server log in every environment, with the procedure path, the message and the stack, since the client no longer receives them. Expected errors (`UNAUTHORIZED`, `BAD_REQUEST`, `NOT_FOUND`, ...) are logged only in development.
+The API route's `onError` writes every unexpected error to the server log in every environment, with the procedure path, the message and the stack, since the client no longer receives them. Expected errors (`UNAUTHORIZED`, `BAD_REQUEST`, `NOT_FOUND`, ...) are logged only in development. The same `onError` is set where procedures are called on the server without the API route: the `unstable_localLink` of `src/trpc/client.ts` on TanStack Start, and `src/trpc/server.tsx` on Next.js. A prefetch that fails is otherwise silent on the server: TanStack Query does not rethrow it, and the browser runs the query again through the API route.
 
 The API route (`route.ts` on Next.js, `src/routes/api/trpc/$.ts` on TanStack Start) refuses with a 403 any request other than `GET` and `HEAD` whose `Origin` header names another origin, so a page on another site cannot run a mutation with the user's cookies. Requests without `Origin` (other servers, scripts) pass.
 
@@ -151,11 +151,13 @@ Server-side utilities for RSC. Behavior depends on whether TanStack Query is sel
 import 'server-only';
 import type React from 'react';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { createTRPCClient, unstable_localLink } from '@trpc/client';
 import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import superjson from 'superjson';
 import { cache } from 'react';
 import { makeQueryClient } from '@/trpc/query-client';
 import { headers } from 'next/headers';
-import { appRouter } from '@/trpc/routers/_app';
+import { type AppRouter, appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 
 const getQueryClient = cache(makeQueryClient);
@@ -163,8 +165,18 @@ const getQueryClient = cache(makeQueryClient);
 const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
 
 export const trpc = createTRPCOptionsProxy({
-  ctx: getTRPCContext,
-  router: appRouter,
+  client: createTRPCClient<AppRouter>({
+    links: [
+      unstable_localLink({
+        router: appRouter,
+        transformer: superjson,
+        createContext: getTRPCContext,
+        onError: ({ path, error }) => {
+          // logs unexpected errors, see the error handling above
+        },
+      }),
+    ],
+  }),
   queryClient: getQueryClient,
 });
 
@@ -195,7 +207,11 @@ import { createTRPCContext } from '@/trpc/init';
 
 const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
 
-export const trpc = appRouter.createCaller(getTRPCContext);
+export const trpc = appRouter.createCaller(getTRPCContext, {
+  onError: ({ path, error }) => {
+    // logs unexpected errors, see the error handling above
+  },
+});
 ```
 
 **Turborepo mode:**
@@ -237,6 +253,9 @@ export const makeTRPCClient = createIsomorphicFn()
           createContext: () => {
             if (!context) context = createTRPCContext({ headers: getRequest().headers });
             return context;
+          },
+          onError: ({ path, error }) => {
+            // logs unexpected errors, see the error handling above
           },
         }),
       ],

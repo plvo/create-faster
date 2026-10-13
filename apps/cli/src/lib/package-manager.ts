@@ -53,3 +53,31 @@ export function getPackageManagerField(ctx: TemplateContext): string | undefined
   const pm = resolvePackageManager(ctx);
   return pm ? getPackageManager(pm) : undefined;
 }
+
+const PACKAGE_MANAGER_RUNNERS: Record<PackageManagerName, string> = {
+  bun: 'bunx',
+  npm: 'npx',
+  pnpm: 'pnpm dlx',
+};
+
+const COMMAND_FALLBACK_PACKAGE_MANAGER: PackageManagerName = 'npm';
+
+function resolveCommandPackageManager(ctx: TemplateContext): PackageManagerName {
+  return resolvePackageManager(ctx) ?? COMMAND_FALLBACK_PACKAGE_MANAGER;
+}
+
+/** A package.json script as every package manager runs it: a bare `bun build` is Bun's bundler, `npm dev` is unknown. */
+export function getScriptCommand(ctx: TemplateContext, script: string): string {
+  return `${resolveCommandPackageManager(ctx)} run ${script}`;
+}
+
+/** A script only the apps define: a turborepo root has none, so it runs from the app directory. */
+export function getAppScriptCommand(ctx: TemplateContext, script: string): string {
+  const command = getScriptCommand(ctx, script);
+  return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
+}
+
+/** The command that runs a package binary without installing it. */
+export function getPackageRunner(ctx: TemplateContext): string {
+  return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];
+}

@@ -15,6 +15,29 @@ function renderReadme(ctx: TemplateContext): string {
   return renderTemplate(removeFrontmatter(raw), ctx);
 }
 
+describe('turborepo README start script', () => {
+  const ctx: TemplateContext = {
+    projectName: 'demo',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    git: false,
+  };
+
+  test('lists start when the root package.json defines it', () => {
+    expect(renderReadme(ctx)).toContain('- `start` - Start all apps in production mode');
+  });
+
+  test('omits start when no app has a start script', () => {
+    const noStart: TemplateContext = {
+      ...ctx,
+      apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+    };
+    expect(renderReadme(noStart)).not.toContain('- `start`');
+  });
+});
+
 describe('turborepo README db package section', () => {
   const ctx: TemplateContext = {
     projectName: 'demo',

@@ -15,7 +15,7 @@ const timeColumns = {
 
 export const userTable = pgTable('users', {
   id: varchar('id', { length: 36 }).$defaultFn(() => crypto.randomUUID()).primaryKey(),
-  username: varchar('username', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   avatarUrl: text('avatar_url'),

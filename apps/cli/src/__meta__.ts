@@ -1,9 +1,18 @@
 import { $when } from '@/lib/when';
 import type { Meta } from '@/types/meta';
 
-const RUNS_NITRO: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
+const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
 const NODE_TYPES_VERSION = '^22';
+
+// Workspace packages type-check on their own, without the app's wrangler-generated binding types.
+const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
+
+const WRANGLER_VERSION = '^4.127.1';
+
+const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
+
+const GENERATE_ROUTE_TREE = 'tsr generate';
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
@@ -11,6 +20,16 @@ const BETTER_AUTH_VERSION = '^1.7.7';
 
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';
+
+const LEADING_ENV_ASSIGNMENTS = /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+/;
+
+// portless single-quotes each argument it runs, so a leading `VAR=value` would be executed as a command name.
+// The assignments stay in front of `portless`, which hands its environment down to the app.
+const wrapWithPortless = (cmd: string): string => {
+  const envAssignments = cmd.match(LEADING_ENV_ASSIGNMENTS)?.[0] ?? '';
+  const command = cmd.slice(envAssignments.length).replace(/\s*--port\s+\S+/g, '');
+  return `${envAssignments}portless run ${command}`;
+};
 
 export const META: Meta = {
   stacks: {
@@ -20,7 +39,7 @@ export const META: Meta = {
       hint: 'React framework with SSR',
       packageJson: {
         dependencies: {
-          next: '^16.1.1',
+          next: '^16.3.0',
           react: '^19.2.8',
           'react-dom': '^19.2.8',
           'tw-animate-css': '^1.4.0',
@@ -38,7 +57,7 @@ export const META: Meta = {
           analyze: 'next experimental-analyze',
           dev: 'next dev --port {{port}}',
           build: 'next build',
-          start: 'next start --port {{port}}',
+          start: $when(RUNS_NODE_SERVER, 'next start --port {{port}}'),
         },
       },
     },
@@ -47,21 +66,29 @@ export const META: Meta = {
       label: 'Expo',
       hint: 'React Native framework',
       packageJson: {
+        main: 'expo-router/entry',
         dependencies: {
-          expo: '~52.0.0',
-          'expo-dev-client': '~5.0.0',
-          'expo-font': '~13.0.0',
-          'expo-router': '~4.0.0',
-          'expo-splash-screen': '~0.29.0',
-          'expo-status-bar': '~2.0.0',
-          react: '^18.3.1',
-          'react-native': '0.76.5',
-          'react-native-gesture-handler': '~2.20.0',
-          'react-native-safe-area-context': '~4.12.0',
+          expo: '~57.0.28',
+          'expo-constants': '~57.0.21',
+          'expo-dev-client': '~57.0.20',
+          'expo-font': '~57.0.4',
+          'expo-linking': '~57.0.12',
+          'expo-router': '~57.0.26',
+          'expo-splash-screen': '~57.0.10',
+          'expo-status-bar': '~57.0.1',
+          react: '19.2.3',
+          'react-dom': '19.2.3',
+          'react-native': '0.86.3',
+          'react-native-gesture-handler': '~2.32.0',
+          'react-native-reanimated': '4.5.1',
+          'react-native-safe-area-context': '~5.7.0',
+          'react-native-screens': '~4.26.0',
+          'react-native-web': '~0.21.0',
+          'react-native-worklets': '0.10.1',
         },
         devDependencies: {
-          typescript: '^5.3.0',
-          '@types/react': '~18.3.12',
+          typescript: '~6.0.3',
+          '@types/react': '~19.2.4',
         },
         scripts: {
           start: 'expo start',
@@ -84,8 +111,8 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
-          dev: 'bun run --hot src/index.ts',
-          start: 'NODE_ENV=production bun run src/index.ts',
+          dev: 'bun run --port {{port}} --hot src/index.ts',
+          start: 'NODE_ENV=production bun run --port {{port}} src/index.ts',
         },
       },
     },
@@ -123,9 +150,10 @@ export const META: Meta = {
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.167.2',
+          '@tanstack/router-cli': '^1.167.43',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: $when(RUNS_NITRO, '^3.0.260903-beta'),
+          nitro: $when(RUNS_NODE_SERVER, '^3.0.260903-beta'),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -133,7 +161,11 @@ export const META: Meta = {
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
-          start: $when(RUNS_NITRO, 'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs'),
+          postinstall: GENERATE_ROUTE_TREE,
+          start: $when(
+            RUNS_NODE_SERVER,
+            'node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs',
+          ),
         },
       },
     },
@@ -168,7 +200,6 @@ export const META: Meta = {
           './': './src/components/',
           './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
-          './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
           './postcss.config.mjs': './postcss.config.mjs',
         },
@@ -238,14 +269,13 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
         },
         exports: {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
-          './types': './src/types.ts',
-          './password': './src/password.ts',
-          './permissions': './src/permissions.ts',
         },
       },
       appPackageJson: {
@@ -283,6 +313,8 @@ export const META: Meta = {
         },
         devDependencies: {
           typescript: '^5',
+          '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
+          '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
         },
         exports: {
@@ -331,14 +363,14 @@ export const META: Meta = {
       packageJson: {
         devDependencies: {
           '@tanstack/react-devtools': '^0.10.12',
-          '@tanstack/react-query-devtools': '^5.102.8',
+          '@tanstack/react-query-devtools': $when({ library: 'tanstack-query' }, '^5.102.8'),
+          '@tanstack/react-form-devtools': $when({ library: 'tanstack-form' }, '^0.2.34'),
         },
       },
       stackPackageJson: {
         'tanstack-start': {
           devDependencies: {
             '@tanstack/devtools-vite': '^0.8.5',
-            '@tanstack/react-form-devtools': $when({ library: 'tanstack-form' }, '^0.2.34'),
           },
         },
       },
@@ -373,10 +405,14 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         dependencies: {
-          nativewind: '^4.2.6',
+          nativewind: '^4.2.7',
+          // Same version nativewind pins: its babel setup imports react-native-css-interop/jsx-runtime from the app root.
+          'react-native-css-interop': '0.2.7',
         },
         devDependencies: {
-          tailwindcss: '^3.4.17',
+          '@babel/plugin-transform-react-jsx': '^7.28.6',
+          'babel-preset-expo': '~57.0.15',
+          tailwindcss: '^3.4.19',
         },
       },
     },
@@ -440,7 +476,6 @@ export const META: Meta = {
           '@vitest/coverage-v8': '^4.1.11',
           '@vitejs/plugin-react': '^6.1.2',
           vite: '^8.3.4',
-          'vite-tsconfig-paths': '^6.1.1',
           jsdom: '^30.0.1',
           '@testing-library/react': '^16.3.3',
           '@testing-library/dom': '^10.4.1',
@@ -464,7 +499,6 @@ export const META: Meta = {
           vitest: '^4.1.11',
           '@vitest/coverage-v8': '^4.1.11',
           vite: '^8.2.2',
-          'vite-tsconfig-paths': '^6.1.1',
         },
         scripts: {
           test: 'vitest run',
@@ -496,11 +530,13 @@ export const META: Meta = {
       support: { stacks: ['expo'] },
       packageJson: {
         devDependencies: {
-          'jest-expo': '~52.0.6',
+          'jest-expo': '~57.0.6',
           jest: '^29.7.0',
-          'babel-preset-expo': '^12.0.12',
-          '@testing-library/react-native': '^13.3.3',
-          'react-test-renderer': '^18.3.1',
+          '@babel/runtime': '^7.29.10',
+          '@react-native/jest-preset': '^0.86.3',
+          '@testing-library/react-native': '^14.1.0',
+          // react-reconciler of test-renderer 1.2 matches React 19.2
+          'test-renderer': '~1.2.0',
           '@types/jest': '^29.5.14',
         },
         scripts: {
@@ -523,15 +559,16 @@ export const META: Meta = {
           providesLocalFilesystem: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.127.1',
+              wrangler: WRANGLER_VERSION,
             },
           },
           stackPackageJson: {
             hono: {
               scripts: {
                 deploy: 'wrangler deploy',
-                preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                preview: 'wrangler dev --persist-to {{workspaceRoot}}/.wrangler',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: CLOUDFLARE_TYPEGEN,
               },
             },
             'tanstack-start': {
@@ -540,7 +577,8 @@ export const META: Meta = {
               },
               scripts: {
                 deploy: 'vite build && wrangler deploy',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: `${CLOUDFLARE_TYPEGEN} && ${GENERATE_ROUTE_TREE}`,
               },
             },
             nextjs: {
@@ -548,11 +586,11 @@ export const META: Meta = {
                 '@opennextjs/cloudflare': '^1.20.5',
               },
               scripts: {
-                'build:cf':
-                  'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts && next build && opennextjs-cloudflare build',
+                'build:cf': `${CLOUDFLARE_TYPEGEN} && opennextjs-cloudflare build`,
                 preview: 'opennextjs-cloudflare preview -- --persist-to {{workspaceRoot}}/.wrangler',
                 deploy: 'opennextjs-cloudflare deploy',
-                'cf:typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
+                postinstall: CLOUDFLARE_TYPEGEN,
               },
             },
           },
@@ -564,7 +602,7 @@ export const META: Meta = {
           providesServerRuntime: false,
           packageJson: {
             devDependencies: {
-              wrangler: '^4.127.1',
+              wrangler: WRANGLER_VERSION,
             },
           },
           stackPackageJson: {
@@ -572,14 +610,14 @@ export const META: Meta = {
               scripts: {
                 deploy: 'next build && wrangler deploy',
                 preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
               },
             },
             'tanstack-start': {
               scripts: {
                 deploy: 'vite build && wrangler deploy',
                 preview: 'wrangler dev',
-                'cf-typegen': 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
+                'cf-typegen': CLOUDFLARE_TYPEGEN,
               },
             },
           },
@@ -664,13 +702,13 @@ export const META: Meta = {
           stackPackageJson: {
             'tanstack-start': {
               dependencies: {
-                '@libsql/client': $when(RUNS_NITRO, LIBSQL_CLIENT_VERSION),
+                '@libsql/client': $when(RUNS_NODE_SERVER, LIBSQL_CLIENT_VERSION),
               },
             },
           },
           envs: [
             {
-              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:push',
+              value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:migrate',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],
@@ -693,11 +731,14 @@ export const META: Meta = {
               'db:migrate:local': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
               'local-setup':
-                'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                'bun run db:generate && wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
             },
           },
           deploymentPackageJson: {
             cloudflare: {
+              devDependencies: {
+                wrangler: WRANGLER_VERSION,
+              },
               scripts: {
                 'db:migrate': $when(
                   { repo: 'turborepo' },
@@ -713,7 +754,7 @@ export const META: Meta = {
                 ),
                 'local-setup': $when(
                   { repo: 'turborepo' },
-                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                  'bun run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
                 ),
               },
             },
@@ -747,6 +788,7 @@ export const META: Meta = {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
           mono: { scope: 'pkg', name: 'db' },
+          interactiveScripts: ['db:push'],
           packageJson: {
             main: $when({ repo: 'turborepo' }, './dist/index.js'),
             module: $when({ repo: 'turborepo' }, './dist/index.mjs'),
@@ -762,6 +804,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
             },
             scripts: {
@@ -782,6 +825,7 @@ export const META: Meta = {
           hint: 'Type-safe ORM with migrations',
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
+          interactiveScripts: ['db:migrate'],
           packageJson: {
             dependencies: {
               '@prisma/client': '^7.10.0',
@@ -796,6 +840,7 @@ export const META: Meta = {
             devDependencies: {
               typescript: '^5',
               '@types/node': NODE_TYPES_VERSION,
+              '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
               prisma: '^7.10.0',
             },
@@ -805,6 +850,8 @@ export const META: Meta = {
               'db:push': 'prisma db push',
               'db:studio': 'prisma studio',
               'db:seed': 'prisma db seed',
+              predev: $when({ repo: 'single' }, 'prisma generate'),
+              prebuild: $when({ repo: 'single' }, 'prisma generate'),
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
@@ -948,11 +995,8 @@ export const META: Meta = {
           },
           runtime: {
             appScripts: {
-              dev: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
-              'start:portless': {
-                from: 'start',
-                wrap: (cmd) => `portless run ${cmd.replace(/\s*--port\s+\S+/g, '')}`,
-              },
+              dev: wrapWithPortless,
+              'start:portless': { from: 'start', wrap: wrapWithPortless },
             },
             resolveAppUrl: ({ projectName, appName, isTurborepo }) =>
               `https://${isTurborepo ? appName : projectName}.localhost:1355`,
@@ -1182,12 +1226,22 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './password': './src/password.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
             'react-dom': '^19.2.8',
@@ -1209,10 +1263,6 @@ export const META: Meta = {
         },
         scripts: {
           'local-setup': 'bun scripts/local-setup.ts',
-          'db:push': 'turbo db:push',
-          'db:generate': 'turbo db:generate',
-          'db:migrate': 'turbo db:migrate',
-          'db:studio': 'turbo db:studio',
           'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
@@ -1271,6 +1321,12 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         api: {
           dependencies: {
             'better-auth': BETTER_AUTH_VERSION,
@@ -1282,6 +1338,9 @@ export const META: Meta = {
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
           },
@@ -1297,10 +1356,6 @@ export const META: Meta = {
         },
         scripts: {
           'local-setup': 'bun scripts/local-setup.ts',
-          'db:push': 'turbo db:push',
-          'db:generate': 'turbo db:generate',
-          'db:migrate': 'turbo db:migrate',
-          'db:studio': 'turbo db:studio',
           'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
@@ -1308,6 +1363,7 @@ export const META: Meta = {
       envs: [
         {
           value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          stacks: ['nextjs'],
           monoScope: ['app'],
         },
       ],
@@ -1347,6 +1403,7 @@ export const META: Meta = {
       envs: [
         {
           value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          stacks: ['nextjs'],
           monoScope: ['app'],
         },
       ],
@@ -1394,12 +1451,21 @@ export const META: Meta = {
         },
       },
       pkgPackageJson: {
+        auth: {
+          exports: {
+            './types': './src/types.ts',
+            './permissions': './src/permissions.ts',
+          },
+        },
         db: {
           scripts: {
             'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
           },
         },
         ui: {
+          exports: {
+            './hooks/*': './src/hooks/*.ts',
+          },
           dependencies: {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
@@ -1438,6 +1504,7 @@ export const META: Meta = {
       envs: [
         {
           value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          stacks: ['nextjs'],
           monoScope: ['app'],
         },
       ],

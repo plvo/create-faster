@@ -38,7 +38,7 @@ export function UserDetail({ id }: { id: string }) {
 
   const form = useForm({
     defaultValues: {
-      username: user?.username || '',
+      name: user?.name || '',
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       phone: user?.phone || '',
@@ -66,7 +66,7 @@ export function UserDetail({ id }: { id: string }) {
         <Link href='/admin/users' className='text-muted-foreground hover:text-foreground'>
           <ArrowLeft className='size-5' />
         </Link>
-        <h1 className='text-3xl font-bold'>{user.username}</h1>
+        <h1 className='text-3xl font-bold'>{user.name}</h1>
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
             user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
@@ -111,7 +111,7 @@ export function UserDetail({ id }: { id: string }) {
             const values = form.state.values;
             editMutation.mutate({
               id,
-              username: values.username,
+              name: values.name,
               firstName: values.firstName || undefined,
               lastName: values.lastName || undefined,
               phone: values.phone || undefined,
@@ -153,14 +153,14 @@ export function UserDetail({ id }: { id: string }) {
               )}
             </form.Field>
           </div>
-          <form.Field name='username'>
+          <form.Field name='name'>
             {(field) => (
               <div className='space-y-2'>
-                <label htmlFor='username' className='text-sm font-medium leading-none'>
-                  Username
+                <label htmlFor='name' className='text-sm font-medium leading-none'>
+                  Name
                 </label>
                 <input
-                  id='username'
+                  id='name'
                   type='text'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}

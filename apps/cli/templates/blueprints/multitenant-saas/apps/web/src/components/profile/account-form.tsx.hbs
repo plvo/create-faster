@@ -33,7 +33,7 @@ export function AccountForm() {
   );
 
   const form = useAppForm({
-    defaultValues: { name: user?.username || '' },
+    defaultValues: { name: user?.name || '' },
     validators: { onChange: nameSchema },
     onSubmit: async ({ value }) => {
       await updateProfile.mutateAsync({ name: value.name });
