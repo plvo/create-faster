@@ -8,7 +8,7 @@ const DRIZZLE_TLS_IN_PRODUCTION = `connection: {
       ssl: process.env.NODE_ENV === 'production',
     },`;
 const PRISMA_TLS_IN_PRODUCTION = `new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production',
 });`;
 const LOCAL_URL_WITHOUT_TLS = /^DATABASE_URL="postgresql:\/\/postgres:password@localhost:\d+\/postgres-[\w-]+\?sslmode=disable"/m;

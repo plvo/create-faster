@@ -36,7 +36,7 @@ describe('D1 database option', () => {
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    const env = await readTextFile(join(tempDir, 'cf-d1', '.env.example'));
+    const env = await readTextFile(join(tempDir, 'cf-d1', '.env.d1.example'));
     expect(env).not.toContain('DATABASE_URL');
   });
 });

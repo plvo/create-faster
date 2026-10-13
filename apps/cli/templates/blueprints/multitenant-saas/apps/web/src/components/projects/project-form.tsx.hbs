@@ -76,18 +76,15 @@ export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
       }}
       className='space-y-4'
     >
-      <form.AppField
-        name='name'
-        children={(field) => <field.InputField label='Name' props={{ maxLength: 120 }} />}
-      />
-      <form.AppField
-        name='description'
-        children={(field) => <field.TextareaField label='Description' props={{ maxLength: 2000, rows: 4 }} />}
-      />
-      <form.AppField
-        name='status'
-        children={(field) => <field.SelectField label='Status' options={{ Active: 'active', Archived: 'archived' }} />}
-      />
+      <form.AppField name='name'>
+        {(field) => <field.InputField label='Name' props={{ maxLength: 120 }} />}
+      </form.AppField>
+      <form.AppField name='description'>
+        {(field) => <field.TextareaField label='Description' props={{ maxLength: 2000, rows: 4 }} />}
+      </form.AppField>
+      <form.AppField name='status'>
+        {(field) => <field.SelectField label='Status' options={{ Active: 'active', Archived: 'archived' }} />}
+      </form.AppField>
       <form.AppForm>
         <form.SubmitButton props={{ className: 'w-full' }}>
           {mode === 'create' ? 'Create project' : 'Save changes'}

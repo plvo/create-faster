@@ -18,12 +18,15 @@ export function usePermission(permissions: Permissions): {
 } {
   const [allowed, setAllowed] = useState(false);
   const [pending, startTransition] = useTransition();
+  const permissionsKey = JSON.stringify(permissions);
 
   useEffect(() => {
     let cancelled = false;
     startTransition(async () => {
       try {
-        const result = await authClient.organization.hasPermission({ permissions });
+        const result = await authClient.organization.hasPermission({
+          permissions: JSON.parse(permissionsKey) as Permissions,
+        });
         if (!cancelled) setAllowed(result.data?.success ?? false);
       } catch {
         if (!cancelled) setAllowed(false);
@@ -32,7 +35,7 @@ export function usePermission(permissions: Permissions): {
     return () => {
       cancelled = true;
     };
-  }, [JSON.stringify(permissions)]);
+  }, [permissionsKey]);
 
   return { allowed, loading: pending };
 }

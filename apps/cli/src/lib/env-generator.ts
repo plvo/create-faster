@@ -23,6 +23,7 @@ interface CollectedEnv {
   source: 'project' | 'library';
   libraryName?: string;
   stacks?: StackName[];
+  file?: string;
 }
 
 /** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
@@ -68,7 +69,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
-      envs.push({ value: env.value, scope, stacks: env.stacks, ...origin });
+      envs.push({ value: env.value, scope, stacks: env.stacks, file: env.file, ...origin });
     }
   };
 
@@ -105,22 +106,24 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   return envs;
 }
 
-function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: string): string | null {
+function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: string, file?: string): string | null {
+  const filename = file ? `.env.${file}.example` : '.env.example';
+
   if (ctx.repo === 'single') {
-    return '.env.example';
+    return filename;
   }
 
   if (scope === 'root') {
-    return '.env.example';
+    return filename;
   }
 
   if (scope === 'app') {
     if (!appName) return null;
-    return `apps/${appName}/.env.example`;
+    return `apps/${appName}/${filename}`;
   }
 
   if (typeof scope === 'object' && 'pkg' in scope) {
-    return `packages/${scope.pkg}/.env.example`;
+    return `packages/${scope.pkg}/${filename}`;
   }
 
   return null;
@@ -143,13 +146,13 @@ function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map
     if (env.scope === 'app') {
       for (const app of ctx.apps) {
         if (!appAcceptsEnv(env, app)) continue;
-        const path = resolveScopeToPath('app', ctx, app.appName);
+        const path = resolveScopeToPath('app', ctx, app.appName, env.file);
         if (!path) continue;
         addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
       }
     } else {
       if (env.stacks && !ctx.apps.some((app) => appAcceptsEnv(env, app))) continue;
-      const path = resolveScopeToPath(env.scope, ctx);
+      const path = resolveScopeToPath(env.scope, ctx, undefined, env.file);
       if (!path) continue;
       addToGroup(grouped, path, resolveEnvValue(env.value, ctx));
     }
@@ -192,7 +195,7 @@ export function collectEnvGroups(ctx: TemplateContext): EnvGroup[] {
   const files = collectEnvFiles(ctx);
 
   return files.map((file) => ({
-    path: file.destination.replace('.env.example', '.env'),
+    path: file.destination.replace(/\.example$/, ''),
     vars: file.content
       .split('\n')
       .filter((line) => line.trim().length > 0)

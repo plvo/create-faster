@@ -13,7 +13,7 @@ import { baseConfig } from "./base.js";
 
 export const nextConfig = [
   ...baseConfig,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "next.config.*"{{#if (has "deployment" "cloudflare")}}, ".open-next/**"{{/if}}]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
@@ -43,6 +43,7 @@ export const nextConfig = [
     },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
+      "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
     },
   },

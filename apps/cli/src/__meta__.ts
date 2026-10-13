@@ -59,7 +59,6 @@ export const META: Meta = {
           '@types/react-dom': '^19.2.5',
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
-          '@next/bundle-analyzer': '^16.1.1',
         },
         scripts: {
           analyze: 'next experimental-analyze',
@@ -771,19 +770,22 @@ export const META: Meta = {
           },
           envs: [
             {
-              value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http, prod migrations)',
-              monoScope: [{ pkg: 'db' }, 'app'],
+              value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http)',
+              monoScope: [{ pkg: 'db' }],
               when: { orm: true },
+              file: 'd1',
             },
             {
               value: 'CLOUDFLARE_D1_DATABASE_ID="" # D1 database id from `wrangler d1 create`',
-              monoScope: [{ pkg: 'db' }, 'app'],
+              monoScope: [{ pkg: 'db' }],
               when: { orm: true },
+              file: 'd1',
             },
             {
               value: 'CLOUDFLARE_API_TOKEN="" # Cloudflare API token with D1 edit permission',
-              monoScope: [{ pkg: 'db' }, 'app'],
+              monoScope: [{ pkg: 'db' }],
               when: { orm: true },
+              file: 'd1',
             },
           ],
         },
@@ -1561,7 +1563,8 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_SITE_URL={{appUrl}}',
+          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+          stacks: ['nextjs'],
           monoScope: ['app'],
         },
       ],

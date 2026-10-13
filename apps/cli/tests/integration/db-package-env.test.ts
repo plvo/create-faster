@@ -88,7 +88,7 @@ describe.each([
   });
 
   test('keeps the drizzle-kit credentials', async () => {
-    const envPath = join(project, wrangler === 'wrangler.jsonc' ? '.env.example' : 'apps/web/.env.example');
+    const envPath = join(project, wrangler === 'wrangler.jsonc' ? '.env.d1.example' : 'packages/db/.env.d1.example');
     expect(await readTextFile(envPath)).toContain('CLOUDFLARE_ACCOUNT_ID=');
   });
 });

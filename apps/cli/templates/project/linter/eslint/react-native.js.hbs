@@ -31,10 +31,24 @@ export const reactNativeConfig = [
     },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
+      "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
     },
   },
   {
-    ignores: [".expo/**", "android/**", "ios/**"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    files: ["*.config.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    ignores: [".expo/**", "android/**", "ios/**", "expo-env.d.ts"],
   },
 ];

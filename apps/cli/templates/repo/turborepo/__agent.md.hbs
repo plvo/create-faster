@@ -56,7 +56,7 @@ Generated with create-faster. Turborepo monorepo.
 ## Environment
 {{#if envGroups.length~}}
 
-Each `.env.example` lists the variables for its scope:
+Each `.env*.example` file lists the variables for its scope:
 {{#each envGroups~}}
 - `{{path}}`: {{#each vars}}`{{this}}` {{/each}}
 {{/each~}}

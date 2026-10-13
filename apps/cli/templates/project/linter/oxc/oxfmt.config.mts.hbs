@@ -11,5 +11,5 @@ export default defineConfig({
     functions: ['cn', 'cva', 'clsx'],
   },
 {{/if}}
-  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'],
+  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'{{#if (has "stack" "tanstack-start")}}, '**/routeTree.gen.ts'{{/if}}],
 });

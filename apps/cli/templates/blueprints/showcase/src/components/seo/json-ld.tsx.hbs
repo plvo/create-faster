@@ -23,7 +23,8 @@ function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML=\{{ __html: JSON.stringify(data) }}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD is the script's text content, and '<' is escaped so the payload cannot close the tag
+      dangerouslySetInnerHTML=\{{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }}
     />
   );
 }

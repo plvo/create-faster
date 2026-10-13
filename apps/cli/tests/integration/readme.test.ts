@@ -131,8 +131,8 @@ describe('README of a turborepo', () => {
   });
 
   test('lists the database scripts the root package.json defines', () => {
-    expect(readme).toContain('- `db:migrate` - Run database migrations');
-    expect(readme).toContain('- `db:studio` - Open database management UI');
+    expect(readme).toContain('- `npm run db:migrate` - Run database migrations');
+    expect(readme).toContain('- `npm run db:studio` - Open database management UI');
   });
 
   test('describes the tooling', () => {

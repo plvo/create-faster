@@ -16,7 +16,7 @@ import eslintConfigPrettier from "eslint-config-prettier/flat";
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores(["dist/**", ".vinxi/**", ".output/**", "node_modules/**"]),
+  globalIgnores(["dist/**", ".vinxi/**", ".output/**", ".tanstack/**", "src/routeTree.gen.ts", "node_modules/**"{{> eslint/cloudflare-ignores}}]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
@@ -36,6 +36,7 @@ export default defineConfig([
     },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
+      "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
     },
   },

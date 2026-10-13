@@ -276,6 +276,53 @@ describe('EnvVar scope and when', () => {
   });
 });
 
+describe('EnvVar.file', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const FILE_ENVS: EnvVar[] = [
+    { value: 'IN_DEDICATED=1', monoScope: [{ pkg: 'db' }, 'app'], file: 'secrets' },
+    { value: 'IN_DEFAULT=1', monoScope: [{ pkg: 'db' }] },
+  ];
+
+  function collect<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = FILE_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('a variable with a file lands in .env.<file>.example instead of .env.example', () => {
+    const files = collect(() => collectEnvFiles(makeContext()));
+
+    const dedicated = files.find((f) => f.destination === 'packages/db/.env.secrets.example');
+    expect(dedicated?.content).toBe('IN_DEDICATED=1\n');
+    expect(files.find((f) => f.destination === 'packages/db/.env.example')?.content).toBe('IN_DEFAULT=1\n');
+  });
+
+  test('a variable with a file in an app scope stays out of the default file of every app', () => {
+    const files = collect(() => collectEnvFiles(makeContext()));
+
+    expect(files.map((f) => f.destination)).toContain('apps/web/.env.secrets.example');
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content ?? '').not.toContain('IN_DEDICATED');
+  });
+
+  test('single repo collapses a variable with a file into the root .env.<file>.example', () => {
+    const files = collect(() =>
+      collectEnvFiles(makeContext({ repo: 'single', apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }] })),
+    );
+
+    expect(files.map((f) => f.destination).sort()).toEqual(['.env.example', '.env.secrets.example']);
+  });
+
+  test('collectEnvGroups names the file without the example suffix', () => {
+    const groups = collect(() => collectEnvGroups(makeContext()));
+
+    expect(groups.find((g) => g.path === 'packages/db/.env.secrets')?.vars).toEqual(['IN_DEDICATED']);
+  });
+});
+
 describe('EnvVar.stacks filter', () => {
   const STACK_ENVS: EnvVar[] = [
     { value: 'NEXT_PUBLIC_TOKEN=next-token', monoScope: ['app'], stacks: ['nextjs'] },
