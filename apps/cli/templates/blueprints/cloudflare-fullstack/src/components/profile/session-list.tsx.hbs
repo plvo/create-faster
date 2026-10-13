@@ -6,7 +6,7 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Globe, Monitor, Smartphone, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authClient } from '@repo/auth/auth-client';
@@ -42,7 +42,7 @@ export function SessionList() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const res = await authClient.listSessions();
     if (res.error) {
@@ -52,11 +52,11 @@ export function SessionList() {
     }
     setSessions((res.data ?? []) as SessionRow[]);
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const currentToken = current?.session.token;
 

@@ -52,11 +52,12 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             }}
             className='space-y-4'
           >
-            <form.AppField
-              name='email'
-              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
-            />
-            <form.AppField name='password' children={(field) => <field.PasswordField label='Password' />} />
+            <form.AppField name='email'>
+              {(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            </form.AppField>
+            <form.AppField name='password'>
+              {(field) => <field.PasswordField label='Password' />}
+            </form.AppField>
             <form.AppForm>
               <form.SubmitButton props={{ className: 'w-full' }}>Sign in</form.SubmitButton>
             </form.AppForm>

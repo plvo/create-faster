@@ -53,12 +53,15 @@ export function SignupForm({ redirectTo }: { redirectTo: string }) {
             }}
             className='space-y-4'
           >
-            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
-            <form.AppField
-              name='email'
-              children={(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
-            />
-            <form.AppField name='password' children={(field) => <field.PasswordField label='Password' />} />
+            <form.AppField name='name'>
+              {(field) => <field.InputField label='Name' />}
+            </form.AppField>
+            <form.AppField name='email'>
+              {(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+            </form.AppField>
+            <form.AppField name='password'>
+              {(field) => <field.PasswordField label='Password' />}
+            </form.AppField>
             <form.AppForm>
               <form.SubmitButton props={{ className: 'w-full' }}>Sign up</form.SubmitButton>
             </form.AppForm>
