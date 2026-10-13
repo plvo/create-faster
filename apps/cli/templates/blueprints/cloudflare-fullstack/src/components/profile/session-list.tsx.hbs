@@ -42,8 +42,7 @@ export function SessionList() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
 
-  const load = useCallback(async () => {
-    const res = await authClient.listSessions();
+  const showSessions = useCallback((res: Awaited<ReturnType<typeof authClient.listSessions>>) => {
     if (res.error) {
       toast.error('Failed to load sessions');
     } else {
@@ -53,12 +52,18 @@ export function SessionList() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    authClient.listSessions().then((res) => {
+      if (!cancelled) showSessions(res);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showSessions]);
 
   function reload() {
     setLoading(true);
-    load();
+    authClient.listSessions().then(showSessions);
   }
 
   const currentToken = current?.session.token;

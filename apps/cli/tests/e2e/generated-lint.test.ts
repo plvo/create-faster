@@ -133,6 +133,20 @@ async function prepareBuild(projectDir: string): Promise<void> {
   }
 }
 
+// A Cloudflare Next.js app is built for Workers by `build:cf` (OpenNext), which writes `.open-next` and `.wrangler`.
+async function buildProject(projectDir: string): Promise<boolean> {
+  const dirs = workspaceDirs(projectDir);
+  const manifests = await Promise.all(dirs.map(readManifest));
+  const workersBuilds = dirs.filter((_, index) => manifests[index]?.scripts?.['build:cf']);
+  const builds = workersBuilds.map((dir) => ({ script: 'build:cf', dir }));
+  if (manifests[0]?.scripts?.build && !workersBuilds.includes(projectDir)) {
+    builds.unshift({ script: 'build', dir: projectDir });
+  }
+
+  for (const { script, dir } of builds) await runCommand(['bun', 'run', script], dir);
+  return builds.length > 0;
+}
+
 async function expectLintPasses(projectDir: string, moment: string): Promise<void> {
   const result = await runCommand(['bun', 'run', 'lint'], projectDir);
   if (result.exitCode === 0) return;
@@ -171,10 +185,7 @@ describe('generated projects pass their own lint script', () => {
 
           try {
             await expectLintPasses(projectDir, 'before the build');
-            if ((await readManifest(projectDir))?.scripts?.build) {
-              await runCommand(['bun', 'run', 'build'], projectDir);
-              await expectLintPasses(projectDir, 'after the build');
-            }
+            if (await buildProject(projectDir)) await expectLintPasses(projectDir, 'after the build');
           } finally {
             await cleanupTempDir(projectDir);
           }
