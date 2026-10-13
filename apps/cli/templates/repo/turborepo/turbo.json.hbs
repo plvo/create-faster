@@ -32,6 +32,9 @@
 {{/if}}
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "cache": false
+    }{{/if}}{{#if (hasRootScript "cf-typegen")}},
+    "cf-typegen": {
+      "cache": false
     }{{/if}}{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
     "db:push": {
       "cache": false

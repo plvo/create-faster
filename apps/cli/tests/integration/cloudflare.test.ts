@@ -135,7 +135,7 @@ describe('Cloudflare deployment platform', () => {
       expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
       expect(pkg.scripts.preview).toContain('opennextjs-cloudflare');
       expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
-      expect(pkg.scripts['cf:typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
+      expect(pkg.scripts['cf-typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
       expect(pkg.dependencies['@opennextjs/cloudflare']).toBeDefined();
     });

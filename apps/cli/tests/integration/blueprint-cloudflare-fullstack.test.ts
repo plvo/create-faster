@@ -137,7 +137,7 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     const setup = await readTextFile(setupPath);
     expect(setup).toContain('.wrangler/v3/d1');
     expect(setup).toContain('db:generate');
-    expect(setup).toContain('cf:typegen');
+    expect(setup).toContain('cf-typegen');
     expect(setup).not.toContain('{{');
 
     const pkg = await readTextFile(join(projectPath, 'package.json'));

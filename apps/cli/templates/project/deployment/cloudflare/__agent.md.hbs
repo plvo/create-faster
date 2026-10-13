@@ -5,7 +5,7 @@
 - `{{runScript "build:cf"}}` — binding types → OpenNext adapter build (it runs the `build` script, `next build`, once itself)
 - `{{runScript "preview"}}` — local Wrangler preview of the built output
 - `{{runScript "deploy"}}` — deploy the built output to Cloudflare Workers
-- `{{runScript "cf:typegen"}}` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`
+- `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`. Install runs it (`postinstall`); run it again after every change to bindings
 
 There is no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `{{runScript "build:cf"}}` then `{{runScript "preview"}}` to serve the production build in workerd.
 
@@ -48,7 +48,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 - `{{runScript "build"}}` — `vite build`, emits `dist/client` (assets) and `dist/server` (Worker)
 - `{{runScript "preview"}}` — `vite preview`, serves the production build in workerd. Run it before deploying: `vite dev` hides errors that only appear once the Worker is built (see the global scope rule below)
 - `{{runScript "deploy"}}` — `vite build && wrangler deploy`
-- `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`. Run it after install and after every change to bindings: `tsc` needs it for the `cloudflare:workers` module and the `D1Database` / `Hyperdrive` types
+- `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`. Install runs it (`postinstall`); run it again after every change to bindings: `tsc` needs it for the `cloudflare:workers` module and the `D1Database` / `Hyperdrive` types
 
 **Bindings and variables**
 - Read bindings with `import { env } from 'cloudflare:workers'`. They are never on `process.env`.
@@ -99,7 +99,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 
 - `{{runScript "deploy"}}` — `wrangler deploy`
 - `{{runScript "preview"}}` — `wrangler dev` (local Wrangler), persisting local state in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
-- `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Run it after install and after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
+- `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
 {{/if}}

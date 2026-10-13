@@ -277,7 +277,7 @@ function generatePackagePackageJson(
   };
 }
 
-const APP_SCRIPTS_RUN_BY_TURBO = ['start', 'test', 'test:e2e'];
+const APP_SCRIPTS_RUN_BY_TURBO = ['start', 'test', 'test:e2e', 'cf-typegen'];
 
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {
