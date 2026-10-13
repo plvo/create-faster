@@ -41,8 +41,8 @@ describe('evlog + TanStack Start', () => {
 
     test('src/lib/evlog.ts reads the request logger from the Nitro request context, with a non-throwing lookup', async () => {
       const logger = await readTextFile(join(projectPath, 'src/lib/evlog.ts'));
-      expect(logger).toContain("import { useRequest } from 'nitro/context'");
-      expect(logger).toContain('useRequest().context?.log as RequestLogger | undefined');
+      expect(logger).toContain("import { useRequest as getNitroRequest } from 'nitro/context'");
+      expect(logger).toContain('getNitroRequest().context?.log as RequestLogger | undefined');
       expect(logger).toContain('export function findLogger()');
       expect(logger).toContain('export function useLogger()');
       expect(logger).not.toContain('createLoggerStorage');

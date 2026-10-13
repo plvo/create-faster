@@ -4,27 +4,18 @@ mono:
   scope: app
   path: src/app/(dashboard)/layout.tsx
 ---
-import { auth } from '@/lib/auth/auth';
 import { requireSession } from '@/lib/auth/session';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@repo/ui/components/ui/sidebar';
-import { headers } from 'next/headers';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 
 {{{{raw}}}}
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
 
-  const members = await auth.api.listMembers({
-    headers: await headers(),
-    query: { organizationId: session.activeOrganizationId },
-  });
-  const me = members?.members?.find((m) => m.userId === session.user.id);
-  const role = me?.role ?? 'member';
-
   return (
     <SidebarProvider>
-      <AppSidebar session={session} role={role} />
+      <AppSidebar session={session} />
       <SidebarInset>
         <header className='flex h-14 shrink-0 items-center gap-2 border-b px-4'>
           <SidebarTrigger />
