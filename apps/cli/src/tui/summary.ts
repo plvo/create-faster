@@ -1,11 +1,14 @@
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { getMonoPackageName } from '@/lib/addon-utils';
+import { collectMonoPackages } from '@/lib/package-json-generator';
+import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure } from '@/lib/post-generation';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
-  let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
+  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${ctx.projectName}`;
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
@@ -65,11 +68,20 @@ export function displaySummaryNote(ctx: TemplateContext, gitFailure: GitFailure 
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
 
+function describeOrmPackage(ctx: TemplateContext, packageName: string): string {
+  const { orm, database } = ctx.project;
+  const ormAddon = orm ? META.project.orm.options[orm] : undefined;
+  if (!orm || getMonoPackageName(ormAddon) !== packageName) return '';
+
+  const dbLabel = database ? ` + ${META.project.database.options[database]?.label}` : '';
+  return ` ${color.magenta(`(${ormAddon?.label}${dbLabel})`)}`;
+}
+
 function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean): string[] {
   const lines: string[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
 
-  const hasOrm = !!ctx.project.orm;
+  const packageNames = [...collectMonoPackages(ctx).keys()];
 
   lines.push(color.white(color.bold('#🏠 Structure:')));
   lines.push('');
@@ -81,7 +93,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
       const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
-      const isLast = i === ctx.apps.length - 1 && !hasOrm;
+      const isLast = i === ctx.apps.length - 1 && packageNames.length === 0;
       const prefix = isLast ? '│  └─' : '│  ├─';
       lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     });
@@ -94,11 +106,12 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     }
   }
 
-  if (isTurborepo && hasOrm) {
+  if (packageNames.length > 0) {
     lines.push('├─ 📦 packages/');
-    const ormLabel = ctx.project.orm ? META.project.orm.options[ctx.project.orm]?.label : '';
-    const dbLabel = ctx.project.database ? ` + ${META.project.database.options[ctx.project.database]?.label}` : '';
-    lines.push(`│  └─ db/ ${color.magenta(`(${ormLabel}${dbLabel})`)}`);
+    packageNames.forEach((name, i) => {
+      const prefix = i === packageNames.length - 1 ? '│  └─' : '│  ├─';
+      lines.push(`${prefix} ${name}/${describeOrmPackage(ctx, name)}`);
+    });
   }
 
   const configs: string[] = [];

@@ -894,6 +894,38 @@ describe('generateRootPackageJson', () => {
   });
 });
 
+describe('root start script (turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-start',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'tanstack-start', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { tooling: [] },
+    git: false,
+    pm: 'bun',
+  };
+
+  test('runs the start task of the apps when an app has a start script', () => {
+    expect(generateRootPackageJson(ctx).content.scripts?.start).toBe('turbo start');
+  });
+
+  test('exists when only some of the apps have a start script', () => {
+    const cloudflare: TemplateContext = { ...ctx, project: { deployment: 'cloudflare', tooling: [] } };
+    expect(generateRootPackageJson(cloudflare).content.scripts?.start).toBe('turbo start');
+  });
+
+  test('is absent when no app has a start script', () => {
+    const noStart: TemplateContext = {
+      ...ctx,
+      apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+    };
+    expect(generateRootPackageJson(noStart).content.scripts?.start).toBeUndefined();
+  });
+});
+
 describe('packageManager in single repo', () => {
   test('includes packageManager when pm is set', () => {
     const ctx: TemplateContext = {

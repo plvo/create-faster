@@ -23,9 +23,15 @@ Uses shared database package (`packages/db`){{#if ../project.orm}} with {{../pro
 
 {{/each}}
 
-{{#if (hasPackage "db")}}
+{{#if (monoPackages)}}
 ## Shared Packages
 
+{{#each (monoPackages)}}
+- `packages/{{this}}`
+{{/each}}
+
+{{/if}}
+{{#if (hasPackage "db")}}
 ### `packages/db`
 
 Shared database configuration and schema:
@@ -73,22 +79,22 @@ cp {{path}}.example {{path}}
 Start all applications in development mode:
 
 ```bash
-{{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
+{{runScript "dev"}}
 ```
 
-{{#if (has "stack" "nextjs")}}
 {{#each apps}}
-{{#if (eq stackName "nextjs")}}
-- {{appName}}: [http://localhost:{{appPort appName}}](http://localhost:{{appPort appName}})
+{{#if (appUrl appName)}}
+- {{appName}}: [{{appUrl appName}}]({{appUrl appName}})
 {{/if}}
 {{/each}}
-{{/if}}
 
 ## Available Scripts
 
 - `dev` - Start all apps in development mode
 - `build` - Build all apps for production
+{{#if (hasRootScript "start")}}
 - `start` - Start all apps in production mode
+{{/if}}
 {{#if (hasRootScript "db:migrate")}}
 - `db:migrate` - Run database migrations
 {{/if}}

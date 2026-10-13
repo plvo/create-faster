@@ -4,10 +4,12 @@ import { getProjectAddon } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import { PARTIALS_DIR } from './constants';
+import { resolveAppUrl } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { readFrontmatterFile } from './frontmatter';
-import { collectMonoPackages, getRootScripts } from './package-json-generator';
+import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
+import { getPackageRunner, getScriptCommand } from './package-manager';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -72,6 +74,23 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('hasRootScript', function (this: TemplateContext, name: string) {
     return name in getRootScripts(this);
+  });
+
+  Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
+  });
+
+  Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {
+    return [...collectMonoPackages(options.data.root as TemplateContext).keys()];
+  });
+
+  Handlebars.registerHelper('runScript', (script: string, options: Handlebars.HelperOptions) => {
+    return getScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('packageRunner', (options: Handlebars.HelperOptions) => {
+    return getPackageRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

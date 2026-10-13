@@ -8,16 +8,16 @@ Generated with [create-faster](https://github.com/plvo/create-faster) using the 
 ## Getting started
 
 ```bash
-bun install
-bun run dev
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+{{runScript "dev"}}
 ```
 
 ## Build & deploy
 
 ```bash
-bun run build      # next build → static export in out/
-bun run preview    # serve the built assets locally with wrangler
-bun run deploy     # next build && wrangler deploy
+{{runScript "build"}}      # next build → static export in out/
+{{runScript "preview"}}    # serve the built assets locally with wrangler
+{{runScript "deploy"}}     # next build && wrangler deploy
 ```
 
 Deploying and pointing a custom domain is documented in [`docs/agents/cloudflare-deploy.md`](docs/agents/cloudflare-deploy.md).

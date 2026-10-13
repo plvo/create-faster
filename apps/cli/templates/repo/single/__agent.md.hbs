@@ -20,6 +20,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 {{#if (has "database" "sqlite")~}}
 - Database: SQLite (local file)
 {{/if~}}
+{{#if (has "database" "d1")~}}
+- Database: Cloudflare D1
+{{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
 {{/if~}}
@@ -32,20 +35,20 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 - Package manager: {{pm}}
 
 ## Scripts
-- `{{pm}} dev` — start the dev server
-- `{{pm}} build` — production build
+- `{{runScript "dev"}}` — start the dev server
+- `{{runScript "build"}}` — production build
 {{#if (has "orm" "drizzle")~}}
-- `{{pm}} db:generate` — write a SQL migration from the schema
-- `{{pm}} db:migrate` — apply the migrations
+- `{{runScript "db:generate"}}` — write a SQL migration from the schema
+- `{{runScript "db:migrate"}}` — apply the migrations
 {{/if~}}
 {{#if (has "orm" "prisma")~}}
-- `{{pm}} db:push` — sync the Prisma schema
+- `{{runScript "db:push"}}` — sync the Prisma schema
 {{/if~}}
 {{#if (has "linter" "oxc")~}}
-- `{{pm}} check` — lint and format with Oxlint + Oxfmt
+- `{{runScript "check"}}` — lint and format with Oxlint + Oxfmt
 {{/if~}}
 {{#if (has "linter" "biome")~}}
-- `{{pm}} check` — format and lint with Biome
+- `{{runScript "check"}}` — format and lint with Biome
 {{/if}}
 
 ## Environment

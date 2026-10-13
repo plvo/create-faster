@@ -10,13 +10,13 @@ docker compose up -d --wait
 Create the tables from the schema:
 
 ```bash
-{{#if pm}}{{pm}} run db:push{{else}}npm run db:push{{/if}}
+{{runScript "db:push"}}
 ```
 {{else}}
 Create the migrations from the schema and apply them:
 
 ```bash
-{{#if pm}}{{pm}} run db:generate{{else}}npm run db:generate{{/if}}
-{{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
+{{runScript "db:generate"}}
+{{runScript "db:migrate"}}
 ```
 {{/if}}

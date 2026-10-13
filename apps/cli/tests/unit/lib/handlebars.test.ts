@@ -251,6 +251,65 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('runScript and packageRunner', () => {
+    const template = Handlebars.compile('{{runScript "db:push"}} | {{packageRunner}} shadcn@latest');
+    const ctx = (pm?: TemplateContext['pm'], repo: TemplateContext['repo'] = 'single'): TemplateContext => ({
+      projectName: 'demo',
+      repo,
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      pm,
+    });
+
+    test('writes the script as the selected package manager runs it', () => {
+      expect(template(ctx('bun'))).toBe('bun run db:push | bunx shadcn@latest');
+      expect(template(ctx('npm'))).toBe('npm run db:push | npx shadcn@latest');
+      expect(template(ctx('pnpm'))).toBe('pnpm run db:push | pnpm dlx shadcn@latest');
+    });
+
+    test('falls back to npm when no package manager is selected', () => {
+      expect(template(ctx(undefined))).toBe('npm run db:push | npx shadcn@latest');
+    });
+
+    test('resolves from inside a block', () => {
+      const inBlock = Handlebars.compile('{{#each apps}}{{runScript "dev"}}{{/each}}');
+      expect(inBlock(ctx('pnpm'))).toBe('pnpm run dev');
+    });
+  });
+
+  describe('appUrl and monoPackages', () => {
+    const monorepo = (tooling: string[] = []): TemplateContext => ({
+      projectName: 'demo',
+      repo: 'turborepo',
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] },
+        { appName: 'api', stackName: 'hono', libraries: [] },
+        { appName: 'worker', stackName: 'node', libraries: [] },
+        { appName: 'mobile', stackName: 'expo', libraries: [] },
+      ],
+      project: { database: 'postgres', orm: 'drizzle', tooling },
+      git: false,
+    });
+    const urls = Handlebars.compile('{{#each apps}}{{appName}}={{appUrl appName}};{{/each}}');
+
+    test('gives the dev URL of every app that listens on a port, none for the others', () => {
+      expect(urls(monorepo())).toBe('web=http://localhost:3000;api=http://localhost:3001;worker=;mobile=;');
+    });
+
+    test('follows the URL a selected tooling addon provides', () => {
+      expect(urls(monorepo(['portless']))).toBe(
+        'web=https://web.localhost:1355;api=https://api.localhost:1355;worker=;mobile=;',
+      );
+    });
+
+    test('lists the packages a turborepo generates', () => {
+      const packages = Handlebars.compile('{{#each (monoPackages)}}{{this}},{{/each}}');
+      expect(packages(monorepo())).toBe('ui,db,');
+      expect(packages({ ...monorepo(), repo: 'single' })).toBe('');
+    });
+  });
+
   describe('raw', () => {
     test('preserves inner {{ }} sequences literally', () => {
       const template = Handlebars.compile('{{{{raw}}}}{{variable}}{{{{/raw}}}}');

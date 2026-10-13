@@ -3,15 +3,19 @@
 Generated with create-faster. Turborepo monorepo.
 
 ## Apps
-{{#each apps}}- `apps/{{appName}}` — {{stackName}} (port {{appPort appName}})
+{{#each apps}}- `apps/{{appName}}` — {{stackName}}{{#if (appUrl appName)}} ({{appUrl appName}}){{/if}}
 {{/each}}
+{{#if (monoPackages)}}
 
 ## Packages
-{{#if (has "orm" "drizzle")~}}
-- `packages/db` — Drizzle schema and client
-{{/if~}}
-{{#if (has "orm" "prisma")~}}
-- `packages/db` — Prisma schema and client
+{{#each (monoPackages)}}
+{{#unless (eq this "db")}}
+- `packages/{{this}}`
+{{/unless}}
+{{/each}}
+{{#if (hasPackage "db")}}
+- `packages/db`{{#if (has "orm" "drizzle")}} — Drizzle schema and client{{/if}}{{#if (has "orm" "prisma")}} — Prisma schema and client{{/if}}
+{{/if}}
 {{/if}}
 
 ## Stack
@@ -23,6 +27,9 @@ Generated with create-faster. Turborepo monorepo.
 {{/if~}}
 {{#if (has "database" "sqlite")~}}
 - Database: SQLite{{#if (hasPackage "db")}} (local file in `packages/db`){{/if}}
+{{/if~}}
+{{#if (has "database" "d1")~}}
+- Database: Cloudflare D1
 {{/if~}}
 {{#if (has "linter" "biome")~}}
 - Linter: Biome
@@ -36,14 +43,14 @@ Generated with create-faster. Turborepo monorepo.
 - Package manager: {{pm}}
 
 ## Scripts
-- `{{pm}} dev` — run all apps via Turborepo
-- `{{pm}} build` — build all apps
+- `{{runScript "dev"}}` — run all apps via Turborepo
+- `{{runScript "build"}}` — build all apps
 {{#if (has "orm" "drizzle")~}}
-- `{{pm}} db:generate` — write a SQL migration from the schema (from `packages/db`)
-- `{{pm}} db:migrate` — apply the migrations (from `packages/db`)
+- `{{runScript "db:generate"}}` — write a SQL migration from the schema (from `packages/db`)
+- `{{runScript "db:migrate"}}` — apply the migrations (from `packages/db`)
 {{/if~}}
 {{#if (has "orm" "prisma")~}}
-- `{{pm}} db:push` — sync the Prisma schema (from `packages/db`)
+- `{{runScript "db:push"}}` — sync the Prisma schema (from `packages/db`)
 {{/if}}
 
 ## Environment
