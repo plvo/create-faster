@@ -36,7 +36,7 @@ docs/agents/               # Research, plans and audits written by agents
 | `lib/agent-context-generator.ts` | `AGENTS.md` and `CLAUDE.md` of generated projects |
 | `lib/addon-utils.ts` | Compatibility and requirement checks, script placeholders |
 | `lib/when.ts` | `$when` conditions |
-| `lib/file-generator.ts`, `lib/post-generation.ts` | Generation orchestration; dependency install and `git init` |
+| `lib/file-generator.ts`, `lib/post-generation.ts` | Generation orchestration; dependency install and `git init`; a failed install makes the run exit 1 (files kept, retry command printed), a failed `git init` only warns |
 | `tui/` | Progress display, summary, and the copy-paste command that recreates the project |
 
 ## Commands
@@ -50,7 +50,7 @@ bun run build:cli            # Build apps/cli to dist/
 bun run check                # Biome format + lint check (CI runs it)
 bun run lint                 # Biome lint with auto-fix
 bun run format               # Biome format
-bun run check:unused         # knip
+bun run check:unused         # knip (CI runs it; config in knip.jsonc)
 bun run typecheck            # tsc --noEmit on apps/cli (CI runs it)
 cd apps/cli && bun test tests/unit tests/integration
 cd apps/cli && bun test tests/e2e/<file> --timeout 600000
@@ -59,6 +59,7 @@ cd apps/cli && bun test tests/e2e/<file> --timeout 600000
 - `tests/unit` and `tests/integration` run in CI. Integration tests run the real CLI and assert on generated files (`tests/integration/helpers.ts`).
 - `tests/e2e` generates, installs and builds real projects. It is slow, needs network, and runs on demand, one file at a time.
 - Biome does not lint `apps/cli/tests`.
+- Tests read plain CLI output whatever the terminal or CI asks for: `apps/cli/bunfig.toml` preloads `tests/setup.ts` (in-process output) and `runCli` passes the same variables to the child CLI (`tests/plain-output-env.ts`: `NO_COLOR=1` and `FORCE_COLOR=0`, because picocolors lets `NO_COLOR` win over `FORCE_COLOR` and `CI` while Bun's own console lets `FORCE_COLOR` win). Never strip escape codes inside a test. A test that needs colors passes `{ NO_COLOR: '', FORCE_COLOR: '1' }` to `runCli`.
 
 ## Declarative choice logic (mandatory)
 
@@ -81,7 +82,13 @@ Required: choice-specific behavior is expressed through reusable operators that 
   - `databaseBinding(name)`: true when the selected database declares `serverlessBinding: name` in META (`{{#if (databaseBinding "hyperdrive")}}`), so a new binding database needs no template edit
   - `hasContext(key)`: the key exists in the context
   - `hasPackage(name)`: a turborepo workspace package of that name is generated (it gets a `package.json`), from `collectMonoPackages` in `package-json-generator.ts`; false in a single repo. Use it to describe `packages/db` (`{{#if (hasPackage "db")}}`), never `project.orm`; it also works inside `{{#each}}` blocks
-  - `hasRootScript(name)`: the generated root `package.json` (the turborepo root, or the single app's) defines the script, derived from META by `getRootScripts` in `package-json-generator.ts`; renders a CI step only when the script exists
+  - `monoPackages`: the names of the workspace packages a turborepo generates (the keys `collectMonoPackages` returns), for `{{#each (monoPackages)}}`; empty in a single repo. Inside that block `this` is the name, so `has` and `hasLibrary` (which read the context) do not work there: put them outside the block
+  - `appUrl(name)`: the dev URL of the app (`http://localhost:{port}`, or the URL a selected tooling addon provides, as for the `{{appUrl}}` env placeholder), or an empty string when the app does not serve on a port (none of its scripts carries the `{{port}}` placeholder: Node, Expo)
+  - `hasRootScript(name)`: the generated root `package.json` (the turborepo root, or the single app's) defines the script, derived from META by `getRootScripts` in `package-json-generator.ts`; renders a CI step only when the script exists. A turborepo root gets `turbo start`, `turbo test`, `turbo test:e2e` and `turbo cf-typegen` (`APP_SCRIPTS_RUN_BY_TURBO`) when at least one app declares the script, and `turbo.json.hbs` declares the matching task under the same `hasRootScript` condition
+  - `runScript(name)`: a package.json script as the selected package manager runs it (`bun run build`, `npm run build`, `pnpm run build`; `npm` when none is selected). Docs and notes written into generated projects never write `{{pm}} build`: a bare `bun build` is Bun's bundler and `npm build` is an unknown command
+  - `runAppScript(name)`: a script only the apps define (`deploy`, `preview`, `build:cf`: a turborepo root has none) as a user runs it: `runScript` in a single repo, `cd apps/<app> && <runScript>` in a turborepo, valid under every package manager. A script the root forwards to every app through turbo (`dev`, `build`, `cf-typegen`) stays `runScript`
+  - `stackApps(stack)`: the apps on a stack, for `{{#each (stackApps "nextjs")}}`; inside the block `this` is the app, so `has` and `hasLibrary` do not work there. `{{> cloudflare/app-list stack="nextjs"}}` renders their names, for the note that tells which apps a per-app command applies to
+  - `packageRunner`: the selected package manager's binary runner (`bunx`, `npx`, `pnpm dlx`; `npx` when none is selected), data in `package-manager.ts`
   - `camelCase`, `raw`, `appPort(name)` (3000 + app index)
   - Express conditionals inside templates: `{{#if (has "deployment" "cloudflare")}}...{{/if}}`.
 - **Handlebars partials** (`apps/cli/templates/partials/`, registered by `setupTemplateEngine` in `apps/cli/src/lib/handlebars.ts`): `{{> group/name}}` inserts a block that several templates share, rendered with the caller's context plus optional hash parameters. A choice mapping written in several templates (for example stack to better-auth cookie plugin) lives once in a partial, expressed with the helpers above. See Template system, Partials.
@@ -114,6 +121,14 @@ This keeps the tool extensible: adding the next stack, library or deployment req
 - Local-filesystem capability: a database declares `needsLocalFilesystem: true` (`sqlite` opens a `file:` URL); a deployment declares `providesLocalFilesystem: false` when its runtime has no writable disk (`cloudflare`, Workers). Read generically by `isLocalFilesystemSatisfied`: a filesystem database is unavailable under a deployment without one (`d1` is the SQLite database there). `validateContext` rejects it in flags and `getCategoryOptionUnavailability` disables it in the prompt.
 - Single-select project prompts show incompatibility instead of hiding it: `getCategoryOptionUnavailability` (`addon-utils.ts`) returns a generic, META-derived reason for any option, and `promptProjectCategorySingle` renders unavailable options disabled with that reason. No hardcoded choice value.
 
+### Database first run
+
+Turbo's `ui: stream` never forwards stdin, so a script that prompts hangs behind an invisible prompt (`prisma migrate dev` asks for a migration name) or fails while turbo still reports success (`drizzle-kit push` asks for confirmation and aborts without a TTY). An ORM declares such scripts in `interactiveScripts` (Drizzle `db:push`, Prisma `db:migrate`); `composeRootPackageJson` writes their turborepo root script as `cd packages/<db> && <pm> run <script>` instead of `turbo <script>`. A blueprint `rootPackageJson` must not redefine the `db:*` scripts the ORM already provides.
+
+The Prisma client is generated into `generated/prisma` and not committed, and `prisma generate` reads `DATABASE_URL` through `prisma.config.ts`, so it cannot be a `postinstall` (the install runs before `.env` exists). It runs before `dev` and `build` instead: `repo/turborepo/turbo.json.hbs` adds `^db:generate` to both under `has "orm" "prisma"` and caches `generated/**`; in a single repo the Prisma ORM scripts define `predev` and `prebuild` through `$when({ repo: 'single' })`. Drizzle `db:generate` writes migration files into the source tree, so its task has `cache: false`.
+
+The README first-run step lives once in the `readme/database-setup` partial, with the commands that never prompt: `docker compose up -d --wait` for a Docker database, then `db:push` for Prisma, or `db:generate` then `db:migrate` for Drizzle (every database, D1 included). The template ships no migration, so `db:migrate` alone has nothing to apply. The `local-setup` script of D1 runs `db:generate` first for the same reason.
+
 ### Prompts, testing libraries and linters
 
 - Library prompts group libraries by their `category` field (`UI`, `Content`, `Auth`, `API`, `Data Fetching`, `Forms`, `Runtime`, `Observability`, `Analytics`, `Testing`); `multiselectLibrariesPrompt` in `prompts/stack-prompts.ts` builds the groups from META.
@@ -132,12 +147,22 @@ Production rate limiting keys on a client address header, which better-auth read
 
 ### Cloudflare
 
+- Every app on `cloudflare` (Next.js, TanStack Start, Hono) has one script `cf-typegen` (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`, the `CLOUDFLARE_TYPEGEN` constant in META) and a `postinstall` running the same command, so `tsc` and `next build` pass on a fresh install without a manual step (`cloudflare-env.d.ts` is gitignored). A turborepo root runs it in every app with `turbo cf-typegen` (`APP_SCRIPTS_RUN_BY_TURBO`, a `cf-typegen` task in `turbo.json`), and the generated README names it through the `readme/cloudflare-types` partial. `cloudflare-static` keeps the script without the `postinstall`: nothing in a static app reads the generated types. Do not add a second name for the script.
 - `cloudflare` (Workers) supports Hono (Wrangler), Next.js (OpenNext) and TanStack Start (`@cloudflare/vite-plugin`, no Nitro). `cloudflare-static` supports Next.js and TanStack Start. The deployments are `cloudflare`, `cloudflare-static`, `sst` and `terraform-aws`; the stacks each one supports are in META.
 - A TanStack Start app drops `nitro` and the Nitro `start` script through `$when({ deployment: { not: 'cloudflare' } })`. `vite.config.ts.hbs` swaps `nitro()` for `cloudflare()` under `has "deployment" "cloudflare"`. `__env.start.hbs` carries `deploymentSkip: [cloudflare, cloudflare-static]`.
+- Every Worker of a project binds the same D1 database: `cloudflare/d1-binding` names it `{{projectName}}-db` (never after the app) with one placeholder id, the database `db:migrate` and the seed target, and the generated notes tell to paste the one `wrangler d1 create` id into each app's `wrangler.jsonc`. Every Worker's local preview persists to the directory those scripts write (`--persist-to {{workspaceRoot}}/.wrangler` for Hono and Next.js, `persistState` for Start), because a Worker left on its own `.wrangler` state queries an empty database.
 - Production servers run with `NODE_ENV=production`: Nitro through `NODE_ENV` in `.env.start`, Workers through `config: { vars: { NODE_ENV } }` on the `cloudflare()` plugin (`production` for `vite build`, `development` otherwise). Only the literal `process.env.NODE_ENV` is replaced at build time, not dynamic reads or external dependencies.
 - A Next.js app (OpenNext) gets the same through the `cloudflare/node-env-var` partial (`"vars": { "NODE_ENV": "production" }`), inserted in `wrangler.jsonc.nextjs.hbs` and in the `cloudflare-fullstack` blueprint's own copy. Without it a dependency's runtime read of `NODE_ENV` sees `development` in workerd, because the build only inlines the literal `process.env.NODE_ENV`.
+- A Next.js app on `cloudflare` or `cloudflare-static` has no `start` script (`$when(RUNS_NODE_SERVER, ...)` in META): `next start` serves it from Node, where OpenNext never initialises `getCloudflareContext` (every page answers 500), and rejects `output: export`. `build:cf` then `preview` runs the production build in workerd. `next.config.ts.hbs` calls `initOpenNextCloudflareForDev` only when `NODE_ENV` is `development`, and the app-side `getEnv()` (`src/lib/env.ts.nextjs.hbs`, and the `cloudflare-fullstack` copy) awaits `connection()` before `getCloudflareContext`, so `next build` never prerenders a page that reads a binding: each build worker would otherwise start a local workerd on the same local D1 state and fail intermittently with `SQLITE_BUSY`.
 - With D1, `src/lib/server.ts.tanstack-start.hbs` builds `db` once at module scope from `cloudflare:workers` (the db package factory stays `createDb(d1)`), plus `auth = createAuth(db, tanstackStartCookies())` when better-auth is selected. With Hyperdrive, consumers call `await createDb(env.HYPERDRIVE)` per request.
 - Every Hono app on `cloudflare` types `new Hono<{ Bindings: CloudflareEnv }>()` and includes `cloudflare-env.d.ts` in its tsconfig, so `tsc` needs `cf-typegen` first (as for Start). With Hyperdrive, `wrangler.jsonc.hono.hbs` declares the `HYPERDRIVE` binding (the `cloudflare/hyperdrive-binding` partial) and route handlers call `await createDb(c.env.HYPERDRIVE)` per request.
+
+### Expo
+
+- The `expo` stack, `nativewind` and `jest-expo` move together with the Expo SDK. Take every version from `bundledNativeModules.json` of the `expo` package (`react` and `react-native` exact, as React Native checks the renderer version), and verify with `expo-doctor` and `expo export` on a generated project, not only `tsc`.
+- `main` is `expo-router/entry`; without it Metro falls back to `expo/AppEntry`. The generated `tsconfig.json` lists its `types` because TypeScript 6 no longer loads every `@types` package.
+- Isolated installs (bun and pnpm workspaces) only expose declared dependencies to Babel and Metro: NativeWind's setup resolves `react-native-css-interop`, `babel-preset-expo` and `@babel/plugin-transform-react-jsx` from the app root, so `nativewind` declares them. `jest-expo` only lets the `.pnpm` store through `transformIgnorePatterns`, so `jest.config.js` adds `.bun` when `pm` is bun.
+- A turborepo may hold Expo next to a Next.js or TanStack Start app on another React patch version. Each app keeps its own React and Expo's Metro config bundles a single one. `expo-doctor` reports `expo-constants`, `expo-font` and `expo-linking` as duplicates in a bun turborepo (bun's peer-suffixed copies of one version, absent from the Metro bundle), which is expected.
 
 ## Template system
 
@@ -227,6 +252,7 @@ A file several libraries extend (a framework entry, a global middleware list) is
 - `stack/tanstack-start/src/server.ts.hbs` is the Cloudflare Worker entry. It is always generated under `cloudflare` (`wrangler.jsonc` `main` points to it unconditionally) and exports Start's handler; a library section wraps `fetch` inside it (evlog: `withEvlog` + `loggerStorage.run`).
 - `stack/tanstack-start/src/start.ts.hbs` is Start's `createStart` instance. The gate lives at the top of this one file, as `{{#if (or (hasLibrary "x") ...)}}` listing the libraries that contribute (a project with none gets no file). Libraries only add entries to `requestMiddleware` and `functionMiddleware`.
 - A library section must never drop framework defaults. Start applies its default CSRF middleware to server functions only when `src/start.ts` does not exist, so the skeleton always declares `csrfMiddleware` (`createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })`, the same call as Start's default) first in `requestMiddleware`, before any library entry. The same holds for any shared entry file whose presence disables a framework default.
+- `src/routeTree.gen.ts` is committed (TanStack's convention) but only exists after the first `vite dev` or `vite build`, so a fresh install would fail `tsc` and the editor. The stack declares the `postinstall` `tsr generate` (`GENERATE_ROUTE_TREE` in META) with `@tanstack/router-cli`, and `stack/tanstack-start/tsr.config.json.hbs` carries the footer the Start Vite plugin appends to the file (the `Register` block, `createStart` or `startInstance` import), so the file written on install is byte-identical to the one `vite dev` and `vite build` write and committing it causes no churn. Its start-file condition mirrors the gate of `src/start.ts.hbs` (the library list and `cloudflare-static`): change both together. The later declaration of a script name overwrites the earlier one: on `cloudflare` the deployment's `stackPackageJson` for Start declares the `postinstall` as `${CLOUDFLARE_TYPEGEN} && ${GENERATE_ROUTE_TREE}`, so any new `postinstall` step is chained there, never added as a second declaration. The generated README names the file through the `readme/route-tree` partial.
 - Express "this file is useless here" with `deploymentSkip` frontmatter in the file itself (both files above skip `cloudflare-static`, where nothing runs per request).
 
 ### Scope mapping and path resolution
@@ -245,6 +271,12 @@ Env variables are declared in META (`envs` on libraries, project addons and blue
 - **Who receives a variable**: a library env goes only to the apps that have the library; a project addon env goes to every app. An env with `stacks` is further limited to apps on a listed stack (see `envs` above). Blueprint envs follow the project addon rule.
 - **Scope to path**: in a turborepo `{ pkg: 'db' }` is `packages/db/.env.example`, `'app'` is `apps/{appName}/.env.example`, `'root'` is `.env.example`. A `{ pkg }` scope is only written when that package is generated, by the same collector as the package manifests (`collectMonoPackages` in `package-json-generator.ts`): a database env scoped to `{ pkg: 'db' }` lands in `packages/db/.env.example` only with an ORM, and without one it stays in each app's file. A variable whose scopes are all missing packages falls back to the app scope. In a single repo every scope collapses into the root `.env.example`. Lines are deduped by variable key within each file. The Cloudflare account credentials of D1 (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_D1_DATABASE_ID`, `CLOUDFLARE_API_TOKEN`) are read only by `drizzle-kit` (`d1-http`, `NODE_ENV=production`), so they live in `packages/db/.env.d1.example` (a turborepo) or the root `.env.d1.example` (a single repo), never in an app's `.env.example`.
 
+### Turborepo workspace packages
+
+A workspace package is generated from META (`collectMonoPackages`): library and ORM `packageJson`, plus the blueprint's `pkgPackageJson`, merged per package.
+- **`exports`** only lists files that are generated for the combination. An export a blueprint alone satisfies (`@repo/auth/permissions`, `@repo/ui/hooks/*`) is declared in that blueprint's `pkgPackageJson`, never in the library, and one that depends on a choice uses `$when`. `tests/integration/package-exports.test.ts` generates representative combinations and every blueprint, and checks that every export target exists and every `@repo/x/y` import in the generated sources is covered by an export.
+- **`tsconfig.json`** of each package lists the `types` it needs and extends `@repo/config/ts/*` (`react-library.json` has the DOM lib; `base.json` has none). A package compiles the sources of the workspace packages it depends on, so it carries their types too: `@types/node` for `process`, `@cloudflare/workers-types` under `cloudflare` for the `D1Database` and `Hyperdrive` bindings, each added as a devDependency with `$when`. `tests/integration/workspace-package-tsconfig.test.ts` checks it, and `tests/e2e/workspace-packages-typecheck.test.ts` runs `tsc --noEmit` in every app and package.
+
 ### Generated `.gitignore`
 
 `.gitignore` is a template per repo type (`templates/repo/{single,turborepo}/__gitignore.hbs`), one section per choice with `has` conditionals (`{{#if (has "stack" "tanstack-start")}}`). A directory that a stack, library or deployment writes at build or dev time and that must not be committed (`.output/` and `.tanstack/` for TanStack Start, `.wrangler/` for Cloudflare) goes in that choice's section. Keep the two files in step.
@@ -252,6 +284,8 @@ Env variables are declared in META (`envs` on libraries, project addons and blue
 ### Generated agent context
 
 Every generated project gets an `AGENTS.md` plus a `CLAUDE.md` containing exactly `@AGENTS.md`, next to every `AGENTS.md` (the root one and, in a turborepo, `apps/{app}/`). `--no-agent-context` skips them and any blueprint `docs/agents/` file. `lib/agent-context-generator.ts` assembles them from `__agent.md.hbs` fiches placed beside the stack, library and project addon templates (frontmatter `scope`, `heading`, `order`; a fiche rendering empty is dropped), under the header `repo/{single,turborepo}/__agent.md.hbs`. Blueprints add an About section and the `agentArchitecture` text from META.
+
+The Next.js `next.config.ts.hbs` sets `agentRules: false` (option of Next.js 16.3 and later, hence `next: ^16.3.0`). Without it `next dev` run by a coding agent appends its own managed block to `AGENTS.md` (or creates the file under `--no-agent-context`), leaving a fresh project dirty in git. The Next.js fiche points to `node_modules/next/dist/docs/` instead.
 
 ## Conventions
 
@@ -269,7 +303,7 @@ Every generated project gets an `AGENTS.md` plus a `CLAUDE.md` containing exactl
 ### Tooling
 - Format and lint rules are in `biome.json`, checked by `bun run check` (CI and the pre-commit lint-staged hook run Biome).
 - Commit types are enforced by `.husky/commit-msg`.
-- CI (`.github/workflows/ci.yml`) runs `bun run check`, `bun run typecheck`, `bun run build:cli`, unit and integration tests. Releases are automated by `.github/workflows/release.yml` (release-please, then `npm publish`).
+- CI (`.github/workflows/ci.yml`) runs `bun run check`, `bun run check:unused`, `bun run typecheck`, `bun run build:cli`, unit and integration tests. Releases are automated by `.github/workflows/release.yml` (release-please, then `npm publish`).
 
 ## Agent-generated documentation
 

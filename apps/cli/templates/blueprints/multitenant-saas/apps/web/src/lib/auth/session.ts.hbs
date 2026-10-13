@@ -1,0 +1,23 @@
+---
+path: src/lib/auth/session.ts
+mono:
+  scope: app
+  path: src/lib/auth/session.ts
+---
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { cache } from 'react';
+import { auth } from '@/lib/auth/auth';
+
+const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
+
+// Layouts and pages render in parallel: a layout redirect does not stop the page from running. Every
+// page that prefetches protected data awaits this first, so a missing, forged or expired session cookie
+// redirects before any protected query starts and nothing is logged.
+export async function requireSession() {
+  const session = await getSession();
+  if (!session) redirect('/login');
+  const { activeOrganizationId } = session.session;
+  if (!activeOrganizationId) redirect('/onboarding');
+  return { ...session, activeOrganizationId };
+}

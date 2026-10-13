@@ -41,9 +41,9 @@ export const Route = createFileRoute('/api/db-probe')({
   server: {
     handlers: {
       GET: async () => {
-        await db.insert(userTable).values({ username: 'probe', email: 'probe@example.com' })
+        await db.insert(userTable).values({ name: 'probe', email: 'probe@example.com' })
         const users = await db.select().from(userTable)
-        return Response.json({ users: users.map((user) => user.username) })
+        return Response.json({ users: users.map((user) => user.name) })
       },
     },
   },

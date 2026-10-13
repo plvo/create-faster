@@ -1,4 +1,7 @@
 import { defineConfig } from 'vite'
+{{#if (hasLibrary "tanstack-devtools")}}
+import { devtools } from '@tanstack/devtools-vite'
+{{/if}}
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -22,6 +25,9 @@ const config = defineConfig(({{#if (has "deployment" "cloudflare")}}{ command }{
     tsconfigPaths: true,
   },
   plugins: [
+{{#if (hasLibrary "tanstack-devtools")}}
+    devtools(),
+{{/if}}
 {{#if (has "deployment" "cloudflare")}}
     cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '{{#if (isMono)}}../../{{/if}}.wrangler' }, config: { vars: { NODE_ENV: command === 'build' ? 'production' : 'development' } } }),
 {{/if}}

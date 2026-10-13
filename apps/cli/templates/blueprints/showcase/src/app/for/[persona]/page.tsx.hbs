@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getPersona, getAllPersonaSlugs } from '@/lib/data/personas';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { FaqJsonLd } from '@/components/seo/json-ld';
+import { createPageMetadata } from '@/lib/seo';
 
 interface PageProps {
   params: Promise<{ persona: string }>;
@@ -23,10 +24,11 @@ export async function generateMetadata({ params }: PageProps) {
 
   if (!persona) return {};
 
-  return {
+  return createPageMetadata({
     title: persona.title,
     description: persona.description,
-  };
+    path: `/for/${slug}`,
+  });
 }
 
 export default async function PersonaPage({ params }: PageProps) {

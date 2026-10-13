@@ -15,14 +15,14 @@ D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Wo
 "d1_databases": [
   {
     "binding": "DB",
-    "database_name": "{appName}-db",
+    "database_name": "{projectName}-db",
     "database_id": "REPLACE_WITH_D1_DATABASE_ID",
     "migrations_dir": "drizzle"
   }
 ]
 ```
 
-Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`.
+Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`. In a Turborepo every app binds the same database (`{projectName}-db`) so the apps see the same data and migrations target one database: paste the same id into each app's `wrangler.jsonc`.
 
 **`src/lib/db/index.ts` — factory, not singleton:**
 
@@ -48,14 +48,18 @@ For Next.js apps, a `getEnv` helper retrieves the binding from the OpenNext Clou
 ```ts
 import 'server-only';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { connection } from 'next/server';
 
 export type Env = { DB: D1Database };
 
 export async function getEnv(): Promise<Env> {
+  await connection();
   const { env } = await getCloudflareContext({ async: true });
   return { DB: env.DB };
 }
 ```
+
+`connection()` makes `next build` skip prerendering a page that reads the binding. Without it, every build worker that renders such a page starts a local workerd on the local D1 state, and several of them opening it at once can fail with `SQLITE_BUSY`.
 
 Call `getEnv()` in Server Components or Route Handlers, then pass `env.DB` to `createDb`:
 
@@ -160,7 +164,7 @@ These are account credentials that only `drizzle-kit` needs, when it runs with `
 | `db:generate` | Generate migration SQL from schema changes (`drizzle-kit generate`) |
 | `db:migrate` / `db:migrate:local` | Apply migrations to the local D1 |
 | `db:migrate:remote` | Apply migrations to the production D1 database |
-| `local-setup` | First-time local setup: migrate + seed |
+| `local-setup` | First-time local setup: generate the migrations, apply them, seed |
 
 **Single repo** — everything is co-located at the project root, so migrate runs against the root `wrangler.jsonc` and the local state at `./.wrangler`.
 

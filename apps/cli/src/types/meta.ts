@@ -1,10 +1,10 @@
 import type { StackName } from '@/types/stack-name';
 import type { Conditional, WhenMatch } from '@/types/when';
 
-export type RepoType = 'single' | 'turborepo';
+type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
-export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
+type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
 
 export type EnvScope = 'app' | 'root' | { pkg: string };
 
@@ -16,7 +16,7 @@ export interface EnvVar {
   file?: string;
 }
 
-export interface AddonSupport {
+interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
 
@@ -46,7 +46,7 @@ export type PackageJsonConfig = PackageJsonShape<Conditional<string>>;
 /** Package.json contribution after `$when` conditionals are resolved against a context. */
 export type ResolvedPackageJsonConfig = PackageJsonShape<string>;
 
-export interface AppUrlContext {
+interface AppUrlContext {
   projectName: string;
   appName: string;
   isTurborepo: boolean;
@@ -55,7 +55,7 @@ export interface AppUrlContext {
 
 export type AppScriptTransform = ((cmd: string) => string) | { from: string; wrap: (cmd: string) => string };
 
-export interface AddonRuntime {
+interface AddonRuntime {
   /** Transform or add app scripts. Key = output script name. */
   appScripts?: Record<string, AppScriptTransform>;
   /** Resolve the {{appUrl}} env placeholder for apps where this addon is active */
@@ -93,6 +93,8 @@ export interface MetaAddon {
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
+  /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
+  interactiveScripts?: string[];
 }
 
 export interface MetaProjectCategory {
@@ -102,7 +104,7 @@ export interface MetaProjectCategory {
   options: Record<string, MetaAddon>;
 }
 
-export interface MetaStack {
+interface MetaStack {
   type: 'app' | 'server';
   label: string;
   hint?: string;
@@ -110,12 +112,12 @@ export interface MetaStack {
   packageJson: PackageJsonConfig;
 }
 
-export interface MetaRepoStack {
+interface MetaRepoStack {
   label: string;
   hint?: string;
 }
 
-export type MetaProject = {
+type MetaProject = {
   database: MetaProjectCategory;
   orm: MetaProjectCategory;
   deployment: MetaProjectCategory;

@@ -131,7 +131,7 @@ describe('SQLite database option', () => {
     );
 
     expect(pkg.dependencies?.['@repo/db']).toBeUndefined();
-    expect(pkg.scripts['db:push']).toBe('turbo db:push');
+    expect(pkg.scripts['db:push']).toBe('cd packages/db && npm run db:push');
     expect(pkg.scripts['db:seed']).toBe('turbo db:seed');
     expect(await fileExists(join(projectDir, 'packages/db/scripts/seed.ts'))).toBe(true);
     expect(await fileExists(join(projectDir, 'scripts/seed.ts'))).toBe(false);

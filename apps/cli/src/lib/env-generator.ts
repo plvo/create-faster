@@ -26,25 +26,28 @@ interface CollectedEnv {
   file?: string;
 }
 
+/** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
+export function resolveAppUrl(ctx: TemplateContext, appName: string): string {
+  const port = resolveAppPort(ctx.apps, appName);
+  const runtimeAddon = findRuntimeAddon(ctx);
+  return runtimeAddon?.runtime?.resolveAppUrl
+    ? runtimeAddon.runtime.resolveAppUrl({
+        projectName: ctx.projectName,
+        appName,
+        isTurborepo: ctx.repo === 'turborepo',
+        port,
+      })
+    : `http://localhost:${port}`;
+}
+
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
   let resolved = value.replace(/\{\{projectName\}\}/g, ctx.projectName);
   if (ctx.dbPort !== undefined) {
     resolved = resolved.replace(/\{\{dbPort\}\}/g, String(ctx.dbPort));
   }
   if (appName) {
-    const port = resolveAppPort(ctx.apps, appName);
-    resolved = resolved.replace(/\{\{appPort\}\}/g, String(port));
-
-    const runtimeAddon = findRuntimeAddon(ctx);
-    const appUrl = runtimeAddon?.runtime?.resolveAppUrl
-      ? runtimeAddon.runtime.resolveAppUrl({
-          projectName: ctx.projectName,
-          appName,
-          isTurborepo: ctx.repo === 'turborepo',
-          port,
-        })
-      : `http://localhost:${port}`;
-    resolved = resolved.replace(/\{\{appUrl\}\}/g, appUrl);
+    resolved = resolved.replace(/\{\{appPort\}\}/g, String(resolveAppPort(ctx.apps, appName)));
+    resolved = resolved.replace(/\{\{appUrl\}\}/g, resolveAppUrl(ctx, appName));
   }
   return resolved;
 }

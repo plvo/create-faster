@@ -114,7 +114,7 @@ describe('Cloudflare static deployment platform', () => {
     test('web app gets an assets-only wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(content).toContain('"name": "web"');
+      expect(content).toContain(`"name": "${projectName}-web"`);
       expect(content).toContain('"directory": "out"');
       expect(content).not.toContain('"main"');
     });

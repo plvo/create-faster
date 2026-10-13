@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
   expectIngestProxiesToPostHog,
+  filesContaining,
   expectServesPageWithClientScript,
   runCli,
   type RunningServer,
@@ -34,11 +35,13 @@ const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 const TIMEOUT_START = 60_000;
 const MAX_INGEST_BODY_BYTES = 64 * 1024 * 1024;
+const DEVTOOLS_MARKERS = ['tanstack_devtools', 'Open TanStack Devtools', 'TanStack Router v1'];
 const TRPC_VANILLA: TrpcProbeOptions = { auth: false, query: false };
 
 describe('tanstack-start-loaded', () => {
   let projectDir: string;
   let installResult: CommandResult;
+  let routeTreeAfterInstall: string;
 
   beforeAll(async () => {
     const tempDir = await createTempDir();
@@ -46,7 +49,7 @@ describe('tanstack-start-loaded', () => {
       [
         'tanstack-start-loaded',
         '--app',
-        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-devtools,evlog',
+        'tanstack-start-loaded:tanstack-start:shadcn,next-themes,react-hook-form,tanstack-query,tanstack-form,tanstack-devtools,evlog',
         '--no-git',
         '--no-install',
         '--pm',
@@ -61,6 +64,7 @@ describe('tanstack-start-loaded', () => {
     await writeCsrfProbeRoute(projectDir);
     await writeQueryProbe(projectDir);
     installResult = await runCommand(['bun', 'install'], projectDir);
+    routeTreeAfterInstall = await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8');
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
@@ -83,6 +87,15 @@ describe('tanstack-start-loaded', () => {
     },
     TIMEOUT_BUILD,
   );
+
+  test('the build leaves the route tree written on install unchanged, start file footer included', async () => {
+    expect(await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8')).toBe(routeTreeAfterInstall);
+  });
+
+  test('the production build ships no devtools code', async () => {
+    const output = join(projectDir, '.output');
+    expect(await filesContaining(output, DEVTOOLS_MARKERS)).toEqual([]);
+  });
 
   test(
     'start serves the built app and its client assets, with evlog logging each request and error',

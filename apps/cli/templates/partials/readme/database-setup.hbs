@@ -1,0 +1,22 @@
+{{#if (or (has "database" "postgres") (has "database" "mysql"))}}
+Start the database:
+
+```bash
+docker compose up -d --wait
+```
+
+{{/if}}
+{{#if (has "orm" "prisma")}}
+Create the tables from the schema:
+
+```bash
+{{runScript "db:push"}}
+```
+{{else}}
+Create the migrations from the schema and apply them:
+
+```bash
+{{runScript "db:generate"}}
+{{runScript "db:migrate"}}
+```
+{{/if}}

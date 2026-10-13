@@ -20,11 +20,11 @@ function expectChildrenWrappedOnce(layout: string, { withDevtools }: { withDevto
   expect(children).toBeLessThan(close);
 
   if (withDevtools) {
-    const devtools = layout.indexOf('<TanStackDevtools');
+    const devtools = layout.indexOf('<Devtools />');
     expect(children).toBeLessThan(devtools);
     expect(devtools).toBeLessThan(close);
   } else {
-    expect(layout).not.toContain('<TanStackDevtools');
+    expect(layout).not.toContain('Devtools');
   }
 
   expect(layout).toContain(`\n${' '.repeat(8)}<AppProviders>\n${' '.repeat(10)}<main>{children}</main>`);

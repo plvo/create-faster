@@ -1,4 +1,4 @@
-PostgreSQL via Docker Compose. Start it with `docker compose up -d`. The connection string is in `DATABASE_URL` (see `.env.example`).
+PostgreSQL via Docker Compose. Start it with `docker compose up -d --wait`, which returns once the database accepts connections. The connection string is in `DATABASE_URL` (see `.env.example`).
 
 The local `DATABASE_URL` ends with `?sslmode=disable` because the Docker database has no TLS. Keep `sslmode=disable` for local or other non-TLS databases only. Never copy the local `DATABASE_URL` to production.
 {{#if project.orm}}

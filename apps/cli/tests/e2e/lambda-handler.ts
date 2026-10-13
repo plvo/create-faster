@@ -4,13 +4,13 @@ import { $ } from 'bun';
 import type { TerraformLambda } from '../integration/helpers';
 import { getFreePort, runCommand } from './helpers';
 
-export interface LambdaHttpResponse {
+interface LambdaHttpResponse {
   statusCode: number;
   body: string;
   headers?: Record<string, string>;
 }
 
-export interface LambdaProbe {
+interface LambdaProbe {
   /** `typeof` the export, `function` for a valid handler. */
   type: string;
   response?: LambdaHttpResponse;
@@ -49,7 +49,7 @@ const LAMBDA_INIT_TIMEOUT = 10_000;
 const LAMBDA_CONTAINER_LABEL = 'create-faster-e2e=lambda-runtime';
 
 /** The official AWS Lambda base image of a Node.js runtime identifier such as `nodejs22.x`. */
-export function lambdaImage(runtime: string): string {
+function lambdaImage(runtime: string): string {
   const version = runtime.match(/^nodejs(\d+)\.x$/)?.[1];
   if (!version) throw new Error(`No Lambda Node.js image for runtime "${runtime}"`);
   return `public.ecr.aws/lambda/nodejs:${version}`;

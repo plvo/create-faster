@@ -1,6 +1,17 @@
 /// <reference types="vite/client" />
 import { HeadContent, Scripts, {{#if (or (hasLibrary "tanstack-query") (hasLibrary "trpc"))}}createRootRouteWithContext{{else}}createRootRoute{{/if}} } from '@tanstack/react-router'
+{{#if (hasLibrary "tanstack-devtools")}}
+import { TanStackDevtools } from '@tanstack/react-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+{{#if (hasLibrary "tanstack-query")}}
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
+{{/if}}
+{{#if (hasLibrary "tanstack-form")}}
+import { formDevtoolsPlugin } from '@tanstack/react-form-devtools'
+{{/if}}
+{{else}}
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+{{/if}}
 {{#if (hasLibrary "tanstack-query")}}
 import type { QueryClient } from '@tanstack/react-query'
 {{#if (hasLibrary "trpc")}}
@@ -54,6 +65,10 @@ export const Route = {{#if (or (hasLibrary "tanstack-query") (hasLibrary "trpc")
         rel: 'stylesheet',
         href: appCss,
       },
+      {
+        rel: 'icon',
+        href: '/favicon.svg',
+      },
     ],
   }),
   notFoundComponent: NotFound,
@@ -81,7 +96,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+        {{#if (hasLibrary "tanstack-devtools")}}
+        <TanStackDevtools
+          config=\{{ position: 'bottom-right' }}
+          plugins={[
+            { name: 'TanStack Router', render: <TanStackRouterDevtoolsPanel /> },
+            {{#if (hasLibrary "tanstack-query")}}
+            { name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> },
+            {{/if}}
+            {{#if (hasLibrary "tanstack-form")}}
+            formDevtoolsPlugin(),
+            {{/if}}
+          ]}
+        />
+        {{else}}
         <TanStackRouterDevtools position="bottom-right" />
+        {{/if}}
         {{#if (hasLibrary "posthog")}}
         </AnalyticsProvider>
         {{/if}}

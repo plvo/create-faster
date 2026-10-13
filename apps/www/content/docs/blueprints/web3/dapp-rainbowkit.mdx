@@ -59,6 +59,7 @@ src/
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID (from [WalletConnect Cloud](https://cloud.walletconnect.com)) |
+| `BETTER_AUTH_URL` | Public origin of the deployed app (for example `https://app.example.com`). Read at runtime on the server: its host is the SIWE domain a signed message must carry, so it must match the host the browser signs for. `.env.example` sets `http://localhost:3000` |
 
 ## CLI usage
 

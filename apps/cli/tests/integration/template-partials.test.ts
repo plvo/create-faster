@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 
@@ -13,7 +13,14 @@ async function generate(tempDir: string, args: string[]): Promise<string> {
   return join(tempDir, args[0] ?? '');
 }
 
-const d1Wrangler = (name: string, main: string, flags: string, beforeD1: string, migrationsDir: string) => `{
+const d1Wrangler = (
+  name: string,
+  main: string,
+  flags: string,
+  beforeD1: string,
+  migrationsDir: string,
+  databaseName = name,
+) => `{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "${name}",
   "main": "${main}",
@@ -22,7 +29,7 @@ ${flags}${beforeD1},
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "${name}-db",
+      "database_name": "${databaseName}-db",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID",
       "migrations_dir": "${migrationsDir}"
     }
@@ -223,16 +230,16 @@ export const auth = createAuth(db, tanstackStartCookies());
       ]);
     });
 
-    test('each wrangler.jsonc names its D1 database after the app and points at the shared migrations', async () => {
+    test('every wrangler.jsonc binds the one project D1 database and points at the shared migrations', async () => {
       const migrationsDir = '../../packages/db/drizzle';
       expect(await readTextFile(join(path, 'apps/web/wrangler.jsonc'))).toBe(
-        d1Wrangler('web', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, migrationsDir),
+        d1Wrangler('cf-turbo-d1-web', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, migrationsDir, 'cf-turbo-d1'),
       );
       expect(await readTextFile(join(path, 'apps/start/wrangler.jsonc'))).toBe(
-        d1Wrangler('start', 'src/server.ts', WORKER_FLAGS, '', migrationsDir),
+        d1Wrangler('cf-turbo-d1-start', 'src/server.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
       );
       expect(await readTextFile(join(path, 'apps/api/wrangler.jsonc'))).toBe(
-        d1Wrangler('api', 'src/index.ts', WORKER_FLAGS, '', migrationsDir),
+        d1Wrangler('cf-turbo-d1-api', 'src/index.ts', WORKER_FLAGS, '', migrationsDir, 'cf-turbo-d1'),
       );
     });
 

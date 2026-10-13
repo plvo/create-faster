@@ -18,10 +18,11 @@ Beyond the official setup, we include:
 - `dev` - Development server with dynamic port assignment (3000 or turborepo-specific)
 - `build` - Production build, emits the Nitro server to `.output/`
 - `preview` - Preview the production build
+- `postinstall` - Generates `src/routeTree.gen.ts` with `tsr generate` (`@tanstack/router-cli`), so `tsc` and the editor work right after install. `dev` and `build` keep the file up to date, and it is meant to be committed
 - `start` - Production server (`node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs`): loads the app's `.env` when it exists (otherwise Node prints `.env not found. Continuing without it.` on stderr), then `.env.start` (`NODE_ENV=production` and the app's `PORT`), and listens on the app's port. When `start` runs from the app directory, a `PORT` or `NITRO_PORT` exported in the shell overrides it; in Turborepo, `turbo start` from the root runs in strict env mode and drops shell variables, so only the two files apply
 
 **Vite Configuration:**
-- TanStack Router DevTools enabled
+- TanStack Router DevTools enabled (a panel of the [TanStack Devtools](/docs/modules/data-fetching/tanstack-devtools) shell when that module is selected)
 - Nitro (`nitro/vite`) as the production server: the build emits `.output/server/index.mjs`, which `start` runs. The [Cloudflare Workers](/docs/deployment/cloudflare) and [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) deployments replace it
 - Tailwind CSS v4 via Vite plugin
 - TypeScript path aliases through Vite's native `resolve.tsconfigPaths`

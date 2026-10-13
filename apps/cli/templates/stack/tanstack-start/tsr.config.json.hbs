@@ -1,0 +1,10 @@
+{{!-- Footer of src/routeTree.gen.ts, the same one the Start Vite plugin writes, so `tsr generate` on install and `vite dev` produce the same file. The start file condition mirrors src/start.ts.hbs. --}}
+{
+  "routeTreeFileFooter": [
+{{#if (and (or (hasLibrary "evlog")) (eq (has "deployment" "cloudflare-static") false))}}
+    "import type { getRouter } from './router.tsx'\nimport type { startInstance } from './start.ts'\ndeclare module '@tanstack/react-start' {\n  interface Register {\n    ssr: true\n    router: Awaited<ReturnType<typeof getRouter>>\n    config: Awaited<ReturnType<typeof startInstance.getOptions>>\n  }\n}"
+{{else}}
+    "import type { getRouter } from './router.tsx'\nimport type { createStart } from '@tanstack/react-start'\ndeclare module '@tanstack/react-start' {\n  interface Register {\n    ssr: true\n    router: Awaited<ReturnType<typeof getRouter>>\n  }\n}"
+{{/if}}
+  ]
+}

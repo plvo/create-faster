@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
 interface PackageJsonShape {
@@ -195,6 +196,42 @@ describe('MDX Integration', () => {
       expect(rootEntries.filter((entry) => entry.startsWith('['))).toEqual([]);
       expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(true);
       expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(true);
+    });
+  });
+
+  describe('Blueprints with mdx', () => {
+    const blueprintsWithMdx = Object.entries(META.blueprints)
+      .filter(([, blueprint]) =>
+        blueprint.context.apps.some((app) => (app.libraries as readonly string[]).includes('mdx')),
+      )
+      .map(([name]) => name);
+
+    test('at least one blueprint composes mdx', () => {
+      expect(blueprintsWithMdx.length).toBeGreaterThan(0);
+    });
+
+    for (const blueprint of blueprintsWithMdx) {
+      test(`${blueprint} ships no example content without the example route`, async () => {
+        const result = await runCli([`bp-${blueprint}`, '--blueprint', blueprint, '--no-git', '--no-install'], tempDir);
+        expect(result.exitCode).toBe(0);
+        const projectPath = join(tempDir, `bp-${blueprint}`);
+        const appPath = (await fileExists(join(projectPath, 'apps/web'))) ? join(projectPath, 'apps/web') : projectPath;
+        expect(await fileExists(join(appPath, 'src/app/mdx'))).toBe(false);
+        expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(false);
+        expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(false);
+        expect(await fileExists(join(appPath, 'contents/blog'))).toBe(true);
+      });
+    }
+  });
+
+  describe('Example content without a blueprint', () => {
+    test('is written as plain documents, without template frontmatter', async () => {
+      const projectName = 'test-mdx-content';
+      const result = await runCli([projectName, '--app', `${projectName}:nextjs:mdx`, '--no-git', '--no-install'], tempDir);
+      expect(result.exitCode).toBe(0);
+      const cool = await readTextFile(join(tempDir, projectName, 'contents/cool.mdx'));
+      expect(cool.startsWith('---\ntitle: Cool\n')).toBe(true);
+      expect(cool).not.toContain('only:');
     });
   });
 });

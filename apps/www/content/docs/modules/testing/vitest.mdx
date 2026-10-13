@@ -18,24 +18,24 @@ The Vite-native runner, configured for the kind of code each stack runs. React s
 
 ### React stacks (Next.js, TanStack Start)
 
-<Dependencies dev="vitest,@vitest/coverage-v8,@vitejs/plugin-react,vite,vite-tsconfig-paths,jsdom,@testing-library/react,@testing-library/dom,@testing-library/jest-dom,@testing-library/user-event" />
+<Dependencies dev="vitest,@vitest/coverage-v8,@vitejs/plugin-react,vite,jsdom,@testing-library/react,@testing-library/dom,@testing-library/jest-dom,@testing-library/user-event" />
 
 Files added:
 ```
-vitest.config.ts            # jsdom env, React + tsconfig-paths plugins
+vitest.config.mts           # jsdom env, React plugin, native tsconfig paths
 tests/
 ├── setup.ts                # Imports @testing-library/jest-dom matchers
 └── unit/
     └── example.test.tsx    # Sample component test
 ```
 
-```ts title="vitest.config.ts"
+```ts title="vitest.config.mts"
 import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), react()],
+  resolve: { tsconfigPaths: true },
+  plugins: [react()],
   test: {
     globals: true,
     environment: 'jsdom',
@@ -52,22 +52,21 @@ The `include` is scoped to `tests/{unit,integration}` so Vitest never picks up P
 
 ### Server stacks (Hono, Node)
 
-<Dependencies dev="vitest,@vitest/coverage-v8,vite,vite-tsconfig-paths" />
+<Dependencies dev="vitest,@vitest/coverage-v8,vite" />
 
 Files added:
 ```
-vitest.config.ts            # node env, tsconfig-paths plugin
+vitest.config.mts           # node env, native tsconfig paths
 tests/
 └── unit/
     └── example.test.ts     # Sample unit test
 ```
 
-```ts title="vitest.config.ts"
-import tsconfigPaths from 'vite-tsconfig-paths';
+```ts title="vitest.config.mts"
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: { tsconfigPaths: true },
   test: {
     globals: true,
     environment: 'node',
@@ -79,4 +78,4 @@ export default defineConfig({
 **Modified files:**
 - `tsconfig.json` (Hono and Node) - Adds `tests/**/*.ts` to `include` so test files are type-checked alongside `src`.
 
-The `@/*` path alias resolves via `vite-tsconfig-paths` in both variants.
+The `@/*` path alias resolves through Vite's native `resolve.tsconfigPaths` option in both variants.

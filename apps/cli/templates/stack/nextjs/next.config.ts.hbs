@@ -8,13 +8,12 @@ import type { NextConfig } from 'next';
 
 {{#if (and (has "deployment" "cloudflare") (eq stackName "nextjs"))}}
 {{!-- d1: point getPlatformProxy at the same local state the `d1 migrations apply --persist-to` CLI writes (.wrangler/v3), so `next dev` sees the migrated/seeded database --}}
-initOpenNextCloudflareForDev({{#if (has "database" "d1")}}{ persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' } }{{/if}});
+{{!-- development only: the call starts a local workerd on the persisted state, and `next build` loads this config too, where it would hold the shared local D1 while OpenNext builds and previews --}}
+if (process.env.NODE_ENV === 'development') {
+  initOpenNextCloudflareForDev({{#if (has "database" "d1")}}{ persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' } }{{/if}});
+}
 
 {{/if}}
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
 const nextConfig: NextConfig = {
   {{#if (isMono)}}
   transpilePackages: [
@@ -27,7 +26,13 @@ const nextConfig: NextConfig = {
   ],
   {{/if}}
   reactStrictMode: true,
+  agentRules: false,
 
+  {{#if (eq blueprint "dapp-rainbowkit")}}
+  // RainbowKit reaches @coinbase/cdp-sdk, which dynamically imports optional @x402/* peers that are not installed. Loaded by Node at runtime instead of bundled, the missing peers only matter if x402 signing is used.
+  serverExternalPackages: ['@coinbase/cdp-sdk'],
+
+  {{/if}}
   {{#if (has "deployment" "cloudflare-static")}}
   output: 'export',
   images: {
@@ -97,7 +102,7 @@ const withMDX = createMDX({
 {{/if}}
 
 {{#if (hasLibrary "mdx")}}
-export default withMDX(withBundleAnalyzer(nextConfig));
+export default withMDX(nextConfig);
 {{else}}
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;
 {{/if}}

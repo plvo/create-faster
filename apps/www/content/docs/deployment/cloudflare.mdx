@@ -29,11 +29,11 @@ Hono already exports a Workers-compatible fetch handler (`export default app`), 
 **Scripts:**
 - `deploy` - Deploy the Worker (`wrangler deploy`)
 - `preview` - Run the Worker locally on the Workers runtime (`wrangler dev`)
-- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). The app's `postinstall` runs it, so a fresh install type-checks; run it again after each change to `wrangler.jsonc`.
 
 ### Next.js apps
 
-Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` so Cloudflare bindings are available during `next dev`, and the build emits the Worker output under `.open-next/`.
+Next.js apps deploy through the OpenNext Cloudflare adapter. `next.config.ts` calls `initOpenNextCloudflareForDev()` under `next dev` only (`NODE_ENV` is `development`), so Cloudflare bindings are available there and `next build` does not start a local workerd. The build emits the Worker output under `.open-next/`.
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -55,10 +55,12 @@ export default defineCloudflareConfig({});
 ```
 
 **Scripts:**
-- `build:cf` - Generate binding types, Next.js build, then the OpenNext adapter build (`wrangler types … && next build && opennextjs-cloudflare build`). Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during `next build`.
+- `build:cf` - Generate binding types, then the OpenNext adapter build (`wrangler types … && opennextjs-cloudflare build`). `opennextjs-cloudflare build` runs the project's `build` script (`next build`) itself, in standalone mode, so `next build` is not repeated in `build:cf`. Types are generated first so the binding globals (e.g. `Hyperdrive`, `D1Database`) typecheck during that build.
 - `preview` - Local Wrangler preview of the built output (`opennextjs-cloudflare preview`)
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
-- `cf:typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`)
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). The app's `postinstall` runs it, so a fresh install type-checks; run it again after each change to `wrangler.jsonc`.
+
+A Next.js app on Workers has no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `build:cf` then `preview` to serve the production build in workerd.
 
 ### TanStack Start apps
 
@@ -80,7 +82,7 @@ TanStack Start runs on Workers through `@cloudflare/vite-plugin`, without Nitro:
 - `build` - Build the client assets and the Worker (`vite build`)
 - `preview` - Serve the production build in workerd (`vite preview`). Check the build here before deploying: `vite dev` hides errors that only appear once the Worker is built, such as I/O or randomness at module level.
 - `deploy` - Build then deploy (`vite build && wrangler deploy`)
-- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). Run it after install and after each change to `wrangler.jsonc`: `tsc` reads `cloudflare-env.d.ts` for the `cloudflare:workers` module.
+- `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). The app's `postinstall` runs it, so a fresh install type-checks; run it again after each change to `wrangler.jsonc`: `tsc` reads `cloudflare-env.d.ts` for the `cloudflare:workers` module.
 
 Bindings are read with `import { env } from 'cloudflare:workers'`. With `--database d1`, `src/lib/server.ts` builds the Drizzle `db` once at module scope from `env.DB`, which is safe for D1. With Postgres or MySQL, build a client per request with `await createDb(env.HYPERDRIVE)` (see below).
 
@@ -104,7 +106,7 @@ A Worker cannot open a raw TCP connection to a Postgres or MySQL server, and for
 
 ## Shared behavior
 
-The Worker `name` is the app name in turborepo mode and the project name in single mode.
+The Worker `name` is the project name in single mode and `<project>-<app>` in turborepo mode, so two projects deployed to one Cloudflare account never share a Worker.
 
 **Modified files:**
 - `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`; for Next.js apps it also ignores `.open-next/` and `.prod.env`.
@@ -114,4 +116,4 @@ The Worker `name` is the app name in turborepo mode and the project name in sing
 Wrangler 4.x and the Vite plugin read local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
 
 **Turborepo mode:**
-`wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named after the app. Run the scripts from the app directory.
+`wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named `<project>-<app>`. Run the scripts from the app directory.

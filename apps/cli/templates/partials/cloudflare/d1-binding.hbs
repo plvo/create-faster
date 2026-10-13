@@ -5,7 +5,7 @@ inline: true
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}-db",
+      "database_name": "{{projectName}}-db",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID"{{#if project.orm}},
       "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"{{/if}}
     }

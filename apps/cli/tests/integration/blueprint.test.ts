@@ -141,8 +141,9 @@ describe('Blueprint generation - org-dashboard', () => {
   test('dashboard layout redirects unauthenticated users to login', async () => {
     const projectPath = join(tempDir, 'test-dashboard');
     const layoutContent = await readTextFile(join(projectPath, 'apps/web/src/app/(dashboard)/layout.tsx'));
-    expect(layoutContent).toContain('redirect');
-    expect(layoutContent).toContain('/login');
+    expect(layoutContent).toContain('await requireSession()');
+    const sessionContent = await readTextFile(join(projectPath, 'apps/web/src/lib/auth/session.ts'));
+    expect(sessionContent).toContain("redirect('/login')");
   });
 });
 

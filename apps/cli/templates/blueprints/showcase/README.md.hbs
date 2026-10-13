@@ -8,8 +8,8 @@ Generated with [create-faster](https://github.com/plvo/create-faster) using the 
 ## Getting started
 
 ```bash
-bun install
-bun run dev
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+{{runScript "dev"}}
 ```
 
 ## TODO — Customize for your brand
@@ -21,4 +21,4 @@ bun run dev
 - [ ] Update section content in `src/components/sections/` — Hero copy, features, testimonials, FAQ
 - [ ] Add your blog articles in `contents/blog/` (MDX with title, summary, publishedAt frontmatter)
 - [ ] Set `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` in `.env` for analytics
-- [ ] Set `NEXT_PUBLIC_SITE_URL` in `.env` to your production URL
+- [ ] Set `NEXT_PUBLIC_APP_URL` in `.env` to your production URL

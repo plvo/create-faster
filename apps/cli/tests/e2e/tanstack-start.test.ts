@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   type CommandResult,
@@ -22,6 +23,7 @@ const TIMEOUT_START = 60_000;
 describe('tanstack-start', () => {
   let projectDir: string;
   let installResult: CommandResult;
+  let routeTreeAfterInstall: string;
 
   beforeAll(async () => {
     const tempDir = await createTempDir();
@@ -50,6 +52,16 @@ describe('tanstack-start', () => {
   );
 
   test(
+    'type-checks right after install, before any dev or build run',
+    async () => {
+      routeTreeAfterInstall = await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8');
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], projectDir);
+      expect(result.exitCode).toBe(0);
+    },
+    TIMEOUT_TYPECHECK,
+  );
+
+  test(
     'builds',
     async () => {
       const result = await runCommand(['bun', 'run', 'build'], projectDir);
@@ -57,6 +69,10 @@ describe('tanstack-start', () => {
     },
     TIMEOUT_BUILD,
   );
+
+  test('the build leaves the route tree written on install unchanged', async () => {
+    expect(await readFile(join(projectDir, 'src/routeTree.gen.ts'), 'utf-8')).toBe(routeTreeAfterInstall);
+  });
 
   test(
     'start serves the built app and its client assets, and only reports the missing .env on stderr',

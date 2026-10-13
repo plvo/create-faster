@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 import { readJsonFile } from '../integration/helpers';
 
-export type { CliResult } from '../integration/helpers';
 export { cleanupTempDir, createTempDir, fileExists, runCli } from '../integration/helpers';
 
 export interface CommandResult {
@@ -59,7 +58,7 @@ async function isResponding(url: string): Promise<boolean> {
   }
 }
 
-export interface StartServerOptions {
+interface StartServerOptions {
   /** Port the server must pick by itself. Without it, a free port is handed over through PORT. */
   port?: number;
   /** Path that must answer 2xx before the server counts as ready. */

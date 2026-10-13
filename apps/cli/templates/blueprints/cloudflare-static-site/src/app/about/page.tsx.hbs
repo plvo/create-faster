@@ -1,11 +1,12 @@
-import type { Metadata } from 'next';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { siteConfig } from '@/lib/data/site-config';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: 'About',
   description: `Learn about ${siteConfig.name} — our mission, team, and why we believe carrier pigeons are the future of secure communication.`,
-};
+  path: '/about',
+});
 
 export default function AboutPage() {
   return (

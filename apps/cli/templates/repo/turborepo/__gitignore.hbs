@@ -15,6 +15,12 @@ node_modules
 # Testing
 coverage
 
+{{#if (hasLibrary "playwright")}}
+# Playwright
+test-results/
+playwright-report/
+{{/if}}
+
 # Turbo
 .turbo
 
@@ -37,7 +43,7 @@ next-env.d.ts
 out/
 build
 dist
-create-faster
+*.tsbuildinfo
 
 {{#if (has "orm" "prisma")}}
 # Prisma
