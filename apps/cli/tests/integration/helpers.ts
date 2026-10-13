@@ -263,7 +263,7 @@ export function expectOnErrorLogsInternals(handler: string): void {
   ]);
 }
 
-const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)/g;
+const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)(?![\w:/.-])/g;
 
 async function scriptsOf(directory: string): Promise<Record<string, string>> {
   return (await readJsonFile<{ scripts: Record<string, string> }>(join(directory, 'package.json'))).scripts;

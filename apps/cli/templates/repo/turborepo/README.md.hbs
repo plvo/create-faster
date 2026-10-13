@@ -92,29 +92,57 @@ Start all applications in development mode:
 
 ## Available Scripts
 
-- `dev` - Start all apps in development mode
-- `build` - Build all apps for production
+- `{{runScript "dev"}}` - Start all apps in development mode
+- `{{runScript "build"}}` - Build all apps for production
 {{#if (hasRootScript "start")}}
-- `start` - Start all apps in production mode
+- `{{runScript "start"}}` - Start all apps in production mode
+{{/if}}
+{{#if (hasRootScript "db:generate")}}
+{{#if (has "orm" "prisma")}}
+- `{{runScript "db:generate"}}` - Generate the Prisma client
+{{else}}
+- `{{runScript "db:generate"}}` - Write a SQL migration from the schema
+{{/if}}
 {{/if}}
 {{#if (hasRootScript "db:migrate")}}
-- `db:migrate` - Run database migrations
+- `{{runScript "db:migrate"}}` - Run database migrations
 {{/if}}
 {{#if (hasRootScript "db:push")}}
-- `db:push` - Push schema changes to database
+- `{{runScript "db:push"}}` - Push schema changes to database
+{{/if}}
+{{#if (hasRootScript "db:seed")}}
+- `{{runScript "db:seed"}}` - Seed the database
 {{/if}}
 {{#if (hasRootScript "db:studio")}}
-- `db:studio` - Open database management UI
+- `{{runScript "db:studio"}}` - Open database management UI
+{{/if}}
+{{#if (hasRootScript "local-setup")}}
+- `{{runScript "local-setup"}}` - Set up the local database and seed it
+{{/if}}
+{{#if (hasRootScript "cf-typegen")}}
+- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app
 {{/if}}
 {{#if (has "linter" "biome")}}
-- `lint` - Lint and fix code with Biome
-- `format` - Format code with Biome
-- `check` - Run both linting and formatting
+- `{{runScript "lint"}}` - Lint and fix code with Biome
+- `{{runScript "format"}}` - Format code with Biome
+- `{{runScript "check"}}` - Run both linting and formatting
 {{/if}}
 {{#if (has "linter" "oxc")}}
-- `lint` - Lint code with Oxlint
-- `format` - Format code with Oxfmt
-- `check` - Fix lint issues, then format
+- `{{runScript "lint"}}` - Lint code with Oxlint
+- `{{runScript "format"}}` - Format code with Oxfmt
+- `{{runScript "check"}}` - Fix lint issues, then format
+{{/if}}
+{{#if (has "linter" "eslint")}}
+- `{{runScript "lint"}}` - Lint code with ESLint
+{{/if}}
+{{#if (hasRootScript "clean")}}
+- `{{runScript "clean"}}` - Remove build outputs and installed dependencies
+{{/if}}
+{{#if (hasRootScript "versions:list")}}
+- `{{runScript "versions:list"}}` - List dependency versions that differ between workspaces
+{{/if}}
+{{#if (hasRootScript "versions:fix")}}
+- `{{runScript "versions:fix"}}` - Align dependency versions across workspaces
 {{/if}}
 
 {{#if envGroups.length}}

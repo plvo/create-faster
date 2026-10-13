@@ -156,7 +156,7 @@ describe('turborepo docs and summary list every app and package', () => {
     expect(result.exitCode).toBe(0);
     const root = JSON.parse(await readTextFile(join(dir, 'cf', 'package.json'))) as { scripts: Record<string, string> };
     expect(root.scripts.start).toBeUndefined();
-    expect(await readTextFile(join(dir, 'cf', 'README.md'))).not.toContain('- `start`');
+    expect(await readTextFile(join(dir, 'cf', 'README.md'))).not.toContain('- `npm run start`');
   });
 
   test('AGENTS.md has no Packages section when the turborepo generates none', async () => {
@@ -332,6 +332,6 @@ describe('turborepo README lists the scripts the root package.json defines', () 
       expect(listed.sort()).toEqual(Object.keys(scripts).sort());
       expect(await printedScriptsMissingFrom(project, readme)).toEqual([]);
       expect(await printedScriptsMissingFrom(project, await readTextFile(join(project, 'AGENTS.md')))).toEqual([]);
-    });
+    }, 30_000);
   });
 });
