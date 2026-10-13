@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readJsonFile, readTextFile, runCli } from './helpers';
 
 // A command written as `<pm> <script>` is only valid for scripts the package manager owns
 // (`bun build` runs Bun's bundler, `npm dev` is an unknown command): scripts need `<pm> run <script>`.
@@ -296,5 +296,42 @@ describe('generated docs write commands every package manager runs', () => {
     const agents = await readTextFile(join(project, 'AGENTS.md'));
     expect(agents).toContain('`npm run preview`');
     expect(agents).not.toMatch(/\bbun run\b/);
+  });
+});
+
+describe('turborepo README lists the scripts the root package.json defines', () => {
+  const MONO = ['--app', 'web:nextjs', '--app', 'api:hono'];
+  const CASES = [
+    ['drizzle', [...MONO, '--database', 'postgres', '--orm', 'drizzle', '--linter', 'biome']],
+    ['prisma', [...MONO, '--database', 'postgres', '--orm', 'prisma', '--linter', 'oxc']],
+    ['eslint', [...MONO, '--linter', 'eslint']],
+    ['multitenant-saas', ['--blueprint', 'multitenant-saas']],
+    ['cloudflare-fullstack', ['--blueprint', 'cloudflare-fullstack']],
+  ] as const;
+  let dir: string;
+
+  beforeAll(async () => {
+    dir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  describe.each(['bun', 'npm', 'pnpm'])('with %s', (pm) => {
+    test.each(CASES)('%s: the Available Scripts section is the root scripts, each as a command that runs', async (name, args) => {
+      const projectName = `scripts-${name}-${pm}`;
+      const result = await runCli([projectName, ...args, '--no-git', '--no-install', '--pm', pm], dir);
+      expect(result.exitCode).toBe(0);
+      const project = join(dir, projectName);
+      const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(join(project, 'package.json'));
+      const readme = await readTextFile(join(project, 'README.md'));
+
+      const section = readme.split('## Available Scripts')[1]?.split('\n## ')[0] ?? '';
+      const listed = [...section.matchAll(/^- `(?:bun|npm|pnpm) run ([\w:-]+)`/gm)].map(([, script]) => script);
+      expect(listed.sort()).toEqual(Object.keys(scripts).sort());
+      expect(await printedScriptsMissingFrom(project, readme)).toEqual([]);
+      expect(await printedScriptsMissingFrom(project, await readTextFile(join(project, 'AGENTS.md')))).toEqual([]);
+    });
   });
 });

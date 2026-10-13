@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
@@ -261,4 +261,30 @@ export function expectOnErrorLogsInternals(handler: string): void {
   expect(logged(true, 'user.me', trpcError('UNAUTHORIZED', 'UNAUTHORIZED'))).toEqual([
     'tRPC failed on user.me: UNAUTHORIZED',
   ]);
+}
+
+const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)/g;
+
+async function scriptsOf(directory: string): Promise<Record<string, string>> {
+  return (await readJsonFile<{ scripts: Record<string, string> }>(join(directory, 'package.json'))).scripts;
+}
+
+/**
+ * The `<pm> run <script>` commands a document prints that no package.json defines: the one of the directory it
+ * names with `cd <dir> &&` (the project root otherwise), or of any app for the `cd apps/<app> &&` placeholder.
+ */
+export async function printedScriptsMissingFrom(projectPath: string, document: string): Promise<string[]> {
+  const missing: string[] = [];
+
+  for (const [call, directory = '.', script = ''] of document.matchAll(PRINTED_SCRIPT)) {
+    if (directory.includes('<app>')) {
+      const apps = await readdir(join(projectPath, 'apps'));
+      const appScripts = await Promise.all(apps.map((app) => scriptsOf(join(projectPath, 'apps', app))));
+      if (!appScripts.some((scripts) => script in scripts)) missing.push(call);
+    } else if (!(script in (await scriptsOf(join(projectPath, directory))))) {
+      missing.push(call);
+    }
+  }
+
+  return missing;
 }
