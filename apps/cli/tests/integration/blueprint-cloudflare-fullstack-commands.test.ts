@@ -7,7 +7,7 @@ const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
 const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)/g;
 const NOTE_FILES = ['AGENTS.md', 'docs/agents/cloudflare-deploy.md', 'docs/agents/data-layer.md'];
 
-describe.each(PACKAGE_MANAGERS)('cloudflare-fullstack notes with %s', (pm) => {
+describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack notes with %s', (pm) => {
   const projectName = `fullstack-${pm}`;
   let tempDir: string;
   let projectPath: string;
@@ -44,7 +44,7 @@ describe.each(PACKAGE_MANAGERS)('cloudflare-fullstack notes with %s', (pm) => {
     const invocations = [...notes.matchAll(PRINTED_SCRIPT)];
     const missing: string[] = [];
 
-    for (const [call, directory = '.', script] of invocations) {
+    for (const [call, directory = '.', script = ''] of invocations) {
       const exists = directory.includes('<app>')
         ? (await appsDefining(script)).length > 0
         : script in (await scriptsOf(directory));
