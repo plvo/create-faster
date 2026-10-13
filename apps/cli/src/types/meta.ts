@@ -15,6 +15,14 @@ export interface EnvVar {
   when?: WhenMatch;
 }
 
+export type FirstRunCommand = { command: string } | { script: string };
+
+/** One thing a fresh project needs before `dev` works; `script` runs through the selected package manager. */
+export interface FirstRunStep {
+  description: string;
+  commands: FirstRunCommand[];
+}
+
 interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
@@ -94,6 +102,8 @@ export interface MetaAddon {
   runtime?: AddonRuntime;
   /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
   interactiveScripts?: string[];
+  /** Steps of a fresh project's first run, in order (README and CLI summary). */
+  firstRun?: FirstRunStep[];
 }
 
 export interface MetaProjectCategory {
@@ -156,6 +166,8 @@ export interface MetaBlueprint {
   rootPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   agentArchitecture?: string;
+  /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
+  firstRun?: FirstRunStep[];
 }
 
 export interface Meta {

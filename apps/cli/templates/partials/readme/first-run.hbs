@@ -1,0 +1,10 @@
+{{#each (firstRunSteps)}}
+{{description}}:
+
+```bash
+{{#each commands}}
+{{this}}
+{{/each}}
+```
+
+{{/each}}

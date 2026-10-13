@@ -1,5 +1,5 @@
 import { $when } from '@/lib/when';
-import type { Meta } from '@/types/meta';
+import type { FirstRunStep, Meta } from '@/types/meta';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
@@ -13,6 +13,14 @@ const WRANGLER_VERSION = '^4.127.1';
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
+
+const START_DOCKER_DATABASE: FirstRunStep[] = [
+  { description: 'Start the database', commands: [{ command: 'docker compose up -d --wait' }] },
+];
+
+const RUN_LOCAL_SETUP: FirstRunStep[] = [
+  { description: 'Set up the local database and seed demo data', commands: [{ script: 'local-setup' }] },
+];
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
@@ -648,6 +656,7 @@ export const META: Meta = {
           hint: 'Relational database',
           mono: { scope: 'root' },
           serverlessBinding: 'hyperdrive',
+          firstRun: START_DOCKER_DATABASE,
           packageJson: {
             dependencies: {
               pg: '^8.23.0',
@@ -676,6 +685,7 @@ export const META: Meta = {
           hint: 'Relational database',
           mono: { scope: 'root' },
           serverlessBinding: 'hyperdrive',
+          firstRun: START_DOCKER_DATABASE,
           packageJson: {
             dependencies: {
               mysql2: '^3.24.2',
@@ -789,6 +799,12 @@ export const META: Meta = {
           hint: 'Lightweight TypeScript ORM',
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
+          firstRun: [
+            {
+              description: 'Create the migrations from the schema and apply them',
+              commands: [{ script: 'db:generate' }, { script: 'db:migrate' }],
+            },
+          ],
           packageJson: {
             main: $when({ repo: 'turborepo' }, './dist/index.js'),
             module: $when({ repo: 'turborepo' }, './dist/index.mjs'),
@@ -826,6 +842,7 @@ export const META: Meta = {
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],
+          firstRun: [{ description: 'Create the tables from the schema', commands: [{ script: 'db:push' }] }],
           packageJson: {
             dependencies: {
               '@prisma/client': '^7.10.0',
@@ -1182,6 +1199,7 @@ export const META: Meta = {
       label: 'Org Dashboard',
       hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
       category: 'Business',
+      firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: [
         'Organization dashboard: Next.js web app + Node.js batch app (Turborepo), Better Auth',
         'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
@@ -1272,6 +1290,7 @@ export const META: Meta = {
       label: 'Multitenant SaaS',
       hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
       category: 'Business',
+      firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: [
         'Multi-tenant SaaS starter: Next.js web app + Node.js batch app (Turborepo) with shared',
         '`packages/auth`, `packages/db`, `packages/api`, and `packages/ui`. Better Auth',
@@ -1412,6 +1431,7 @@ export const META: Meta = {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
+      firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: [
         'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
         'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',

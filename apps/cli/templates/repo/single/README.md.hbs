@@ -45,20 +45,7 @@ Install dependencies:
 
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
-{{#if envGroups.length}}
-Set up environment variables:
-
-```bash
-{{#each envGroups}}
-cp {{path}}.example {{path}}
-{{/each}}
-```
-
-{{/if}}
-{{#if project.orm}}
-{{> readme/database-setup}}
-
-{{/if}}
+{{> readme/first-run}}
 Start the development server:
 
 ```bash
