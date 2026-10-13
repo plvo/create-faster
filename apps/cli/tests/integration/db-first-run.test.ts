@@ -19,6 +19,10 @@ async function generate(name: string, args: string[]): Promise<{ tempDir: string
   return { tempDir, projectPath: join(tempDir, name) };
 }
 
+/** The README steps that tell to start the project, before the list of every script. */
+const gettingStartedOf = async (projectPath: string) =>
+  (await readTextFile(join(projectPath, 'README.md'))).split('## Available Scripts')[0] ?? '';
+
 const readTurboTasks = async (projectPath: string) =>
   (await readJsonFile<{ tasks: Record<string, TurboTask> }>(join(projectPath, 'turbo.json'))).tasks;
 
@@ -58,7 +62,7 @@ describe('Prisma turborepo: first run from a fresh clone', () => {
   });
 
   test('README starts the database then pushes the schema, without the interactive migrate', async () => {
-    const readme = await readTextFile(join(projectPath, 'README.md'));
+    const readme = await gettingStartedOf(projectPath);
     const docker = readme.indexOf('docker compose up -d --wait');
     const push = readme.indexOf('bun run db:push');
     expect(docker).toBeGreaterThan(-1);
@@ -113,7 +117,7 @@ describe('Drizzle turborepo: first run from a fresh clone', () => {
   });
 
   test('README starts the database, generates the migrations, then applies them', async () => {
-    const readme = await readTextFile(join(projectPath, 'README.md'));
+    const readme = await gettingStartedOf(projectPath);
     const docker = readme.indexOf('docker compose up -d --wait');
     const generateStep = readme.indexOf('bun run db:generate');
     expect(generateStep).toBeGreaterThan(docker);

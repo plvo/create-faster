@@ -1,11 +1,9 @@
-import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readTextFile, runCli } from './helpers';
 
 const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
-const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)/g;
-const NOTE_FILES = ['AGENTS.md', 'docs/agents/cloudflare-deploy.md', 'docs/agents/data-layer.md'];
+const NOTE_FILES = ['README.md', 'AGENTS.md', 'docs/agents/cloudflare-deploy.md', 'docs/agents/data-layer.md'];
 
 describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack notes with %s', (pm) => {
   const projectName = `fullstack-${pm}`;
@@ -26,32 +24,10 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack notes with %s', (pm) 
     await cleanupTempDir(tempDir);
   });
 
-  async function scriptsOf(directory: string): Promise<Record<string, string>> {
-    const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(
-      join(projectPath, directory, 'package.json'),
-    );
-    return scripts;
-  }
-
-  async function appsDefining(script: string): Promise<string[]> {
-    const apps = await readdir(join(projectPath, 'apps'));
-    const defining = await Promise.all(apps.map(async (app) => script in (await scriptsOf(join('apps', app)))));
-    return apps.filter((_, index) => defining[index]);
-  }
-
   test.each(NOTE_FILES)('%s: every printed script exists in the directory it is run from', async (file) => {
     const notes = await readTextFile(join(projectPath, file));
-    const invocations = [...notes.matchAll(PRINTED_SCRIPT)];
-    const missing: string[] = [];
 
-    for (const [call, directory = '.', script = ''] of invocations) {
-      const exists = directory.includes('<app>')
-        ? (await appsDefining(script)).length > 0
-        : script in (await scriptsOf(directory));
-      if (!exists) missing.push(call);
-    }
-
-    expect(missing).toEqual([]);
+    expect(await printedScriptsMissingFrom(projectPath, notes)).toEqual([]);
   });
 
   test('the deploy notes run the web app scripts from apps/web', async () => {
