@@ -48,7 +48,7 @@ describe('cloudflare binding types, first run', () => {
     expect(await readTextFile(join(root, 'turbo.json'))).toContain('"cf-typegen"');
 
     const readme = await readTextFile(join(root, 'README.md'));
-    expect(readme).toContain('```bash\nbun run cf-typegen\n```');
+    expect(readme).toContain('`bun run cf-typegen`');
     expect(readme.indexOf('cloudflare-env.d.ts')).toBeGreaterThan(readme.indexOf('bun install'));
   });
 
@@ -58,7 +58,7 @@ describe('cloudflare binding types, first run', () => {
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(await readTextFile(join(tempDir, 'site', 'README.md'))).toContain('```bash\nnpm run cf-typegen\n```');
+    expect(await readTextFile(join(tempDir, 'site', 'README.md'))).toContain('`npm run cf-typegen`');
   });
 
   test('no cloudflare deployment: no typegen in the README, the scripts or turbo.json', async () => {

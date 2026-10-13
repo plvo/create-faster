@@ -1,8 +1,4 @@
 {{#if (has "deployment" "cloudflare")}}
-Installing generates `cloudflare-env.d.ts`, the binding types `tsc` reads. Regenerate it after changing the bindings in a `wrangler.jsonc`:
-
-```bash
-{{runScript "cf-typegen"}}
-```
+Installing also generates `cloudflare-env.d.ts`, the binding types `tsc` reads. After changing the bindings in a `wrangler.jsonc`, regenerate it with `{{runScript "cf-typegen"}}`.
 
 {{/if}}
