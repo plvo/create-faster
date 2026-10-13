@@ -122,18 +122,17 @@ Start all applications in development mode:
 {{#if (hasRootScript "cf-typegen")}}
 - `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app
 {{/if}}
-{{#if (has "linter" "biome")}}
-- `{{runScript "lint"}}` - Lint and fix code with Biome
-- `{{runScript "format"}}` - Format code with Biome
-- `{{runScript "check"}}` - Run both linting and formatting
+{{#if (hasRootScript "lint")}}
+- `{{runScript "lint"}}` - Lint code
 {{/if}}
-{{#if (has "linter" "oxc")}}
-- `{{runScript "lint"}}` - Lint code with Oxlint
-- `{{runScript "format"}}` - Format code with Oxfmt
-- `{{runScript "check"}}` - Fix lint issues, then format
+{{#if (hasRootScript "format")}}
+- `{{runScript "format"}}` - Format code
 {{/if}}
-{{#if (has "linter" "eslint")}}
-- `{{runScript "lint"}}` - Lint code with ESLint
+{{#if (hasRootScript "format:check")}}
+- `{{runScript "format:check"}}` - Check the formatting without changing files
+{{/if}}
+{{#if (hasRootScript "check")}}
+- `{{runScript "check"}}` - Fix lint issues and format code
 {{/if}}
 {{#if (hasRootScript "clean")}}
 - `{{runScript "clean"}}` - Remove build outputs and installed dependencies

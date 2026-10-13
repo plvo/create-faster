@@ -305,6 +305,8 @@ describe('turborepo README lists the scripts the root package.json defines', () 
     ['drizzle', [...MONO, '--database', 'postgres', '--orm', 'drizzle', '--linter', 'biome']],
     ['prisma', [...MONO, '--database', 'postgres', '--orm', 'prisma', '--linter', 'oxc']],
     ['eslint', [...MONO, '--linter', 'eslint']],
+    ['prettier', [...MONO, '--linter', 'prettier']],
+    ['eslint-prettier', [...MONO, '--linter', 'eslint-prettier']],
     ['multitenant-saas', ['--blueprint', 'multitenant-saas']],
     ['cloudflare-fullstack', ['--blueprint', 'cloudflare-fullstack']],
   ] as const;
