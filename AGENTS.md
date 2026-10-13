@@ -59,6 +59,7 @@ cd apps/cli && bun test tests/e2e/<file> --timeout 600000
 - `tests/unit` and `tests/integration` run in CI. Integration tests run the real CLI and assert on generated files (`tests/integration/helpers.ts`).
 - `tests/e2e` generates, installs and builds real projects. It is slow, needs network, and runs on demand, one file at a time.
 - Biome does not lint `apps/cli/tests`.
+- Tests read plain CLI output whatever the terminal or CI asks for: `apps/cli/bunfig.toml` preloads `tests/setup.ts` (in-process output) and `runCli` passes the same variables to the child CLI (`tests/plain-output-env.ts`: `NO_COLOR=1` and `FORCE_COLOR=0`, because picocolors lets `NO_COLOR` win over `FORCE_COLOR` and `CI` while Bun's own console lets `FORCE_COLOR` win). Never strip escape codes inside a test. A test that needs colors passes `{ NO_COLOR: '', FORCE_COLOR: '1' }` to `runCli`.
 
 ## Declarative choice logic (mandatory)
 
