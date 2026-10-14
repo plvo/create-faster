@@ -14,7 +14,7 @@ export interface EnvVar {
   stacks?: StackName[];
   when?: WhenMatch;
   file?: string;
-  secret?: boolean;
+  secret?: boolean | WhenMatch;
 }
 
 export type FirstRunCommand = { command: string } | { script: string };

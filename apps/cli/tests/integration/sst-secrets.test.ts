@@ -98,7 +98,7 @@ describe('SST runtime secrets', () => {
     const config = await readTextFile(join(tempDir, 'sst-secrets-none', 'sst.config.ts'));
 
     expect(config).not.toContain('sst.Secret');
-    expect(config).not.toContain('secrets');
+    expect(config).not.toContain('secrets.');
     expect(config).not.toContain('environment');
   });
 

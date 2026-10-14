@@ -683,6 +683,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}?sslmode=disable" # Local Docker PostgreSQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              secret: { deployment: 'sst' },
             },
           ],
         },
@@ -702,6 +703,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}?ssl=false" # Local Docker MySQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              secret: { deployment: 'sst' },
             },
           ],
         },
