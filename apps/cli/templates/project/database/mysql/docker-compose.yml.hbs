@@ -16,7 +16,7 @@ services:
       - mysql-{{projectName}}-network
     command: --max-connections=100
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ppassword"]
       interval: 10s
       timeout: 5s
       retries: 5

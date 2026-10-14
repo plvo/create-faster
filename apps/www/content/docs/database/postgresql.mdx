@@ -10,20 +10,20 @@ description: PostgreSQL is a powerful, open-source object-relational database sy
 Beyond the official setup, we include:
 
 **Docker Compose Configuration:**
-- Pre-configured `postgres:latest` service
+- Pre-configured `postgres:17` service
 - Project-specific naming (`postgres-{projectName}`)
 - Persistent data volume
-- Health check with `pg_isready`
+- Health check with `pg_isready` over TCP, so `docker compose up -d --wait` returns once the published port accepts connections
 - Connection limit (100 max connections)
 - Dedicated network for isolation
 
 File created:
 ```
-docker.compose.yml          # PostgreSQL service configuration
+docker-compose.yml          # PostgreSQL service configuration
 ```
 
 **Service Configuration:**
-- **Image**: `postgres:latest`
+- **Image**: `postgres:17`
 - **Container**: `postgres-{projectName}`
 - **Port**: 5432 (PostgreSQL default)
 - **Restart**: always
@@ -40,7 +40,7 @@ docker.compose.yml          # PostgreSQL service configuration
 - `postgres-{projectName}-network` (bridge network for isolation)
 
 **Health Check:**
-- Test: `pg_isready -U postgres -d postgres-{projectName}`
+- Test: `pg_isready -h 127.0.0.1 -U postgres -d postgres-{projectName}`
 - Interval: 10s, Timeout: 5s, Retries: 5
 - Start period: 30s for initialization
 
