@@ -897,7 +897,8 @@ export const META: Meta = {
           label: 'Biome',
           hint: 'Fast linter & formatter',
           mono: { scope: 'root' },
-          postGenerate: FORMAT_GENERATED_FILES,
+          // `biome format` leaves the import order alone, which `biome check` enforces: its `check` script (`--fix`) runs both.
+          postGenerate: [{ description: 'Format the generated files', script: 'check' }],
           packageJson: {
             devDependencies: {
               '@biomejs/biome': '^2.5.11',

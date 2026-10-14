@@ -67,7 +67,7 @@ esac
   });
 
   test('a failing step only warns: the run succeeds and the summary gives the command to rerun', async () => {
-    const { result, projectPath, output } = await generate('format-fails', ['--linter', 'biome', '--no-git'], {
+    const { result, projectPath, output } = await generate('format-fails', ['--linter', 'prettier', '--no-git'], {
       STUB_FORMAT_FAILS: '1',
     });
 

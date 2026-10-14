@@ -36,6 +36,13 @@ describe('collectPostGenerateSteps', () => {
     expect(commandsWith('pnpm')).toEqual(['pnpm run format']);
   });
 
+  test('each addon names the script that leaves its own check passing', () => {
+    const commandOf = (linter: string) => collectPostGenerateSteps(contextWith({ linter })).map(({ command }) => command);
+
+    expect(commandOf('biome')).toEqual(['bun run check']);
+    expect(commandOf('oxc')).toEqual(['bun run format']);
+  });
+
   test('carries the description the spinner and the summary show', () => {
     const [step] = collectPostGenerateSteps(contextWith({ linter: 'biome' }));
 
