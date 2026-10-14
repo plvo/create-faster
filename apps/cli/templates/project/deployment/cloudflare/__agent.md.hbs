@@ -15,10 +15,13 @@ There is no `start` script: `next start` runs Next's Node server, where `getClou
 
 **Local dev**: `{{runScript "dev"}}` runs `next dev` with `initOpenNextCloudflareForDev()` active (wired in `next.config.ts`, development only), making Cloudflare bindings available through `wrangler.jsonc`.
 
-**Environment variables — two phases**
+**Environment variables and secrets**
 
 1. **Build time** (`next build`): values from `.env` are inlined. `NEXT_PUBLIC_*` are frozen into client JS here.
-2. **Runtime** (the deployed Worker): `wrangler.jsonc` `vars` + secrets are the source of truth.
+2. **`{{runAppScript "build:cf"}}`**: OpenNext bundles every `.env*` value (all modes, server secrets included) into the Worker, in `.open-next/cloudflare/next-env.mjs`, as a `process.env` fallback. There is no opt-out. A secret set with `wrangler secret put` wins at runtime, but the bundled value is silently used when the secret was never set.
+3. **Runtime** (the deployed Worker): `wrangler.jsonc` `vars` and secrets. Wrangler does not load `.env` here: OpenNext turns that off and handles `.env` itself, through the bundle.
+
+The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.required`, generated from the variables the project marks as secrets: a deploy fails until each is set, and `{{runAppScript "preview"}}` warns about a missing one. That preview warning also appears when the secret is in `.env`, because Wrangler does not read it; it is safe to ignore then.
 
 **Where each kind of value lives**
 
@@ -26,18 +29,20 @@ There is no `start` script: `next start` runs Next's Node server, where `getClou
 |------|-------|------------|----------|
 | `NEXT_PUBLIC_*` | `.env` | `.env` at build / CI env | baked into client bundle |
 | Server config | `.env` or `wrangler.jsonc vars` | `wrangler.jsonc vars` | `process.env.X` |
-| Secret | `.env` (gitignored) | `wrangler secret put X` or `--secrets-file .prod.env` | `process.env.X` |
+| Secret | `.env` (gitignored, development values only) | `wrangler secret put X`, or `--secrets-file .prod.env` on the first deploy | `process.env.X` |
 | Binding (D1/R2/KV) | `wrangler.jsonc` + local persistence | `wrangler.jsonc` | `getCloudflareContext().env.X` **only** |
 
 **Key rules**
+- Build the Worker that you deploy where `.env` holds no real secret (CI, or a checkout without a `.env`). A build run next to a `.env` with production values ships them inside the Worker.
+- Set production secrets with `wrangler secret put X`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runAppScript "deploy"}} -- --secrets-file .prod.env` (gitignored).
+- `{{runAppScript "preview"}}` serves the build as it is: the values of `.env` are frozen when `{{runAppScript "build:cf"}}` runs, so run it again after every `.env` change.
+- Keep local secrets in `.env`. Do NOT add `.dev.vars`: Next.js and OpenNext read `.env`, and a second file would hold a second copy of each secret.
 - `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which reads `development` in workerd without the var. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.
 - Bindings are never on `process.env` — always use `getCloudflareContext().env`.
 {{#if (or (has "database" "d1") (databaseBinding "hyperdrive"))}}
 - `getEnv()` (`src/lib/env.ts`) calls `connection()` before reading the context, so `next build` never prerenders a page that reads a binding: during a build the context comes from a local workerd started per build worker, and several of them opening the same local D1 fail with `SQLITE_BUSY`. A page that must read a binding at build time cannot go through `getEnv()`.
 {{/if}}
-- Do NOT add `.dev.vars` — Wrangler ignores `.env` when `.dev.vars` is present.
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
-- Use `.prod.env` (gitignored) for bulk secrets: `{{runAppScript "deploy"}} -- --secrets-file .prod.env`.
 
 **Adding bindings (D1, R2, KV)**: declare them in `wrangler.jsonc`, then read via `getCloudflareContext({ async: true }).env.BINDING_NAME`.
 
@@ -60,7 +65,9 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 
 **Bindings and variables**
 - Read bindings with `import { env } from 'cloudflare:workers'`. They are never on `process.env`.
-- Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `wrangler secret put X`.
+- Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `wrangler secret put X`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runScript "build"}}`, then `{{packageRunner}} wrangler deploy --secrets-file <file>`, with a file you keep out of git.
+- The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.required`, generated from the variables the project marks as secrets: a deploy fails until each is set, and a local run warns about a missing one.
+- `vite build` writes `dist/server/.dev.vars`, a local copy of `.env` for `vite preview` (only the `secrets.required` keys when the file lists any). `wrangler deploy` does not upload it. Never ship `dist` other than through `wrangler deploy`, and rebuild after editing `.env`.
 - Local state (D1, KV, R2) is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root{{/if}}, the same directory the `wrangler ... --persist-to` scripts use.
 
 **Global scope rule**: in a production build the app's modules are evaluated in the Worker's global scope. At module level there is no I/O, no timers and no randomness (`crypto.randomUUID()`, `crypto.getRandomValues()`). Code that does passes in `vite dev` and fails in `vite preview` and after deploy.
@@ -113,7 +120,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 - `{{runAppScript "preview"}}` — `wrangler dev` (local Wrangler), persisting local state in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
-Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or `wrangler deploy --secrets-file .prod.env`.
+Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or, for the first deploy of a new Worker, `wrangler deploy --secrets-file .prod.env`. The runtime secrets of an app are listed in `wrangler.jsonc` under `secrets.required`: a deploy fails until each is set, and a local run warns about a missing one.
 {{/if}}
 {{#if (and (has "database" "d1") (isMono))}}
 

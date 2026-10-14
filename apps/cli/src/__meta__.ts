@@ -148,6 +148,7 @@ export const META: Meta = {
         dependencies: {
           '@tanstack/react-router': '^1.170.41',
           '@tanstack/react-start': '^1.168.60',
+          '@tanstack/router-cli': '^1.167.43',
           react: '^19.2.8',
           'react-dom': '^19.2.8',
         },
@@ -157,7 +158,6 @@ export const META: Meta = {
           '@types/react': '^19.2.18',
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.167.2',
-          '@tanstack/router-cli': '^1.167.43',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
           nitro: $when(RUNS_NODE_SERVER, '^3.0.260903-beta'),
@@ -294,10 +294,12 @@ export const META: Meta = {
         {
           value: 'BETTER_AUTH_SECRET= # generate with: openssl rand -base64 32',
           monoScope: [{ pkg: 'auth' }, 'app'],
+          secret: true,
         },
         {
           value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
+          secret: true,
         },
       ],
     },
@@ -1087,6 +1089,7 @@ export const META: Meta = {
         {
           value: 'PRIVY_APP_SECRET=your-privy-app-secret',
           monoScope: ['app'],
+          secret: true,
         },
       ],
     },
