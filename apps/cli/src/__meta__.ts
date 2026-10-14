@@ -700,7 +700,7 @@ export const META: Meta = {
           envs: [
             {
               value:
-                'DATABASE_URL="mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}" # Local Docker MySQL',
+                'DATABASE_URL="mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}?ssl=false" # Local Docker MySQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
             },
           ],

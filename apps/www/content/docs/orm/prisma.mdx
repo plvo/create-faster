@@ -188,12 +188,13 @@ export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
 export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;
 ```
 
-With PostgreSQL, TLS follows `sslmode` in `DATABASE_URL` and defaults to on in production (see [PostgreSQL](/docs/database/postgresql#tls)). With MySQL, the whole `DATABASE_URL` goes to the adapter, so the driver reads its TLS settings from the URL, for example `?ssl=true` to connect over TLS and verify the server certificate. The local Docker MySQL has no TLS parameter and connects in plain text.
+With PostgreSQL, TLS follows `sslmode` in `DATABASE_URL` and defaults to on in production (see [PostgreSQL](/docs/database/postgresql#tls)). With MySQL, the adapter gets `DATABASE_URL` with `ssl=true` appended in production when the URL has no `ssl` parameter, so the connector negotiates TLS and verifies the server certificate (see [MySQL](/docs/database/mysql#tls)). The local Docker MySQL URL ends with `?ssl=false` and connects in plain text.
 
 ```ts title="src/lib/db/index.ts (MySQL)"
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
+// withProductionTls() is generated here too: it appends ssl=true in production and warns when DATABASE_URL sets ssl=false for a remote host
+const adapter = new PrismaMariaDb(withProductionTls(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db'));
 ```
 
 **With Better Auth**, additional type helpers are exported:

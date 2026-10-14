@@ -38,6 +38,10 @@ type Client = Database;
 
 warnIfProductionTlsDisabled(process.env.DATABASE_URL);
 {{/if}}
+{{#if (has "database" "mysql")}}
+{{> mysql/production-tls tlsValue="true"}}
+
+{{/if}}
 {{> prisma/node-adapter}}
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };

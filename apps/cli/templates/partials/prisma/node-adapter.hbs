@@ -6,5 +6,5 @@ const adapter = new PrismaPg({
 });
 {{/if}}
 {{#if (has "database" "mysql")}}
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');
+const adapter = new PrismaMariaDb(withProductionTls(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db'));
 {{/if}}

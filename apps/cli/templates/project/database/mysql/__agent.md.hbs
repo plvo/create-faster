@@ -1,1 +1,14 @@
 MySQL via Docker Compose. Start it with `docker compose up -d --wait`, which returns once the database accepts connections. The connection string is in `DATABASE_URL` (see `.env.example`).
+
+The local `DATABASE_URL` ends with `?ssl=false` because the Docker database serves a self-signed certificate that a client asking for TLS rejects. Keep `ssl=false` for local or other non-TLS databases only. Never copy the local `DATABASE_URL` to production.
+{{#if project.orm}}
+{{#unless (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
+
+TLS in production: the generated client asks its driver for TLS with certificate verification when `NODE_ENV=production`, unless `DATABASE_URL` sets `ssl`, which always wins. For a managed database, use its connection string without `ssl`. In production, the client logs a warning when `DATABASE_URL` sets `ssl=false` for a host other than localhost. {{#if (has "orm" "drizzle")}}The driver is `mysql2`, which reads `ssl` as JSON: `ssl={"rejectUnauthorized":false}` skips the certificate check, and `ssl=true` is rejected.{{else}}The driver is the MariaDB connector behind Prisma's adapter, which reads `ssl=true` as TLS with certificate verification and every other value as no TLS.{{/if}} Where `NODE_ENV=production` comes from:
+{{#if (has "orm" "drizzle")}}
+{{> database/node-env-production urlRequestingTls="`ssl={}`"}}
+{{else}}
+{{> database/node-env-production urlRequestingTls="`ssl=true`"}}
+{{/if}}
+{{/unless}}
+{{/if}}
