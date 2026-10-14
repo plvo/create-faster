@@ -194,6 +194,14 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
     expect(agents).toContain('reverse proxy or CDN');
     expect(agents).toContain('no-trusted-ip');
     expect(agents).toContain('advanced.ipAddress.trustedProxies');
+    expect(agents).not.toContain(NITRO_PLUGIN);
+  });
+
+  test('the Start agent notes name the Nitro plugin that fills x-forwarded-for, and not on Cloudflare', async () => {
+    const nitro = await readTextFile(join(await generate('notes-start-nitro', START_NITRO_ARGS), 'AGENTS.md'));
+    expect(nitro).toContain(NITRO_PLUGIN);
+    const cloudflare = await readTextFile(join(await generate('notes-start-cf', START_CLOUDFLARE_D1_ARGS), 'AGENTS.md'));
+    expect(cloudflare).not.toContain(NITRO_PLUGIN);
   });
 
   test('the agent notes name cf-connecting-ip on Cloudflare', async () => {
