@@ -12,7 +12,7 @@ const HEALTHCHECKS = [
   },
   {
     database: 'mysql',
-    probe: 'mysqladmin ping -h 127.0.0.1 -u root -ppassword',
+    probe: '"mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-ppassword"',
   },
 ];
 
