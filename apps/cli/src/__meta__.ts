@@ -638,6 +638,7 @@ export const META: Meta = {
           label: 'SST',
           hint: 'Deploy to AWS with SST Ion',
           mono: { scope: 'root' },
+          providesLocalFilesystem: false,
           packageJson: {
             devDependencies: {
               sst: '^4.17.1',
@@ -648,6 +649,7 @@ export const META: Meta = {
           label: 'Terraform (AWS)',
           hint: 'AWS infrastructure with S3 backend',
           mono: { scope: 'root' },
+          providesLocalFilesystem: false,
         },
       },
     },
