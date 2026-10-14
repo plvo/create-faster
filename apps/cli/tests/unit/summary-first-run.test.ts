@@ -20,7 +20,7 @@ describe('summary first-run steps', () => {
   });
 
   function summarize(ctx: TemplateContext): string {
-    displaySummaryNote(ctx, undefined);
+    displaySummaryNote(ctx, undefined, []);
     return written.join('');
   }
 

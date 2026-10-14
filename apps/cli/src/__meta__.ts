@@ -1,5 +1,5 @@
 import { $when } from '@/lib/when';
-import type { FirstRunStep, Meta } from '@/types/meta';
+import type { FirstRunStep, Meta, PostGenerateStep } from '@/types/meta';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
@@ -21,6 +21,8 @@ const START_DOCKER_DATABASE: FirstRunStep[] = [
 const RUN_LOCAL_SETUP: FirstRunStep[] = [
   { description: 'Set up the local database and seed demo data', commands: [{ script: 'local-setup' }] },
 ];
+
+const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the generated files', script: 'format' }];
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
@@ -895,6 +897,8 @@ export const META: Meta = {
           label: 'Biome',
           hint: 'Fast linter & formatter',
           mono: { scope: 'root' },
+          // `biome format` leaves the import order alone, which `biome check` enforces: its `check` script (`--fix`) runs both.
+          postGenerate: [{ description: 'Format the generated files', script: 'check' }],
           packageJson: {
             devDependencies: {
               '@biomejs/biome': '^2.5.11',
@@ -910,6 +914,7 @@ export const META: Meta = {
           label: 'Oxlint + Oxfmt',
           hint: 'Fast Rust linter & formatter with ESLint-compatible plugins',
           mono: { scope: 'root' },
+          postGenerate: FORMAT_GENERATED_FILES,
           packageJson: {
             devDependencies: {
               oxlint: '^1.86.0',
@@ -969,6 +974,7 @@ export const META: Meta = {
           label: 'Prettier',
           hint: 'Opinionated code formatter (no linter)',
           mono: { scope: 'root' },
+          postGenerate: FORMAT_GENERATED_FILES,
           packageJson: {
             devDependencies: {
               prettier: '^3.9.6',
