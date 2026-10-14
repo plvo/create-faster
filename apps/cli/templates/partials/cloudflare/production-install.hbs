@@ -1,0 +1,1 @@
+A production install (`--omit=dev`, `--production` or `--prod`, depending on the package manager) skips `wrangler`, a devDependency, so it must pass `--ignore-scripts`: the `postinstall` that runs `wrangler types` would fail without it.
