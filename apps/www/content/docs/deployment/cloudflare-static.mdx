@@ -91,7 +91,7 @@ The `nitro` dependency, the `start` script and `.env.start` are not generated.
 
 Start cannot prerender a not-found response, because its prerenderer fails on any non-2xx status. The app therefore gets a catch-all route (`src/routes/$.tsx`) that renders the `NotFound` component (`src/components/not-found.tsx`), and `vite.config.ts` lists `/404` in `pages` so the prerenderer writes it to `404.html`. Workers serves that file with status 404 for unknown URLs.
 
-The browser hydrates `404.html` at the real URL, so the router must match the same route on both sides. A dedicated `/404` route would not: the server tree would hold that route while the client matches nothing, and React would log hydration error #418. The catch-all route matches `/404` while prerendering and any unknown URL in the browser. The same `NotFound` component stays the root `notFoundComponent`, which renders when a loader throws `notFound()`. `/404` is also reachable directly, with status 200.
+The browser hydrates `404.html` at the real URL, so the router must match the same route on both sides. A dedicated `/404` route would not: the server tree would hold that route while the client matches nothing, and React would log hydration error #418. The catch-all route matches `/404` while prerendering and any unknown URL in the browser. The same `NotFound` component stays the root `notFoundComponent`, which renders when a loader throws `notFound()`. `/404` is also reachable directly, with status 200. In `vite dev` the catch-all route is a real route, so an unknown URL answers 200 with the not-found page; only the deployed static output answers 404.
 
 #### Only linked pages are generated
 
