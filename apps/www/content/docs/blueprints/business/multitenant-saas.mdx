@@ -102,6 +102,7 @@ src/
 src/
 ├── auth.ts             # Better Auth config (organization plugin, drizzle adapter)
 ├── auth-client.ts      # Client with organizationClient + inferAdditionalFields
+├── link-delivery.ts    # deliverLink(): logs reset and invitation links, the seam for a mailer
 ├── permissions.ts      # RBAC catalog: 5 resources × 15 actions, 3 built-in roles
 └── types.ts            # Session type via auth.$Infer.Session
 ```
@@ -133,6 +134,8 @@ Email/password auth backed by Better Auth, with all four standard flows pre-wire
 - **Sign-up** (`/signup`) — same `?redirect` behavior, creates the user via `authClient.signUp.email`.
 - **Forgot password** (`/forgot-password`) — calls `authClient.requestPasswordReset` and shows a success state without leaking whether the email exists.
 - **Reset password** (`/reset-password?token=…`) — reads the token from search params, calls `authClient.resetPassword`, and routes errors via `?error=…`.
+
+**Reset and invitation links have no mailer.** `sendResetPassword` and the organization plugin's `sendInvitationEmail` (both in `packages/auth/src/auth.ts`) hand the link to `deliverLink` in `packages/auth/src/link-delivery.ts`, which logs it to the server console (`[reset-password] <email> → <url>`, `[invitation] <email> → <url>`), in development and in production. In production it also logs a warning, `No mailer is configured`: the link is only in the server logs, so a user who forgot a password cannot reset it from their inbox. An invitation link is also shown in the invite dialog, ready to copy. Before going live, plug a mail provider (Resend, SES, Postmark, ...) into `deliverLink`, the one place every link leaves the server.
 
 `src/proxy.ts` exposes a single `proxy` export (Next.js middleware) that allow-lists `/login`, `/signup`, `/forgot-password`, `/reset-password` and `/accept-invitation`, and redirects every other page without a session cookie to `/login` (preserving the original path as `?redirect`). It runs no database query and does not match `/api` routes, so an anonymous tRPC call gets a `401` from the procedure. The cookie check is optimistic: the dashboard layout validates the session through `requireSession()` (`src/lib/auth/session.ts`) and sends users without an active organization to `/onboarding`. Pages that prefetch tRPC data call it before the prefetch, because a layout and its page render in parallel and a forged or expired cookie must redirect without a failed query.
 

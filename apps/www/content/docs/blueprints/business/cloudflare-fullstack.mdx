@@ -70,7 +70,7 @@ packages/
 ├── auth/src/
 │   ├── auth.ts                         # createAuth(db, cookiePlugin?) factory + admin plugin
 │   ├── permissions.ts                  # ac/roles statements (admin/manager/user)
-│   ├── email.ts                        # reset-password email stub (TODO: wire provider)
+│   ├── email.ts                        # reset link logger, the seam for a mailer
 │   └── auth-client.ts                  # authClient with adminClient
 └── api/src/
     ├── root.ts                         # tRPC root router
@@ -92,7 +92,7 @@ D1 is only reachable through a request- or event-bound binding, so the blueprint
 
 ### Auth & RBAC
 
-Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Roles** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Password reset is wired too: `sendResetPassword` logs the link to the console in dev and calls an `email.ts` stub (with a `TODO`) in prod, behind `/forgot-password` and `/reset-password` pages. Details in the generated `docs/agents/auth-rbac.md`.
+Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Roles** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Password reset is wired too: `sendResetPassword` hands the link to `sendResetPasswordEmail` in `packages/auth/src/email.ts`. There is no mailer, so it logs the link to the server console in development and in production, and in production also logs a warning, `No mailer is configured`: the link is only in the Worker logs. Plug a mail provider (Resend, SES, Postmark, ...) into that function before going live. It sits behind `/forgot-password` and `/reset-password` pages. Details in the generated `docs/agents/auth-rbac.md`.
 
 ### User management
 
