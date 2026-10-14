@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 
@@ -20,6 +20,7 @@ const d1Wrangler = (
   beforeD1: string,
   migrationsDir: string,
   databaseName = name,
+  secrets = '',
 ) => `{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "${name}",
@@ -33,7 +34,7 @@ ${flags}${beforeD1},
       "database_id": "REPLACE_WITH_D1_DATABASE_ID",
       "migrations_dir": "${migrationsDir}"
     }
-  ]
+  ]${secrets}
 }
 `;
 
@@ -47,6 +48,11 @@ const NEXTJS_ASSETS = `
   // The build only inlines the literal process.env.NODE_ENV: without this var, dependencies reading it at runtime see "development" in workerd
   "vars": {
     "NODE_ENV": "production"
+  }`;
+const AUTH_SECRET = `,
+  // Runtime secrets of this Worker: a deploy fails until each is set (\`wrangler secret put <NAME>\`, or \`--secrets-file\` on the first deploy), and a local run warns when one is missing
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]
   }`;
 const WORKER_FLAGS = `  "compatibility_flags": ["nodejs_compat"]`;
 
@@ -92,7 +98,7 @@ describe('Templates rendered through partials', () => {
         'cloudflare',
       ]);
       expect(await readTextFile(join(path, 'wrangler.jsonc'))).toBe(
-        d1Wrangler('cf-next-d1', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, 'drizzle'),
+        d1Wrangler('cf-next-d1', '.open-next/worker.js', NEXTJS_FLAGS, NEXTJS_ASSETS, 'drizzle', 'cf-next-d1', AUTH_SECRET),
       );
       expect(await readTextFile(join(path, 'src/lib/server.ts'))).toBe(`import 'server-only';
 import { nextCookies } from 'better-auth/next-js';
@@ -188,7 +194,7 @@ ${WORKER_FLAGS},
         'cloudflare',
       ]);
       expect(await readTextFile(join(path, 'wrangler.jsonc'))).toBe(
-        d1Wrangler('cf-start-d1', 'src/server.ts', WORKER_FLAGS, '', 'drizzle'),
+        d1Wrangler('cf-start-d1', 'src/server.ts', WORKER_FLAGS, '', 'drizzle', 'cf-start-d1', AUTH_SECRET),
       );
       expect(await readTextFile(join(path, 'src/lib/server.ts')))
         .toBe(`import { tanstackStartCookies } from 'better-auth/tanstack-start';

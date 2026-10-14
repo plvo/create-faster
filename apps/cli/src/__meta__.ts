@@ -294,10 +294,12 @@ export const META: Meta = {
         {
           value: 'BETTER_AUTH_SECRET= # generate with: openssl rand -base64 32',
           monoScope: [{ pkg: 'auth' }, 'app'],
+          secret: true,
         },
         {
           value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
+          secret: true,
         },
       ],
     },
@@ -1087,6 +1089,7 @@ export const META: Meta = {
         {
           value: 'PRIVY_APP_SECRET=your-privy-app-secret',
           monoScope: ['app'],
+          secret: true,
         },
       ],
     },
