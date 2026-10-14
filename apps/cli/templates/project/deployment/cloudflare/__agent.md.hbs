@@ -126,3 +126,7 @@ Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env
 
 **Database — D1 across apps**: every app's `wrangler.jsonc` binds the same D1 database, `{{projectName}}-db`, so the apps see the same data and the migrations target one database. Run `wrangler d1 create {{projectName}}-db` once and paste the returned `database_id` into the `d1_databases` entry of each app's `wrangler.jsonc`.
 {{/if}}
+
+**Production install**
+
+{{> cloudflare/production-install}}
