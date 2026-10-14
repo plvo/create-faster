@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import {
@@ -411,6 +411,20 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     },
     TIMEOUT_BUILD,
   );
+
+  if (authProbe && !isStatic) {
+    test('the built Worker requires the better-auth secret and URL and keeps both in its local .dev.vars copy', async () => {
+      const server = join(projectDir, authProbe.appDir, 'dist/server');
+      const config = JSON.parse(await readFile(join(server, 'wrangler.json'), 'utf8')) as {
+        secrets?: { required: string[] };
+      };
+      expect(config.secrets).toEqual({ required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'] });
+
+      const devVars = await readFile(join(server, '.dev.vars'), 'utf8');
+      expect(devVars).toContain('BETTER_AUTH_SECRET=');
+      expect(devVars).toContain('BETTER_AUTH_URL=');
+    });
+  }
 
   if (trpcProbe) {
     test('the client assets carry neither the tRPC router nor the db schema', async () => {

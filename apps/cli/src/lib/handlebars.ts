@@ -4,7 +4,7 @@ import { getProjectAddon } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import { PARTIALS_DIR } from './constants';
-import { resolveAppUrl } from './env-generator';
+import { collectAppSecrets, resolveAppUrl } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
@@ -80,6 +80,10 @@ function registerHelpers(): void {
   Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
     return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
+  });
+
+  Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
+    return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
   });
 
   Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {
