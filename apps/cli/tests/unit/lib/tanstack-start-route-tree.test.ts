@@ -26,7 +26,8 @@ describe('TanStack Start route tree on install', () => {
     (deployment) => {
       const pkg = appPackageJson(ctxFor('tanstack-start', deployment));
       expect(pkg.scripts?.postinstall).toBe(ROUTE_TREE);
-      expect(pkg.devDependencies?.['@tanstack/router-cli']).toBeDefined();
+      expect(pkg.dependencies?.['@tanstack/router-cli']).toBeDefined();
+      expect(pkg.devDependencies?.['@tanstack/router-cli']).toBeUndefined();
     },
   );
 
@@ -44,6 +45,7 @@ describe('TanStack Start route tree on install', () => {
   test.each(['nextjs', 'hono', 'node'] as const)('%s has no route tree to generate', (stackName) => {
     const pkg = appPackageJson(ctxFor(stackName));
     expect(pkg.scripts?.postinstall).toBeUndefined();
+    expect(pkg.dependencies?.['@tanstack/router-cli']).toBeUndefined();
     expect(pkg.devDependencies?.['@tanstack/router-cli']).toBeUndefined();
   });
 });
