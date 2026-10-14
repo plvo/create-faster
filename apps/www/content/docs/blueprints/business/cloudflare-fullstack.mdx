@@ -132,7 +132,7 @@ cd apps/web && bun run preview   # OpenNext preview against local bindings
 
 Provisioning the live D1 database + R2 bucket, pasting the `database_id` into both `wrangler.jsonc` files, setting secrets, and deploying both Workers are documented in the generated `docs/agents/cloudflare-deploy.md`.
 
-The web Worker lists `BETTER_AUTH_SECRET` under `secrets.required` in its `wrangler.jsonc` (the cron Worker has no secret), so its deploy fails until the secret is set. Because `build:cf` bundles every `.env*` value into the Worker, build the one you deploy where `apps/web/.env` holds no real secret, and set production secrets with `wrangler secret put` (a new Worker takes them from a gitignored file on its first deploy: `deploy -- --secrets-file .prod.env`). The generated `docs/agents/cloudflare-deploy.md` has the details. See [Cloudflare](/docs/deployment/cloudflare) for the deployment details.
+The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.required` in its `wrangler.jsonc` (the cron Worker has none), so its deploy fails until both are set. Because `build:cf` bundles every `.env*` value into the Worker, build the one you deploy where `apps/web/.env` holds no real secret, and set production secrets with `wrangler secret put` (a new Worker takes them from a gitignored file on its first deploy: `deploy -- --secrets-file .prod.env`). The generated `docs/agents/cloudflare-deploy.md` has the details. See [Cloudflare](/docs/deployment/cloudflare) for the deployment details.
 
 ## Extra dependencies
 

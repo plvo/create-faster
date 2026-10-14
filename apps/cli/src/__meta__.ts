@@ -299,6 +299,7 @@ export const META: Meta = {
         {
           value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
+          secret: true,
         },
       ],
     },

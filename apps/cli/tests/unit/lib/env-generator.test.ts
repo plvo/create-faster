@@ -545,7 +545,7 @@ describe('EnvVar.secret', () => {
   });
 
   test('an app receives the secrets of its libraries and none of another app', () => {
-    expect(collectAppSecrets(turborepo, 'web')).toEqual(['BETTER_AUTH_SECRET']);
+    expect(collectAppSecrets(turborepo, 'web')).toEqual(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
     expect(collectAppSecrets(turborepo, 'site')).toEqual([]);
     expect(collectAppSecrets(turborepo, 'api')).toEqual([]);
   });
@@ -555,13 +555,13 @@ describe('EnvVar.secret', () => {
       repo: 'single',
       apps: [{ appName: 'my-project', stackName: 'tanstack-start', libraries: ['better-auth'] }],
     });
-    expect(collectAppSecrets(ctx, 'my-project')).toEqual(['BETTER_AUTH_SECRET']);
+    expect(collectAppSecrets(ctx, 'my-project')).toEqual(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
   });
 
   test('a project addon secret goes to every app, narrowed by stacks and when, and never a package or file variable', () => {
     const [web, site] = collectWith(() => [collectAppSecrets(turborepo, 'web'), collectAppSecrets(turborepo, 'site')]);
 
-    expect(web).toEqual(['ALL_APPS_SECRET', 'NEXT_ONLY_SECRET', 'BETTER_AUTH_SECRET']);
+    expect(web).toEqual(['ALL_APPS_SECRET', 'NEXT_ONLY_SECRET', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
     expect(site).toEqual(['ALL_APPS_SECRET']);
   });
 

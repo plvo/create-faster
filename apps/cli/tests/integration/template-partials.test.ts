@@ -52,7 +52,7 @@ const NEXTJS_ASSETS = `
 const AUTH_SECRET = `,
   // Runtime secrets of this Worker: a deploy fails until each is set (\`wrangler secret put <NAME>\`, or \`--secrets-file\` on the first deploy), and a local run warns when one is missing
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET"]
+    "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]
   }`;
 const WORKER_FLAGS = `  "compatibility_flags": ["nodejs_compat"]`;
 

@@ -32,11 +32,11 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     return join(tempDir, name);
   }
 
-  test.each(['nextjs', 'tanstack-start'])('%s with better-auth requires BETTER_AUTH_SECRET only', async (stack) => {
+  test.each(['nextjs', 'tanstack-start'])('%s with better-auth requires the better-auth secret and URL', async (stack) => {
     const root = await generate(`auth-${stack}`, ['--app', `web:${stack}:better-auth`, ...D1]);
     const config = await readWrangler(join(root, 'wrangler.jsonc'));
 
-    expect(config.secrets).toEqual({ required: ['BETTER_AUTH_SECRET'] });
+    expect(config.secrets).toEqual({ required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'] });
     expect(config.d1_databases).toHaveLength(1);
   });
 
@@ -53,7 +53,7 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     const config = await readWrangler(join(root, 'wrangler.jsonc'));
 
     expect(config.vars).toEqual({ NODE_ENV: 'production' });
-    expect(config.secrets?.required).toEqual(['BETTER_AUTH_SECRET']);
+    expect(config.secrets?.required).toEqual(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
   });
 
   test('a turborepo lists secrets only in the Worker that has the library', async () => {
@@ -68,7 +68,7 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     ]);
 
     expect((await readWrangler(join(root, 'apps/web/wrangler.jsonc'))).secrets).toEqual({
-      required: ['BETTER_AUTH_SECRET'],
+      required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
     });
     expect((await readWrangler(join(root, 'apps/docs/wrangler.jsonc'))).secrets).toBeUndefined();
     expect((await readWrangler(join(root, 'apps/api/wrangler.jsonc'))).secrets).toBeUndefined();
@@ -85,16 +85,16 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
 
     for (const app of ['web', 'docs']) {
       expect((await readWrangler(join(root, `apps/${app}/wrangler.jsonc`))).secrets, app).toEqual({
-        required: ['BETTER_AUTH_SECRET'],
+        required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
       });
     }
   });
 
-  test('cloudflare-fullstack requires the secret in the web Worker and not in the cron Worker', async () => {
+  test('cloudflare-fullstack requires the secrets in the web Worker and not in the cron Worker', async () => {
     const root = await generate('secrets-fullstack', ['--blueprint', 'cloudflare-fullstack']);
 
     expect((await readWrangler(join(root, 'apps/web/wrangler.jsonc'))).secrets).toEqual({
-      required: ['BETTER_AUTH_SECRET'],
+      required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
     });
     const cron = await readWrangler(join(root, 'apps/cron/wrangler.jsonc'));
     expect(cron.secrets).toBeUndefined();
