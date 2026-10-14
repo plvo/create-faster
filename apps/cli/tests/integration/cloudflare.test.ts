@@ -135,7 +135,7 @@ describe('Cloudflare deployment platform', () => {
       expect(pkg.scripts['build:cf']).toContain('opennextjs-cloudflare');
       expect(pkg.scripts.preview).toContain('opennextjs-cloudflare');
       expect(pkg.scripts.deploy).toContain('opennextjs-cloudflare');
-      expect(pkg.scripts['cf:typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
+      expect(pkg.scripts['cf-typegen']).toBe('wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts');
       expect(pkg.devDependencies.wrangler).toMatch(/^\^4/);
       expect(pkg.dependencies['@opennextjs/cloudflare']).toBeDefined();
     });
@@ -177,7 +177,7 @@ describe('Cloudflare deployment platform', () => {
     test('web app gets open-next wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/web/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(content).toContain('"name": "web"');
+      expect(content).toContain(`"name": "${projectName}-web"`);
       expect(content).toContain('"main": ".open-next/worker.js"');
       expect(content).toContain('"NODE_ENV": "production"');
     });
@@ -200,7 +200,7 @@ describe('Cloudflare deployment platform', () => {
     test('api app gets Workers wrangler.jsonc', async () => {
       expect(await fileExists(join(projectPath, 'apps/api/wrangler.jsonc'))).toBe(true);
       const content = await readTextFile(join(projectPath, 'apps/api/wrangler.jsonc'));
-      expect(content).toContain('"name": "api"');
+      expect(content).toContain(`"name": "${projectName}-api"`);
       expect(content).toContain('"main": "src/index.ts"');
     });
 
@@ -290,12 +290,12 @@ describe('Cloudflare deployment platform', () => {
       expect(result.exitCode).toBe(0);
     });
 
-    test('middleware.ts keeps better-auth session check and evlog wiring', async () => {
+    test('middleware.ts keeps the evlog wiring and runs no session lookup', async () => {
       expect(await fileExists(join(projectPath, 'src/middleware.ts'))).toBe(true);
       expect(await fileExists(join(projectPath, 'src/proxy.ts'))).toBe(false);
       const content = await readTextFile(join(projectPath, 'src/middleware.ts'));
       expect(content).toContain('export default async function middleware');
-      expect(content).toContain('auth.api.getSession');
+      expect(content).not.toContain('auth.api.getSession');
       expect(content).toContain('evlogMiddleware');
       expect(content).toContain('MIDDLEWARE');
       expect(content).not.toContain('PROXY');

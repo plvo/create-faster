@@ -70,7 +70,7 @@ describe('Hono + cloudflare without a Hyperdrive database', () => {
     expect(await readTextFile(join(root, 'wrangler.jsonc'))).not.toContain('hyperdrive');
     expect(await readTextFile(join(root, 'src/app.ts'))).toContain('new Hono<{ Bindings: CloudflareEnv }>()');
     const agent = await readTextFile(join(root, 'AGENTS.md'));
-    expect(agent).toContain('Run it after install');
+    expect(agent).toContain('Install runs it');
     expect(agent).not.toContain('Hyperdrive');
   });
 

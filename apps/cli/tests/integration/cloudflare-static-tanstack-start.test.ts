@@ -114,10 +114,10 @@ describe('TanStack Start + cloudflare-static', () => {
 
     test('each app gets its own assets-only wrangler.jsonc with its own output directory', async () => {
       const web = await readTextFile(join(projectPath, 'apps/web/wrangler.jsonc'));
-      expect(web).toContain('"name": "web"');
+      expect(web).toContain(`"name": "${projectName}-web"`);
       expect(web).toContain('"directory": "out"');
       const docs = await readTextFile(join(projectPath, 'apps/docs/wrangler.jsonc'));
-      expect(docs).toContain('"name": "docs"');
+      expect(docs).toContain(`"name": "${projectName}-docs"`);
       expect(docs).toContain('"directory": "dist/client"');
       expect(docs).not.toContain('"main"');
     });

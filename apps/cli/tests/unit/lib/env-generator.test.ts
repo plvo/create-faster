@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { collectEnvFiles, collectEnvGroups } from '@/lib/env-generator';
+import { collectAppSecrets, collectEnvFiles, collectEnvGroups } from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';
 import type { EnvVar, MetaAddon, MetaBlueprint } from '@/types/meta';
 
@@ -276,6 +276,53 @@ describe('EnvVar scope and when', () => {
   });
 });
 
+describe('EnvVar.file', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const FILE_ENVS: EnvVar[] = [
+    { value: 'IN_DEDICATED=1', monoScope: [{ pkg: 'db' }, 'app'], file: 'secrets' },
+    { value: 'IN_DEFAULT=1', monoScope: [{ pkg: 'db' }] },
+  ];
+
+  function collect<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = FILE_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('a variable with a file lands in .env.<file>.example instead of .env.example', () => {
+    const files = collect(() => collectEnvFiles(makeContext()));
+
+    const dedicated = files.find((f) => f.destination === 'packages/db/.env.secrets.example');
+    expect(dedicated?.content).toBe('IN_DEDICATED=1\n');
+    expect(files.find((f) => f.destination === 'packages/db/.env.example')?.content).toBe('IN_DEFAULT=1\n');
+  });
+
+  test('a variable with a file in an app scope stays out of the default file of every app', () => {
+    const files = collect(() => collectEnvFiles(makeContext()));
+
+    expect(files.map((f) => f.destination)).toContain('apps/web/.env.secrets.example');
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content ?? '').not.toContain('IN_DEDICATED');
+  });
+
+  test('single repo collapses a variable with a file into the root .env.<file>.example', () => {
+    const files = collect(() =>
+      collectEnvFiles(makeContext({ repo: 'single', apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }] })),
+    );
+
+    expect(files.map((f) => f.destination).sort()).toEqual(['.env.example', '.env.secrets.example']);
+  });
+
+  test('collectEnvGroups names the file without the example suffix', () => {
+    const groups = collect(() => collectEnvGroups(makeContext()));
+
+    expect(groups.find((g) => g.path === 'packages/db/.env.secrets')?.vars).toEqual(['IN_DEDICATED']);
+  });
+});
+
 describe('EnvVar.stacks filter', () => {
   const STACK_ENVS: EnvVar[] = [
     { value: 'NEXT_PUBLIC_TOKEN=next-token', monoScope: ['app'], stacks: ['nextjs'] },
@@ -465,5 +512,80 @@ describe('EnvVar.stacks filter', () => {
       expect(content).not.toContain('ROOT_NEXT');
       expect(content).not.toContain('DB_NEXT');
     });
+  });
+});
+
+describe('EnvVar.secret', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const SECRET_ENVS: EnvVar[] = [
+    { value: 'ALL_APPS_SECRET=1', monoScope: ['app'], secret: true },
+    { value: 'NEXT_ONLY_SECRET=1', monoScope: ['app'], secret: true, stacks: ['nextjs'] },
+    { value: 'WHEN_SECRET=1', monoScope: ['app'], secret: true, when: { orm: 'prisma' } },
+    { value: 'PKG_SECRET=1', monoScope: [{ pkg: 'db' }], secret: true },
+    { value: 'FILE_SECRET=1', monoScope: ['app'], secret: true, file: 'cli' },
+    { value: 'PLAIN=1', monoScope: ['app'] },
+  ];
+
+  function collectWith<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = SECRET_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  const turborepo = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
+      { appName: 'site', stackName: 'tanstack-start', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+  });
+
+  test('an app receives the secrets of its libraries and none of another app', () => {
+    expect(collectAppSecrets(turborepo, 'web')).toEqual(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
+    expect(collectAppSecrets(turborepo, 'site')).toEqual([]);
+    expect(collectAppSecrets(turborepo, 'api')).toEqual([]);
+  });
+
+  test('a single repo app receives the secrets of its libraries', () => {
+    const ctx = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'tanstack-start', libraries: ['better-auth'] }],
+    });
+    expect(collectAppSecrets(ctx, 'my-project')).toEqual(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
+  });
+
+  test('a project addon secret goes to every app, narrowed by stacks and when, and never a package or file variable', () => {
+    const [web, site] = collectWith(() => [collectAppSecrets(turborepo, 'web'), collectAppSecrets(turborepo, 'site')]);
+
+    expect(web).toEqual(['ALL_APPS_SECRET', 'NEXT_ONLY_SECRET', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
+    expect(site).toEqual(['ALL_APPS_SECRET']);
+  });
+
+  test('a blueprint secret reaches every app of the blueprint', () => {
+    const ctx: TemplateContext = {
+      projectName: 'dapp',
+      repo: 'single',
+      apps: [{ appName: 'dapp', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint: 'dapp-privy',
+    };
+    expect(collectAppSecrets(ctx, 'dapp')).toEqual(['PRIVY_APP_SECRET']);
+  });
+
+  test('no variable the browser bundle reads is marked secret', () => {
+    const addons: { envs?: EnvVar[] }[] = [
+      ...Object.values(META.libraries),
+      ...Object.values(META.blueprints),
+      ...Object.values(META.project).flatMap((category) => Object.values(category.options) as MetaAddon[]),
+    ];
+    const secretNames = addons.flatMap((addon) => addon.envs ?? []).filter((env) => env.secret).map((env) => env.value);
+
+    expect(secretNames.length).toBeGreaterThan(0);
+    expect(secretNames.filter((value) => /^(NEXT_PUBLIC|VITE)_/.test(value))).toEqual([]);
   });
 });

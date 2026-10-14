@@ -15,6 +15,12 @@ node_modules
 # Testing
 coverage
 
+{{#if (hasLibrary "playwright")}}
+# Playwright
+test-results/
+playwright-report/
+{{/if}}
+
 # Turbo
 .turbo
 
@@ -37,7 +43,7 @@ next-env.d.ts
 out/
 build
 dist
-create-faster
+*.tsbuildinfo
 
 {{#if (has "orm" "prisma")}}
 # Prisma
@@ -65,6 +71,9 @@ yarn-error.log*
 # Cloudflare
 .wrangler/
 cloudflare-env.d.ts
+{{#if (has "database" "d1")}}
+.env.d1
+{{/if}}
 {{#if (has "deployment" "cloudflare")}}{{#if (has "stack" "nextjs")}}
 .open-next/
 .prod.env

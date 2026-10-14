@@ -11,17 +11,20 @@ import 'server-only';
 {{#if (hasLibrary "tanstack-query")}}
 import type React from 'react';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { createTRPCOptionsProxy, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import { createTRPCClient, unstable_localLink } from '@trpc/client';
+import { createTRPCOptionsProxy, type ResolverDef, type TRPCQueryOptions } from '@trpc/tanstack-react-query';
+import superjson from 'superjson';
 {{/if}}
 import { cache } from 'react';
 {{#if (hasLibrary "tanstack-query")}}
 import { makeQueryClient } from '@/trpc/query-client';
 {{/if}}
 import { headers } from 'next/headers';
+import { unstable_rethrow } from 'next/navigation';
 {{#if (isMono)}}
-import { appRouter, createTRPCContext } from '@repo/api';
+import { {{#if (hasLibrary "tanstack-query")}}type AppRouter, {{/if}}appRouter, createTRPCContext } from '@repo/api';
 {{else}}
-import { appRouter } from '@/trpc/routers/_app';
+import { {{#if (hasLibrary "tanstack-query")}}type AppRouter, {{/if}}appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 {{/if}}
 {{#if (and (has "database" "d1") project.orm)}}
@@ -44,8 +47,16 @@ const getTRPCContext = cache(async () => createTRPCContext({ headers: await head
 
 {{#if (hasLibrary "tanstack-query")}}
 export const trpc = createTRPCOptionsProxy({
-  ctx: getTRPCContext,
-  router: appRouter,
+  client: createTRPCClient<AppRouter>({
+    links: [
+      unstable_localLink({
+        router: appRouter,
+        transformer: superjson,
+        createContext: getTRPCContext,
+        {{> trpc/on-error dev="process.env.NODE_ENV === 'development'" rethrow="unstable_rethrow"}}
+      }),
+    ],
+  }),
   queryClient: getQueryClient,
 });
 
@@ -57,14 +68,18 @@ export function HydrateClient(props: { children: React.ReactNode }) {
   return <HydrationBoundary state={state}>{props.children}</HydrationBoundary>;
 }
 
-export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptions: T) {
+export function prefetch<T extends ReturnType<TRPCQueryOptions<ResolverDef>>>(queryOptions: T) {
   const queryClient = getQueryClient();
   if (queryOptions.queryKey[1]?.type === 'infinite') {
-    void queryClient.prefetchInfiniteQuery(queryOptions as any);
+    void queryClient.prefetchInfiniteQuery(
+      queryOptions as unknown as Parameters<typeof queryClient.prefetchInfiniteQuery>[0],
+    );
   } else {
     void queryClient.prefetchQuery(queryOptions);
   }
 }
 {{else}}
-export const trpc = appRouter.createCaller(getTRPCContext);
+export const trpc = appRouter.createCaller(getTRPCContext, {
+  {{> trpc/on-error dev="process.env.NODE_ENV === 'development'" rethrow="unstable_rethrow"}}
+});
 {{/if}}

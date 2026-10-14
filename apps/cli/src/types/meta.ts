@@ -1,10 +1,10 @@
 import type { StackName } from '@/types/stack-name';
 import type { Conditional, WhenMatch } from '@/types/when';
 
-export type RepoType = 'single' | 'turborepo';
+type RepoType = 'single' | 'turborepo';
 export type MonoScope = 'app' | 'pkg' | 'root';
 
-export type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
+type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'root' };
 
 export type EnvScope = 'app' | 'root' | { pkg: string };
 
@@ -13,9 +13,19 @@ export interface EnvVar {
   monoScope: EnvScope[];
   stacks?: StackName[];
   when?: WhenMatch;
+  file?: string;
+  secret?: boolean;
 }
 
-export interface AddonSupport {
+export type FirstRunCommand = { command: string } | { script: string };
+
+/** One thing a fresh project needs before `dev` works; `script` runs through the selected package manager. */
+export interface FirstRunStep {
+  description: string;
+  commands: FirstRunCommand[];
+}
+
+interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
 
@@ -45,7 +55,7 @@ export type PackageJsonConfig = PackageJsonShape<Conditional<string>>;
 /** Package.json contribution after `$when` conditionals are resolved against a context. */
 export type ResolvedPackageJsonConfig = PackageJsonShape<string>;
 
-export interface AppUrlContext {
+interface AppUrlContext {
   projectName: string;
   appName: string;
   isTurborepo: boolean;
@@ -54,7 +64,7 @@ export interface AppUrlContext {
 
 export type AppScriptTransform = ((cmd: string) => string) | { from: string; wrap: (cmd: string) => string };
 
-export interface AddonRuntime {
+interface AddonRuntime {
   /** Transform or add app scripts. Key = output script name. */
   appScripts?: Record<string, AppScriptTransform>;
   /** Resolve the {{appUrl}} env placeholder for apps where this addon is active */
@@ -92,6 +102,10 @@ export interface MetaAddon {
   appPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
+  /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
+  interactiveScripts?: string[];
+  /** Steps of a fresh project's first run, in order (README and CLI summary). */
+  firstRun?: FirstRunStep[];
 }
 
 export interface MetaProjectCategory {
@@ -101,7 +115,7 @@ export interface MetaProjectCategory {
   options: Record<string, MetaAddon>;
 }
 
-export interface MetaStack {
+interface MetaStack {
   type: 'app' | 'server';
   label: string;
   hint?: string;
@@ -109,12 +123,12 @@ export interface MetaStack {
   packageJson: PackageJsonConfig;
 }
 
-export interface MetaRepoStack {
+interface MetaRepoStack {
   label: string;
   hint?: string;
 }
 
-export type MetaProject = {
+type MetaProject = {
   database: MetaProjectCategory;
   orm: MetaProjectCategory;
   deployment: MetaProjectCategory;
@@ -154,6 +168,8 @@ export interface MetaBlueprint {
   rootPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
   agentArchitecture?: string;
+  /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
+  firstRun?: FirstRunStep[];
 }
 
 export interface Meta {

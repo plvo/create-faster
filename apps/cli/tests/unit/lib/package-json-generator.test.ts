@@ -894,6 +894,38 @@ describe('generateRootPackageJson', () => {
   });
 });
 
+describe('root start script (turborepo)', () => {
+  const ctx: TemplateContext = {
+    projectName: 'test-start',
+    repo: 'turborepo',
+    apps: [
+      { appName: 'web', stackName: 'tanstack-start', libraries: [] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+    project: { tooling: [] },
+    git: false,
+    pm: 'bun',
+  };
+
+  test('runs the start task of the apps when an app has a start script', () => {
+    expect(generateRootPackageJson(ctx).content.scripts?.start).toBe('turbo start');
+  });
+
+  test('exists when only some of the apps have a start script', () => {
+    const cloudflare: TemplateContext = { ...ctx, project: { deployment: 'cloudflare', tooling: [] } };
+    expect(generateRootPackageJson(cloudflare).content.scripts?.start).toBe('turbo start');
+  });
+
+  test('is absent when no app has a start script', () => {
+    const noStart: TemplateContext = {
+      ...ctx,
+      apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
+      project: { deployment: 'cloudflare', tooling: [] },
+    };
+    expect(generateRootPackageJson(noStart).content.scripts?.start).toBeUndefined();
+  });
+});
+
 describe('packageManager in single repo', () => {
   test('includes packageManager when pm is set', () => {
     const ctx: TemplateContext = {
@@ -1119,7 +1151,7 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
   test('root package.json delegates db:* scripts to the db package when an ORM is selected', () => {
     const result = generateRootPackageJson(ctx);
     expect(result.content.dependencies?.['@repo/db']).toBeUndefined();
-    expect(result.content.scripts?.['db:push']).toBe('turbo db:push');
+    expect(result.content.scripts?.['db:push']).toBe('cd packages/db && bun run db:push');
     expect(result.content.scripts?.['db:generate']).toBe('turbo db:generate');
     expect(result.content.scripts?.['db:migrate']).toBe('turbo db:migrate');
     expect(result.content.scripts?.['db:studio']).toBe('turbo db:studio');

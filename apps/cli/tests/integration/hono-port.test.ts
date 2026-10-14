@@ -66,7 +66,7 @@ describe('Hono app port', () => {
     await appScripts('hono-port-agents-mono', 'api', ['--app', 'web:nextjs', '--app', 'api:hono']);
     const mono = await readTextFile(join(tempDir, 'hono-port-agents-mono', 'apps/api/AGENTS.md'));
     expect(mono).toContain('listen on port 3001. The `PORT` environment variable overrides it.');
-    expect(await readTextFile(join(tempDir, 'hono-port-agents-mono', 'AGENTS.md'))).toContain('(port 3001)');
+    expect(await readTextFile(join(tempDir, 'hono-port-agents-mono', 'AGENTS.md'))).toContain('hono (http://localhost:3001)');
 
     await appScripts('hono-port-agents-single', null, ['--app', 'api:hono']);
     const single = await readTextFile(join(tempDir, 'hono-port-agents-single', 'AGENTS.md'));

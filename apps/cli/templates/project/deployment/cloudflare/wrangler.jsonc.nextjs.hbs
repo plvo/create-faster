@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{#if (isMono)}}{{appName}}{{else}}{{projectName}}{{/if}}",
+  "name": "{{> cloudflare/worker-name}}",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-12",
   // global_fetch_strictly_public routes fetch() through the public internet so OpenNext asset serving avoids Worker subrequest limits
@@ -8,5 +8,5 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }{{> cloudflare/node-env-var}}{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}
+  }{{> cloudflare/node-env-var}}{{> cloudflare/d1-binding}}{{> cloudflare/hyperdrive-binding localCommands="`wrangler dev`"}}{{> cloudflare/secrets-required}}
 }

@@ -11,7 +11,6 @@ Beyond the official setup, we include:
 
 **Project Structure:**
 - Pre-configured Expo Router with file-based routing
-- Authentication scaffolding with `Stack.Protected` guards
 - Custom components (`app-footer`)
 - Font loading setup with Inter typeface
 
@@ -26,20 +25,17 @@ Beyond the official setup, we include:
 
 **App Configuration:**
 - React Compiler enabled (`experiments.reactCompiler: true`)
-- New Architecture enabled (`newArchEnabled: true`)
 - Typed routes (`experiments.typedRoutes: true`)
-- Edge-to-edge Android UI (`edgeToEdgeEnabled: true`)
+- New Architecture and edge-to-edge Android UI, both always on since Expo SDK 55
 
 Files created:
 ```
 src/
 ├── app/
-│   ├── _layout.tsx         # Root layout with authentication guards
+│   ├── _layout.tsx         # Root layout
 │   └── index.tsx           # Home page
-├── components/
-│   └── app-footer.tsx      # Footer component
-└── styles/
-    └── globals.css         # Global styles (auto-imported in _layout)
+└── components/
+    └── app-footer.tsx      # Footer component
 
 assets/
 ├── fonts/

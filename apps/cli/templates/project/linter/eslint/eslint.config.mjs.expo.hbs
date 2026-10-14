@@ -16,7 +16,7 @@ import eslintConfigPrettier from "eslint-config-prettier/flat";
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores([".expo/**", "android/**", "ios/**", "node_modules/**"]),
+  globalIgnores([".expo/**", "android/**", "ios/**", "expo-env.d.ts", "node_modules/**"]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {
@@ -37,7 +37,21 @@ export default defineConfig([
     },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
+      "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
+    },
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    files: ["*.config.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 {{#if (has 'linter' 'eslint-prettier')}}

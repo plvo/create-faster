@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "{{appName}}",
+  "name": "{{> cloudflare/worker-name}}",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-12",
   "compatibility_flags": ["nodejs_compat"],
@@ -20,5 +20,5 @@
       "binding": "STORAGE",
       "bucket_name": "{{projectName}}-storage"
     }
-  ]
+  ]{{> cloudflare/secrets-required}}
 }

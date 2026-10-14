@@ -1,0 +1,4 @@
+---
+inline: true
+---
+{{!-- stack: the stack whose apps are listed --}}{{#each (stackApps stack)}}{{#unless @first}}, {{/unless}}`{{appName}}`{{/each}}

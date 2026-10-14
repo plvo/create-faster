@@ -12,11 +12,11 @@ export const { storage: loggerStorage, useLogger } = createLoggerStorage(
 export const findLogger = () => loggerStorage.getStore()
 {{else}}
 import type { RequestLogger } from 'evlog'
-import { useRequest } from 'nitro/context'
+import { useRequest as getNitroRequest } from 'nitro/context'
 
 export function findLogger(): RequestLogger | undefined {
   try {
-    return useRequest().context?.log as RequestLogger | undefined
+    return getNitroRequest().context?.log as RequestLogger | undefined
   } catch {
     return undefined
   }

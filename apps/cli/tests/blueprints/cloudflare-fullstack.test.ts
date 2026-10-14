@@ -127,9 +127,9 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(layout).toContain("redirect('/login')");
   });
 
-  test('documents page references tRPC documents.list/delete and upload endpoint', () => {
+  test('documents client component references tRPC documents.list/delete and upload endpoint', () => {
     const page = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/page.tsx.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/documents.client.tsx.hbs'),
       'utf8',
     );
     expect(page).toContain('documents.list');
@@ -358,7 +358,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     const router = bpFile('src/trpc/routers/documents.ts.hbs');
     expect(router).not.toContain("import('@/lib/env')");
     expect(router).toContain("import('@opennextjs/cloudflare')");
-    expect(router).toContain('env.STORAGE.delete');
+    expect(router).toContain('.STORAGE.delete(doc.r2Key)');
   });
 
   test('dashboard shell mounts the sidebar provider, app sidebar, and header', () => {
@@ -418,7 +418,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(setup).toContain('db:migrate');
     // wrangler d1 migrations apply prompts for confirmation; CI forces the non-interactive "yes".
     expect(setup).toContain("{ CI: 'true' }");
-    expect(setup).toContain('cf:typegen');
+    expect(setup).toContain('cf-typegen');
     expect(setup).toContain('apps/web');
     expect(setup).toContain('db:seed');
     expect(setup).not.toContain('#!/usr/bin/env');
@@ -488,7 +488,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     const account = bpFile('src/components/profile/account-form.tsx.hbs');
     expect(account).toContain('f.InlineEditField');
     expect(account).toContain('authClient.updateUser({ name: value.name })');
-    const docs = bpFile('src/app/(dashboard)/page.tsx.hbs');
+    const docs = bpFile('src/app/(dashboard)/documents.client.tsx.hbs');
     expect(docs).toContain("import { useAppForm } from '@repo/ui/lib/form'");
     expect(docs).toContain('f.InputField');
   });

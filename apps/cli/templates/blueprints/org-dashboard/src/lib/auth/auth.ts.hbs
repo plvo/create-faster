@@ -64,6 +64,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
     ],
     emailAndPassword: {
       enabled: true,
+      disableSignUp: true,
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
     },

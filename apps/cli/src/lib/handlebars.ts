@@ -4,10 +4,13 @@ import { getProjectAddon } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import { PARTIALS_DIR } from './constants';
+import { collectAppSecrets, resolveAppUrl } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
+import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
-import { collectMonoPackages, getRootScripts } from './package-json-generator';
+import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
+import { getAppScriptCommand, getPackageRunner, getScriptCommand } from './package-manager';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -72,6 +75,39 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('hasRootScript', function (this: TemplateContext, name: string) {
     return name in getRootScripts(this);
+  });
+
+  Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
+  });
+
+  Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
+    return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
+  });
+
+  Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {
+    return [...collectMonoPackages(options.data.root as TemplateContext).keys()];
+  });
+
+  Handlebars.registerHelper('runScript', (script: string, options: Handlebars.HelperOptions) => {
+    return getScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('runAppScript', (script: string, options: Handlebars.HelperOptions) => {
+    return getAppScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('firstRunSteps', (options: Handlebars.HelperOptions) => {
+    return collectFirstRunSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('stackApps', (stack: string, options: Handlebars.HelperOptions) => {
+    return (options.data.root as TemplateContext).apps.filter((app) => app.stackName === stack);
+  });
+
+  Handlebars.registerHelper('packageRunner', (options: Handlebars.HelperOptions) => {
+    return getPackageRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

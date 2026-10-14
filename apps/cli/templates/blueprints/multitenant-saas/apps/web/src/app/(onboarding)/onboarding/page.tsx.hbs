@@ -66,9 +66,8 @@ export default function OnboardingPage() {
             }}
             className='space-y-4'
           >
-            <form.AppField
-              name='name'
-              children={(field) => (
+            <form.AppField name='name'>
+              {(field) => (
                 <field.InputField
                   label='Organization name'
                   props={{
@@ -79,10 +78,9 @@ export default function OnboardingPage() {
                   }}
                 />
               )}
-            />
-            <form.AppField
-              name='slug'
-              children={(field) => (
+            </form.AppField>
+            <form.AppField name='slug'>
+              {(field) => (
                 <field.InputField
                   label='URL slug'
                   props={{
@@ -93,7 +91,7 @@ export default function OnboardingPage() {
                   }}
                 />
               )}
-            />
+            </form.AppField>
             <form.AppForm>
               <form.SubmitButton props={{ className: 'w-full' }}>Create organization</form.SubmitButton>
             </form.AppForm>

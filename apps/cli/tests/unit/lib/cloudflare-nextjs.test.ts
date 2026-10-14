@@ -47,6 +47,13 @@ describe('deployment cloudflare: nextjs app package.json (single repo)', () => {
     expect(result.content.scripts?.['build:cf']).toContain('opennextjs-cloudflare');
   });
 
+  test('build:cf leaves the Next.js build to opennextjs-cloudflare, which runs the build script itself', () => {
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(result.content.scripts?.build).toBe('next build');
+    expect(result.content.scripts?.['build:cf']).not.toContain('next build');
+    expect(result.content.scripts?.['build:cf']).toMatch(/opennextjs-cloudflare build$/);
+  });
+
   test('has preview script using opennextjs-cloudflare', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.preview).toContain('opennextjs-cloudflare');
@@ -57,9 +64,9 @@ describe('deployment cloudflare: nextjs app package.json (single repo)', () => {
     expect(result.content.scripts?.deploy).toContain('opennextjs-cloudflare');
   });
 
-  test('has cf:typegen script', () => {
+  test('has cf-typegen script', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
-    expect(result.content.scripts?.['cf:typegen']).toBe(
+    expect(result.content.scripts?.['cf-typegen']).toBe(
       'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts',
     );
   });
@@ -195,5 +202,27 @@ describe('deployment cloudflare: hono app package.json (single repo)', () => {
   test('does NOT have build:cf script', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
     expect(result.content.scripts?.['build:cf']).toBeUndefined();
+  });
+});
+
+describe('nextjs start script by deployment', () => {
+  const nextjsCtx = (deployment?: 'cloudflare' | 'cloudflare-static' | 'sst'): TemplateContext => ({
+    projectName: 'site',
+    repo: 'single',
+    apps: [{ appName: 'site', stackName: 'nextjs', libraries: [] }],
+    project: { deployment, tooling: [] },
+    git: false,
+  });
+
+  test.each(['cloudflare', 'cloudflare-static'] as const)('has no next start script on %p', (deployment) => {
+    const ctx = nextjsCtx(deployment);
+    const { content } = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(content.scripts?.start).toBeUndefined();
+  });
+
+  test.each([undefined, 'sst'] as const)('keeps next start when the deployment is %p', (deployment) => {
+    const ctx = nextjsCtx(deployment);
+    const { content } = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(content.scripts?.start).toBe('next start');
   });
 });

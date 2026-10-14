@@ -1,5 +1,5 @@
 tRPC router is defined in `src/trpc/`. Add a procedure to a router, then call it from the client via the typed `trpc` hooks. Input validation uses the router's schema, not manual checks.
-Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message or stack: throw a `TRPCError` with a code to send a message. The API route logs every such error to the server output (procedure path, message, stack) in every environment, and the errors it sends to the client (`UNAUTHORIZED`, `BAD_REQUEST`, ...) only in development. The API route refuses writes (any method but `GET` and `HEAD`) whose `Origin` header names another origin.
+Outside development, an error a procedure does not throw as a `TRPCError` (a failed query, a bug) reaches the client as `Internal server error`, without its message or stack: throw a `TRPCError` with a code to send a message. The API route, and the server-side calls that skip it ({{#if (eq stackName "tanstack-start")}}the `unstable_localLink` of `src/trpc/client.ts`{{else}}`src/trpc/server.tsx`{{/if}}), log every such error to the server output (procedure path, message, stack) in every environment, and the errors they send to the client (`UNAUTHORIZED`, `BAD_REQUEST`, ...) only in development. The API route refuses writes (any method but `GET` and `HEAD`) whose `Origin` header names another origin.
 {{#if (hasLibrary "better-auth")}}
 
 {{#if (has "database" "d1")}}
@@ -47,4 +47,10 @@ function Greeting() {
 {{#if (hasLibrary "better-auth")}}
 - The context reads the session through `getRequestSession(headers, load)`, the per-request cache the `getSession` server function reads too: a request that calls both looks the session up once, through the instance that starts first. When a page must refresh the session, await `getSession()` in `beforeLoad`: it then runs before the procedures of the loaders.
 {{/if}}
+{{/if}}
+{{#if (and (eq stackName "nextjs") (hasLibrary "tanstack-query"))}}
+
+**Next.js**
+- Prefetch in a Server Component with `prefetch(trpc.hello.greet.queryOptions({ name: 'world' }))` from `src/trpc/server.tsx`, and wrap what reads the query in `HydrateClient`. Procedures run in memory through `unstable_localLink`, and `createTRPCContext` reads `headers()`: a page that prefetches depends on the request, so it must be dynamic. On a static page `next build` fails with `Error occurred prerendering page` (the error is redacted): the prefetch is not awaited, so TanStack Query turns the dynamic-usage error of `headers()` into a rejected query that reaches the client instead of letting Next switch the route to dynamic.
+- Make the page dynamic with `export const dynamic = 'force-dynamic'`, or by awaiting `connection()` from `next/server` at the top of the async page, before the prefetch. A page under a layout that already reads the request (`headers()`, `cookies()`, the session) is dynamic already.
 {{/if}}

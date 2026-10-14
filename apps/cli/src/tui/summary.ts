@@ -1,10 +1,15 @@
 import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
+import { getMonoPackageName } from '@/lib/addon-utils';
+import { collectFirstRunSteps } from '@/lib/first-run';
+import { collectMonoPackages } from '@/lib/package-json-generator';
+import { getPackageRunner } from '@/lib/package-manager';
+import type { GitFailure } from '@/lib/post-generation';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
-  let flagsCommand: string = `bunx create-faster ${ctx.projectName}`;
+  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${ctx.projectName}`;
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
@@ -57,17 +62,27 @@ ${color.gray('🔥 You can recreate this project with the following command:')}
 ${color.bold(flagsCommand)}`);
 }
 
-export function displaySummaryNote(ctx: TemplateContext): void {
-  const texts = [...buildProjectStructure(ctx), ...buildStepsNote(ctx)];
+export function displaySummaryNote(ctx: TemplateContext, gitFailure: GitFailure | undefined): void {
+  const hasGitRepository = ctx.git && gitFailure === undefined;
+  const texts = [...buildProjectStructure(ctx, hasGitRepository), ...buildStepsNote(ctx, hasGitRepository)];
 
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
 
-function buildProjectStructure(ctx: TemplateContext): string[] {
+function describeOrmPackage(ctx: TemplateContext, packageName: string): string {
+  const { orm, database } = ctx.project;
+  const ormAddon = orm ? META.project.orm.options[orm] : undefined;
+  if (!orm || getMonoPackageName(ormAddon) !== packageName) return '';
+
+  const dbLabel = database ? ` + ${META.project.database.options[database]?.label}` : '';
+  return ` ${color.magenta(`(${ormAddon?.label}${dbLabel})`)}`;
+}
+
+function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean): string[] {
   const lines: string[] = [];
   const isTurborepo = ctx.repo === 'turborepo';
 
-  const hasOrm = !!ctx.project.orm;
+  const packageNames = [...collectMonoPackages(ctx).keys()];
 
   lines.push(color.white(color.bold('#🏠 Structure:')));
   lines.push('');
@@ -79,7 +94,7 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
       const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
-      const isLast = i === ctx.apps.length - 1 && !hasOrm;
+      const isLast = i === ctx.apps.length - 1 && packageNames.length === 0;
       const prefix = isLast ? '│  └─' : '│  ├─';
       lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     });
@@ -92,16 +107,17 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
     }
   }
 
-  if (isTurborepo && hasOrm) {
+  if (packageNames.length > 0) {
     lines.push('├─ 📦 packages/');
-    const ormLabel = ctx.project.orm ? META.project.orm.options[ctx.project.orm]?.label : '';
-    const dbLabel = ctx.project.database ? ` + ${META.project.database.options[ctx.project.database]?.label}` : '';
-    lines.push(`│  └─ db/ ${color.magenta(`(${ormLabel}${dbLabel})`)}`);
+    packageNames.forEach((name, i) => {
+      const prefix = i === packageNames.length - 1 ? '│  └─' : '│  ├─';
+      lines.push(`${prefix} ${name}/${describeOrmPackage(ctx, name)}`);
+    });
   }
 
   const configs: string[] = [];
   if (isTurborepo) configs.push('Turborepo');
-  if (ctx.git) configs.push('Git');
+  if (hasGitRepository) configs.push('Git');
   if (ctx.project.linter) {
     configs.push(META.project.linter.options[ctx.project.linter]?.label ?? ctx.project.linter);
   }
@@ -120,7 +136,7 @@ function buildProjectStructure(ctx: TemplateContext): string[] {
   return lines;
 }
 
-function buildStepsNote(ctx: TemplateContext): string[] {
+function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string[] {
   const steps: string[] = [];
 
   steps.push('');
@@ -129,17 +145,31 @@ function buildStepsNote(ctx: TemplateContext): string[] {
 
   steps.push(`cd ${ctx.projectName}`);
   steps.push('');
+  if (ctx.skipInstall || !ctx.pm) {
+    steps.push('# Install dependencies:');
+    steps.push(`${ctx.pm ?? 'npm'} install`);
+    steps.push('');
+  }
+  for (const { description, commands } of collectFirstRunSteps(ctx)) {
+    steps.push(`# ${description}:`);
+    steps.push(...commands);
+    steps.push('');
+  }
   steps.push('# Development:');
   steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
   steps.push('');
   steps.push('# Build:');
   steps.push(`${ctx.pm ?? 'npm'} run build      # Build for production`);
 
-  if (ctx.git) {
+  if (hasGitRepository) {
     steps.push('');
     steps.push('# Git:');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
+  } else if (ctx.git) {
+    steps.push('');
+    steps.push('# git init failed, run it manually:');
+    steps.push('git init');
   }
 
   return steps;

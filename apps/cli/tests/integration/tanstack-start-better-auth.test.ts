@@ -299,12 +299,12 @@ describe('TanStack Start + better-auth', () => {
       expect(start).not.toContain('next-js');
     });
 
-    test('the Next.js route and proxy use the app instance', async () => {
+    test('the Next.js route uses the app instance and the proxy none', async () => {
       const route = await readTextFile(join(projectPath, 'apps/web/src/app/api/auth/[...all]/route.ts'));
       expect(route).toContain("import { auth } from '@/lib/auth/auth'");
       expect(route).toContain('toNextJsHandler(auth.handler)');
       const proxy = await readTextFile(join(projectPath, 'apps/web/src/proxy.ts'));
-      expect(proxy).toContain("import { auth } from '@/lib/auth/auth'");
+      expect(proxy).not.toContain('@/lib/auth/auth');
     });
 
     test('the tRPC package reads sessions with a cookie-less instance', async () => {

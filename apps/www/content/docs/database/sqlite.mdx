@@ -11,7 +11,7 @@ Beyond the official setup, we include:
 
 **Local file database, zero infrastructure:**
 - No Docker container, no database server to run
-- `DATABASE_URL` points to a local file (`file:./db.sqlite`), created automatically by `db:push`
+- `DATABASE_URL` points to a local file (`file:./db.sqlite`), created automatically by `db:migrate`
 - `*.sqlite`, `*.sqlite-shm`, and `*.sqlite-wal` are git-ignored
 
 **Environment Variables:**
@@ -52,7 +52,8 @@ bunx create-faster myapp --app myapp:nextjs --database sqlite --orm drizzle
 ## Workflow
 
 ```bash
-bun run db:push   # creates db.sqlite and syncs the schema
-bun run db:seed   # seeds sample data
-bun run db:studio # inspect data
+bun run db:generate # writes the SQL migration from the schema
+bun run db:migrate  # creates db.sqlite and applies the migration
+bun run db:seed     # seeds sample data
+bun run db:studio   # inspect data
 ```

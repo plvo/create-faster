@@ -78,7 +78,7 @@ function cookieHeader(response: Response): string {
     .join('; ');
 }
 
-export type ClientIpHeader = 'x-forwarded-for' | 'cf-connecting-ip';
+type ClientIpHeader = 'x-forwarded-for' | 'cf-connecting-ip';
 
 const randomOctet = (): number => Math.floor(Math.random() * 254) + 1;
 const randomIp = (): string => `10.${randomOctet()}.${randomOctet()}.${randomOctet()}`;

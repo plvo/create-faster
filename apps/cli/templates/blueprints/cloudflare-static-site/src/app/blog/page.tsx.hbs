@@ -1,13 +1,14 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/blog';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { siteConfig } from '@/lib/data/site-config';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
   title: 'Blog',
   description: `Articles and insights from the ${siteConfig.name} team on carrier pigeon logistics, secure messaging, and avian technology.`,
-};
+  path: '/blog',
+});
 
 export default function BlogPage() {
   const posts = getAllPosts();

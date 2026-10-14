@@ -1076,7 +1076,7 @@ function getSortableFields<TData>(table: Table<TData>): SortField[] {
 }
 
 function defaultOperatorFor(variant: FilterVariant): FilterOperator {
-  return OPERATORS_BY_VARIANT[variant][0];
+  return OPERATORS_BY_VARIANT[variant][0] ?? 'is';
 }
 
 function defaultValueFor(variant: FilterVariant): unknown {

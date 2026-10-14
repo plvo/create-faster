@@ -1,11 +1,12 @@
-import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
 import { expect } from 'bun:test';
 import { $ } from 'bun';
+import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 
-export interface CliResult {
+interface CliResult {
   exitCode: number;
   stdout: string;
   stderr: string;
@@ -25,7 +26,7 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   try {
     const result = await $`${process.execPath} run ${cliPath} ${args}`
       .cwd(cwd)
-      .env({ ...process.env, ...env })
+      .env({ ...process.env, ...PLAIN_OUTPUT_ENV, ...env })
       .quiet();
     return {
       exitCode: result.exitCode,
@@ -226,19 +227,33 @@ const DEV_EXPRESSIONS = ['import.meta.env.DEV', "process.env.NODE_ENV === 'devel
 type TrpcError = Error & { code: string };
 type OnError = (opts: { path: string | undefined; error: TrpcError }) => void;
 
-/** Runs the onError of a generated tRPC fetch handler, with the development expression set as the runtime would. */
-function generatedOnError(handler: string, isDev: boolean, log: (...args: unknown[]) => void): OnError {
-  const source = handler.match(/onError: (\(\{ path, error \}\) => \{[\s\S]*?\n {4}\}),/)?.[1];
+type Rethrow = (error: unknown) => void;
+
+/**
+ * Runs the onError of a generated tRPC server call site, with the development expression set as the runtime would
+ * and `unstable_rethrow` (Next.js) bound to `rethrow`.
+ */
+function generatedOnError(
+  handler: string,
+  isDev: boolean,
+  log: (...args: unknown[]) => void,
+  rethrow: Rethrow = () => {},
+): OnError {
+  const source = handler.match(/onError: (\(\{ path, error \}\) => \{[\s\S]*?\n\s*\}),/)?.[1];
   expect(source).toBeDefined();
   const devExpression = DEV_EXPRESSIONS.find((expression) => source?.includes(expression));
   expect(devExpression).toBeDefined();
   const runnable = (source as string).replace(devExpression as string, 'isDev');
-  return new Function('console', 'isDev', `return (${runnable});`)({ error: log }, isDev) as OnError;
+  return new Function('console', 'isDev', 'unstable_rethrow', `return (${runnable});`)(
+    { error: log },
+    isDev,
+    rethrow,
+  ) as OnError;
 }
 
 const trpcError = (code: string, message: string): TrpcError => Object.assign(new Error(message), { code });
 
-/** The onError of a generated tRPC handler always logs unexpected errors and logs the expected ones only in development. */
+/** The onError of a generated tRPC server call site always logs unexpected errors and logs the expected ones only in development. */
 export function expectOnErrorLogsInternals(handler: string): void {
   const logged = (isDev: boolean, path: string | undefined, error: TrpcError): string[] => {
     const lines: string[] = [];
@@ -260,4 +275,53 @@ export function expectOnErrorLogsInternals(handler: string): void {
   expect(logged(true, 'user.me', trpcError('UNAUTHORIZED', 'UNAUTHORIZED'))).toEqual([
     'tRPC failed on user.me: UNAUTHORIZED',
   ]);
+}
+
+/** The onError of a generated Next.js server call site logs nothing for the errors `unstable_rethrow` hands back to the framework. */
+export function expectOnErrorSkipsFrameworkErrors(handler: string): void {
+  expect(handler).toContain("import { unstable_rethrow } from 'next/navigation';");
+
+  const frameworkError = trpcError('INTERNAL_SERVER_ERROR', 'Dynamic server usage: used `headers`');
+  const rethrowFrameworkError: Rethrow = (error) => {
+    if (error === frameworkError) throw error;
+  };
+  const logged = (isDev: boolean, error: TrpcError): string[] => {
+    const lines: string[] = [];
+    generatedOnError(handler, isDev, (...args) => lines.push(format(...args)), rethrowFrameworkError)({
+      path: 'user.list',
+      error,
+    });
+    return lines;
+  };
+
+  for (const isDev of [false, true]) {
+    expect(logged(isDev, frameworkError)).toEqual([]);
+    expect(logged(isDev, trpcError('INTERNAL_SERVER_ERROR', 'connection refused'))).toHaveLength(1);
+  }
+}
+
+const PRINTED_SCRIPT = /(?:cd ([\w/<>-]+) && )?(?:bun|npm|pnpm) run ([\w:-]+)(?![\w:/.-])/g;
+
+async function scriptsOf(directory: string): Promise<Record<string, string>> {
+  return (await readJsonFile<{ scripts: Record<string, string> }>(join(directory, 'package.json'))).scripts;
+}
+
+/**
+ * The `<pm> run <script>` commands a document prints that no package.json defines: the one of the directory it
+ * names with `cd <dir> &&` (the project root otherwise), or of any app for the `cd apps/<app> &&` placeholder.
+ */
+export async function printedScriptsMissingFrom(projectPath: string, document: string): Promise<string[]> {
+  const missing: string[] = [];
+
+  for (const [call, directory = '.', script = ''] of document.matchAll(PRINTED_SCRIPT)) {
+    if (directory.includes('<app>')) {
+      const apps = await readdir(join(projectPath, 'apps'));
+      const appScripts = await Promise.all(apps.map((app) => scriptsOf(join(projectPath, 'apps', app))));
+      if (!appScripts.some((scripts) => script in scripts)) missing.push(call);
+    } else if (!(script in (await scriptsOf(join(projectPath, directory))))) {
+      missing.push(call);
+    }
+  }
+
+  return missing;
 }

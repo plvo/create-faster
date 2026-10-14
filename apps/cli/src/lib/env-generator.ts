@@ -23,6 +23,22 @@ interface CollectedEnv {
   source: 'project' | 'library';
   libraryName?: string;
   stacks?: StackName[];
+  file?: string;
+  secret?: boolean;
+}
+
+/** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
+export function resolveAppUrl(ctx: TemplateContext, appName: string): string {
+  const port = resolveAppPort(ctx.apps, appName);
+  const runtimeAddon = findRuntimeAddon(ctx);
+  return runtimeAddon?.runtime?.resolveAppUrl
+    ? runtimeAddon.runtime.resolveAppUrl({
+        projectName: ctx.projectName,
+        appName,
+        isTurborepo: ctx.repo === 'turborepo',
+        port,
+      })
+    : `http://localhost:${port}`;
 }
 
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
@@ -31,19 +47,8 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
     resolved = resolved.replace(/\{\{dbPort\}\}/g, String(ctx.dbPort));
   }
   if (appName) {
-    const port = resolveAppPort(ctx.apps, appName);
-    resolved = resolved.replace(/\{\{appPort\}\}/g, String(port));
-
-    const runtimeAddon = findRuntimeAddon(ctx);
-    const appUrl = runtimeAddon?.runtime?.resolveAppUrl
-      ? runtimeAddon.runtime.resolveAppUrl({
-          projectName: ctx.projectName,
-          appName,
-          isTurborepo: ctx.repo === 'turborepo',
-          port,
-        })
-      : `http://localhost:${port}`;
-    resolved = resolved.replace(/\{\{appUrl\}\}/g, appUrl);
+    resolved = resolved.replace(/\{\{appPort\}\}/g, String(resolveAppPort(ctx.apps, appName)));
+    resolved = resolved.replace(/\{\{appUrl\}\}/g, resolveAppUrl(ctx, appName));
   }
   return resolved;
 }
@@ -65,7 +70,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
-      envs.push({ value: env.value, scope, stacks: env.stacks, ...origin });
+      envs.push({ value: env.value, scope, stacks: env.stacks, file: env.file, secret: env.secret, ...origin });
     }
   };
 
@@ -102,22 +107,24 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   return envs;
 }
 
-function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: string): string | null {
+function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: string, file?: string): string | null {
+  const filename = file ? `.env.${file}.example` : '.env.example';
+
   if (ctx.repo === 'single') {
-    return '.env.example';
+    return filename;
   }
 
   if (scope === 'root') {
-    return '.env.example';
+    return filename;
   }
 
   if (scope === 'app') {
     if (!appName) return null;
-    return `apps/${appName}/.env.example`;
+    return `apps/${appName}/${filename}`;
   }
 
   if (typeof scope === 'object' && 'pkg' in scope) {
-    return `packages/${scope.pkg}/.env.example`;
+    return `packages/${scope.pkg}/${filename}`;
   }
 
   return null;
@@ -140,13 +147,13 @@ function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map
     if (env.scope === 'app') {
       for (const app of ctx.apps) {
         if (!appAcceptsEnv(env, app)) continue;
-        const path = resolveScopeToPath('app', ctx, app.appName);
+        const path = resolveScopeToPath('app', ctx, app.appName, env.file);
         if (!path) continue;
         addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
       }
     } else {
       if (env.stacks && !ctx.apps.some((app) => appAcceptsEnv(env, app))) continue;
-      const path = resolveScopeToPath(env.scope, ctx);
+      const path = resolveScopeToPath(env.scope, ctx, undefined, env.file);
       if (!path) continue;
       addToGroup(grouped, path, resolveEnvValue(env.value, ctx));
     }
@@ -185,11 +192,25 @@ export function collectEnvFiles(ctx: TemplateContext): EnvFileOutput[] {
   return files;
 }
 
+/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
+export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  if (!app) return [];
+
+  const names = collectAllEnvs(ctx)
+    .filter(
+      (env) => env.secret && !env.file && (ctx.repo === 'single' || env.scope === 'app') && appAcceptsEnv(env, app),
+    )
+    .map((env) => extractEnvKey(env.value));
+
+  return [...new Set(names)];
+}
+
 export function collectEnvGroups(ctx: TemplateContext): EnvGroup[] {
   const files = collectEnvFiles(ctx);
 
   return files.map((file) => ({
-    path: file.destination.replace('.env.example', '.env'),
+    path: file.destination.replace(/\.example$/, ''),
     vars: file.content
       .split('\n')
       .filter((line) => line.trim().length > 0)

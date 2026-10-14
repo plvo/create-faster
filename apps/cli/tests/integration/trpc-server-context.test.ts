@@ -137,10 +137,13 @@ describe('tRPC server context is built once per request', () => {
       const importsHeaders = server.includes("import { headers } from 'next/headers';");
       expect(server.includes('await headers()')).toBe(importsHeaders);
 
+      const importsAppRouter = /import \{[^}]*\btype AppRouter\b[^}]*\} from/.test(server);
+      expect(importsAppRouter).toBe(server.includes('createTRPCClient<AppRouter>'));
+
       if (testCase.usesOptionsProxy) {
-        expect(server).toContain('ctx: getTRPCContext,');
+        expect(server).toContain('createContext: getTRPCContext,');
       } else {
-        expect(server).toContain('createCaller(getTRPCContext)');
+        expect(server).toContain('createCaller(getTRPCContext, {');
       }
     });
   }

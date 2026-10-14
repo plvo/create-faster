@@ -69,6 +69,10 @@ exit 1`,
     const output = result.stdout + result.stderr;
     expect(output).toContain('Failed to initialize git');
     expect(output).toContain('Project created successfully');
+    expect(output).toContain('AGENTS.md');
+    expect(output).not.toContain('Git, AGENTS.md');
+    expect(output).not.toContain('git remote add origin');
+    expect(output).toContain('# git init failed');
     expect(await fileExists(join(projectPath, 'package.json'))).toBe(true);
   });
 

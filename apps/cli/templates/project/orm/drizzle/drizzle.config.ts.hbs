@@ -10,6 +10,9 @@ import { defineConfig } from 'drizzle-kit';
 
 {{#if (has "database" "d1")}}
 const isProduction = process.env.NODE_ENV === 'production';
+const CREDENTIALS_FILE = '.env.d1';
+
+if (isProduction && fs.existsSync(CREDENTIALS_FILE)) process.loadEnvFile(CREDENTIALS_FILE);
 
 function getLocalD1DB(): string | undefined {
   const d1Dir = path.resolve(process.cwd(), '{{#if (isMono)}}../../{{/if}}.wrangler/v3/d1/miniflare-D1DatabaseObject');

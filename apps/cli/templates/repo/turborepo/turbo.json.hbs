@@ -6,11 +6,14 @@
   },
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build"{{#if (has "orm" "prisma")}}, "^db:generate"{{/if}}],
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**"]
     },
     "dev": {
+{{#if (has "orm" "prisma")}}
+      "dependsOn": ["^db:generate"],
+{{/if}}
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "cache": false,
       "persistent": true
@@ -18,11 +21,31 @@
     "start": {
       "cache": false,
       "persistent": true
-    }{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
+    }{{#if (hasRootScript "test")}},
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env"]
+    }{{/if}}{{#if (hasRootScript "test:e2e")}},
+    "test:e2e": {
+{{#if (has "orm" "prisma")}}
+      "dependsOn": ["^db:generate"],
+{{/if}}
+      "inputs": ["$TURBO_DEFAULT$", ".env"],
+      "cache": false
+    }{{/if}}{{#if (hasRootScript "cf-typegen")}},
+    "cf-typegen": {
+      "cache": false
+    }{{/if}}{{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}},
     "db:push": {
       "cache": false
     },
-    "db:generate": {},
+    "db:generate": {
+{{#if (has "orm" "prisma")}}
+      "outputs": ["generated/**"]
+{{else}}
+      "cache": false
+{{/if}}
+    },
     "db:migrate": {
       "cache": false
     },

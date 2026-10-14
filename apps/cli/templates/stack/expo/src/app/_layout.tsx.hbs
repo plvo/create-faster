@@ -5,7 +5,9 @@ import * as React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppFooter from '@/components/app-footer';
+{{#if (hasLibrary "nativewind")}}
 import '@/styles/globals.css';
+{{/if}}
 
 SplashScreen.preventAutoHideAsync();
 

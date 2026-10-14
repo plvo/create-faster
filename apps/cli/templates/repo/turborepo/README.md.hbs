@@ -23,9 +23,15 @@ Uses shared database package (`packages/db`){{#if ../project.orm}} with {{../pro
 
 {{/each}}
 
-{{#if (hasPackage "db")}}
+{{#if (monoPackages)}}
 ## Shared Packages
 
+{{#each (monoPackages)}}
+- `packages/{{this}}`
+{{/each}}
+
+{{/if}}
+{{#if (hasPackage "db")}}
 ### `packages/db`
 
 Shared database configuration and schema:
@@ -56,67 +62,79 @@ Install dependencies:
 {{#if pm}}{{pm}} install{{else}}npm install{{/if}}
 ```
 
-{{#if envGroups.length}}
-Set up environment variables:
-
-```bash
-{{#each envGroups}}
-cp {{path}}.example {{path}}
-{{/each}}
-```
-
-{{/if}}
-{{#if (hasRootScript "db:migrate")}}
-Run database migrations:
-
-```bash
-{{#if pm}}{{pm}} run db:migrate{{else}}npm run db:migrate{{/if}}
-```
-
-{{/if}}
+{{> readme/cloudflare-types}}
+{{> readme/route-tree}}
+{{> readme/first-run}}
 Start all applications in development mode:
 
 ```bash
-{{#if pm}}{{pm}} run dev{{else}}npm run dev{{/if}}
+{{runScript "dev"}}
 ```
 
-{{#if (has "stack" "nextjs")}}
 {{#each apps}}
-{{#if (eq stackName "nextjs")}}
-- {{appName}}: [http://localhost:{{appPort appName}}](http://localhost:{{appPort appName}})
+{{#if (appUrl appName)}}
+- {{appName}}: [{{appUrl appName}}]({{appUrl appName}})
 {{/if}}
 {{/each}}
-{{/if}}
 
 ## Available Scripts
 
-- `dev` - Start all apps in development mode
-- `build` - Build all apps for production
-- `start` - Start all apps in production mode
+- `{{runScript "dev"}}` - Start all apps in development mode
+- `{{runScript "build"}}` - Build all apps for production
+{{#if (hasRootScript "start")}}
+- `{{runScript "start"}}` - Start all apps in production mode
+{{/if}}
+{{#if (hasRootScript "db:generate")}}
+{{#if (has "orm" "prisma")}}
+- `{{runScript "db:generate"}}` - Generate the Prisma client
+{{else}}
+- `{{runScript "db:generate"}}` - Write a SQL migration from the schema
+{{/if}}
+{{/if}}
 {{#if (hasRootScript "db:migrate")}}
-- `db:migrate` - Run database migrations
+- `{{runScript "db:migrate"}}` - Run database migrations
 {{/if}}
 {{#if (hasRootScript "db:push")}}
-- `db:push` - Push schema changes to database
+- `{{runScript "db:push"}}` - Push schema changes to database
+{{/if}}
+{{#if (hasRootScript "db:seed")}}
+- `{{runScript "db:seed"}}` - Seed the database
 {{/if}}
 {{#if (hasRootScript "db:studio")}}
-- `db:studio` - Open database management UI
+- `{{runScript "db:studio"}}` - Open database management UI
 {{/if}}
-{{#if (has "linter" "biome")}}
-- `lint` - Lint and fix code with Biome
-- `format` - Format code with Biome
-- `check` - Run both linting and formatting
+{{#if (hasRootScript "local-setup")}}
+- `{{runScript "local-setup"}}` - Set up the local database and seed it
 {{/if}}
-{{#if (has "linter" "oxc")}}
-- `lint` - Lint code with Oxlint
-- `format` - Format code with Oxfmt
-- `check` - Fix lint issues, then format
+{{#if (hasRootScript "cf-typegen")}}
+- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app
+{{/if}}
+{{#if (hasRootScript "lint")}}
+- `{{runScript "lint"}}` - Lint code
+{{/if}}
+{{#if (hasRootScript "format")}}
+- `{{runScript "format"}}` - Format code
+{{/if}}
+{{#if (hasRootScript "format:check")}}
+- `{{runScript "format:check"}}` - Check the formatting without changing files
+{{/if}}
+{{#if (hasRootScript "check")}}
+- `{{runScript "check"}}` - Fix lint issues and format code
+{{/if}}
+{{#if (hasRootScript "clean")}}
+- `{{runScript "clean"}}` - Remove build outputs and installed dependencies
+{{/if}}
+{{#if (hasRootScript "versions:list")}}
+- `{{runScript "versions:list"}}` - List dependency versions that differ between workspaces
+{{/if}}
+{{#if (hasRootScript "versions:fix")}}
+- `{{runScript "versions:fix"}}` - Align dependency versions across workspaces
 {{/if}}
 
 {{#if envGroups.length}}
 ## Environment Variables
 
-Copy each `.env.example` to `.env` and configure:
+Copy each `.env*.example` file to the same name without `.example` and configure:
 
 {{#each envGroups}}
 ### `{{path}}`

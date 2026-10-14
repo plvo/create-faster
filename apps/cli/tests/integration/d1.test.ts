@@ -36,7 +36,7 @@ describe('D1 database option', () => {
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    const env = await readTextFile(join(tempDir, 'cf-d1', '.env.example'));
+    const env = await readTextFile(join(tempDir, 'cf-d1', '.env.d1.example'));
     expect(env).not.toContain('DATABASE_URL');
   });
 });
@@ -89,6 +89,13 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(env).toContain('export async function getEnv()');
     expect(env).toContain('DB: D1Database');
     expect(env).toContain('env.DB');
+  });
+
+  test('getEnv leaves prerendering before it reads the Cloudflare context', async () => {
+    const env = await readTextFile(join(projectPath, 'src/lib/env.ts'));
+    expect(env).toContain("import { connection } from 'next/server'");
+    expect(env.indexOf('await connection()')).toBeGreaterThan(-1);
+    expect(env.indexOf('await connection()')).toBeLessThan(env.indexOf('getCloudflareContext({ async: true })'));
   });
 
   test('wrangler.jsonc declares the D1 binding', async () => {

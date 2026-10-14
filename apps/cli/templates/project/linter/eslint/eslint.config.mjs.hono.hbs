@@ -14,7 +14,7 @@ import eslintConfigPrettier from "eslint-config-prettier/flat";
 export default defineConfig([
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  globalIgnores(["dist/**", "node_modules/**"]),
+  globalIgnores(["dist/**", "node_modules/**"{{> eslint/cloudflare-ignores}}]),
   {
     languageOptions: {
       globals: {

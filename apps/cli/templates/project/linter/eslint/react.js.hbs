@@ -30,7 +30,11 @@ export const reactConfig = [
     },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
+      "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
     },
+  },
+  {
+    ignores: [".vinxi/**", ".output/**", ".tanstack/**", "src/routeTree.gen.ts"],
   },
 ];

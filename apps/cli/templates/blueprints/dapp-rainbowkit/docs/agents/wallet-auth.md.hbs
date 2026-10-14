@@ -19,7 +19,7 @@ Wallet connection and Sign-In With Ethereum are wired in `src/components/app-pro
 The `siwe()` plugin is registered in `src/lib/auth/create-auth.ts` (the `createAuth(cookiePlugin?)` factory; `src/lib/auth/auth.ts` builds the app's `auth` with `createAuth(nextCookies())`): `getNonce`, and `verifyMessage` using viem's `verifyMessage`. The `domain` option is the host of `BETTER_AUTH_URL`, read at runtime on the server (it defaults to `http://localhost:{{appPort appName}}`). The browser signs a message for `window.location.host`, and `verify` rejects any message whose domain differs, so set `BETTER_AUTH_URL` to the origin the app is served from, not to a build-time public variable. The client mirror lives in `src/lib/auth/auth-client.ts` via `siweClient()`. The HTTP handler is `src/app/api/auth/[...all]/route.ts`.
 
 ## Route protection
-- `src/proxy.ts` — checks `auth.api.getSession`; `PUBLIC_ROUTES` (only `/`) is reachable logged out, everything else redirects to `/`.
+- `src/proxy.ts` — checks that the session cookie exists (`getSessionCookie`, no database query); `PUBLIC_ROUTES` (only `/`) is reachable logged out, everything else redirects to `/`. API routes are not matched. The cookie check is optimistic: `src/app/protected/layout.tsx` validates the session.
 - `src/app/protected/layout.tsx` — server layout re-checks the session and redirects to `/` if absent.
 
 ## Add a protected page

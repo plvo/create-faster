@@ -1,8 +1,10 @@
+import { requireAdmin } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { UsersClient } from './users.client';
 
 export default async function UsersPage() {
+  await requireAdmin();
   void prefetch(trpc.user.list.queryOptions());
 
   return (

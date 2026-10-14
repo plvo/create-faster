@@ -15,8 +15,6 @@ type Stack = 'hono' | 'nextjs' | 'tanstack-start';
 const DATABASES: DatabaseEngine[] = ['postgres', 'mysql'];
 const ORMS: Orm[] = ['drizzle', 'prisma'];
 
-const TYPEGEN_SCRIPT: Record<Stack, string> = { hono: 'cf-typegen', 'tanstack-start': 'cf-typegen', nextjs: 'cf:typegen' };
-
 /** What a probe route asks the database per ORM, and what a healthy answer looks like. */
 interface OrmProbe {
   imports: string[];
@@ -56,7 +54,6 @@ async function generateProject(tempDir: string, name: string, stack: Stack, data
   expect(result.exitCode).toBe(0);
   const projectDir = join(tempDir, name);
   expect((await runCommand(['bun', 'install'], projectDir)).exitCode).toBe(0);
-  expect((await runCommand(['bun', 'run', TYPEGEN_SCRIPT[stack]], projectDir)).exitCode).toBe(0);
   return projectDir;
 }
 

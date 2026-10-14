@@ -8,9 +8,13 @@ export interface InstallFailure {
   output: string;
 }
 
+export interface GitFailure {
+  output: string;
+}
+
 interface PostGenerationResult {
   installFailure?: InstallFailure;
-  gitFailure?: string;
+  gitFailure?: GitFailure;
 }
 
 async function installDependencies(ctx: TemplateContext, projectPath: string): Promise<InstallFailure | undefined> {
@@ -26,7 +30,7 @@ async function installDependencies(ctx: TemplateContext, projectPath: string): P
   return { command, output: result.output };
 }
 
-async function initializeGit(projectPath: string): Promise<string | undefined> {
+async function initializeGit(projectPath: string): Promise<GitFailure | undefined> {
   const s = spinner();
   s.start('Initializing git repository...');
   const result = await runCommand('git init', projectPath);
@@ -35,7 +39,7 @@ async function initializeGit(projectPath: string): Promise<string | undefined> {
     return undefined;
   }
   s.stop(color.yellow(`⚠ Warning: Failed to initialize git: ${result.output}\nYou can manually run "git init" later.`));
-  return result.output;
+  return { output: result.output };
 }
 
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {

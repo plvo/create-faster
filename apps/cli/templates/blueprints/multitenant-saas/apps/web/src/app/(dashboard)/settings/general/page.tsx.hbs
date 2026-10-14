@@ -85,8 +85,12 @@ export default function GeneralSettingsPage() {
             }}
             className='space-y-4'
           >
-            <form.AppField name='name' children={(field) => <field.InputField label='Name' />} />
-            <form.AppField name='slug' children={(field) => <field.InputField label='Slug' />} />
+            <form.AppField name='name'>
+              {(field) => <field.InputField label='Name' />}
+            </form.AppField>
+            <form.AppField name='slug'>
+              {(field) => <field.InputField label='Slug' />}
+            </form.AppField>
             <form.AppForm>
               <form.SubmitButton>Save</form.SubmitButton>
             </form.AppForm>
