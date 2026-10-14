@@ -52,5 +52,17 @@ docker.compose.yml          # MySQL service configuration
 
 **Connection String:**
 ```
-mysql://mysql:password@localhost:3306/mysql-{projectName}
+mysql://mysql:password@localhost:3306/mysql-{projectName}?ssl=false
 ```
+
+## TLS
+
+The generated database client (Drizzle or Prisma) asks its driver for TLS and certificate verification when `NODE_ENV=production`. In development it connects without TLS. An `ssl` parameter in `DATABASE_URL` always wins over that default. The two drivers read it differently:
+- **Drizzle** uses `mysql2`, which reads `ssl` as JSON: an object turns TLS on (`ssl={"rejectUnauthorized":false}` skips the certificate check), `ssl=false` turns it off, and `ssl=true` is rejected.
+- **Prisma** uses the MariaDB connector behind its adapter, which reads `ssl=true` as TLS with certificate verification and every other value as no TLS.
+
+In production, use the managed database's connection string without `ssl`: the client adds the parameter its driver needs. `NODE_ENV=production` comes from the same places as for [PostgreSQL](/docs/database/postgresql#tls): `next build` and `vite build` inline it, and the `start` script of a Hono or Node app sets it.
+
+The Docker image serves a self-signed certificate, which a client that asks for TLS rejects, so the generated `.env.example` URL ends with `?ssl=false` and a production build runs against the local database. Keep `ssl=false` for local or other non-TLS databases only, and never copy the local `DATABASE_URL` to production: in production, the generated client logs a warning when `DATABASE_URL` sets `ssl=false` for a host other than localhost. The last `ssl` parameter wins, and a `host` parameter counts as a host too.
+
+With Drizzle or Prisma on Cloudflare, the Worker reaches the database through the `HYPERDRIVE` binding instead, whose connection to the database is configured on the Hyperdrive side. `DATABASE_URL` then only serves the migration CLI (`drizzle-kit` or `prisma`) and the seed script.

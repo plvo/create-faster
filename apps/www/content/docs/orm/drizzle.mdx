@@ -99,7 +99,7 @@ export * from './types';
 
 Adapts automatically based on database selection:
 - **PostgreSQL**: `drizzle-orm/node-postgres`
-- **MySQL**: `drizzle-orm/mysql2`
+- **MySQL**: `drizzle-orm/mysql2`, with TLS on in production unless `DATABASE_URL` sets `ssl` (see [MySQL](/docs/database/mysql#tls))
 - **SQLite**: `drizzle-orm/libsql` (runtime-agnostic libSQL driver, relative paths anchored to the db package root — see [SQLite](/docs/database/sqlite))
 
 ### schema.ts

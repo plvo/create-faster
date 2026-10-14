@@ -18,7 +18,7 @@ const POSTGRES_NODE_ADAPTER = `const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production',
 });`;
-const MYSQL_NODE_ADAPTER = "const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db');";
+const MYSQL_NODE_ADAPTER = "const adapter = new PrismaMariaDb(withProductionTls(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db'));";
 const TYPE_HELPERS = `export type User = Awaited<ReturnType<Client['user']['findUnique']>>;
 export type Post = Awaited<ReturnType<Client['post']['findUnique']>>;`;
 
@@ -155,12 +155,11 @@ describe('Prisma off Cloudflare stays a Node singleton', () => {
     expect(seed).toContain("import { prisma } from '../src/lib/db';");
   });
 
-  test('mysql hands DATABASE_URL to the adapter whole so its TLS settings reach the driver', async () => {
+  test('mysql hands the whole DATABASE_URL to the adapter, with TLS requested in production', async () => {
     const projectPath = await generate('prisma-my-node', ['--app', 'api:hono', '--database', 'mysql', '--orm', 'prisma']);
     const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
     expect(index).toContain(MYSQL_NODE_ADAPTER);
-    expect(index).not.toContain('new URL(');
-    expect(index).not.toContain('hostname');
+    expect(index).toContain('function withProductionTls(databaseUrl: string): string {');
   });
 });
 

@@ -1,0 +1,22 @@
+{{!-- Hash parameter: tlsValue, the `ssl` URL value that makes the driver negotiate TLS and verify the certificate. --}}
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const TLS_VALUE = '{{tlsValue}}';
+
+// Requests TLS in production unless DATABASE_URL sets ssl, and warns when ssl=false (the local .env.example URL) reaches a remote database.
+function withProductionTls(databaseUrl: string): string {
+  if (process.env.NODE_ENV !== 'production') return databaseUrl;
+  try {
+    const url = new URL(databaseUrl);
+    const ssl = url.searchParams.getAll('ssl').pop();
+    if (ssl === undefined) return `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}ssl=${TLS_VALUE}`;
+    const remoteHost = [url.hostname, ...url.searchParams.getAll('host')].find((host) => !LOCAL_HOSTS.has(host));
+    if (ssl === 'false' && remoteHost) {
+      console.warn(
+        `[db] DATABASE_URL disables TLS for ${remoteHost} in production, so the connection is not encrypted: drop ssl=false unless this database has no TLS.`,
+      );
+    }
+  } catch {
+    // The driver reports a malformed DATABASE_URL itself when it connects.
+  }
+  return databaseUrl;
+}
