@@ -15,6 +15,34 @@ export function getProjectAddon(category: string, name: string): MetaAddon | und
   return cat.options[name];
 }
 
+export function resolveCompositeAddons(
+  category: ProjectCategoryName,
+  addonName: string,
+): { name: string; addon: MetaAddon }[] {
+  const addon = META.project[category].options[addonName];
+  if (!addon) return [];
+  if (!addon.compose) return [{ name: addonName, addon }];
+
+  const parts: { name: string; addon: MetaAddon }[] = [];
+  for (const name of addon.compose) {
+    const composed = META.project[category].options[name];
+    if (composed) parts.push({ name, addon: composed });
+  }
+  parts.push({ name: addonName, addon });
+  return parts;
+}
+
+/** The selected project addons in category order, each composite addon preceded by the addons it composes. */
+export function getSelectedProjectAddons(ctx: TemplateContext): MetaAddon[] {
+  const categories = Object.keys(META.project) as ProjectCategoryName[];
+
+  return categories.flatMap((category) => {
+    const selection = ctx.project[category];
+    const names = Array.isArray(selection) ? selection : selection ? [selection] : [];
+    return names.flatMap((name) => resolveCompositeAddons(category, name).map(({ addon }) => addon));
+  });
+}
+
 export function isCategoryValueAllowedByLibraries(
   categoryName: ProjectCategoryName,
   value: string,

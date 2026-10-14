@@ -1,9 +1,9 @@
 import { META } from '@/__meta__';
-import { getProjectAddon } from '@/lib/addon-utils';
+import { getSelectedProjectAddons } from '@/lib/addon-utils';
 import { collectEnvGroups } from '@/lib/env-generator';
 import { getScriptCommand } from '@/lib/package-manager';
 import type { TemplateContext } from '@/types/ctx';
-import type { FirstRunCommand, FirstRunStep, ProjectCategoryName } from '@/types/meta';
+import type { FirstRunCommand, FirstRunStep } from '@/types/meta';
 
 interface ResolvedFirstRunStep {
   description: string;
@@ -27,13 +27,7 @@ function collectEnvStep(ctx: TemplateContext): ResolvedFirstRunStep[] {
 }
 
 function collectAddonSteps(ctx: TemplateContext): FirstRunStep[] {
-  const categories = Object.keys(META.project) as ProjectCategoryName[];
-
-  return categories.flatMap((category) => {
-    const selection = ctx.project[category];
-    const names = Array.isArray(selection) ? selection : selection ? [selection] : [];
-    return names.flatMap((name) => getProjectAddon(category, name)?.firstRun ?? []);
-  });
+  return getSelectedProjectAddons(ctx).flatMap((addon) => addon.firstRun ?? []);
 }
 
 /** The commands a fresh project runs before `dev`, in order: the README and the CLI summary both print them. */
