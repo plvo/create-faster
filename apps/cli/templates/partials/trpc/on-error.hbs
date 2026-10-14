@@ -1,6 +1,13 @@
-{{!-- dev: the caller runtime's expression that is true in development --}}
+{{!-- dev: the caller runtime's expression that is true in development; rethrow (optional): the caller's function that throws the errors its framework uses as control flow --}}
 // An unexpected error reaches the client as a generic message, so the server log is the only place it stays visible.
 onError: ({ path, error }) => {
+{{#if rethrow}}
+  try {
+    {{rethrow}}(error);
+  } catch {
+    return;
+  }
+{{/if}}
   if (error.code === 'INTERNAL_SERVER_ERROR') {
     console.error(`tRPC failed on ${path ?? '<no-path>'}:`, error);
   } else if ({{dev}}) {

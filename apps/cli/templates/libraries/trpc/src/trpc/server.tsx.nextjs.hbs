@@ -20,6 +20,7 @@ import { cache } from 'react';
 import { makeQueryClient } from '@/trpc/query-client';
 {{/if}}
 import { headers } from 'next/headers';
+import { unstable_rethrow } from 'next/navigation';
 {{#if (isMono)}}
 import { {{#if (hasLibrary "tanstack-query")}}type AppRouter, {{/if}}appRouter, createTRPCContext } from '@repo/api';
 {{else}}
@@ -52,7 +53,7 @@ export const trpc = createTRPCOptionsProxy({
         router: appRouter,
         transformer: superjson,
         createContext: getTRPCContext,
-        {{> trpc/on-error dev="process.env.NODE_ENV === 'development'"}}
+        {{> trpc/on-error dev="process.env.NODE_ENV === 'development'" rethrow="unstable_rethrow"}}
       }),
     ],
   }),
@@ -79,6 +80,6 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<ResolverDef>>>(qu
 }
 {{else}}
 export const trpc = appRouter.createCaller(getTRPCContext, {
-  {{> trpc/on-error dev="process.env.NODE_ENV === 'development'"}}
+  {{> trpc/on-error dev="process.env.NODE_ENV === 'development'" rethrow="unstable_rethrow"}}
 });
 {{/if}}
