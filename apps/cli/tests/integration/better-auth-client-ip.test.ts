@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 const CLOUDFLARE_HEADER = "ipAddressHeaders: ['cf-connecting-ip']";
 const FORWARDED_HEADER = "ipAddressHeaders: ['x-forwarded-for']";
@@ -13,6 +13,7 @@ interface Generation {
 }
 
 const NEXTJS_SQLITE_ARGS = ['--app', 'web:nextjs:better-auth', '--database', 'sqlite', '--orm', 'drizzle'];
+const START_NITRO_ARGS = ['--app', 'web:tanstack-start:better-auth', '--database', 'sqlite', '--orm', 'drizzle'];
 const START_CLOUDFLARE_D1_ARGS = [
   '--app',
   'web:tanstack-start:better-auth',
@@ -87,6 +88,7 @@ const BLUEPRINTS: { blueprint: string; authFile: string; trustedHeader: string }
   { blueprint: 'cloudflare-fullstack', authFile: 'packages/auth/src/auth.ts', trustedHeader: CLOUDFLARE_HEADER },
 ];
 
+const NITRO_PLUGIN = 'src/lib/nitro/client-ip.ts';
 const COMMON_ARGS = ['--no-git', '--no-install', '--pm', 'bun'];
 
 describe('better-auth trusts one client ip header for rate limiting', () => {
@@ -140,6 +142,51 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
     });
   }
 
+  test('a Start app on Nitro fills x-forwarded-for with the connection address through a Nitro plugin', async () => {
+    const projectPath = await generate('start-nitro', START_NITRO_ARGS);
+    const plugin = await readTextFile(join(projectPath, NITRO_PLUGIN));
+    expect(plugin).toContain("event.req.headers.has('x-forwarded-for')");
+    expect(plugin).toContain('event.req.ip');
+    expect(await readTextFile(join(projectPath, 'vite.config.ts'))).toContain(
+      `nitro({ plugins: ['./${NITRO_PLUGIN}'] })`,
+    );
+  });
+
+  test('a Start app in a turborepo gets the Nitro plugin in its own app', async () => {
+    const projectPath = await generate('start-nitro-turbo', [
+      '--app',
+      'web:tanstack-start:better-auth',
+      '--app',
+      'api:hono',
+      '--database',
+      'sqlite',
+      '--orm',
+      'drizzle',
+    ]);
+    expect(await fileExists(join(projectPath, 'apps/web', NITRO_PLUGIN))).toBe(true);
+    expect(await readTextFile(join(projectPath, 'apps/web/vite.config.ts'))).toContain(
+      `nitro({ plugins: ['./${NITRO_PLUGIN}'] })`,
+    );
+  });
+
+  const WITHOUT_NITRO_PLUGIN = [
+    { name: 'a Start app on Cloudflare', args: START_CLOUDFLARE_D1_ARGS, viteConfig: true },
+    {
+      name: 'a Start app without better-auth',
+      args: ['--app', 'web:tanstack-start', '--database', 'sqlite', '--orm', 'drizzle'],
+      viteConfig: true,
+    },
+    { name: 'a Next.js app', args: NEXTJS_SQLITE_ARGS, viteConfig: false },
+  ];
+
+  for (const { name, args, viteConfig } of WITHOUT_NITRO_PLUGIN) {
+    test(`${name} gets no Nitro client address plugin`, async () => {
+      const projectPath = await generate(`no-plugin-${name.replaceAll(' ', '-')}`, args);
+      expect(await fileExists(join(projectPath, NITRO_PLUGIN))).toBe(false);
+      if (viteConfig) expect(await readTextFile(join(projectPath, 'vite.config.ts'))).not.toContain('client-ip');
+    });
+  }
+
   test('the agent notes tell a non-Cloudflare deployment to run behind a proxy that overwrites x-forwarded-for and how to set trustedProxies for a chain', async () => {
     const projectPath = await generate('notes-none', NEXTJS_SQLITE_ARGS);
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
@@ -147,6 +194,14 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
     expect(agents).toContain('reverse proxy or CDN');
     expect(agents).toContain('no-trusted-ip');
     expect(agents).toContain('advanced.ipAddress.trustedProxies');
+    expect(agents).not.toContain(NITRO_PLUGIN);
+  });
+
+  test('the Start agent notes name the Nitro plugin that fills x-forwarded-for, and not on Cloudflare', async () => {
+    const nitro = await readTextFile(join(await generate('notes-start-nitro', START_NITRO_ARGS), 'AGENTS.md'));
+    expect(nitro).toContain(NITRO_PLUGIN);
+    const cloudflare = await readTextFile(join(await generate('notes-start-cf', START_CLOUDFLARE_D1_ARGS), 'AGENTS.md'));
+    expect(cloudflare).not.toContain(NITRO_PLUGIN);
   });
 
   test('the agent notes name cf-connecting-ip on Cloudflare', async () => {

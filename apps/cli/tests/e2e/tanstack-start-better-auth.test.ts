@@ -8,6 +8,7 @@ import {
   expectAuthApiFlow,
   expectMixedUsersKeepTheirOwnSession,
   expectRateLimitKeysOn,
+  expectRateLimitKeysOnConnectionAddress,
   expectSignedInFlow,
   expectTrpcAnonymousSession,
   expectTrpcReadsWithoutRefreshing,
@@ -48,6 +49,7 @@ import {
 // With tRPC on the Start app: procedures over the API route and in a streamed SSR render, a Date kept through
 // hydration, the protected procedure, the session shared with getSession, and no server code in the client.
 // On both stacks, production errors hide internal details and the API route refuses cross-origin writes.
+// On both stacks, a request without x-forwarded-for is rate limited per connection address, and a proxy header wins.
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_DB = 120_000;
@@ -261,6 +263,7 @@ describe.each(SCENARIOS)(
           await expectAnonymousFlow(server.url);
           if (liveDatabase) {
             await expectRateLimitKeysOn(server.url, 'x-forwarded-for');
+            await expectRateLimitKeysOnConnectionAddress(server.url);
             await expectSignedInFlow(server.url);
             await expectMixedUsersKeepTheirOwnSession(server.url);
           }
@@ -319,6 +322,7 @@ describe.each(SCENARIOS)(
           await expectTrpcAnonymousSession(server.url);
           if (liveDatabase) {
             await expectRateLimitKeysOn(server.url, 'x-forwarded-for');
+            await expectRateLimitKeysOnConnectionAddress(server.url);
             const user = await expectAuthApiFlow(server.url);
             await expectTrpcReadsWithoutRefreshing(server.url, dbPath(), user);
           }

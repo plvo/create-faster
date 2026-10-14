@@ -1,0 +1,17 @@
+---
+mono:
+  scope: app
+deploymentSkip:
+  - cloudflare
+  - cloudflare-static
+---
+import { definePlugin } from 'nitro';
+
+// Rate limiting keys on x-forwarded-for. A proxy in front of the app sets it; a request that reaches the
+// server directly has none, and would share one bucket with every other client, so it gets its socket address.
+export default definePlugin((nitroApp) => {
+  nitroApp.hooks.hook('request', (event) => {
+    if (event.req.headers.has('x-forwarded-for') || !event.req.ip) return;
+    event.req.headers.set('x-forwarded-for', event.req.ip);
+  });
+});

@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { expect } from 'bun:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { request } from 'node:http';
 import { dirname, join } from 'node:path';
 
 export const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-e2e';
@@ -126,6 +127,55 @@ export async function expectRateLimitKeysOn(baseUrl: string, trusted: ClientIpHe
 
   const rotatingTrusted = await signUpStatuses(baseUrl, () => ({ [trusted]: randomIp() }));
   expect(rotatingTrusted).toEqual(Array(SIGN_UP_ATTEMPTS).fill(200));
+}
+
+const FIRST_CLIENT_ADDRESS = '127.0.0.2';
+const SECOND_CLIENT_ADDRESS = '127.0.0.3';
+const PROXIED_CLIENT_IP = '203.0.113.8';
+
+// A request carries no way to choose its source address through fetch, so the probe opens the connection
+// itself from a given loopback address (Linux answers on all of 127.0.0.0/8).
+function signUpStatusFrom(baseUrl: string, localAddress: string, headers: Record<string, string>): Promise<number> {
+  const email = `${crypto.randomUUID()}@example.com`;
+  const body = JSON.stringify({ email, password: PASSWORD, name: email });
+  return new Promise((resolve, reject) => {
+    const req = request(
+      new URL('/api/auth/sign-up/email', baseUrl),
+      { method: 'POST', localAddress, headers: { 'content-type': 'application/json', origin: baseUrl, ...headers } },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode ?? 0);
+      },
+    );
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+async function signUpStatusesFrom(baseUrl: string, localAddress: string, headers: Record<string, string>): Promise<number[]> {
+  const statuses: number[] = [];
+  for (let attempt = 0; attempt < SIGN_UP_ATTEMPTS; attempt++) {
+    statuses.push(await signUpStatusFrom(baseUrl, localAddress, headers));
+  }
+  return statuses;
+}
+
+const withinLimit = (statuses: number[]): number[] => statuses.filter((status) => status === 200);
+
+// A server exposed directly gets requests with no x-forwarded-for: each client address must still get its own
+// bucket, as `next start` gives it. When a proxy sets the header, the header wins over the connection address.
+export async function expectRateLimitKeysOnConnectionAddress(baseUrl: string): Promise<void> {
+  for (const address of [FIRST_CLIENT_ADDRESS, SECOND_CLIENT_ADDRESS]) {
+    const direct = await signUpStatusesFrom(baseUrl, address, {});
+    expect(withinLimit(direct), `no header from ${address}: ${direct}`).toHaveLength(SIGN_UP_LIMIT);
+    expect(direct).toContain(429);
+  }
+
+  const header = { 'x-forwarded-for': PROXIED_CLIENT_IP };
+  const proxiedFirst = await signUpStatusesFrom(baseUrl, FIRST_CLIENT_ADDRESS, header);
+  expect(withinLimit(proxiedFirst), `proxied from ${FIRST_CLIENT_ADDRESS}: ${proxiedFirst}`).toHaveLength(SIGN_UP_LIMIT);
+  const proxiedSecond = await signUpStatusesFrom(baseUrl, SECOND_CLIENT_ADDRESS, header);
+  expect(proxiedSecond, `proxied from ${SECOND_CLIENT_ADDRESS}: ${proxiedSecond}`).toEqual(Array(SIGN_UP_ATTEMPTS).fill(429));
 }
 
 function readSession(baseUrl: string, cookie: string): Promise<Response> {

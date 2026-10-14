@@ -48,7 +48,11 @@ const config = defineConfig(({{#if (has "deployment" "cloudflare")}}{ command }{
 {{/if}}
     viteReact({{#if (hasLibrary "mdx")}}{ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }{{/if}}),
 {{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
+{{#if (hasLibrary "better-auth")}}
+    nitro({ plugins: ['./src/lib/nitro/client-ip.ts'] }),
+{{else}}
     nitro(),
+{{/if}}
 {{/unless}}
   ],
 }))
