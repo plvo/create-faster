@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, expectOnErrorLogsInternals, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, expectOnErrorLogsInternals, expectOnErrorSkipsFrameworkErrors, readTextFile, runCli } from './helpers';
 
 const COMMON_ARGS = ['--no-git', '--no-install', '--pm', 'bun'];
 
@@ -48,14 +48,21 @@ describe('tRPC server error logging', () => {
     await cleanupTempDir(tempDir);
   });
 
-  async function expectEveryServerCallSiteLogsInternals(name: string, args: string[]): Promise<void> {
+  async function expectEveryServerCallSiteLogsInternals(name: string, args: string[]): Promise<string[]> {
     const result = await runCli([name, ...args, ...COMMON_ARGS], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
     const callSites = await findTrpcServerCallSites(join(tempDir, name));
     expect(callSites.length).toBeGreaterThan(0);
+    const nextServerCallSites: string[] = [];
     for (const file of callSites) {
-      expectOnErrorLogsInternals(await readTextFile(file));
+      const source = await readTextFile(file);
+      expectOnErrorLogsInternals(source);
+      if (file.endsWith('trpc/server.tsx')) {
+        expectOnErrorSkipsFrameworkErrors(source);
+        nextServerCallSites.push(file);
+      }
     }
+    return nextServerCallSites;
   }
 
   test('the blueprints that ship tRPC are found in META', () => {
@@ -64,7 +71,8 @@ describe('tRPC server error logging', () => {
 
   describe.each(LIBRARY_GENERATIONS)('library, $name', ({ name, args }) => {
     test('every generated server call site logs unexpected errors in every environment', async () => {
-      await expectEveryServerCallSiteLogsInternals(`library-${name}`, args);
+      const nextServerCallSites = await expectEveryServerCallSiteLogsInternals(`library-${name}`, args);
+      expect(nextServerCallSites).toHaveLength(name.startsWith('nextjs') ? 1 : 0);
     });
   });
 
