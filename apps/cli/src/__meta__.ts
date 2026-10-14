@@ -1077,7 +1077,7 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id',
+          value: 'NEXT_PUBLIC_PRIVY_APP_ID=replace-with-privy-app-id',
           monoScope: ['app'],
         },
         {
