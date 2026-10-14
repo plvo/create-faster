@@ -3,13 +3,14 @@ import { join } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isProjectCategoryAvailable, isRequirementMet } from '@/lib/addon-utils';
+import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
+import { isInteractiveTerminal, shouldPromptCategory } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
-import type { AppContext, PackageManager, TemplateContext } from '@/types/ctx';
+import type { AppContext, PackageManager, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { S_GRAY_BAR } from './tui/symbols';
@@ -50,49 +51,11 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   }
   progress.next();
 
-  const hasAnyFlags = partial && Object.keys(partial).length > 0;
-
-  if (hasAnyFlags) {
-    if (partial?.project) {
-      ctx.project = partial.project;
-    }
-    const parts: string[] = [];
-    if (ctx.project.database) parts.push(`database: ${ctx.project.database}`);
-    if (ctx.project.orm) parts.push(`orm: ${ctx.project.orm}`);
-    if (ctx.project.deployment) parts.push(`deployment: ${ctx.project.deployment}`);
-    if (ctx.project.linter) parts.push(`linter: ${ctx.project.linter}`);
-    if (ctx.project.tooling.length > 0) parts.push(`tooling: ${ctx.project.tooling.join(', ')}`);
-    if (parts.length > 0) {
-      log.info(`${color.green('✓')} Using project config: ${parts.join(', ')}`);
-    }
-  } else {
-    for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
-      if (!isProjectCategoryAvailable(categoryName, ctx)) {
-        continue;
-      }
-
-      const result = await promptProjectCategory(categoryName, ctx);
-
-      switch (categoryName) {
-        case 'database':
-          ctx.project.database = result as string | undefined;
-          progress.next();
-          break;
-        case 'orm':
-          ctx.project.orm = result as string | undefined;
-          break;
-        case 'deployment':
-          ctx.project.deployment = result as string | undefined;
-          break;
-        case 'linter':
-          ctx.project.linter = result as string | undefined;
-          break;
-        case 'tooling':
-          ctx.project.tooling = (result as string[]) ?? [];
-          break;
-      }
-    }
+  if (partial?.project) {
+    ctx.project = { ...partial.project, tooling: [...partial.project.tooling] };
   }
+  logProjectConfig(ctx.project);
+  await promptUnansweredCategories(ctx, Object.keys(META.project) as ProjectCategoryName[], partial, progress);
   progress.next();
 
   ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
@@ -142,28 +105,19 @@ export async function blueprintCli(
   if (partial?.project?.deployment) {
     ctx.project.deployment = partial.project.deployment;
     log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
-  } else if (!partial?.project && !ctx.project.deployment) {
-    const deploymentResult = await promptProjectCategory('deployment', ctx);
-    ctx.project.deployment = deploymentResult as string | undefined;
   }
 
   if (partial?.project?.linter) {
     ctx.project.linter = partial.project.linter;
     log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
-  } else if (!partial?.project) {
-    const linterResult = await promptProjectCategory('linter', ctx);
-    ctx.project.linter = linterResult as string | undefined;
   }
 
   if (partial?.project?.tooling && partial.project.tooling.length > 0) {
     ctx.project.tooling = partial.project.tooling;
     log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
-  } else if (!partial?.project) {
-    if (isProjectCategoryAvailable('tooling', ctx)) {
-      const toolingResult = await promptProjectCategory('tooling', ctx);
-      ctx.project.tooling = (toolingResult as string[]) ?? [];
-    }
   }
+
+  await promptUnansweredCategories(ctx, ['deployment', 'linter', 'tooling'], partial);
   progress.next();
 
   ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
@@ -180,6 +134,53 @@ export async function blueprintCli(
   progress.next();
 
   return ctx;
+}
+
+function logProjectConfig(project: ProjectContext): void {
+  const parts: string[] = [];
+  if (project.database) parts.push(`database: ${project.database}`);
+  if (project.orm) parts.push(`orm: ${project.orm}`);
+  if (project.deployment) parts.push(`deployment: ${project.deployment}`);
+  if (project.linter) parts.push(`linter: ${project.linter}`);
+  if (project.tooling.length > 0) parts.push(`tooling: ${project.tooling.join(', ')}`);
+  if (parts.length > 0) {
+    log.info(`${color.green('✓')} Using project config: ${parts.join(', ')}`);
+  }
+}
+
+async function promptUnansweredCategories(
+  ctx: Omit<TemplateContext, 'repo'>,
+  categoryNames: ProjectCategoryName[],
+  partial: Partial<TemplateContext> | undefined,
+  progress?: Progress,
+): Promise<void> {
+  const mode = { hasFlags: Object.keys(partial ?? {}).length > 0, interactive: isInteractiveTerminal() };
+
+  for (const categoryName of categoryNames) {
+    if (shouldPromptCategory(categoryName, ctx, mode)) {
+      const result = await promptProjectCategory(categoryName, ctx);
+
+      switch (categoryName) {
+        case 'database':
+          ctx.project.database = result as string | undefined;
+          break;
+        case 'orm':
+          ctx.project.orm = result as string | undefined;
+          break;
+        case 'deployment':
+          ctx.project.deployment = result as string | undefined;
+          break;
+        case 'linter':
+          ctx.project.linter = result as string | undefined;
+          break;
+        case 'tooling':
+          ctx.project.tooling = (result as string[]) ?? [];
+          break;
+      }
+    }
+
+    if (categoryName === 'database') progress?.next();
+  }
 }
 
 async function promptOrUseProjectName(partial: Partial<TemplateContext> | undefined, message: string): Promise<string> {

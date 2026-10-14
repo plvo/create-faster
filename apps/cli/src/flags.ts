@@ -95,6 +95,10 @@ export function parseFlags(): Partial<TemplateContext> {
     .addHelpText(
       'after',
       `
+${color.bold('Prompts:')}
+  In an interactive terminal, every database, ORM, deployment, linter and tooling choice that no
+  flag answers is prompted. Without a terminal (CI, scripts) those are not prompted and stay empty.
+
 ${color.bold('Examples:')}
   ${color.gray('Single app:')}
     $ ${color.blue('npx create-faster myapp')} --app myapp:nextjs:shadcn,tanstack-query

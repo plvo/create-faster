@@ -14,7 +14,7 @@ Pass flags to create a project without interactive prompts:
 bunx create-faster my-project [options]
 ```
 
-You can combine flags with prompts for a hybrid approach: provide known values via flags and let the CLI prompt for the rest.
+You can combine flags with prompts for a hybrid approach: provide known values via flags and, in an interactive terminal, the CLI prompts for the database, ORM, deployment, linter and tooling you did not set. Without a terminal (CI, scripts, agents) those are not prompted and stay empty.
 
 ## Available Flags
 
