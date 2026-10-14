@@ -110,7 +110,7 @@ describe('tRPC Integration', () => {
     test('agent docs say a page that prefetches must be dynamic', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
       expect(agents).toContain('prefetch(trpc.hello.greet.queryOptions({ name: \'world\' }))');
-      expect(agents).toContain('await connection()');
+      expect(agents).toContain('awaiting `connection()` from `next/server`');
       expect(agents).toContain("export const dynamic = 'force-dynamic'");
     });
 

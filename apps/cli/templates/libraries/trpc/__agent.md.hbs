@@ -48,3 +48,9 @@ function Greeting() {
 - The context reads the session through `getRequestSession(headers, load)`, the per-request cache the `getSession` server function reads too: a request that calls both looks the session up once, through the instance that starts first. When a page must refresh the session, await `getSession()` in `beforeLoad`: it then runs before the procedures of the loaders.
 {{/if}}
 {{/if}}
+{{#if (and (eq stackName "nextjs") (hasLibrary "tanstack-query"))}}
+
+**Next.js**
+- Prefetch in a Server Component with `prefetch(trpc.hello.greet.queryOptions({ name: 'world' }))` from `src/trpc/server.tsx`, and wrap what reads the query in `HydrateClient`. Procedures run in memory through `unstable_localLink`, and `createTRPCContext` reads `headers()`: a page that prefetches depends on the request, so it must be dynamic. On a static page `next build` fails with `Error occurred prerendering page` (the error is redacted): the prefetch is not awaited, so TanStack Query turns the dynamic-usage error of `headers()` into a rejected query that reaches the client instead of letting Next switch the route to dynamic.
+- Make the page dynamic with `export const dynamic = 'force-dynamic'`, or by awaiting `connection()` from `next/server` at the top of the async page, before the prefetch. A page under a layout that already reads the request (`headers()`, `cookies()`, the session) is dynamic already.
+{{/if}}

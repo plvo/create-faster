@@ -196,6 +196,25 @@ export function prefetch<T extends ReturnType<TRPCQueryOptions<any>>>(queryOptio
 }
 ```
 
+**Prefetching makes the page dynamic.** `createTRPCContext` reads `headers()`, so a page that prefetches depends on the request. `prefetch` is not awaited: on a static page, TanStack Query turns the dynamic-usage error of `headers()` into a rejected query that is dehydrated to the client, and `next build` fails with `Error occurred prerendering page` (the error is redacted) instead of switching the route to dynamic. Make the page dynamic, either with the route segment option or by awaiting `connection()` before the prefetch:
+
+```tsx title="src/app/page.tsx"
+import { connection } from 'next/server';
+import { HydrateClient, prefetch, trpc } from '@/trpc/server';
+
+export default async function Page() {
+  await connection();
+  prefetch(trpc.hello.greet.queryOptions({ name: 'world' }));
+  return <HydrateClient>{/* components reading the query with useSuspenseQuery */}</HydrateClient>;
+}
+```
+
+```tsx
+export const dynamic = 'force-dynamic';
+```
+
+A page under a layout that already reads the request (`headers()`, `cookies()`, the session) is dynamic already, which is the case of the blueprints' dashboards.
+
 **Without TanStack Query** — provides a direct caller for server-side procedure calls:
 
 ```ts title="src/trpc/server.tsx"
