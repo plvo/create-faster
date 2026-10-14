@@ -100,4 +100,33 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     expect(cron.secrets).toBeUndefined();
     expect(cron.d1_databases).toHaveLength(1);
   });
+
+  test('the Next.js notes say .env is bundled into the Worker and how secrets reach production', async () => {
+    const root = await generate('notes-nextjs', ['--app', 'web:nextjs:better-auth', ...D1]);
+    const notes = await readTextFile(join(root, 'AGENTS.md'));
+
+    expect(notes).toContain('.open-next/cloudflare/next-env.mjs');
+    expect(notes).toContain('where `.env` holds no real secret');
+    expect(notes).toContain('bun run deploy -- --secrets-file .prod.env');
+    expect(notes).toContain('run it again after every `.env` change');
+    expect(notes).not.toContain('Wrangler ignores `.env`');
+  });
+
+  test('the Start notes say dist/server/.dev.vars is a local copy that is never deployed', async () => {
+    const root = await generate('notes-start', ['--app', 'web:tanstack-start:better-auth', ...D1]);
+    const notes = await readTextFile(join(root, 'AGENTS.md'));
+
+    expect(notes).toContain('`dist/server/.dev.vars`, a local copy of `.env` for `vite preview`');
+    expect(notes).toContain('Never ship `dist` other than through `wrangler deploy`');
+  });
+
+  test('the cloudflare-fullstack deploy notes no longer claim Wrangler reads .env or that only public values come from it', async () => {
+    const root = await generate('notes-fullstack', ['--blueprint', 'cloudflare-fullstack']);
+    const deploy = await readTextFile(join(root, 'docs/agents/cloudflare-deploy.md'));
+
+    expect(deploy).toContain('`secrets.required`');
+    expect(deploy).toContain('bundles every `.env*` value');
+    expect(deploy).not.toContain('Wrangler does not read `.env` here');
+    expect(deploy).not.toContain('Only `NEXT_PUBLIC_*` and other build-time config come from `.env`');
+  });
 });

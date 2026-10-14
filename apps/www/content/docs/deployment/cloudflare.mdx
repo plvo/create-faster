@@ -111,9 +111,38 @@ The Worker `name` is the project name in single mode and `<project>-<app>` in tu
 **Modified files:**
 - `.gitignore` - Ignores `.wrangler/` and `cloudflare-env.d.ts`; for Next.js apps it also ignores `.open-next/` and `.prod.env`.
 
-**Local secrets:**
+## Runtime secrets
 
-Wrangler 4.x and the Vite plugin read local secrets and variables from `.env` (already gitignored). Put your local values there and run the preview script. Production secrets are managed with `wrangler secret put <KEY>`. We standardize on `.env` rather than `.dev.vars` because Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
+A variable that META marks as a server-side secret (`secret: true` on its `envs` entry: `BETTER_AUTH_SECRET` for [Better Auth](/docs/modules/auth/better-auth), for example) is listed in the `wrangler.jsonc` of every Worker app that receives it, under Wrangler's `secrets.required`:
+
+```jsonc title="wrangler.jsonc"
+"secrets": {
+  "required": ["BETTER_AUTH_SECRET"]
+}
+```
+
+An app without such a variable gets no `secrets` field. In a turborepo each Worker lists only its own: a Next.js app with Better Auth and a Hono app without it get different files. Public values (`NEXT_PUBLIC_*`, `VITE_*`) are never secrets.
+
+With the field present:
+
+- `wrangler deploy` fails until each secret is set. `wrangler secret put <KEY>` sets one on an existing Worker. A new Worker does not exist yet, so its first deploy takes them from a gitignored file (`wrangler deploy --secrets-file <file>`, with a file you keep out of git; for Next.js the `deploy` script takes `-- --secrets-file .prod.env`, a file the generated `.gitignore` lists).
+- Local runs (`wrangler dev`, `vite preview`) warn about a missing one.
+- `wrangler types` types each one as `string` in `cloudflare-env.d.ts`, whether or not a `.env` exists.
+
+Local secrets go in `.env` (already gitignored), not `.dev.vars`: Wrangler ignores `.env` whenever a `.dev.vars` file is present, which would silently shadow it.
+
+### Next.js: `.env` is bundled into the Worker
+
+`build:cf` bundles every `.env*` value, server secrets included, into the Worker (`.open-next/cloudflare/next-env.mjs`) as a `process.env` fallback, and OpenNext has no opt-out. A secret set with `wrangler secret put` wins at runtime, but the bundled value is used silently when the secret was never set. So:
+
+- Build the Worker you deploy where `.env` holds no real secret: in CI, or from a checkout without a `.env`.
+- Set production secrets with `wrangler secret put`, or `--secrets-file` on the first deploy.
+- `preview` serves the build as it is: the `.env` values are frozen when `build:cf` runs, so run it again after each `.env` change.
+- Wrangler does not load `.env` for this preview (OpenNext handles it), so `preview` warns about a missing required secret even when `.env` holds it. The warning is safe to ignore then.
+
+### TanStack Start: `dist/server/.dev.vars`
+
+`vite build` writes `dist/server/.dev.vars`, a local copy of `.env` for `vite preview` (only the `secrets.required` keys when the Worker lists any). `wrangler deploy` does not upload it. Never ship `dist` other than through `wrangler deploy`, and rebuild after editing `.env`.
 
 **Turborepo mode:**
 `wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named `<project>-<app>`. Run the scripts from the app directory.
