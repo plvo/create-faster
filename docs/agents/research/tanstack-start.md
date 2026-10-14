@@ -177,7 +177,7 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 
 ### 3.6 Static Cloudflare hosting (#175, decision #182)
 
-**Answer.** Full prerender by Start alone, without Nitro or `@cloudflare/vite-plugin`: `tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })`, served from `dist/client` by the same assets-only `wrangler.jsonc` as Next.js (no `main`, `not_found_handling: "404-page"`). Server routes and server functions return 404. The SPA shell stays documented only. Start cannot prerender a not-found response, so the 404 page needs a workaround.
+**Answer.** Full prerender by Start alone, without Nitro or `@cloudflare/vite-plugin`: `tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })`, served from `dist/client` by the same assets-only `wrangler.jsonc` as Next.js (no `main`, `not_found_handling: "404-page"`). Server routes and server functions return 404. The SPA shell stays documented only. Start cannot prerender a not-found response, so the 404 page comes from a catch-all route (see Decisions).
 
 **Verified facts** (build, typecheck, `wrangler deploy --dry-run`, `wrangler dev` with a browser)
 - Next.js today: `require: { stacks: ['nextjs'] }`, `providesServerRuntime: false`, `wrangler.jsonc.nextjs.hbs` (`assets.directory: "out"`, no `main`), `output: 'export'` + `images.unoptimized`, `proxy.ts` skipped by `deploymentSkip`.
@@ -200,7 +200,7 @@ Every check below is local: build, Nitro `start`, `vite preview` in workerd, a b
 
 **Decisions (#182)**
 - Full prerender.
-- 404 through a prerendered `/404` route plus the root `notFoundComponent`, accepting React hydration warning #418 on unknown URLs.
+- 404 through a catch-all route (`src/routes/$.tsx`, `createFileRoute('/$')`) rendering the `NotFound` component, with `pages: [{ path: '/404' }]` in `tanstackStart(...)` so the prerenderer writes `404.html`; the root `notFoundComponent` stays for loaders that throw `notFound()`. `404.html` is hydrated at the real URL, so the router must match the same route on both sides: with a dedicated `/404` route the server tree holds `Suspense > Match(/404)` while the client matches nothing and renders the root `notFoundComponent` (`Outlet` skips `Suspense` for a global not-found), and React throws hydration error #418. The catch-all matches `/404` during prerender and any unknown URL in the browser, so both trees are identical. Status 404 comes from `not_found_handling: "404-page"`, not from the page. Trade-off: in `vite dev` the catch-all is a real route, so an unknown URL answers 200 with the not-found page; only the deployed static output answers 404.
 - `autoSubfolderIndex: false`.
 - Only linked pages are generated; `pages` is documented.
 - Server function limits are documented; no `staticFunctionMiddleware`.
