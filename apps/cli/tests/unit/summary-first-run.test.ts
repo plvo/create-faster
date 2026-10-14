@@ -68,6 +68,47 @@ describe('summary first-run steps', () => {
     expect(output).not.toContain('pnpm run db:push');
   });
 
+  for (const pm of ['bun', 'npm', 'pnpm'] as const) {
+    test(`with ${pm} and no installation, the install is the first step after cd`, () => {
+      const output = summarize({
+        projectName: 'demo',
+        repo: 'single',
+        apps: [nextjsApp],
+        project: { database: 'postgres', orm: 'drizzle', tooling: [] },
+        git: false,
+        pm,
+        skipInstall: true,
+      });
+
+      expectInOrder(output, ['cd demo', `${pm} install`, 'cp .env.example .env', `${pm} run dev`]);
+    });
+
+    test(`with ${pm} installed by the CLI, the summary has no install step`, () => {
+      const output = summarize({
+        projectName: 'demo',
+        repo: 'single',
+        apps: [nextjsApp],
+        project: { tooling: [] },
+        git: false,
+        pm,
+      });
+
+      expect(output).not.toContain(`${pm} install`);
+    });
+  }
+
+  test('without a package manager nothing is installed, so the install step uses npm', () => {
+    const output = summarize({
+      projectName: 'demo',
+      repo: 'single',
+      apps: [nextjsApp],
+      project: { tooling: [] },
+      git: false,
+    });
+
+    expectInOrder(output, ['cd demo', 'npm install', 'npm run dev']);
+  });
+
   test('Prisma pushes the schema and never runs the interactive migrate', () => {
     const output = summarize({
       projectName: 'demo',

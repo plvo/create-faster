@@ -145,6 +145,11 @@ function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string
 
   steps.push(`cd ${ctx.projectName}`);
   steps.push('');
+  if (ctx.skipInstall || !ctx.pm) {
+    steps.push('# Install dependencies:');
+    steps.push(`${ctx.pm ?? 'npm'} install`);
+    steps.push('');
+  }
   for (const { description, commands } of collectFirstRunSteps(ctx)) {
     steps.push(`# ${description}:`);
     steps.push(...commands);
