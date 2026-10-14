@@ -80,7 +80,7 @@ Select a database provider.
 
 **Options**: `postgres`, `mysql`, `sqlite`, `d1`
 
-With `--database d1`, `--deployment cloudflare` is required. `sqlite` is rejected with `--deployment cloudflare`: Workers have no filesystem, use `d1` instead.
+With `--database d1`, `--deployment cloudflare` is required. `sqlite` is rejected with `--deployment cloudflare` (Workers have no filesystem, use `d1` instead), `--deployment sst` and `--deployment terraform-aws` (Lambda has no persistent writable disk, use `postgres` or `mysql`).
 
 **Example**:
 ```bash

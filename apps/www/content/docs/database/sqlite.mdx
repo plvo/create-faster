@@ -31,7 +31,10 @@ The Drizzle client anchors relative paths to the db package root, so `db:push`, 
 
 ## Deployment constraint
 
-SQLite reads and writes a file on disk, so it is rejected with `--deployment cloudflare` (Workers have no filesystem). Use [Cloudflare D1](/docs/database/d1), the same SQLite dialect as a managed binding.
+SQLite reads and writes a file on disk, so it is rejected with every deployment that has no persistent writable disk:
+
+- `--deployment cloudflare`: Workers have no filesystem. Use [Cloudflare D1](/docs/database/d1), the same SQLite dialect as a managed binding.
+- `--deployment sst` and `--deployment terraform-aws`: Lambda has no persistent writable disk, so a database file would not survive between invocations. Use [PostgreSQL](/docs/database/postgresql) or [MySQL](/docs/database/mysql).
 
 ## Driver choice
 
