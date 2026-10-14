@@ -45,7 +45,7 @@ describe('TanStack Start + cloudflare-static', () => {
     test('vite config prerenders the linked pages with Start alone, no nitro nor cloudflare plugin', async () => {
       const config = await readTextFile(join(projectPath, 'vite.config.ts'));
       expect(config).toContain(
-        'tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })',
+        "tanstackStart({ pages: [{ path: '/404' }], prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } })",
       );
       expect(config).not.toContain('nitro');
       expect(config).not.toContain('@cloudflare/vite-plugin');
@@ -59,9 +59,10 @@ describe('TanStack Start + cloudflare-static', () => {
       expect(content).not.toContain('"main"');
     });
 
-    test('generates the /404 route and wires the same component as the root notFoundComponent', async () => {
-      const route = await readTextFile(join(projectPath, 'src/routes/404.tsx'));
-      expect(route).toContain("createFileRoute('/404')");
+    test('generates a catch-all route that renders the same tree as 404.html, and keeps the root notFoundComponent', async () => {
+      const route = await readTextFile(join(projectPath, 'src/routes/$.tsx'));
+      expect(route).toContain("createFileRoute('/$')");
+      expect(await fileExists(join(projectPath, 'src/routes/404.tsx'))).toBe(false);
       expect(route).toContain("from '@/components/not-found'");
       const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
       expect(root).toContain("import { NotFound } from '@/components/not-found'");
@@ -127,8 +128,8 @@ describe('TanStack Start + cloudflare-static', () => {
       expect(docsConfig).toContain('port: 3001');
       const webConfig = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
       expect(webConfig).toContain("output: 'export'");
-      expect(await fileExists(join(projectPath, 'apps/docs/src/routes/404.tsx'))).toBe(true);
-      expect(await fileExists(join(projectPath, 'apps/web/src/routes/404.tsx'))).toBe(false);
+      expect(await fileExists(join(projectPath, 'apps/docs/src/routes/$.tsx'))).toBe(true);
+      expect(await fileExists(join(projectPath, 'apps/web/src/routes/$.tsx'))).toBe(false);
     });
 
     test('docs app scripts follow the static flow', async () => {

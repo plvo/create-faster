@@ -370,26 +370,43 @@ describe('isLocalFilesystemSatisfied', () => {
     project: { tooling: [], ...(deployment ? { deployment } : {}) },
   });
 
-  test('sqlite declares it needs a local filesystem; cloudflare declares it provides none', () => {
+  test('sqlite declares it needs a local filesystem; Workers and Lambda deployments declare they provide none', () => {
     expect(META.project.database.options.sqlite?.needsLocalFilesystem).toBe(true);
     expect(META.project.deployment.options.cloudflare?.providesLocalFilesystem).toBe(false);
+    expect(META.project.deployment.options.sst?.providesLocalFilesystem).toBe(false);
+    expect(META.project.deployment.options['terraform-aws']?.providesLocalFilesystem).toBe(false);
   });
 
   test('false only when a filesystem database meets a deployment without a filesystem', () => {
     const sqlite = META.project.database.options.sqlite;
     expect(isLocalFilesystemSatisfied(sqlite, withDeployment('cloudflare'))).toBe(false);
+    expect(isLocalFilesystemSatisfied(sqlite, withDeployment('sst'))).toBe(false);
+    expect(isLocalFilesystemSatisfied(sqlite, withDeployment('terraform-aws'))).toBe(false);
     expect(isLocalFilesystemSatisfied(sqlite, withDeployment())).toBe(true);
-    expect(isLocalFilesystemSatisfied(sqlite, withDeployment('sst'))).toBe(true);
     expect(isLocalFilesystemSatisfied(META.project.database.options.postgres, withDeployment('cloudflare'))).toBe(true);
+    expect(isLocalFilesystemSatisfied(META.project.database.options.postgres, withDeployment('sst'))).toBe(true);
     expect(isLocalFilesystemSatisfied(META.project.database.options.d1, withDeployment('cloudflare'))).toBe(true);
   });
 
-  test('sqlite is disabled on cloudflare with a reason naming the deployment, and available elsewhere', () => {
+  test.each([
+    ['cloudflare', 'Cloudflare Workers'],
+    ['sst', 'SST'],
+    ['terraform-aws', 'Terraform (AWS)'],
+  ])('sqlite is disabled on %s with a reason naming the deployment, and available elsewhere', (deployment, label) => {
     const sqlite = META.project.database.options.sqlite;
-    const reason = getCategoryOptionUnavailability('database', 'sqlite', sqlite, withDeployment('cloudflare'));
+    const reason = getCategoryOptionUnavailability('database', 'sqlite', sqlite, withDeployment(deployment));
     expect(reason).toContain('local filesystem');
-    expect(reason).toContain('Cloudflare Workers');
+    expect(reason).toContain(label);
     expect(getCategoryOptionUnavailability('database', 'sqlite', sqlite, withDeployment())).toBeUndefined();
+  });
+
+  test('no blueprint preset pairs a filesystem database with a deployment without a filesystem', () => {
+    for (const [name, blueprint] of Object.entries(META.blueprints)) {
+      const { database, deployment } = (blueprint.context.project ?? {}) as { database?: string; deployment?: string };
+      const ctx = { apps: [], project: { tooling: [], ...(deployment ? { deployment } : {}) } } as Partial<TemplateContext>;
+      const addon = database ? META.project.database.options[database as keyof typeof META.project.database.options] : undefined;
+      expect({ name, satisfied: isLocalFilesystemSatisfied(addon, ctx) }).toEqual({ name, satisfied: true });
+    }
   });
 });
 

@@ -46,10 +46,6 @@ export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin) {
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        if (isDev) {
-          console.info(`\n🔑  Password reset link for ${user.email}:\n${url}\n`);
-          return;
-        }
         await sendResetPasswordEmail({ to: user.email, url });
       },
     },

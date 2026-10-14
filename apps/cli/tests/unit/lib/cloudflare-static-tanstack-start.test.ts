@@ -42,10 +42,10 @@ describe('cloudflare-static deployment: tanstack-start package.json', () => {
 });
 
 describe('cloudflare-static deployment: tanstack-start generated paths', () => {
-  test('single repo emits the assets-only wrangler.jsonc and the 404 page, no nitro or runtime files', () => {
+  test('single repo emits the assets-only wrangler.jsonc and the catch-all not-found route, no nitro or runtime files', () => {
     const dests = destinations(singleCtx(['evlog']));
     expect(dests).toContain('wrangler.jsonc');
-    expect(dests).toContain('src/routes/404.tsx');
+    expect(dests).toContain('src/routes/$.tsx');
     expect(dests).not.toContain('.env.start');
     expect(dests).not.toContain('nitro.config.ts');
     expect(dests).not.toContain('src/lib/server.ts');
@@ -65,8 +65,8 @@ describe('cloudflare-static deployment: tanstack-start generated paths', () => {
     const dests = destinations(ctx);
     expect(dests).toContain('apps/web/wrangler.jsonc');
     expect(dests).toContain('apps/docs/wrangler.jsonc');
-    expect(dests).toContain('apps/docs/src/routes/404.tsx');
-    expect(dests).not.toContain('apps/web/src/routes/404.tsx');
+    expect(dests).toContain('apps/docs/src/routes/$.tsx');
+    expect(dests).not.toContain('apps/web/src/routes/$.tsx');
     expect(dests).not.toContain('apps/docs/.env.start');
     expect(dests).not.toContain('apps/docs/nitro.config.ts');
   });
@@ -79,9 +79,9 @@ describe('cloudflare-static deployment: tanstack-start generated paths', () => {
     },
   );
 
-  test('other deployments never emit the 404 page route', () => {
+  test('other deployments never emit the catch-all not-found route', () => {
     const ctx = { ...singleCtx(), project: { deployment: 'cloudflare' as const, tooling: [] } };
-    expect(destinations(ctx)).not.toContain('src/routes/404.tsx');
+    expect(destinations(ctx)).not.toContain('src/routes/$.tsx');
   });
 });
 

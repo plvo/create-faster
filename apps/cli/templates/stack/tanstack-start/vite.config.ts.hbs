@@ -42,7 +42,7 @@ const config = defineConfig(({{#if (has "deployment" "cloudflare")}}{ command }{
     },
 {{/if}}
 {{#if (has "deployment" "cloudflare-static")}}
-    tanstackStart({ prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } }),
+    tanstackStart({ pages: [{ path: '/404' }], prerender: { enabled: true, crawlLinks: true, autoSubfolderIndex: false } }),
 {{else}}
     tanstackStart(),
 {{/if}}
