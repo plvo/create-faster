@@ -13,6 +13,8 @@
 
 There is no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `{{runAppScript "build:cf"}}` then `{{runAppScript "preview"}}` to serve the production build in workerd.
 
+`next` is held on 16.3 (`~16.3.8`) because Next.js 16.4 makes every OpenNext route answer 500 (opennextjs/opennextjs-cloudflare#1355). Do not upgrade it until OpenNext ships the fix.
+
 **Local dev**: `{{runScript "dev"}}` runs `next dev` with `initOpenNextCloudflareForDev()` active (wired in `next.config.ts`, development only), making Cloudflare bindings available through `wrangler.jsonc`.
 
 **Environment variables and secrets**

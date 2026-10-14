@@ -592,6 +592,9 @@ export const META: Meta = {
             },
             nextjs: {
               dependencies: {
+                // Pinned below 16.4: OpenNext answers 500 on every route with it, see opennextjs/opennextjs-cloudflare#1355.
+                // Remove the pin once OpenNext ships the fix.
+                next: '~16.3.8',
                 '@opennextjs/cloudflare': '^1.20.5',
               },
               scripts: {
