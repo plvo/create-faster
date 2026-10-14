@@ -11,6 +11,7 @@ import {
 } from '@/lib/addon-utils';
 import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
+import { isInteractiveTerminal } from '@/lib/project-prompts';
 import { printError } from '@/tui/print-error';
 import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
@@ -215,7 +216,10 @@ ${color.bold('Examples:')}
     partial.agentContext = false;
   }
 
-  validateContext(partial);
+  validateAppNames(partial);
+  if (!isInteractiveTerminal()) {
+    validateRequirements(partial, partial);
+  }
 
   return partial;
 }
@@ -274,10 +278,10 @@ function parseAppFlag(appFlag: string): AppContext {
   };
 }
 
-function validateContext(partial: Partial<TemplateContext>): void {
-  const project = partial.project ?? { tooling: [] };
+export function validateRequirements(selection: Partial<TemplateContext>, ctx: Partial<TemplateContext>): void {
+  const project = selection.project ?? { tooling: [] };
 
-  if (project.orm && !project.database) {
+  if (project.orm && !ctx.project?.database) {
     printError(
       'ORM requires a database',
       `Add --database <name> (${Object.keys(META.project.database.options).join(', ')})`,
@@ -285,10 +289,10 @@ function validateContext(partial: Partial<TemplateContext>): void {
     process.exit(1);
   }
 
-  for (const app of partial.apps ?? []) {
+  for (const app of selection.apps ?? []) {
     for (const libraryName of app.libraries) {
       const library = META.libraries[libraryName];
-      if (library?.require && !isRequirementMet(library.require, partial)) {
+      if (library?.require && !isRequirementMet(library.require, ctx)) {
         printError(`library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require)}`);
         process.exit(1);
       }
@@ -302,12 +306,12 @@ function validateContext(partial: Partial<TemplateContext>): void {
       category.selection === 'single' ? (selected ? [selected as string] : []) : ((selected as string[]) ?? []);
     for (const value of values) {
       const addon = category.options[value];
-      if (addon?.require && !isRequirementMet(addon.require, partial)) {
+      if (addon?.require && !isRequirementMet(addon.require, ctx)) {
         printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
         process.exit(1);
       }
-      if (!isServerRuntimeSatisfied(addon, partial)) {
-        const blocking = (partial.apps ?? [])
+      if (!isServerRuntimeSatisfied(addon, ctx)) {
+        const blocking = (ctx.apps ?? [])
           .flatMap((app) => app.libraries)
           .find((lib) => META.libraries[lib]?.needsServerRuntime);
         if (blocking) {
@@ -320,8 +324,8 @@ function validateContext(partial: Partial<TemplateContext>): void {
         }
         process.exit(1);
       }
-      if (!isSingletonDbSatisfied(addon, partial)) {
-        const blocking = (partial.apps ?? [])
+      if (!isSingletonDbSatisfied(addon, ctx)) {
+        const blocking = (ctx.apps ?? [])
           .flatMap((app) => app.libraries)
           .find((lib) => META.libraries[lib]?.needsSingletonDb);
         printError(
@@ -330,8 +334,8 @@ function validateContext(partial: Partial<TemplateContext>): void {
         );
         process.exit(1);
       }
-      if (!isLocalFilesystemSatisfied(addon, partial)) {
-        const deployment = partial.project?.deployment;
+      if (!isLocalFilesystemSatisfied(addon, ctx)) {
+        const deployment = ctx.project?.deployment;
         printError(
           `${categoryName} '${value}' is incompatible with deployment '${deployment}'`,
           `'${value}' needs a local filesystem, which '${deployment}' does not provide`,
@@ -340,17 +344,9 @@ function validateContext(partial: Partial<TemplateContext>): void {
       }
     }
   }
+}
 
-  if (project.tooling?.includes('husky') && !partial.git) {
-    printError('Husky requires git', 'Add --git flag');
-    process.exit(1);
-  }
-
-  if (project.tooling?.includes('husky') && !project.linter) {
-    printError('Husky requires a linter', 'Add --linter biome or --linter eslint');
-    process.exit(1);
-  }
-
+function validateAppNames(partial: Partial<TemplateContext>): void {
   if (partial.apps && partial.apps.length > 1) {
     const names = partial.apps.map((app) => app.appName);
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);

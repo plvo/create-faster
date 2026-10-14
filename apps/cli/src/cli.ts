@@ -13,6 +13,7 @@ import { Progress } from '@/tui/progress';
 import type { AppContext, PackageManager, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
+import { validateRequirements } from './flags';
 import { S_GRAY_BAR } from './tui/symbols';
 
 export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
@@ -60,6 +61,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
 
   ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
+  validateRequirements(partial ?? {}, ctx);
   filterToolingByRequirements(ctx);
 
   const { pm, skipInstall } = await promptOrUsePackageManager(
@@ -122,6 +124,7 @@ export async function blueprintCli(
 
   ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
 
+  validateRequirements(partial ?? {}, ctx);
   filterToolingByRequirements(ctx);
 
   const { pm, skipInstall } = await promptOrUsePackageManager(

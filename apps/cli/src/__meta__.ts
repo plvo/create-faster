@@ -989,7 +989,7 @@ export const META: Meta = {
         husky: {
           label: 'Husky',
           hint: 'Git hooks',
-          require: { linter: true },
+          require: { git: true, linter: true },
           mono: { scope: 'root' },
           packageJson: {
             devDependencies: {

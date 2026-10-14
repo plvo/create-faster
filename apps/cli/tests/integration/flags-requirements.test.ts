@@ -37,4 +37,16 @@ describe('library requirements checked against flags without project answers', (
     expect(result.stderr).toContain("library 'better-auth' on app 'x' requires");
     expect(await readdir(tempDir)).toEqual([]);
   });
+
+  test.each([
+    { name: 'git', args: ['--tooling', 'husky', '--linter', 'biome', '--no-git'], needs: 'git' },
+    { name: 'a linter', args: ['--tooling', 'husky', '--git'], needs: 'a linter' },
+  ])('husky without $name is rejected by its META requirement', async ({ args, needs }) => {
+    const result = await runCli(['x', '--app', 'x:nextjs', ...args, '--no-install'], tempDir);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("tooling 'husky' requires");
+    expect(result.stderr).toContain(needs);
+    expect(await readdir(tempDir)).toEqual([]);
+  });
 });
