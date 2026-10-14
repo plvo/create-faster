@@ -24,6 +24,7 @@ interface CollectedEnv {
   libraryName?: string;
   stacks?: StackName[];
   file?: string;
+  secret?: boolean;
 }
 
 /** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
@@ -69,7 +70,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
-      envs.push({ value: env.value, scope, stacks: env.stacks, file: env.file, ...origin });
+      envs.push({ value: env.value, scope, stacks: env.stacks, file: env.file, secret: env.secret, ...origin });
     }
   };
 
@@ -189,6 +190,20 @@ export function collectEnvFiles(ctx: TemplateContext): EnvFileOutput[] {
   }
 
   return files;
+}
+
+/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
+export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  if (!app) return [];
+
+  const names = collectAllEnvs(ctx)
+    .filter(
+      (env) => env.secret && !env.file && (ctx.repo === 'single' || env.scope === 'app') && appAcceptsEnv(env, app),
+    )
+    .map((env) => extractEnvKey(env.value));
+
+  return [...new Set(names)];
 }
 
 export function collectEnvGroups(ctx: TemplateContext): EnvGroup[] {

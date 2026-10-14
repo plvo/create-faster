@@ -561,7 +561,7 @@ describe('EnvVar.secret', () => {
   test('a project addon secret goes to every app, narrowed by stacks and when, and never a package or file variable', () => {
     const [web, site] = collectWith(() => [collectAppSecrets(turborepo, 'web'), collectAppSecrets(turborepo, 'site')]);
 
-    expect(web).toEqual(['BETTER_AUTH_SECRET', 'ALL_APPS_SECRET', 'NEXT_ONLY_SECRET']);
+    expect(web).toEqual(['ALL_APPS_SECRET', 'NEXT_ONLY_SECRET', 'BETTER_AUTH_SECRET']);
     expect(site).toEqual(['ALL_APPS_SECRET']);
   });
 
