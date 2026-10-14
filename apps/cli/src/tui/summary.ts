@@ -2,6 +2,7 @@ import { note, outro } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getMonoPackageName } from '@/lib/addon-utils';
+import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure } from '@/lib/post-generation';
@@ -144,6 +145,16 @@ function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string
 
   steps.push(`cd ${ctx.projectName}`);
   steps.push('');
+  if (ctx.skipInstall || !ctx.pm) {
+    steps.push('# Install dependencies:');
+    steps.push(`${ctx.pm ?? 'npm'} install`);
+    steps.push('');
+  }
+  for (const { description, commands } of collectFirstRunSteps(ctx)) {
+    steps.push(`# ${description}:`);
+    steps.push(...commands);
+    steps.push('');
+  }
   steps.push('# Development:');
   steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
   steps.push('');
