@@ -72,6 +72,10 @@ import * as schema from './schema';
 {{> postgres/tls-warning}}
 
 {{/if}}
+{{#if (has "database" "mysql")}}
+{{> mysql/production-tls tlsValue="{}"}}
+
+{{/if}}
 {{#if (has "database" "sqlite")}}
 {{#if (isMono)}}
 function findMonoRoot(start: string): string {
@@ -104,7 +108,7 @@ function createDb() {
   return drizzle({
     schema,
     mode: 'default',
-    connection: databaseUrl,
+    connection: withProductionTls(databaseUrl),
   });
 {{/if}}
 {{#if (has "database" "sqlite")}}

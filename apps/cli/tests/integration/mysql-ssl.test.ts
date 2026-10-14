@@ -4,8 +4,8 @@ import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } fro
 
 const LOCAL_URL_WITHOUT_TLS = /^DATABASE_URL="mysql:\/\/mysql:password@localhost:\d+\/mysql-[\w-]+\?ssl=false"/m;
 const PRODUCTION_TLS = 'function withProductionTls(databaseUrl: string): string {';
-const DRIZZLE_TLS_VALUE = "ssl={}`";
-const PRISMA_TLS_VALUE = 'ssl=true`';
+const DRIZZLE_TLS_VALUE = "const TLS_VALUE = '{}';";
+const PRISMA_TLS_VALUE = "const TLS_VALUE = 'true';";
 const DRIZZLE_CLIENT_CALL = 'connection: withProductionTls(databaseUrl),';
 const PRISMA_CLIENT_CALL = "new PrismaMariaDb(withProductionTls(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db'));";
 const NODE_ENV_SOURCES = {
