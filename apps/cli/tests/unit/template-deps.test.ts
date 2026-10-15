@@ -20,6 +20,9 @@ function collectAllDeclaredPackages(): Set<string> {
 
   for (const stack of Object.values(META.stacks)) {
     addDeps(stack.packageJson);
+    for (const config of Object.values(stack.packageManagerPackageJson ?? {})) {
+      addDeps(config as Record<string, unknown>);
+    }
   }
 
   for (const lib of Object.values(META.libraries)) {

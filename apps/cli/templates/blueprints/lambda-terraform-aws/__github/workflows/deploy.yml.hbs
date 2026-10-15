@@ -35,9 +35,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+{{{{/raw}}}}
+{{#if (eq pm "bun")}}
       - uses: oven-sh/setup-bun@v2
 
-{{{{/raw}}}}
+{{/if}}
       - {{> github-actions/install-dependencies}}
 {{{{raw}}}}
 

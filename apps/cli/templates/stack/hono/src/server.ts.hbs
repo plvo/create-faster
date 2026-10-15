@@ -1,0 +1,12 @@
+{{#unless (eq pm "bun")}}
+import { parseArgs } from 'node:util';
+import { serve } from '@hono/node-server';
+import app from './index';
+
+const { values } = parseArgs({ options: { port: { type: 'string' } } });
+const port = Number(process.env.PORT ?? values.port ?? 3000);
+
+serve({ fetch: app.fetch, port }, (address) => {
+  console.log(`Listening on http://localhost:${address.port}`);
+});
+{{/unless}}

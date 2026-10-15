@@ -7,7 +7,7 @@ import {
   resolveCompositeAddons,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
-import { getPackageManagerField } from '@/lib/package-manager';
+import { getPackageManagerField, resolveCommandPackageManager } from '@/lib/package-manager';
 import {
   cleanUndefined,
   MERGE_KEYS,
@@ -18,7 +18,7 @@ import {
 } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { MetaAddon, PackageJsonConfig, ResolvedPackageJsonConfig } from '@/types/meta';
+import type { MetaAddon, PackageJsonConfig, PackageManagerPackageJson, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
 
 interface PackageJson {
@@ -66,6 +66,13 @@ export function mergePackageJsonConfigs<Config extends PackageJsonConfig>(...con
   return result as Config;
 }
 
+function packageManagerPackageJson(
+  contribution: PackageManagerPackageJson | undefined,
+  ctx: TemplateContext,
+): PackageJsonConfig | undefined {
+  return contribution?.[resolveCommandPackageManager(ctx)];
+}
+
 function deploymentPackageJson(addon: MetaAddon, ctx: TemplateContext): PackageJsonConfig | undefined {
   return ctx.project.deployment ? addon.deploymentPackageJson?.[ctx.project.deployment] : undefined;
 }
@@ -102,7 +109,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
   const port = 3000 + appIndex;
   const isTurborepo = ctx.repo === 'turborepo';
 
-  let merged = mergeResolved(ctx, stack.packageJson);
+  let merged = mergeResolved(ctx, stack.packageJson, packageManagerPackageJson(stack.packageManagerPackageJson, ctx));
 
   for (const libraryName of app.libraries) {
     const library = META.libraries[libraryName];
@@ -182,7 +189,12 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
   if (ctx.blueprint) {
     const blueprint = META.blueprints[ctx.blueprint];
     if (blueprint?.packageJson) {
-      merged = mergeResolved(ctx, merged, blueprint.packageJson);
+      merged = mergeResolved(
+        ctx,
+        merged,
+        blueprint.packageJson,
+        packageManagerPackageJson(blueprint.packageManagerPackageJson, ctx),
+      );
     }
   }
 

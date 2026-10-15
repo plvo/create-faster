@@ -137,6 +137,7 @@ describe('generateAppPackageJson (portless, turborepo)', () => {
       { appName: 'api', stackName: 'hono', libraries: [] },
     ],
     project: { tooling: ['portless'] },
+    pm: 'bun',
     git: false,
   };
 
@@ -1195,5 +1196,38 @@ describe('collectMonoPackages', () => {
 
   test('has no package in a single repo', () => {
     expect(collectMonoPackages({ ...ctx, repo: 'single', apps: ctx.apps.slice(0, 1) }).size).toBe(0);
+  });
+});
+
+describe('packageManagerPackageJson', () => {
+  const ctx = (pm: TemplateContext['pm']): TemplateContext => ({
+    projectName: 'api',
+    repo: 'single',
+    apps: [{ appName: 'api', stackName: 'hono', libraries: [] }],
+    project: { tooling: [] },
+    pm,
+    git: false,
+  });
+
+  test('replaces the scripts and adds the dependencies of the matching package manager', () => {
+    const { scripts, dependencies, devDependencies } = generateAppPackageJson(ctx('pnpm').apps[0]!, ctx('pnpm'), 0).content;
+
+    expect(scripts?.dev).toBe('tsx watch src/server.ts');
+    expect(dependencies?.['@hono/node-server']).toBeDefined();
+    expect(devDependencies?.tsx).toBeDefined();
+    expect(devDependencies?.typescript).toBeDefined();
+  });
+
+  test('leaves the base config alone when no entry matches', () => {
+    const { scripts, dependencies } = generateAppPackageJson(ctx('bun').apps[0]!, ctx('bun'), 0).content;
+
+    expect(scripts?.dev).toBe('bun run --hot src/index.ts');
+    expect(dependencies?.['@hono/node-server']).toBeUndefined();
+  });
+
+  test('an unselected package manager is npm', () => {
+    expect(generateAppPackageJson(ctx(undefined).apps[0]!, ctx(undefined), 0).content.scripts?.dev).toBe(
+      'tsx watch src/server.ts',
+    );
   });
 });
