@@ -19,6 +19,20 @@ describe('Blueprint CLI flag', () => {
     expect(result.stderr).toContain('Invalid blueprint');
   });
 
+  test('a blueprint name without its stack suffix is rejected like any unknown name', async () => {
+    const unknown = await runCli(['test-bp-unknown', '--blueprint', 'nonexistent', '--no-install', '--no-git'], tempDir);
+    const unsuffixed = await runCli(['test-bp-old', '--blueprint', 'org-dashboard', '--no-install', '--no-git'], tempDir);
+    expect(unsuffixed.exitCode).toBe(1);
+    expect(unsuffixed.stderr).toContain("Invalid blueprint 'org-dashboard'");
+    expect(unsuffixed.stderr.replace('org-dashboard', 'x')).toBe(unknown.stderr.replace('nonexistent', 'x'));
+  });
+
+  test('the suffixed blueprint name generates the project', async () => {
+    const result = await runCli(['test-bp-suffixed', '--blueprint', 'org-dashboard-nextjs', '--no-install', '--no-git'], tempDir);
+    expect(result.exitCode).toBe(0);
+    expect(await fileExists(join(tempDir, 'test-bp-suffixed', 'package.json'))).toBe(true);
+  });
+
   test('--blueprint and --app are mutually exclusive', async () => {
     const result = await runCli(
       ['test-conflict', '--blueprint', 'org-dashboard', '--app', 'web:nextjs', '--no-install'],

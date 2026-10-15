@@ -242,6 +242,22 @@ describe('META.project.tooling.portless', () => {
   });
 });
 
+describe('META.blueprints names', () => {
+  test('every blueprint name ends with the stack of its main app', () => {
+    expect(Object.keys(META.blueprints).sort()).toEqual([
+      'cloudflare-fullstack-nextjs',
+      'cloudflare-static-site-nextjs',
+      'dapp-privy-nextjs',
+      'dapp-rainbowkit-nextjs',
+      'lambda-sst-hono',
+      'lambda-terraform-aws-hono',
+      'multitenant-saas-nextjs',
+      'org-dashboard-nextjs',
+      'showcase-nextjs',
+    ]);
+  });
+});
+
 describe('META.blueprints.org-dashboard', () => {
   test('org-dashboard blueprint is defined', () => {
     expect(META.blueprints['org-dashboard']).toBeDefined();
