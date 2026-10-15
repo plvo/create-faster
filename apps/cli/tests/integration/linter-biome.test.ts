@@ -8,6 +8,7 @@ interface BiomeConfig {
   vcs: { enabled: boolean; useIgnoreFile: boolean };
   files: { includes: string[] };
   linter: { rules: { recommended?: boolean; preset?: string } };
+  overrides?: { includes: string[]; linter: { rules: Record<string, Record<string, string>> } }[];
 }
 
 describe('biome config', () => {
@@ -52,5 +53,20 @@ describe('biome config', () => {
   test('does not carry the route tree exclusion without a TanStack Start app', async () => {
     const { config } = await generate('biome-next', ['--app', 'biome-next:nextjs']);
     expect(config.files.includes).not.toContain('!**/routeTree.gen.ts');
+  });
+
+  test('lets a shadcn sidebar write its cookie, as the registry ships it', async () => {
+    const { config } = await generate('biome-shadcn', ['--app', 'biome-shadcn:nextjs:shadcn']);
+    expect(config.overrides).toEqual([
+      {
+        includes: ['**/components/ui/sidebar.tsx'],
+        linter: { rules: { suspicious: { noDocumentCookie: 'off' } } },
+      },
+    ]);
+  });
+
+  test('keeps noDocumentCookie on without shadcn', async () => {
+    const { config } = await generate('biome-no-shadcn', ['--app', 'biome-no-shadcn:nextjs']);
+    expect(config.overrides).toBeUndefined();
   });
 });

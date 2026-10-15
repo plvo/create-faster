@@ -8,7 +8,12 @@ const TIMEOUT_PROJECT = 1_200_000;
 const OUTPUT_TAIL_LINES = 60;
 
 // `prettier` is left out: it only formats and defines no lint script.
-const LINTERS = ['biome', 'oxc', 'eslint', 'eslint-prettier'];
+const FAIL_ON_WARNINGS_FLAG = {
+  biome: '--error-on-warnings',
+  oxc: '--deny-warnings',
+  eslint: '--max-warnings=0',
+  'eslint-prettier': '--max-warnings=0',
+};
 
 const BLUEPRINTS = [
   'dapp-privy-nextjs',
@@ -155,16 +160,16 @@ async function buildProject(projectDir: string): Promise<string[]> {
   return outcomes;
 }
 
-async function expectLintPasses(projectDir: string, moment: string): Promise<void> {
-  const result = await runCommand(['bun', 'run', 'lint'], projectDir);
+async function expectLintPasses(projectDir: string, failOnWarningsFlag: string, moment: string): Promise<void> {
+  const result = await runCommand(['bun', 'run', 'lint', failOnWarningsFlag], projectDir);
   if (result.exitCode === 0) return;
   const tail = `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
-  throw new Error(`\`bun run lint\` exited ${result.exitCode} ${moment}:\n${tail}`);
+  throw new Error(`\`bun run lint ${failOnWarningsFlag}\` exited ${result.exitCode} ${moment}:\n${tail}`);
 }
 
 // The build outcome is logged, not asserted: the other e2e files own it. What matters here is that
 // whatever the build writes (or leaves half written) is never linted.
-describe('generated projects pass their own lint script', () => {
+describe('generated projects pass their own lint script without warnings', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -175,7 +180,7 @@ describe('generated projects pass their own lint script', () => {
     await cleanupTempDir(tempDir);
   });
 
-  for (const linter of LINTERS) {
+  for (const [linter, failOnWarningsFlag] of Object.entries(FAIL_ON_WARNINGS_FLAG)) {
     for (const { name, args } of PROJECTS) {
       test(
         `${linter}: ${name}`,
@@ -192,9 +197,9 @@ describe('generated projects pass their own lint script', () => {
 
           try {
             await prepareBuild(projectDir);
-            await expectLintPasses(projectDir, 'before the build');
+            await expectLintPasses(projectDir, failOnWarningsFlag, 'before the build');
             const builds = await buildProject(projectDir);
-            if (builds.length > 0) await expectLintPasses(projectDir, 'after the build');
+            if (builds.length > 0) await expectLintPasses(projectDir, failOnWarningsFlag, 'after the build');
             console.log(`${linter}: ${name}: ${builds.join(', ') || 'no build script'}`);
           } finally {
             await cleanupTempDir(projectDir);
