@@ -8,7 +8,7 @@ const NODE_TYPES_VERSION = '^22';
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
 const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
 
-const WRANGLER_VERSION = '^4.127.1';
+const WRANGLER_VERSION = '^4.148.0';
 
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 

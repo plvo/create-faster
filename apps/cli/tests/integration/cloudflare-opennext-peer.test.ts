@@ -4,6 +4,7 @@ import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
 
 interface PackageJsonShape {
   dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
 
 const BASE_NEXT_RANGE = '^16.3.0';
@@ -11,6 +12,7 @@ const BASE_NEXT_RANGE = '^16.3.0';
 // `next` peer range of @opennextjs/cloudflare@1.20.12, the first release that serves Next.js 16.4
 // (opennextjs/opennextjs-cloudflare#1355). npm refuses to install a project whose `next` can resolve outside it.
 const OPENNEXT_NEXT_PEER = '>=15.5.28 <16 || >=16.4.1';
+const OPENNEXT_WRANGLER_PEER = '^4.148.0';
 const OPENNEXT_FIRST_NEXT_16_4_VERSION = '1.20.12';
 
 function lowestVersionOf(range: string): string {
@@ -25,6 +27,17 @@ describe('Next.js and OpenNext pair on cloudflare', () => {
   async function dependenciesOf(packageJsonDir: string): Promise<Record<string, string>> {
     const pkg = await readJsonFile<PackageJsonShape>(join(tempDir, packageJsonDir, 'package.json'));
     return pkg.dependencies ?? {};
+  }
+
+  async function wranglerRangeOf(packageJsonDir: string): Promise<string | undefined> {
+    const pkg = await readJsonFile<PackageJsonShape>(join(tempDir, packageJsonDir, 'package.json'));
+    return pkg.devDependencies?.wrangler;
+  }
+
+  async function expectWranglerInsidePeer(packageJsonDir: string): Promise<void> {
+    const range = await wranglerRangeOf(packageJsonDir);
+    expect(range).toBeDefined();
+    expect(Bun.semver.satisfies(lowestVersionOf(range!), OPENNEXT_WRANGLER_PEER)).toBe(true);
   }
 
   async function generate(name: string, args: string[]): Promise<void> {
@@ -55,6 +68,7 @@ describe('Next.js and OpenNext pair on cloudflare', () => {
     await generate('single-cf', ['--app', 'single-cf:nextjs', '--deployment', 'cloudflare']);
 
     expectCompatiblePair(await dependenciesOf('single-cf'));
+    await expectWranglerInsidePeer('single-cf');
   });
 
   test('turborepo on cloudflare pairs each Next.js app and leaves the others alone', async () => {
@@ -70,6 +84,7 @@ describe('Next.js and OpenNext pair on cloudflare', () => {
     ]);
 
     expectCompatiblePair(await dependenciesOf('mono-cf/apps/web'));
+    await expectWranglerInsidePeer('mono-cf/apps/web');
     expectCompatiblePair(await dependenciesOf('mono-cf/apps/docs'));
     expect((await dependenciesOf('mono-cf/apps/site')).next).toBeUndefined();
   });
@@ -79,6 +94,7 @@ describe('Next.js and OpenNext pair on cloudflare', () => {
 
     expectCompatiblePair(await dependenciesOf('fullstack/apps/web'));
     expectServesNextJs16_4((await dependenciesOf('fullstack/packages/api'))['@opennextjs/cloudflare']);
+    await expectWranglerInsidePeer('fullstack/apps/web');
   });
 
   test.each([
