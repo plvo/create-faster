@@ -5,7 +5,7 @@ description: Static Next.js marketing site with an MDX blog, deployed as Cloudfl
 
 ## Presentation
 
-A low-cost marketing/blog site: a single Next.js app exported as static HTML (`output: 'export'`) and served as [Cloudflare Workers static assets](/docs/deployment/cloudflare-static) — never Pages. Everything is pre-rendered at build time, so there is no server runtime to pay for or operate. It ships the same SEO/GEO toolkit as the [Showcase](/docs/blueprints/business/showcase) blueprint (JSON-LD, dynamic sitemap, AI-bot-aware robots, programmatic persona pages, MDX blog) minus any server-dependent feature.
+A low-cost marketing/blog site: a single Next.js app exported as static HTML (`output: 'export'`) and served as [Cloudflare Workers static assets](/docs/deployment/cloudflare-static) — never Pages. Everything is pre-rendered at build time, so there is no server runtime to pay for or operate. It ships the same SEO/GEO toolkit as the [Showcase](/docs/blueprints/business/showcase-nextjs) blueprint (JSON-LD, dynamic sitemap, AI-bot-aware robots, programmatic persona pages, MDX blog) minus any server-dependent feature.
 
 ## Composition
 
@@ -117,7 +117,7 @@ The export is uploaded as Workers static assets. Pointing a custom domain (Wrang
 
 ```bash
 bunx create-faster my-site \
-  --blueprint cloudflare-static-site \
+  --blueprint cloudflare-static-site-nextjs \
   --linter biome \
   --git \
   --pm bun

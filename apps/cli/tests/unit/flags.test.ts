@@ -19,12 +19,12 @@ describe('META blueprint category grouping', () => {
     }
   });
 
-  test('dapp-privy is in Web3 category', () => {
-    expect(META.blueprints['dapp-privy']!.category).toBe('Web3');
+  test('dapp-privy-nextjs is in Web3 category', () => {
+    expect(META.blueprints['dapp-privy-nextjs']!.category).toBe('Web3');
   });
 
-  test('org-dashboard is in Business category', () => {
-    expect(META.blueprints['org-dashboard']!.category).toBe('Business');
+  test('org-dashboard-nextjs is in Business category', () => {
+    expect(META.blueprints['org-dashboard-nextjs']!.category).toBe('Business');
   });
 });
 

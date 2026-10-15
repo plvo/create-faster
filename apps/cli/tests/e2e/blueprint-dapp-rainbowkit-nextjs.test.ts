@@ -18,7 +18,7 @@ const TIMEOUT_BUILD = 240_000;
 const TIMEOUT_SERVER = 120_000;
 const DEFAULT_APP_HOST = 'localhost:3000';
 
-describeWithDocker('dapp-rainbowkit blueprint e2e')('builds, serves and signs in with Ethereum', () => {
+describeWithDocker('dapp-rainbowkit-nextjs blueprint e2e')('builds, serves and signs in with Ethereum', () => {
   let tempDir: string;
   let projectDir: string;
   let postgres: DatabaseContainer;
@@ -26,10 +26,10 @@ describeWithDocker('dapp-rainbowkit blueprint e2e')('builds, serves and signs in
   let appHost: string;
 
   beforeAll(async () => {
-    postgres = await startDatabase('postgres', 'dapp-rainbowkit');
+    postgres = await startDatabase('postgres', 'dapp-rainbowkit-nextjs');
     tempDir = await createTempDir();
     const result = await runCli(
-      ['dapp', '--blueprint', 'dapp-rainbowkit', '--linter', 'biome', '--no-git', '--no-install', '--pm', 'bun'],
+      ['dapp', '--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode, result.stderr).toBe(0);

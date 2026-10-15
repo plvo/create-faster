@@ -79,7 +79,7 @@ describe('SST runtime secrets', () => {
 
   test('a blueprint on sst receives the secrets of its libraries and database', async () => {
     const result = await runCli(
-      ['sst-secrets-blueprint', '--blueprint', 'org-dashboard', '--deployment', 'sst', '--no-git', '--no-install', '--pm', 'bun'],
+      ['sst-secrets-blueprint', '--blueprint', 'org-dashboard-nextjs', '--deployment', 'sst', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

@@ -82,10 +82,10 @@ const GENERATIONS: Generation[] = [
 ];
 
 const BLUEPRINTS: { blueprint: string; authFile: string; trustedHeader: string }[] = [
-  { blueprint: 'org-dashboard', authFile: 'packages/auth/src/auth.ts', trustedHeader: FORWARDED_HEADER },
-  { blueprint: 'multitenant-saas', authFile: 'packages/auth/src/auth.ts', trustedHeader: FORWARDED_HEADER },
-  { blueprint: 'dapp-rainbowkit', authFile: 'src/lib/auth/create-auth.ts', trustedHeader: FORWARDED_HEADER },
-  { blueprint: 'cloudflare-fullstack', authFile: 'packages/auth/src/auth.ts', trustedHeader: CLOUDFLARE_HEADER },
+  { blueprint: 'org-dashboard-nextjs', authFile: 'packages/auth/src/auth.ts', trustedHeader: FORWARDED_HEADER },
+  { blueprint: 'multitenant-saas-nextjs', authFile: 'packages/auth/src/auth.ts', trustedHeader: FORWARDED_HEADER },
+  { blueprint: 'dapp-rainbowkit-nextjs', authFile: 'src/lib/auth/create-auth.ts', trustedHeader: FORWARDED_HEADER },
+  { blueprint: 'cloudflare-fullstack-nextjs', authFile: 'packages/auth/src/auth.ts', trustedHeader: CLOUDFLARE_HEADER },
 ];
 
 const NITRO_PLUGIN = 'src/lib/nitro/client-ip.ts';

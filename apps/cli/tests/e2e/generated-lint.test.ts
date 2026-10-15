@@ -11,15 +11,15 @@ const OUTPUT_TAIL_LINES = 60;
 const LINTERS = ['biome', 'oxc', 'eslint', 'eslint-prettier'];
 
 const BLUEPRINTS = [
-  'dapp-privy',
-  'dapp-rainbowkit',
-  'lambda-sst',
-  'lambda-terraform-aws',
-  'org-dashboard',
-  'multitenant-saas',
-  'cloudflare-static-site',
-  'cloudflare-fullstack',
-  'showcase',
+  'dapp-privy-nextjs',
+  'dapp-rainbowkit-nextjs',
+  'lambda-sst-hono',
+  'lambda-terraform-aws-hono',
+  'org-dashboard-nextjs',
+  'multitenant-saas-nextjs',
+  'cloudflare-static-site-nextjs',
+  'cloudflare-fullstack-nextjs',
+  'showcase-nextjs',
 ];
 
 const PROJECTS: { name: string; args: string[] }[] = [

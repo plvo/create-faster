@@ -26,7 +26,7 @@ const SST_PROJECTS = [
     name: 'sst-turbo-hono-lambda',
     args: ['--app', 'web:nextjs', '--app', 'api:hono:aws-lambda', '--deployment', 'sst'],
   },
-  { name: 'sst-blueprint', args: ['--blueprint', 'lambda-sst'] },
+  { name: 'sst-blueprint', args: ['--blueprint', 'lambda-sst-hono'] },
 ];
 
 describe('SST Node.js handlers', () => {

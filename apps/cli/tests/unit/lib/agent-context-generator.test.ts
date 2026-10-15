@@ -196,17 +196,17 @@ describe('collectAgentContextFiles (blueprint)', () => {
     const ctx: TemplateContext = {
       projectName: 'demo',
       repo: 'turborepo',
-      apps: META.blueprints['org-dashboard']!.context.apps.map((a) => ({ ...a })),
-      project: { ...META.blueprints['org-dashboard']!.context.project, tooling: [] },
+      apps: META.blueprints['org-dashboard-nextjs']!.context.apps.map((a) => ({ ...a })),
+      project: { ...META.blueprints['org-dashboard-nextjs']!.context.project, tooling: [] },
       git: true,
       pm: 'bun',
-      blueprint: 'org-dashboard',
+      blueprint: 'org-dashboard-nextjs',
     };
     const root = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md');
 
     expect(root?.content).toContain('## About this project');
     expect(root?.content).toContain('create-faster');
-    expect(root?.content).toContain('https://create.plvo.dev/docs/blueprints/business/org-dashboard');
+    expect(root?.content).toContain('https://create.plvo.dev/docs/blueprints/business/org-dashboard-nextjs');
     expect(root?.content).toMatch(/dummy data|fixtures|placeholder/i);
     // About section precedes Architecture
     const about = root?.content.indexOf('## About this project') ?? -1;

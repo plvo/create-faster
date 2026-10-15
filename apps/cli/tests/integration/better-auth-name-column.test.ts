@@ -77,7 +77,7 @@ describe('better-auth display name is stored in a non-unique name column', () =>
     });
   }
 
-  for (const blueprint of ['org-dashboard', 'multitenant-saas', 'dapp-rainbowkit', 'cloudflare-fullstack']) {
+  for (const blueprint of ['org-dashboard-nextjs', 'multitenant-saas-nextjs', 'dapp-rainbowkit-nextjs', 'cloudflare-fullstack-nextjs']) {
     test(`${blueprint} blueprint: no username column or mapping remains`, async () => {
       const projectName = `name-col-${blueprint}`;
       const result = await runCli(

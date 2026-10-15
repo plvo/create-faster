@@ -89,8 +89,8 @@ describe('Next.js and OpenNext pair on cloudflare', () => {
     expect((await dependenciesOf('mono-cf/apps/site')).next).toBeUndefined();
   });
 
-  test('cloudflare-fullstack pairs the web app and every OpenNext range of the project', async () => {
-    await generate('fullstack', ['--blueprint', 'cloudflare-fullstack']);
+  test('cloudflare-fullstack-nextjs pairs the web app and every OpenNext range of the project', async () => {
+    await generate('fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs']);
 
     expectCompatiblePair(await dependenciesOf('fullstack/apps/web'));
     expectServesNextJs16_4((await dependenciesOf('fullstack/packages/api'))['@opennextjs/cloudflare']);

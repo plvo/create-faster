@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 
-describe('Blueprint generation - showcase', () => {
+describe('Blueprint generation - showcase-nextjs', () => {
   const projectName = 'showcase';
   let projectPath: string;
   let tempDir: string;
@@ -11,7 +11,7 @@ describe('Blueprint generation - showcase', () => {
   beforeAll(async () => {
     tempDir = await createTempDir();
     projectPath = join(tempDir, projectName);
-    const result = await runCli([projectName, '--blueprint', 'showcase', '--no-install', '--no-git'], tempDir);
+    const result = await runCli([projectName, '--blueprint', 'showcase-nextjs', '--no-install', '--no-git'], tempDir);
     expect(result.exitCode).toBe(0);
   });
 
@@ -20,7 +20,7 @@ describe('Blueprint generation - showcase', () => {
   });
 
   test('composes PostHog as a library instead of blueprint extras', () => {
-    const bp = META.blueprints.showcase;
+    const bp = META.blueprints['showcase-nextjs'];
     expect(bp?.context.apps[0]?.libraries).toContain('posthog');
     expect(bp?.packageJson?.dependencies).not.toHaveProperty('posthog-js');
     expect(bp?.envs?.some((env) => env.value.includes('POSTHOG'))).toBe(false);

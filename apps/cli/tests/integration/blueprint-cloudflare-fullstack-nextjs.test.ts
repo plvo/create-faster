@@ -3,7 +3,7 @@ import { $ } from 'bun';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
-describe('Blueprint generation - cloudflare-fullstack', () => {
+describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
   const projectName = 'cf-fullstack';
   let projectPath: string;
   let tempDir: string;
@@ -12,7 +12,7 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     tempDir = await createTempDir();
     projectPath = join(tempDir, projectName);
     const result = await runCli(
-      [projectName, '--blueprint', 'cloudflare-fullstack', '--no-install', '--no-git'],
+      [projectName, '--blueprint', 'cloudflare-fullstack-nextjs', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

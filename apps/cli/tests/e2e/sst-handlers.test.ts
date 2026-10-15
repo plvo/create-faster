@@ -13,7 +13,7 @@ const SST_PROJECTS = [
     name: 'sst-every-stack',
     args: ['--app', 'web:nextjs', '--app', 'site:tanstack-start', '--app', 'api:hono', '--deployment', 'sst'],
   },
-  { name: 'sst-blueprint', args: ['--blueprint', 'lambda-sst'] },
+  { name: 'sst-blueprint', args: ['--blueprint', 'lambda-sst-hono'] },
 ];
 
 describe.each(SST_PROJECTS)('$name', ({ name, args }) => {

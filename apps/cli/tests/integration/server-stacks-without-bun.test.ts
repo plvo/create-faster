@@ -107,8 +107,8 @@ describe('Node app with bun', () => {
 });
 
 const LAMBDA_BLUEPRINTS: { blueprint: string; output: string; production: boolean }[] = [
-  { blueprint: 'lambda-sst', output: 'dist/index.js', production: false },
-  { blueprint: 'lambda-terraform-aws', output: 'dist/index.mjs', production: true },
+  { blueprint: 'lambda-sst-hono', output: 'dist/index.js', production: false },
+  { blueprint: 'lambda-terraform-aws-hono', output: 'dist/index.mjs', production: true },
 ];
 
 describe.each(LAMBDA_BLUEPRINTS)('$blueprint', ({ blueprint, output, production }) => {
@@ -148,13 +148,13 @@ describe.each(LAMBDA_BLUEPRINTS)('$blueprint', ({ blueprint, output, production 
   });
 });
 
-describe('lambda-terraform-aws notes', () => {
+describe('lambda-terraform-aws-hono notes', () => {
   test('name the bundler of the package manager', async () => {
     const withNpm = await readTextFile(
-      join(await generate('terraform-notes-npm', ['--blueprint', 'lambda-terraform-aws'], 'npm'), 'docs/agents/infrastructure.md'),
+      join(await generate('terraform-notes-npm', ['--blueprint', 'lambda-terraform-aws-hono'], 'npm'), 'docs/agents/infrastructure.md'),
     );
     const withBun = await readTextFile(
-      join(await generate('terraform-notes-bun', ['--blueprint', 'lambda-terraform-aws'], 'bun'), 'docs/agents/infrastructure.md'),
+      join(await generate('terraform-notes-bun', ['--blueprint', 'lambda-terraform-aws-hono'], 'bun'), 'docs/agents/infrastructure.md'),
     );
 
     expect(withNpm).toContain('`esbuild`');

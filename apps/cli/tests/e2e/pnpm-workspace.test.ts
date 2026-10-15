@@ -16,7 +16,7 @@ const PNPM_PROJECTS = [
     name: 'pnpm-turborepo',
     args: ['--app', 'web:nextjs', '--app', 'api:hono', '--database', 'postgres', '--orm', 'drizzle', '--linter', 'biome'],
   },
-  { name: 'pnpm-blueprint', args: ['--blueprint', 'org-dashboard', '--linter', 'biome'] },
+  { name: 'pnpm-blueprint', args: ['--blueprint', 'org-dashboard-nextjs', '--linter', 'biome'] },
 ];
 
 describeWithPnpm.each(PNPM_PROJECTS)('$name', ({ name, args }) => {

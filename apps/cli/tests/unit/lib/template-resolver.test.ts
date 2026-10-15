@@ -277,7 +277,7 @@ describe('blueprint template resolution', () => {
       ],
       project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'org-dashboard',
+      blueprint: 'org-dashboard-nextjs',
     };
 
     const templates = getAllTemplatesForContext(ctx);
@@ -307,7 +307,7 @@ describe('blueprint template resolution', () => {
       ],
       project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'org-dashboard',
+      blueprint: 'org-dashboard-nextjs',
     };
 
     const templates = getAllTemplatesForContext(ctx);
@@ -330,12 +330,12 @@ describe('blueprint template resolution', () => {
       ],
       project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] },
       git: false,
-      blueprint: 'cloudflare-fullstack',
+      blueprint: 'cloudflare-fullstack-nextjs',
     };
 
     const templates = getAllTemplatesForContext(ctx);
     const fromBlueprint = (suffix: string) =>
-      templates.find((t) => t.source.includes('blueprints/cloudflare-fullstack') && t.source.endsWith(suffix));
+      templates.find((t) => t.source.includes('blueprints/cloudflare-fullstack-nextjs') && t.source.endsWith(suffix));
 
     expect(fromBlueprint('src/index.ts.hono.hbs')?.destination).toBe('apps/cron/src/index.ts');
     expect(fromBlueprint('wrangler.jsonc.hono.hbs')?.destination).toBe('apps/cron/wrangler.jsonc');

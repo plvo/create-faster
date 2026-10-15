@@ -7,7 +7,7 @@ import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 const ADMIN_USER_COLUMNS = ['role: ', 'banned: ', 'banReason: ', 'banExpires: '];
 const ADMIN_SESSION_COLUMN = 'impersonatedBy: ';
 
-const ADMIN_BLUEPRINTS = ['org-dashboard', 'cloudflare-fullstack'];
+const ADMIN_BLUEPRINTS = ['org-dashboard-nextjs', 'cloudflare-fullstack-nextjs'];
 
 describe('blueprints with the better-auth admin plugin carry its schema columns', () => {
   let tempDir: string;

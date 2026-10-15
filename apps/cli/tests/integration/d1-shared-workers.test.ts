@@ -102,7 +102,7 @@ describe('D1 single repo: the Hono Worker previews on the state db:migrate write
   });
 });
 
-describe('cloudflare-fullstack: the cron Worker previews on the shared local state', () => {
+describe('cloudflare-fullstack-nextjs: the cron Worker previews on the shared local state', () => {
   const projectName = 'd1-shared-fullstack';
   let projectPath: string;
   let tempDir: string;
@@ -110,7 +110,7 @@ describe('cloudflare-fullstack: the cron Worker previews on the shared local sta
   beforeAll(async () => {
     tempDir = await createTempDir();
     projectPath = join(tempDir, projectName);
-    const result = await runCli([projectName, '--blueprint', 'cloudflare-fullstack', ...COMMON], tempDir);
+    const result = await runCli([projectName, '--blueprint', 'cloudflare-fullstack-nextjs', ...COMMON], tempDir);
     expect(result.exitCode).toBe(0);
   });
 

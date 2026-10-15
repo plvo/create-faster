@@ -27,7 +27,7 @@ async function generate(name: string, args: string[], pm: string): Promise<{ dir
   return { dir, project: join(dir, name) };
 }
 
-describe.each(['org-dashboard', 'multitenant-saas'])('%s scripts under every package manager', (blueprint) => {
+describe.each(['org-dashboard-nextjs', 'multitenant-saas-nextjs'])('%s scripts under every package manager', (blueprint) => {
   describe.each([...PACKAGE_MANAGERS])('with %s', (pm) => {
     let dir: string;
     let project: string;
@@ -137,12 +137,12 @@ describe.each([...PACKAGE_MANAGERS])('prisma seed with %s', (pm) => {
   });
 });
 
-describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack scripts with %s', (pm) => {
+describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs scripts with %s', (pm) => {
   let dir: string;
   let project: string;
 
   beforeAll(async () => {
-    ({ dir, project } = await generate(`fullstack-${pm}`, ['--blueprint', 'cloudflare-fullstack'], pm));
+    ({ dir, project } = await generate(`fullstack-${pm}`, ['--blueprint', 'cloudflare-fullstack-nextjs'], pm));
   });
 
   afterAll(async () => {

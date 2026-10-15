@@ -217,7 +217,7 @@ describe('blueprint env generation', () => {
       ],
       project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'org-dashboard',
+      blueprint: 'org-dashboard-nextjs',
     };
 
     const files = collectEnvFiles(ctx);
@@ -471,12 +471,12 @@ describe('EnvVar.stacks filter', () => {
   });
 
   test('blueprint envs honor stacks per app', () => {
-    const blueprint = META.blueprints['org-dashboard'] as MetaBlueprint;
+    const blueprint = META.blueprints['org-dashboard-nextjs'] as MetaBlueprint;
     const blueprintEnvs: EnvVar[] = [
       { value: 'BP_NEXT=1', monoScope: ['app'], stacks: ['nextjs'] },
       { value: 'BP_SHARED=1', monoScope: ['app'] },
     ];
-    const ctx: TemplateContext = { ...mixedStacksCtx, blueprint: 'org-dashboard' };
+    const ctx: TemplateContext = { ...mixedStacksCtx, blueprint: 'org-dashboard-nextjs' };
 
     const files = withEnvs(blueprint, blueprintEnvs, () => collectEnvFiles(ctx));
 
@@ -625,7 +625,7 @@ describe('EnvVar.secret', () => {
       apps: [{ appName: 'dapp', stackName: 'nextjs', libraries: [] }],
       project: { tooling: [] },
       git: false,
-      blueprint: 'dapp-privy',
+      blueprint: 'dapp-privy-nextjs',
     };
     expect(collectAppSecrets(ctx, 'dapp')).toEqual(['PRIVY_APP_SECRET']);
   });

@@ -33,7 +33,7 @@ describe('Generated favicon', () => {
   });
 
   test('a Next.js blueprint keeps the icon', async () => {
-    const projectPath = await generate('bp-dapp', ['--blueprint', 'dapp-privy']);
+    const projectPath = await generate('bp-dapp', ['--blueprint', 'dapp-privy-nextjs']);
     expect(await fileExists(join(projectPath, 'src/app/icon.svg'))).toBe(true);
   });
 

@@ -22,7 +22,7 @@ describe('Images referenced by the SEO blueprints', () => {
     await cleanupTempDir(tempDir);
   });
 
-  for (const blueprint of ['showcase', 'cloudflare-static-site']) {
+  for (const blueprint of ['showcase-nextjs', 'cloudflare-static-site-nextjs']) {
     test(`${blueprint} ships the Open Graph image and the logo at the sizes its README states`, async () => {
       const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install'], tempDir);
       expect(result.exitCode).toBe(0);

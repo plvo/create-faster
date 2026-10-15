@@ -44,7 +44,7 @@ describe('pnpm workspace declaration', () => {
   });
 
   pnpmTest('blueprint turborepo with pnpm declares the workspace', async () => {
-    const projectPath = await generate('bp-pnpm', ['--blueprint', 'org-dashboard'], 'pnpm');
+    const projectPath = await generate('bp-pnpm', ['--blueprint', 'org-dashboard-nextjs'], 'pnpm');
     expect(await fileExists(join(projectPath, 'pnpm-workspace.yaml'))).toBe(true);
   });
 

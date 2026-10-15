@@ -6,14 +6,14 @@ const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_BUILD = 180_000;
 
-describe('blueprint-showcase', () => {
+describe('blueprint-showcase-nextjs', () => {
   let projectDir: string;
   let installResult: CommandResult;
 
   beforeAll(async () => {
     const tempDir = await createTempDir();
     const result = await runCli(
-      ['showcase', '--blueprint', 'showcase', '--no-git', '--no-install', '--pm', 'bun'],
+      ['showcase', '--blueprint', 'showcase-nextjs', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

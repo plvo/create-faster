@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
-describe('Blueprint generation - cloudflare-static-site', () => {
+describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
   const projectName = 'static-site';
   let projectPath: string;
   let tempDir: string;
@@ -10,7 +10,7 @@ describe('Blueprint generation - cloudflare-static-site', () => {
   beforeAll(async () => {
     tempDir = await createTempDir();
     projectPath = join(tempDir, projectName);
-    const result = await runCli([projectName, '--blueprint', 'cloudflare-static-site', '--no-install', '--no-git'], tempDir);
+    const result = await runCli([projectName, '--blueprint', 'cloudflare-static-site-nextjs', '--no-install', '--no-git'], tempDir);
     expect(result.exitCode).toBe(0);
   });
 
@@ -90,10 +90,10 @@ describe('Blueprint generation - cloudflare-static-site', () => {
 
   test('recreate command shows the blueprint flag', async () => {
     const result = await runCli(
-      ['static-site-cmd', '--blueprint', 'cloudflare-static-site', '--no-install', '--no-git'],
+      ['static-site-cmd', '--blueprint', 'cloudflare-static-site-nextjs', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint cloudflare-static-site');
+    expect(result.stdout).toContain('--blueprint cloudflare-static-site-nextjs');
   });
 });

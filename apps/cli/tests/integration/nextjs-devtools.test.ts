@@ -134,10 +134,10 @@ describe('Next.js + tanstack-devtools', () => {
     });
   });
 
-  describe('in the org-dashboard blueprint', () => {
+  describe('in the org-dashboard-nextjs blueprint', () => {
     test('loads the devtools through the shared component instead of importing them in the layout', async () => {
       const result = await runCli(
-        ['next-devtools-blueprint', '--blueprint', 'org-dashboard', '--no-git', '--no-install'],
+        ['next-devtools-blueprint', '--blueprint', 'org-dashboard-nextjs', '--no-git', '--no-install'],
         tempDir,
       );
       expect(result.exitCode).toBe(0);

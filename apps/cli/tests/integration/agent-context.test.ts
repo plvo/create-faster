@@ -37,7 +37,7 @@ describe('agent context generation (blueprint)', () => {
 
   beforeAll(async () => {
     bpDir = await createTempDir();
-    await runCli(['bp', '--blueprint', 'org-dashboard', '--no-git', '--no-install'], bpDir);
+    await runCli(['bp', '--blueprint', 'org-dashboard-nextjs', '--no-git', '--no-install'], bpDir);
   });
 
   afterAll(async () => {
@@ -60,7 +60,7 @@ describe('agent context generation (blueprint, --no-agent-context)', () => {
 
   beforeAll(async () => {
     bpDir = await createTempDir();
-    await runCli(['bp', '--blueprint', 'org-dashboard', '--no-agent-context', '--no-git', '--no-install'], bpDir);
+    await runCli(['bp', '--blueprint', 'org-dashboard-nextjs', '--no-agent-context', '--no-git', '--no-install'], bpDir);
   });
 
   afterAll(async () => {

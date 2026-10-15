@@ -43,8 +43,8 @@ const PROJECTS: Project[] = [
     ],
   },
   {
-    name: 'blueprint cloudflare-fullstack',
-    args: ['--blueprint', 'cloudflare-fullstack'],
+    name: 'blueprint cloudflare-fullstack-nextjs',
+    args: ['--blueprint', 'cloudflare-fullstack-nextjs'],
   },
 ];
 

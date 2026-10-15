@@ -1128,7 +1128,7 @@ describe('blueprint package.json generation', () => {
       ],
       project: { database: 'postgres', orm: 'drizzle', tooling: [] },
       git: false,
-      blueprint: 'org-dashboard',
+      blueprint: 'org-dashboard-nextjs',
     };
 
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);

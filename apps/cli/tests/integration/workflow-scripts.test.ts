@@ -84,7 +84,7 @@ describe('workflows generated for blueprints', () => {
   test('the deploy workflow lints when the project has a linter script', async () => {
     const name = 'lints-with-biome';
     const result = await runCli(
-      [name, '--blueprint', 'lambda-sst', '--no-git', '--no-install', '--pm', 'bun', '--linter', 'biome'],
+      [name, '--blueprint', 'lambda-sst-hono', '--no-git', '--no-install', '--pm', 'bun', '--linter', 'biome'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
