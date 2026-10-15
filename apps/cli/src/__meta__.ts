@@ -10,6 +10,9 @@ const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudfl
 
 const WRANGLER_VERSION = '^4.127.1';
 
+// Node runs no TypeScript file of the generated scripts itself; Bun does.
+const TSX_RUNNER = $when({ pm: { not: 'bun' } }, '^4.23.15');
+
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
@@ -751,7 +754,7 @@ export const META: Meta = {
               'db:migrate:local': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
               'local-setup':
-                'bun run db:generate && wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                '{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && {{packageManager}} run db:seed',
             },
           },
           deploymentPackageJson: {
@@ -774,7 +777,7 @@ export const META: Meta = {
                 ),
                 'local-setup': $when(
                   { repo: 'turborepo' },
-                  'bun run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && bun run db:seed',
+                  '{{packageManager}} run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && {{packageManager}} run db:seed',
                 ),
               },
             },
@@ -835,13 +838,15 @@ export const META: Meta = {
               '@types/node': NODE_TYPES_VERSION,
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
+              dotenv: '^17.4.2',
+              tsx: TSX_RUNNER,
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
               'db:studio': 'drizzle-kit studio',
-              'db:seed': 'bun run scripts/seed.ts',
+              'db:seed': '{{tsRunner}} scripts/seed.ts',
             },
             exports: {
               '.': './src/index.ts',
@@ -873,6 +878,7 @@ export const META: Meta = {
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
               prisma: '^7.10.0',
+              tsx: TSX_RUNNER,
             },
             scripts: {
               'db:generate': 'prisma generate',
@@ -1271,7 +1277,7 @@ export const META: Meta = {
         },
         db: {
           scripts: {
-            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+            'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
           },
         },
         ui: {
@@ -1296,10 +1302,11 @@ export const META: Meta = {
         devDependencies: {
           '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
+          tsx: TSX_RUNNER,
         },
         scripts: {
-          'local-setup': 'bun scripts/local-setup.ts',
-          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
+          'local-setup': '{{tsRunner}} scripts/local-setup.ts',
+          'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },
@@ -1371,7 +1378,7 @@ export const META: Meta = {
         },
         db: {
           scripts: {
-            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+            'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
           },
         },
         ui: {
@@ -1390,10 +1397,11 @@ export const META: Meta = {
         },
         devDependencies: {
           '@faker-js/faker': '^10.4.0',
+          tsx: TSX_RUNNER,
         },
         scripts: {
-          'local-setup': 'bun scripts/local-setup.ts',
-          'db:seed': 'bun --env-file=apps/web/.env scripts/seed.ts',
+          'local-setup': '{{tsRunner}} scripts/local-setup.ts',
+          'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
           start: 'turbo start',
         },
       },
@@ -1497,7 +1505,7 @@ export const META: Meta = {
         },
         db: {
           scripts: {
-            'db:seed': 'bun run --cwd {{workspaceRoot}} db:seed',
+            'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
           },
         },
         ui: {
@@ -1531,11 +1539,12 @@ export const META: Meta = {
         devDependencies: {
           '@repo/config': '*',
           '@faker-js/faker': '^10.4.0',
+          tsx: TSX_RUNNER,
           'drizzle-orm': '^0.45.2',
         },
         scripts: {
-          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 bun --env-file=packages/db/.env scripts/seed.ts',
-          'local-setup': 'bun scripts/local-setup.ts',
+          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 {{tsRunner}} --env-file=packages/db/.env scripts/seed.ts',
+          'local-setup': '{{tsRunner}} scripts/local-setup.ts',
           start: 'turbo start',
         },
       },

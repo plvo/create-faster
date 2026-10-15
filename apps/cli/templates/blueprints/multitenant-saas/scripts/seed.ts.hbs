@@ -5,7 +5,6 @@ mono:
   path: scripts/seed.ts
 ---
 {{{{raw}}}}
-#!/usr/bin/env bun
 import { parseArgs } from 'node:util';
 import { faker } from '@faker-js/faker';
 import { createAuth } from '@repo/auth/auth';
@@ -26,7 +25,7 @@ const { values: flags } = parseArgs({
 function printHelp(): void {
   console.log(`Seed the database.
 
-Usage: bun run db:seed [options]
+Usage: {{{{/raw}}}}{{runScript "db:seed"}}{{{{raw}}}} [options]
 
 Options:
   --reset      Wipe existing data before seeding (local databases only)

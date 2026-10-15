@@ -33,6 +33,7 @@ if (!localPath) {
 
 const db = drizzle(new Database(localPath), { schema });
 {{else}}
+import 'dotenv/config';
 {{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
