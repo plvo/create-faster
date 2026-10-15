@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { META } from '@/__meta__';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
-import { getAllTemplatesForContext } from '@/lib/template-resolver';
+import { getAllTemplatesForContext, resolveBlueprintChain } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
 
 /**
@@ -88,6 +88,10 @@ function extractExternalPackageImports(content: string): string[] {
   return [...packages];
 }
 
+function isBlueprintTemplate(source: string, blueprintName: string): boolean {
+  return resolveBlueprintChain(blueprintName).some((name) => source.includes(`/blueprints/${name}/`));
+}
+
 function buildContextFromBlueprint(name: string): TemplateContext {
   const blueprint = META.blueprints[name]!;
   return {
@@ -118,7 +122,7 @@ describe('Blueprint template @/ imports', () => {
       const unresolved: { file: string; importPath: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const rawContent = readFileSync(template.source, 'utf-8');
         const content = getEffectiveContent(rawContent, isMono);
@@ -170,7 +174,7 @@ describe('Blueprint template relative imports', () => {
       const unresolved: { file: string; importPath: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const rawContent = readFileSync(template.source, 'utf-8');
         const content = getEffectiveContent(rawContent, isMono);
@@ -223,7 +227,7 @@ describe('Blueprint template external dependencies', () => {
       const undeclared: { file: string; pkg: string; app: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const appMatch = template.destination.match(/^apps\/([^/]+)\//);
         if (!appMatch) continue;

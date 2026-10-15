@@ -55,6 +55,7 @@ interface MetaBlueprint {
     apps: { appName: string; stackName: StackName; libraries: string[] }[];
     project: { database?: string; orm?: string };
   };
+  extends?: string;    // Parent blueprint whose templates are inherited
   packageJson?: PackageJsonConfig;  // Extra deps for the blueprint
   envs?: EnvVar[];                   // Extra env vars
 }
@@ -69,9 +70,18 @@ This means:
 - Structural templates (tsconfig, tailwind config, etc.) are kept as-is
 - Library templates (auth setup, query providers, etc.) are kept as-is
 
+### Extending a Blueprint (`extends`)
+
+A framework variant of an existing blueprint does not copy its templates: set `extends: 'parent-blueprint'` in its META entry. The resolver applies the folders of the chain `[parents..., blueprint]` in order, and the later folder wins per destination (structural templates are replaced the same way).
+
+- Only templates are inherited. `context`, `packageJson`, `envs`, `rootPackageJson`, `pkgPackageJson`, `firstRun` and `agentArchitecture` stay explicit on the child; share a value through a constant in `__meta__.ts`.
+- Framework-specific files of the parent carry the stack suffix (`page.tsx.nextjs.hbs`) so only an app on that stack gets them. An unsuffixed file of a parent must not import `next` or `next/*` (a unit test fails otherwise).
+- `blueprintSkip` matches only the selected blueprint: a child lists its own name to drop an inherited file it does not replace.
+- An unknown parent or a cycle fails `tests/unit/lib/template-resolver-extends.test.ts`.
+
 ### Template Resolution for Blueprints
 
-- Scans `templates/blueprints/{blueprintName}/`
+- Scans `templates/blueprints/{blueprintName}/` (and the folders of its `extends` chain first)
 - Supports stack suffixes: `file.tsx.nextjs.hbs` (filtered to matching stacks)
 - Supports frontmatter with `only: mono|single` filtering
 - Default scope is `app` (blueprints target the first app in turborepo)
