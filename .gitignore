@@ -24,6 +24,7 @@ coverage
 # Next.js
 .next/
 next-env.d.ts
+*.tsbuildinfo
 
 # Build Outputs
 out/

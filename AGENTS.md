@@ -52,7 +52,7 @@ bun run check                # Biome format + lint check (CI runs it)
 bun run lint                 # Biome lint with auto-fix
 bun run format               # Biome format
 bun run check:unused         # knip (CI runs it; config in knip.jsonc)
-bun run typecheck            # tsc --noEmit on apps/cli (CI runs it)
+bun run typecheck            # tsc --noEmit on apps/cli and apps/www (CI runs it); apps/www first runs fumadocs-mdx and next typegen
 cd apps/cli && bun test tests/unit tests/integration
 cd apps/cli && bun test tests/e2e/<file> --timeout 600000
 ```
