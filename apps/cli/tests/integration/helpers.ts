@@ -2,9 +2,12 @@ import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
-import { expect } from 'bun:test';
+import { expect, setDefaultTimeout } from 'bun:test';
 import { $ } from 'bun';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
+
+// Every integration test file imports this module, so the timeout applies to those files only; unit tests keep Bun's default.
+setDefaultTimeout(120_000);
 
 interface CliResult {
   exitCode: number;
@@ -328,7 +331,7 @@ export async function printedScriptsMissingFrom(projectPath: string, document: s
 
 const ENTER = '\r';
 const DOWN_THEN_ENTER = '\x1b[B\r';
-const PROMPT_TIMEOUT_MS = 30_000;
+const TERMINAL_RUN_TIMEOUT_MS = 60_000;
 
 interface PromptAnswer {
   prompt: string;
@@ -355,19 +358,31 @@ export async function runCliOnTerminal(args: string[], cwd: string, expectedProm
     },
   });
 
+  const runName = `create-faster ${args.join(' ')}`;
+  const deadline = Date.now() + TERMINAL_RUN_TIMEOUT_MS;
+  const timeoutMessage = (waitingFor: string) =>
+    `"${runName}" did not ${waitingFor} within ${TERMINAL_RUN_TIMEOUT_MS} ms. Output:\n${output}`;
+
   try {
     let searchFrom = 0;
     for (const { prompt, keys } of expectedPrompts) {
-      const deadline = Date.now() + PROMPT_TIMEOUT_MS;
       while (output.indexOf(prompt, searchFrom) === -1) {
-        if (Date.now() > deadline) throw new Error(`Prompt "${prompt}" never appeared. Output:\n${output}`);
+        if (Date.now() > deadline) throw new Error(timeoutMessage(`show the prompt "${prompt}"`));
         await Bun.sleep(50);
       }
       searchFrom = output.length;
       await Bun.sleep(100);
       proc.terminal?.write(keys);
     }
-    return { exitCode: await proc.exited, output };
+    let stopWaiting = () => {};
+    const deadlineReached = new Promise<null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), Math.max(deadline - Date.now(), 0));
+      stopWaiting = () => clearTimeout(timer);
+    });
+    const exitCode = await Promise.race([proc.exited, deadlineReached]);
+    stopWaiting();
+    if (exitCode === null) throw new Error(timeoutMessage('exit'));
+    return { exitCode, output };
   } finally {
     proc.kill();
   }
