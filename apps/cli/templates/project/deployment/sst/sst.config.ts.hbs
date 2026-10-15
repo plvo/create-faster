@@ -9,10 +9,27 @@ export default $config({
     };
   },
   async run() {
+{{#if (projectSecrets "nextjs" "hono" "tanstack-start")}}
+    const secrets = {
+{{#each (projectSecrets "nextjs" "hono" "tanstack-start")}}
+      {{pascalCase this}}: new sst.Secret('{{pascalCase this}}'),
+{{/each}}
+    };
+
+{{/if}}
 {{#each apps}}
 {{#if (eq stackName "nextjs")}}
     const {{camelCase appName}} = new sst.aws.Nextjs('{{appName}}'{{#if (eq ../repo "turborepo")}}, {
       path: 'apps/{{appName}}/',
+{{#if (appSecrets)}}
+      environment: {
+        {{> sst/secret-environment}}
+      },
+{{/if}}
+    }{{else if (appSecrets)}}, {
+      environment: {
+        {{> sst/secret-environment}}
+      },
     }{{/if}});
 {{/if}}
 {{#if (eq stackName "hono")}}
@@ -21,6 +38,7 @@ export default $config({
       handler: '{{#if (eq ../repo "turborepo")}}apps/{{appName}}/{{/if}}src/index.handler',
       environment: {
         NODE_ENV: $dev ? 'development' : 'production',
+        {{> sst/secret-environment}}
       },
     });
 {{/if}}
@@ -32,6 +50,7 @@ export default $config({
       environment: {
         NODE_ENV: $dev ? 'development' : 'production',
         NITRO_PRESET: 'aws-lambda',
+        {{> sst/secret-environment}}
       },
     });
 {{/if}}

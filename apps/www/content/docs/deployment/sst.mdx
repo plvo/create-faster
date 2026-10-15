@@ -31,6 +31,41 @@ A Hono app's `src/index.ts` exports that `handler` (`handle(app)` from `hono/aws
 
 `sst.aws.TanStackStart` requires the Nitro `aws-lambda` preset. The generated config sets it through `environment: { NITRO_PRESET: 'aws-lambda' }`: SST passes that environment to its build command, so the app's own `build` script, `vite.config.ts` and `start` keep the default `node-server` output. SST also adds the `environment` to the deployed Lambda's runtime environment and to the `sst dev` command; both are harmless (Nitro falls back to its dev preset in dev).
 
+### Runtime secrets
+
+An app deployed by SST gets no `.env` file, so every runtime secret it reads is declared as an `sst.Secret` and passed to the app as the environment variable of the same name:
+
+```ts
+const secrets = {
+  DatabaseUrl: new sst.Secret('DatabaseUrl'),
+  BetterAuthSecret: new sst.Secret('BetterAuthSecret'),
+};
+
+const web = new sst.aws.Nextjs('web', {
+  environment: {
+    DATABASE_URL: secrets.DatabaseUrl.value,
+    BETTER_AUTH_SECRET: secrets.BetterAuthSecret.value,
+  },
+});
+```
+
+The code keeps reading `process.env.DATABASE_URL`, locally from `.env` and on AWS from the environment SST sets. Linking the secret (`link: [secret]`) would expose it only through `Resource.DatabaseUrl.value` of the `sst` package, never as an environment variable, so the generated config does not link it.
+
+The secrets declared are the variables the apps receive that cannot live in the repo: the database connection string (`postgres` and `mysql`), `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` with Better Auth, `PRIVY_APP_SECRET` with the dApp (Privy) blueprint. Each app receives only the ones it reads. A project without any declares no `sst.Secret`.
+
+SST fails `sst deploy` and `sst dev` until every secret has a value for the stage:
+
+```bash
+npx sst secret set DatabaseUrl "postgresql://user:password@host:5432/db?sslmode=verify-full" --stage production
+npx sst secret set BetterAuthSecret "$(openssl rand -base64 32)" --stage production
+```
+
+The secret name is the variable name in PascalCase (`DATABASE_URL` becomes `DatabaseUrl`). In CI, export `SST_SECRET_DatabaseUrl` before `sst deploy` instead. `--fallback` sets a value that every stage without its own uses, which suits PR stages.
+
+`BETTER_AUTH_URL` is the URL the app is served at: set it once the first deploy has printed the CloudFront URL (or to your custom domain), then deploy again.
+
+The values are encrypted in the state file and stored encrypted in an S3 bucket of your AWS account. They reach the function as environment variables, and, for Next.js and TanStack Start, the environment of the build command. A `NEXT_PUBLIC_*` or `VITE_*` value is never a secret: the browser bundle embeds it at build.
+
 The config includes:
 - Stage-aware removal policy: `retain` in production, `remove` in other stages
 - AWS as the default provider

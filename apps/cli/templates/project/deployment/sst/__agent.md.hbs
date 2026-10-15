@@ -1,0 +1,17 @@
+{{#if (projectSecrets "nextjs" "hono" "tanstack-start")}}
+Each runtime secret is an `sst.Secret` declared in `sst.config.ts` and passed to every app that reads it as the environment variable of the same name (`environment`), so the code reads `process.env.X` here as it does locally from `.env`. A deploy (and `sst dev`) fails until each one is set for the stage:
+
+{{#each (projectSecrets "nextjs" "hono" "tanstack-start")}}
+- `{{packageRunner}} sst secret set {{pascalCase this}} <value> --stage <stage>`: `{{this}}`
+{{/each}}
+
+- `sst secret set` stores the value encrypted in an S3 bucket of your AWS account. In CI, export `SST_SECRET_<Name>` (the name `sst secret set` takes) before `sst deploy` instead.
+- `--fallback` sets a value that every stage without its own falls back to, for PR stages.
+- The value lands in the function environment (encrypted at rest by AWS) and, for Next.js and TanStack Start, in the environment of the build command. Never prefix a secret with `NEXT_PUBLIC_` or `VITE_`.
+{{#if (or (has "database" "postgres") (has "database" "mysql"))}}
+- `DATABASE_URL` is the production connection string, with TLS: never the local Docker one.
+{{/if}}
+{{#if (hasLibrary "better-auth")}}
+- `BETTER_AUTH_URL` is the URL the app is served at. It is only known after the first deploy (the CloudFront URL `sst deploy` prints, or your custom domain): set it, then deploy again.
+{{/if}}
+{{/if}}

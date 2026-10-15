@@ -261,6 +261,7 @@ adapter.ts.hono.hbs → only for Hono apps
 | `hasRootScript "name"` | Check if the generated root `package.json` defines the script |
 | `appPort appName` | Get port for app (3000 + index) |
 | `camelCase str` | Convert a kebab or snake case string to camelCase |
+| `pascalCase str` | Convert a kebab or snake case string to PascalCase (`DATABASE_URL` is `DatabaseUrl`) |
 | `raw` | Block: renders its body as is |
 | `eq`, `ne`, `and`, `or` | Logical operators |
 

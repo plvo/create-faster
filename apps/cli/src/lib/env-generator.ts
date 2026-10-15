@@ -70,7 +70,14 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
-      envs.push({ value: env.value, scope, stacks: env.stacks, file: env.file, secret: env.secret, ...origin });
+      envs.push({
+        value: env.value,
+        scope,
+        stacks: env.stacks,
+        file: env.file,
+        secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
+        ...origin,
+      });
     }
   };
 
@@ -202,6 +209,15 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
       (env) => env.secret && !env.file && (ctx.repo === 'single' || env.scope === 'app') && appAcceptsEnv(env, app),
     )
     .map((env) => extractEnvKey(env.value));
+
+  return [...new Set(names)];
+}
+
+/** The secret variables received by at least one app on one of the stacks, each listed once. */
+export function collectProjectSecrets(ctx: TemplateContext, stacks: readonly StackName[]): string[] {
+  const names = ctx.apps
+    .filter((app) => stacks.includes(app.stackName))
+    .flatMap((app) => collectAppSecrets(ctx, app.appName));
 
   return [...new Set(names)];
 }
