@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "typecheck": "next typegen && fumadocs-mdx && tsc --noEmit",
     "dev": "next dev",
     "start": "next start",
     "postinstall": "fumadocs-mdx"
