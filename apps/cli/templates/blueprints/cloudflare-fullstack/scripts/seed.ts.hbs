@@ -6,11 +6,12 @@ mono:
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { Database as BunSqlite } from 'bun:sqlite';
+import { pathToFileURL } from 'node:url';
+import { createClient } from '@libsql/client';
 import { faker } from '@faker-js/faker';
 import { createAuth } from '@repo/auth/auth';
 import { type Database, documentTable, eq, userTable } from '@repo/db';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '@repo/db';
 
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
@@ -26,9 +27,9 @@ const { values: flags } = parseArgs({
 function printHelp(): void {
   console.log(`Seed the local D1 database.
 
-Run after \`bun run local-setup\` (which creates + migrates the local D1 sqlite).
+Run after \`{{{{/raw}}}}{{runScript "local-setup"}}{{{{raw}}}}\` (which creates + migrates the local D1 sqlite).
 
-Usage: bun run db:seed [options]
+Usage: {{{{/raw}}}}{{runScript "db:seed"}}{{{{raw}}}} [options]
 
 Options:
   --reset      Wipe existing rows before seeding
@@ -39,24 +40,21 @@ Options:
 function getLocalD1DB(): string {
   const d1Dir = path.resolve(process.cwd(), '.wrangler/v3/d1/miniflare-D1DatabaseObject');
   if (!fs.existsSync(d1Dir)) {
-    throw new Error('Local D1 database not found. Run `bun run local-setup` first.');
+    throw new Error('Local D1 database not found. Run `{{{{/raw}}}}{{runScript "local-setup"}}{{{{raw}}}}` first.');
   }
   const file = fs
     .readdirSync(d1Dir)
     .filter((f) => f.endsWith('.sqlite') && f !== 'metadata.sqlite')
     .map((f) => ({ name: f, mtime: fs.statSync(path.join(d1Dir, f)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime)[0];
-  if (!file) throw new Error('Local D1 database not found. Run `bun run local-setup` first.');
+  if (!file) throw new Error('Local D1 database not found. Run `{{{{/raw}}}}{{runScript "local-setup"}}{{{{raw}}}}` first.');
   return path.join(d1Dir, file.name);
 }
 
-// The seed targets the local miniflare sqlite file directly (bun:sqlite), so it
+// The seed targets the local miniflare sqlite file directly, so it
 // reuses the better-auth + drizzle schema without a D1 binding at runtime.
-const sqlite = new BunSqlite(getLocalD1DB());
-// bun:sqlite leaves foreign keys off by default; enable them so `--reset`
-// cascades to accounts/sessions and avoids orphaned auth rows on re-seed.
-sqlite.exec('PRAGMA foreign_keys = ON;');
-const db = drizzle(sqlite, { schema }) as unknown as Database;
+const client = createClient({ url: pathToFileURL(getLocalD1DB()).href });
+const db = drizzle(client, { schema }) as unknown as Database;
 const auth = createAuth(db);
 
 interface CoreRefs {
@@ -135,6 +133,10 @@ async function main(): Promise<void> {
     printHelp();
     return;
   }
+
+  // SQLite leaves foreign keys off by default; enable them so `--reset`
+  // cascades to accounts/sessions and avoids orphaned auth rows on re-seed.
+  await client.execute('PRAGMA foreign_keys = ON');
 
   if (flags.reset) {
     console.log('Resetting local database...');

@@ -120,7 +120,7 @@ The dashboard lists documents (own rows for users; all rows for admin/manager) a
 
 ### Local seed
 
-`scripts/seed.ts` opens the local miniflare D1 sqlite directly (`bun:sqlite`) and creates `admin@example.com`, `manager@example.com`, and `user@example.com` (password `password`), plus demo documents — a third pre-expired to exercise the cron purge. It runs automatically as part of `local-setup`.
+`scripts/seed.ts` opens the local miniflare D1 sqlite directly (`@libsql/client`, so it runs under Node and Bun) and creates `admin@example.com`, `manager@example.com`, and `user@example.com` (password `password`), plus demo documents — a third pre-expired to exercise the cron purge. It runs automatically as part of `local-setup`.
 
 ## Local setup & deploy
 

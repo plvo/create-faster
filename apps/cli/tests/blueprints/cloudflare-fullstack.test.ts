@@ -316,7 +316,7 @@ describe('cloudflare-fullstack blueprint META', () => {
       join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/scripts/seed.ts.hbs'),
       'utf8',
     );
-    expect(seed).toContain("import { Database as BunSqlite } from 'bun:sqlite'");
+    expect(seed).toContain("import { createClient } from '@libsql/client'");
     expect(seed).toContain('createAuth(db)');
     expect(seed).toContain('auth.api.signUpEmail');
     expect(seed).toContain('miniflare-D1DatabaseObject');
@@ -407,7 +407,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
     const scripts = bp!.rootPackageJson?.scripts ?? {};
     expect(scripts['db:seed']).toContain('BETTER_AUTH_URL=');
-    expect(scripts['local-setup']).toBe('bun scripts/local-setup.ts');
+    expect(scripts['local-setup']).toBe('{{tsRunner}} scripts/local-setup.ts');
   });
 
   test('ships a local-setup script that resets D1 and runs generate → migrate → typegen → seed', () => {

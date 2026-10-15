@@ -291,12 +291,12 @@ Extra env vars declared by the blueprint (on top of those provided by `better-au
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| `local-setup` | `bun scripts/local-setup.ts` | One-command local bootstrap (env, docker, schema, seed) |
+| `local-setup` | `bun scripts/local-setup.ts` (`tsx` under npm and pnpm) | One-command local bootstrap (env, docker, schema, seed) |
 | `db:push` | `turbo db:push` | Push schema to database |
 | `db:generate` | `turbo db:generate` | Generate migration files |
 | `db:migrate` | `turbo db:migrate` | Apply migrations |
 | `db:studio` | `turbo db:studio` | Open Drizzle Studio |
-| `db:seed` | `bun --env-file=apps/web/.env scripts/seed.ts` | Seed core data (`--fixtures` for demo data) |
+| `db:seed` | `bun --env-file=apps/web/.env scripts/seed.ts` (`tsx` under npm and pnpm) | Seed core data (`--fixtures` for demo data) |
 | `start` | `turbo start` | Start production server |
 
 ## CLI usage

@@ -11,7 +11,7 @@ import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
-import { getAppScriptCommand, getPackageRunner, getScriptCommand } from './package-manager';
+import { getAppScriptCommand, getPackageRunner, getScriptCommand, getTypeScriptRunner } from './package-manager';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -96,8 +96,14 @@ function registerHelpers(): void {
     return [...collectMonoPackages(options.data.root as TemplateContext).keys()];
   });
 
-  Handlebars.registerHelper('runScript', (script: string, options: Handlebars.HelperOptions) => {
-    return getScriptCommand(options.data.root as TemplateContext, script);
+  Handlebars.registerHelper('runScript', (script: string, ...rest: unknown[]) => {
+    const options = rest.pop() as Handlebars.HelperOptions;
+    const [args] = rest as (string | undefined)[];
+    return getScriptCommand(options.data.root as TemplateContext, script, args);
+  });
+
+  Handlebars.registerHelper('tsRunner', (options: Handlebars.HelperOptions) => {
+    return getTypeScriptRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('runAppScript', (script: string, options: Handlebars.HelperOptions) => {

@@ -351,3 +351,27 @@ describe('not matcher', () => {
     expect(resolveValues([combined], makeCtx({ deployment: 'terraform-aws' }))).toEqual([]);
   });
 });
+
+describe('pm matcher', () => {
+  const bunOnly = $when({ pm: 'bun' }, 'bun');
+  const notBun = $when({ pm: { not: 'bun' } }, 'node');
+
+  function withPm(pm: TemplateContext['pm']): TemplateContext {
+    return { ...makeCtx(), pm };
+  }
+
+  test('matches the selected package manager', () => {
+    expect(resolveValues([bunOnly, notBun], withPm('bun'))).toEqual(['bun']);
+    expect(resolveValues([bunOnly, notBun], withPm('pnpm'))).toEqual(['node']);
+    expect(resolveValues([bunOnly, notBun], withPm('npm'))).toEqual(['node']);
+  });
+
+  test('an unselected package manager is npm, as for the printed commands', () => {
+    expect(resolveValues([bunOnly, notBun], withPm(undefined))).toEqual(['node']);
+    expect(resolveValues([$when({ pm: 'npm' }, 'npm')], withPm(undefined))).toEqual(['npm']);
+  });
+
+  test('a list matches any of its package managers', () => {
+    expect(resolveValues([$when({ pm: ['npm', 'pnpm'] }, 'node')], withPm('pnpm'))).toEqual(['node']);
+  });
+});

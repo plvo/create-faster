@@ -1,0 +1,53 @@
+interface Step {
+  label: string;
+  run: () => Promise<void>;
+}
+
+function sh(command: string, cwd?: string, env?: Record<string, string>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, { cwd, env: { ...process.env, ...env }, shell: true, stdio: 'inherit' });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`\`${command}\` exited with code ${code}`));
+    });
+  });
+}
+
+function isSearchedDirectory(name: string): boolean {
+  return name !== 'node_modules' && !name.startsWith('.');
+}
+
+async function findEnvExamples(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const found = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) return isSearchedDirectory(entry.name) ? findEnvExamples(path) : [];
+      return entry.name === '.env.example' ? [path] : [];
+    }),
+  );
+  return found.flat();
+}
+
+async function createEnvFiles(): Promise<void> {
+  for (const example of await findEnvExamples('.')) {
+    const target = example.slice(0, -'.example'.length);
+    if (existsSync(target)) continue;
+    await copyFile(example, target);
+    console.log(`  created ${target}`);
+  }
+}
+
+async function runSteps(steps: Step[]): Promise<void> {
+  for (const [index, step] of steps.entries()) {
+    console.log(`[${index + 1}/${steps.length}] ${step.label}`);
+    try {
+      await step.run();
+    } catch (error) {
+      console.error(`\nSetup failed during: ${step.label}`);
+      console.error(error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  }
+}

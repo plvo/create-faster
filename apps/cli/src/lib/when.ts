@@ -1,3 +1,4 @@
+import { resolveCommandPackageManager } from '@/lib/package-manager';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
 import type { MatchValue, Resolved, WHEN_TAG, WhenItem, WhenMatch } from '@/types/when';
@@ -58,6 +59,8 @@ function isNegation(expected: unknown): expected is { not: MatchValue } {
 
 function matchesKey(key: string, expected: MatchValue, ctx: TemplateContext): boolean {
   if (key === 'repo') return ctx.repo === expected;
+
+  if (key === 'pm') return includesAny([resolveCommandPackageManager(ctx)], expected as string | string[]);
 
   if (key === 'stack') {
     return includesAny(
