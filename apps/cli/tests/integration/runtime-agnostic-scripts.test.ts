@@ -4,6 +4,8 @@ import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, 
 
 const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
 const BUN_API = /\bBun\.|bun:|#!\/usr\/bin\/env bun/;
+// tsx runs a file of a package without "type": "module" as CommonJS, which has no top-level await.
+const TOP_LEVEL_AWAIT = /^await /m;
 
 interface Manifest {
   scripts: Record<string, string>;
@@ -42,6 +44,7 @@ describe.each(['org-dashboard', 'multitenant-saas'])('%s scripts under every pac
       for (const file of ['scripts/local-setup.ts', 'scripts/seed.ts']) {
         const source = await readTextFile(join(project, file));
         expect(source.match(BUN_API)).toBeNull();
+        expect(source).not.toMatch(TOP_LEVEL_AWAIT);
         if (pm !== 'bun') expect(source.match(/\bbun\b/)).toBeNull();
       }
     });
@@ -150,6 +153,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack scripts with %s', (pm
     for (const file of ['scripts/local-setup.ts', 'scripts/seed.ts']) {
       const source = await readTextFile(join(project, file));
       expect(source.match(BUN_API)).toBeNull();
+      expect(source).not.toMatch(TOP_LEVEL_AWAIT);
       if (pm !== 'bun') expect(source.match(/\bbun\b/)).toBeNull();
     }
   });

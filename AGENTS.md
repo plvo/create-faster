@@ -148,6 +148,18 @@ A generated client reaching a Docker database through `DATABASE_URL` connects wi
 - Both clients log one warning in production when the URL disables TLS for a host other than localhost (`postgres/tls-warning`, `mysql/production-tls`). A Cloudflare Hyperdrive client has none: the binding carries the connection.
 - The generated `AGENTS.md` of each database says where `NODE_ENV=production` comes from for the project's stacks (`database/node-env-production`, shared). A new database that connects with a URL does the same: TLS on in production by default, one URL parameter for the local opt out, a test like `tests/integration/postgres-ssl.test.ts` and an e2e against a real container (`tests/e2e/postgres-production.test.ts`, `tests/e2e/mysql-production.test.ts`).
 
+### Scripts that run under every package manager
+
+A script a generated project ships (a package.json script, `scripts/*.ts`) runs under Node for npm and pnpm and under Bun for bun, so no template calls a Bun API (`Bun.spawn`, `Bun.Glob`, `bun:sqlite`), starts with a `#!/usr/bin/env bun` shebang, or writes `bun run ...`.
+- A `.ts` file is run through the `{{tsRunner}}` token (`bun`, or `tsx` for npm and pnpm). `tsx` is a devDependency of the package that runs it, declared with `TSX_RUNNER` (`$when({ pm: { not: 'bun' } })`). It runs the file as CommonJS when the package has no `"type": "module"`, so a script avoids top-level `await`.
+- A script that calls another script writes `{{packageManager}} run <script>`, never `bun run --cwd` (`cd {{workspaceRoot}} && {{packageManager}} run db:seed`).
+- The command a script prints or runs (`sh` in the blueprint `local-setup.ts`, the usage text of a seed) comes from `{{runScript "name" "args"}}`, resolved when the project is generated. `args` carries the `--` npm needs to forward flags.
+- `scripts/local-setup.ts` of the blueprints shares `partials/local-setup/steps.hbs`: `node:child_process` `spawn` with a shell, a directory walk for `.env.example` files, no glob dependency.
+- A seed reads its environment itself: `import 'dotenv/config'` first in the generic Drizzle seed (Bun loads `.env` on its own, Node does not), `--env-file` on the blueprint seeds. Prisma loads it through `prisma.config.ts`.
+- A seed for the local D1 database opens the miniflare file with `@libsql/client` and `drizzle-orm/libsql` (the same on both runtimes), never `bun:sqlite`.
+
+The `hono` and `node` stacks still run their `dev` and `start` scripts, and the Lambda blueprints their `build`, with `bun`.
+
 ### Prompts, testing libraries and linters
 
 - Library prompts group libraries by their `category` field (`UI`, `Content`, `Auth`, `API`, `Data Fetching`, `Forms`, `Runtime`, `Observability`, `Analytics`, `Testing`); `multiselectLibrariesPrompt` in `prompts/stack-prompts.ts` builds the groups from META.
