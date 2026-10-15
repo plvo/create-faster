@@ -33,7 +33,7 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
         for (const value of ctx.project[projectKey]) {
           flagsCommand += ` --${projectKey} ${value}`;
         }
-      } else {
+      } else if (ctx.project[projectKey]) {
         flagsCommand += ` --${projectKey} ${ctx.project[projectKey]}`;
       }
     }
