@@ -276,6 +276,19 @@ describe('Handlebars helpers', () => {
       const inBlock = Handlebars.compile('{{#each apps}}{{runScript "dev"}}{{/each}}');
       expect(inBlock(ctx('pnpm'))).toBe('pnpm run dev');
     });
+
+    test('forwards arguments to the script the way each package manager needs', () => {
+      const withArgs = Handlebars.compile('{{runScript "db:seed" "--fixtures"}}', { noEscape: true });
+      expect(withArgs(ctx('bun'))).toBe('bun run db:seed --fixtures');
+      expect(withArgs(ctx('pnpm'))).toBe('pnpm run db:seed --fixtures');
+      expect(withArgs(ctx('npm'))).toBe('npm run db:seed -- --fixtures');
+    });
+
+    test('tsRunner is the command that runs a TypeScript file', () => {
+      const runner = Handlebars.compile('{{tsRunner}} scripts/seed.ts');
+      expect(runner(ctx('bun'))).toBe('bun scripts/seed.ts');
+      expect(runner(ctx('npm'))).toBe('tsx scripts/seed.ts');
+    });
   });
 
   describe('runAppScript and stackApps', () => {

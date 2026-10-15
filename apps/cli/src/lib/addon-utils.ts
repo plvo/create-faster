@@ -1,4 +1,5 @@
 import { META } from '@/__meta__';
+import { getTypeScriptRunner, resolveCommandPackageManager } from '@/lib/package-manager';
 import type { TemplateContext } from '@/types/ctx';
 import type { AddonRequire, AppScriptTransform, MetaAddon, ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -175,7 +176,10 @@ export function resolveScriptPlaceholders(
 
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(scripts)) {
-    let next = value.replace(/\{\{workspaceRoot\}\}/g, workspaceRoot);
+    let next = value
+      .replace(/\{\{workspaceRoot\}\}/g, workspaceRoot)
+      .replace(/\{\{packageManager\}\}/g, resolveCommandPackageManager(ctx))
+      .replace(/\{\{tsRunner\}\}/g, getTypeScriptRunner(ctx));
     if (deployAppDir) next = next.replace(/\{\{deployAppDir\}\}/g, deployAppDir);
     resolved[key] = next;
   }

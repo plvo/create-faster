@@ -3,6 +3,8 @@ import {
   createCachedVersionReader,
   findMissingPackageManager,
   getPackageManager,
+  getScriptCommand,
+  getTypeScriptRunner,
   missingPackageManagerMessage,
   readPackageManagerVersion,
   resolvePackageManager,
@@ -105,5 +107,28 @@ describe('missingPackageManagerMessage', () => {
     expect(message).toContain("'pnpm'");
     expect(message).toContain('Install pnpm');
     expect(message).toContain('--pm');
+  });
+});
+
+describe('getScriptCommand', () => {
+  test.each([
+    ['bun', 'bun run db:seed --fixtures'],
+    ['pnpm', 'pnpm run db:seed --fixtures'],
+    ['npm', 'npm run db:seed -- --fixtures'],
+    [undefined, 'npm run db:seed -- --fixtures'],
+  ] as const)('forwards arguments to the script under %s', (pm, expected) => {
+    expect(getScriptCommand(contextWith({ pm }), 'db:seed', '--fixtures')).toBe(expected);
+  });
+
+  test('without arguments it is the bare run command', () => {
+    expect(getScriptCommand(contextWith({ pm: 'npm' }), 'dev')).toBe('npm run dev');
+  });
+});
+
+describe('getTypeScriptRunner', () => {
+  test('Bun runs TypeScript itself, the others use tsx', () => {
+    expect(getTypeScriptRunner(contextWith({ pm: 'bun' }))).toBe('bun');
+    expect(getTypeScriptRunner(contextWith({ pm: 'pnpm' }))).toBe('tsx');
+    expect(getTypeScriptRunner(contextWith({ pm: undefined }))).toBe('tsx');
   });
 });

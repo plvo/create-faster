@@ -62,13 +62,33 @@ const PACKAGE_MANAGER_RUNNERS: Record<PackageManagerName, string> = {
 
 const COMMAND_FALLBACK_PACKAGE_MANAGER: PackageManagerName = 'npm';
 
-function resolveCommandPackageManager(ctx: TemplateContext): PackageManagerName {
+export function resolveCommandPackageManager(ctx: TemplateContext): PackageManagerName {
   return resolvePackageManager(ctx) ?? COMMAND_FALLBACK_PACKAGE_MANAGER;
 }
 
+/** npm keeps the flags that follow the script name for itself, so it needs `--` before the script's own. */
+const PACKAGE_MANAGER_SCRIPT_ARGS_SEPARATOR: Record<PackageManagerName, string> = {
+  bun: '',
+  npm: '-- ',
+  pnpm: '',
+};
+
 /** A package.json script as every package manager runs it: a bare `bun build` is Bun's bundler, `npm dev` is unknown. */
-export function getScriptCommand(ctx: TemplateContext, script: string): string {
-  return `${resolveCommandPackageManager(ctx)} run ${script}`;
+export function getScriptCommand(ctx: TemplateContext, script: string, args?: string): string {
+  const pm = resolveCommandPackageManager(ctx);
+  const command = `${pm} run ${script}`;
+  return args ? `${command} ${PACKAGE_MANAGER_SCRIPT_ARGS_SEPARATOR[pm]}${args}` : command;
+}
+
+/** Bun runs a TypeScript file itself; Node needs a loader. */
+const PACKAGE_MANAGER_TYPESCRIPT_RUNNERS: Record<PackageManagerName, string> = {
+  bun: 'bun',
+  npm: 'tsx',
+  pnpm: 'tsx',
+};
+
+export function getTypeScriptRunner(ctx: TemplateContext): string {
+  return PACKAGE_MANAGER_TYPESCRIPT_RUNNERS[resolveCommandPackageManager(ctx)];
 }
 
 /** A script only the apps define: a turborepo root has none, so it runs from the app directory. */

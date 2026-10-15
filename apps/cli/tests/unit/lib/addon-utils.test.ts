@@ -468,3 +468,32 @@ describe('resolveScriptPlaceholders substitutes generic topology tokens', () => 
     ).toBe('config ../../apps/web/wrangler.jsonc');
   });
 });
+
+describe('resolveScriptPlaceholders substitutes package manager tokens', () => {
+  const ctx = (pm: TemplateContext['pm']): TemplateContext => ({
+    projectName: 'test',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { tooling: [] },
+    repo: 'single',
+    pm,
+    git: false,
+  });
+
+  test.each([
+    ['bun', 'bun scripts/seed.ts'],
+    ['npm', 'tsx scripts/seed.ts'],
+    ['pnpm', 'tsx scripts/seed.ts'],
+    [undefined, 'tsx scripts/seed.ts'],
+  ] as const)('tsRunner under %s', (pm, expected) => {
+    expect(resolveScriptPlaceholders({ x: '{{tsRunner}} scripts/seed.ts' }, ctx(pm)).x).toBe(expected);
+  });
+
+  test.each([
+    ['bun', 'cd ../.. && bun run db:seed'],
+    ['npm', 'cd ../.. && npm run db:seed'],
+    ['pnpm', 'cd ../.. && pnpm run db:seed'],
+    [undefined, 'cd ../.. && npm run db:seed'],
+  ] as const)('packageManager under %s', (pm, expected) => {
+    expect(resolveScriptPlaceholders({ x: 'cd ../.. && {{packageManager}} run db:seed' }, ctx(pm)).x).toBe(expected);
+  });
+});

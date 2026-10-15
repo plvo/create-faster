@@ -1,4 +1,4 @@
-import type { ProjectContext } from '@/types/ctx';
+import type { PackageManagerName, ProjectContext } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
 
 /** Type-level brand of a `$when` item; `lib/when.ts` creates the runtime symbol under this type. */
@@ -12,6 +12,7 @@ export interface WhenMatch extends Partial<Record<keyof ProjectContext, Negatabl
   stack?: Negatable<StackName | StackName[]>;
   library?: Negatable<string | string[]>;
   repo?: Negatable<'single' | 'turborepo'>;
+  pm?: Negatable<PackageManagerName | PackageManagerName[]>;
 }
 
 export interface WhenItem<T = unknown> {
