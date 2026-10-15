@@ -52,7 +52,7 @@ bun run check                # Biome format + lint check (CI runs it)
 bun run lint                 # Biome lint with auto-fix
 bun run format               # Biome format
 bun run check:unused         # knip (CI runs it; config in knip.jsonc)
-bun run typecheck            # tsc --noEmit on apps/cli and apps/www (CI runs it); apps/www first runs fumadocs-mdx and next typegen
+bun run typecheck            # tsc --noEmit on apps/cli and apps/www (CI runs it); apps/www first runs next typegen, then fumadocs-mdx (keep that order: next typegen exits while the fumadocs-mdx Next plugin is still writing .source/index.ts, which leaves it empty)
 cd apps/cli && bun test tests/unit tests/integration
 cd apps/cli && bun test tests/e2e/<file> --timeout 600000
 ```
