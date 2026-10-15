@@ -30,7 +30,12 @@ async function main() {
       config = await blueprintCli(partial.blueprint, partial);
     } else {
       const hasCompositionFlags =
-        'apps' in partial || 'project' in partial || 'git' in partial || 'pm' in partial || 'skipInstall' in partial;
+        'apps' in partial ||
+        'project' in partial ||
+        'git' in partial ||
+        'pm' in partial ||
+        'skipInstall' in partial ||
+        'skipPrompts' in partial;
       const hasBlueprints = Object.keys(META.blueprints).length > 0;
 
       if (!hasCompositionFlags && hasBlueprints) {

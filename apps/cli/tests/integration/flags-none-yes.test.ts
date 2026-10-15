@@ -14,6 +14,7 @@ import {
 } from './helpers';
 
 const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
+const multiSelectCategories = categoryNames.filter((name) => META.project[name].selection === 'multi');
 const promptOf = (name: ProjectCategoryName) => META.project[name].prompt;
 
 describe('--yes and none', () => {
@@ -54,7 +55,7 @@ describe('--yes and none', () => {
     expect(await fileExists(join(tempDir, 'demo', 'docker-compose.yml'))).toBe(false);
   });
 
-  test.each(categoryNames)('--%s none mixed with a value is rejected', async (category) => {
+  test.each(multiSelectCategories)('--%s none mixed with a value is rejected', async (category) => {
     const [firstOption] = Object.keys(META.project[category].options);
     const result = await runCli(
       ['demo', '--app', 'demo:nextjs', `--${category}`, 'none', `--${category}`, firstOption as string],

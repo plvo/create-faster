@@ -29,7 +29,7 @@ describe('recreate command answers every prompt', () => {
     });
     displayOutroCliCommand(ctx, '/tmp/demo');
     writeSpy.mockRestore();
-    return written.join('');
+    return written.join('').replaceAll('\\\n  ', '');
   }
 
   test('adds nothing when every category, git and the package manager are given', () => {

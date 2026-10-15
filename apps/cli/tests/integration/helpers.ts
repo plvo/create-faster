@@ -330,7 +330,7 @@ const ENTER = '\r';
 const DOWN_THEN_ENTER = '\x1b[B\r';
 const PROMPT_TIMEOUT_MS = 30_000;
 
-export interface PromptAnswer {
+interface PromptAnswer {
   prompt: string;
   keys: string;
 }

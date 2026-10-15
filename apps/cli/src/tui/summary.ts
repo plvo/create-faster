@@ -6,7 +6,15 @@ import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
+import { shouldPromptCategory } from '@/lib/project-prompts';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
+import type { ProjectCategoryName } from '@/types/meta';
+
+function leavesAnswersToPrompts(ctx: TemplateContext): boolean {
+  const mode = { hasFlags: true, interactive: true, skipPrompts: false, noSelection: [] };
+  const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
+  return !ctx.git || !ctx.pm || categoryNames.some((name) => shouldPromptCategory(name, ctx, mode));
+}
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
   let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${ctx.projectName}`;
@@ -45,6 +53,11 @@ export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string
 
   if (ctx.pm) {
     flagsCommand += ` --pm ${ctx.pm}`;
+    if (ctx.skipInstall) flagsCommand += ' --no-install';
+  }
+
+  if (leavesAnswersToPrompts(ctx)) {
+    flagsCommand += ' --yes';
   }
 
   if (ctx.agentContext === false) {
