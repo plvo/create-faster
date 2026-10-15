@@ -92,7 +92,6 @@ export function SearchInput({
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        // biome-ignore lint/a11y/noAutofocus: opt-in via prop, off by default
         autoFocus={autoFocus}
         className={cn('h-9 pl-9', showHotkeyBadge && 'pr-9')}
       />

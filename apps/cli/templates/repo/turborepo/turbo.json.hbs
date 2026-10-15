@@ -50,7 +50,8 @@
       "cache": false
     },
     "db:seed": {
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"{{#if blueprint}}, "SEED_PASSWORD"{{/if}}]
     },
     "db:studio": {
       "cache": false,
