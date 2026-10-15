@@ -75,6 +75,13 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     expect(root).toContain('documents: documentsRouter');
   });
 
+  test('api package declares @opennextjs/cloudflare because the documents router imports it for the R2 binding', async () => {
+    const router = await readTextFile(join(projectPath, 'packages/api/src/router/documents.ts'));
+    expect(router).toContain("import('@opennextjs/cloudflare')");
+    const apiPkg = JSON.parse(await readTextFile(join(projectPath, 'packages/api/package.json')));
+    expect(apiPkg.dependencies).toHaveProperty('@opennextjs/cloudflare');
+  });
+
   test('web ships the R2 upload route', async () => {
     expect(await fileExists(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'))).toBe(true);
   });
