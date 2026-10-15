@@ -25,6 +25,12 @@ export interface FirstRunStep {
   commands: FirstRunCommand[];
 }
 
+/** A package.json script the CLI runs through the selected package manager once the dependencies are installed. */
+export interface PostGenerateStep {
+  description: string;
+  script: string;
+}
+
 interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
@@ -106,6 +112,8 @@ export interface MetaAddon {
   interactiveScripts?: string[];
   /** Steps of a fresh project's first run, in order (README and CLI summary). */
   firstRun?: FirstRunStep[];
+  /** Scripts run once the dependencies are installed, before `git init`. A failing step only warns. */
+  postGenerate?: PostGenerateStep[];
 }
 
 export interface MetaProjectCategory {

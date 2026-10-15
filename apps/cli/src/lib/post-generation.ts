@@ -1,5 +1,6 @@
 import { spinner } from '@clack/prompts';
 import color from 'picocolors';
+import { collectPostGenerateSteps, type ResolvedPostGenerateStep } from '@/lib/post-generate';
 import { runCommand } from '@/lib/run-command';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -12,9 +13,15 @@ export interface GitFailure {
   output: string;
 }
 
+/** A `postGenerate` step that did not complete: skipped with the install, or failed (`output` is then the tail of its output). */
+export interface PendingPostGenerateStep extends ResolvedPostGenerateStep {
+  output?: string;
+}
+
 interface PostGenerationResult {
   installFailure?: InstallFailure;
   gitFailure?: GitFailure;
+  pendingPostGenerate: PendingPostGenerateStep[];
 }
 
 async function installDependencies(ctx: TemplateContext, projectPath: string): Promise<InstallFailure | undefined> {
@@ -30,6 +37,29 @@ async function installDependencies(ctx: TemplateContext, projectPath: string): P
   return { command, output: result.output };
 }
 
+async function runPostGenerateSteps(
+  steps: ResolvedPostGenerateStep[],
+  projectPath: string,
+): Promise<PendingPostGenerateStep[]> {
+  const pending: PendingPostGenerateStep[] = [];
+  for (const step of steps) {
+    const s = spinner();
+    s.start(`${step.description}...`);
+    const result = await runCommand(step.command, projectPath);
+    if (result.success) {
+      s.stop(`${step.description}: done!`);
+      continue;
+    }
+    s.stop(
+      color.yellow(
+        `⚠ Warning: "${step.description}" failed: ${result.output}\nYou can manually run "${step.command}" later.`,
+      ),
+    );
+    pending.push({ ...step, output: result.output });
+  }
+  return pending;
+}
+
 async function initializeGit(projectPath: string): Promise<GitFailure | undefined> {
   const s = spinner();
   s.start('Initializing git repository...');
@@ -43,8 +73,11 @@ async function initializeGit(projectPath: string): Promise<GitFailure | undefine
 }
 
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {
-  const installFailure = ctx.pm && !ctx.skipInstall ? await installDependencies(ctx, projectPath) : undefined;
+  const steps = collectPostGenerateSteps(ctx);
+  const installs = ctx.pm && !ctx.skipInstall;
+  const installFailure = installs ? await installDependencies(ctx, projectPath) : undefined;
+  const pendingPostGenerate = installs && !installFailure ? await runPostGenerateSteps(steps, projectPath) : steps;
   const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
 
-  return { installFailure, gitFailure };
+  return { installFailure, gitFailure, pendingPostGenerate };
 }

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
-import { chmod, mkdir, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 import { runPostGeneration } from '@/lib/post-generation';
 import { buildInstallFailureMessage } from '@/tui/install-failure';
 import { displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
-import { cleanupTempDir, createTempDir } from '../../integration/helpers';
+import { cleanupTempDir, createTempDir, fileExists } from '../../integration/helpers';
 
 function contextWith(overrides: Partial<TemplateContext>): TemplateContext {
   return {
@@ -64,6 +64,81 @@ describe('runPostGeneration', () => {
     expect(result.installFailure).toBeUndefined();
   });
 
+  async function writeManifestWithFormatScript(formatScript: string) {
+    await mkdir(join(projectPath, 'dependency'));
+    await writeFile(
+      join(projectPath, 'dependency', 'package.json'),
+      JSON.stringify({ name: 'dependency', version: '1.0.0' }),
+    );
+    await writeFile(
+      join(projectPath, 'package.json'),
+      JSON.stringify({
+        name: 'demo',
+        version: '1.0.0',
+        dependencies: { dependency: 'file:./dependency' },
+        scripts: { format: formatScript },
+      }),
+    );
+  }
+
+  test('runs the script of a selected addon after the install and before git init', async () => {
+    await writeManifestWithFormatScript('test -d node_modules/dependency && test ! -d .git && echo ran > formatted.txt');
+
+    const result = await runPostGeneration(contextWith({ pm: 'bun', git: true, project: { tooling: [], linter: 'prettier' } }), projectPath);
+
+    expect(result.pendingPostGenerate).toEqual([]);
+    expect(await readFile(join(projectPath, 'formatted.txt'), 'utf8')).toBe('ran\n');
+    expect(await fileExists(join(projectPath, '.git'))).toBe(true);
+  });
+
+  test('a failing step does not fail the run and is reported with its command', async () => {
+    await writeManifestWithFormatScript('echo "cannot parse src/app.ts" >&2; exit 1');
+
+    const result = await runPostGeneration(
+      contextWith({ pm: 'bun', git: true, project: { tooling: [], linter: 'prettier' } }),
+      projectPath,
+    );
+
+    expect(result.installFailure).toBeUndefined();
+    expect(result.gitFailure).toBeUndefined();
+    expect(result.pendingPostGenerate).toEqual([
+      { description: expect.any(String), command: 'bun run format', output: expect.stringContaining('cannot parse') },
+    ]);
+    expect(await fileExists(join(projectPath, '.git'))).toBe(true);
+  });
+
+  test('does not run the steps with skipInstall and reports them as still to run', async () => {
+    await writeManifestWithFormatScript('echo ran > formatted.txt');
+
+    const result = await runPostGeneration(
+      contextWith({ pm: 'bun', skipInstall: true, project: { tooling: [], linter: 'prettier' } }),
+      projectPath,
+    );
+
+    expect(await fileExists(join(projectPath, 'formatted.txt'))).toBe(false);
+    expect(result.pendingPostGenerate.map(({ command }) => command)).toEqual(['bun run format']);
+  });
+
+  test('does not run the steps when the install fails', async () => {
+    await writeFile(
+      join(projectPath, 'package.json'),
+      JSON.stringify({
+        name: 'demo',
+        version: '1.0.0',
+        dependencies: { unresolvable: 'file:./does-not-exist' },
+        scripts: { format: 'echo ran > formatted.txt' },
+      }),
+    );
+
+    const result = await runPostGeneration(
+      contextWith({ pm: 'bun', project: { tooling: [], linter: 'prettier' } }),
+      projectPath,
+    );
+
+    expect(result.installFailure).toBeDefined();
+    expect(await fileExists(join(projectPath, 'formatted.txt'))).toBe(false);
+  });
+
   test('reports a failed git init separately from the install', async () => {
     const missingDirectory = join(projectPath, 'missing');
 
@@ -89,7 +164,7 @@ describe('runPostGeneration', () => {
 
     try {
       const result = await runPostGeneration(ctx, projectPath);
-      displaySummaryNote(ctx, result.gitFailure);
+      displaySummaryNote(ctx, result.gitFailure, result.pendingPostGenerate);
 
       expect(result.gitFailure).toEqual({ output: '' });
       expect(written.join('')).toContain('# git init failed');
