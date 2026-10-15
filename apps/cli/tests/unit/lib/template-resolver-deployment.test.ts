@@ -1,9 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
+import { createFixtureTree, removeFixtureTree } from '../fixture-tree';
 
 const SKIP_FRONTMATTER = '---\ndeploymentSkip:\n  - cloudflare\n---\nbody\n';
 
@@ -47,16 +45,11 @@ const FIXTURE_FILES: Record<string, string> = {
 let templatesDir: string;
 
 beforeAll(() => {
-  templatesDir = mkdtempSync(join(tmpdir(), 'cf-deployment-operators-'));
-  for (const [relative, content] of Object.entries(FIXTURE_FILES)) {
-    const file = join(templatesDir, relative);
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, content);
-  }
+  templatesDir = createFixtureTree('cf-deployment-operators-', FIXTURE_FILES);
 });
 
 afterAll(() => {
-  rmSync(templatesDir, { recursive: true, force: true });
+  removeFixtureTree(templatesDir);
 });
 
 function makeCtx(repo: TemplateContext['repo'], deployment?: string): TemplateContext {

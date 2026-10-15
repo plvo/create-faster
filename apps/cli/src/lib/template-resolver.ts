@@ -3,7 +3,7 @@ import { META } from '@/__meta__';
 import { getMonoPackageName, isLibraryCompatible } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
-import type { MetaAddon, MonoScope, ProjectCategoryName, TemplateFrontmatter } from '@/types/meta';
+import type { MetaAddon, MetaBlueprint, MonoScope, ProjectCategoryName, TemplateFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { scanDirectory, transformFilename } from './file-writer';
 import { parseStackSuffix, readFrontmatterFile, shouldSkipTemplate } from './frontmatter';
@@ -14,7 +14,7 @@ export function scanTemplateFiles(dir: string): string[] {
   return scanDirectory(dir).filter((file) => !file.endsWith(AGENT_DOC_FILENAME));
 }
 
-const VALID_STACKS = Object.keys(META.stacks);
+export const VALID_STACKS = Object.keys(META.stacks);
 
 // A template can declare deployment-specific output paths via frontmatter `deploymentPath`.
 // When the active deployment platform has an entry, that path replaces the default one (and
@@ -301,7 +301,39 @@ function resolveTemplatesForBlueprint(
   return templates;
 }
 
-export function getAllTemplatesForContext(ctx: TemplateContext, templatesDir = TEMPLATES_DIR): TemplateFile[] {
+export type BlueprintLinks = Record<string, Pick<MetaBlueprint, 'extends'>>;
+
+// The blueprints whose template folders apply, parents first and the selected blueprint last, so a later
+// folder wins per destination. A blueprint unknown to META has no parent.
+export function resolveBlueprintChain(blueprintName: string, blueprints: BlueprintLinks = META.blueprints): string[] {
+  const ancestry = [blueprintName];
+  let parent = blueprints[blueprintName]?.extends;
+
+  while (parent) {
+    if (ancestry.includes(parent)) {
+      throw new Error(`Blueprint extends cycle: ${[...ancestry.slice(ancestry.indexOf(parent)), parent].join(' -> ')}`);
+    }
+    const parentBlueprint = blueprints[parent];
+    if (!parentBlueprint) {
+      throw new Error(`Blueprint '${ancestry.at(-1)}' extends '${parent}', which is not a blueprint`);
+    }
+    ancestry.push(parent);
+    parent = parentBlueprint.extends;
+  }
+
+  return ancestry.reverse();
+}
+
+function overrideByDestination(templates: TemplateFile[], overrides: TemplateFile[]): TemplateFile[] {
+  const overridden = new Set(overrides.map((t) => t.destination));
+  return [...templates.filter((t) => !overridden.has(t.destination)), ...overrides];
+}
+
+export function getAllTemplatesForContext(
+  ctx: TemplateContext,
+  templatesDir = TEMPLATES_DIR,
+  blueprints: BlueprintLinks = META.blueprints,
+): TemplateFile[] {
   const templates: TemplateFile[] = [];
 
   templates.push(...resolveTemplatesForRepo(ctx, templatesDir));
@@ -341,10 +373,10 @@ export function getAllTemplatesForContext(ctx: TemplateContext, templatesDir = T
   }
 
   if (ctx.blueprint) {
-    const blueprintTemplates = resolveTemplatesForBlueprint(ctx.blueprint, ctx, templatesDir);
-    const blueprintDestinations = new Set(blueprintTemplates.map((t) => t.destination));
-    const filtered = templates.filter((t) => !blueprintDestinations.has(t.destination));
-    return [...filtered, ...blueprintTemplates];
+    return resolveBlueprintChain(ctx.blueprint, blueprints).reduce(
+      (resolved, name) => overrideByDestination(resolved, resolveTemplatesForBlueprint(name, ctx, templatesDir)),
+      templates,
+    );
   }
 
   return templates;

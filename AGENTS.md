@@ -122,7 +122,7 @@ This keeps the tool extensible: adding the next stack, library or deployment req
 - `META.stacks`: `type: 'app' | 'server'`, label and base `packageJson`.
 - `META.libraries`: per-app addons with category, `support`, `require`, `mono`, `packageJson`, `stackPackageJson`, `envs`.
 - `META.project`: each category declares its prompt, `selection: 'single' | 'multi'`, an optional category-level `require` (an ORM requires a database) and its `options`, which are addons like libraries.
-- `META.blueprints`: preset context (apps with their libraries, plus `database`, `orm` and `deployment`), extra `packageJson` and `envs`, and an optional `agentArchitecture` text for the generated `AGENTS.md`.
+- `META.blueprints`: preset context (apps with their libraries, plus `database`, `orm` and `deployment`), extra `packageJson` and `envs`, an optional `extends` (the name of a parent blueprint whose templates it inherits, see Template system, `extends`), and an optional `agentArchitecture` text for the generated `AGENTS.md`.
 - Addon `require` (`AddonRequire`): `git`, `linter`, `database`, `orm`, `deployment`, `tooling`, `libraries`, `stacks`. A flag or prompt that violates it is rejected generically (`isRequirementMet`, `describeRequire`).
 - Server-runtime capability: a library declares `needsServerRuntime: true`; a deployment declares `providesServerRuntime: false` for static-only targets. Read generically by `isServerRuntimeSatisfied`: a server-less deployment is unavailable when any selected library needs a runtime.
 - Singleton-db capability: a database declares `serverlessBinding` (it is accessed per request through a Cloudflare binding, no module singleton; `d1`, and `postgres` and `mysql` through Hyperdrive); a deployment declares `providesDbBindings: true` (Cloudflare); a library declares `needsSingletonDb: true` (better-auth, trpc consume a module-singleton `db`). A binding database whose server-side consumers are wired per request declares `serverlessConsumersWired: true` (`d1`). Read generically by `isSingletonDbSatisfied`: a binding-based database under a binding-providing deployment is unavailable when any selected library needs a singleton db, unless its consumers are wired. D1 is wired: better-auth and trpc build per request through `getDb()` and `getAuth()` from the app-side `src/lib/server.ts` (`templates/project/deployment/cloudflare/src/lib/server.ts.{nextjs,tanstack-start}.hbs`), gated by `{{#if (has "database" "d1")}}` in the `auth` and `trpc` templates. `postgres` and `mysql` on Cloudflare stay disabled with better-auth and trpc until their consumers are wired too.
@@ -219,7 +219,7 @@ apps/cli/templates/
 └── repo/{single,turborepo}/          # Repo-level files
 ```
 
-Resolution order in `getAllTemplatesForContext`: repo, then each app's stack and libraries, then project addons (database, orm, deployment and its stack-suffixed files, linter, tooling), then the blueprint. A blueprint template replaces every structural template with the same destination.
+Resolution order in `getAllTemplatesForContext`: repo, then each app's stack and libraries, then project addons (database, orm, deployment and its stack-suffixed files, linter, tooling), then the blueprint. A blueprint template replaces every structural template with the same destination. A blueprint that declares `extends` is resolved as a chain, see Template system, `extends`.
 
 ### File naming
 
@@ -278,6 +278,15 @@ A list of deployment platforms. When `ctx.project.deployment` is in the list, th
 #### `blueprintSkip`
 
 A list of blueprint names. When `ctx.blueprint` is in the list, the template is not generated (`isSkippedForBlueprint()` in `template-resolver.ts`, every template kind). Use it only when a blueprint ships its own version of a file at a different destination than the generic template it supersedes, so the override-by-destination rule cannot replace it. When both land on the same destination, the blueprint file already wins and no entry is needed. Example: the drizzle `scripts/seed.ts.hbs` lands in `packages/db/scripts/` in a turborepo, while `org-dashboard-nextjs`, `multitenant-saas-nextjs` and `cloudflare-fullstack-nextjs` keep their own root `scripts/seed.ts` there, so they list themselves (`dapp-privy-nextjs` is single-repo, its seed shares the generic destination, so it does not).
+
+#### `extends`
+
+A generic field of a blueprint in META (`MetaBlueprint.extends`): the name of a parent blueprint. `resolveBlueprintChain` in `template-resolver.ts` returns the chain `[parents..., blueprint]` (grandparent first, the selected blueprint last) and `getAllTemplatesForContext` resolves each folder of the chain in that order, every one replacing the templates with the same destination that came before it, structural templates included. The child therefore gets all the templates of its parent and wins per destination, exactly as a blueprint already overrides structural templates; nothing in the resolver knows a blueprint name.
+- **Templates only.** `context` (apps, libraries, database, orm, deployment), `packageJson` and its variants, `envs`, `rootPackageJson`, `pkgPackageJson`, `firstRun` and `agentArchitecture` are read from the selected blueprint alone and are never inherited. Declare them on the child; a value both blueprints share is a constant in `__meta__.ts` that both entries use.
+- **Framework-specific parent files carry the stack suffix** (`page.tsx.nextjs.hbs`), so a parent file is generated only for an app on that stack. An unsuffixed file of a parent is generated for every app of the child, so it must not import a module of one framework: `tests/unit/blueprint-extends-imports.test.ts` fails when an unsuffixed template of a blueprint that another one extends imports `next` or `next/*`.
+- **`blueprintSkip` matches the selected blueprint name only** (`ctx.blueprint`), never a name of the chain. A parent file that lists the child is not generated for the child and still is for the parent; a parent file that lists only the parent is still inherited by the child. This is also how a child drops an inherited file it does not replace.
+- **An invalid chain is a unit-test failure**, and throws if resolved: an unknown parent, or a cycle (including a blueprint that extends itself). `tests/unit/lib/template-resolver-extends.test.ts` resolves the chain of every blueprint in META.
+- Code that scans the template folder of the selected blueprint (a test reading `templates/blueprints/{name}`) walks the chain with `resolveBlueprintChain`, not the single folder.
 
 #### Empty-render skipping
 
@@ -376,7 +385,7 @@ All documentation produced by AI agents (research reports, plans, audits, cleanu
 
 ### Blueprint
 1. Add the entry to `META.blueprints`: label, hint, category, `context` (apps with their libraries, plus `database`, `orm` and `deployment`), optional `packageJson`, `envs` and `agentArchitecture`.
-2. Create `templates/blueprints/{blueprint}/` with `.hbs` files; a blueprint file overrides a structural template with the same destination, `blueprintSkip` covers a different one.
+2. Create `templates/blueprints/{blueprint}/` with `.hbs` files; a blueprint file overrides a structural template with the same destination, `blueprintSkip` covers a different one. A framework variant of an existing blueprint sets `extends` to it and ships only the files that differ (the parent's framework-specific files carry the stack suffix); it still declares its own `context`, `packageJson`, `envs` and `firstRun`.
 3. Test with `bun run dev:cli` and the `--blueprint {name}` flag.
 
 ## CLI flags

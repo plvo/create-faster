@@ -172,6 +172,8 @@ export interface MetaBlueprint {
   label: string;
   hint: string;
   category: string;
+  /** Blueprint whose templates this one inherits, its own files winning per destination. Templates only: context, envs, package.json and `firstRun` are declared on each blueprint. */
+  extends?: string;
   context: {
     apps: { appName: string; stackName: StackName; libraries: string[] }[];
     project: { database?: string; orm?: string; deployment?: string };

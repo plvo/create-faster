@@ -5,6 +5,7 @@ import { META } from '@/__meta__';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
+import { isBlueprintTemplate } from './blueprint-template-source';
 
 /**
  * Strips Handlebars `{{#if (isMono)}}` / `{{else}}` / `{{/if}}` blocks
@@ -118,7 +119,7 @@ describe('Blueprint template @/ imports', () => {
       const unresolved: { file: string; importPath: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const rawContent = readFileSync(template.source, 'utf-8');
         const content = getEffectiveContent(rawContent, isMono);
@@ -170,7 +171,7 @@ describe('Blueprint template relative imports', () => {
       const unresolved: { file: string; importPath: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const rawContent = readFileSync(template.source, 'utf-8');
         const content = getEffectiveContent(rawContent, isMono);
@@ -223,7 +224,7 @@ describe('Blueprint template external dependencies', () => {
       const undeclared: { file: string; pkg: string; app: string }[] = [];
 
       for (const template of templates) {
-        if (!template.source.includes(`blueprints/${blueprintName}`)) continue;
+        if (!isBlueprintTemplate(template.source, blueprintName)) continue;
 
         const appMatch = template.destination.match(/^apps\/([^/]+)\//);
         if (!appMatch) continue;
