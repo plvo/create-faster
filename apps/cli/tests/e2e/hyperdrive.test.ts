@@ -187,8 +187,7 @@ describeWithDocker('full-stack frameworks + hyperdrive e2e').each(ORMS)('postgre
     if (tempDir) await cleanupTempDir(tempDir);
   });
 
-  // `wrangler dev` of an OpenNext build answers 500 on every route (opennextjs-cloudflare#1355), so the type-check, the
-  // build and the deployable bundle are the proof for Next.js.
+  // The type-check, the build and the deployable bundle are the proof for Next.js.
   test(
     'nextjs: builds with OpenNext and the Worker bundle declares the Hyperdrive binding',
     async () => {

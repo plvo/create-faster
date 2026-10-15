@@ -594,10 +594,10 @@ export const META: Meta = {
             },
             nextjs: {
               dependencies: {
-                // Pinned below 16.4: OpenNext answers 500 on every route with it, see opennextjs/opennextjs-cloudflare#1355.
-                // Remove the pin once OpenNext ships the fix.
-                next: '~16.3.8',
-                '@opennextjs/cloudflare': '^1.20.5',
+                // OpenNext 1.20.12 is the first release that serves Next.js 16.4 (opennextjs/opennextjs-cloudflare#1355)
+                // and its `next` peer range starts at 16.4.1, so both ranges start there.
+                next: '^16.4.1',
+                '@opennextjs/cloudflare': '^1.20.12',
               },
               scripts: {
                 'build:cf': `${CLOUDFLARE_TYPEGEN} && opennextjs-cloudflare build`,
@@ -1519,7 +1519,7 @@ export const META: Meta = {
         },
         api: {
           dependencies: {
-            '@opennextjs/cloudflare': '^1.20.5',
+            '@opennextjs/cloudflare': '^1.20.12',
           },
         },
       },
