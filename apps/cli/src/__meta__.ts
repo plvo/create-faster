@@ -1,5 +1,5 @@
 import { $when } from '@/lib/when';
-import type { FirstRunStep, Meta, PostGenerateStep } from '@/types/meta';
+import type { FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
@@ -10,8 +10,17 @@ const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudfl
 
 const WRANGLER_VERSION = '^4.148.0';
 
+const TSX_VERSION = '^4.23.15';
+
 // Node runs no TypeScript file of the generated scripts itself; Bun does.
-const TSX_RUNNER = $when({ pm: { not: 'bun' } }, '^4.23.15');
+const TSX_RUNNER = $when({ pm: { not: 'bun' } }, TSX_VERSION);
+
+const ESBUILD_VERSION = '^0.28.2';
+
+// Bun bundles a Node target on its own; esbuild needs `require` back for the CommonJS packages it inlines into an ES module.
+const BUNDLE_FOR_NODE = `esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"`;
+
+const INLINE_PRODUCTION_NODE_ENV = '--define:process.env.NODE_ENV="production"';
 
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 
@@ -43,6 +52,28 @@ const wrapWithPortless = (cmd: string): string => {
   const command = cmd.slice(envAssignments.length).replace(/\s*--port\s+\S+/g, '');
   return `${envAssignments}portless run ${command}`;
 };
+
+const HONO_ON_NODE: PackageJsonConfig = {
+  dependencies: { '@hono/node-server': '^2.1.5' },
+  devDependencies: { tsx: TSX_VERSION },
+  scripts: {
+    dev: 'tsx watch src/server.ts --port {{port}}',
+    start: 'NODE_ENV=production tsx src/server.ts --port {{port}}',
+  },
+};
+
+const NODE_ON_NODE: PackageJsonConfig = {
+  devDependencies: { tsx: TSX_VERSION },
+  scripts: {
+    dev: 'tsx watch src/index.ts',
+    start: 'NODE_ENV=production tsx src/index.ts',
+  },
+};
+
+const BUNDLE_LAMBDA_WITH_ESBUILD = (outfile: string, extraFlags = ''): PackageJsonConfig => ({
+  devDependencies: { esbuild: ESBUILD_VERSION },
+  scripts: { build: `${BUNDLE_FOR_NODE} --outfile=${outfile}${extraFlags}` },
+});
 
 export const META: Meta = {
   stacks: {
@@ -127,6 +158,10 @@ export const META: Meta = {
           start: 'NODE_ENV=production bun run --port {{port}} src/index.ts',
         },
       },
+      packageManagerPackageJson: {
+        npm: HONO_ON_NODE,
+        pnpm: HONO_ON_NODE,
+      },
     },
     node: {
       type: 'server',
@@ -142,6 +177,10 @@ export const META: Meta = {
           dev: 'bun run --hot src/index.ts',
           start: 'NODE_ENV=production bun run src/index.ts',
         },
+      },
+      packageManagerPackageJson: {
+        npm: NODE_ON_NODE,
+        pnpm: NODE_ON_NODE,
       },
     },
     'tanstack-start': {
@@ -1184,6 +1223,10 @@ export const META: Meta = {
           build: 'bun build src/index.ts --outfile dist/index.js --target node',
         },
       },
+      packageManagerPackageJson: {
+        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
+        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
+      },
     },
     'lambda-terraform-aws': {
       label: 'Lambda (Terraform)',
@@ -1216,6 +1259,10 @@ export const META: Meta = {
         scripts: {
           build: 'NODE_ENV=production bun build src/index.ts --outfile dist/index.mjs --target node',
         },
+      },
+      packageManagerPackageJson: {
+        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs', ` ${INLINE_PRODUCTION_NODE_ENV}`),
+        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs', ` ${INLINE_PRODUCTION_NODE_ENV}`),
       },
     },
     'org-dashboard': {

@@ -106,10 +106,10 @@ describe('Node app with bun', () => {
   });
 });
 
-const LAMBDA_BLUEPRINTS = [
+const LAMBDA_BLUEPRINTS: { blueprint: string; output: string; production: boolean }[] = [
   { blueprint: 'lambda-sst', output: 'dist/index.js', production: false },
   { blueprint: 'lambda-terraform-aws', output: 'dist/index.mjs', production: true },
-] as const;
+];
 
 describe.each(LAMBDA_BLUEPRINTS)('$blueprint', ({ blueprint, output, production }) => {
   describe.each([...NODE_PACKAGE_MANAGERS])('with %s', (pm) => {
@@ -123,9 +123,9 @@ describe.each(LAMBDA_BLUEPRINTS)('$blueprint', ({ blueprint, output, production 
       for (const app of ['api', 'cron', 'worker']) {
         const { scripts, devDependencies } = await manifestOf(join(project, 'apps', app));
 
-        expect(scripts.build).toStartWith('esbuild src/index.ts --bundle --platform=node --format=esm');
+        expect(scripts.build).toStartWith('esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm');
         expect(scripts.build).toContain(`--outfile=${output}`);
-        expect(scripts.build).not.toContain('bun');
+        expect(scripts.build).not.toMatch(/\bbun\b/);
         expect(scripts.build?.includes('--define:process.env.NODE_ENV=')).toBe(production);
         expect(devDependencies?.esbuild).toBeDefined();
       }

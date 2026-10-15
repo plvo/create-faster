@@ -1,3 +1,4 @@
+import type { PackageManagerName } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
 import type { Conditional, WhenMatch } from '@/types/when';
 
@@ -123,12 +124,16 @@ export interface MetaProjectCategory {
   options: Record<string, MetaAddon>;
 }
 
+/** Package.json contribution applied when the effective package manager matches the key. */
+export type PackageManagerPackageJson = Partial<Record<PackageManagerName, PackageJsonConfig>>;
+
 interface MetaStack {
   type: 'app' | 'server';
   label: string;
   hint?: string;
   moduleType?: 'module';
   packageJson: PackageJsonConfig;
+  packageManagerPackageJson?: PackageManagerPackageJson;
 }
 
 interface MetaRepoStack {
@@ -172,6 +177,7 @@ export interface MetaBlueprint {
     project: { database?: string; orm?: string; deployment?: string };
   };
   packageJson?: PackageJsonConfig;
+  packageManagerPackageJson?: PackageManagerPackageJson;
   pkgPackageJson?: Record<string, PackageJsonConfig>;
   rootPackageJson?: PackageJsonConfig;
   envs?: EnvVar[];
