@@ -90,8 +90,8 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     }
   });
 
-  test('cloudflare-fullstack requires the secrets in the web Worker and not in the cron Worker', async () => {
-    const root = await generate('secrets-fullstack', ['--blueprint', 'cloudflare-fullstack']);
+  test('cloudflare-fullstack-nextjs requires the secrets in the web Worker and not in the cron Worker', async () => {
+    const root = await generate('secrets-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs']);
 
     expect((await readWrangler(join(root, 'apps/web/wrangler.jsonc'))).secrets).toEqual({
       required: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
@@ -120,8 +120,8 @@ describe('wrangler.jsonc declares the runtime secrets of each Worker', () => {
     expect(notes).toContain('Never ship `dist` other than through `wrangler deploy`');
   });
 
-  test('the cloudflare-fullstack deploy notes no longer claim Wrangler reads .env or that only public values come from it', async () => {
-    const root = await generate('notes-fullstack', ['--blueprint', 'cloudflare-fullstack']);
+  test('the cloudflare-fullstack-nextjs deploy notes no longer claim Wrangler reads .env or that only public values come from it', async () => {
+    const root = await generate('notes-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs']);
     const deploy = await readTextFile(join(root, 'docs/agents/cloudflare-deploy.md'));
 
     expect(deploy).toContain('`secrets.required`');

@@ -79,7 +79,7 @@ describe('--yes and none', () => {
 
   test('a blueprint run accepts none for the categories it leaves open', async () => {
     const result = await runCli(
-      ['demo', '--blueprint', 'dapp-privy', '--linter', 'none', '--no-git', '--no-install'],
+      ['demo', '--blueprint', 'dapp-privy-nextjs', '--linter', 'none', '--no-git', '--no-install'],
       tempDir,
     );
 

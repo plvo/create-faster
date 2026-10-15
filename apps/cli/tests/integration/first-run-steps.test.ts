@@ -65,7 +65,7 @@ describe('first-run steps shared by the README and the CLI summary', () => {
   });
 
   test('a blueprint with a setup script prints it instead of the ORM commands', async () => {
-    const { readme, stdout } = await generate(tempDir, 'cf-blueprint', ['--blueprint', 'cloudflare-fullstack']);
+    const { readme, stdout } = await generate(tempDir, 'cf-blueprint', ['--blueprint', 'cloudflare-fullstack-nextjs']);
 
     expectInOrder(readme, ['cp apps/web/.env.example apps/web/.env', 'bun run local-setup', 'bun run dev']);
     expectInOrder(stdout, ['cp apps/web/.env.example apps/web/.env', 'bun run local-setup', 'bun run dev']);

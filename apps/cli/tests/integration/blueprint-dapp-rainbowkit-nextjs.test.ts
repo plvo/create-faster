@@ -4,7 +4,7 @@ import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 const CDP_SDK = "'@coinbase/cdp-sdk'";
 
-describe('dapp-rainbowkit blueprint', () => {
+describe('dapp-rainbowkit-nextjs blueprint', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -23,7 +23,7 @@ describe('dapp-rainbowkit blueprint', () => {
 
   describe('production build', () => {
     test('keeps the CDP SDK out of the server bundle, where its optional x402 peers cannot resolve', async () => {
-      const projectPath = await generate('rainbowkit-build', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const projectPath = await generate('rainbowkit-build', ['--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome']);
       const config = await readTextFile(join(projectPath, 'next.config.ts'));
       expect(config).toMatch(/serverExternalPackages: \[[^\]]*'@coinbase\/cdp-sdk'/);
     });
@@ -37,7 +37,7 @@ describe('dapp-rainbowkit blueprint', () => {
 
   describe('SIWE domain', () => {
     test('is the host of the server-side BETTER_AUTH_URL, not a build-time public variable', async () => {
-      const projectPath = await generate('rainbowkit-siwe', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const projectPath = await generate('rainbowkit-siwe', ['--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome']);
       const factory = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
       expect(factory).toMatch(/const siweDomain = new URL\(process\.env\.BETTER_AUTH_URL \?\? '[^']+'\)\.host;/);
       expect(factory).toContain('domain: siweDomain,');
@@ -46,7 +46,7 @@ describe('dapp-rainbowkit blueprint', () => {
     });
 
     test('BETTER_AUTH_URL is declared in .env.example', async () => {
-      const projectPath = await generate('rainbowkit-env', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+      const projectPath = await generate('rainbowkit-env', ['--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome']);
       const env = await readTextFile(join(projectPath, '.env.example'));
       expect(env).toMatch(/^BETTER_AUTH_URL=http:\/\/localhost:3000$/m);
     });

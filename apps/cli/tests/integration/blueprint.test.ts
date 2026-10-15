@@ -19,12 +19,24 @@ describe('Blueprint CLI flag', () => {
     expect(result.stderr).toContain('Invalid blueprint');
   });
 
-  test('a blueprint name without its stack suffix is rejected like any unknown name', async () => {
+  const UNSUFFIXED_BLUEPRINT_NAMES = [
+    'dapp-privy',
+    'dapp-rainbowkit',
+    'org-dashboard',
+    'multitenant-saas',
+    'cloudflare-static-site',
+    'cloudflare-fullstack',
+    'showcase',
+    'lambda-sst',
+    'lambda-terraform-aws',
+  ];
+
+  test.each(UNSUFFIXED_BLUEPRINT_NAMES)('%s without its stack suffix is rejected like any unknown name', async (name) => {
     const unknown = await runCli(['test-bp-unknown', '--blueprint', 'nonexistent', '--no-install', '--no-git'], tempDir);
-    const unsuffixed = await runCli(['test-bp-old', '--blueprint', 'org-dashboard', '--no-install', '--no-git'], tempDir);
+    const unsuffixed = await runCli(['test-bp-old', '--blueprint', name, '--no-install', '--no-git'], tempDir);
     expect(unsuffixed.exitCode).toBe(1);
-    expect(unsuffixed.stderr).toContain("Invalid blueprint 'org-dashboard'");
-    expect(unsuffixed.stderr.replace('org-dashboard', 'x')).toBe(unknown.stderr.replace('nonexistent', 'x'));
+    expect(unsuffixed.stderr).toContain(`Invalid blueprint '${name}'`);
+    expect(unsuffixed.stderr.replace(name, 'x')).toBe(unknown.stderr.replace('nonexistent', 'x'));
   });
 
   test('the suffixed blueprint name generates the project', async () => {
@@ -35,7 +47,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --app are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict', '--blueprint', 'org-dashboard', '--app', 'web:nextjs', '--no-install'],
+      ['test-conflict', '--blueprint', 'org-dashboard-nextjs', '--app', 'web:nextjs', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -44,7 +56,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --database are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict-db', '--blueprint', 'org-dashboard', '--database', 'postgres', '--no-install'],
+      ['test-conflict-db', '--blueprint', 'org-dashboard-nextjs', '--database', 'postgres', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -53,7 +65,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint and --orm are mutually exclusive', async () => {
     const result = await runCli(
-      ['test-conflict-orm', '--blueprint', 'org-dashboard', '--orm', 'drizzle', '--no-install'],
+      ['test-conflict-orm', '--blueprint', 'org-dashboard-nextjs', '--orm', 'drizzle', '--no-install'],
       tempDir,
     );
     expect(result.exitCode).toBe(1);
@@ -62,7 +74,7 @@ describe('Blueprint CLI flag', () => {
 
   test('--blueprint can be combined with --linter', async () => {
     const result = await runCli(
-      ['test-bp-linter', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-linter', '--blueprint', 'org-dashboard-nextjs', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
@@ -73,7 +85,7 @@ describe('Blueprint CLI flag', () => {
       [
         'test-bp-tooling',
         '--blueprint',
-        'org-dashboard',
+        'org-dashboard-nextjs',
         '--linter',
         'biome',
         '--tooling',
@@ -87,7 +99,7 @@ describe('Blueprint CLI flag', () => {
   });
 });
 
-describe('Blueprint generation - org-dashboard', () => {
+describe('Blueprint generation - org-dashboard-nextjs', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -98,9 +110,9 @@ describe('Blueprint generation - org-dashboard', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('generates project with --blueprint org-dashboard', async () => {
+  test('generates project with --blueprint org-dashboard-nextjs', async () => {
     const result = await runCli(
-      ['test-dashboard', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--git'],
+      ['test-dashboard', '--blueprint', 'org-dashboard-nextjs', '--linter', 'biome', '--no-install', '--git'],
       tempDir,
     );
 
@@ -129,11 +141,11 @@ describe('Blueprint generation - org-dashboard', () => {
 
   test('output shows --blueprint in recreate command', async () => {
     const result = await runCli(
-      ['test-bp-cmd', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-cmd', '--blueprint', 'org-dashboard-nextjs', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint org-dashboard');
+    expect(result.stdout).toContain('--blueprint org-dashboard-nextjs');
   });
 
   test('blueprint with --linter includes linter config', async () => {
@@ -144,11 +156,11 @@ describe('Blueprint generation - org-dashboard', () => {
 
   test('blueprint recreate command includes linter flag', async () => {
     const result = await runCli(
-      ['test-bp-linter-cmd', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-bp-linter-cmd', '--blueprint', 'org-dashboard-nextjs', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint org-dashboard');
+    expect(result.stdout).toContain('--blueprint org-dashboard-nextjs');
     expect(result.stdout).toContain('--linter biome');
   });
 
@@ -161,7 +173,7 @@ describe('Blueprint generation - org-dashboard', () => {
   });
 });
 
-describe('Blueprint generation - multitenant-saas', () => {
+describe('Blueprint generation - multitenant-saas-nextjs', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -172,9 +184,9 @@ describe('Blueprint generation - multitenant-saas', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('generates project with --blueprint multitenant-saas', async () => {
+  test('generates project with --blueprint multitenant-saas-nextjs', async () => {
     const result = await runCli(
-      ['test-mt', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--git'],
+      ['test-mt', '--blueprint', 'multitenant-saas-nextjs', '--linter', 'biome', '--no-install', '--git'],
       tempDir,
     );
 
@@ -283,7 +295,7 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(await fileExists(join(projectPath, 'apps/web/src/hooks/use-permission.ts'))).toBe(true);
     expect(await fileExists(join(projectPath, 'apps/web/src/components/can.tsx'))).toBe(true);
 
-    // Profile pages (reused from org-dashboard)
+    // Profile pages (reused from org-dashboard-nextjs)
     expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/account/page.tsx'))).toBe(true);
     expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/security/page.tsx'))).toBe(true);
     expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/profile/sessions/page.tsx'))).toBe(true);
@@ -308,7 +320,7 @@ describe('Blueprint generation - multitenant-saas', () => {
 
   test('env file includes NEXT_PUBLIC_APP_URL', async () => {
     const result = await runCli(
-      ['test-mt-env', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-mt-env', '--blueprint', 'multitenant-saas-nextjs', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
@@ -373,22 +385,22 @@ describe('Blueprint generation - multitenant-saas', () => {
     expect(accountForm).not.toContain('authClient');
   });
 
-  test('output shows --blueprint multitenant-saas in recreate command', async () => {
+  test('output shows --blueprint multitenant-saas-nextjs in recreate command', async () => {
     const result = await runCli(
-      ['test-mt-cmd', '--blueprint', 'multitenant-saas', '--linter', 'biome', '--no-install', '--no-git'],
+      ['test-mt-cmd', '--blueprint', 'multitenant-saas-nextjs', '--linter', 'biome', '--no-install', '--no-git'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('--blueprint multitenant-saas');
+    expect(result.stdout).toContain('--blueprint multitenant-saas-nextjs');
   });
 });
 
-describe('Blueprint generation - dapp-privy seed', () => {
+describe('Blueprint generation - dapp-privy-nextjs seed', () => {
   let tempDir: string;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    const result = await runCli(['test-dapp-privy', '--blueprint', 'dapp-privy', '--no-install', '--no-git'], tempDir);
+    const result = await runCli(['test-dapp-privy', '--blueprint', 'dapp-privy-nextjs', '--no-install', '--no-git'], tempDir);
     expect(result.exitCode).toBe(0);
   });
 

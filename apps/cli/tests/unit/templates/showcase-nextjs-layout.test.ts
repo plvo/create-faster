@@ -17,13 +17,13 @@ function renderShowcaseLayout(libraries: string[]): string {
     apps: [{ appName: 'my-project', stackName: 'nextjs', libraries }],
     project: { tooling: [] },
     git: false,
-    blueprint: 'showcase',
+    blueprint: 'showcase-nextjs',
   };
-  const raw = readFileSync(join(TEMPLATES_DIR, 'blueprints/showcase/src/app/layout.tsx.hbs'), 'utf-8');
+  const raw = readFileSync(join(TEMPLATES_DIR, 'blueprints/showcase-nextjs/src/app/layout.tsx.hbs'), 'utf-8');
   return renderTemplate(removeFrontmatter(raw), { ...ctx, ...ctx.apps[0] });
 }
 
-describe('showcase layout: tanstack-devtools', () => {
+describe('showcase-nextjs layout: tanstack-devtools', () => {
   test('loads the devtools component only in development when the library is selected', () => {
     const layout = renderShowcaseLayout(['shadcn', 'mdx', 'posthog', 'tanstack-devtools']);
     expect(layout).not.toContain('@tanstack/react-devtools');

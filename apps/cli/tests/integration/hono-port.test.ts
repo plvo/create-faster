@@ -57,8 +57,8 @@ describe('Hono app port', () => {
     expect(scripts.start).toBe('NODE_ENV=production bun run --port 3001 src/index.ts');
   });
 
-  test('the cloudflare-fullstack cron app does not take the port of the web app', async () => {
-    const scripts = await appScripts('hono-port-cron', 'cron', ['--blueprint', 'cloudflare-fullstack']);
+  test('the cloudflare-fullstack-nextjs cron app does not take the port of the web app', async () => {
+    const scripts = await appScripts('hono-port-cron', 'cron', ['--blueprint', 'cloudflare-fullstack-nextjs']);
     expect(scripts.dev).toBe('bun run --port 3001 --hot src/index.ts');
   });
 

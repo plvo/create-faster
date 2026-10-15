@@ -4,7 +4,7 @@ import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 const PRIVY_APP_ID_LENGTH = 25;
 
-describe('dapp-privy blueprint', () => {
+describe('dapp-privy-nextjs blueprint', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describe('dapp-privy blueprint', () => {
 
   test('the placeholder Privy app ID passes the SDK format check, so the first build prerenders', async () => {
     const result = await runCli(
-      ['privy-env', '--blueprint', 'dapp-privy', '--no-git', '--no-install', '--pm', 'bun'],
+      ['privy-env', '--blueprint', 'dapp-privy-nextjs', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode, result.stderr).toBe(0);

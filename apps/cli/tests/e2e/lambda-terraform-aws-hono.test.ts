@@ -10,7 +10,7 @@ const TIMEOUT_INVOKE = 300_000;
 
 const dockerAvailable = Bun.spawnSync(['docker', 'info'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
 if (!dockerAvailable) {
-  console.warn('Skipping lambda-terraform-aws e2e: no Docker daemon reachable (`docker info` failed)');
+  console.warn('Skipping lambda-terraform-aws-hono e2e: no Docker daemon reachable (`docker info` failed)');
 }
 const describeWithDocker = describe.skipIf(!dockerAvailable);
 
@@ -83,7 +83,7 @@ async function addE2eRoutes(appFile: string): Promise<void> {
   await writeFile(appFile, source.replace('export default app;', `${E2E_ROUTES}\nexport default app;`));
 }
 
-describeWithDocker('lambda-terraform-aws blueprint in the Lambda runtime', () => {
+describeWithDocker('lambda-terraform-aws-hono blueprint in the Lambda runtime', () => {
   let projectDir: string;
   let installResult: CommandResult;
   let buildResult: CommandResult;
@@ -92,7 +92,7 @@ describeWithDocker('lambda-terraform-aws blueprint in the Lambda runtime', () =>
   beforeAll(async () => {
     const tempDir = await createTempDir();
     const result = await runCli(
-      ['lambda-tf', '--blueprint', 'lambda-terraform-aws', '--no-git', '--no-install', '--pm', 'bun'],
+      ['lambda-tf', '--blueprint', 'lambda-terraform-aws-hono', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

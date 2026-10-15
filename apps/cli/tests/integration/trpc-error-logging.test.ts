@@ -66,7 +66,7 @@ describe('tRPC server error logging', () => {
   }
 
   test('the blueprints that ship tRPC are found in META', () => {
-    expect(BLUEPRINTS_WITH_TRPC).toContain('dapp-privy');
+    expect(BLUEPRINTS_WITH_TRPC).toContain('dapp-privy-nextjs');
   });
 
   describe.each(LIBRARY_GENERATIONS)('library, $name', ({ name, args }) => {

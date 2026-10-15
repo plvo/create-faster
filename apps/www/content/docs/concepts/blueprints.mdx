@@ -15,17 +15,17 @@ When you select a blueprint, the CLI pre-fills the stack, libraries, database, O
 <Tabs items={['bun', 'npm', 'pnpm']}>
   <Tab value="bun">
     ```bash
-    bunx create-faster my-project --blueprint org-dashboard --linter biome --git --pm bun
+    bunx create-faster my-project --blueprint org-dashboard-nextjs --linter biome --git --pm bun
     ```
   </Tab>
   <Tab value="npm">
     ```bash
-    npx create-faster my-project --blueprint org-dashboard --linter biome --git --pm npm
+    npx create-faster my-project --blueprint org-dashboard-nextjs --linter biome --git --pm npm
     ```
   </Tab>
   <Tab value="pnpm">
     ```bash
-    pnpm dlx create-faster my-project --blueprint org-dashboard --linter biome --git --pm pnpm
+    pnpm dlx create-faster my-project --blueprint org-dashboard-nextjs --linter biome --git --pm pnpm
     ```
   </Tab>
 </Tabs>
@@ -44,22 +44,22 @@ In interactive mode, the CLI prompts you to choose between a blueprint or a cust
 
 | Blueprint | Description |
 |-----------|-------------|
-| [Org Dashboard](/docs/blueprints/business/org-dashboard) | Dashboard with auth, RBAC, admin panel, and example CRUD |
-| [Showcase](/docs/blueprints/business/showcase) | SEO/GEO-optimized SaaS landing page with blog and programmatic pages |
+| [Org Dashboard](/docs/blueprints/business/org-dashboard-nextjs) | Dashboard with auth, RBAC, admin panel, and example CRUD |
+| [Showcase](/docs/blueprints/business/showcase-nextjs) | SEO/GEO-optimized SaaS landing page with blog and programmatic pages |
 
 ### Web3
 
 | Blueprint | Description |
 |-----------|-------------|
-| [dApp (Privy)](/docs/blueprints/web3/dapp-privy) | Web3 dApp with Privy wallet auth, wagmi, and user management |
-| [dApp (RainbowKit)](/docs/blueprints/web3/dapp-rainbowkit) | Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi |
+| [dApp (Privy)](/docs/blueprints/web3/dapp-privy-nextjs) | Web3 dApp with Privy wallet auth, wagmi, and user management |
+| [dApp (RainbowKit)](/docs/blueprints/web3/dapp-rainbowkit-nextjs) | Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi |
 
 ### AWS
 
 | Blueprint | Description |
 |-----------|-------------|
-| [Lambda (SST)](/docs/blueprints/aws/lambda-sst) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
-| [Lambda (Terraform)](/docs/blueprints/aws/lambda-terraform-aws) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
+| [Lambda (SST)](/docs/blueprints/aws/lambda-sst-hono) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
+| [Lambda (Terraform)](/docs/blueprints/aws/lambda-terraform-aws-hono) | AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron |
 
 ## What You Can Customize
 

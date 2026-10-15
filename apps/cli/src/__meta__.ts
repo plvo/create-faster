@@ -1098,7 +1098,7 @@ export const META: Meta = {
   },
 
   blueprints: {
-    'dapp-privy': {
+    'dapp-privy-nextjs': {
       label: 'dApp (Privy)',
       hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
       category: 'Web3',
@@ -1150,7 +1150,7 @@ export const META: Meta = {
         },
       ],
     },
-    'dapp-rainbowkit': {
+    'dapp-rainbowkit-nextjs': {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
       category: 'Web3',
@@ -1191,7 +1191,7 @@ export const META: Meta = {
         },
       ],
     },
-    'lambda-sst': {
+    'lambda-sst-hono': {
       label: 'Lambda (SST)',
       hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
       category: 'AWS',
@@ -1228,7 +1228,7 @@ export const META: Meta = {
         pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
       },
     },
-    'lambda-terraform-aws': {
+    'lambda-terraform-aws-hono': {
       label: 'Lambda (Terraform)',
       hint: 'AWS Lambda monorepo with API Gateway, SQS worker, and EventBridge cron',
       category: 'AWS',
@@ -1265,7 +1265,7 @@ export const META: Meta = {
         pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs', ` ${INLINE_PRODUCTION_NODE_ENV}`),
       },
     },
-    'org-dashboard': {
+    'org-dashboard-nextjs': {
       label: 'Org Dashboard',
       hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
       category: 'Business',
@@ -1357,7 +1357,7 @@ export const META: Meta = {
         },
       },
     },
-    'multitenant-saas': {
+    'multitenant-saas-nextjs': {
       label: 'Multitenant SaaS',
       hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
       category: 'Business',
@@ -1459,7 +1459,7 @@ export const META: Meta = {
         },
       ],
     },
-    'cloudflare-static-site': {
+    'cloudflare-static-site-nextjs': {
       label: 'Cloudflare Static Site',
       hint: 'Static Next.js marketing site with an MDX blog, deployed as Cloudflare Workers assets',
       category: 'Business',
@@ -1499,7 +1499,7 @@ export const META: Meta = {
         },
       ],
     },
-    'cloudflare-fullstack': {
+    'cloudflare-fullstack-nextjs': {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
@@ -1603,7 +1603,7 @@ export const META: Meta = {
         },
       ],
     },
-    showcase: {
+    'showcase-nextjs': {
       label: 'Showcase',
       hint: 'SEO/GEO-optimized SaaS landing page with blog and programmatic pages',
       category: 'Business',

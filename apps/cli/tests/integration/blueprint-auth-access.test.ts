@@ -29,7 +29,7 @@ describe('blueprint auth access', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test.each(['org-dashboard', 'multitenant-saas'])(
+  test.each(['org-dashboard-nextjs', 'multitenant-saas-nextjs'])(
     '%s: every page that prefetches protected data requires the session first',
     async (blueprint) => {
       const projectPath = await generate(blueprint);
@@ -48,7 +48,7 @@ describe('blueprint auth access', () => {
     },
   );
 
-  describe('org-dashboard', () => {
+  describe('org-dashboard-nextjs', () => {
     const GUARDS = { adminProcedure: 'requireAdmin', permissionProcedure: 'requirePermission' } as const;
 
     const strictProcedures = async (projectPath: string): Promise<Map<string, string>> => {
@@ -64,13 +64,13 @@ describe('blueprint auth access', () => {
     };
 
     test('public self sign-up is closed in the auth config, users are created by admins', async () => {
-      const projectPath = await generate('org-dashboard');
+      const projectPath = await generate('org-dashboard-nextjs');
       const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
       expect(auth).toMatch(/emailAndPassword: \{[^}]*disableSignUp: true/);
     });
 
     test('every page that prefetches an admin or permission procedure runs the matching guard first', async () => {
-      const projectPath = await generate('org-dashboard');
+      const projectPath = await generate('org-dashboard-nextjs');
       const strict = await strictProcedures(projectPath);
       expect(strict.size).toBeGreaterThan(0);
       const appDir = join(projectPath, 'apps/web/src/app');
@@ -90,9 +90,9 @@ describe('blueprint auth access', () => {
     });
   });
 
-  describe('multitenant-saas', () => {
+  describe('multitenant-saas-nextjs', () => {
     test('the session guard validates the session once per request and requires an active organization', async () => {
-      const projectPath = await generate('multitenant-saas');
+      const projectPath = await generate('multitenant-saas-nextjs');
       const session = await readTextFile(join(projectPath, 'apps/web/src/lib/auth/session.ts'));
       expect(session).toMatch(/const getSession = cache\(/);
       expect(session).toMatch(/if \(!session\) redirect\('\/login'\)/);
@@ -100,14 +100,14 @@ describe('blueprint auth access', () => {
     });
 
     test('the dashboard layout uses the same guard as the pages', async () => {
-      const projectPath = await generate('multitenant-saas');
+      const projectPath = await generate('multitenant-saas-nextjs');
       const layout = await readTextFile(join(projectPath, 'apps/web/src/app/(dashboard)/layout.tsx'));
       expect(layout).toMatch(/await requireSession\(\)/);
       expect(layout).not.toContain('auth.api.getSession');
     });
 
     test.each(['login', 'signup'])('the %s page sends a signed-in user away', async (route) => {
-      const projectPath = await generate('multitenant-saas');
+      const projectPath = await generate('multitenant-saas-nextjs');
       const page = await readTextFile(join(projectPath, `apps/web/src/app/(auth)/${route}/page.tsx`));
       expect(page).toContain("from '@/lib/auth/auth'");
       expect(page).toMatch(/auth\.api\.getSession\(\{ headers: await headers\(\) \}\)/);
@@ -115,7 +115,7 @@ describe('blueprint auth access', () => {
     });
 
     test('the invitation page stays open to a signed-in invitee', async () => {
-      const projectPath = await generate('multitenant-saas');
+      const projectPath = await generate('multitenant-saas-nextjs');
       const page = await readTextFile(join(projectPath, 'apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx'));
       expect(page).not.toMatch(/if \(session\) redirect/);
       expect(page).toMatch(/if \(!session\) \{/);

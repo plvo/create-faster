@@ -61,8 +61,8 @@ describe('Next.js proxy', () => {
     });
 
     test.each([
-      ['org-dashboard', 'apps/web/src/proxy.ts'],
-      ['cloudflare-fullstack', 'apps/web/src/middleware.ts'],
+      ['org-dashboard-nextjs', 'apps/web/src/proxy.ts'],
+      ['cloudflare-fullstack-nextjs', 'apps/web/src/middleware.ts'],
     ])('%s blueprint: no session lookup in the proxy', async (blueprint, file) => {
       const projectPath = await generate(`proxy-${blueprint}`, ['--blueprint', blueprint]);
       const proxy = await readTextFile(join(projectPath, file));
@@ -73,8 +73,8 @@ describe('Next.js proxy', () => {
 
   describe('blueprints with a protecting proxy', () => {
     test.each([
-      ['multitenant-saas', 'apps/web/src/proxy.ts'],
-      ['dapp-rainbowkit', 'src/proxy.ts'],
+      ['multitenant-saas-nextjs', 'apps/web/src/proxy.ts'],
+      ['dapp-rainbowkit-nextjs', 'src/proxy.ts'],
     ])('%s: the proxy checks the session cookie and leaves API routes alone', async (blueprint, file) => {
       const projectPath = await generate(`proxy-${blueprint}`, ['--blueprint', blueprint]);
       const proxy = await readTextFile(join(projectPath, file));

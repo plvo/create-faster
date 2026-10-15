@@ -233,7 +233,7 @@ only: mono | single | no-blueprint  # Repo type filter
 deploymentPath:                 # Output path override keyed by deployment
   cloudflare: src/middleware.ts
 deploymentSkip: [cloudflare-static]  # Deployments that do not get this file
-blueprintSkip: [org-dashboard]       # Blueprints that do not get this file
+blueprintSkip: [org-dashboard-nextjs]       # Blueprints that do not get this file
 ---
 ```
 

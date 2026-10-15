@@ -171,7 +171,7 @@ describe('README of a blueprint', () => {
 
   beforeAll(async () => {
     dir = await createTempDir();
-    await runCli(['bp', '--blueprint', 'org-dashboard', '--linter', 'biome', '--no-git', '--no-install'], dir);
+    await runCli(['bp', '--blueprint', 'org-dashboard-nextjs', '--linter', 'biome', '--no-git', '--no-install'], dir);
     readme = await readTextFile(join(dir, 'bp', 'README.md'));
   });
 

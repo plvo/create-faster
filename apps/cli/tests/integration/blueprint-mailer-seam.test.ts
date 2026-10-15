@@ -17,14 +17,14 @@ async function runWithNodeEnv(script: string, nodeEnv: string) {
 
 describe.each([
   {
-    blueprint: 'multitenant-saas',
+    blueprint: 'multitenant-saas-nextjs',
     seamFile: 'link-delivery.ts',
     call: (file: string) =>
       `import { deliverLink } from ${JSON.stringify(file)}; deliverLink({ kind: 'reset-password', to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
     forgotPasswordForm: 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx',
   },
   {
-    blueprint: 'cloudflare-fullstack',
+    blueprint: 'cloudflare-fullstack-nextjs',
     seamFile: 'email.ts',
     call: (file: string) =>
       `import { sendResetPasswordEmail } from ${JSON.stringify(file)}; await sendResetPasswordEmail({ to: 'a@b.co', url: ${JSON.stringify(LINK)} });`,

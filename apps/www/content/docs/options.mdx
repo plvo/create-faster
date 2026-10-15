@@ -37,12 +37,12 @@ bunx create-faster my-saas
 
 Use a pre-composed starter project. Mutually exclusive with `--app`, `--database`, and `--orm`.
 
-**Options**: `dashboard`, `dapp-privy`, `dapp-rainbowkit`, `lambda-sst`, `lambda-terraform-aws`
+**Options**: `org-dashboard-nextjs`, `multitenant-saas-nextjs`, `showcase-nextjs`, `cloudflare-static-site-nextjs`, `cloudflare-fullstack-nextjs`, `dapp-privy-nextjs`, `dapp-rainbowkit-nextjs`, `lambda-sst-hono`, `lambda-terraform-aws-hono`
 
 **Example**:
 ```bash
 bunx create-faster my-dashboard \
-  --blueprint org-dashboard \
+  --blueprint org-dashboard-nextjs \
   --linter biome \
   --git \
   --pm bun
@@ -191,10 +191,10 @@ The CLI validates flag combinations to ensure compatibility:
 **Blueprint is exclusive**:
 ```bash
 # ❌ Invalid - Blueprint with --app, --database, or --orm
-bunx create-faster myapp --blueprint org-dashboard --app web:nextjs
+bunx create-faster myapp --blueprint org-dashboard-nextjs --app web:nextjs
 
 # ✓ Valid - Blueprint with linter, tooling, git, pm
-bunx create-faster myapp --blueprint org-dashboard --linter biome --git --pm bun
+bunx create-faster myapp --blueprint org-dashboard-nextjs --linter biome --git --pm bun
 ```
 
 **ORM requires Database**:
@@ -295,7 +295,7 @@ This creates:
 
 ```bash
 bunx create-faster my-dashboard \
-  --blueprint org-dashboard \
+  --blueprint org-dashboard-nextjs \
   --linter biome \
   --tooling husky \
   --git \

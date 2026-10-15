@@ -235,12 +235,12 @@ content/docs/blueprints/
 │   └── dashboard.mdx
 ├── web3/
 │   ├── meta.json          # { "title": "Web3" }
-│   ├── dapp-privy.mdx
-│   └── dapp-rainbowkit.mdx
+│   ├── dapp-privy-nextjs.mdx
+│   └── dapp-rainbowkit-nextjs.mdx
 └── aws/
     ├── meta.json          # { "title": "AWS" }
-    ├── lambda-sst.mdx
-    └── lambda-terraform-aws.mdx
+    ├── lambda-sst-hono.mdx
+    └── lambda-terraform-aws-hono.mdx
 ```
 
 Each category is a subdirectory with its own `meta.json` (like modules). The root `meta.json` lists categories:

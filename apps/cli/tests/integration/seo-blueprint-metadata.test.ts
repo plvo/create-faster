@@ -49,7 +49,7 @@ describe('Open Graph and Twitter metadata of the SEO blueprints', () => {
     await cleanupTempDir(tempDir);
   });
 
-  for (const blueprint of ['showcase', 'cloudflare-static-site']) {
+  for (const blueprint of ['showcase-nextjs', 'cloudflare-static-site-nextjs']) {
     describe(blueprint, () => {
       let projectPath: string;
       let seo: SeoModule;

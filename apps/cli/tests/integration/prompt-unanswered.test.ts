@@ -42,7 +42,7 @@ describe('project prompts for categories no flag answered', () => {
 
   test('a blueprint run is asked the categories neither the blueprint nor a flag answered', async () => {
     const { exitCode, output } = await runCliOnTerminal(
-      ['demo', '--blueprint', 'dapp-privy', '--linter', 'biome', '--no-git', '--no-install'],
+      ['demo', '--blueprint', 'dapp-privy-nextjs', '--linter', 'biome', '--no-git', '--no-install'],
       tempDir,
       [accept(promptOf('deployment')), accept(promptOf('tooling'))],
     );
@@ -53,7 +53,7 @@ describe('project prompts for categories no flag answered', () => {
 
   test('a blueprint that fixes its deployment is not asked for one', async () => {
     const { exitCode, output } = await runCliOnTerminal(
-      ['demo', '--blueprint', 'lambda-sst', '--no-git', '--no-install'],
+      ['demo', '--blueprint', 'lambda-sst-hono', '--no-git', '--no-install'],
       tempDir,
       [accept(promptOf('linter')), accept(promptOf('tooling'))],
     );

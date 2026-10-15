@@ -14,7 +14,7 @@ const BUILD_OUTFILE = /--outfile[= ](\S+)/;
 const NODE_RUNTIME_MAJOR = /^nodejs(\d+)\./;
 const PRODUCTION_BUN_BUILD = /^NODE_ENV=production bun build /;
 
-describe('lambda-terraform-aws blueprint', () => {
+describe('lambda-terraform-aws-hono blueprint', () => {
   let tempDir: string;
   let projectDir: string;
   let lambdas: TerraformLambda[];
@@ -22,7 +22,7 @@ describe('lambda-terraform-aws blueprint', () => {
   beforeAll(async () => {
     tempDir = await createTempDir();
     const result = await runCli(
-      ['lambda-tf', '--blueprint', 'lambda-terraform-aws', '--no-git', '--no-install', '--pm', 'bun'],
+      ['lambda-tf', '--blueprint', 'lambda-terraform-aws-hono', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

@@ -430,8 +430,8 @@ describe('TanStack Start + better-auth', () => {
       );
     });
 
-    test('multitenant-saas: the blueprint doc states the cookie plugin its tRPC package binds', async () => {
-      const projectPath = await generate('docs-multitenant', ['--blueprint', 'multitenant-saas', '--linter', 'biome']);
+    test('multitenant-saas-nextjs: the blueprint doc states the cookie plugin its tRPC package binds', async () => {
+      const projectPath = await generate('docs-multitenant', ['--blueprint', 'multitenant-saas-nextjs', '--linter', 'biome']);
       expect(await readTextFile(join(projectPath, 'packages/api/src/auth.ts'))).toContain('createAuth(nextCookies())');
       const agents = await readTextFile(join(projectPath, 'apps/web/AGENTS.md'));
       expect(agents).toContain('bind that framework\'s plugin in this file');
@@ -440,8 +440,8 @@ describe('TanStack Start + better-auth', () => {
       expect(authDoc).not.toContain('exported as `auth`');
     });
 
-    test('org-dashboard: the blueprint doc names the factory the package exports', async () => {
-      const projectPath = await generate('docs-org-dashboard', ['--blueprint', 'org-dashboard', '--linter', 'biome']);
+    test('org-dashboard-nextjs: the blueprint doc names the factory the package exports', async () => {
+      const projectPath = await generate('docs-org-dashboard', ['--blueprint', 'org-dashboard-nextjs', '--linter', 'biome']);
       const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth.md'));
       expect(authDoc).toContain('exports the `createAuth(cookiePlugin?)` factory');
       expect(authDoc).not.toContain('exported as `auth`');
@@ -450,8 +450,8 @@ describe('TanStack Start + better-auth', () => {
       );
     });
 
-    test('cloudflare-fullstack: the blueprint doc shows the factory signature and the getAuth call', async () => {
-      const projectPath = await generate('docs-cf-fullstack', ['--blueprint', 'cloudflare-fullstack', '--linter', 'biome']);
+    test('cloudflare-fullstack-nextjs: the blueprint doc shows the factory signature and the getAuth call', async () => {
+      const projectPath = await generate('docs-cf-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs', '--linter', 'biome']);
       const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth-rbac.md'));
       expect(authDoc).toContain('exports `createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)`');
       expect(authDoc).toContain('calls `createAuth(db, nextCookies())`');
@@ -463,8 +463,8 @@ describe('TanStack Start + better-auth', () => {
       );
     });
 
-    test('dapp-rainbowkit: the blueprint doc names the file that registers siwe', async () => {
-      const projectPath = await generate('docs-dapp', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+    test('dapp-rainbowkit-nextjs: the blueprint doc names the file that registers siwe', async () => {
+      const projectPath = await generate('docs-dapp', ['--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome']);
       const walletDoc = await readTextFile(join(projectPath, 'docs/agents/wallet-auth.md'));
       expect(walletDoc).toContain('The `siwe()` plugin is registered in `src/lib/auth/create-auth.ts`');
       expect(await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'))).toContain('siwe({');
@@ -550,8 +550,8 @@ describe('TanStack Start + better-auth', () => {
       expect(instance).toContain('nextCookies()');
     });
 
-    test('dapp-rainbowkit (single repo) appends the cookie plugin after siwe and builds its instance with nextCookies', async () => {
-      const projectPath = await generate('bp-single-dapp-rainbowkit', ['--blueprint', 'dapp-rainbowkit', '--linter', 'biome']);
+    test('dapp-rainbowkit-nextjs (single repo) appends the cookie plugin after siwe and builds its instance with nextCookies', async () => {
+      const projectPath = await generate('bp-single-dapp-rainbowkit', ['--blueprint', 'dapp-rainbowkit-nextjs', '--linter', 'biome']);
       const factory = await readTextFile(join(projectPath, 'src/lib/auth/create-auth.ts'));
       expect(factory).toMatch(/\}\),\n\s*\.\.\.\(cookiePlugin \? \[cookiePlugin\] : \[\]\),\n\s*\],/);
       expect(factory).toContain('disableSessionRefresh: !cookiePlugin,');

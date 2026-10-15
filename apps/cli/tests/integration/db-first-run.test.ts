@@ -237,7 +237,7 @@ describe('Blueprint: the root db scripts come from the ORM, not from a blueprint
   let projectPath: string;
 
   beforeAll(async () => {
-    ({ tempDir, projectPath } = await generate('blueprint-db', ['--blueprint', 'org-dashboard']));
+    ({ tempDir, projectPath } = await generate('blueprint-db', ['--blueprint', 'org-dashboard-nextjs']));
   });
 
   afterAll(async () => {

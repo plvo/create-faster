@@ -200,10 +200,10 @@ describe('postgres blueprints', () => {
 
   test('every postgres blueprint is covered', () => {
     expect(postgresBlueprints.map(({ blueprint }) => blueprint).sort()).toEqual([
-      'dapp-privy',
-      'dapp-rainbowkit',
-      'multitenant-saas',
-      'org-dashboard',
+      'dapp-privy-nextjs',
+      'dapp-rainbowkit-nextjs',
+      'multitenant-saas-nextjs',
+      'org-dashboard-nextjs',
     ]);
   });
 

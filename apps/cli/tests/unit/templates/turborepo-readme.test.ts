@@ -45,7 +45,7 @@ describe('turborepo README db package section', () => {
     apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
     project: { database: 'postgres', tooling: [] },
     git: false,
-    blueprint: 'org-dashboard',
+    blueprint: 'org-dashboard-nextjs',
   };
 
   test('does not print an empty ORM when the db package exists without an ORM', () => {

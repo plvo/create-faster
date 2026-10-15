@@ -258,13 +258,13 @@ describe('META.blueprints names', () => {
   });
 });
 
-describe('META.blueprints.org-dashboard', () => {
-  test('org-dashboard blueprint is defined', () => {
-    expect(META.blueprints['org-dashboard']).toBeDefined();
+describe('META.blueprints.org-dashboard-nextjs', () => {
+  test('org-dashboard-nextjs blueprint is defined', () => {
+    expect(META.blueprints['org-dashboard-nextjs']).toBeDefined();
   });
 
-  test('org-dashboard has valid context with 2 apps', () => {
-    const bp = META.blueprints['org-dashboard']!;
+  test('org-dashboard-nextjs has valid context with 2 apps', () => {
+    const bp = META.blueprints['org-dashboard-nextjs']!;
     expect(bp.context.apps).toHaveLength(2);
     expect(bp.context.apps[0]!.appName).toBe('web');
     expect(bp.context.apps[0]!.stackName).toBe('nextjs');
@@ -281,8 +281,8 @@ describe('META.blueprints.org-dashboard', () => {
     expect(bp.context.project.orm).toBe('drizzle');
   });
 
-  test('org-dashboard libraries exist and are compatible with their stack', () => {
-    const bp = META.blueprints['org-dashboard']!;
+  test('org-dashboard-nextjs libraries exist and are compatible with their stack', () => {
+    const bp = META.blueprints['org-dashboard-nextjs']!;
     for (const app of bp.context.apps) {
       for (const lib of app.libraries) {
         const library = META.libraries[lib]!;

@@ -5,7 +5,7 @@ import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readTextFile,
 const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
 const NOTE_FILES = ['README.md', 'AGENTS.md', 'docs/agents/cloudflare-deploy.md', 'docs/agents/data-layer.md'];
 
-describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack notes with %s', (pm) => {
+describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s', (pm) => {
   const projectName = `fullstack-${pm}`;
   let tempDir: string;
   let projectPath: string;
@@ -14,7 +14,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack notes with %s', (pm) 
     tempDir = await createTempDir();
     projectPath = join(tempDir, projectName);
     const result = await runCli(
-      [projectName, '--blueprint', 'cloudflare-fullstack', '--no-install', '--no-git', '--pm', pm],
+      [projectName, '--blueprint', 'cloudflare-fullstack-nextjs', '--no-install', '--no-git', '--pm', pm],
       tempDir,
     );
     expect(result.exitCode).toBe(0);

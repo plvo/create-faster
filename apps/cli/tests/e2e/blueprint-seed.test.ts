@@ -69,12 +69,12 @@ async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
 
 // better-auth checks the Drizzle schema against what its plugins write: a blueprint schema that lags a
 // plugin column fails the seed, which signs users up through auth, with a SCHEMA_MISMATCH.
-describe('cloudflare-fullstack: local-setup seeds through better-auth', () => {
+describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', () => {
   let projectDir: string;
   let setup: CommandResult;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('cloudflare-fullstack', 'bp-seed-cloudflare');
+    projectDir = await generateInstalledBlueprint('cloudflare-fullstack-nextjs', 'bp-seed-cloudflare');
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
@@ -89,13 +89,13 @@ describe('cloudflare-fullstack: local-setup seeds through better-auth', () => {
   });
 });
 
-describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, production build and sign-in', () => {
+describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: local-setup, production build and sign-in', () => {
   let projectDir: string;
   let setup: CommandResult;
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('org-dashboard', 'bp-seed-org-dashboard');
+    projectDir = await generateInstalledBlueprint('org-dashboard-nextjs', 'bp-seed-org-dashboard');
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
@@ -195,12 +195,12 @@ describeWithDocker('org-dashboard blueprint e2e')('org-dashboard: local-setup, p
   });
 });
 
-describeWithDocker('multitenant-saas blueprint e2e')('multitenant-saas: signup and invitation on the production build', () => {
+describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-nextjs: signup and invitation on the production build', () => {
   let projectDir: string;
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('multitenant-saas', 'bp-seed-multitenant-saas');
+    projectDir = await generateInstalledBlueprint('multitenant-saas-nextjs', 'bp-seed-multitenant-saas');
     const setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
     expect(setup.exitCode, describeFailure(setup)).toBe(0);
     server = await buildAndStartWeb(projectDir);

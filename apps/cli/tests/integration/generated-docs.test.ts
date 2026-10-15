@@ -278,7 +278,7 @@ describe('generated docs write commands every package manager runs', () => {
   });
 
   test('blueprint README and agent guides follow the package manager', async () => {
-    const project = await generate('bp-npm', ['--blueprint', 'cloudflare-static-site'], 'npm');
+    const project = await generate('bp-npm', ['--blueprint', 'cloudflare-static-site-nextjs'], 'npm');
     const readme = await readTextFile(join(project, 'README.md'));
     expect(readme).toContain('npm install\nnpm run dev');
     expect(readme).not.toMatch(BUN_FORM);
@@ -307,8 +307,8 @@ describe('turborepo README lists the scripts the root package.json defines', () 
     ['eslint', [...MONO, '--linter', 'eslint']],
     ['prettier', [...MONO, '--linter', 'prettier']],
     ['eslint-prettier', [...MONO, '--linter', 'eslint-prettier']],
-    ['multitenant-saas', ['--blueprint', 'multitenant-saas']],
-    ['cloudflare-fullstack', ['--blueprint', 'cloudflare-fullstack']],
+    ['multitenant-saas-nextjs', ['--blueprint', 'multitenant-saas-nextjs']],
+    ['cloudflare-fullstack-nextjs', ['--blueprint', 'cloudflare-fullstack-nextjs']],
   ] as const;
   let dir: string;
 

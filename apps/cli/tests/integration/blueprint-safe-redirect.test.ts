@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
-  'org-dashboard': ['apps/web/src/app/(auth)/login/login-form.tsx'],
-  'cloudflare-fullstack': ['apps/web/src/app/(auth)/login/login-form.tsx'],
-  'multitenant-saas': [
+  'org-dashboard-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
+  'cloudflare-fullstack-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
+  'multitenant-saas-nextjs': [
     'apps/web/src/app/(auth)/login/login-form.tsx',
     'apps/web/src/app/(auth)/signup/signup-form.tsx',
   ],

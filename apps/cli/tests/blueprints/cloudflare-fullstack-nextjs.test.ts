@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 
-describe('cloudflare-fullstack blueprint META', () => {
-  const bp = META.blueprints['cloudflare-fullstack'];
+describe('cloudflare-fullstack-nextjs blueprint META', () => {
+  const bp = META.blueprints['cloudflare-fullstack-nextjs'];
 
   test('exists with the cloudflare composition', () => {
     expect(bp).toBeDefined();
@@ -33,7 +33,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('ships a sqlite schema with admin columns + documents table', () => {
     const schema = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/lib/db/schema.ts.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/lib/db/schema.ts.hbs'),
       'utf8',
     );
     expect(schema).toContain("sqliteTable('documents'");
@@ -44,7 +44,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('auth override uses createAuth factory + admin plugin', () => {
     const auth = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/lib/auth/auth.ts.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/lib/auth/auth.ts.hbs'),
       'utf8',
     );
     expect(auth).toContain('export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)');
@@ -52,21 +52,21 @@ describe('cloudflare-fullstack blueprint META', () => {
   });
 
   test('registers a documents router using d1 per-request auth', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/trpc');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/trpc');
     expect(readFileSync(join(base, 'routers/_app.ts.hbs'), 'utf8')).toContain('documents: documentsRouter');
     expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('createAuth(opts.ctx.db)');
     expect(readFileSync(join(base, 'routers/documents.ts.hbs'), 'utf8')).toContain('STORAGE.delete(doc.r2Key)');
   });
 
   test('adds the R2 STORAGE binding, env field, and upload route', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs');
     expect(readFileSync(join(base, 'wrangler.jsonc.nextjs.hbs'), 'utf8')).toContain('"binding": "STORAGE"');
     expect(readFileSync(join(base, 'src/lib/env.ts.nextjs.hbs'), 'utf8')).toContain('STORAGE: R2Bucket');
     expect(readFileSync(join(base, 'src/app/api/documents/upload/route.ts.hbs'), 'utf8')).toContain('STORAGE.put(key');
   });
 
   test('ships a cron worker with scheduled purge + triggers.crons', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs');
     const idx = readFileSync(join(base, 'src/index.ts.hono.hbs'), 'utf8');
     expect(idx).toContain('async scheduled(');
     expect(idx).toContain('createDb(env.DB)');
@@ -76,7 +76,7 @@ describe('cloudflare-fullstack blueprint META', () => {
   });
 
   test('ships (auth) layout using getAuth per-request seam (not singleton)', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(auth)');
     const layout = readFileSync(join(base, 'layout.tsx.hbs'), 'utf8');
     expect(layout).toContain("import { getAuth } from '@/lib/server'");
     expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
@@ -86,7 +86,7 @@ describe('cloudflare-fullstack blueprint META', () => {
   });
 
   test('ships login and signup pages', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(auth)');
     const loginPage = readFileSync(join(base, 'login/page.tsx.hbs'), 'utf8');
     expect(loginPage).toContain('LoginForm');
     const signupPage = readFileSync(join(base, 'signup/page.tsx.hbs'), 'utf8');
@@ -94,7 +94,7 @@ describe('cloudflare-fullstack blueprint META', () => {
   });
 
   test('login-form and signup-form use authClient (db-agnostic)', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(auth)');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(auth)');
     const loginForm = readFileSync(join(base, 'login/login-form.tsx.hbs'), 'utf8');
     expect(loginForm).toContain("authClient.signIn.email");
     expect(loginForm).not.toContain("import { auth } from");
@@ -103,8 +103,8 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(signupForm).not.toContain("import { auth } from");
   });
 
-  test('ships can.tsx and use-permission.ts (verbatim from org-dashboard)', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src');
+  test('ships can.tsx and use-permission.ts (verbatim from org-dashboard-nextjs)', () => {
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src');
     const can = readFileSync(join(base, 'components/can.tsx.hbs'), 'utf8');
     expect(can).toContain("import { usePermission } from '@/hooks/use-permission'");
     expect(can).toContain('usePermission(permissions)');
@@ -117,7 +117,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('(dashboard) layout uses getAuth per-request seam (not singleton)', () => {
     const layout = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/layout.tsx.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(dashboard)/layout.tsx.hbs'),
       'utf8',
     );
     expect(layout).toContain("import { getAuth } from '@/lib/server'");
@@ -129,7 +129,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('documents client component references tRPC documents.list/delete and upload endpoint', () => {
     const page = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/documents.client.tsx.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(dashboard)/documents.client.tsx.hbs'),
       'utf8',
     );
     expect(page).toContain('documents.list');
@@ -234,7 +234,7 @@ describe('cloudflare-fullstack blueprint META', () => {
     const layout = readFileSync(
       join(
         import.meta.dir,
-        '../../templates/blueprints/cloudflare-fullstack/src/app/(dashboard)/admin/layout.tsx.hbs',
+        '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(dashboard)/admin/layout.tsx.hbs',
       ),
       'utf8',
     );
@@ -301,7 +301,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('root layout override mounts AppProviders + Toaster (no missing devtools deps)', () => {
     const layout = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/src/app/layout.tsx.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/layout.tsx.hbs'),
       'utf8',
     );
     expect(layout).toContain("import { AppProviders } from '@/components/app-providers'");
@@ -313,7 +313,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   test('ships a local-D1 seed (no DATABASE_URL, no shebang)', () => {
     const seed = readFileSync(
-      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/scripts/seed.ts.hbs'),
+      join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/scripts/seed.ts.hbs'),
       'utf8',
     );
     expect(seed).toContain("import { createClient } from '@libsql/client'");
@@ -325,7 +325,7 @@ describe('cloudflare-fullstack blueprint META', () => {
   });
 
   test('ships the four agent docs', () => {
-    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack/docs/agents');
+    const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/docs/agents');
     for (const f of ['auth-rbac.md.hbs', 'data-layer.md.hbs', 'storage.md.hbs', 'cloudflare-deploy.md.hbs']) {
       expect(() => readFileSync(join(base, f), 'utf8')).not.toThrow();
     }
@@ -333,7 +333,7 @@ describe('cloudflare-fullstack blueprint META', () => {
 
   // Regression guards for bugs found by dogfood typecheck + the code-review pass.
   const bpFile = (p: string) =>
-    readFileSync(join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack', p), 'utf8');
+    readFileSync(join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs', p), 'utf8');
 
   test('ships a db types override matching its schema (no postTable)', () => {
     const types = bpFile('src/lib/db/types.ts.hbs');
@@ -432,14 +432,15 @@ describe('cloudflare-fullstack blueprint META', () => {
     expect(nextConfig).toContain("persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' }");
   });
 
-  test('auth config sends a reset link via an email stub, logging it in dev', () => {
+  test('auth config sends a reset link through the mailer seam, which logs it and warns in production', () => {
     const auth = bpFile('src/lib/auth/auth.ts.hbs');
     expect(auth).toContain('sendResetPassword');
     expect(auth).toContain('sendResetPasswordEmail');
-    expect(auth).toContain('Password reset link for');
+    expect(auth).not.toContain('console.');
     const email = bpFile('src/lib/auth/email.ts.hbs');
     expect(email).toContain('export async function sendResetPasswordEmail');
-    expect(email).toContain('TODO');
+    expect(email).toContain('[reset-password] ${to} → ${url}');
+    expect(email).toContain('No mailer is configured');
   });
 
   test('ships forgot-password and reset-password flows wired to authClient', () => {
