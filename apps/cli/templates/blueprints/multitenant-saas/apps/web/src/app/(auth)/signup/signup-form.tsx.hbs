@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 {{{{raw}}}}
 const signupSchema = z.object({
@@ -23,6 +24,7 @@ const signupSchema = z.object({
 
 export function SignupForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
+  const destination = safeRedirectPath(redirectTo);
 
   const form = useAppForm({
     defaultValues: { name: '', email: '', password: '' },
@@ -33,7 +35,7 @@ export function SignupForm({ redirectTo }: { redirectTo: string }) {
         toast.error(result.error.message ?? 'Failed to create account');
         return;
       }
-      router.push(redirectTo);
+      router.push(destination);
       router.refresh();
     },
   });
@@ -68,7 +70,7 @@ export function SignupForm({ redirectTo }: { redirectTo: string }) {
           </form>
           <p className='mt-4 text-center text-sm text-muted-foreground'>
             Already have an account?{' '}
-            <Link href={`/login?redirect=${encodeURIComponent(redirectTo)}`} className='underline'>
+            <Link href={`/login?redirect=${encodeURIComponent(destination)}`} className='underline'>
               Sign in
             </Link>
           </p>

@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 {{{{raw}}}}
 const loginSchema = z.object({
@@ -22,6 +23,7 @@ const loginSchema = z.object({
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
+  const destination = safeRedirectPath(redirectTo);
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
@@ -32,7 +34,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         toast.error(result.error.message ?? 'Invalid email or password');
         return;
       }
-      router.push(redirectTo);
+      router.push(destination);
       router.refresh();
     },
   });
@@ -69,7 +71,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           </p>
           <p className='mt-2 text-center text-sm text-muted-foreground'>
             Don&apos;t have an account?{' '}
-            <Link href={`/signup?redirect=${encodeURIComponent(redirectTo)}`} className='underline'>
+            <Link href={`/signup?redirect=${encodeURIComponent(destination)}`} className='underline'>
               Sign up
             </Link>
           </p>
