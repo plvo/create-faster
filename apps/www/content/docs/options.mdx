@@ -14,7 +14,9 @@ Pass flags to create a project without interactive prompts:
 bunx create-faster my-project [options]
 ```
 
-You can combine flags with prompts for a hybrid approach: provide known values via flags and, in an interactive terminal, the CLI prompts for the database, ORM, deployment, linter and tooling you did not set. Without a terminal (CI, scripts, agents) those are not prompted and stay empty.
+You can combine flags with prompts for a hybrid approach: provide known values via flags and, in an interactive terminal, the CLI prompts for the database, ORM, deployment, linter and tooling you did not set. Without a terminal (CI, scripts, agents) nothing is prompted: those choices stay empty, there is no git and no install unless a flag says otherwise.
+
+To state "no selection" explicitly, pass `none` to a category flag (`--database none`, `--linter none`, `--deployment none`, `--orm none`, `--tooling none`). To skip every prompt no flag answers in a terminal, pass `--yes`.
 
 ## Available Flags
 
@@ -330,6 +332,15 @@ This pre-fills the project with a Next.js app and PostgreSQL, then prompts for:
 - Git initialization
 - Package manager
 
+### `--yes`
+
+Skip every prompt no flag answers: project categories stay empty, git is off and nothing is installed. The project name and the apps are still asked when no flag gives them.
+
+**Example**:
+```bash
+bunx create-faster my-app --app my-app:nextjs --yes
+```
+
 ## Auto-Generated Command
 
 After project generation, create-faster displays a copy-paste ready command reflecting your exact configuration:
@@ -350,6 +361,8 @@ After project generation, create-faster displays a copy-paste ready command refl
 │
 └
 ```
+
+The command is exact: running it answers every prompt. It adds `--yes` when a category, git or the package manager was left empty.
 
 This command is useful for:
 - Sharing configurations with team members

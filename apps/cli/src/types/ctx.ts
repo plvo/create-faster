@@ -1,4 +1,5 @@
 import type { PACKAGE_MANAGERS } from '@/lib/constants';
+import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 export interface AppContext {
@@ -30,6 +31,12 @@ export interface TemplateContext {
   blueprint?: string;
   dbPort?: number;
   agentContext?: boolean;
+}
+
+/** What the flags answered: a partial context, the categories stated as "none", and whether every other prompt is skipped. */
+export interface FlagAnswers extends Partial<TemplateContext> {
+  noSelection?: ProjectCategoryName[];
+  skipPrompts?: boolean;
 }
 
 export interface TemplateFile {

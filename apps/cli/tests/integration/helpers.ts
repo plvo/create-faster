@@ -325,3 +325,50 @@ export async function printedScriptsMissingFrom(projectPath: string, document: s
 
   return missing;
 }
+
+const ENTER = '\r';
+const DOWN_THEN_ENTER = '\x1b[B\r';
+const PROMPT_TIMEOUT_MS = 30_000;
+
+interface PromptAnswer {
+  prompt: string;
+  keys: string;
+}
+
+export const accept = (prompt: string): PromptAnswer => ({ prompt, keys: ENTER });
+export const pickFirstOption = (prompt: string): PromptAnswer => ({ prompt, keys: DOWN_THEN_ENTER });
+
+/** Runs the CLI on a pseudo-terminal and answers each expected prompt as it appears. */
+export async function runCliOnTerminal(args: string[], cwd: string, expectedPrompts: PromptAnswer[]) {
+  const cliPath = join(import.meta.dir, '../../src/index.ts');
+  let output = '';
+
+  const proc = Bun.spawn([process.execPath, 'run', cliPath, ...args], {
+    cwd,
+    env: { ...process.env, ...PLAIN_OUTPUT_ENV },
+    terminal: {
+      cols: 120,
+      rows: 40,
+      data: (_terminal, chunk) => {
+        output += new TextDecoder().decode(chunk);
+      },
+    },
+  });
+
+  try {
+    let searchFrom = 0;
+    for (const { prompt, keys } of expectedPrompts) {
+      const deadline = Date.now() + PROMPT_TIMEOUT_MS;
+      while (output.indexOf(prompt, searchFrom) === -1) {
+        if (Date.now() > deadline) throw new Error(`Prompt "${prompt}" never appeared. Output:\n${output}`);
+        await Bun.sleep(50);
+      }
+      searchFrom = output.length;
+      await Bun.sleep(100);
+      proc.terminal?.write(keys);
+    }
+    return { exitCode: await proc.exited, output };
+  } finally {
+    proc.kill();
+  }
+}

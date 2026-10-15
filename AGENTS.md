@@ -24,7 +24,7 @@ docs/agents/               # Research, plans and audits written by agents
 | `index.ts` | Entry point: parse flags, run prompts, resolve templates, generate files, post-generation hooks, summary |
 | `flags.ts` | Commander flags parser and validation against META |
 | `cli.ts` | Interactive flow (`cli`, `blueprintCli`), skips every prompt a flag already answered |
-| `lib/project-prompts.ts` | Decides which project category prompts are asked (`shouldPromptCategory`) and whether the terminal is interactive |
+| `lib/project-prompts.ts` | Decides which prompts are asked: `shouldPromptCategory`, `arePromptsSuppressed` (`--yes`, no terminal), interactive terminal detection |
 | `__meta__.ts` | META: the single source of truth for stacks, libraries, project addons, repo types and blueprints |
 | `types/meta.ts`, `types/ctx.ts` | META types and the generation context (`TemplateContext`, `AppContext`, `ProjectContext`) |
 | `prompts/` | Prompt wrappers and the stack, library, blueprint and project category prompts |
@@ -363,7 +363,7 @@ All documentation produced by AI agents (research reports, plans, audits, cleanu
 
 ## CLI flags
 
-`bunx create-faster [project-name] [options]`; `--help` prints the current choices. Omitted answers are prompted, per answer: a project category (database, ORM, deployment, linter, tooling) that a flag or the blueprint answered is skipped, the others are asked, and a category whose `require` is unmet is not offered. Project categories are only prompted in an interactive terminal (`process.stdin.isTTY` and `process.stdout.isTTY`) once any flag is passed; without one they stay empty, so scripts and agents never block on them. A run with no flag at all prompts everything. `require` and capability checks of what the flags selected (`validateRequirements`) run right after the flags are parsed without a terminal, and after the prompts in a terminal, so `--app web:nextjs:better-auth` prompts the database instead of failing; what a prompt leaves unmet is rejected after it. The needs of Husky are its META `require`, checked like any other. No flag answers a category with "none": pick None in the prompt. Flags are declared in `apps/cli/src/flags.ts`, which is authoritative.
+`bunx create-faster [project-name] [options]`; `--help` prints the current choices. Omitted answers are prompted, per answer: a project category (database, ORM, deployment, linter, tooling) that a flag or the blueprint answered is skipped, the others are asked, and a category whose `require` is unmet is not offered. Prompts for what no flag answered are only asked in an interactive terminal (`process.stdin.isTTY` and `process.stdout.isTTY`) once any flag is passed (`arePromptsSuppressed` in `lib/project-prompts.ts`); without one, project categories stay empty, a missing `--git`/`--no-git` means no git and a missing `--pm`/`--no-install` means no install, so scripts and agents never block. `--yes` suppresses them in a terminal too (the project name and the apps are still asked). A run with no flag at all prompts everything. `require` and capability checks of what the flags selected (`validateRequirements`) run right after the flags are parsed without a terminal, and after the prompts in a terminal, so `--app web:nextjs:better-auth` prompts the database instead of failing; what a prompt leaves unmet is rejected after it. The needs of Husky are its META `require`, checked like any other. Every project category flag accepts `none` (`--database none`, `--tooling none`), validated generically from `META.project`: the category is answered with no selection, so it is neither prompted nor filled; `none` cannot be mixed with another `--tooling` value. The recreate command printed by `tui/summary.ts` is exact: it adds `--yes` when it leaves a category, git or the package manager empty (shorter than `none` per category), and `--no-install` next to `--pm` when the install was skipped. Flags are declared in `apps/cli/src/flags.ts`, which is authoritative.
 
 | Flag | Meaning |
 |---|---|
@@ -377,6 +377,8 @@ All documentation produced by AI agents (research reports, plans, audits, cleanu
 | `--pm <bun\|npm\|pnpm>` | Package manager |
 | `--no-install` | Skip dependency installation |
 | `--no-agent-context` | Skip `AGENTS.md` and `CLAUDE.md` |
+| `--yes` | Ask nothing no flag answers: project categories stay empty, no git, no install |
+| `none` as a value | Any project category flag: explicit "no selection" |
 
 ```bash
 bunx create-faster mysaas \

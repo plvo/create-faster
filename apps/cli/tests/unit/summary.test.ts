@@ -11,29 +11,49 @@ describe('recreate command', () => {
   });
 });
 
-describe('recreate command categories', () => {
-  test('leaves out a category answered with no selection', () => {
+describe('recreate command answers every prompt', () => {
+  const answered: TemplateContext = {
+    projectName: 'demo',
+    repo: 'single',
+    apps: [{ appName: 'demo', stackName: 'nextjs', libraries: [] }],
+    project: { database: 'postgres', orm: 'drizzle', deployment: 'sst', linter: 'biome', tooling: ['husky'] },
+    git: true,
+    pm: 'bun',
+  };
+
+  function recreateCommand(ctx: TemplateContext): string {
     const written: string[] = [];
     const writeSpy = spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
       written.push(String(chunk));
       return true;
     });
-
-    displayOutroCliCommand(
-      {
-        projectName: 'demo',
-        repo: 'single',
-        apps: [{ appName: 'demo', stackName: 'nextjs', libraries: [] }],
-        project: { database: 'postgres', orm: undefined, deployment: undefined, linter: undefined, tooling: [] },
-        git: false,
-      },
-      '/tmp/demo',
-    );
+    displayOutroCliCommand(ctx, '/tmp/demo');
     writeSpy.mockRestore();
+    return written.join('').replaceAll('\\\n  ', '');
+  }
 
-    const output = written.join('');
-    expect(output).toContain('--database postgres');
+  test('adds nothing when every category, git and the package manager are given', () => {
+    const output = recreateCommand(answered);
+
+    expect(output).toContain('--database postgres --orm drizzle --deployment sst --linter biome --tooling husky');
+    expect(output).not.toContain('--yes');
+  });
+
+  test('adds --yes when a category is left empty, without printing it as undefined', () => {
+    const output = recreateCommand({ ...answered, project: { ...answered.project, linter: undefined } });
+
+    expect(output).toContain('--yes');
+    expect(output).not.toContain('--linter');
     expect(output).not.toContain('undefined');
+  });
+
+  test('adds --yes when git is off or no package manager is chosen', () => {
+    expect(recreateCommand({ ...answered, git: false })).toContain('--yes');
+    expect(recreateCommand({ ...answered, pm: undefined })).toContain('--yes');
+  });
+
+  test('keeps --no-install next to the package manager when installation was skipped', () => {
+    expect(recreateCommand({ ...answered, skipInstall: true })).toContain('--pm bun --no-install');
   });
 });
 

@@ -13,7 +13,7 @@ import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
 import { isInteractiveTerminal } from '@/lib/project-prompts';
 import { printError } from '@/tui/print-error';
-import type { AppContext, ProjectContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, FlagAnswers, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
@@ -30,6 +30,13 @@ interface ParsedFlags {
   pm?: string;
   install?: boolean;
   agentContext?: boolean;
+  yes?: boolean;
+}
+
+const NO_SELECTION = 'none';
+
+function namesWithNoSelection(categoryName: ProjectCategoryName): string {
+  return [...Object.keys(META.project[categoryName].options), NO_SELECTION].join(', ');
 }
 
 function validateOption(label: string, value: string, options: Record<string, unknown>, plural?: string): void {
@@ -39,34 +46,36 @@ function validateOption(label: string, value: string, options: Record<string, un
   }
 }
 
-function applyProjectFlags(flags: ParsedFlags, project: ProjectContext): void {
-  if (flags.deployment) {
-    validateOption('deployment', flags.deployment, META.project.deployment.options);
-    project.deployment = flags.deployment;
-  }
+function applyProjectFlags(flags: ParsedFlags, project: ProjectContext, noSelection: ProjectCategoryName[]): void {
+  for (const categoryName of Object.keys(META.project) as ProjectCategoryName[]) {
+    const values = [flags[categoryName] ?? []].flat();
+    if (values.length === 0) continue;
 
-  if (flags.linter) {
-    validateOption('linter', flags.linter, META.project.linter.options);
-    project.linter = flags.linter;
-  }
-
-  if (flags.tooling && flags.tooling.length > 0) {
-    project.tooling = [];
-    for (const toolingName of flags.tooling) {
-      validateOption('tooling', toolingName, META.project.tooling.options, 'tooling');
-      project.tooling.push(toolingName);
+    if (values.includes(NO_SELECTION)) {
+      if (values.length > 1) {
+        printError(`--${categoryName} ${NO_SELECTION} cannot be combined with another value`);
+        process.exit(1);
+      }
+      noSelection.push(categoryName);
+      continue;
     }
+
+    const category = META.project[categoryName];
+    for (const value of values) {
+      validateOption(categoryName, value, category.options);
+    }
+    Object.assign(project, { [categoryName]: category.selection === 'single' ? values[0] : values });
   }
 }
 
-export function parseFlags(): Partial<TemplateContext> {
+export function parseFlags(): FlagAnswers {
   const program = new Command();
 
-  const ormNames = Object.keys(META.project.orm.options).join(', ');
-  const dbNames = Object.keys(META.project.database.options).join(', ');
-  const deploymentNames = Object.keys(META.project.deployment.options).join(', ');
-  const linterNames = Object.keys(META.project.linter.options).join(', ');
-  const toolingNames = Object.keys(META.project.tooling.options).join(', ');
+  const ormNames = namesWithNoSelection('orm');
+  const dbNames = namesWithNoSelection('database');
+  const deploymentNames = namesWithNoSelection('deployment');
+  const linterNames = namesWithNoSelection('linter');
+  const toolingNames = namesWithNoSelection('tooling');
   const libraryNames = Object.keys(META.libraries).join(', ');
   const [exampleBlueprint = '<name>'] = Object.keys(META.blueprints);
 
@@ -87,18 +96,21 @@ export function parseFlags(): Partial<TemplateContext> {
     .option('--orm <name>', `ORM provider (${ormNames})`)
     .option('--deployment <name>', `Deployment platform (${deploymentNames})`)
     .option('--linter <name>', `Linter (${linterNames})`)
-    .option('--tooling <name>', 'Add tooling (repeatable)', collect, [])
+    .option('--tooling <name>', `Add tooling (repeatable) (${toolingNames})`, collect, [])
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', `Package manager (${PACKAGE_MANAGERS.join(', ')})`)
     .option('--no-install', 'Skip dependency installation')
     .option('--no-agent-context', 'Skip AGENTS.md / CLAUDE.md generation')
+    .option('--yes', 'Skip every prompt no flag answers (project choices stay empty, no git, no install)')
     .addHelpText(
       'after',
       `
 ${color.bold('Prompts:')}
-  In an interactive terminal, every database, ORM, deployment, linter and tooling choice that no
-  flag answers is prompted. Without a terminal (CI, scripts) those are not prompted and stay empty.
+  In an interactive terminal, every database, ORM, deployment, linter, tooling, git and package
+  manager choice that no flag answers is prompted. Pass 'none' to a category flag to leave it empty,
+  or --yes to skip every such prompt. Without a terminal (CI, scripts) nothing is prompted: project
+  choices stay empty, there is no git and no install unless a flag says otherwise.
 
 ${color.bold('Examples:')}
   ${color.gray('Single app:')}
@@ -133,7 +145,7 @@ ${color.bold('Examples:')}
     return {};
   }
 
-  const partial: Partial<TemplateContext> = {};
+  const partial: FlagAnswers = {};
 
   if (projectName) {
     partial.projectName = projectName;
@@ -168,27 +180,22 @@ ${color.bold('Examples:')}
     partial.blueprint = flags.blueprint;
     partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
     partial.project = { ...blueprint.context.project, tooling: [] } as ProjectContext;
+  }
 
-    applyProjectFlags(flags, partial.project);
-  } else {
-    const hasProjectFlags =
-      flags.database || flags.orm || flags.deployment || flags.linter || (flags.tooling && flags.tooling.length > 0);
-    if (hasProjectFlags) {
-      const project: ProjectContext = { tooling: [] };
-      partial.project = project;
+  const noSelection: ProjectCategoryName[] = [];
+  const hasProjectFlags = (Object.keys(META.project) as ProjectCategoryName[]).some((name) => flags[name]?.length);
+  if (!partial.project && hasProjectFlags) {
+    partial.project = { tooling: [] };
+  }
+  if (partial.project) {
+    applyProjectFlags(flags, partial.project, noSelection);
+  }
+  if (noSelection.length > 0) {
+    partial.noSelection = noSelection;
+  }
 
-      if (flags.database) {
-        validateOption('database', flags.database, META.project.database.options);
-        project.database = flags.database;
-      }
-
-      if (flags.orm) {
-        validateOption('ORM', flags.orm, META.project.orm.options);
-        project.orm = flags.orm;
-      }
-
-      applyProjectFlags(flags, project);
-    }
+  if (flags.yes) {
+    partial.skipPrompts = true;
   }
 
   if (flags.git !== undefined) {

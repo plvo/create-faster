@@ -6,17 +6,17 @@ import { META } from '@/__meta__';
 import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
-import { isInteractiveTerminal, shouldPromptCategory } from '@/lib/project-prompts';
+import { arePromptsSuppressed, promptModeOf, shouldPromptCategory } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
-import type { AppContext, PackageManager, ProjectContext, TemplateContext } from '@/types/ctx';
+import type { AppContext, FlagAnswers, PackageManager, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { validateRequirements } from './flags';
 import { S_GRAY_BAR } from './tui/symbols';
 
-export async function cli(partial?: Partial<TemplateContext>): Promise<Omit<TemplateContext, 'repo'>> {
+export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 'repo'>> {
   const progress = new Progress(['Project', 'Apps', 'Database', 'Extras', 'Install']);
 
   const ctx: Omit<TemplateContext, 'repo'> = {
@@ -78,7 +78,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
 
 export async function blueprintCli(
   blueprintName: string,
-  partial?: Partial<TemplateContext>,
+  partial?: FlagAnswers,
 ): Promise<Omit<TemplateContext, 'repo'>> {
   const blueprint = META.blueprints[blueprintName];
   if (!blueprint) {
@@ -154,10 +154,10 @@ function logProjectConfig(project: ProjectContext): void {
 async function promptUnansweredCategories(
   ctx: Omit<TemplateContext, 'repo'>,
   categoryNames: ProjectCategoryName[],
-  partial: Partial<TemplateContext> | undefined,
+  partial: FlagAnswers | undefined,
   progress?: Progress,
 ): Promise<void> {
-  const mode = { hasFlags: Object.keys(partial ?? {}).length > 0, interactive: isInteractiveTerminal() };
+  const mode = promptModeOf(partial);
 
   for (const categoryName of categoryNames) {
     if (shouldPromptCategory(categoryName, ctx, mode)) {
@@ -186,7 +186,7 @@ async function promptUnansweredCategories(
   }
 }
 
-async function promptOrUseProjectName(partial: Partial<TemplateContext> | undefined, message: string): Promise<string> {
+async function promptOrUseProjectName(partial: FlagAnswers | undefined, message: string): Promise<string> {
   if (partial?.projectName) {
     log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
     const fullPath = join(process.cwd(), partial.projectName);
@@ -211,7 +211,7 @@ async function promptOrUseProjectName(partial: Partial<TemplateContext> | undefi
   });
 }
 
-async function promptOrUseGit(partial: Partial<TemplateContext> | undefined, message: string): Promise<boolean> {
+async function promptOrUseGit(partial: FlagAnswers | undefined, message: string): Promise<boolean> {
   if (partial?.git !== undefined) {
     if (partial.git) {
       log.info(`${color.green('✓')} Git initialization enabled`);
@@ -219,11 +219,13 @@ async function promptOrUseGit(partial: Partial<TemplateContext> | undefined, mes
     return partial.git;
   }
 
+  if (arePromptsSuppressed(promptModeOf(partial))) return false;
+
   return promptConfirm(message, { initialValue: true });
 }
 
 async function promptOrUsePackageManager(
-  partial: Partial<TemplateContext> | undefined,
+  partial: FlagAnswers | undefined,
   message: string,
 ): Promise<{ pm?: PackageManager; skipInstall?: boolean }> {
   if (partial?.skipInstall) {
@@ -238,6 +240,8 @@ async function promptOrUsePackageManager(
     log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
     return { pm: partial.pm };
   }
+
+  if (arePromptsSuppressed(promptModeOf(partial))) return { pm: undefined };
 
   const pm = await promptSelectWithDisabled<PackageManager>(message, [
     ...PACKAGE_MANAGERS.map((name) => ({
