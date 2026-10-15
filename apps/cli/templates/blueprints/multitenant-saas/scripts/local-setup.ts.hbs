@@ -20,6 +20,4 @@ const steps: Step[] = [
 
 console.log('Setting up your local environment\n');
 
-await runSteps(steps);
-
-console.log('\nLocal setup complete. Sign in with the credentials printed above, then run `{{runScript "dev"}}`.');
+runSteps(steps).then(() => console.log('\nLocal setup complete. Sign in with the credentials printed above, then run `{{runScript "dev"}}`.'));

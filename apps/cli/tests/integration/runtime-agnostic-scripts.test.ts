@@ -133,3 +133,86 @@ describe.each([...PACKAGE_MANAGERS])('prisma seed with %s', (pm) => {
     expect(await fileExists(join(project, 'scripts/seed.ts'))).toBe(true);
   });
 });
+
+describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack scripts with %s', (pm) => {
+  let dir: string;
+  let project: string;
+
+  beforeAll(async () => {
+    ({ dir, project } = await generate(`fullstack-${pm}`, ['--blueprint', 'cloudflare-fullstack'], pm));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  test('local-setup and seed use no Bun API', async () => {
+    for (const file of ['scripts/local-setup.ts', 'scripts/seed.ts']) {
+      const source = await readTextFile(join(project, file));
+      expect(source.match(BUN_API)).toBeNull();
+      if (pm !== 'bun') expect(source.match(/\bbun\b/)).toBeNull();
+    }
+  });
+
+  test('local-setup runs every script through the package manager', async () => {
+    const source = await readTextFile(join(project, 'scripts/local-setup.ts'));
+
+    for (const script of ['db:generate', 'db:migrate', 'cf-typegen', 'dev']) {
+      expect(source).toContain(`${pm} run ${script}`);
+    }
+    expect(source).toContain(forwarded(pm, 'db:seed', '--fixtures'));
+  });
+
+  test('the seed opens the local D1 file with libsql and names the package manager', async () => {
+    const source = await readTextFile(join(project, 'scripts/seed.ts'));
+    const { devDependencies } = await readJsonFile<Manifest>(join(project, 'package.json'));
+
+    expect(source).toContain("from '@libsql/client'");
+    expect(source).toContain(`Usage: ${pm} run db:seed [options]`);
+    expect(devDependencies?.['@libsql/client']).toBeDefined();
+  });
+
+  test('the root scripts run the TypeScript files with the runner of the package manager', async () => {
+    const { scripts } = await readJsonFile<Manifest>(join(project, 'package.json'));
+
+    expect(scripts['local-setup']).toBe(`${runnerOf(pm)} scripts/local-setup.ts`);
+    expect(scripts['db:seed']).toBe(`BETTER_AUTH_URL=http://localhost:3000 ${runnerOf(pm)} scripts/seed.ts`);
+  });
+});
+
+describe.each([...PACKAGE_MANAGERS])('d1 with %s', (pm) => {
+  let dir: string;
+  let project: string;
+
+  beforeAll(async () => {
+    ({ dir, project } = await generate(
+      `d1-${pm}`,
+      ['--app', 'api:hono', '--app', 'web:nextjs', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare'],
+      pm,
+    ));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(dir);
+  });
+
+  test('the seed opens the local D1 file with libsql, with no Bun API or Bun types', async () => {
+    const seed = await readTextFile(join(project, 'packages/db/scripts/seed.ts'));
+    const { devDependencies } = await readJsonFile<Manifest>(join(project, 'packages/db/package.json'));
+    const tsconfig = await readTextFile(join(project, 'packages/db/tsconfig.json'));
+
+    expect(seed).toContain("from '@libsql/client'");
+    expect(seed).toContain(`Run \`${pm} run db:migrate:local\` first.`);
+    expect(seed.match(BUN_API)).toBeNull();
+    expect(devDependencies?.['@types/bun']).toBeUndefined();
+    expect(tsconfig).not.toContain('"bun"');
+  });
+
+  test('the local-setup script of the db package re-enters its scripts through the package manager', async () => {
+    const { scripts } = await readJsonFile<Manifest>(join(project, 'packages/db/package.json'));
+
+    expect(scripts['local-setup']).toStartWith(`${pm} run db:generate && wrangler`);
+    expect(scripts['local-setup']).toEndWith(`&& ${pm} run db:seed`);
+    expect(scripts['db:seed']).toBe(`${runnerOf(pm)} scripts/seed.ts`);
+  });
+});

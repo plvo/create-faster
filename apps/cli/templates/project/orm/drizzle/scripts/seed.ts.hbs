@@ -9,8 +9,9 @@ blueprintSkip:
 {{#if (has "database" "d1")}}
 import fs from 'node:fs';
 import path from 'node:path';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { pathToFileURL } from 'node:url';
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from {{#if (isMono)}}'../src/schema'{{else}}'../src/lib/db/schema'{{/if}};
 import { postTable, userTable } from {{#if (isMono)}}'../src/index'{{else}}'../src/lib/db'{{/if}};
 
@@ -27,11 +28,11 @@ function getLocalD1DB(): string | undefined {
 
 const localPath = getLocalD1DB();
 if (!localPath) {
-  console.error('❌ No local D1 database found. Run `bun run db:migrate:local` first.');
+  console.error('❌ No local D1 database found. Run `{{runScript "db:migrate:local"}}` first.');
   process.exit(1);
 }
 
-const db = drizzle(new Database(localPath), { schema });
+const db = drizzle(createClient({ url: pathToFileURL(localPath).href }), { schema });
 {{else}}
 import 'dotenv/config';
 {{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}

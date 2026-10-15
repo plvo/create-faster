@@ -127,10 +127,11 @@ describe('Single repo: Next.js + cloudflare + d1', () => {
     expect(pkg.scripts['db:studio']).toContain('drizzle-kit studio');
   });
 
-  test('seed.ts uses bun:sqlite + drizzle-orm/bun-sqlite instead of missing db singleton', async () => {
+  test('seed.ts opens the local file with libsql instead of a missing db singleton', async () => {
     const seed = await readTextFile(join(projectPath, 'scripts/seed.ts'));
-    expect(seed).toContain("from 'bun:sqlite'");
-    expect(seed).toContain("from 'drizzle-orm/bun-sqlite'");
+    expect(seed).toContain("from '@libsql/client'");
+    expect(seed).toContain("from 'drizzle-orm/libsql'");
+    expect(seed).not.toContain('bun:sqlite');
     expect(seed).toContain('getLocalD1DB');
     expect(seed).not.toContain("import { db,");
     expect(seed).not.toContain("import { db }");

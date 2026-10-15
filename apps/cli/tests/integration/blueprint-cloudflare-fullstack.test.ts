@@ -128,7 +128,7 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(false);
 
     const dbPkg = JSON.parse(await readTextFile(join(projectPath, 'packages/db/package.json')));
-    expect(dbPkg.scripts['db:seed']).toBe('bun run --cwd ../.. db:seed');
+    expect(dbPkg.scripts['db:seed']).toBe('cd ../.. && npm run db:seed');
   });
 
   test('emits a root local-setup orchestrator wired into the root scripts', async () => {
@@ -141,7 +141,7 @@ describe('Blueprint generation - cloudflare-fullstack', () => {
     expect(setup).not.toContain('{{');
 
     const pkg = await readTextFile(join(projectPath, 'package.json'));
-    expect(pkg).toContain('"local-setup": "bun scripts/local-setup.ts"');
+    expect(pkg).toContain('"local-setup": "tsx scripts/local-setup.ts"');
   });
 
   test('uses D1 bindings everywhere — no DATABASE_URL leaks', async () => {

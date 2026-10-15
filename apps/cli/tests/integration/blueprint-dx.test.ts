@@ -51,7 +51,7 @@ describe.each(BLUEPRINTS)('Blueprint DX tooling - %s', (blueprint) => {
     expect(await fileExists(join(projectPath, 'packages/db/scripts/seed.ts'))).toBe(false);
 
     const dbPkg = await readJsonFile<RootPkg>(join(projectPath, 'packages/db/package.json'));
-    expect(dbPkg.scripts['db:seed']).toBe('bun run --cwd ../.. db:seed');
+    expect(dbPkg.scripts['db:seed']).toBe('cd ../.. && npm run db:seed');
   });
 
   test('declares faker for demo fixtures', async () => {

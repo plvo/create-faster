@@ -746,7 +746,6 @@ export const META: Meta = {
           packageJson: {
             devDependencies: {
               '@libsql/client': LIBSQL_CLIENT_VERSION,
-              '@types/bun': '^1.4.0',
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
@@ -1541,9 +1540,10 @@ export const META: Meta = {
           '@faker-js/faker': '^10.4.0',
           tsx: TSX_RUNNER,
           'drizzle-orm': '^0.45.2',
+          '@libsql/client': LIBSQL_CLIENT_VERSION,
         },
         scripts: {
-          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 {{tsRunner}} --env-file=packages/db/.env scripts/seed.ts',
+          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 {{tsRunner}} scripts/seed.ts',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
           start: 'turbo start',
         },
