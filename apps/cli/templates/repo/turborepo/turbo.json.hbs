@@ -50,8 +50,8 @@
       "cache": false
     },
     "db:seed": {
-      "cache": false,
-      "env": [{{#if blueprint}}"SEED_PASSWORD"{{/if}}{{#unless (has "database" "d1")}}{{#if blueprint}}, {{/if}}"DATABASE_URL"{{/unless}}]
+      "cache": false{{#if (taskEnv "db:seed")}},
+      "env": [{{#each (taskEnv "db:seed")}}{{#unless @first}}, {{/unless}}"{{this}}"{{/each}}]{{/if}}
     },
     "db:studio": {
       "cache": false,

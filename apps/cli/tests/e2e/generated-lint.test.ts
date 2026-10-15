@@ -171,7 +171,7 @@ async function expectLintPasses(projectDir: string, linter: string, moment: stri
 
 // The build outcome is logged, not asserted: the other e2e files own it. What matters here is that
 // whatever the build writes (or leaves half written) is never linted.
-describe('generated projects pass their own lint script without warnings', () => {
+describe('generated projects pass their own lint script (Biome also without warnings)', () => {
   let tempDir: string;
 
   beforeAll(async () => {

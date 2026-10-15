@@ -727,6 +727,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}?sslmode=disable" # Local Docker PostgreSQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
               secret: { deployment: 'sst' },
             },
           ],
@@ -747,6 +748,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}?ssl=false" # Local Docker MySQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
               secret: { deployment: 'sst' },
             },
           ],
@@ -772,6 +774,7 @@ export const META: Meta = {
             {
               value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:migrate',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
             },
           ],
         },
@@ -1356,6 +1359,13 @@ export const META: Meta = {
           start: 'turbo start',
         },
       },
+      envs: [
+        {
+          value: 'SEED_PASSWORD=password',
+          monoScope: ['app'],
+          tasks: ['db:seed'],
+        },
+      ],
     },
     'multitenant-saas-nextjs': {
       label: 'Multitenant SaaS',
@@ -1456,6 +1466,11 @@ export const META: Meta = {
           value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
           stacks: ['nextjs'],
           monoScope: ['app'],
+        },
+        {
+          value: 'SEED_PASSWORD=password',
+          monoScope: ['app'],
+          tasks: ['db:seed'],
         },
       ],
     },
@@ -1600,6 +1615,11 @@ export const META: Meta = {
           value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
           stacks: ['nextjs'],
           monoScope: ['app'],
+        },
+        {
+          value: 'SEED_PASSWORD=password',
+          monoScope: ['app'],
+          tasks: ['db:seed'],
         },
       ],
     },

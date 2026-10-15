@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
 
 interface TurboConfig {
-  tasks: Record<string, { env?: string[] }>;
+  tasks: Record<string, { cache?: boolean; env?: string[] }>;
 }
 
 describe('turbo.json declares the variables a seed reads', () => {
@@ -17,14 +17,14 @@ describe('turbo.json declares the variables a seed reads', () => {
     await cleanupTempDir(tempDir);
   });
 
-  async function readSeedEnv(name: string, args: string[]): Promise<string[] | undefined> {
+  async function readSeedTask(name: string, args: string[]): Promise<TurboConfig['tasks'][string] | undefined> {
     const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
-    return (await readJsonFile<TurboConfig>(join(tempDir, name, 'turbo.json'))).tasks['db:seed']?.env;
+    return (await readJsonFile<TurboConfig>(join(tempDir, name, 'turbo.json'))).tasks['db:seed'];
   }
 
   test('a turborepo with an ORM declares the database URL', async () => {
-    const env = await readSeedEnv('seed-env-orm', [
+    const task = await readSeedTask('seed-env-orm', [
       '--app',
       'web:nextjs',
       '--app',
@@ -34,16 +34,32 @@ describe('turbo.json declares the variables a seed reads', () => {
       '--orm',
       'drizzle',
     ]);
-    expect(env).toEqual(['DATABASE_URL']);
+    expect(task?.env).toEqual(['DATABASE_URL']);
   });
 
-  test('a blueprint seed that reads its demo password declares it too', async () => {
-    const env = await readSeedEnv('seed-env-blueprint', ['--blueprint', 'org-dashboard-nextjs']);
-    expect(env).toEqual(['SEED_PASSWORD', 'DATABASE_URL']);
+  test('a blueprint seed declares the variables its META entry names', async () => {
+    const task = await readSeedTask('seed-env-blueprint', ['--blueprint', 'org-dashboard-nextjs']);
+    expect(new Set(task?.env)).toEqual(new Set(['DATABASE_URL', 'SEED_PASSWORD']));
   });
 
-  test('a D1 blueprint has no database URL to declare', async () => {
-    const env = await readSeedEnv('seed-env-d1', ['--blueprint', 'cloudflare-fullstack-nextjs']);
-    expect(env).toEqual(['SEED_PASSWORD']);
+  test('a D1 blueprint declares no database URL', async () => {
+    const task = await readSeedTask('seed-env-d1-blueprint', ['--blueprint', 'cloudflare-fullstack-nextjs']);
+    expect(task?.env).toEqual(['SEED_PASSWORD']);
+  });
+
+  test('a D1 turborepo without a blueprint has a valid seed task with no env key', async () => {
+    const task = await readSeedTask('seed-env-d1', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'd1',
+      '--orm',
+      'drizzle',
+      '--deployment',
+      'cloudflare',
+    ]);
+    expect(task).toEqual({ cache: false });
   });
 });

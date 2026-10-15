@@ -5,7 +5,7 @@ import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@
 import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
-import { collectAppSecrets, collectProjectSecrets, resolveAppUrl } from './env-generator';
+import { collectAppSecrets, collectProjectSecrets, collectTaskEnv, resolveAppUrl } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
@@ -90,6 +90,10 @@ function registerHelpers(): void {
   Handlebars.registerHelper('projectSecrets', (...args: unknown[]) => {
     const options = args.pop() as Handlebars.HelperOptions;
     return collectProjectSecrets(options.data.root as TemplateContext, args as StackName[]);
+  });
+
+  Handlebars.registerHelper('taskEnv', (task: string, options: Handlebars.HelperOptions) => {
+    return collectTaskEnv(options.data.root as TemplateContext, task);
   });
 
   Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {

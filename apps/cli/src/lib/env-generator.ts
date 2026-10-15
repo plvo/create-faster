@@ -25,6 +25,7 @@ interface CollectedEnv {
   stacks?: StackName[];
   file?: string;
   secret?: boolean;
+  tasks?: string[];
 }
 
 /** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
@@ -76,6 +77,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         stacks: env.stacks,
         file: env.file,
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
+        tasks: env.tasks,
         ...origin,
       });
     }
@@ -218,6 +220,15 @@ export function collectProjectSecrets(ctx: TemplateContext, stacks: readonly Sta
   const names = ctx.apps
     .filter((app) => stacks.includes(app.stackName))
     .flatMap((app) => collectAppSecrets(ctx, app.appName));
+
+  return [...new Set(names)];
+}
+
+/** The names of the variables the project declares for a Turborepo task, each listed once, for the `env` of that task. */
+export function collectTaskEnv(ctx: TemplateContext, task: string): string[] {
+  const names = collectAllEnvs(ctx)
+    .filter((env) => env.tasks?.includes(task))
+    .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
 }

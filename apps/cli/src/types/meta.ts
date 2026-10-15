@@ -16,6 +16,8 @@ export interface EnvVar {
   when?: WhenMatch;
   file?: string;
   secret?: boolean | WhenMatch;
+  /** Turborepo tasks that read the variable; the root `turbo.json` lists it in their `env` (`taskEnv` helper). */
+  tasks?: string[];
 }
 
 export type FirstRunCommand = { command: string } | { script: string };
