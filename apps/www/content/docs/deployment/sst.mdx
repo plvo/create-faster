@@ -79,6 +79,10 @@ Type augmentation file that enables typed access to SST-linked environment varia
 
 The `.sst/` directory is added to `.gitignore`.
 
+### tsconfig.json
+
+In a single repo the Next.js and Expo `tsconfig.json` exclude `.sst` and `sst.config.ts`, so `tsc` and `next build` neither need `sst install` nor compile the SST platform sources it writes into `.sst/` (about 600 type errors of their own). SST bundles `sst.config.ts` itself and does not type-check it; your editor gets its types from `.sst/platform/config.d.ts` once `sst install` (run by `sst dev` and `sst deploy`) has generated it. In a turborepo the app sits in `apps/<app>` and its `tsconfig.json` is unchanged.
+
 ## CLI usage
 
 ```bash
