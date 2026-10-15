@@ -1,14 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { getAllTemplatesForContext, resolveBlueprintChain } from '@/lib/template-resolver';
+import { type BlueprintLinks, getAllTemplatesForContext, resolveBlueprintChain } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
-import type { MetaBlueprint } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
-
-type BlueprintLinks = Record<string, Pick<MetaBlueprint, 'extends'>>;
+import { createFixtureTree, removeFixtureTree } from '../fixture-tree';
+import { isBlueprintTemplate } from '../blueprint-template-source';
 
 const BLUEPRINTS: BlueprintLinks = {
   parent: {},
@@ -50,16 +46,11 @@ const FIXTURE_FILES: Record<string, string> = {
 let templatesDir: string;
 
 beforeAll(() => {
-  templatesDir = mkdtempSync(join(tmpdir(), 'blueprint-extends-'));
-  for (const [relative, content] of Object.entries(FIXTURE_FILES)) {
-    const file = join(templatesDir, relative);
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, content);
-  }
+  templatesDir = createFixtureTree('blueprint-extends-', FIXTURE_FILES);
 });
 
 afterAll(() => {
-  rmSync(templatesDir, { recursive: true, force: true });
+  removeFixtureTree(templatesDir);
 });
 
 function makeCtx(blueprint: string, stackName: StackName = 'nextjs'): TemplateContext {
@@ -146,6 +137,29 @@ describe('extends in the template resolver', () => {
     expect(sourcesAt('child', 'page.tsx', 'nextjs')).toEqual(['blueprints/parent/page.tsx.nextjs.hbs']);
     expect(destinationsOf('child', 'tanstack-start')).not.toContain('shared-page.tsx');
     expect(sourcesAt('child', 'page.tsx', 'tanstack-start')).toEqual(['blueprints/child/page.tsx.tanstack-start.hbs']);
+  });
+});
+
+describe('scanning the templates of a blueprint', () => {
+  const scanned = (blueprint: string) =>
+    templatesOf(blueprint)
+      .filter((t) => isBlueprintTemplate(t.source, blueprint, BLUEPRINTS))
+      .map((t) => t.source.slice(templatesDir.length + 1));
+
+  test('includes the templates inherited from every parent of the chain', () => {
+    expect(scanned('leaf')).toEqual(
+      expect.arrayContaining([
+        'blueprints/root/from-root.txt.hbs',
+        'blueprints/middle/from-middle.txt.hbs',
+        'blueprints/leaf/contested.txt.hbs',
+      ]),
+    );
+  });
+
+  test('leaves out structural templates and the folders of other blueprints', () => {
+    const sources = scanned('child');
+    expect(sources).toContain('blueprints/parent/inherited.txt.hbs');
+    expect(sources.filter((source) => !source.startsWith('blueprints/parent/') && !source.startsWith('blueprints/child/'))).toEqual([]);
   });
 });
 

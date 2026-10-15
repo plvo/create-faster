@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { META } from '@/__meta__';
 import { generateAppPackageJson } from '@/lib/package-json-generator';
-import { getAllTemplatesForContext, resolveBlueprintChain } from '@/lib/template-resolver';
+import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
+import { isBlueprintTemplate } from './blueprint-template-source';
 
 /**
  * Strips Handlebars `{{#if (isMono)}}` / `{{else}}` / `{{/if}}` blocks
@@ -86,10 +87,6 @@ function extractExternalPackageImports(content: string): string[] {
   }
 
   return [...packages];
-}
-
-function isBlueprintTemplate(source: string, blueprintName: string): boolean {
-  return resolveBlueprintChain(blueprintName).some((name) => source.includes(`/blueprints/${name}/`));
 }
 
 function buildContextFromBlueprint(name: string): TemplateContext {

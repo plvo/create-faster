@@ -14,7 +14,7 @@ export function scanTemplateFiles(dir: string): string[] {
   return scanDirectory(dir).filter((file) => !file.endsWith(AGENT_DOC_FILENAME));
 }
 
-const VALID_STACKS = Object.keys(META.stacks);
+export const VALID_STACKS = Object.keys(META.stacks);
 
 // A template can declare deployment-specific output paths via frontmatter `deploymentPath`.
 // When the active deployment platform has an entry, that path replaces the default one (and
@@ -301,7 +301,7 @@ function resolveTemplatesForBlueprint(
   return templates;
 }
 
-type BlueprintLinks = Record<string, Pick<MetaBlueprint, 'extends'>>;
+export type BlueprintLinks = Record<string, Pick<MetaBlueprint, 'extends'>>;
 
 // The blueprints whose template folders apply, parents first and the selected blueprint last, so a later
 // folder wins per destination. A blueprint unknown to META has no parent.
@@ -313,11 +313,12 @@ export function resolveBlueprintChain(blueprintName: string, blueprints: Bluepri
     if (ancestry.includes(parent)) {
       throw new Error(`Blueprint extends cycle: ${[...ancestry.slice(ancestry.indexOf(parent)), parent].join(' -> ')}`);
     }
-    if (!blueprints[parent]) {
+    const parentBlueprint = blueprints[parent];
+    if (!parentBlueprint) {
       throw new Error(`Blueprint '${ancestry.at(-1)}' extends '${parent}', which is not a blueprint`);
     }
     ancestry.push(parent);
-    parent = blueprints[parent]?.extends;
+    parent = parentBlueprint.extends;
   }
 
   return ancestry.reverse();
