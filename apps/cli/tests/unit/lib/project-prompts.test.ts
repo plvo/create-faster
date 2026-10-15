@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { shouldPromptCategory } from '@/lib/project-prompts';
+import { arePromptsSuppressed, shouldPromptCategory } from '@/lib/project-prompts';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { TemplateContext } from '@/types/ctx';
 
@@ -16,10 +16,10 @@ function contextWith(project: Partial<Project> = {}): Omit<TemplateContext, 'rep
   };
 }
 
-const INTERACTIVE_WITH_FLAGS = { hasFlags: true, interactive: true };
-const SCRIPTED_WITH_FLAGS = { hasFlags: true, interactive: false };
-const NO_FLAGS = { hasFlags: false, interactive: true };
-const NO_FLAGS_NO_TERMINAL = { hasFlags: false, interactive: false };
+const INTERACTIVE_WITH_FLAGS = { hasFlags: true, interactive: true, skipPrompts: false, noSelection: [] };
+const SCRIPTED_WITH_FLAGS = { hasFlags: true, interactive: false, skipPrompts: false, noSelection: [] };
+const NO_FLAGS = { hasFlags: false, interactive: true, skipPrompts: false, noSelection: [] };
+const NO_FLAGS_NO_TERMINAL = { hasFlags: false, interactive: false, skipPrompts: false, noSelection: [] };
 
 describe('shouldPromptCategory', () => {
   test('asks a category no flag answered in an interactive terminal', () => {
@@ -69,5 +69,30 @@ describe('shouldPromptCategory', () => {
 
   test('asks the orm once a database answers its requirement', () => {
     expect(shouldPromptCategory('orm', contextWith({ database: 'postgres' }), INTERACTIVE_WITH_FLAGS)).toBe(true);
+  });
+
+  test('asks nothing when prompts are skipped, in an interactive terminal too', () => {
+    const ctx = contextWith({ database: 'postgres' });
+
+    for (const category of ALL_CATEGORIES) {
+      expect(shouldPromptCategory(category, ctx, { ...INTERACTIVE_WITH_FLAGS, skipPrompts: true })).toBe(false);
+    }
+  });
+
+  test('skips a category a flag answered with no selection and asks the others', () => {
+    const ctx = contextWith({ database: 'postgres' });
+    const mode = { ...INTERACTIVE_WITH_FLAGS, noSelection: ['linter' as const] };
+
+    expect(shouldPromptCategory('linter', ctx, mode)).toBe(false);
+    expect(shouldPromptCategory('deployment', ctx, mode)).toBe(true);
+  });
+});
+
+describe('arePromptsSuppressed', () => {
+  test('is true for skipped prompts and for flags without a terminal only', () => {
+    expect(arePromptsSuppressed(INTERACTIVE_WITH_FLAGS)).toBe(false);
+    expect(arePromptsSuppressed({ ...INTERACTIVE_WITH_FLAGS, skipPrompts: true })).toBe(true);
+    expect(arePromptsSuppressed(SCRIPTED_WITH_FLAGS)).toBe(true);
+    expect(arePromptsSuppressed(NO_FLAGS_NO_TERMINAL)).toBe(false);
   });
 });
