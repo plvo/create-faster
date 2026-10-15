@@ -45,6 +45,9 @@ Client-side — `apps/web/src/components/can.tsx` + `apps/web/src/hooks/use-perm
 2. Grant it in the relevant entries of `roleDefinitions`. To add a role, add a key to `roleDefinitions`, expose it in `roles`, and (if it should be assignable) include it where roles are set.
 3. Gate server endpoints with `permissionProcedure('<resource>', '<action>')` (or `adminProcedure`) and UI with `<Can>`. Because `statement`/`roles` are shared by `auth` and `authClient`, client and server stay in sync automatically.
 
+## Post-login redirect
+The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to `router.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.
+
 ## Password reset
 `emailAndPassword.sendResetPassword` (in `auth.ts`) hands the reset link to `sendResetPasswordEmail` in `packages/auth/src/email.ts`. The blueprint has no mailer, so that function logs the link to the server console (`[reset-password] <email> → <url>`), in development and in production. In production it also logs `No mailer is configured`: the link is only in the server logs (the Worker logs), so a user who forgot a password cannot reset it from their inbox. `NODE_ENV` is `production` in a deployed Worker (a wrangler var). Before going live, plug a mail provider (Resend, SES, Postmark, ...) into `sendResetPasswordEmail`, the one place the link leaves the server. The UI is `apps/web/src/app/(auth)/forgot-password` (requests a link via `authClient.requestPasswordReset({ email, redirectTo: '/reset-password' })`) and `reset-password` (reads the `?token` query and calls `authClient.resetPassword`).
 

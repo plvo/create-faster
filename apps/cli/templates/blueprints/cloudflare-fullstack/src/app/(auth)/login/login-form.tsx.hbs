@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -21,7 +22,7 @@ const schema = z.object({
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const redirectTo = params.get('redirectTo') ?? '/';
+  const destination = safeRedirectPath(params.get('redirectTo'));
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
@@ -35,7 +36,7 @@ export function LoginForm() {
         toast.error(result.error.message ?? 'Sign-in failed');
         return;
       }
-      router.push(redirectTo);
+      router.push(destination);
     },
   });
 
