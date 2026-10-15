@@ -2,14 +2,14 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
-const FORMS_BY_BLUEPRINT = {
+const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
   'org-dashboard': ['apps/web/src/app/(auth)/login/login-form.tsx'],
   'cloudflare-fullstack': ['apps/web/src/app/(auth)/login/login-form.tsx'],
   'multitenant-saas': [
     'apps/web/src/app/(auth)/login/login-form.tsx',
     'apps/web/src/app/(auth)/signup/signup-form.tsx',
   ],
-} as const;
+};
 
 const HELPER_PATH = 'apps/web/src/lib/safe-redirect.ts';
 
@@ -44,7 +44,7 @@ describe('post-login redirect target', () => {
   };
 
   describe.each(Object.entries(FORMS_BY_BLUEPRINT))('%s', (blueprint, forms) => {
-    test.each(forms)('%s navigates only to a validated destination', async (form) => {
+    test.each([...forms])('%s navigates only to a validated destination', async (form) => {
       const source = await readTextFile(join(projectPaths.get(blueprint) as string, form));
       expect(source).toContain("from '@/lib/safe-redirect'");
       expect(source).toMatch(/const destination = safeRedirectPath\(/);
