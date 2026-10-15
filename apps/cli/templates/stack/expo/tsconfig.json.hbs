@@ -9,5 +9,5 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"{{#if (hasLibrary "nativewind")}}, "nativewind-env.d.ts"{{/if}}],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"{{#unless (isMono)}}{{#if (has "deployment" "sst")}}, ".sst", "sst.config.ts"{{/if}}{{/unless}}]
 }
