@@ -47,8 +47,7 @@ describe(NAME, () => {
   );
 
   // The build only inlines the literal process.env.NODE_ENV, so the Worker takes NODE_ENV from its vars: without
-  // it, runtime reads by tRPC, better-auth and other dependencies see "development". A request-time check through `preview` is blocked by
-  // opennextjs-cloudflare#1355 (Next.js 16.4 answers 500 on every route), so the deployed config is asserted.
+  // it, runtime reads by tRPC, better-auth and other dependencies see "development". The deployed config is asserted.
   test(
     'wrangler deploy --dry-run ships the NODE_ENV=production Worker variable',
     async () => {

@@ -60,8 +60,6 @@ export default defineCloudflareConfig({});
 - `deploy` - Deploy the built output (`opennextjs-cloudflare deploy`)
 - `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). The app's `postinstall` runs it, so a fresh install type-checks; run it again after each change to `wrangler.jsonc`.
 
-`next` is pinned to `~16.3.8` on this deployment (the other deployments keep `^16.3.0`). With Next.js 16.4 every route of an OpenNext Worker answers 500, in `preview` and in production ([opennextjs-cloudflare#1355](https://github.com/opennextjs/opennextjs-cloudflare/issues/1355)). Keep the pin until OpenNext ships the fix.
-
 A Next.js app on Workers has no `start` script: `next start` runs Next's Node server, where `getCloudflareContext()` is never initialised, so every page returns a 500. Run `build:cf` then `preview` to serve the production build in workerd.
 
 ### TanStack Start apps
