@@ -3,8 +3,9 @@ import Handlebars from 'handlebars';
 import { getProjectAddon } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
-import { collectAppSecrets, resolveAppUrl } from './env-generator';
+import { collectAppSecrets, collectProjectSecrets, resolveAppUrl } from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
@@ -86,6 +87,11 @@ function registerHelpers(): void {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
   });
 
+  Handlebars.registerHelper('projectSecrets', (...args: unknown[]) => {
+    const options = args.pop() as Handlebars.HelperOptions;
+    return collectProjectSecrets(options.data.root as TemplateContext, args as StackName[]);
+  });
+
   Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {
     return [...collectMonoPackages(options.data.root as TemplateContext).keys()];
   });
@@ -112,6 +118,13 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('camelCase', (str: string) => {
     return str.replace(/[-_]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''));
+  });
+
+  Handlebars.registerHelper('pascalCase', (str: string) => {
+    return str
+      .split(/[-_]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('');
   });
 
   Handlebars.registerHelper('raw', function (this: TemplateContext, options: Handlebars.HelperOptions) {

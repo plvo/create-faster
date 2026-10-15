@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { collectAppSecrets, collectEnvFiles, collectEnvGroups } from '@/lib/env-generator';
+import { collectAppSecrets, collectEnvFiles, collectEnvGroups, collectProjectSecrets } from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';
 import type { EnvVar, MetaAddon, MetaBlueprint } from '@/types/meta';
 
@@ -523,6 +523,7 @@ describe('EnvVar.secret', () => {
     { value: 'WHEN_SECRET=1', monoScope: ['app'], secret: true, when: { orm: 'prisma' } },
     { value: 'PKG_SECRET=1', monoScope: [{ pkg: 'db' }], secret: true },
     { value: 'FILE_SECRET=1', monoScope: ['app'], secret: true, file: 'cli' },
+    { value: 'SST_SECRET=1', monoScope: ['app'], secret: { deployment: 'sst' } },
     { value: 'PLAIN=1', monoScope: ['app'] },
   ];
 
@@ -563,6 +564,58 @@ describe('EnvVar.secret', () => {
 
     expect(web).toEqual(['ALL_APPS_SECRET', 'NEXT_ONLY_SECRET', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']);
     expect(site).toEqual(['ALL_APPS_SECRET']);
+  });
+
+  test('a secret given a condition is a secret only where it holds', () => {
+    const underSst = makeContext({ project: { ...turborepo.project, deployment: 'sst' } });
+    const underCloudflare = makeContext({ project: { ...turborepo.project, deployment: 'cloudflare' } });
+
+    expect(collectWith(() => collectAppSecrets(underSst, 'api'))).toContain('SST_SECRET');
+    expect(collectWith(() => collectAppSecrets(underCloudflare, 'api'))).not.toContain('SST_SECRET');
+    expect(collectWith(() => collectAppSecrets(turborepo, 'api'))).not.toContain('SST_SECRET');
+  });
+
+  test.each(['postgres', 'mysql'])('the %s connection string is a secret under sst and a binding elsewhere', (database) => {
+    const under = (deployment?: string) =>
+      collectAppSecrets(makeContext({ project: { database, orm: 'drizzle', tooling: [], deployment } }), 'api');
+
+    expect(under('sst')).toEqual(['DATABASE_URL']);
+    expect(under('cloudflare')).toEqual([]);
+    expect(under()).toEqual([]);
+  });
+
+  describe('collectProjectSecrets', () => {
+    const sst = { ...turborepo.project, deployment: 'sst' };
+
+    test('lists once each secret received by an app on a listed stack', () => {
+      const ctx = makeContext({
+        apps: [
+          { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
+          { appName: 'site', stackName: 'tanstack-start', libraries: ['better-auth'] },
+          { appName: 'api', stackName: 'hono', libraries: [] },
+        ],
+        project: sst,
+      });
+
+      expect(collectProjectSecrets(ctx, ['nextjs', 'tanstack-start', 'hono'])).toEqual([
+        'DATABASE_URL',
+        'BETTER_AUTH_SECRET',
+        'BETTER_AUTH_URL',
+      ]);
+    });
+
+    test('ignores an app on a stack that is not listed', () => {
+      const ctx = makeContext({
+        apps: [
+          { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
+          { appName: 'jobs', stackName: 'node', libraries: [] },
+        ],
+        project: sst,
+      });
+
+      expect(collectProjectSecrets(ctx, ['node'])).toEqual(['DATABASE_URL']);
+      expect(collectProjectSecrets(ctx, ['hono'])).toEqual([]);
+    });
   });
 
   test('a blueprint secret reaches every app of the blueprint', () => {
