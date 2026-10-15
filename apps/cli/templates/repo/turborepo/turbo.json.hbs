@@ -51,7 +51,7 @@
     },
     "db:seed": {
       "cache": false,
-      "env": ["DATABASE_URL"{{#if blueprint}}, "SEED_PASSWORD"{{/if}}]
+      "env": [{{#if blueprint}}"SEED_PASSWORD"{{/if}}{{#unless (has "database" "d1")}}{{#if blueprint}}, {{/if}}"DATABASE_URL"{{/unless}}]
     },
     "db:studio": {
       "cache": false,

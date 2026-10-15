@@ -39,6 +39,11 @@ describe('turbo.json declares the variables a seed reads', () => {
 
   test('a blueprint seed that reads its demo password declares it too', async () => {
     const env = await readSeedEnv('seed-env-blueprint', ['--blueprint', 'org-dashboard-nextjs']);
-    expect(env).toEqual(['DATABASE_URL', 'SEED_PASSWORD']);
+    expect(env).toEqual(['SEED_PASSWORD', 'DATABASE_URL']);
+  });
+
+  test('a D1 blueprint has no database URL to declare', async () => {
+    const env = await readSeedEnv('seed-env-d1', ['--blueprint', 'cloudflare-fullstack-nextjs']);
+    expect(env).toEqual(['SEED_PASSWORD']);
   });
 });
