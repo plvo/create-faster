@@ -125,7 +125,7 @@ If omitted, the CLI prompts for installation preferences.
 
 ### `--no-install`
 
-Skip dependency installation entirely.
+Skip dependency installation entirely. The formatter step below is skipped too, and the summary lists its command.
 
 **Example**:
 ```bash
@@ -145,7 +145,7 @@ See [Agent Context](/docs/concepts/agent-context) for details.
 
 ### `--linter <name>`
 
-Select a linter/formatter.
+Select a linter/formatter. A linter with a formatter (`biome`, `oxc`, `prettier`, `eslint-prettier`) formats the generated files right after the dependencies are installed, so the new project passes its own format check. If that step fails, the CLI warns with the command to rerun and still succeeds.
 
 **Options**: `biome`, `oxc`, `eslint-prettier`, `eslint`, `prettier`
 

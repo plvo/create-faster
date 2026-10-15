@@ -63,7 +63,7 @@ describe('summary note', () => {
   });
 
   test('lists Git and the remote steps when git init succeeded', () => {
-    displaySummaryNote(ctx, undefined);
+    displaySummaryNote(ctx, undefined, []);
     const output = written.join('');
 
     expect(output).toContain('Git, AGENTS.md');
@@ -72,7 +72,7 @@ describe('summary note', () => {
   });
 
   test('drops the Git line and the remote steps and hints at git init when it failed', () => {
-    displaySummaryNote(ctx, { output: 'fatal: git failed' });
+    displaySummaryNote(ctx, { output: 'fatal: git failed' }, []);
     const output = written.join('');
 
     expect(output).not.toContain('Git');
@@ -80,5 +80,17 @@ describe('summary note', () => {
     expect(output).not.toContain('git remote add origin');
     expect(output).not.toContain('git push');
     expect(output).toContain('# git init failed');
+  });
+
+  test('lists a step that did not run among the next steps, after the install', () => {
+    displaySummaryNote({ ...ctx, skipInstall: true }, undefined, [
+      { description: 'Format the generated files', command: 'bun run format' },
+    ]);
+    const output = written.join('');
+
+    expect(output.indexOf('bun install')).toBeGreaterThan(-1);
+    expect(output.indexOf('# Format the generated files:')).toBeGreaterThan(output.indexOf('bun install'));
+    expect(output.indexOf('bun run format')).toBeGreaterThan(output.indexOf('# Format the generated files:'));
+    expect(output.indexOf('# Development:')).toBeGreaterThan(output.indexOf('bun run format'));
   });
 });

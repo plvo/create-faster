@@ -4,6 +4,7 @@ import {
   findRuntimeAddon,
   getMonoPackageName,
   isLibraryCompatible,
+  resolveCompositeAddons,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
 import { getPackageManagerField } from '@/lib/package-manager';
@@ -17,7 +18,7 @@ import {
 } from '@/lib/utils';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { MetaAddon, PackageJsonConfig, ProjectCategoryName, ResolvedPackageJsonConfig } from '@/types/meta';
+import type { MetaAddon, PackageJsonConfig, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
 
 interface PackageJson {
@@ -78,23 +79,6 @@ function addRepoRef(
   if (!name) return false;
   config[depType] = { ...config[depType], [`@repo/${name}`]: '*' };
   return true;
-}
-
-function resolveCompositeAddons(
-  category: ProjectCategoryName,
-  addonName: string,
-): { name: string; addon: MetaAddon }[] {
-  const addon = META.project[category].options[addonName];
-  if (!addon) return [];
-  if (!addon.compose) return [{ name: addonName, addon }];
-
-  const parts: { name: string; addon: MetaAddon }[] = [];
-  for (const name of addon.compose) {
-    const composed = META.project[category].options[name];
-    if (composed) parts.push({ name, addon: composed });
-  }
-  parts.push({ name: addonName, addon });
-  return parts;
 }
 
 interface ComposedApp {

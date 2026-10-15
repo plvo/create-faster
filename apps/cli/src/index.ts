@@ -88,7 +88,7 @@ async function main() {
       process.exit(1);
     }
 
-    displaySummaryNote(ctx, postGeneration.gitFailure);
+    displaySummaryNote(ctx, postGeneration.gitFailure, postGeneration.pendingPostGenerate);
     displayOutroCliCommand(ctx, projectPath);
   } catch (error) {
     log.error(`An error occurred:\n${getErrorMessage(error)}`);

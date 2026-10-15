@@ -5,7 +5,7 @@ import { getMonoPackageName } from '@/lib/addon-utils';
 import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { getPackageRunner } from '@/lib/package-manager';
-import type { GitFailure } from '@/lib/post-generation';
+import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
@@ -62,9 +62,16 @@ ${color.gray('🔥 You can recreate this project with the following command:')}
 ${color.bold(flagsCommand)}`);
 }
 
-export function displaySummaryNote(ctx: TemplateContext, gitFailure: GitFailure | undefined): void {
+export function displaySummaryNote(
+  ctx: TemplateContext,
+  gitFailure: GitFailure | undefined,
+  pendingPostGenerate: PendingPostGenerateStep[],
+): void {
   const hasGitRepository = ctx.git && gitFailure === undefined;
-  const texts = [...buildProjectStructure(ctx, hasGitRepository), ...buildStepsNote(ctx, hasGitRepository)];
+  const texts = [
+    ...buildProjectStructure(ctx, hasGitRepository),
+    ...buildStepsNote(ctx, hasGitRepository, pendingPostGenerate),
+  ];
 
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
@@ -136,7 +143,11 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
   return lines;
 }
 
-function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string[] {
+function buildStepsNote(
+  ctx: TemplateContext,
+  hasGitRepository: boolean,
+  pendingPostGenerate: PendingPostGenerateStep[],
+): string[] {
   const steps: string[] = [];
 
   steps.push('');
@@ -148,6 +159,11 @@ function buildStepsNote(ctx: TemplateContext, hasGitRepository: boolean): string
   if (ctx.skipInstall || !ctx.pm) {
     steps.push('# Install dependencies:');
     steps.push(`${ctx.pm ?? 'npm'} install`);
+    steps.push('');
+  }
+  for (const { description, command } of pendingPostGenerate) {
+    steps.push(`# ${description}:`);
+    steps.push(command);
     steps.push('');
   }
   for (const { description, commands } of collectFirstRunSteps(ctx)) {
