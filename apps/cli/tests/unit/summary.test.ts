@@ -1,13 +1,39 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { displaySummaryNote } from '@/tui/summary';
+import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
 
 describe('recreate command', () => {
   test('summary.ts appends --no-agent-context when disabled', () => {
     const src = readFileSync(join(import.meta.dir, '../../src/tui/summary.ts'), 'utf-8');
     expect(src).toContain('--no-agent-context');
+  });
+});
+
+describe('recreate command categories', () => {
+  test('leaves out a category answered with no selection', () => {
+    const written: string[] = [];
+    const writeSpy = spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
+      written.push(String(chunk));
+      return true;
+    });
+
+    displayOutroCliCommand(
+      {
+        projectName: 'demo',
+        repo: 'single',
+        apps: [{ appName: 'demo', stackName: 'nextjs', libraries: [] }],
+        project: { database: 'postgres', orm: undefined, deployment: undefined, linter: undefined, tooling: [] },
+        git: false,
+      },
+      '/tmp/demo',
+    );
+    writeSpy.mockRestore();
+
+    const output = written.join('');
+    expect(output).toContain('--database postgres');
+    expect(output).not.toContain('undefined');
   });
 });
 
