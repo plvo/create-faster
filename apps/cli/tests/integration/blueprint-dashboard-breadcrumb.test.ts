@@ -35,7 +35,7 @@ const BLUEPRINTS: Blueprint[] = [
     name: 'cloudflare-fullstack-nextjs',
     router: 'next',
     userProcedure: 'users.get',
-    user: { file: 'src/app/(dashboard)/admin/users/[id]/page.tsx', exportName: 'default' },
+    user: { file: 'src/app/(dashboard)/admin/users/[id]/user.client.tsx', exportName: 'UserClient' },
   },
   {
     name: 'org-dashboard-nextjs',
@@ -126,7 +126,8 @@ export const useQueryClient = () => ({ invalidateQueries() {} });`,
   asChild ? children[0] : { type: 'button', props: { ...props, children } };`,
   'leaf.mjs': `export const Can = ({ children }) => children;
 export const ContactForm = () => null;
-export const EditUser = () => null;`,
+export const EditUser = () => null;
+export const GeneratedPassword = () => null;`,
 };
 
 const IMPORTS: Record<string, string> = {
@@ -145,6 +146,7 @@ const IMPORTS: Record<string, string> = {
   '@/components/can': './leaf.mjs',
   '@/components/contacts/contact-form': './leaf.mjs',
   '@/components/admin/edit-user': './leaf.mjs',
+  '@/components/admin/generated-password': './leaf.mjs',
   '@/lib/constants': './constants.mjs',
 };
 
