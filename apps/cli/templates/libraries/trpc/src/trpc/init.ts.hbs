@@ -24,7 +24,7 @@ import { {{#if (has "orm" "prisma")}}prisma as db{{else}}db{{/if}} } from {{#if 
 {{#if (and (hasLibrary "better-auth") (has "stack" "tanstack-start"))}}
 import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{else}}'@/lib/auth/session-cache'{{/if}};
 {{/if}}
-import { initTRPC, TRPCError } from '@trpc/server';
+import { initTRPC{{#if (hasLibrary "better-auth")}}, TRPCError{{/if}} } from '@trpc/server';
 import superjson from 'superjson';
 
 export async function createTRPCContext(opts: { headers: Headers{{#if (and (has "database" "d1") project.orm)}}; db: Database{{/if}} }) {

@@ -1,9 +1,23 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import {
+  cleanupTempDir,
+  createTempDir,
+  evaluateGeneratedModule,
+  fileExists,
+  readJsonFile,
+  readTextFile,
+  runCli,
+} from './helpers';
+
+interface DocumentsModule {
+  documentComponents: Record<string, { load: () => Promise<{ default: string }> }>;
+  hasDocument: (slug: string) => boolean;
+  loadDocument: (slug: string) => Promise<{ default: string }>;
+}
 
 interface PackageJsonShape {
   dependencies: Record<string, string>;
@@ -57,18 +71,49 @@ describe('MDX Integration', () => {
       expect(content).not.toContain('prerender');
     });
 
-    test('the example route is /mdx/{-$slug} and loads each document lazily', async () => {
+    test('the example route is /mdx/{-$slug} and renders a lazy component created once per document at module level', async () => {
       const route = await readTextFile(join(projectPath, 'src/routes/mdx/{-$slug}.tsx'));
       expect(route).toContain("createFileRoute('/mdx/{-$slug}')");
       expect(route).toContain('notFound()');
 
       const lib = await readTextFile(join(projectPath, 'src/lib/mdx.ts'));
       expect(lib).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
-      expect(lib).toContain('lazy(() => loadDocument(slug))');
+      expect(lib).toContain('lazy(load)');
       expect(lib).not.toContain('eager');
       expect(lib).not.toContain('node:fs');
       expect(route).toContain('<Suspense>');
+      expect(route).toContain('const Document = documentComponents[slug];');
       expect(route).toContain('frontmatter');
+    });
+
+    test('lib/mdx.ts has one lazy component per document, keyed by slug, and hasDocument agrees', async () => {
+      const slugs = (await readdir(join(projectPath, 'contents')))
+        .filter((file) => file.endsWith('.mdx'))
+        .map((file) => file.replace(/\.mdx$/, ''));
+      expect(slugs.length).toBeGreaterThan(0);
+
+      const loaders = slugs
+        .map((slug) => `'/contents/${slug}.mdx': () => Promise.resolve({ default: '${slug}' })`)
+        .join(', ');
+      const source = await readTextFile(join(projectPath, 'src/lib/mdx.ts'));
+      const stubbed = source.replace(/import\.meta\.glob<[^>]*>\('[^']*'\)/, `{ ${loaders} }`);
+      expect(stubbed).not.toBe(source);
+
+      const stubs = join(tempDir, 'mdx-stubs');
+      await mkdir(stubs, { recursive: true });
+      await Bun.write(join(stubs, 'react.mjs'), 'export const lazy = (load) => ({ load });');
+      const documents = await evaluateGeneratedModule<DocumentsModule>(stubbed, join(stubs, 'generated-mdx.mjs'), {
+        react: join(stubs, 'react.mjs'),
+      });
+
+      expect(Object.keys(documents.documentComponents).sort()).toEqual([...slugs].sort());
+      for (const slug of slugs) {
+        expect((await documents.documentComponents[slug]?.load())?.default).toBe(slug);
+        expect(documents.hasDocument(slug)).toBe(true);
+        expect((await documents.loadDocument(slug)).default).toBe(slug);
+      }
+      expect(documents.hasDocument('nope')).toBe(false);
+      expect(documents.hasDocument('constructor')).toBe(false);
     });
 
     test('mdx-components uses the TanStack Router link', async () => {
