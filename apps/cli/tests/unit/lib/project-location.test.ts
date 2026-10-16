@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
-import { getProjectDir, getProjectPath, projectNameOf, quoteProjectDir, validateProjectName } from '@/lib/project-location';
+import { getProjectDir, getProjectPath, projectNameOf, quoteProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
 
 describe('projectNameOf', () => {
   test.each([
@@ -21,6 +21,13 @@ describe('validateProjectName', () => {
 
   test.each(['My App', 'MyApp', '.', '..', '.hidden', '-app', '_app', ''])('refuses "%s"', (name) => {
     expect(validateProjectName(name)).toContain('Project name');
+  });
+});
+
+describe('validateAppName', () => {
+  test('applies the project name rule under its own label', () => {
+    expect(validateAppName('my.app_1')).toBeUndefined();
+    expect(validateAppName('My App')).toContain('App name "My App"');
   });
 });
 

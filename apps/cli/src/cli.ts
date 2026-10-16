@@ -5,7 +5,7 @@ import { META } from '@/__meta__';
 import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
-import { projectNameOf, resolveProjectDir, validateProjectName } from '@/lib/project-location';
+import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
 import { arePromptsSuppressed, promptModeOf, shouldPromptCategory } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
@@ -305,6 +305,7 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
       placeholder: `app-${index}`,
       validate: (value) => {
         if (!value.trim()) return 'App name is required';
+        return validateAppName(value);
       },
     });
   }
