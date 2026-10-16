@@ -1,18 +1,26 @@
 import './timeout';
-import { readdir } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { readdir, rename, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
-const LOADS_DOTENV = /^\s*import\s+['"]dotenv\/config['"]/m;
-const ENV_FILE_FLAG = /--env-file(?:-if-exists)?=/;
-const READS_ENVIRONMENT = /process\.env|import\.meta\.env/;
-const IMPORT_SPECIFIER = /(?:\bfrom|\bimport)\s+['"]([^'"]+)['"]/g;
-const PRISMA_SEED_COMMAND = /^prisma db seed$/;
-const SOURCE_EXTENSIONS = ['', '.ts', '.tsx', '/index.ts'];
+const DOTENV_IMPORT = /^\s*import\s+['"]dotenv\/config['"]/;
+const FIRST_IMPORT = /^\s*import\b.*$/m;
+const NODE_RUNNERS = ['tsx', 'node'];
+const SEED_FILE = /\.[cm]?[jt]s$/;
+const ENV_FILE_FLAG = /^--env-file(?:-if-exists)?(?:=(.*))?$/;
+const PRISMA_SEED_COMMAND = 'prisma db seed';
 
-const SECOND_APP = ['--app', 'api:hono'];
+const KNOWN_SEEDING_BLUEPRINTS = [
+  'cloudflare-fullstack-nextjs',
+  'dapp-privy-nextjs',
+  'dapp-rainbowkit-nextjs',
+  'multitenant-saas-nextjs',
+  'org-dashboard-nextjs',
+  'org-dashboard-tanstack-start',
+];
+
 const DRIZZLE_DATABASES: [string, string[]][] = [
   ['postgres', []],
   ['mysql', []],
@@ -22,11 +30,11 @@ const DRIZZLE_DATABASES: [string, string[]][] = [
 const PRISMA_DATABASES = ['postgres', 'mysql'];
 
 function seedProjects(orm: string, database: string, extra: string[]): { name: string; args: string[] }[] {
-  const project = ['--app', 'web:nextjs'];
+  const web = ['--app', 'web:nextjs'];
   const choices = ['--database', database, '--orm', orm, ...extra];
   return [
-    { name: `single-${orm}-${database}`, args: [...project, ...choices] },
-    { name: `mono-${orm}-${database}`, args: [...project, ...SECOND_APP, ...choices] },
+    { name: `single-${orm}-${database}`, args: [...web, ...choices] },
+    { name: `mono-${orm}-${database}`, args: [...web, '--app', 'api:hono', ...choices] },
   ];
 }
 
@@ -39,24 +47,33 @@ interface Manifest {
   scripts?: Record<string, string>;
 }
 
-interface Seed {
-  manifest: string;
-  script: string;
-  file: string;
-  /** Files that can load the environment before the seed code runs. */
-  loaders: string[];
+interface SeedCheck {
+  /** The seed files that run under Node, relative to the project. */
+  checked: string[];
+  problems: string[];
 }
 
-async function listFiles(directory: string): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
-  const nested = await Promise.all(
-    entries.map((entry) => {
-      const path = join(directory, entry.name);
-      if (!entry.isDirectory()) return [path];
-      return entry.name === 'node_modules' ? [] : listFiles(path);
-    }),
-  );
-  return nested.flat();
+interface NodeCommand {
+  file: string;
+  envFiles: string[];
+}
+
+/** The file a script runs through `tsx` or `node`, and the `.env` files the runner is given. */
+function parseNodeCommand(script: string): NodeCommand | undefined {
+  const tokens = script.split(/\s+/);
+  const runner = tokens.findIndex((token) => NODE_RUNNERS.includes(token));
+  if (runner < 0) return undefined;
+  const envFiles: string[] = [];
+  for (let index = runner + 1; index < tokens.length; index++) {
+    const token = tokens[index] ?? '';
+    const flag = token.match(ENV_FILE_FLAG);
+    if (flag) {
+      envFiles.push(flag[1] ?? tokens[++index] ?? '');
+    } else if (!token.startsWith('-')) {
+      return SEED_FILE.test(token) ? { file: token, envFiles } : undefined;
+    }
+  }
+  return undefined;
 }
 
 async function manifestsOf(project: string): Promise<string[]> {
@@ -70,81 +87,87 @@ async function manifestsOf(project: string): Promise<string[]> {
   return candidates.filter((_, index) => existing[index]);
 }
 
-/** The seed scripts a project runs itself: a script that runs no TypeScript file only forwards to another one (`turbo db:seed`). */
-async function findSeeds(project: string): Promise<Seed[]> {
-  const seeds: Seed[] = [];
-  for (const manifest of await manifestsOf(project)) {
-    const script = (await readJsonFile<Manifest>(manifest)).scripts?.['db:seed'];
-    if (!script) continue;
-    const packageDir = dirname(manifest);
-    if (PRISMA_SEED_COMMAND.test(script)) {
-      const config = join(packageDir, 'prisma.config.ts');
-      const command = (await readTextFile(config)).match(/seed:\s*'([^']+)'/)?.[1] ?? '';
-      const file = join(packageDir, command.match(/\S+\.ts\b/)?.[0] ?? '');
-      seeds.push({ manifest, script: command, file, loaders: [config] });
-      continue;
-    }
-    const runsFile = script.match(/\S+\.ts\b/)?.[0];
-    if (!runsFile) continue;
-    const file = join(packageDir, runsFile);
-    seeds.push({ manifest, script, file, loaders: [file] });
-  }
-  return seeds;
+async function loadsDotenvFirst(file: string): Promise<boolean> {
+  const firstImport = (await readTextFile(file)).match(FIRST_IMPORT)?.[0];
+  return firstImport !== undefined && DOTENV_IMPORT.test(firstImport);
 }
 
-async function sourcesImportedBy(file: string, project: string): Promise<string[]> {
-  const source = await readTextFile(file);
-  const resolved = await Promise.all(
-    [...source.matchAll(IMPORT_SPECIFIER)].map(async ([, specifier = '']) => {
-      if (specifier.startsWith('@repo/')) {
-        return listFiles(join(project, 'packages', specifier.split('/')[1] ?? '', 'src'));
-      }
-      const base = specifier.startsWith('@/')
-        ? join(project, 'src', specifier.slice(2))
-        : specifier.startsWith('.')
-          ? resolve(dirname(file), specifier)
-          : undefined;
-      if (!base) return [];
-      for (const extension of SOURCE_EXTENSIONS) {
-        const candidate = `${base}${extension}`;
-        if (candidate.match(/\.[a-z]+$/) && (await fileExists(candidate))) return [candidate];
-      }
-      return [];
-    }),
+/** Every `db:seed` of a project, followed through the scripts that forward to another one until a seed runs under Node. */
+async function checkSeeds(project: string): Promise<SeedCheck> {
+  const manifests = await manifestsOf(project);
+  const scriptsOf = new Map(
+    await Promise.all(
+      manifests.map(async (manifest) => [manifest, (await readJsonFile<Manifest>(manifest)).scripts?.['db:seed']] as const),
+    ),
   );
-  return resolved.flat();
-}
-
-/** Every source the seed pulls in, itself included: a database client it imports reads DATABASE_URL. */
-async function reachableFrom(seed: string, project: string): Promise<string[]> {
   const visited = new Set<string>();
-  const queue = [seed];
-  for (let file = queue.pop(); file; file = queue.pop()) {
-    if (visited.has(file)) continue;
-    visited.add(file);
-    queue.push(...(await sourcesImportedBy(file, project)));
-  }
-  return [...visited];
-}
+  const result: SeedCheck = { checked: [], problems: [] };
+  const where = (manifest: string) => relative(project, manifest);
 
-async function expectSeedsLoadTheirEnvironment(project: string): Promise<number> {
-  const seeds = await findSeeds(project);
-  for (const seed of seeds) {
-    expect(await fileExists(seed.file), `${seed.manifest}: ${seed.script} runs a file that does not exist`).toBe(true);
-    const reachable = await reachableFrom(seed.file, project);
-    const readsEnvironment = (await Promise.all(reachable.map(readTextFile))).some((source) =>
-      READS_ENVIRONMENT.test(source),
-    );
-    if (!readsEnvironment) continue;
-
-    const loaders = await Promise.all(seed.loaders.map(readTextFile));
-    const loadsEnvironment = ENV_FILE_FLAG.test(seed.script) || loaders.some((source) => LOADS_DOTENV.test(source));
-    expect(
-      loadsEnvironment,
-      `${seed.manifest}: \`${seed.script}\` reads process.env and loads no .env (no \`import 'dotenv/config'\` in ${seed.loaders.join(', ')}, no --env-file)`,
-    ).toBe(true);
+  async function checkNodeSeed(manifest: string, script: string, command: NodeCommand): Promise<void> {
+    const packageDir = dirname(manifest);
+    const file = join(packageDir, command.file);
+    if (!(await fileExists(file))) {
+      result.problems.push(`${where(manifest)}: \`${script}\` runs ${command.file}, which does not exist`);
+      return;
+    }
+    result.checked.push(where(file));
+    for (const envFile of command.envFiles) {
+      if (!(await fileExists(resolve(packageDir, `${envFile}.example`)))) {
+        result.problems.push(`${where(manifest)}: \`${script}\` loads ${envFile}, which has no ${envFile}.example`);
+      }
+    }
+    if (command.envFiles.length === 0 && !(await loadsDotenvFirst(file))) {
+      result.problems.push(
+        `${where(manifest)}: \`${script}\` loads no .env: no --env-file flag, and \`import 'dotenv/config'\` is not the first import of ${command.file}`,
+      );
+    }
   }
-  return seeds.length;
+
+  async function checkPrismaSeed(manifest: string): Promise<void> {
+    const config = join(dirname(manifest), 'prisma.config.ts');
+    const seedCommand = (await readTextFile(config)).match(/seed:\s*'([^']+)'/)?.[1] ?? '';
+    const command = parseNodeCommand(seedCommand);
+    if (!command || !(await fileExists(join(dirname(manifest), command.file)))) {
+      result.problems.push(`${where(config)}: the seed command \`${seedCommand}\` runs no existing file`);
+      return;
+    }
+    result.checked.push(where(join(dirname(manifest), command.file)));
+    if (!(await loadsDotenvFirst(config))) {
+      result.problems.push(`${where(config)}: \`prisma db seed\` loads no .env, \`import 'dotenv/config'\` is not the first import`);
+    }
+  }
+
+  function forwardTargets(manifest: string, script: string): string[] {
+    const directory = script.match(/\bcd\s+(\S+)/)?.[1];
+    if (directory) return [join(resolve(dirname(manifest), directory), 'package.json')];
+    return manifests.filter((other) => other !== manifest && scriptsOf.get(other));
+  }
+
+  async function inspect(manifest: string): Promise<void> {
+    if (visited.has(manifest)) return;
+    visited.add(manifest);
+    const script = scriptsOf.get(manifest);
+    if (!script) {
+      result.problems.push(`${where(manifest)}: a db:seed script forwards here, but it defines none`);
+      return;
+    }
+    const command = parseNodeCommand(script);
+    if (command) return checkNodeSeed(manifest, script, command);
+    if (script === PRISMA_SEED_COMMAND) return checkPrismaSeed(manifest);
+    if (!/\bturbo db:seed\b|\brun db:seed\b/.test(script)) {
+      result.problems.push(`${where(manifest)}: \`${script}\` is neither a seed run by tsx or node nor a forward to one`);
+      return;
+    }
+    const targets = forwardTargets(manifest, script);
+    if (targets.length === 0) result.problems.push(`${where(manifest)}: \`${script}\` reaches no seed`);
+    for (const target of targets) await inspect(target);
+  }
+
+  for (const manifest of manifests) {
+    if (scriptsOf.get(manifest)) await inspect(manifest);
+  }
+  return result;
 }
 
 describe('seeds load their environment under Node', () => {
@@ -164,21 +187,104 @@ describe('seeds load their environment under Node', () => {
     return join(tempDir, name);
   }
 
-  const checkedSeeds: number[] = [];
+  const checkedByBlueprint = new Map<string, string[]>();
 
   test.each(Object.keys(META.blueprints))('blueprint %s', async (blueprint) => {
-    const project = await generate(`seed-${blueprint}`, ['--blueprint', blueprint]);
+    const { checked, problems } = await checkSeeds(await generate(`seed-${blueprint}`, ['--blueprint', blueprint]));
 
-    checkedSeeds.push(await expectSeedsLoadTheirEnvironment(project));
+    expect(problems).toEqual([]);
+    checkedByBlueprint.set(blueprint, checked);
   });
 
   test.each(GENERIC_SEEDS)('generic seed $name', async ({ name, args }) => {
-    const project = await generate(`seed-${name}`, args);
+    const { checked, problems } = await checkSeeds(await generate(`seed-${name}`, args));
 
-    expect(await expectSeedsLoadTheirEnvironment(project)).toBeGreaterThan(0);
+    expect(problems).toEqual([]);
+    expect(checked.length).toBeGreaterThan(0);
   });
 
-  test('the blueprints ship seeds that were checked', () => {
-    expect(checkedSeeds.filter((count) => count > 0).length).toBeGreaterThan(3);
+  test('every blueprint that seeds was checked', () => {
+    const seeding = [...checkedByBlueprint].filter(([, checked]) => checked.length > 0).map(([name]) => name);
+
+    expect(seeding.sort()).toEqual(KNOWN_SEEDING_BLUEPRINTS);
+  });
+
+  describe('the check fails when', () => {
+    async function seedProblems(
+      blueprint: string,
+      mutate: (project: string) => Promise<void>,
+    ): Promise<string[]> {
+      const project = await generate(`mutated-${blueprint}-${Math.random().toString(36).slice(2, 8)}`, [
+        '--blueprint',
+        blueprint,
+      ]);
+      await mutate(project);
+      return (await checkSeeds(project)).problems;
+    }
+
+    async function setScript(manifest: string, script: string): Promise<void> {
+      const content = await readJsonFile<Manifest>(manifest);
+      await writeFile(manifest, JSON.stringify({ ...content, scripts: { ...content.scripts, 'db:seed': script } }));
+    }
+
+    const loaderless = [
+      "import { db } from '../src/lib/db';\nawait db.query();\n",
+      "const { db } = await import('../src/lib/db');\nawait db.query();\n",
+    ];
+
+    test.each(['.ts', '.mts', '.cts', '.js', '.mjs'])('a %s seed has no loader', async (extension) => {
+      for (const body of loaderless) {
+        const problems = await seedProblems('dapp-privy-nextjs', async (project) => {
+          await rename(join(project, 'scripts/seed.ts'), join(project, `scripts/seed${extension}`));
+          await writeFile(join(project, `scripts/seed${extension}`), body);
+          await setScript(join(project, 'package.json'), `tsx scripts/seed${extension}`);
+        });
+
+        expect(problems).toHaveLength(1);
+        expect(problems[0]).toContain('loads no .env');
+      }
+    });
+
+    test('a .mts seed imports dotenv first', async () => {
+      const problems = await seedProblems('dapp-privy-nextjs', async (project) => {
+        await rename(join(project, 'scripts/seed.ts'), join(project, 'scripts/seed.mts'));
+        await setScript(join(project, 'package.json'), 'tsx scripts/seed.mts');
+      });
+
+      expect(problems).toEqual([]);
+    });
+
+    test('dotenv is imported after another import', async () => {
+      const problems = await seedProblems('dapp-privy-nextjs', async (project) => {
+        const seed = join(project, 'scripts/seed.ts');
+        await writeFile(seed, `import { db } from '../src/lib/db';\n${await readTextFile(seed)}`);
+      });
+
+      expect(problems).toHaveLength(1);
+    });
+
+    test('--env-file points at a file that has no .example', async () => {
+      const problems = await seedProblems('org-dashboard-nextjs', async (project) => {
+        await setScript(join(project, 'package.json'), 'tsx --env-file=apps/wbe/.env scripts/seed.ts');
+      });
+
+      expect(problems).toEqual([expect.stringContaining('apps/wbe/.env, which has no apps/wbe/.env.example')]);
+    });
+
+    test('a script that forwards reaches a seed that is not run by tsx or node', async () => {
+      const problems = await seedProblems('org-dashboard-nextjs', async (project) => {
+        await setScript(join(project, 'package.json'), 'echo seeded');
+      });
+
+      expect(problems.some((problem) => problem.includes('neither a seed run by tsx or node'))).toBe(true);
+    });
+
+    test('a script that forwards to another package finds no db:seed there', async () => {
+      const problems = await seedProblems('org-dashboard-nextjs', async (project) => {
+        await setScript(join(project, 'packages/db/package.json'), 'cd ../../apps/web && npm run db:seed');
+      });
+
+      expect(problems).toEqual([expect.stringContaining('forwards here, but it defines none')]);
+    });
   });
 });

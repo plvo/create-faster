@@ -7,6 +7,7 @@ blueprintSkip:
   - multitenant-saas-nextjs
   - cloudflare-fullstack-nextjs
 ---
+import 'dotenv/config';
 {{#if (has "database" "d1")}}
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,7 +36,6 @@ if (!localPath) {
 
 const db = drizzle(createClient({ url: pathToFileURL(localPath).href }), { schema });
 {{else}}
-import 'dotenv/config';
 {{#if (and (databaseBinding "hyperdrive") (has "deployment" "cloudflare"))}}
 {{#if (has "database" "postgres")}}
 import { drizzle } from 'drizzle-orm/node-postgres';
