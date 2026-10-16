@@ -25,4 +25,20 @@ describe('--version', () => {
     expect(result.stderr).toBe('');
     expect(await readdir(dir)).toEqual([]);
   });
+
+  test.each([
+    ['an invalid app', ['--app', 'x:bogus', '--version']],
+    ['an invalid app after the flag', ['--version', '--app', 'x:bogus']],
+    ['--help', ['--help', '--version']],
+    ['--help after the flag', ['--version', '--help']],
+    ['a project name', ['demo', '--version']],
+    ['a project name and apps', ['demo', '--app', 'demo:nextjs', '--yes', '--version']],
+  ])('--version with %s prints the version only and writes nothing', async (_title, args) => {
+    const result = await runCli(args, dir);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe(`${version}\n`);
+    expect(result.stderr).toBe('');
+    expect(await readdir(dir)).toEqual([]);
+  });
 });
