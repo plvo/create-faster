@@ -2,10 +2,9 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { isDirectiveAtRisk } from '../triple-slash-directives';
+import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
-const TRIPLE_SLASH_DIRECTIVE = /^\/\/\/\s*<reference/m;
-const IMPORT_STATEMENT = /^import\s/gm;
 const SOURCE_FILE = /\.(?:ts|tsx|mts|cts)$/;
 const VITE_CLIENT_TYPES = '/// <reference types="vite/client" />';
 
@@ -43,8 +42,7 @@ async function sourceFiles(projectPath: string): Promise<string[]> {
   return entries.filter((entry) => SOURCE_FILE.test(entry) && !entry.split('/').includes('node_modules'));
 }
 
-// A formatter sorts imports and carries a leading comment with the import it precedes, so a directive
-// followed by two or more imports can end up below one of them, where TypeScript ignores it.
+// The unit test checks every template; this checks the files a generation assembles, which can take imports from partials.
 describe.each(PROJECTS)('triple-slash directives: $name', ({ args, startApps }) => {
   let tempDir: string;
   let projectPath: string;
@@ -62,10 +60,8 @@ describe.each(PROJECTS)('triple-slash directives: $name', ({ args, startApps }) 
 
   test('no generated source holds a directive next to imports a formatter could reorder', async () => {
     const files = await sourceFiles(projectPath);
-    const sources = await Promise.all(files.map(async (file) => [file, await readTextFile(join(projectPath, file))]));
-    const offenders = sources
-      .filter(([, source]) => TRIPLE_SLASH_DIRECTIVE.test(source ?? '') && (source?.match(IMPORT_STATEMENT)?.length ?? 0) > 1)
-      .map(([file]) => file);
+    const sources = await Promise.all(files.map(async (file) => [file, await readTextFile(join(projectPath, file))] as const));
+    const offenders = sources.filter(([, source]) => isDirectiveAtRisk(source)).map(([file]) => file);
 
     expect(offenders).toEqual([]);
   });
@@ -76,6 +72,9 @@ describe.each(PROJECTS)('triple-slash directives: $name', ({ args, startApps }) 
         const declaration = join(projectPath, appDir, 'src/vite-env.d.ts');
         expect(await fileExists(declaration)).toBe(true);
         expect((await readTextFile(declaration)).trim()).toBe(VITE_CLIENT_TYPES);
+
+        const { include } = await readJsonFile<{ include: string[] }>(join(projectPath, appDir, 'tsconfig.json'));
+        expect(include.some((entry) => entry === 'src' || entry.startsWith('src/'))).toBe(true);
       }
     });
   }

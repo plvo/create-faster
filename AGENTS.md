@@ -335,7 +335,7 @@ A file several libraries extend (a framework entry, a global middleware list) is
 
 ### Triple-slash directives
 
-TypeScript honours `/// <reference ... />` only before the first statement, and a formatter that sorts imports (oxfmt) carries a leading comment with the import it precedes, so a directive in a file with several imports can end up below one. A template therefore never puts a directive in a file that imports: the types come from a declaration file with no other statement (`stack/tanstack-start/src/vite-env.d.ts.hbs` declares `vite/client`, `import.meta.env` and `?url` imports), or from the tsconfig `types`. `tests/integration/triple-slash-directives.test.ts` fails on a generated source that holds a directive and two or more imports.
+TypeScript honours `/// <reference ... />` only before the first statement, and a formatter that sorts imports (oxfmt) carries a leading comment with the import it precedes, so a directive in a file with several imports can end up below one. A template therefore never holds a directive and two or more imports: the types come from a declaration file with no other statement (`stack/tanstack-start/src/vite-env.d.ts.hbs` declares `vite/client`, which types `import.meta.env` and `?url` imports), or from the tsconfig `types`. The threshold of two follows oxfmt, which keeps a single import in place: `sst-env.d.ts.hbs` carries a directive and one `import "sst"`. `tests/unit/triple-slash-directives.test.ts` checks every `.hbs` under `templates/` (partials included), and `tests/integration/triple-slash-directives.test.ts` checks the sources of generated projects, which can take imports from partials.
 
 ### Scope mapping and path resolution
 
