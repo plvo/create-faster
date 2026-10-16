@@ -11,7 +11,7 @@ import {
 } from '@/lib/addon-utils';
 import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
-import { projectNameOf, validateProjectName } from '@/lib/project-location';
+import { projectNameOf, validateAppName, validateProjectName } from '@/lib/project-location';
 import { isInteractiveTerminal } from '@/lib/project-prompts';
 import { printError } from '@/tui/print-error';
 import type { AppContext, FlagAnswers, ProjectContext, TemplateContext } from '@/types/ctx';
@@ -257,6 +257,12 @@ function parseAppFlag(appFlag: string): AppContext {
   }
 
   const [appName, stackName, librariesStr] = parts as [string, string, string | undefined];
+
+  const appNameError = validateAppName(appName);
+  if (appNameError) {
+    printError('Invalid app name', appNameError);
+    process.exit(1);
+  }
 
   if (!META.stacks[stackName as StackName]) {
     printError(
