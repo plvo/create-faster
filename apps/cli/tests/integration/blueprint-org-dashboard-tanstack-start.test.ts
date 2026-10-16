@@ -1,6 +1,6 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
@@ -13,6 +13,70 @@ async function sourceFiles(dir: string): Promise<string[]> {
   return entries
     .filter((entry) => entry.isFile() && /\.(ts|tsx)$/.test(entry.name))
     .map((entry) => join(entry.parentPath, entry.name));
+}
+
+interface Session {
+  user: { id?: string; role?: string | null };
+}
+
+interface Thrown {
+  kind: 'redirect' | 'notFound';
+  to?: string;
+  search?: { redirectTo: string };
+}
+
+interface GeneratedGuards {
+  hasPermission: (role: string | null | undefined, permissions: Record<string, string[]>) => boolean;
+  isSignedIn: (session: Session | null) => boolean;
+  requireSession: (location: { href: string }) => Promise<Session>;
+  requireAdmin: (session: Session) => void;
+  requirePermission: (session: Session, permissions: Record<string, string[]>) => void;
+}
+
+// Stand-ins for what the generated files import from packages: the router builds the value `throw`n by
+// redirect() and notFound(), and the auth client checks a role against the generated `roleDefinitions`.
+const STUBS: Record<string, string> = {
+  'router.mjs': `export const redirect = (options) => ({ kind: 'redirect', ...options });
+export const notFound = () => ({ kind: 'notFound' });`,
+  'access.mjs': 'export const createAccessControl = () => ({ newRole: (statements) => statements });',
+  'admin-access.mjs': `export const defaultStatements = {};
+export const adminAc = { statements: { user: ['list', 'create', 'set-role'], session: ['list', 'revoke'] } };`,
+  'auth-client.mjs': `import { roleDefinitions } from './permissions.mjs';
+export const authClient = {
+  admin: {
+    checkRolePermission: ({ role, permissions }) =>
+      Object.entries(permissions).every(([resource, actions]) =>
+        actions.every((action) => roleDefinitions[role]?.[resource]?.includes(action) ?? false)),
+  },
+};`,
+  'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
+};
+
+const IMPORT_TARGETS: Record<string, string> = {
+  'better-auth/plugins/access': './access.mjs',
+  'better-auth/plugins/admin/access': './admin-access.mjs',
+  '@tanstack/react-router': './router.mjs',
+  '@repo/auth/auth-client': './auth-client.mjs',
+  '@repo/auth/permissions': './permissions.mjs',
+  '@/lib/auth/permission': './permission.mjs',
+  '@/lib/auth/session': './session.mjs',
+};
+
+async function writeEvaluable(source: string, target: string): Promise<void> {
+  const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
+  const rewritten = js.replace(/from\s+(["'])([^"']+)\1/g, (match, _quote, specifier: string) =>
+    IMPORT_TARGETS[specifier] ? `from "${IMPORT_TARGETS[specifier]}"` : match,
+  );
+  await Bun.write(target, rewritten);
+}
+
+async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
+  try {
+    await run();
+    return undefined;
+  } catch (error) {
+    return error as Thrown;
+  }
 }
 
 describe(`${BLUEPRINT} blueprint`, () => {
@@ -54,7 +118,11 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
     expect(await fileExists(join(project, WEB, 'src/routes/index.tsx'))).toBe(false);
     expect(await fileExists(join(project, WEB, 'src/app'))).toBe(false);
+    expect(await read(`${WEB}/src/components/profile/tab-nav.tsx`)).toContain("<nav aria-label='Profile sections'");
     expect(await fileExists(join(project, WEB, 'src/styles/globals.css'))).toBe(false);
+    const notFound = await read(`${WEB}/src/components/not-found.tsx`);
+    expect(notFound).toContain("<main className='flex flex-col items-center justify-center h-screen'>");
+    expect(notFound).toContain('<h1>404 - Page not found</h1>');
     expect(await fileExists(join(project, 'scripts/seed.ts'))).toBe(true);
     expect(await fileExists(join(project, 'packages/db/scripts/seed.ts'))).toBe(false);
     expect(await fileExists(join(project, 'apps/batch/src/index.ts'))).toBe(true);
@@ -100,10 +168,79 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(home).toContain("requirePermission(context.session, { contact: ['read'] })");
     expect(home).toMatch(/void context\.queryClient\.prefetchQuery\(/);
     expect(home).not.toMatch(/await context\.queryClient/);
+  });
 
-    const guards = await read(`${WEB}/src/lib/auth/guards.ts`);
-    expect(guards).toMatch(/export function requirePermission[^]*throw notFound\(\)/);
-    expect(guards).toMatch(/export function requireAdmin[^]*throw redirect\(\{ to: '\/' \}\)/);
+  describe('the generated guards, evaluated', () => {
+    let guards: GeneratedGuards;
+    const member = (role: string | null): Session => ({ user: { id: 'u1', role } });
+    const signedInAs = (session: Session | null) => {
+      (globalThis as { __testSession?: Session | null }).__testSession = session;
+    };
+
+    beforeAll(async () => {
+      const dir = join(tempDir, 'guards-eval');
+      await mkdir(dir, { recursive: true });
+      for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(dir, name), source);
+      await writeEvaluable(await read('packages/auth/src/permissions.ts'), join(dir, 'permissions.mjs'));
+      await writeEvaluable(await read(`${WEB}/src/lib/auth/permission.ts`), join(dir, 'permission.mjs'));
+      await writeEvaluable(await read(`${WEB}/src/lib/auth/guards.ts`), join(dir, 'guards.mjs'));
+      const permission = await import(join(dir, 'permission.mjs'));
+      const evaluated = await import(join(dir, 'guards.mjs'));
+      guards = { hasPermission: permission.hasPermission, ...evaluated };
+    });
+
+    afterAll(() => signedInAs(null));
+
+    test('hasPermission refuses a missing or unknown role and checks the others against their definition', () => {
+      expect(guards.hasPermission(undefined, { contact: ['read'] })).toBe(false);
+      expect(guards.hasPermission(null, {})).toBe(false);
+      expect(guards.hasPermission('ghost', { contact: ['read'] })).toBe(false);
+      expect(guards.hasPermission('manager', {})).toBe(true);
+      expect(guards.hasPermission('manager', { contact: ['read'] })).toBe(true);
+      expect(guards.hasPermission('manager', { contact: ['read', 'create'] })).toBe(false);
+      expect(guards.hasPermission('user', { contact: ['create', 'delete'] })).toBe(true);
+      expect(guards.hasPermission('user', { user: ['list'] })).toBe(false);
+      expect(guards.hasPermission('admin', { user: ['list'], contact: ['delete'] })).toBe(true);
+    });
+
+    test('requirePermission passes a role that has the permission and answers not found for one that lacks it', async () => {
+      expect(await thrownBy(() => guards.requirePermission(member('manager'), { contact: ['read'] }))).toBeUndefined();
+      expect(await thrownBy(() => guards.requirePermission(member('manager'), { contact: ['create'] }))).toEqual({
+        kind: 'notFound',
+      });
+      expect(await thrownBy(() => guards.requirePermission(member('ghost'), { contact: ['read'] }))).toEqual({
+        kind: 'notFound',
+      });
+    });
+
+    test('requireAdmin lets an admin through and sends anyone else home', async () => {
+      expect(await thrownBy(() => guards.requireAdmin(member('admin')))).toBeUndefined();
+      for (const role of ['user', 'manager']) {
+        expect(await thrownBy(() => guards.requireAdmin(member(role)))).toEqual({ kind: 'redirect', to: '/' });
+      }
+    });
+
+    test('requireSession returns the session of a signed-in user and sends everyone else to login with the page asked for', async () => {
+      signedInAs(member('user'));
+      expect(await guards.requireSession({ href: '/profile' })).toEqual(member('user'));
+
+      for (const session of [null, member(null), { user: {} }]) {
+        signedInAs(session);
+        expect(await thrownBy(() => guards.requireSession({ href: '/profile/sessions?x=1' }))).toEqual({
+          kind: 'redirect',
+          to: '/login',
+          search: { redirectTo: '/profile/sessions?x=1' },
+        });
+      }
+    });
+
+    test('the login layout and the dashboard layout agree on every session shape', async () => {
+      for (const session of [null, member(null), { user: {} }, member('user'), member('admin')]) {
+        signedInAs(session);
+        const accepted = (await thrownBy(() => guards.requireSession({ href: '/' }))) === undefined;
+        expect(guards.isSignedIn(session)).toBe(accepted);
+      }
+    });
   });
 
   test('the permission hook reads the session from the route context, not from a second fetch', async () => {
@@ -142,7 +279,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
       read('apps/batch/src/index.ts'),
     ]);
     expect(seed).toContain('auth.api.createUser');
-    expect(setup.length).toBeGreaterThan(0);
+    expect(setup).toContain("'Seeding demo data'");
     expect(batch).toContain('Processing batch event');
   });
 
@@ -156,6 +293,15 @@ describe(`${BLUEPRINT} blueprint`, () => {
     const web = await read(`${WEB}/AGENTS.md`);
     expect(web).not.toContain('No protected layout is generated');
     expect(await read('AGENTS.md')).toContain('TanStack Start web app');
+  });
+
+  test('the Next.js blueprint notes carry no TanStack Start text', async () => {
+    const result = await runCli(['next-notes', '--blueprint', 'org-dashboard-nextjs', '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+    const auth = await readTextFile(join(tempDir, 'next-notes', 'docs/agents/auth.md'));
+    expect(auth).toContain('`requireSession()`');
+    expect(auth).toContain('before `router.push`');
+    expect(auth).not.toMatch(/TanStack|beforeLoad|_dashboard|validateSearch|history\.push|isSignedIn/);
   });
 
   test('the SST deployment renders the TanStack Start component', async () => {

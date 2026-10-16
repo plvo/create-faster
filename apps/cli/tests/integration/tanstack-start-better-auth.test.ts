@@ -107,6 +107,11 @@ describe('TanStack Start + better-auth', () => {
       expect(agents).toContain('getSession');
       expect(agents).toContain('WeakMap<Headers, Promise<Session | null>>');
     });
+
+    test('agent docs tell to guard routes yourself, since no protected layout is generated', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('No protected layout is generated: guard routes yourself.');
+    });
   });
 
   describe('single repo on Cloudflare, D1 + drizzle', () => {

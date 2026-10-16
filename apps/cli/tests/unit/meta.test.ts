@@ -311,12 +311,12 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
     expect(tanstackStart.context.project).toEqual(nextjs.context.project);
   });
 
-  test('declares the package.json, envs and first-run data its parent declares, since META is not inherited', () => {
-    expect(tanstackStart.packageJson).toEqual(nextjs.packageJson);
-    expect(tanstackStart.pkgPackageJson).toEqual(nextjs.pkgPackageJson);
-    expect(tanstackStart.rootPackageJson).toEqual(nextjs.rootPackageJson);
-    expect(tanstackStart.envs).toEqual(nextjs.envs);
-    expect(tanstackStart.firstRun).toEqual(nextjs.firstRun);
+  test('declares its own package.json, envs and first-run data, since META is not inherited', () => {
+    expect(tanstackStart.packageJson?.dependencies).toMatchObject({ sonner: expect.any(String), zod: expect.any(String) });
+    expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['auth', 'db', 'ui']);
+    expect(tanstackStart.rootPackageJson?.scripts).toHaveProperty('local-setup');
+    expect(tanstackStart.envs?.map(({ value }) => value)).toContain('SEED_PASSWORD=password');
+    expect(tanstackStart.firstRun?.flatMap(({ commands }) => commands)).toEqual([{ script: 'local-setup' }]);
   });
 
   test('describes TanStack Start, not Next.js, in the agent architecture', () => {

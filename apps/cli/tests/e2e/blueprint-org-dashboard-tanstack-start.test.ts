@@ -159,6 +159,38 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     }
   });
 
+  test('a signed-in user whose role lacks a permission gets a 404 on the page that needs it, not on the others', async () => {
+    const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.6');
+    const setRole = async (role: string): Promise<void> => {
+      const update = await runCommand(
+        [
+          'docker',
+          'compose',
+          'exec',
+          '-T',
+          'postgres',
+          'sh',
+          '-c',
+          `psql -U postgres -d "$POSTGRES_DB" -c "update users set role = '${role}' where email = '${SEEDED_MEMBER}'"`,
+        ],
+        projectDir,
+      );
+      expect(update.exitCode, describeFailure(update)).toBe(0);
+    };
+
+    await setRole('ghost');
+    try {
+      const home = await fetch(new URL('/', server.url), { redirect: 'manual', headers: { cookie } });
+      expect(home.status).toBe(404);
+      expect(await home.text()).toContain('Page not found');
+
+      const profile = await fetch(new URL('/profile/account', server.url), { redirect: 'manual', headers: { cookie } });
+      expect(profile.status).toBe(200);
+    } finally {
+      await setRole('user');
+    }
+  });
+
   test('an unknown page answers not found and the server logs no error', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.5');
     const missing = await fetch(new URL('/no-such-page', server.url), { headers: { cookie } });
