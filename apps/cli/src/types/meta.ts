@@ -199,9 +199,14 @@ export interface MetaBlueprint {
   firstRun?: FirstRunStep[];
 }
 
+export interface MetaLibrary extends MetaAddon {
+  /** Package.json keys only the repo root reads (npm `overrides`): the app's package.json in a single repo, the root one of a turborepo. */
+  rootPackageJson?: PackageJsonConfig;
+}
+
 export interface Meta {
   stacks: Record<StackName, MetaStack>;
-  libraries: Record<string, MetaAddon>;
+  libraries: Record<string, MetaLibrary>;
   project: MetaProject;
   repo: {
     stacks: Record<RepoType, MetaRepoStack>;
