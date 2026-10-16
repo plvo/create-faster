@@ -5,7 +5,7 @@ import { sortObjectKeys } from '@/lib/utils';
 import type { PackageManagerName, TemplateContext } from '@/types/ctx';
 import type { InstallScripts, PackageJsonConfig } from '@/types/meta';
 
-export interface InstallScriptPolicy {
+interface InstallScriptPolicy {
   name: string;
   allowed: boolean;
 }
@@ -40,16 +40,14 @@ export function listInstallScriptPolicies(ctx: TemplateContext): InstallScriptPo
 }
 
 /**
- * How each package manager reads the policy from the root package.json. pnpm reads it from
- * `pnpm-workspace.yaml`, and bun has no way to deny, so it only lists the allowed packages.
+ * How each package manager reads the policy from the root package.json. pnpm reads it from `pnpm-workspace.yaml`.
+ * Bun blocks the scripts of untrusted dependencies on its own and can only list trusted ones; a `trustedDependencies`
+ * field replaces its default trusted list, which would block packages it runs today, so Bun gets none.
  */
 const PACKAGE_JSON_POLICY: Record<PackageManagerName, (scripts: InstallScripts) => PackageJsonConfig> = {
   npm: (scripts) => ({ allowScripts: scripts }),
   pnpm: () => ({}),
-  bun: (scripts) => {
-    const trusted = Object.keys(scripts).filter((name) => scripts[name]);
-    return trusted.length > 0 ? { trustedDependencies: trusted } : {};
-  },
+  bun: () => ({}),
 };
 
 /** The package.json fields of the root manifest (the single app, or the turborepo root) that carry the policy. */
