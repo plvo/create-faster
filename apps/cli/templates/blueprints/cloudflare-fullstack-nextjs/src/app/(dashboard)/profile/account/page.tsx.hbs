@@ -3,16 +3,12 @@ mono:
   scope: app
   path: src/app/(dashboard)/profile/account/page.tsx
 ---
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { AccountForm } from '@/components/profile/account-form';
 import { AvatarUpload } from '@/components/profile/avatar-upload';
-import { getAuth } from '@/lib/server';
+import { requireSession } from '@/lib/auth/session';
 
 export default async function AccountPage() {
-  const auth = await getAuth();
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) redirect('/login');
+  const session = await requireSession();
 
   const { name, email, image, createdAt } = session.user;
 

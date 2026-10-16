@@ -75,13 +75,18 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(wr).toContain('"binding": "STORAGE"');
   });
 
-  test('ships (auth) layout using getAuth per-request seam (not singleton)', () => {
+  test('session guards read the session through the getAuth per-request seam (not singleton)', () => {
+    const session = bpFile('src/lib/auth/session.ts.hbs');
+    expect(session).toContain("import { getAuth } from '@/lib/server'");
+    expect(session).not.toContain("import { auth } from '@repo/auth/auth'");
+    expect(session).toContain('{{> auth/session-guards}}');
+  });
+
+  test('ships (auth) layout reading the cached session', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(auth)');
     const layout = readFileSync(join(base, 'layout.tsx.hbs'), 'utf8');
-    expect(layout).toContain("import { getAuth } from '@/lib/server'");
-    expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
-    expect(layout).toContain('const auth = await getAuth()');
-    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
+    expect(layout).toContain("import { getSession } from '@/lib/auth/session'");
+    expect(layout).not.toContain('getAuth');
     expect(layout).toContain("redirect('/')");
   });
 
@@ -115,16 +120,14 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(usePerm).toContain('{{{{raw}}}}');
   });
 
-  test('(dashboard) layout uses getAuth per-request seam (not singleton)', () => {
+  test('(dashboard) layout requires the cached session (not singleton)', () => {
     const layout = readFileSync(
       join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/app/(dashboard)/layout.tsx.hbs'),
       'utf8',
     );
-    expect(layout).toContain("import { getAuth } from '@/lib/server'");
+    expect(layout).toContain("import { requireSession } from '@/lib/auth/session'");
     expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
-    expect(layout).toContain('const auth = await getAuth()');
-    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
-    expect(layout).toContain("redirect('/login')");
+    expect(layout).toContain('await requireSession()');
   });
 
   test('documents client component references tRPC documents.list/delete and upload endpoint', () => {
@@ -156,7 +159,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
 
   test('account page reads the session server-side and renders avatar + account form', () => {
     const page = bpFile('src/app/(dashboard)/profile/account/page.tsx.hbs');
-    expect(page).toContain("import { getAuth } from '@/lib/server'");
+    expect(page).toContain("import { requireSession } from '@/lib/auth/session'");
     expect(page).toContain('<AvatarUpload name={name} image={image ?? null} />');
     expect(page).toContain('<AccountForm initialName={name}');
   });
@@ -193,7 +196,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     // the matrix stays read-only.
     expect(page).toContain('read-only');
     expect(page).toContain('isGranted(role, resource, action)');
-    expect(page).toContain("session?.user.role !== 'admin'");
+    expect(page).toContain('await requireAdmin()');
     // current viewer's column is highlighted.
     expect(page).toContain('role === currentRole');
   });
@@ -237,12 +240,9 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
       ),
       'utf8',
     );
-    expect(layout).toContain("import { getAuth } from '@/lib/server'");
+    expect(layout).toContain("import { requireAdmin } from '@/lib/auth/session'");
     expect(layout).not.toContain("import { auth } from '@repo/auth/auth'");
-    expect(layout).toContain('const auth = await getAuth()');
-    expect(layout).toContain("auth.api.getSession({ headers: await headers() })");
-    expect(layout).toContain("session?.user.role !== 'admin'");
-    expect(layout).toContain("redirect('/')");
+    expect(layout).toContain('await requireAdmin()');
   });
 
   test('admin users page composes the datatable + create dialog behind a permission gate', () => {
@@ -360,7 +360,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
 
   test('dashboard shell mounts the sidebar provider, app sidebar, and header', () => {
     const layout = bpFile('src/app/(dashboard)/layout.tsx.hbs');
-    expect(layout).toContain('if (!session?.user)');
+    expect(layout).toContain('await requireSession()');
     expect(layout).toContain('<SidebarProvider defaultOpen>');
     expect(layout).toContain('<AppSidebar session={session} />');
     expect(layout).toContain('<AppHeader />');

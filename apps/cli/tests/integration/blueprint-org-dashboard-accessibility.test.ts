@@ -146,7 +146,9 @@ export const PopoverTrigger = () => null;`,
   'textarea.mjs': `import { createElement } from './react.mjs';
 export const Textarea = (props) => createElement('textarea', props);`,
   'form-context.mjs': 'export const useFieldContext = () => globalThis.__testField;',
-  'session.mjs': 'export const requireAdmin = async () => {};',
+  'session.mjs': `const session = { user: { role: 'admin' } };
+export const requireSession = async () => session;
+export const requireAdmin = async () => session;`,
   'badge.mjs': `import { createElement } from './react.mjs';
 export const Badge = ({ children, ...props }) => createElement('span', props, children);`,
   'input.mjs': `import { createElement } from './react.mjs';
