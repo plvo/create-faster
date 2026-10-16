@@ -53,13 +53,16 @@ const signIn = async (server: RunningServer, email: string, password: string, cl
     .join('; ');
 };
 
-async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
-  const webDir = join(projectDir, 'apps/web');
-  const port = await getFreePort();
-  const appUrl = `http://127.0.0.1:${port}`;
+async function pointWebAuthAt(webDir: string, appUrl: string): Promise<void> {
   const envPath = join(webDir, '.env');
   const kept = (await readFile(envPath, 'utf8')).split('\n').filter((line) => line && !line.startsWith('BETTER_AUTH_'));
   await writeFile(envPath, `${[...kept, `BETTER_AUTH_SECRET=${AUTH_SECRET}`, `BETTER_AUTH_URL=${appUrl}`].join('\n')}\n`);
+}
+
+async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
+  const webDir = join(projectDir, 'apps/web');
+  const port = await getFreePort();
+  await pointWebAuthAt(webDir, `http://127.0.0.1:${port}`);
 
   const build = await runCommand(['bun', 'run', 'build'], projectDir);
   expect(build.exitCode, describeFailure(build)).toBe(0);
@@ -72,6 +75,7 @@ async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
 describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', () => {
   let projectDir: string;
   let setup: CommandResult;
+  let server: RunningServer | undefined;
 
   beforeAll(async () => {
     projectDir = await generateInstalledBlueprint('cloudflare-fullstack-nextjs', 'bp-seed-cloudflare');
@@ -79,6 +83,7 @@ describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', (
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
   afterAll(async () => {
+    await server?.stop();
     if (projectDir) await cleanupTempDir(join(projectDir, '..'));
   });
 
@@ -87,6 +92,42 @@ describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', (
     expect(setup.stdout).toContain('Seeding complete.');
     expect(describeFailure(setup)).not.toContain('SCHEMA_MISMATCH');
   });
+
+  // Client components render on the server without the request cookies, so a protected query they read has to be
+  // prefetched by the page: a hard reload of an admin page answered 500 "You must be logged in" otherwise.
+  test(
+    'a signed-in admin reloads every dashboard page with a 200 and the server logs no error',
+    async () => {
+      const webDir = join(projectDir, 'apps/web');
+      const port = await getFreePort();
+      await pointWebAuthAt(webDir, `http://127.0.0.1:${port}`);
+      server = await startServer(['bunx', 'next', 'dev', '-p', String(port)], webDir, { port, readyPath: '/login', readyTimeout: TIMEOUT_SERVER });
+      const running = server;
+
+      const cookie = await signIn(running, SEEDED_ADMIN, SEED_PASSWORD, '10.0.1.1');
+      const sessionResponse = await fetch(new URL('/api/auth/get-session', running.url), { headers: { cookie } });
+      const { user } = (await sessionResponse.json()) as { user: { id: string } };
+
+      const paths = ['/', '/admin/users', `/admin/users/${user.id}`, '/admin/roles', '/profile/account', '/profile/security', '/profile/sessions', '/profile/preferences'];
+      for (const path of paths) {
+        const response = await fetch(new URL(path, running.url), { headers: { cookie } });
+        expect([path, response.status]).toEqual([path, 200]);
+      }
+
+      const detail = await fetch(new URL(`/admin/users/${user.id}`, running.url), { headers: { cookie } });
+      expect(await detail.text()).toContain(SEEDED_ADMIN);
+
+      for (const path of ['/', '/admin/users', `/admin/users/${user.id}`]) {
+        const anonymous = await fetch(new URL(path, running.url), { redirect: 'manual' });
+        const location = anonymous.headers.get('location');
+        expect([path, anonymous.status, location && new URL(location, running.url).pathname]).toEqual([path, 307, '/login']);
+      }
+
+      const { stdout, stderr } = await running.stop();
+      expect(`${stdout}\n${stderr}`).not.toMatch(/⨯|tRPC failed/);
+    },
+    TIMEOUT_SERVER * 3,
+  );
 });
 
 describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: local-setup, production build and sign-in', () => {
