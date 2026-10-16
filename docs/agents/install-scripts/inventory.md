@@ -28,10 +28,11 @@ Configuration surfaces:
 | `esbuild` (0.18, 0.25, 0.28) | `drizzle-kit`, Vite (TanStack Start, vitest), `@opennextjs/cloudflare`, wrangler, Hono Lambda build | `postinstall: node install.js` swaps the JS shim for the binary and validates it; the binary comes from the `@esbuild/*` optional dependency | no |
 | `workerd` | wrangler, miniflare (`cloudflare`, `cloudflare-static`) | same design as esbuild | no |
 | `fsevents` | file watchers (vite, vitest, expo, wrangler) | `install: node-gyp rebuild`, macOS only (optional dependency); ships a prebuilt `.node` | no |
+| `@reown/appkit` | `dapp-privy-nextjs` | `postinstall`: version check | no |
 | `core-js` | `pwa`, `posthog` | prints a donation notice | no |
 | `prisma` | `prisma` ORM | `preinstall`: Node version check | no |
 | `@prisma/engines` | `prisma` ORM | `postinstall`: downloads the schema engine binary (`failSilent`) | yes: the schema engine is downloaded lazily at first `migrate` or `db push` when skipped (verified), so a first run offline fails |
-| `bufferutil`, `utf-8-validate`, `keccak` | `dapp-rainbowkit-nextjs` (wagmi, walletconnect) | `node-gyp-build`, optional native speedups with JS fallbacks | no |
+| `bufferutil`, `utf-8-validate`, `keccak` | `dapp-rainbowkit-nextjs`, `dapp-privy-nextjs` (wagmi, walletconnect) | `node-gyp-build`, optional native speedups with JS fallbacks | no |
 
 No install script: `sharp`, `@libsql/client` / `libsql`, `better-sqlite3` (not used), `unrs-resolver`, Next.js alone.
 
@@ -40,7 +41,7 @@ Bun (default trusted list): only `core-js` is blocked in a toy project holding a
 ## Pre-existing problems found, out of scope
 
 - `tanstack-start` with `evlog` fails `npm install` with ERESOLVE (`evlog@2.32.0` peerOptional `nitro@^3.0.260311-beta`, the project resolves `3.0.260903-beta`).
-- `dapp-privy-nextjs` fails `npm install --package-lock-only` with ERESOLVE.
+- `dapp-privy-nextjs` fails `npm install --package-lock-only` with ERESOLVE (issue #311). The npm inventory missed its scripts; a strict `pnpm@12` install lists them (`tests/e2e/install-scripts.test.ts`, which also installs every blueprint).
 
 ## Verification (Linux, 2026-10-16)
 

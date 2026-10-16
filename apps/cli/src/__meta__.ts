@@ -27,6 +27,9 @@ const TSX_INSTALL_SCRIPTS = { esbuild: false, fsevents: false };
 // wrangler installs esbuild, fsevents and the workerd runtime; their install scripts are optional.
 const WRANGLER_INSTALL_SCRIPTS = { esbuild: false, fsevents: false, workerd: false };
 
+// The wallet libraries (wagmi, WalletConnect) install ws and keccak with optional native speedups that have JavaScript fallbacks.
+const WALLET_INSTALL_SCRIPTS = { bufferutil: false, 'utf-8-validate': false, keccak: false };
+
 const ESBUILD_VERSION = '^0.28.2';
 
 // Bun bundles a Node target on its own; esbuild needs `require` back for the CommonJS packages it inlines into an ES module.
@@ -1130,6 +1133,7 @@ export const META: Meta = {
     'dapp-privy-nextjs': {
       label: 'dApp (Privy)',
       hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
+      installScripts: { ...WALLET_INSTALL_SCRIPTS, '@reown/appkit': false },
       category: 'Web3',
       agentArchitecture: [
         'Web3 dApp: single Next.js app with Privy wallet authentication and wagmi, a tRPC API',
@@ -1182,7 +1186,7 @@ export const META: Meta = {
     'dapp-rainbowkit-nextjs': {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
-      installScripts: { bufferutil: false, 'utf-8-validate': false, keccak: false },
+      installScripts: WALLET_INSTALL_SCRIPTS,
       category: 'Web3',
       agentArchitecture: [
         'Web3 dApp: single Next.js app with RainbowKit wallet connection, Sign-In With Ethereum',

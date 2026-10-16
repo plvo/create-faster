@@ -9,7 +9,7 @@ import { cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
  * is replaced by `pnpm@12` through npx. A script blocked only on another OS (`fsevents` on macOS) is not seen here.
  */
 const STRICT_PNPM_MAJOR = 11;
-const FALLBACK_PNPM = ['npx', '--yes', 'pnpm@12'];
+const FALLBACK_PNPM = ['env', 'pnpm_config_manage_package_manager_versions=false', 'npx', '--yes', 'pnpm@12'];
 const TIMEOUT_INSTALL = 600_000;
 
 const REPRESENTATIVE_PROJECTS = [
@@ -75,12 +75,12 @@ function strictPnpmCommand(): string[] {
   return Number.parseInt(version, 10) >= STRICT_PNPM_MAJOR ? ['pnpm'] : FALLBACK_PNPM;
 }
 
+const PACKAGE_WITH_VERSION = /(?:@[\w.-]+\/)?[\w.-]+@\d[\w.+-]*/g;
+
+/** The packages pnpm lists after `Ignored build scripts:`, as a warning box (pnpm 10) or an error (pnpm 11 and later). */
 function ignoredBuilds(output: string): string[] {
-  const listed = output.match(/Ignored build scripts: ([^\n]+)/)?.[1] ?? '';
-  return listed
-    .replace(/\.$/, '')
-    .split(', ')
-    .filter((name) => name !== '');
+  const listing = output.match(/Ignored build scripts:([\s\S]*?)(?:Run "pnpm approve-builds|help:)/)?.[1] ?? '';
+  return listing.match(PACKAGE_WITH_VERSION) ?? [];
 }
 
 describe.each([...REPRESENTATIVE_PROJECTS, ...BLUEPRINT_PROJECTS])('$name', ({ name, args }) => {
