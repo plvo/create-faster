@@ -52,6 +52,42 @@ describe('first-run steps shared by the README and the CLI summary', () => {
     expectInOrder(stdout, commands);
   });
 
+  test('Prisma generates the client before pushing the schema, in a single repo and a turborepo', async () => {
+    const commands = [
+      'cp .env.example .env',
+      'docker compose up -d --wait',
+      'bun run db:generate',
+      'bun run db:push',
+      'bun run dev',
+    ];
+    const single = await generate(tempDir, 'prisma-single', [
+      '--app',
+      'web:nextjs',
+      '--database',
+      'postgres',
+      '--orm',
+      'prisma',
+    ]);
+    const turborepo = await generate(tempDir, 'prisma-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'mysql',
+      '--orm',
+      'prisma',
+    ]);
+
+    for (const { readme, stdout } of [single, turborepo]) {
+      expect(readme.split('## Available Scripts')[0]).not.toContain('db:migrate');
+      expect(stdout).not.toContain('db:migrate');
+      expectInOrder(stdout, commands.slice(1));
+    }
+    expectInOrder(single.readme, commands);
+    expectInOrder(turborepo.readme, ['cp packages/db/.env.example packages/db/.env', ...commands.slice(1)]);
+  });
+
   test('a database without an ORM still starts the database first', async () => {
     const { readme, stdout } = await generate(tempDir, 'postgres-only', [
       '--app',

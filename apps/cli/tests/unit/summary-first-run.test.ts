@@ -109,7 +109,7 @@ describe('summary first-run steps', () => {
     expectInOrder(output, ['cd demo', 'npm install', 'npm run dev']);
   });
 
-  test('Prisma pushes the schema and never runs the interactive migrate', () => {
+  test('Prisma generates the client, pushes the schema and never runs the interactive migrate', () => {
     const output = summarize({
       projectName: 'demo',
       repo: 'single',
@@ -119,7 +119,7 @@ describe('summary first-run steps', () => {
       pm: 'bun',
     });
 
-    expectInOrder(output, ['docker compose up -d --wait', 'bun run db:push', 'bun run dev']);
+    expectInOrder(output, ['docker compose up -d --wait', 'bun run db:generate', 'bun run db:push', 'bun run dev']);
     expect(output).not.toContain('db:migrate');
   });
 
