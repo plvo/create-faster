@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { findRuntimeAddon, isLibraryCompatible } from '@/lib/addon-utils';
+import { findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
@@ -98,11 +98,8 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   }
 
   for (const app of ctx.apps) {
-    for (const libraryName of app.libraries) {
-      const library = META.libraries[libraryName];
-      if (!library?.envs || !isLibraryCompatible(library, app.stackName)) continue;
-
-      for (const env of library.envs) addEnv(env, { source: 'library', libraryName });
+    for (const { name: libraryName, library } of getAppLibraries(app)) {
+      for (const env of library.envs ?? []) addEnv(env, { source: 'library', libraryName });
     }
   }
 

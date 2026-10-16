@@ -2,15 +2,9 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import matter from 'gray-matter';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, pnpmTest, readJsonFile, readTextFile, runCli } from './helpers';
 
 const TURBOREPO_APPS = ['--app', 'web:nextjs', '--app', 'api:hono'];
-const PNPM_AVAILABLE = Boolean(Bun.which('pnpm'));
-
-// Generating with --pm pnpm reads the installed pnpm version for the packageManager field.
-function pnpmTest(title: string, run: () => Promise<void>): void {
-  test.skipIf(!PNPM_AVAILABLE)(PNPM_AVAILABLE ? title : `${title} (skipped: pnpm is not installed)`, run);
-}
 
 describe('pnpm workspace declaration', () => {
   let tempDir: string;

@@ -2,11 +2,12 @@ import { META } from '@/__meta__';
 import {
   applyAppScripts,
   findRuntimeAddon,
+  getAppLibraries,
   getMonoPackageName,
-  isLibraryCompatible,
   resolveCompositeAddons,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
+import { installScriptsPackageJson } from '@/lib/install-scripts';
 import { getPackageManagerField, resolveCommandPackageManager } from '@/lib/package-manager';
 import {
   cleanUndefined,
@@ -111,10 +112,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
 
   let merged = mergeResolved(ctx, stack.packageJson, packageManagerPackageJson(stack.packageManagerPackageJson, ctx));
 
-  for (const libraryName of app.libraries) {
-    const library = META.libraries[libraryName];
-    if (!library || !isLibraryCompatible(library, app.stackName)) continue;
-
+  for (const { library } of getAppLibraries(app)) {
     const stackOverride = library.stackPackageJson?.[app.stackName];
     if (isTurborepo && addRepoRef(merged, library)) {
       if (library.appPackageJson) {
@@ -232,6 +230,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
   };
 
   spreadExtraKeys(pkg, merged);
+  if (!isTurborepo) spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
 
   return { packageJson: pkg, listensOnPort };
 }
@@ -358,6 +357,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   };
 
   spreadExtraKeys(pkg, merged);
+  spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
 
   return pkg;
 }

@@ -1,7 +1,15 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readJsonFile, readTextFile, runCli } from './helpers';
+import {
+  cleanupTempDir,
+  createTempDir,
+  PNPM_AVAILABLE,
+  printedScriptsMissingFrom,
+  readJsonFile,
+  readTextFile,
+  runCli,
+} from './helpers';
 
 // A command written as `<pm> <script>` is only valid for scripts the package manager owns
 // (`bun build` runs Bun's bundler, `npm dev` is an unknown command): scripts need `<pm> run <script>`.
@@ -200,7 +208,7 @@ describe('recreate command', () => {
     expect(result.stdout).toContain(`${runner} ${name} --app ${name}:nextjs`);
   });
 
-  test.skipIf(!Bun.which('pnpm'))('is run with pnpm dlx under --pm pnpm', async () => {
+  test.skipIf(!PNPM_AVAILABLE)('is run with pnpm dlx under --pm pnpm', async () => {
     const args = ['recreate-pnpm', '--app', 'recreate-pnpm:nextjs', '--no-git', '--no-install', '--pm', 'pnpm'];
     const result = await runCli(args, dir);
     expect(result.exitCode).toBe(0);

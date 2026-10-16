@@ -1,0 +1,7 @@
+{{#if (eq pm "pnpm")}}
+{{#if (installScripts)}}
+packages:
+  - .
+{{> pnpm/allow-builds}}
+{{/if}}
+{{/if}}

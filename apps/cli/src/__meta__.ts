@@ -21,6 +21,15 @@ const TSX_VERSION = '^4.23.15';
 // Node runs no TypeScript file of the generated scripts itself; Bun does.
 const TSX_RUNNER = $when({ pm: { not: 'bun' } }, TSX_VERSION);
 
+// tsx (and drizzle-kit) install esbuild, and tsx the macOS file watcher fsevents; their install scripts are optional.
+const TSX_INSTALL_SCRIPTS = { esbuild: false, fsevents: false };
+
+// wrangler installs esbuild, fsevents and the workerd runtime; their install scripts are optional.
+const WRANGLER_INSTALL_SCRIPTS = { esbuild: false, fsevents: false, workerd: false };
+
+// The wallet libraries (wagmi, WalletConnect) install ws and keccak with optional native speedups that have JavaScript fallbacks.
+const WALLET_INSTALL_SCRIPTS = { bufferutil: false, 'utf-8-validate': false, keccak: false };
+
 const ESBUILD_VERSION = '^0.28.2';
 
 // Bun bundles a Node target on its own; esbuild needs `require` back for the CommonJS packages it inlines into an ES module.
@@ -153,6 +162,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
+      installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {
           hono: '^4.7.4',
@@ -175,6 +185,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
+      installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {},
         devDependencies: {
@@ -195,6 +206,7 @@ export const META: Meta = {
       type: 'app',
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
+      installScripts: { fsevents: false },
       moduleType: 'module',
       packageJson: {
         dependencies: {
@@ -462,6 +474,7 @@ export const META: Meta = {
     nativewind: {
       label: 'NativeWind',
       hint: 'A library for styling React Native applications with Tailwind CSS',
+      installScripts: { fsevents: false },
       category: 'UI',
       support: { stacks: ['expo'] },
       packageJson: {
@@ -480,6 +493,7 @@ export const META: Meta = {
     'aws-lambda': {
       label: 'AWS Lambda',
       hint: 'Hono runtime adapter for AWS Lambda',
+      installScripts: { esbuild: false },
       category: 'Runtime',
       support: { stacks: ['hono'] },
       packageJson: {},
@@ -498,6 +512,7 @@ export const META: Meta = {
     posthog: {
       label: 'PostHog',
       hint: 'Product analytics proxied first-party through /ingest',
+      installScripts: { 'core-js': false },
       category: 'Analytics',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       needsServerRuntime: true,
@@ -529,6 +544,7 @@ export const META: Meta = {
     vitest: {
       label: 'Vitest',
       hint: 'A Vite-native testing framework',
+      installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
@@ -587,6 +603,7 @@ export const META: Meta = {
     'jest-expo': {
       label: 'Jest',
       hint: 'Delightful JavaScript testing for Expo',
+      installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['expo'] },
       packageJson: {
@@ -616,6 +633,7 @@ export const META: Meta = {
         cloudflare: {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
+          installScripts: WRANGLER_INSTALL_SCRIPTS,
           providesDbBindings: true,
           providesLocalFilesystem: false,
           packageJson: {
@@ -662,6 +680,7 @@ export const META: Meta = {
         'cloudflare-static': {
           label: 'Cloudflare Workers (static)',
           hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
+          installScripts: WRANGLER_INSTALL_SCRIPTS,
           require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {
@@ -862,6 +881,7 @@ export const META: Meta = {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
+          installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
           firstRun: [
@@ -906,6 +926,7 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
+          installScripts: { ...TSX_INSTALL_SCRIPTS, '@prisma/engines': true, prisma: false },
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],
@@ -1112,6 +1133,7 @@ export const META: Meta = {
     'dapp-privy-nextjs': {
       label: 'dApp (Privy)',
       hint: 'Web3 dApp with Privy wallet auth, wagmi, and user management',
+      installScripts: { ...WALLET_INSTALL_SCRIPTS, '@reown/appkit': false },
       category: 'Web3',
       agentArchitecture: [
         'Web3 dApp: single Next.js app with Privy wallet authentication and wagmi, a tRPC API',
@@ -1164,6 +1186,7 @@ export const META: Meta = {
     'dapp-rainbowkit-nextjs': {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
+      installScripts: WALLET_INSTALL_SCRIPTS,
       category: 'Web3',
       agentArchitecture: [
         'Web3 dApp: single Next.js app with RainbowKit wallet connection, Sign-In With Ethereum',
