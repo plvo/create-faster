@@ -1,8 +1,10 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 

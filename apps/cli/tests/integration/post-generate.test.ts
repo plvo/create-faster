@@ -1,9 +1,11 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists } from './helpers';
 import { createStubbedCli, type GenerateProject } from './stubbed-cli';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const FORMAT_RAN_MARKER = 'format-ran.txt';
 const FORMAT_IN_REPOSITORY_MARKER = 'format-in-repository.txt';

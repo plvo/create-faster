@@ -1,8 +1,10 @@
-import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { META } from '@/__meta__';
 import { accept, cleanupTempDir, createTempDir, interrupt, runCli, runCliOnTerminal } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 describe('mandatory answers without a terminal', () => {
   let tempDir: string;

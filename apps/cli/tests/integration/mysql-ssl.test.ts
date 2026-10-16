@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const LOCAL_URL_WITHOUT_TLS = /^DATABASE_URL="mysql:\/\/mysql:password@localhost:\d+\/mysql-[\w-]+\?ssl=false"/m;
 const PRODUCTION_TLS = 'function withProductionTls(databaseUrl: string): string {';

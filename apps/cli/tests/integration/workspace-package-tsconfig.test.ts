@@ -1,10 +1,12 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Glob } from 'bun';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
 import { COMBINATIONS } from './workspace-combinations';
+
+setIntegrationTimeout();
 
 interface TsConfig {
   extends?: string;

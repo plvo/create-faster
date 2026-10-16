@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 // The official images start a temporary server on a unix socket only (no TCP) to run the init scripts,
 // then restart it. A probe through the socket passes on that server, so `docker compose up --wait`

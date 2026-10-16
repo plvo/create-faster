@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, exportedNames, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 // `default` is what `bun run src/index.ts` (dev, start) and wrangler (`main`) serve; `handler` is the Lambda entry.
 const ENTRIES = [

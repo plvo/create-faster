@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, exportedNames, readSstHandlers, runCli, type SstHandler } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const SST_PROJECTS = [
   { name: 'sst-hono', args: ['--app', 'sst-hono:hono', '--deployment', 'sst'] },

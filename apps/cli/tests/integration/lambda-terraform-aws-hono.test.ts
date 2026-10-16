@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -10,6 +9,9 @@ import {
   runCli,
   type TerraformLambda,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const BUILD_OUTFILE = /--outfile[= ](\S+)/;
 const NODE_RUNTIME_MAJOR = /^nodejs(\d+)\./;

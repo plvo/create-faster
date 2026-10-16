@@ -1,8 +1,10 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 describe('package manager missing from PATH', () => {
   let tempDir: string;

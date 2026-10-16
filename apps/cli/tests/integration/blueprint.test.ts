@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 // Destinations of the files the org-dashboard-nextjs templates generate in a turborepo. A rename that drops or
 // moves one makes the blueprint lose it, so each must still exist in the generated project.

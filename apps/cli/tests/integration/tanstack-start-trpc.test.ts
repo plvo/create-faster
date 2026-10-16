@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import {
@@ -10,6 +9,9 @@ import {
   readTextFile,
   runCli,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 interface PackageJson {
   dependencies?: Record<string, string>;

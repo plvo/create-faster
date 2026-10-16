@@ -1,4 +1,3 @@
-import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -13,6 +12,9 @@ import {
   runCli,
   runCliOnTerminal,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
 const multiSelectCategories = categoryNames.filter((name) => META.project[name].selection === 'multi');

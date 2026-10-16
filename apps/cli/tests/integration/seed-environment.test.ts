@@ -1,9 +1,11 @@
-import './timeout';
 import { readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const DOTENV_IMPORT = /^\s*import\s+['"]dotenv\/config['"]/;
 const FIRST_IMPORT = /^\s*import\b.*$/m;

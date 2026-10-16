@@ -1,7 +1,9 @@
-import './timeout';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm'] as const;
 const BUN_API = /\bBun\.|bun:|#!\/usr\/bin\/env bun/;

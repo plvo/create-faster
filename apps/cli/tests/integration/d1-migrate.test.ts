@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 describe('Turborepo: d1 migrate workflow points at the deploy app config and a shared state dir', () => {
   const projectName = 'd1-migrate-turbo';

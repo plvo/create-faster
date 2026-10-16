@@ -1,8 +1,10 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const blueprintsWithNonNextjsApp = Object.entries(META.blueprints).filter(([, blueprint]) =>
   blueprint.context.apps.some((app) => app.stackName !== 'nextjs'),

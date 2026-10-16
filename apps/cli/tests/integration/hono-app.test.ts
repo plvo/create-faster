@@ -1,10 +1,12 @@
-import './timeout';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { cleanupTempDir, createTempDir, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const REPO_NODE_MODULES = resolve(import.meta.dir, '../../../../node_modules');
 const SQL_LEAK = 'SQLITE_ERROR: no such table: users (select * from users where id = 42)';

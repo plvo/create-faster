@@ -1,4 +1,3 @@
-import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -11,6 +10,9 @@ import {
   runCli,
   runCliOnTerminal,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const FLAGS = ['--yes', '--no-install', '--no-git'];
 const NAME_PROMPT = 'Name of your project?';

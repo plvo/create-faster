@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,6 +11,9 @@ import {
   readTextFile,
   runCli,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 interface DocumentsModule {
   documentComponents: Record<string, { load: () => Promise<{ default: string }> }>;
