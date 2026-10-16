@@ -7,6 +7,7 @@ import {
   resolveCompositeAddons,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
+import { installScriptsPackageJson } from '@/lib/install-scripts';
 import { getPackageManagerField, resolveCommandPackageManager } from '@/lib/package-manager';
 import {
   cleanUndefined,
@@ -232,6 +233,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
   };
 
   spreadExtraKeys(pkg, merged);
+  if (!isTurborepo) spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
 
   return { packageJson: pkg, listensOnPort };
 }
@@ -358,6 +360,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   };
 
   spreadExtraKeys(pkg, merged);
+  spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
 
   return pkg;
 }

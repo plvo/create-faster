@@ -153,6 +153,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
+      installScripts: { esbuild: false, fsevents: false },
       packageJson: {
         dependencies: {
           hono: '^4.7.4',
@@ -175,6 +176,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
+      installScripts: { esbuild: false, fsevents: false },
       packageJson: {
         dependencies: {},
         devDependencies: {
@@ -195,6 +197,7 @@ export const META: Meta = {
       type: 'app',
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
+      installScripts: { fsevents: false },
       moduleType: 'module',
       packageJson: {
         dependencies: {
@@ -462,6 +465,7 @@ export const META: Meta = {
     nativewind: {
       label: 'NativeWind',
       hint: 'A library for styling React Native applications with Tailwind CSS',
+      installScripts: { fsevents: false },
       category: 'UI',
       support: { stacks: ['expo'] },
       packageJson: {
@@ -480,6 +484,7 @@ export const META: Meta = {
     'aws-lambda': {
       label: 'AWS Lambda',
       hint: 'Hono runtime adapter for AWS Lambda',
+      installScripts: { esbuild: false },
       category: 'Runtime',
       support: { stacks: ['hono'] },
       packageJson: {},
@@ -498,6 +503,7 @@ export const META: Meta = {
     posthog: {
       label: 'PostHog',
       hint: 'Product analytics proxied first-party through /ingest',
+      installScripts: { 'core-js': false },
       category: 'Analytics',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       needsServerRuntime: true,
@@ -529,6 +535,7 @@ export const META: Meta = {
     vitest: {
       label: 'Vitest',
       hint: 'A Vite-native testing framework',
+      installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
@@ -587,6 +594,7 @@ export const META: Meta = {
     'jest-expo': {
       label: 'Jest',
       hint: 'Delightful JavaScript testing for Expo',
+      installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['expo'] },
       packageJson: {
@@ -616,6 +624,7 @@ export const META: Meta = {
         cloudflare: {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
+          installScripts: { esbuild: false, workerd: false, fsevents: false },
           providesDbBindings: true,
           providesLocalFilesystem: false,
           packageJson: {
@@ -662,6 +671,7 @@ export const META: Meta = {
         'cloudflare-static': {
           label: 'Cloudflare Workers (static)',
           hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
+          installScripts: { esbuild: false, workerd: false, fsevents: false },
           require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {
@@ -862,6 +872,7 @@ export const META: Meta = {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
+          installScripts: { esbuild: false, fsevents: false },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
           firstRun: [
@@ -906,6 +917,7 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
+          installScripts: { '@prisma/engines': true, prisma: false, esbuild: false, fsevents: false },
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],
@@ -1164,6 +1176,7 @@ export const META: Meta = {
     'dapp-rainbowkit-nextjs': {
       label: 'dApp (RainbowKit)',
       hint: 'Web3 dApp with RainbowKit wallet connection, SIWE auth, and wagmi',
+      installScripts: { bufferutil: false, 'utf-8-validate': false, keccak: false },
       category: 'Web3',
       agentArchitecture: [
         'Web3 dApp: single Next.js app with RainbowKit wallet connection, Sign-In With Ethereum',

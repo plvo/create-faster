@@ -10,6 +10,7 @@ import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
+import { listInstallScriptPolicies } from './install-scripts';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
 import { getAppScriptCommand, getPackageRunner, getScriptCommand, getTypeScriptRunner } from './package-manager';
 import { resolveAppPort } from './utils';
@@ -112,6 +113,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('runAppScript', (script: string, options: Handlebars.HelperOptions) => {
     return getAppScriptCommand(options.data.root as TemplateContext, script);
+  });
+
+  Handlebars.registerHelper('installScripts', (options: Handlebars.HelperOptions) => {
+    return listInstallScriptPolicies(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('firstRunSteps', (options: Handlebars.HelperOptions) => {

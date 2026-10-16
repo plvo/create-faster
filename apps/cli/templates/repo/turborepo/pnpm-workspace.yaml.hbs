@@ -3,4 +3,7 @@ packages:
   - apps/*
   - packages/*
 linkWorkspacePackages: true
+{{#if (installScripts)}}
+{{> pnpm/allow-builds}}
+{{/if}}
 {{/if}}

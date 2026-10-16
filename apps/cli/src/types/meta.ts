@@ -34,6 +34,9 @@ export interface PostGenerateStep {
   script: string;
 }
 
+/** Dependencies by package name: `true` lets the install scripts of the package run, `false` skips them. */
+export type InstallScripts = Record<string, boolean>;
+
 interface AddonSupport {
   stacks?: StackName[] | 'all';
 }
@@ -109,6 +112,8 @@ export interface MetaAddon {
   deploymentPackageJson?: Record<string, PackageJsonConfig>;
   stackPackageJson?: Partial<Record<StackName, PackageJsonConfig>>;
   appPackageJson?: PackageJsonConfig;
+  /** Install scripts of the dependencies this addon brings, direct or transitive. */
+  installScripts?: InstallScripts;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
   /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
@@ -136,6 +141,8 @@ interface MetaStack {
   moduleType?: 'module';
   packageJson: PackageJsonConfig;
   packageManagerPackageJson?: PackageManagerPackageJson;
+  /** Install scripts of the dependencies this stack brings, direct or transitive. */
+  installScripts?: InstallScripts;
 }
 
 interface MetaRepoStack {
@@ -184,6 +191,8 @@ export interface MetaBlueprint {
   packageManagerPackageJson?: PackageManagerPackageJson;
   pkgPackageJson?: Record<string, PackageJsonConfig>;
   rootPackageJson?: PackageJsonConfig;
+  /** Install scripts of the dependencies this blueprint brings beyond its apps and addons. */
+  installScripts?: InstallScripts;
   envs?: EnvVar[];
   agentArchitecture?: string;
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
