@@ -12,7 +12,7 @@ import {
 import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, validateAppName, validateProjectName } from '@/lib/project-location';
-import { isInteractiveTerminal } from '@/lib/project-prompts';
+import { isInteractiveTerminal, missingAnswersWithoutTerminal, promptModeOf } from '@/lib/project-prompts';
 import { printError } from '@/tui/print-error';
 import type { AppContext, FlagAnswers, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
@@ -143,6 +143,7 @@ ${color.bold('Examples:')}
   const projectDir = program.args[0];
 
   if (Object.keys(flags).length === 0 && !projectDir) {
+    exitWhenAnswersMissing({});
     return {};
   }
 
@@ -231,11 +232,20 @@ ${color.bold('Examples:')}
   }
 
   validateAppNames(partial);
+  exitWhenAnswersMissing(partial);
   if (!isInteractiveTerminal()) {
     validateRequirements(partial, partial);
   }
 
   return partial;
+}
+
+function exitWhenAnswersMissing(partial: FlagAnswers): void {
+  const missingAnswers = missingAnswersWithoutTerminal(partial, promptModeOf(partial));
+  if (missingAnswers.length === 0) return;
+
+  for (const { title, hint } of missingAnswers) printError(title, hint);
+  process.exit(1);
 }
 
 function collect(value: string, previous: string[]): string[] {

@@ -2,9 +2,7 @@ import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, interrupt, runCli, runCliOnTerminal } from './helpers';
-
-const UNANSWERABLE_PROMPTS = ['How many apps?', 'What would you like to create?', 'Name of your project?'];
+import { accept, cleanupTempDir, createTempDir, interrupt, runCli, runCliOnTerminal } from './helpers';
 
 describe('mandatory answers without a terminal', () => {
   let tempDir: string;
@@ -27,7 +25,7 @@ describe('mandatory answers without a terminal', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--app');
     expect(result.stderr).toContain('--blueprint');
-    for (const prompt of UNANSWERABLE_PROMPTS) expect(result.stdout).not.toContain(prompt);
+    expect(result.stdout).toBe('');
     expect(await readdir(tempDir)).toEqual([]);
   });
 
@@ -39,7 +37,7 @@ describe('mandatory answers without a terminal', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('project name');
-    for (const prompt of UNANSWERABLE_PROMPTS) expect(result.stdout).not.toContain(prompt);
+    expect(result.stdout).toBe('');
     expect(await readdir(tempDir)).toEqual([]);
   });
 
@@ -50,7 +48,7 @@ describe('mandatory answers without a terminal', () => {
     expect(result.stderr).toContain('project name');
     expect(result.stderr).toContain('--app');
     expect(result.stderr).toContain('--blueprint');
-    for (const prompt of UNANSWERABLE_PROMPTS) expect(result.stdout).not.toContain(prompt);
+    expect(result.stdout).toBe('');
     expect(await readdir(tempDir)).toEqual([]);
   });
 });
@@ -66,12 +64,31 @@ describe('cancelled prompt', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('Ctrl-C at a prompt exits non-zero and writes nothing', async () => {
-    const { exitCode } = await runCliOnTerminal(['demo', '--app', 'demo:nextjs'], tempDir, [
-      interrupt(META.project.deployment.prompt),
-    ]);
+  test.each<{ title: string; args: string[]; answers: ReturnType<typeof accept>[] }>([
+    {
+      title: 'a project category select',
+      args: ['demo', '--app', 'demo:nextjs'],
+      answers: [interrupt(META.project.deployment.prompt)],
+    },
+    {
+      title: 'the stack select',
+      args: ['demo'],
+      answers: [accept('What would you like to create?'), accept('How many apps?'), interrupt('Stack for')],
+    },
+    {
+      title: 'the library multiselect',
+      args: ['demo'],
+      answers: [
+        accept('What would you like to create?'),
+        accept('How many apps?'),
+        accept('Stack for'),
+        interrupt('libraries to'),
+      ],
+    },
+  ])('Ctrl-C at $title exits 1 and writes nothing', async ({ args, answers }) => {
+    const { exitCode } = await runCliOnTerminal(args, tempDir, answers);
 
-    expect(exitCode).not.toBe(0);
+    expect(exitCode).toBe(1);
     expect(await readdir(tempDir)).toEqual([]);
   }, 90_000);
 });
