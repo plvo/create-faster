@@ -84,10 +84,12 @@ export const Trash2 = icon('Trash2');`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
   'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
 export const useParams = () => ({ id: 'u1' });
-export const redirect = (path) => { throw new Error('redirected to ' + path); };`,
+export const redirect = (path) => { throw new Error('redirected to ' + path); };
+export const notFound = () => { throw new Error('not found'); };`,
   'next-headers.mjs': 'export const headers = async () => ({});',
   'trpc-server.mjs': `export const HydrateClient = ({ children }) => children;
 export const prefetch = () => {};
+export const getQueryClient = () => ({ fetchQuery: async () => ({}) });
 export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ queryOptions: (input) => input ?? {} }) }) });`,
   'skeleton.mjs': 'export const Skeleton = () => null;',
   'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,

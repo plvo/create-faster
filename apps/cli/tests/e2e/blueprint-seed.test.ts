@@ -22,6 +22,7 @@ const SEED_PASSWORD = 'password';
 const SEEDED_ADMIN = 'admin@example.com';
 const SEEDED_MEMBER = 'user@example.com';
 const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
+const UNKNOWN_ID = 'no-such-record';
 
 async function generateInstalledBlueprint(blueprint: string, name: string): Promise<string> {
   const tempDir = await createTempDir();
@@ -136,12 +137,17 @@ describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
         const detail = await fetch(new URL(userPage, server.url), { headers: { cookie } });
         expect(await detail.text()).toContain('Back to users');
 
+        // An id that matches no user answers the not-found page, not a 200 that fails in the browser.
+        const missing = await fetch(new URL(`/admin/users/${UNKNOWN_ID}`, server.url), { headers: { cookie } });
+        expect(missing.status).toBe(404);
+        expect(await missing.text()).toContain('Page not found');
+
         for (const path of ['/', '/admin/users', userPage]) {
           expect([path, await redirectPathOf(server, path)]).toEqual([path, '/login']);
         }
 
         const memberCookie = await signIn(server, SEEDED_MEMBER, SEED_PASSWORD, '10.0.1.2');
-        for (const path of ['/admin/users', userPage, '/admin/roles']) {
+        for (const path of ['/admin/users', userPage, `/admin/users/${UNKNOWN_ID}`, '/admin/roles']) {
           expect([path, await redirectPathOf(server, path, memberCookie)]).toEqual([path, '/']);
         }
 
@@ -239,6 +245,12 @@ describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: 
 
     const users = await fetch(new URL('/admin/users', server.url), { headers: { cookie: adminCookie } });
     expect(await users.text()).toContain(SEEDED_ADMIN);
+
+    for (const path of [`/admin/users/${UNKNOWN_ID}`, `/contacts/${UNKNOWN_ID}`]) {
+      const missing = await fetch(new URL(path, server.url), { headers: { cookie: adminCookie } });
+      expect([path, missing.status]).toEqual([path, 404]);
+      expect(await missing.text(), path).toContain('Page not found');
+    }
 
     const contacts = await fetch(new URL('/contacts', server.url), { headers: { cookie: memberCookie } });
     expect(contacts.status).toBe(200);
