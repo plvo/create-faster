@@ -148,9 +148,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(bpFile(`${base}/sessions/page.tsx.hbs`)).toContain('SessionList');
     expect(bpFile(`${base}/preferences/page.tsx.hbs`)).toContain('Preferences');
 
-    const tabNav = bpFile('src/components/profile/tab-nav.tsx.hbs');
+    expect(bpFile('src/components/profile/tab-nav.tsx.hbs')).toContain('PROFILE_TABS');
+    const constants = bpFile('src/lib/constants.ts.hbs');
     for (const href of ['/profile/account', '/profile/security', '/profile/sessions', '/profile/preferences']) {
-      expect(tabNav).toContain(href);
+      expect(constants).toContain(href);
     }
   });
 
