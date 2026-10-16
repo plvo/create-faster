@@ -1,9 +1,11 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import type { FirstRunCommand, FirstRunStep, MetaAddon, MetaBlueprint } from '@/types/meta';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const GENERATE_SECRET = 'openssl rand -base64 32';
 const SECRET_LINE = `BETTER_AUTH_SECRET= # generate with: ${GENERATE_SECRET}`;
