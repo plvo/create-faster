@@ -26,6 +26,13 @@ interface CollectedEnv {
   file?: string;
   secret?: boolean;
   tasks?: string[];
+  generate?: string;
+}
+
+interface GeneratedEnv {
+  name: string;
+  command: string;
+  paths: string[];
 }
 
 /** The URL the app is reached at in development: `http://localhost:{port}` unless a tooling addon provides it. */
@@ -78,6 +85,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         file: env.file,
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
         tasks: env.tasks,
+        generate: env.generate,
         ...origin,
       });
     }
@@ -232,6 +240,27 @@ export function collectTaskEnv(ctx: TemplateContext, task: string): string[] {
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
+}
+
+/** The variables to fill with a generated value, with the command and the `.env` of each app that reads them. */
+export function collectGeneratedEnvs(ctx: TemplateContext): GeneratedEnv[] {
+  const generated = collectAllEnvs(ctx).filter(
+    (env) => env.generate && !env.file && (ctx.repo === 'single' || env.scope === 'app'),
+  );
+  const byName = new Map<string, GeneratedEnv>();
+
+  for (const env of generated) {
+    const name = extractEnvKey(env.value);
+    const entry = byName.get(name) ?? { name, command: env.generate!, paths: [] };
+    const examples = [...groupEnvsByDestination([env], ctx).keys()];
+    for (const example of examples) {
+      const path = example.replace(/\.example$/, '');
+      if (!entry.paths.includes(path)) entry.paths.push(path);
+    }
+    byName.set(name, entry);
+  }
+
+  return [...byName.values()].filter(({ paths }) => paths.length > 0);
 }
 
 export function collectEnvGroups(ctx: TemplateContext): EnvGroup[] {

@@ -4,6 +4,7 @@ import {
   collectAppSecrets,
   collectEnvFiles,
   collectEnvGroups,
+  collectGeneratedEnvs,
   collectProjectSecrets,
   collectTaskEnv,
 } from '@/lib/env-generator';
@@ -668,5 +669,65 @@ describe('collectTaskEnv', () => {
 
     expect(collectTaskEnv(d1, 'db:seed')).toEqual([]);
     expect(collectTaskEnv(makeContext(), 'build')).toEqual([]);
+  });
+});
+
+describe('EnvVar.generate', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const GENERATED_ENVS: EnvVar[] = [
+    { value: 'SIGNING_KEY=', monoScope: [{ pkg: 'db' }, 'app'], generate: 'make-a-key' },
+    { value: 'DEDICATED_KEY=', monoScope: ['app'], file: 'secrets', generate: 'make-a-key' },
+    { value: 'PLAIN=1', monoScope: ['app'] },
+  ];
+  const twoWebApps = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'admin', stackName: 'nextjs', libraries: [] },
+    ],
+  });
+
+  function collect<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = GENERATED_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('lists the .env of each app that receives the variable, never a package file or a dedicated file', () => {
+    expect(collect(() => collectGeneratedEnvs(twoWebApps))).toEqual([
+      { name: 'SIGNING_KEY', command: 'make-a-key', paths: ['apps/web/.env', 'apps/admin/.env'] },
+    ]);
+  });
+
+  test('a single repo names the root .env', () => {
+    const single = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }],
+    });
+
+    expect(collect(() => collectGeneratedEnvs(single))).toEqual([
+      { name: 'SIGNING_KEY', command: 'make-a-key', paths: ['.env'] },
+    ]);
+  });
+
+  test('a project that receives no generated variable has none to list', () => {
+    expect(collectGeneratedEnvs(makeContext({ apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }] }))).toEqual(
+      [],
+    );
+  });
+
+  test('every generated variable of META ships blank, so no secret value is committed', () => {
+    const addons: { envs?: EnvVar[] }[] = [
+      ...Object.values(META.libraries),
+      ...Object.values(META.blueprints),
+      ...Object.values(META.project).flatMap((category) => Object.values(category.options)),
+    ];
+    const generated = addons.flatMap((addon) => addon.envs ?? []).filter((env) => env.generate);
+
+    expect(generated.length).toBeGreaterThan(0);
+    for (const env of generated) expect(env.value).toMatch(/^[A-Z_]+=\s*(#.*)?$/);
   });
 });

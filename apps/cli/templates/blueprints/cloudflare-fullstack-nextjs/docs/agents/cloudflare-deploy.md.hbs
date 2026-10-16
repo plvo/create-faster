@@ -20,7 +20,7 @@ Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNe
 - **Cron:** from `apps/cron`, `{{packageRunner}} wrangler deploy`. The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
 
 ## Local development
-- `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` (any value locally; `BETTER_AUTH_URL` is already `http://localhost:3000`). Next.js reads `.env`; in dev mode Better Auth trusts `localhost`.
+- `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` to a value generated for local use only (`openssl rand -base64 32`, the first-run step of the README): `build:cf` bundles it into the Worker (see Build & deploy). `BETTER_AUTH_URL` is already `http://localhost:3000`. Next.js reads `.env`; in dev mode Better Auth trusts `localhost`.
 - `{{runScript "local-setup"}}` once (applies local migrations + seeds the local D1).
 - `{{runScript "dev"}}` — `next dev` with the Cloudflare bindings wired via `initOpenNextCloudflareForDev` (D1/R2 from `.wrangler`, the same local state `local-setup` seeds). This is the primary local loop (hot reload, dev-mode auth).
 - `cd apps/web && {{runScript "preview"}}` runs the OpenNext **production** build locally to smoke-test the deployed shape. The build freezes the values of `.env` into the Worker, so run `build:cf` again after every `.env` change. Wrangler does not load `.env` for this preview (OpenNext handles it), so it warns about a missing required secret even when `.env` holds it; the warning is safe to ignore then.
