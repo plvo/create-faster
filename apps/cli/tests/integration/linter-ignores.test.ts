@@ -46,6 +46,53 @@ describe('linter ignore lists', () => {
     });
   });
 
+  describe('Drizzle migrations', () => {
+    const MIGRATIONS = 'drizzle';
+    const FORMATTERS = [
+      { linter: 'biome', file: 'biome.json' },
+      { linter: 'oxc', file: 'oxfmt.config.mts' },
+      { linter: 'prettier', file: '.prettierignore' },
+      { linter: 'eslint-prettier', file: '.prettierignore' },
+    ];
+
+    for (const { linter, file } of FORMATTERS) {
+      test(`${linter} leaves the migrations drizzle-kit writes alone, in a single repo and a turborepo`, async () => {
+        const single = await generate(`${linter}-drizzle`, linter, [
+          '--app',
+          'web:nextjs',
+          '--database',
+          'sqlite',
+          '--orm',
+          'drizzle',
+        ]);
+        const turbo = await generate(`${linter}-drizzle-turbo`, linter, [
+          '--app',
+          'web:nextjs',
+          '--app',
+          'api:hono',
+          '--database',
+          'sqlite',
+          '--orm',
+          'drizzle',
+        ]);
+        expect(await readTextFile(join(single, file))).toContain(MIGRATIONS);
+        expect(await readTextFile(join(turbo, file))).toContain(MIGRATIONS);
+      });
+
+      test(`${linter} carries no migrations entry under Prisma`, async () => {
+        const dir = await generate(`${linter}-prisma`, linter, [
+          '--app',
+          'web:nextjs',
+          '--database',
+          'postgres',
+          '--orm',
+          'prisma',
+        ]);
+        expect(await readTextFile(join(dir, file))).not.toContain(MIGRATIONS);
+      });
+    }
+  });
+
   describe('eslint', () => {
     test('a TanStack Start app ignores the router temp directory, the Nitro output and the route tree', async () => {
       const dir = await generate('eslint-start', 'eslint', ['--app', 'eslint-start:tanstack-start']);
