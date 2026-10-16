@@ -54,6 +54,10 @@ export const authClient = {
   },
 };`,
   'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
+  'icons.mjs': `export const LayoutDashboard = 'LayoutDashboard';
+export const Users = 'Users';
+export const Shield = 'Shield';
+export const ShieldCheck = 'ShieldCheck';`,
 };
 
 const IMPORT_TARGETS: Record<string, string> = {
@@ -64,6 +68,7 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@repo/auth/permissions': './permissions.mjs',
   '@/lib/auth/permission': './permission.mjs',
   '@/lib/auth/session': './session.mjs',
+  'lucide-react': './icons.mjs',
 };
 
 async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
@@ -104,6 +109,19 @@ describe(`${BLUEPRINT} blueprint`, () => {
       'src/routes/_dashboard/profile/security.tsx',
       'src/routes/_dashboard/profile/sessions.tsx',
       'src/routes/_dashboard/profile/preferences.tsx',
+      'src/routes/_dashboard/contacts.tsx',
+      'src/routes/_dashboard/contacts/index.tsx',
+      'src/routes/_dashboard/contacts/$id.tsx',
+      'src/routes/_dashboard/admin.tsx',
+      'src/routes/_dashboard/admin/users/index.tsx',
+      'src/routes/_dashboard/admin/users/$id.tsx',
+      'src/routes/_dashboard/admin/roles.tsx',
+      'src/components/contacts/contact-table.tsx',
+      'src/components/contacts/contacts-client.tsx',
+      'src/components/contacts/contact-detail.tsx',
+      'src/components/admin/user-table.tsx',
+      'src/components/admin/users-client.tsx',
+      'src/components/admin/user-detail.tsx',
       'src/lib/auth/guards.ts',
       'src/components/navigation/app-sidebar.tsx',
       'src/components/navigation/nav-user.tsx',
@@ -155,6 +173,56 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(auth).toMatch(/if \(isSignedIn\(await getSession\(\)\)\) throw redirect\(\{ to: '\/'/);
   });
 
+  test('the contacts layout checks the contact permission once, and its pages only prefetch', async () => {
+    const layout = await read(`${WEB}/src/routes/_dashboard/contacts.tsx`);
+    expect(layout).toContain("createFileRoute('/_dashboard/contacts')");
+    expect(layout).toContain("beforeLoad: ({ context }) => requirePermission(context.session, { contact: ['read'] })");
+
+    for (const page of ['index', '$id']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/contacts/${page}.tsx`);
+      expect(source, page).not.toContain('requirePermission');
+      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+      expect(source, page).not.toMatch(/await context\.queryClient/);
+    }
+    const detail = await read(`${WEB}/src/routes/_dashboard/contacts/$id.tsx`);
+    expect(detail).toContain('context.trpc.contact.getById.queryOptions({ id: params.id })');
+  });
+
+  test('the admin layout sends non-admins home once, and the admin pages do not repeat the check', async () => {
+    const layout = await read(`${WEB}/src/routes/_dashboard/admin.tsx`);
+    expect(layout).toContain("createFileRoute('/_dashboard/admin')");
+    expect(layout).toContain('beforeLoad: ({ context }) => requireAdmin(context.session)');
+
+    for (const page of ['users/index', 'users/$id', 'roles']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
+      expect(source, page).not.toMatch(/requireAdmin|requirePermission/);
+    }
+    for (const page of ['users/index', 'users/$id']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
+      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+      expect(source, page).not.toMatch(/await context\.queryClient/);
+    }
+  });
+
+  test('the shared tables and detail pages link through the router with typed params', async () => {
+    const contactTable = await read(`${WEB}/src/components/contacts/contact-table.tsx`);
+    expect(contactTable).toContain("<Link to='/contacts/$id' params={{ id: contact.id }}");
+    const userTable = await read(`${WEB}/src/components/admin/user-table.tsx`);
+    expect(userTable).toContain("<Link to='/admin/users/$id' params={{ id: user.id }}");
+    expect(await read(`${WEB}/src/components/contacts/contact-detail.tsx`)).toContain("navigate({ to: '/contacts' })");
+
+    for (const file of [
+      'contacts/contact-table',
+      'contacts/contacts-client',
+      'contacts/contact-detail',
+      'admin/user-table',
+      'admin/users-client',
+      'admin/user-detail',
+    ]) {
+      expect(await read(`${WEB}/src/components/${file}.tsx`), file).not.toContain("'use client'");
+    }
+  });
+
   test('a route checks its permission in beforeLoad, before its loader prefetches', async () => {
     const home = await read(`${WEB}/src/routes/_dashboard/index.tsx`);
     const beforeLoad = home.indexOf('beforeLoad:');
@@ -173,11 +241,13 @@ describe(`${BLUEPRINT} blueprint`, () => {
       (globalThis as { __testSession?: Session | null }).__testSession = session;
     };
 
+    let evaluate: <T>(source: string, name: string) => Promise<T>;
+
     beforeAll(async () => {
       const dir = join(tempDir, 'guards-eval');
       await mkdir(dir, { recursive: true });
       for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(dir, name), source);
-      const evaluate = async <T>(source: string, name: string): Promise<T> =>
+      evaluate = async <T>(source: string, name: string): Promise<T> =>
         evaluateGeneratedModule<T>(await read(source), join(dir, name), IMPORT_TARGETS);
       await evaluate('packages/auth/src/permissions.ts', 'permissions.mjs');
       const permission = await evaluate<Pick<GeneratedGuards, 'hasPermission'>>(`${WEB}/src/lib/auth/permission.ts`, 'permission.mjs');
@@ -244,6 +314,20 @@ describe(`${BLUEPRINT} blueprint`, () => {
       inContext(null);
       expect(guards.usePermission({})).toBe(false);
       expect(guards.usePermission({ contact: ['read'] })).toBe(false);
+    });
+
+    test('the sidebar lists each role only the pages its permissions open', async () => {
+      const { ROUTES } = await evaluate<{ ROUTES: { url: string; permissions?: Record<string, string[]> }[] }>(
+        `${WEB}/src/lib/constants.ts`,
+        'constants.mjs',
+      );
+      const visibleTo = (role: string): string[] =>
+        ROUTES.filter((route) => guards.hasPermission(role, route.permissions ?? {})).map((route) => route.url);
+
+      expect(visibleTo('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
+      expect(visibleTo('user')).toEqual(['/', '/contacts']);
+      expect(visibleTo('manager')).toEqual(['/', '/contacts']);
+      expect(visibleTo('ghost')).toEqual(['/']);
     });
 
     test('the login layout and the dashboard layout agree on every session shape', async () => {
