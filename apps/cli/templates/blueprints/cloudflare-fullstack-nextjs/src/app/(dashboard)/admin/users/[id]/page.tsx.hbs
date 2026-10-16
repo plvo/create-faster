@@ -10,6 +10,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { Button } from '@repo/ui/components/ui/button';
 import { EditUser } from '@/components/admin/edit-user';
 import { useTRPC } from '@/trpc/providers';
 
@@ -20,13 +21,12 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className='space-y-6'>
-      <Link
-        href='/admin/users'
-        className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground'
-      >
-        <ArrowLeft className='size-4' />
-        Back to users
-      </Link>
+      <Button asChild variant='ghost' size='sm' className='-ml-2.5'>
+        <Link href='/admin/users'>
+          <ArrowLeft />
+          Back to users
+        </Link>
+      </Button>
       <EditUser user={user} />
     </div>
   );

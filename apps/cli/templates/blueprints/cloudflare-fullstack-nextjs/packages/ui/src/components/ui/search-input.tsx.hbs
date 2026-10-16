@@ -99,7 +99,7 @@ export function SearchInput({
         <Popover open={hintOpen} onOpenChange={setHintOpen}>
           <PopoverTrigger
             type='button'
-            aria-label={`Appuyer sur ${hotkey} pour rechercher`}
+            aria-label={`Press ${hotkey} to search`}
             onClick={() => inputRef.current?.focus()}
             onMouseEnter={() => setHintOpen(true)}
             onMouseLeave={() => setHintOpen(false)}
@@ -114,7 +114,7 @@ export function SearchInput({
             onOpenAutoFocus={(e) => e.preventDefault()}
             className='w-auto p-2 text-xs text-muted-foreground'
           >
-            Appuyer sur « {hotkey} » pour rechercher
+            Press “{hotkey}” to search
           </PopoverContent>
         </Popover>
       )}

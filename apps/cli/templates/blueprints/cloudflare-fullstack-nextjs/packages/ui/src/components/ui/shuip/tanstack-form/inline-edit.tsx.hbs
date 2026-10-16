@@ -28,6 +28,7 @@ interface InlineEditProps {
   size?: InlineEditSize;
   placeholder?: string;
   canEdit?: boolean;
+  labelledBy?: string;
   children?: (api: {
     value: string;
     setValue: (v: string) => void;
@@ -63,10 +64,12 @@ function InlineEdit({
   size = 'default',
   placeholder = '—',
   canEdit = true,
+  labelledBy,
   children,
 }: InlineEditProps) {
   const [state, setState] = React.useState<State>({ kind: 'reading' });
   const errorId = React.useId();
+  const valueId = React.useId();
 
   const fieldClassName = cn(
     'w-full rounded-md text-left outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50',
@@ -100,9 +103,12 @@ function InlineEdit({
   let content: React.ReactNode;
   if (state.kind === 'reading') {
     const isEmpty = value === '';
+    const labelledByTerm = canEdit && labelledBy ? { 'aria-labelledby': `${labelledBy} ${valueId}` } : undefined;
     content = (
       <span
+        id={valueId}
         data-slot='inline-edit'
+        {...labelledByTerm}
         role={canEdit ? 'button' : undefined}
         tabIndex={canEdit ? 0 : undefined}
         onClick={canEdit ? startEdit : undefined}
@@ -158,6 +164,7 @@ function InlineEdit({
     ) : input === 'textarea' ? (
       <Textarea
         autoFocus
+        aria-labelledby={labelledBy}
         value={draft}
         disabled={isSaving}
         aria-invalid={!!displayedError}
@@ -170,6 +177,7 @@ function InlineEdit({
     ) : (
       <Input
         autoFocus
+        aria-labelledby={labelledBy}
         type='text'
         value={draft}
         disabled={isSaving}
@@ -199,7 +207,7 @@ function InlineEdit({
 }
 
 export interface InlineEditFieldProps
-  extends Pick<InlineEditProps, 'input' | 'variant' | 'size' | 'placeholder' | 'canEdit' | 'children'> {
+  extends Pick<InlineEditProps, 'input' | 'variant' | 'size' | 'placeholder' | 'canEdit' | 'labelledBy' | 'children'> {
   label?: string;
   description?: string;
   orientation?: 'vertical' | 'horizontal';

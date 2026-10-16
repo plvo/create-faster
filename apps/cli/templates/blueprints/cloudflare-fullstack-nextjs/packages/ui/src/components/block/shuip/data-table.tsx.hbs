@@ -126,6 +126,7 @@ declare module '@tanstack/react-table' {
     variant?: 'text' | 'number' | 'date' | 'select' | 'multiSelect';
     options?: DataTableFilterOption[];
     icon?: React.ComponentType<{ className?: string }>;
+    className?: string;
   }
 }
 
@@ -427,7 +428,7 @@ export function DataTable<TData>({
                   key={header.id}
                   colSpan={header.colSpan}
                   style={getColumnStyles(header.column, layout)}
-                  className={getPinClass(header.column)}
+                  className={cn(getPinClass(header.column), header.column.columnDef.meta?.className)}
                 >
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
@@ -440,7 +441,11 @@ export function DataTable<TData>({
             Array.from({ length: table.getState().pagination.pageSize }).map((_, rowIndex) => (
               <TableRow key={rowIndex}>
                 {table.getVisibleLeafColumns().map((column) => (
-                  <TableCell key={column.id} style={getColumnStyles(column, layout)} className={getPinClass(column)}>
+                  <TableCell
+                    key={column.id}
+                    style={getColumnStyles(column, layout)}
+                    className={cn(getPinClass(column), column.columnDef.meta?.className)}
+                  >
                     {loadingVariant === 'shimmer' ? shimmerBar : skeletonBar}
                   </TableCell>
                 ))}
@@ -458,7 +463,7 @@ export function DataTable<TData>({
                     <TableCell
                       key={cell.id}
                       style={getColumnStyles(cell.column, layout)}
-                      className={cn('overflow-hidden', getPinClass(cell.column))}
+                      className={cn('overflow-hidden', getPinClass(cell.column), cell.column.columnDef.meta?.className)}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

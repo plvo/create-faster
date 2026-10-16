@@ -34,24 +34,28 @@ export default async function RolesPage() {
     <div className='space-y-6'>
       <p className='text-sm text-muted-foreground'>
         Permissions granted to each role. Roles are defined in code at{' '}
-        <code className='rounded bg-muted px-1 py-0.5 text-xs'>packages/auth/src/permissions.ts</code> — this view is
-        read-only.
+        <code className='rounded bg-muted px-1 py-0.5 text-xs wrap-anywhere'>packages/auth/src/permissions.ts</code> —
+        this view is read-only.
       </p>
 
       <div className='overflow-x-auto rounded-lg border'>
         <table className='w-full text-sm'>
+          <caption className='sr-only'>Permissions granted to each role</caption>
           <thead>
             <tr className='border-b bg-muted/50'>
-              <th className='px-4 py-3 text-left font-medium'>Permission</th>
+              <th scope='col' className='px-2 py-3 text-left font-medium sm:px-4'>
+                Permission
+              </th>
               {roleNames.map((role) => (
                 <th
                   key={role}
-                  className={`px-4 py-3 text-center font-medium capitalize ${
+                  scope='col'
+                  className={`px-2 py-3 text-center font-medium capitalize sm:px-4 ${
                     role === currentRole ? 'bg-primary/10 text-primary' : ''
                   }`}
                 >
                   {role}
-                  {role === currentRole && <span className='ml-1 text-xs font-normal'>(you)</span>}
+                  {role === currentRole && <span className='block text-xs font-normal normal-case sm:ml-1 sm:inline'>(you)</span>}
                 </th>
               ))}
             </tr>
@@ -59,22 +63,23 @@ export default async function RolesPage() {
           <tbody>
             {rows.map(({ resource, action }) => (
               <tr key={`${resource}.${action}`} className='border-b last:border-0 hover:bg-muted/50'>
-                <td className='px-4 py-3'>
+                <th scope='row' className='px-2 py-3 text-left font-normal wrap-anywhere sm:px-4'>
                   <span className='font-medium'>{resource}</span>
                   <span className='text-muted-foreground'>.{action}</span>
-                </td>
+                </th>
                 {roleNames.map((role) => {
                   const granted = isGranted(role, resource, action);
                   return (
                     <td
                       key={role}
-                      className={`px-4 py-3 text-center ${role === currentRole ? 'bg-primary/5' : ''}`}
+                      className={`px-2 py-3 text-center sm:px-4 ${role === currentRole ? 'bg-primary/5' : ''}`}
                     >
                       {granted ? (
-                        <Check className='mx-auto size-4 text-primary' aria-label='Allowed' />
+                        <Check className='mx-auto size-4 text-primary' />
                       ) : (
-                        <Minus className='mx-auto size-4 text-muted-foreground/40' aria-label='Denied' />
+                        <Minus className='mx-auto size-4 text-muted-foreground' />
                       )}
+                      <span className='sr-only'>{granted ? 'Allowed' : 'Denied'}</span>
                     </td>
                   );
                 })}

@@ -514,6 +514,27 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(form).toContain('InlineEditField');
   });
 
+  test('the data table gives a column its own classes, so a page can hide a column on a phone', () => {
+    const dataTable = bpFile('packages/ui/src/components/block/shuip/data-table.tsx.hbs');
+    expect(dataTable).toContain('className?: string;');
+    expect(dataTable.match(/columnDef\.meta\?\.className/g)).toHaveLength(3);
+  });
+
+  test('the form fields name their control: a select trigger by its label, an inline edit by its term', () => {
+    const select = bpFile('packages/ui/src/components/ui/shuip/tanstack-form/select-field.tsx.hbs');
+    expect(select).toContain('<FieldLabel htmlFor={field.name}>');
+    expect(select).toContain('<SelectTrigger id={field.name}');
+    const inlineEdit = bpFile('packages/ui/src/components/ui/shuip/tanstack-form/inline-edit.tsx.hbs');
+    expect(inlineEdit).toContain("{ 'aria-labelledby': `${labelledBy} ${valueId}` }");
+    expect(inlineEdit.match(/aria-labelledby=\{labelledBy\}/g)).toHaveLength(2);
+  });
+
+  test('the search input names its hotkey button in English', () => {
+    const search = bpFile('packages/ui/src/components/ui/search-input.tsx.hbs');
+    expect(search).toContain('aria-label={`Press ${hotkey} to search`}');
+    expect(search).not.toContain('Appuyer');
+  });
+
   test('blueprint adds the datatable/inline-edit ui deps', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
     const uiDeps = bp!.pkgPackageJson?.ui?.dependencies ?? {};

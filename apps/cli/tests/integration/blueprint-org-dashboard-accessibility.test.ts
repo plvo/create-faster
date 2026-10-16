@@ -17,6 +17,8 @@ import {
 } from './helpers';
 import { NEXTJS_PAGES, type OrgDashboardPageName, TANSTACK_START_PAGES } from './org-dashboard-pages';
 
+const USER_ACTIONS = { file: 'src/components/admin/user-actions.tsx', exportName: 'UserActions' };
+
 interface Blueprint {
   name: string;
   routerStubs: Record<string, string>;
@@ -62,20 +64,31 @@ export const ArrowLeft = icon('ArrowLeft');
 export const Check = icon('Check');
 export const Copy = icon('Copy');
 export const KeyRound = icon('KeyRound');
-export const Plus = icon('Plus');`,
+export const Minus = icon('Minus');
+export const MoreHorizontal = icon('MoreHorizontal');
+export const Plus = icon('Plus');
+export const Trash2 = icon('Trash2');`,
   'button.mjs': `export const Button = ({ asChild, children, ...props }) =>
   asChild
     ? { ...children[0], props: { ...children[0].props, 'data-component': 'Button', variant: props.variant, size: props.size } }
     : { type: 'button', props: { 'data-component': 'Button', ...props, children } };`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
-  'next-navigation.mjs': 'export const useRouter = () => ({ push() {} });',
+  'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
+export const useParams = () => ({ id: 'u1' });
+export const redirect = (path) => { throw new Error('redirected to ' + path); };`,
+  'next-headers.mjs': 'export const headers = async () => ({});',
+  'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
 export const useNavigate = () => () => {};`,
   'query.mjs': `// trpc.a.b.queryOptions(x) and mutationOptions(x) hand their argument back, as the real helpers do.
 const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
-export const useMutation = (options) => ({ mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables), isPending: false });
+export const useMutation = (options) => ({
+  mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables),
+  mutateAsync: async (variables) => { options.onSuccess?.(globalThis.__testMutationResult, variables); return globalThis.__testMutationResult; },
+  isPending: false,
+});
 export const useQueryClient = () => ({ invalidateQueries() {} });`,
   'form.mjs': `export const useForm = () => ({
   state: { values: {} },
@@ -88,8 +101,55 @@ export const ContactDialog = () => null;
 export const ContactTable = () => null;
 export const UserTable = () => null;
 export const CreateUserDialog = () => null;
-export const UserActions = () => null;`,
+export const UserActions = () => null;
+export const EditUser = () => null;`,
   'session.mjs': 'export const requireAdmin = async () => {};',
+  'badge.mjs': `import { createElement } from './react.mjs';
+export const Badge = ({ children, ...props }) => createElement('span', props, children);`,
+  'input.mjs': `import { createElement } from './react.mjs';
+export const Input = (props) => createElement('input', props);`,
+  'select.mjs': `import { createElement } from './react.mjs';
+export const Select = ({ children }) => children;
+export const SelectTrigger = ({ children, ...props }) => createElement('button', { role: 'combobox', ...props }, children);
+export const SelectContent = () => null;
+export const SelectItem = () => null;
+export const SelectValue = () => null;`,
+  'dialog.mjs': `export const Dialog = ({ children }) => children;
+export const DialogTrigger = ({ children }) => children;
+export const DialogContent = ({ children }) => children;
+export const DialogHeader = ({ children }) => children;
+export const DialogFooter = ({ children }) => children;
+export const DialogTitle = ({ children }) => children;
+export const DialogDescription = ({ children }) => children;`,
+  'dropdown-menu.mjs': `import { createElement } from './react.mjs';
+export const DropdownMenu = ({ children }) => children;
+export const DropdownMenuTrigger = ({ children }) => children[0];
+export const DropdownMenuContent = ({ children }) => createElement('div', { role: 'menu' }, ...children);
+export const DropdownMenuItem = ({ children, onClick }) => createElement('div', { role: 'menuitem', onClick }, children);
+export const DropdownMenuSeparator = () => null;`,
+  'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
+  'auth-client.mjs': 'export const authClient = { admin: {} };',
+  'app-form.mjs': `import { createElement } from './react.mjs';
+// A field renders the props the page gives it, so a test reads what the page asks of the form library.
+const field = {
+  InlineEditField: (props) => createElement('span', { role: 'button', tabIndex: 0, 'aria-labelledby': props.labelledBy }, props.placeholder ?? ''),
+  InputField: (props) => createElement('input', { 'aria-label': props.label }),
+  SelectField: (props) => createElement('button', { role: 'combobox', 'aria-label': props.label }),
+};
+export const useAppForm = (options) => ({
+  AppField: ({ children }) => children[0](field),
+  AppForm: ({ children }) => children,
+  SubmitButton: ({ children }) => createElement('button', { type: 'submit' }, children),
+  handleSubmit: () => options.onSubmit({ value: options.defaultValues }),
+  reset() {},
+});`,
+  'data-table-shell.mjs': `import { createElement } from './react.mjs';
+// Renders the column definitions of a page as a table: the header of a column, and its cell for each row.
+export const DataTableShell = ({ columns, data }) =>
+  createElement('table', {},
+    createElement('thead', {}, createElement('tr', {}, ...columns.map((column) => createElement('th', { className: column.meta?.className }, column.header)))),
+    createElement('tbody', {}, ...data.map((row) =>
+      createElement('tr', {}, ...columns.map((column) => createElement('td', { className: column.meta?.className }, column.cell({ row: { original: row } })))))));`,
   'permissions.mjs': `export const statement = { user: ['create', 'list'], contact: ['create', 'read'] };
 export const roleDefinitions = {
   admin: { user: ['create', 'list'], contact: ['create', 'read'] },
@@ -111,8 +171,20 @@ const COMMON_IMPORTS: Record<string, string> = {
   '@/components/contacts/contact-table': './leaf.mjs',
   '@/components/admin/user-table': './leaf.mjs',
   '@/components/admin/create-user-dialog': './leaf.mjs',
+  '@/components/admin/edit-user': './leaf.mjs',
   './user-actions': './leaf.mjs',
   '@repo/auth/permissions': './permissions.mjs',
+  '@repo/auth/auth-client': './auth-client.mjs',
+  zod: './zod.mjs',
+  '@repo/ui/components/ui/badge': './badge.mjs',
+  '@repo/ui/components/ui/input': './input.mjs',
+  '@repo/ui/components/ui/select': './select.mjs',
+  '@repo/ui/components/ui/dialog': './dialog.mjs',
+  '@repo/ui/components/ui/dropdown-menu': './dropdown-menu.mjs',
+  '@repo/ui/lib/form': './app-form.mjs',
+  '@/components/shared/data-table-shell': './data-table-shell.mjs',
+  'next/headers': './next-headers.mjs',
+  '@/lib/server': './server.mjs',
 };
 
 type Handler = () => unknown;
@@ -190,52 +262,92 @@ const CONTACT = {
 interface Mounted {
   tree: RenderedChild[];
   click: (name: string) => Promise<void>;
+  act: (action: () => unknown) => Promise<void>;
+}
+
+interface PageSource {
+  file: string;
+  exportName: string;
+}
+
+interface MountOptions {
+  data?: unknown;
+  mutationResult?: unknown;
+  props?: Record<string, unknown>;
+}
+
+type Mount<Name extends string> = (page: Name, options?: MountOptions) => Promise<Mounted>;
+
+// Writes the stand-ins, then returns a function that renders a generated page of the project with them. `modules`
+// are generated files the pages import that render for real, as paths relative to the project's web app.
+async function createMount<Name extends string>(
+  tempDir: string,
+  webDir: string,
+  pages: Record<Name, PageSource>,
+  imports: Record<string, string>,
+  modules: Record<string, PageSource & { stub: string }> = {},
+): Promise<Mount<Name>> {
+  const stubs = join(tempDir, 'stubs');
+  await mkdir(stubs, { recursive: true });
+  for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
+  const { resetState, startRender } = await import(join(stubs, 'react.mjs'));
+  Object.defineProperty(globalThis.navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true });
+
+  const withModules = { ...imports };
+  for (const [specifier, module] of Object.entries(modules)) {
+    const source = await readTextFile(join(webDir, module.file));
+    await evaluateGeneratedModule(source, join(stubs, module.stub), withModules, 'tsx');
+    withModules[specifier] = `./${module.stub}`;
+  }
+
+  return async (page, options = {}) => {
+    const { file, exportName } = pages[page];
+    const source = await readTextFile(join(webDir, file));
+    const module = await evaluateGeneratedModule<Record<string, Component>>(source, join(stubs, `${page}.mjs`), withModules, 'tsx');
+    const component = module[exportName];
+    if (!component) throw new Error(`${file} does not export ${exportName}`);
+    const globals = globalThis as { __testQueryData?: unknown; __testMutationResult?: unknown };
+    globals.__testQueryData = options.data;
+    globals.__testMutationResult = options.mutationResult;
+    resetState();
+    const draw = async () => {
+      startRender();
+      return renderElementTree(await component(options.props ?? { id: 'x' }));
+    };
+
+    const mounted: Mounted = {
+      tree: await draw(),
+      act: async (action) => {
+        await action();
+        mounted.tree = await draw();
+      },
+      click: async (name) => {
+        const all = elementsOf(mounted.tree);
+        const target = must(
+          all.find((element) => (element.tag === 'button' || element.tag === 'a') && accessibleName(element, all) === name),
+          `a control named ${name}`,
+        );
+        await mounted.act(async () => (target.props.onClick as Handler | undefined)?.());
+      },
+    };
+    return mounted;
+  };
 }
 
 describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
   let tempDir: string;
-  let mount: (page: OrgDashboardPageName, options?: { data?: unknown; mutationResult?: unknown }) => Promise<Mounted>;
+  let mount: Mount<OrgDashboardPageName | 'userActions'>;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
     const result = await runCli([blueprint.name, '--blueprint', blueprint.name, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
-
-    const stubs = join(tempDir, 'stubs');
-    await mkdir(stubs, { recursive: true });
-    for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
-    const { resetState, startRender } = await import(join(stubs, 'react.mjs'));
-    Object.defineProperty(globalThis.navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true });
-
-    const imports = { ...COMMON_IMPORTS, ...blueprint.routerStubs };
-    mount = async (page, options = {}) => {
-      const { file, exportName } = blueprint.pages[page];
-      const source = await readTextFile(join(tempDir, blueprint.name, 'apps/web', file));
-      const module = await evaluateGeneratedModule<Record<string, Component>>(source, join(stubs, `${page}.mjs`), imports, 'tsx');
-      const component = module[exportName];
-      if (!component) throw new Error(`${file} does not export ${exportName}`);
-      (globalThis as { __testQueryData?: unknown }).__testQueryData = options.data;
-      (globalThis as { __testMutationResult?: unknown }).__testMutationResult = options.mutationResult;
-      resetState();
-      const draw = async () => {
-        startRender();
-        return renderElementTree(await component({ id: 'x' }));
-      };
-
-      const mounted: Mounted = {
-        tree: await draw(),
-        click: async (name) => {
-          const all = elementsOf(mounted.tree);
-          const target = must(
-            all.find((element) => (element.tag === 'button' || element.tag === 'a') && accessibleName(element, all) === name),
-            `a control named ${name}`,
-          );
-          await (target.props.onClick as Handler | undefined)?.();
-          mounted.tree = await draw();
-        },
-      };
-      return mounted;
-    };
+    mount = await createMount(
+      tempDir,
+      join(tempDir, blueprint.name, 'apps/web'),
+      { ...blueprint.pages, userActions: USER_ACTIONS },
+      { ...COMMON_IMPORTS, ...blueprint.routerStubs },
+    );
   });
 
   afterAll(async () => {
@@ -472,6 +584,261 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expectClasses(email, 'sm:hidden', 'text-muted-foreground');
       const role = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.role), 'the role pill');
       expect(classesOf(role)).not.toContain('sm:hidden');
+    });
+  });
+  describe('user actions', () => {
+    const actions = (): Promise<Mounted> =>
+      mount('userActions', { props: { user: { id: 'u1', name: 'Ada Lovelace', role: 'admin', banned: false } } });
+
+    test('the trigger is a Button named Actions, drawn with an icon the name does not depend on', async () => {
+      const page = await actions();
+      const buttons = withTag(page.tree, 'button');
+      expect(buttons).toHaveLength(1);
+      const trigger = must(buttons[0], 'the trigger');
+      expect(accessibleName(trigger, elementsOf(page.tree))).toBe('Actions');
+      expect(trigger.props['data-component']).toBe('Button');
+      expect(trigger.props.variant).toBe('ghost');
+      expect(trigger.props.size).toBe('icon');
+      expect(find(trigger, (element) => element.props['data-icon'] === 'MoreHorizontal')).toBeDefined();
+      expect(textOf(trigger)).toBe('');
+    });
+
+    test('the menu offers the other roles and the ban', async () => {
+      const page = await actions();
+      const menu = must(find(page.tree, (element) => element.props.role === 'menu'), 'the menu');
+      const entries = elementsOf(menu.children).filter((element) => element.props.role === 'menuitem');
+      expect(entries.map(textOf)).toEqual(['Set role: user', 'Set role: manager', 'Ban User']);
+    });
+  });
+});
+
+// The fullstack blueprint writes its own admin pages: a data table over `users`, a role matrix, inline-edit fields.
+const FULLSTACK_PAGES = {
+  userTable: { file: 'src/components/admin/user-table.tsx', exportName: 'UserTable' },
+  userDetailPage: { file: 'src/app/(dashboard)/admin/users/[id]/page.tsx', exportName: 'default' },
+  editUser: { file: 'src/components/admin/edit-user.tsx', exportName: 'EditUser' },
+  createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
+  generatedPassword: { file: 'src/components/admin/generated-password.tsx', exportName: 'GeneratedPassword' },
+  roles: { file: 'src/app/(dashboard)/admin/roles/page.tsx', exportName: 'default' },
+};
+
+const GENERATED_PASSWORD_MODULE = {
+  '@/components/admin/generated-password': { ...FULLSTACK_PAGES.generatedPassword, stub: 'generated-password.mjs' },
+};
+
+// The text a screen reader reads for an element named by other elements of the page (aria-labelledby).
+function labelledByText(element: RenderedElement, page: RenderedElement[]): string {
+  const ids = String(element.props['aria-labelledby'] ?? '').split(/\s+/);
+  return ids
+    .map((id) => page.find((candidate) => candidate.props.id === id))
+    .map((referenced) => (referenced ? textOf(referenced).trim() : ''))
+    .join(' ')
+    .trim();
+}
+
+const PASSWORD = 's3cret-Passw0rd';
+
+describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
+  const blueprint = 'cloudflare-fullstack-nextjs';
+  let tempDir: string;
+  let mount: Mount<keyof typeof FULLSTACK_PAGES>;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+    mount = await createMount(
+      tempDir,
+      join(tempDir, blueprint, 'apps/web'),
+      FULLSTACK_PAGES,
+      { ...COMMON_IMPORTS, 'next/link': './next-link.mjs', 'next/navigation': './next-navigation.mjs' },
+      GENERATED_PASSWORD_MODULE,
+    );
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  describe('users table', () => {
+    const BANNED_USER = { ...USER, id: 'u2', name: 'Grace Hopper', email: 'grace@example.com', role: null, banned: true };
+
+    test('links each user by name and labels its columns', async () => {
+      const table = await mount('userTable', { data: [USER] });
+      expect(namesOf(table.tree, 'a')).toEqual(['Ada Lovelace']);
+      expect(withTag(table.tree, 'th').map(textOf)).toEqual(['Name', 'Email', 'Role']);
+      expect(unnamedControls(table.tree)).toEqual([]);
+    });
+
+    test('drops Email below sm and Role below md, in the header and in every row', async () => {
+      const table = await mount('userTable', { data: [USER] });
+      expectClasses(heading(table.tree, 'th', 'Email'), 'hidden', 'sm:table-cell');
+      expectClasses(heading(table.tree, 'th', 'Role'), 'hidden', 'md:table-cell');
+      expectClasses(find(table.tree, (element) => element.tag === 'td' && textOf(element) === USER.email), 'hidden', 'sm:table-cell');
+      expectClasses(find(table.tree, (element) => element.tag === 'td' && textOf(element) === USER.role), 'hidden', 'md:table-cell');
+    });
+
+    test('the email and the role show under the name where their columns are hidden', async () => {
+      const table = await mount('userTable', { data: [USER] });
+      const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(USER.name)), 'the name cell');
+      const subline = must(find(nameCell, (element) => classesOf(element).includes('md:hidden')), 'the line under the name');
+      const email = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.email), 'the email line');
+      expectClasses(email, 'sm:hidden');
+      expect(find(subline, (element) => textOf(element) === USER.role)).toBeDefined();
+    });
+
+    test('a banned user is marked with text, and a user with no role reads as user', async () => {
+      const table = await mount('userTable', { data: [BANNED_USER] });
+      const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(BANNED_USER.name)), 'the name cell');
+      expect(textOf(nameCell)).toContain('Banned');
+      expect(find(table.tree, (element) => element.tag === 'td' && textOf(element) === 'user')).toBeDefined();
+    });
+  });
+
+  describe('user detail', () => {
+    test('the back link is a Button with an icon and a name', async () => {
+      const page = await mount('userDetailPage', { data: USER });
+      const backLink = must(find(page.tree, (element) => element.tag === 'a'), 'the back link');
+      expect(backLink.props.href).toBe('/admin/users');
+      expect(accessibleName(backLink, elementsOf(page.tree))).toBe('Back to users');
+      expect(backLink.props['data-component']).toBe('Button');
+      expect(find(backLink, (element) => element.props['data-icon'] === 'ArrowLeft')).toBeDefined();
+    });
+
+    test('the page is titled by the user and its sections are headings below it', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      expect(withTag(page.tree, 'h1').map(textOf)).toEqual([USER.name]);
+      expect(withTag(page.tree, 'h2').map(textOf)).toEqual(['Profile', 'Role', 'Password', 'Danger zone']);
+      expectClasses(withTag(page.tree, 'h1')[0], 'min-w-0', 'break-words');
+      expectClasses(find(page.tree, (element) => element.tag === 'p' && textOf(element) === USER.email), 'wrap-anywhere');
+    });
+
+    test('every profile field is named by its term', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      const all = elementsOf(page.tree);
+      const fields = withTag(page.tree, 'span').filter((element) => element.props.role === 'button');
+      expect(fields.map((field) => labelledByText(field, all))).toEqual(['Display name', 'First name', 'Last name', 'Phone']);
+      expect(withTag(page.tree, 'dt').map((term) => term.props.id)).toEqual(fields.map((field) => field.props['aria-labelledby']));
+    });
+
+    test('the role select has a name', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      const select = must(find(page.tree, (element) => element.props.role === 'combobox'), 'the role select');
+      expect(accessibleName(select, elementsOf(page.tree))).toBe('Role');
+    });
+
+    test('every action is a Button with a name', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      const actions = withTag(page.tree, 'button').filter((button) => button.props.role !== 'combobox');
+      expect(actions.map((button) => accessibleName(button, elementsOf(page.tree)))).toEqual(['Generate new password', 'Ban user', 'Delete user']);
+      expect(actions.map((button) => button.props['data-component'])).toEqual(['Button', 'Button', 'Button']);
+      expect(unnamedControls(page.tree)).toEqual([]);
+    });
+
+    test('a generated password is a labelled field with a named copy button', async () => {
+      const page = await mount('editUser', { props: { user: USER }, mutationResult: { password: PASSWORD } });
+      await page.click('Generate new password');
+      const field = must(find(page.tree, (element) => element.tag === 'input'), 'the password field');
+      expect(accessibleName(field, elementsOf(page.tree))).toBe('Generated password');
+      expect(field.props.value).toBe(PASSWORD);
+      expect(field.props.readOnly).toBe(true);
+      expect(namesOf(page.tree, 'button')).toContain('Copy password');
+      expect(unnamedControls(page.tree)).toEqual([]);
+    });
+
+    test('the sections get a smaller padding on a phone', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      for (const section of withTag(page.tree, 'section')) expectClasses(section, 'p-4', 'sm:p-6');
+    });
+  });
+
+  describe('generated password', () => {
+    test('copying announces the result through the button name', async () => {
+      const page = await mount('generatedPassword', { props: { password: PASSWORD } });
+      expect(namesOf(page.tree, 'button')).toEqual(['Copy password']);
+      await page.click('Copy password');
+      expect(namesOf(page.tree, 'button')).toEqual(['Copied']);
+    });
+
+    test('a refused clipboard leaves the button unchanged', async () => {
+      const page = await mount('generatedPassword', { props: { password: PASSWORD } });
+      const clipboard = Object.getOwnPropertyDescriptor(globalThis.navigator, 'clipboard');
+      Object.defineProperty(globalThis.navigator, 'clipboard', {
+        value: { writeText: () => Promise.reject(new Error('denied')) },
+        configurable: true,
+      });
+      try {
+        await page.click('Copy password');
+        expect(namesOf(page.tree, 'button')).toEqual(['Copy password']);
+      } finally {
+        if (clipboard) Object.defineProperty(globalThis.navigator, 'clipboard', clipboard);
+      }
+    });
+  });
+
+  describe('create user dialog', () => {
+    test('the first and last name stack on a phone', async () => {
+      const dialog = await mount('createUserDialog');
+      const names = (element: RenderedElement): string => withTag(element, 'input').map((input) => input.props['aria-label']).join();
+      const grid = must(find(dialog.tree, (element) => element.tag === 'div' && names(element) === 'First name,Last name'), 'the name grid');
+      expectClasses(grid, 'grid', 'sm:grid-cols-2');
+      expect(classesOf(grid)).not.toContain('grid-cols-2');
+    });
+
+    test('the created password is a labelled field with a named copy button', async () => {
+      const dialog = await mount('createUserDialog', { mutationResult: { password: PASSWORD } });
+      const form = must(find(dialog.tree, (element) => element.tag === 'form'), 'the form');
+      await dialog.act(async () => (form.props.onSubmit as (event: { preventDefault(): void }) => unknown)({ preventDefault() {} }));
+      const field = must(find(dialog.tree, (element) => element.tag === 'input'), 'the password field');
+      expect(accessibleName(field, elementsOf(dialog.tree))).toBe('Generated password');
+      expect(field.props.value).toBe(PASSWORD);
+      expect(namesOf(dialog.tree, 'button')).toEqual(['Create user', 'Copy password', 'Done']);
+      expect(unnamedControls(dialog.tree)).toEqual([]);
+    });
+  });
+
+  describe('roles page', () => {
+    const PERMISSIONS = ['user.create', 'user.list', 'contact.create', 'contact.read'];
+    const table = async (): Promise<RenderedElement> => must(withTag((await mount('roles')).tree, 'table')[0], 'the table');
+    const headers = (element: RenderedElement, scope: string): RenderedElement[] => withTag(element, 'th').filter((header) => header.props.scope === scope);
+
+    test('is one table named by a caption, with a header for each column and each row', async () => {
+      const roles = await table();
+      expect(textOf(must(withTag(roles, 'caption')[0], 'the caption'))).toBe('Permissions granted to each role');
+      expect(headers(roles, 'col').map(textOf)).toEqual(['Permission', 'admin(you)', 'manager']);
+      expect(headers(roles, 'row').map(textOf)).toEqual(PERMISSIONS);
+      for (const row of withTag(must(withTag(roles, 'tbody')[0], 'the body'), 'tr')) expect(withTag(row, 'th')[0]?.props.scope).toBe('row');
+    });
+
+    test('says Allowed or Denied in text and draws a check or a dash, so colour never carries it', async () => {
+      const roles = await table();
+      const verdicts = (permission: string): string[] => {
+        const row = must(withTag(roles, 'tr').find((candidate) => withTag(candidate, 'th').some((header) => textOf(header) === permission)), `the ${permission} row`);
+        return withTag(row, 'td').map(textOf);
+      };
+      expect(verdicts('user.create')).toEqual(['Allowed', 'Denied']);
+      expect(verdicts('contact.create')).toEqual(['Allowed', 'Denied']);
+      expect(verdicts('contact.read')).toEqual(['Allowed', 'Allowed']);
+
+      for (const cell of withTag(roles, 'td')) {
+        const icon = must(find(cell, (element) => element.tag === 'svg'), 'the icon');
+        expect(icon.props['data-icon']).toBe(textOf(cell) === 'Allowed' ? 'Check' : 'Minus');
+        expect(icon.props['aria-hidden']).toBe('true');
+        expect(icon.props['aria-label']).toBeUndefined();
+      }
+    });
+
+    test('marks the role of the signed-in admin with text', async () => {
+      const roles = await table();
+      expect(headers(roles, 'col').map(textOf).filter((name) => name.includes('(you)'))).toEqual(['admin(you)']);
+    });
+
+    test('is compact enough to fit a phone and scrolls inside its frame when it does not', async () => {
+      const page = await mount('roles');
+      const frames = elementsOf(page.tree).filter((element) => element.tag === 'div' && withTag(element, 'table').length === 1);
+      expectClasses(frames.at(-1), 'overflow-x-auto');
+      for (const cell of [...withTag(page.tree, 'th'), ...withTag(page.tree, 'td')]) expectClasses(cell, 'px-2', 'sm:px-4');
+      expectClasses(headers(must(withTag(page.tree, 'table')[0], 'the table'), 'row')[0], 'wrap-anywhere');
     });
   });
 });
