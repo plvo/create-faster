@@ -10,6 +10,12 @@ const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudfl
 
 const WRANGLER_VERSION = '^4.148.0';
 
+// Privy pins viem exactly: each @privy-io/react-auth release depends on one viem version and each
+// @privy-io/wagmi release peers on one, so npm rejects ranges that resolve to releases of different pairs.
+const PRIVY_REACT_AUTH_VERSION = '3.49.0';
+const PRIVY_WAGMI_VERSION = '4.0.19';
+const PRIVY_VIEM_VERSION = '2.57.5';
+
 const TSX_VERSION = '^4.23.15';
 
 // Node runs no TypeScript file of the generated scripts itself; Bun does.
@@ -1132,11 +1138,11 @@ export const META: Meta = {
       },
       packageJson: {
         dependencies: {
-          '@privy-io/react-auth': '^3.39.0',
-          '@privy-io/wagmi': '^4.0.17',
+          '@privy-io/react-auth': PRIVY_REACT_AUTH_VERSION,
+          '@privy-io/wagmi': PRIVY_WAGMI_VERSION,
           '@privy-io/server-auth': '^1.32.5',
           wagmi: '^3.7.7',
-          viem: '^2.56.1',
+          viem: PRIVY_VIEM_VERSION,
         },
       },
       envs: [
