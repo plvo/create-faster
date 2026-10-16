@@ -15,3 +15,12 @@ export const ROUTES: RouteProps[] = [
   { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration', permissions: { user: ['list'] } },
   { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];
+
+export const PAGE_URLS: string[] = [
+  ...ROUTES.map((route) => route.url),
+  '/profile',
+  '/profile/account',
+  '/profile/preferences',
+  '/profile/security',
+  '/profile/sessions',
+];

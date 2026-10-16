@@ -1,0 +1,46 @@
+{{!-- userQuery: the tRPC procedure that reads one user by id. contactQuery: the one that reads a contact, when the dashboard has contacts --}}
+interface Breadcrumb {
+  url: string;
+  label: React.ReactNode;
+  hasPage: boolean;
+}
+
+function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
+  return routes.find((route) => route.url === url)?.title;
+}
+
+function formatSegment(segment: string): string {
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
+}
+
+function UserName({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const { data: user } = useQuery(trpc.{{userQuery}}.queryOptions({ id }));
+  return user?.name || 'User';
+}
+{{#if contactQuery}}
+
+function ContactName({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const { data: contact } = useQuery(trpc.{{contactQuery}}.queryOptions({ id }));
+  return [contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || 'Contact';
+}
+{{/if}}
+
+const DETAIL_NAMES: Record<string, React.ComponentType<{ id: string }>> = {
+  '/admin/users': UserName,
+{{#if contactQuery}}
+  '/contacts': ContactName,
+{{/if}}
+};
+
+function buildBreadcrumbs(pathname: string): Breadcrumb[] {
+  const segments = pathname.split('/').filter(Boolean);
+
+  return segments.map((segment, index) => {
+    const url = `/${segments.slice(0, index + 1).join('/')}`;
+    const Name = DETAIL_NAMES[`/${segments.slice(0, index).join('/')}`];
+    const label = Name ? <Name id={segment} /> : findRouteTitle(ROUTES, url) || formatSegment(segment);
+    return { url, label, hasPage: PAGE_URLS.includes(url) };
+  });
+}

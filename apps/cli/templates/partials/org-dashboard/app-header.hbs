@@ -6,6 +6,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 {{/if}}
+import { useQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import {
   Breadcrumb,
@@ -17,15 +18,10 @@ import {
 } from '@repo/ui/components/ui/breadcrumb';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarTrigger } from '@repo/ui/components/ui/sidebar';
-import { ROUTES, type RouteProps } from '@/lib/constants';
+import { PAGE_URLS, ROUTES, type RouteProps } from '@/lib/constants';
+import { useTRPC } from '@/trpc/providers';
 
-function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
-  return routes.find((route) => route.url === url)?.title;
-}
-
-function formatSegment(segment: string): string {
-  return segment.charAt(0).toUpperCase() + segment.slice(1);
-}
+{{> dashboard/breadcrumb-trail userQuery="user.getById" contactQuery="contact.getById"}}
 
 export function AppHeader() {
 {{#if (eq stackName "tanstack-start")}}
@@ -33,13 +29,7 @@ export function AppHeader() {
 {{else}}
   const pathname = usePathname();
 {{/if}}
-  const segments = pathname.split('/').filter(Boolean);
-
-  const breadcrumbs = segments.map((segment, index) => {
-    const url = `/${segments.slice(0, index + 1).join('/')}`;
-    const title = findRouteTitle(ROUTES, url) || formatSegment(segment);
-    return { url, title };
-  });
+  const breadcrumbs = buildBreadcrumbs(pathname);
 
   return (
     <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
@@ -61,15 +51,17 @@ export function AppHeader() {
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 {index === breadcrumbs.length - 1 ? (
-                  <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
-                ) : (
+                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                ) : crumb.hasPage ? (
                   <BreadcrumbLink asChild>
 {{#if (eq stackName "tanstack-start")}}
-                    <Link to={crumb.url}>{crumb.title}</Link>
+                    <Link to={crumb.url}>{crumb.label}</Link>
 {{else}}
-                    <Link href={crumb.url}>{crumb.title}</Link>
+                    <Link href={crumb.url}>{crumb.label}</Link>
 {{/if}}
                   </BreadcrumbLink>
+                ) : (
+                  <span>{crumb.label}</span>
                 )}
               </BreadcrumbItem>
             </React.Fragment>
