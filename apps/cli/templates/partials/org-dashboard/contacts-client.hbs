@@ -1,0 +1,30 @@
+{{#unless (eq stackName "tanstack-start")}}
+'use client';
+
+{{/unless}}
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@repo/ui/components/ui/button';
+import { Can } from '@/components/can';
+import { ContactDialog } from '@/components/contacts/contact-dialog';
+import { ContactTable } from '@/components/contacts/contact-table';
+
+export function ContactsClient() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-3xl font-bold'>Contacts</h1>
+        <Can permissions=\{{ contact: ['create'] }}>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className='size-4' />
+            New Contact
+          </Button>
+        </Can>
+      </div>
+      <ContactTable />
+      <ContactDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </div>
+  );
+}

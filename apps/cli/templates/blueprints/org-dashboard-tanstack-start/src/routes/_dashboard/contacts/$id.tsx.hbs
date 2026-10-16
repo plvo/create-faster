@@ -1,0 +1,22 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { ContactDetail } from '@/components/contacts/contact-detail';
+import { QueryBoundary } from '@/components/query-boundary';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/contacts/$id')({
+  loader: ({ context, params }) => {
+    void context.queryClient.prefetchQuery(context.trpc.contact.getById.queryOptions({ id: params.id }));
+  },
+  head: () => ({ meta: [{ title: pageTitle('Contact') }] }),
+  component: ContactPage,
+});
+
+function ContactPage() {
+  const { id } = Route.useParams();
+
+  return (
+    <QueryBoundary>
+      <ContactDetail id={id} />
+    </QueryBoundary>
+  );
+}

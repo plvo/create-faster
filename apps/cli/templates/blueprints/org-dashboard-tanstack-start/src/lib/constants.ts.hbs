@@ -1,6 +1,6 @@
 import type { LinkProps } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Shield, ShieldCheck, Users } from 'lucide-react';
 
 export interface RouteProps {
   url: NonNullable<LinkProps['to']>;
@@ -10,4 +10,9 @@ export interface RouteProps {
   permissions?: Record<string, string[]>;
 }
 
-export const ROUTES: RouteProps[] = [{ url: '/', title: 'Dashboard', icon: LayoutDashboard }];
+export const ROUTES: RouteProps[] = [
+  { url: '/', title: 'Dashboard', icon: LayoutDashboard },
+  { url: '/contacts', title: 'Contacts', icon: Users, permissions: { contact: ['read'] } },
+  { url: '/admin/users', title: 'Users', icon: Shield, category: 'Administration', permissions: { user: ['list'] } },
+  { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
+];

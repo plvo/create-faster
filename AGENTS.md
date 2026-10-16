@@ -202,7 +202,7 @@ A login or signup form never passes a query parameter (`redirectTo`, `redirect`)
 
 ### TanStack Start org dashboard guards
 
-`org-dashboard-tanstack-start` guards its pages with two pathless layouts, `_dashboard` and `_auth`, that decide through one `isSignedIn(session)` in `src/lib/auth/guards.ts` (so they never redirect to each other in a loop), and routes add `requireAdmin` / `requirePermission` to their own `beforeLoad`. The generated `docs/agents/auth.md` is the reference (`templates/blueprints/org-dashboard-nextjs/docs/agents/auth.md.hbs` holds both frameworks' sections); keep it in step with the guards.
+`org-dashboard-tanstack-start` guards its pages with two pathless layouts, `_dashboard` and `_auth`, that decide through one `isSignedIn(session)` in `src/lib/auth/guards.ts` (so they never redirect to each other in a loop), and routes add `requireAdmin` / `requirePermission` to their own `beforeLoad`: the `admin` and `contacts` layout routes hold that check once for their pages. The pages and tables both frameworks render (`contact-table`, `contact-detail`, `contacts-client`, `user-table`, `user-detail`, `users-client`, `roles-page`) are partials in `templates/partials/org-dashboard/` that the `.nextjs.hbs` files and the Start files render, the router links and navigation behind `stackName`. The generated `docs/agents/auth.md` is the reference (`templates/blueprints/org-dashboard-nextjs/docs/agents/auth.md.hbs` holds both frameworks' sections); keep it in step with the guards.
 
 ### Cloudflare
 
