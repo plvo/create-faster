@@ -2,12 +2,9 @@ import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
-import { expect, setDefaultTimeout } from 'bun:test';
+import { expect } from 'bun:test';
 import { $ } from 'bun';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
-
-// Every integration test file imports this module, so the timeout applies to those files only; unit tests keep Bun's default.
-setDefaultTimeout(120_000);
 
 interface CliResult {
   exitCode: number;

@@ -1,3 +1,4 @@
+import './timeout';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
