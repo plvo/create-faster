@@ -73,6 +73,14 @@ interface Contact {
   email: string | null;
 }
 
+async function firstContact(server: RunningServer, cookie: string): Promise<Contact> {
+  const { status, data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
+  expect(status).toBe(200);
+  const [contact] = contacts;
+  if (!contact) throw new Error('the seed created no contact');
+  return contact;
+}
+
 async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
   const webDir = join(projectDir, 'apps/web');
   const port = await getFreePort();
@@ -184,10 +192,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   test('a member lists the contacts and opens one', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.7');
-    const { status, data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
-    expect(status).toBe(200);
-    expect(contacts.length).toBeGreaterThan(0);
-    const [contact] = contacts;
+    const contact = await firstContact(server, cookie);
 
     const list = await fetch(new URL('/contacts', server.url), { headers: { cookie } });
     expect(list.status).toBe(200);
@@ -207,8 +212,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   test('a read-only role opens the contacts without the buttons that write', async () => {
     const cookie = await signIn(server, SEEDED_READER, '10.2.0.8');
-    const { data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
-    const [contact] = contacts;
+    const contact = await firstContact(server, cookie);
 
     const list = await fetch(new URL('/contacts', server.url), { headers: { cookie } });
     expect(list.status).toBe(200);
@@ -233,6 +237,9 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     expect(usersHtml).toContain('Create User');
     expect(usersHtml).toContain(SEEDED_MEMBER);
 
+    const bare = await fetch(new URL('/admin', server.url), { headers: { cookie } });
+    expect(bare.status).toBe(404);
+    expect(await bare.text()).toContain('Page not found');
     const roles = await fetch(new URL('/admin/roles', server.url), { headers: { cookie } });
     expect(roles.status).toBe(200);
     expect(await roles.text()).toContain('packages/auth/src/permissions.ts');
@@ -259,9 +266,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   test('a member is redirected away from every admin page and cannot call the admin procedures', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.11');
-    const { data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
-
-    for (const path of ['/admin/users', '/admin/roles', `/admin/users/${contacts[0].id}`]) {
+    for (const path of ['/admin', '/admin/users', '/admin/roles', '/admin/users/any-user-id']) {
       const { status, location } = await redirectOf(server, path, cookie);
       expect([path, status, location?.pathname]).toEqual([path, 307, '/']);
     }
@@ -271,7 +276,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
   });
 
   test('an anonymous visitor is redirected to the login page from the contacts and admin pages', async () => {
-    for (const path of ['/contacts', '/admin/users', '/admin/roles']) {
+    for (const path of ['/contacts', '/admin', '/admin/users', '/admin/roles']) {
       const { status, location } = await redirectOf(server, path);
       expect([path, status, location?.pathname, location?.searchParams.get('redirectTo')]).toEqual([path, 307, '/login', path]);
     }
@@ -302,8 +307,8 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
       expect(home.status).toBe(404);
       expect(await home.text()).toContain('Page not found');
 
-      const { data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', await signIn(server, SEEDED_ADMIN, '10.2.0.12'));
-      for (const path of ['/contacts', `/contacts/${contacts[0].id}`]) {
+      const contact = await firstContact(server, await signIn(server, SEEDED_ADMIN, '10.2.0.12'));
+      for (const path of ['/contacts', `/contacts/${contact.id}`]) {
         const page = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie } });
         expect([path, page.status]).toEqual([path, 404]);
         expect(await page.text()).toContain('Page not found');

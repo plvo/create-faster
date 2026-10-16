@@ -113,6 +113,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
       'src/routes/_dashboard/contacts/index.tsx',
       'src/routes/_dashboard/contacts/$id.tsx',
       'src/routes/_dashboard/admin.tsx',
+      'src/routes/_dashboard/admin/index.tsx',
       'src/routes/_dashboard/admin/users/index.tsx',
       'src/routes/_dashboard/admin/users/$id.tsx',
       'src/routes/_dashboard/admin/roles.tsx',
