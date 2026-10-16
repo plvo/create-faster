@@ -20,6 +20,7 @@ const TIMEOUT_SERVER = 120_000;
 
 const SEED_PASSWORD = 'password';
 const SEEDED_ADMIN = 'admin@example.com';
+const SEEDED_MEMBER = 'user@example.com';
 const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 
 async function generateInstalledBlueprint(blueprint: string, name: string): Promise<string> {
@@ -53,6 +54,12 @@ const signIn = async (server: RunningServer, email: string, password: string, cl
     .join('; ');
 };
 
+async function redirectPathOf(server: RunningServer, path: string, cookie?: string): Promise<string | null> {
+  const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: cookie ? { cookie } : {} });
+  const location = response.headers.get('location');
+  return response.status === 307 && location ? new URL(location, server.url).pathname : null;
+}
+
 async function pointWebAuthAt(webDir: string, appUrl: string): Promise<void> {
   const envPath = join(webDir, '.env');
   const kept = (await readFile(envPath, 'utf8')).split('\n').filter((line) => line && !line.startsWith('BETTER_AUTH_'));
@@ -70,12 +77,9 @@ async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
   return startServer(['bunx', 'next', 'start', '-p', String(port)], webDir, { port, readyTimeout: TIMEOUT_SERVER });
 }
 
-// better-auth checks the Drizzle schema against what its plugins write: a blueprint schema that lags a
-// plugin column fails the seed, which signs users up through auth, with a SCHEMA_MISMATCH.
-describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', () => {
+describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
   let projectDir: string;
   let setup: CommandResult;
-  let server: RunningServer | undefined;
 
   beforeAll(async () => {
     projectDir = await generateInstalledBlueprint('cloudflare-fullstack-nextjs', 'bp-seed-cloudflare');
@@ -83,51 +87,72 @@ describe('cloudflare-fullstack-nextjs: local-setup seeds through better-auth', (
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
   afterAll(async () => {
-    await server?.stop();
     if (projectDir) await cleanupTempDir(join(projectDir, '..'));
   });
 
-  test('local-setup migrates the local D1 database and seeds the demo accounts', () => {
-    expect(setup.exitCode, describeFailure(setup)).toBe(0);
-    expect(setup.stdout).toContain('Seeding complete.');
-    expect(describeFailure(setup)).not.toContain('SCHEMA_MISMATCH');
+  // better-auth checks the Drizzle schema against what its plugins write: a blueprint schema that lags a
+  // plugin column fails the seed, which signs users up through auth, with a SCHEMA_MISMATCH.
+  describe('local-setup seeds through better-auth', () => {
+    test('local-setup migrates the local D1 database and seeds the demo accounts', () => {
+      expect(setup.exitCode, describeFailure(setup)).toBe(0);
+      expect(setup.stdout).toContain('Seeding complete.');
+      expect(describeFailure(setup)).not.toContain('SCHEMA_MISMATCH');
+    });
   });
 
   // Client components render on the server without the request cookies, so a protected query they read has to be
   // prefetched by the page: a hard reload of an admin page answered 500 "You must be logged in" otherwise.
-  test(
-    'a signed-in admin reloads every dashboard page with a 200 and the server logs no error',
-    async () => {
-      const webDir = join(projectDir, 'apps/web');
-      const port = await getFreePort();
-      await pointWebAuthAt(webDir, `http://127.0.0.1:${port}`);
-      server = await startServer(['bunx', 'next', 'dev', '-p', String(port)], webDir, { port, readyPath: '/login', readyTimeout: TIMEOUT_SERVER });
-      const running = server;
+  describe('dashboard pages on a hard reload', () => {
+    let server: RunningServer;
 
-      const cookie = await signIn(running, SEEDED_ADMIN, SEED_PASSWORD, '10.0.1.1');
-      const sessionResponse = await fetch(new URL('/api/auth/get-session', running.url), { headers: { cookie } });
-      const { user } = (await sessionResponse.json()) as { user: { id: string } };
+    afterAll(async () => {
+      await server?.stop();
+    });
 
-      const paths = ['/', '/admin/users', `/admin/users/${user.id}`, '/admin/roles', '/profile/account', '/profile/security', '/profile/sessions', '/profile/preferences'];
-      for (const path of paths) {
-        const response = await fetch(new URL(path, running.url), { headers: { cookie } });
-        expect([path, response.status]).toEqual([path, 200]);
-      }
+    test(
+      'a signed-in admin gets a 200 on every page, an anonymous visitor and a non-admin are redirected, and the server logs no error',
+      async () => {
+        const webDir = join(projectDir, 'apps/web');
+        const port = await getFreePort();
+        await pointWebAuthAt(webDir, `http://127.0.0.1:${port}`);
+        server = await startServer(['bunx', 'next', 'dev', '-p', String(port)], webDir, {
+          port,
+          readyPath: '/login',
+          readyTimeout: TIMEOUT_SERVER,
+        });
 
-      const detail = await fetch(new URL(`/admin/users/${user.id}`, running.url), { headers: { cookie } });
-      expect(await detail.text()).toContain(SEEDED_ADMIN);
+        const cookie = await signIn(server, SEEDED_ADMIN, SEED_PASSWORD, '10.0.1.1');
+        const sessionResponse = await fetch(new URL('/api/auth/get-session', server.url), { headers: { cookie } });
+        const { user } = (await sessionResponse.json()) as { user: { id: string } };
+        const userPage = `/admin/users/${user.id}`;
 
-      for (const path of ['/', '/admin/users', `/admin/users/${user.id}`]) {
-        const anonymous = await fetch(new URL(path, running.url), { redirect: 'manual' });
-        const location = anonymous.headers.get('location');
-        expect([path, anonymous.status, location && new URL(location, running.url).pathname]).toEqual([path, 307, '/login']);
-      }
+        const pages = ['/', '/admin/users', userPage, '/admin/roles', '/profile/account', '/profile/security', '/profile/sessions', '/profile/preferences'];
+        for (const path of pages) {
+          const response = await fetch(new URL(path, server.url), { headers: { cookie } });
+          expect([path, response.status]).toEqual([path, 200]);
+        }
 
-      const { stdout, stderr } = await running.stop();
-      expect(`${stdout}\n${stderr}`).not.toMatch(/⨯|tRPC failed/);
-    },
-    TIMEOUT_SERVER * 3,
-  );
+        // The sidebar shows the email on every page; the back link is rendered by the user page alone, from the prefetched user.
+        const detail = await fetch(new URL(userPage, server.url), { headers: { cookie } });
+        expect(await detail.text()).toContain('Back to users');
+
+        for (const path of ['/', '/admin/users', userPage]) {
+          expect([path, await redirectPathOf(server, path)]).toEqual([path, '/login']);
+        }
+
+        const memberCookie = await signIn(server, SEEDED_MEMBER, SEED_PASSWORD, '10.0.1.2');
+        for (const path of ['/admin/users', userPage, '/admin/roles']) {
+          expect([path, await redirectPathOf(server, path, memberCookie)]).toEqual([path, '/']);
+        }
+
+        // A rejected query logs after the response is sent: wait for a late line before the server is stopped.
+        await Bun.sleep(1_000);
+        const { stdout, stderr } = await server.stop();
+        expect(`${stdout}\n${stderr}`).not.toMatch(/⨯|tRPC failed/);
+      },
+      TIMEOUT_SERVER * 3,
+    );
+  });
 });
 
 describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: local-setup, production build and sign-in', () => {
