@@ -9,7 +9,7 @@ import {
   isServerRuntimeSatisfied,
   isSingletonDbSatisfied,
 } from '@/lib/addon-utils';
-import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
+import { ASCII, CLI_VERSION, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, validateAppName, validateProjectName } from '@/lib/project-location';
 import { isInteractiveTerminal, missingAnswersWithoutTerminal, promptModeOf } from '@/lib/project-prompts';
@@ -88,6 +88,7 @@ export function parseFlags(): FlagAnswers {
     .argument('[project-name]', 'Name of the project to create')
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
+    .version(CLI_VERSION, '-V, --version', 'Display the version')
     .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect, [])
     .option(
       '--blueprint <name>',

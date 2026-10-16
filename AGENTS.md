@@ -437,6 +437,7 @@ All documentation produced by AI agents (research reports, plans, audits, cleanu
 | `--no-install` | Skip dependency installation |
 | `--no-agent-context` | Skip `AGENTS.md` and `CLAUDE.md` |
 | `--yes` | Ask nothing no flag answers: project categories stay empty, no git, no install |
+| `--version`, `-V` | Print the version of `apps/cli/package.json` and exit 0: no banner, no terminal and no other argument needed |
 | `none` as a value | Any project category flag: explicit "no selection" |
 
 ```bash
