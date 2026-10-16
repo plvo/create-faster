@@ -182,7 +182,7 @@ describe('better-auth trusts one client ip header for rate limiting', () => {
 
   for (const { name, args, viteConfig } of WITHOUT_NITRO_PLUGIN) {
     test(`${name} gets no Nitro client address plugin`, async () => {
-      const projectPath = await generate(`no-plugin-${name.replaceAll(' ', '-')}`, args);
+      const projectPath = await generate(`no-plugin-${name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`, args);
       expect(await fileExists(join(projectPath, NITRO_PLUGIN))).toBe(false);
       if (viteConfig) expect(await readTextFile(join(projectPath, 'vite.config.ts'))).not.toContain('client-ip');
     });

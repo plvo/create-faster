@@ -26,12 +26,15 @@ To state "no selection" explicitly, pass `none` to a category flag (`--database 
 bunx create-faster <project-name>
 ```
 
-The first argument specifies the project name. If omitted, the CLI prompts for it.
+The first argument is the project directory: a name, or a relative or absolute path. The project name is its last segment and must be a valid package name (lowercase letters, digits, `-`, `_` and `.`, starting with a letter or digit). If omitted, the CLI prompts for it, and the prompt accepts a path too.
 
 **Example**:
 ```bash
 bunx create-faster my-saas
+bunx create-faster ../out/my-saas
 ```
+
+The second command writes the project to `../out/my-saas` and names it `my-saas`.
 
 ### `--blueprint <name>`
 

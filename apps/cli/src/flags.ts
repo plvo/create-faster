@@ -11,6 +11,7 @@ import {
 } from '@/lib/addon-utils';
 import { ASCII, PACKAGE_MANAGERS } from '@/lib/constants';
 import { missingPackageManagerMessage, readPackageManagerVersion } from '@/lib/package-manager';
+import { projectNameOf, validateProjectName } from '@/lib/project-location';
 import { isInteractiveTerminal } from '@/lib/project-prompts';
 import { printError } from '@/tui/print-error';
 import type { AppContext, FlagAnswers, ProjectContext, TemplateContext } from '@/types/ctx';
@@ -139,16 +140,23 @@ ${color.bold('Examples:')}
   program.parse();
 
   const flags = program.opts<ParsedFlags>();
-  const projectName = program.args[0];
+  const projectDir = program.args[0];
 
-  if (Object.keys(flags).length === 0 && !projectName) {
+  if (Object.keys(flags).length === 0 && !projectDir) {
     return {};
   }
 
   const partial: FlagAnswers = {};
 
-  if (projectName) {
+  if (projectDir) {
+    const projectName = projectNameOf(projectDir);
+    const nameError = validateProjectName(projectName);
+    if (nameError) {
+      printError('Invalid project name', nameError);
+      process.exit(1);
+    }
     partial.projectName = projectName;
+    partial.projectDir = projectDir;
   }
 
   if (flags.app && flags.app.length > 0) {

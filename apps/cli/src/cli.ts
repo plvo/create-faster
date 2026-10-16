@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
+import { projectNameOf, validateProjectName } from '@/lib/project-location';
 import { arePromptsSuppressed, promptModeOf, shouldPromptCategory } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
@@ -26,7 +27,7 @@ export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 
     git: false,
   };
 
-  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
+  Object.assign(ctx, await promptOrUseProjectName(partial, progress.message('Name of your project?')));
   progress.next();
 
   if (partial?.apps && partial.apps.length > 0) {
@@ -96,7 +97,7 @@ export async function blueprintCli(
     blueprint: blueprintName,
   };
 
-  ctx.projectName = await promptOrUseProjectName(partial, progress.message('Name of your project?'));
+  Object.assign(ctx, await promptOrUseProjectName(partial, progress.message('Name of your project?')));
 
   log.info(`${color.green('✓')} Using blueprint: ${color.bold(blueprint.label)}`);
   log.info(
@@ -186,29 +187,33 @@ async function promptUnansweredCategories(
   }
 }
 
-async function promptOrUseProjectName(partial: FlagAnswers | undefined, message: string): Promise<string> {
-  if (partial?.projectName) {
+async function promptOrUseProjectName(
+  partial: FlagAnswers | undefined,
+  message: string,
+): Promise<Pick<TemplateContext, 'projectName' | 'projectDir'>> {
+  if (partial?.projectName && partial.projectDir) {
     log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    const fullPath = join(process.cwd(), partial.projectName);
-    if (existsSync(fullPath)) {
-      cancel(`Directory "${partial.projectName}" already exists.`);
+    if (existsSync(resolve(process.cwd(), partial.projectDir))) {
+      cancel(`Directory "${partial.projectDir}" already exists.`);
       process.exit(1);
     }
-    return partial.projectName;
+    return { projectName: partial.projectName, projectDir: partial.projectDir };
   }
 
-  return promptText<string>(message, {
+  const projectDir = await promptText<string>(message, {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
       const trimmed = value.trim();
       if (!trimmed) return 'Project name is required';
-      const fullPath = join(process.cwd(), trimmed);
-      if (existsSync(fullPath)) {
+      const nameError = validateProjectName(projectNameOf(trimmed));
+      if (nameError) return nameError;
+      if (existsSync(resolve(process.cwd(), trimmed))) {
         return `Directory "${trimmed}" already exists.`;
       }
     },
   });
+  return { projectName: projectNameOf(projectDir), projectDir };
 }
 
 async function promptOrUseGit(partial: FlagAnswers | undefined, message: string): Promise<boolean> {

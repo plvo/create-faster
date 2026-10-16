@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { intro, log, outro } from '@clack/prompts';
 import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
@@ -6,6 +5,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
 import { findMissingPackageManager, missingPackageManagerMessage } from '@/lib/package-manager';
 import { runPostGeneration } from '@/lib/post-generation';
+import { getProjectDir, getProjectPath } from '@/lib/project-location';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import { displayInstallFailure } from '@/tui/install-failure';
 import { printError } from '@/tui/print-error';
@@ -85,11 +85,11 @@ async function main() {
       process.exit(1);
     }
 
-    const projectPath = join(process.cwd(), ctx.projectName);
+    const projectPath = getProjectPath(ctx);
     const postGeneration = await runPostGeneration(ctx, projectPath);
 
     if (postGeneration.installFailure) {
-      displayInstallFailure(ctx.projectName, postGeneration.installFailure);
+      displayInstallFailure(getProjectDir(ctx), postGeneration.installFailure);
       process.exit(1);
     }
 
