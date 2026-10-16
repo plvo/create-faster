@@ -95,7 +95,7 @@ src/
 │   │   ├── admin.tsx                     # Layout route: requireAdmin
 │   │   ├── admin/
 │   │   │   ├── index.tsx                 # Bare /admin answers 404
-│   │   │   ├── roles.tsx                 # Read-only roles + permission matrix
+│   │   │   ├── roles.tsx                 # Page title, renders the roles page
 │   │   │   └── users/
 │   │   │       ├── index.tsx             # User list
 │   │   │       └── $id.tsx               # User detail
@@ -114,7 +114,7 @@ src/
 │       ├── auth/$.ts                     # Better Auth handler
 │       └── trpc/$.ts                     # tRPC handler
 ├── components/
-│   ├── admin/                            # Create user dialog, user actions, user table, user detail
+│   ├── admin/                            # Create user dialog, user actions, user table, user detail, roles page (matrix)
 │   ├── auth/login-form.tsx               # Email/password login form
 │   ├── contacts/                         # Contact dialog, form, table, detail
 │   ├── navigation/                       # Sidebar, header, nav-user dropdown
