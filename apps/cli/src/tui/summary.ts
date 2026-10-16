@@ -18,56 +18,56 @@ function leavesAnswersToPrompts(ctx: TemplateContext): boolean {
 }
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
-  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${quoteForShell(getProjectDir(ctx))}`;
+  const command = `${getPackageRunner(ctx)} create-faster ${quoteForShell(getProjectDir(ctx))}`;
+  const flags: string[] = [];
 
   if (ctx.blueprint) {
-    flagsCommand += ` --blueprint ${ctx.blueprint}`;
+    flags.push(`--blueprint ${ctx.blueprint}`);
     if (ctx.project.deployment) {
-      flagsCommand += ` --deployment ${ctx.project.deployment}`;
+      flags.push(`--deployment ${ctx.project.deployment}`);
     }
     if (ctx.project.linter) {
-      flagsCommand += ` --linter ${ctx.project.linter}`;
+      flags.push(`--linter ${ctx.project.linter}`);
     }
     for (const tooling of ctx.project.tooling) {
-      flagsCommand += ` --tooling ${tooling}`;
+      flags.push(`--tooling ${tooling}`);
     }
   } else {
     for (const app of ctx.apps) {
       const librariesStr = app.libraries.length > 0 ? `:${app.libraries.join(',')}` : '';
-      flagsCommand += ` --app ${app.appName}:${app.stackName}${librariesStr}`;
+      flags.push(`--app ${app.appName}:${app.stackName}${librariesStr}`);
     }
 
     for (const projectKey of Object.keys(ctx.project) as (keyof ProjectContext)[]) {
       if (Array.isArray(ctx.project[projectKey])) {
         for (const value of ctx.project[projectKey]) {
-          flagsCommand += ` --${projectKey} ${value}`;
+          flags.push(`--${projectKey} ${value}`);
         }
       } else if (ctx.project[projectKey]) {
-        flagsCommand += ` --${projectKey} ${ctx.project[projectKey]}`;
+        flags.push(`--${projectKey} ${ctx.project[projectKey]}`);
       }
     }
   }
 
   if (ctx.git) {
-    flagsCommand += ' --git';
+    flags.push('--git');
   }
 
   if (ctx.pm) {
-    flagsCommand += ` --pm ${ctx.pm}`;
-    if (ctx.skipInstall) flagsCommand += ' --no-install';
+    flags.push(`--pm ${ctx.pm}`);
+    if (ctx.skipInstall) flags.push('--no-install');
   }
 
   if (leavesAnswersToPrompts(ctx)) {
-    flagsCommand += ' --yes';
+    flags.push('--yes');
   }
 
   if (ctx.agentContext === false) {
-    flagsCommand += ' --no-agent-context';
+    flags.push('--no-agent-context');
   }
 
-  if (flagsCommand.length > 140) {
-    flagsCommand = flagsCommand.replaceAll('--', '\\\n  --');
-  }
+  const singleLine = [command, ...flags].join(' ');
+  const flagsCommand = singleLine.length > 140 ? [command, ...flags].join(' \\\n  ') : singleLine;
 
   outro(`${color.bgCyan(color.black(`🚀 Project created successfully at ${projectPath}!`))}
 
