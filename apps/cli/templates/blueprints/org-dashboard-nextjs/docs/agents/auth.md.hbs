@@ -15,8 +15,19 @@ Call `requireSession()` from `apps/web/src/lib/auth/session.ts`: it reads the se
 
 {{/if}}
 {{/each}}
+{{#each (stackApps "tanstack-start")}}
+{{#if (eq appName "web")}}
+## Reading the session server-side
+Routes are TanStack Start file routes in `apps/web/src/routes/`, guarded by two pathless layouts. `_dashboard.tsx` wraps every dashboard page: its `beforeLoad` calls `requireSession(location)` from `apps/web/src/lib/auth/guards.ts`, which reads the session through the `getSession` server function (`apps/web/src/lib/auth/session.ts`, shared with the tRPC context through the per-request session cache), redirects to `/login?redirectTo=<requested path>` when there is no `session.user.role`, and returns `{ session }` into the route context, so every child route and component reads the session from there. `_auth.tsx` wraps the login page and redirects a signed-in user to `/`. Both layouts decide through `isSignedIn(session)` in `guards.ts`: change that check in one place, never in a layout, or one layout accepts a session the other refuses and the two redirect to each other in a loop.
+
+`beforeLoad` hooks run parent first and every loader starts after all of them, so an anonymous visit redirects before any protected query starts and a page needs no session guard of its own. A route that needs more adds it to its own `beforeLoad`, from `guards.ts`: `requireAdmin(context.session)` (a non-admin is redirected to `/`) once on the admin route, or `requirePermission(context.session, { resource: ['action'] })` (a missing permission renders the not-found page with status 404, through `authClient.admin.checkRolePermission`). Pair a route with the matching `adminProcedure` or `permissionProcedure` for its prefetch.
+
+Loaders prefetch without awaiting, `void context.queryClient.prefetchQuery(context.trpc.<router>.<procedure>.queryOptions())`, and the component reads the query with `useSuspenseQuery` inside `QueryBoundary`, so the page streams and the data follows it. Signing out clears the query cache (`NavUser`), so the next user of the browser sees nothing from the previous session.
+
+{{/if}}
+{{/each}}
 ## Post-login redirect
-The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`){{#each (stackApps "nextjs")}}{{#if (eq appName "web")}} before `router.push`{{/if}}{{/each}}: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to {{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}`router.push` or {{/if}}{{/each}}`redirect`: an absolute URL would send a freshly signed-in user to another site.
+{{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to `router.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}}The login route (`apps/web/src/routes/_auth/login.tsx`) reads the destination from the `redirectTo` search parameter in `validateSearch` and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`): only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`, so the form only navigates to a validated destination. Never hand a query parameter straight to `navigate`, `history.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}
 
 ## RBAC (access control)
 
@@ -55,7 +66,7 @@ New roles are immediately assignable (admin → Users → row actions → "Set r
 
 **Server (tRPC):** gate data routes with `permissionProcedure(resource, action)` from `packages/api/src/middleware/rbac.ts`. It calls `auth.api.userHasPermission` and throws `FORBIDDEN` when the role lacks the permission. Example: `contact.create` uses `permissionProcedure('contact', 'create')`. Use `adminProcedure` for admin-only surfaces (the Users panel).
 
-**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions=\{{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session and check it synchronously with `authClient.admin.checkRolePermission`. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
+**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions=\{{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}} in the route context set by the `_dashboard` layout (no second fetch){{/if}}{{/each}} and check it synchronously with `authClient.admin.checkRolePermission`{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}} (`hasPermission` in `apps/web/src/lib/auth/permission.ts`, which the route guards use too){{/if}}{{/each}}. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
 
 Gating on both sides matters: the client gate prevents UI leaks, the server procedure prevents route bypass.
 

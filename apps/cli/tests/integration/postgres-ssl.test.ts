@@ -205,6 +205,7 @@ describe('postgres blueprints', () => {
       'dapp-rainbowkit-nextjs',
       'multitenant-saas-nextjs',
       'org-dashboard-nextjs',
+      'org-dashboard-tanstack-start',
     ]);
   });
 

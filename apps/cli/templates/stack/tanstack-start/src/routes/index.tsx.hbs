@@ -1,3 +1,7 @@
+---
+blueprintSkip:
+  - org-dashboard-tanstack-start
+---
 import { createFileRoute{{#if (hasLibrary "mdx")}}, Link{{/if}} } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({ component: Home })

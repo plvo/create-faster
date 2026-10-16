@@ -177,7 +177,7 @@ describe('Blueprint template relative imports', () => {
         const content = getEffectiveContent(rawContent, isMono);
 
         const regex = /from\s+['"](\.\.?\/[^'"]+)['"]/g;
-        const relativeImports = [...new Set([...content.matchAll(regex)].map((m) => m[1]!))];
+        const relativeImports = [...new Set([...content.matchAll(regex)].map((m) => m[1]!.replace(/\?.*$/, '')))];
 
         const dir = dirname(template.destination);
 

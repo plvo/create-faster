@@ -1,7 +1,7 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
 
 const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
   'org-dashboard-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
@@ -11,6 +11,11 @@ const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
     'apps/web/src/app/(auth)/signup/signup-form.tsx',
   ],
 };
+
+const START_BLUEPRINT = 'org-dashboard-tanstack-start';
+const HELPER_BLUEPRINTS: [string, string[]][] = [...Object.entries(FORMS_BY_BLUEPRINT), [START_BLUEPRINT, []]];
+const START_LOGIN_ROUTE = 'apps/web/src/routes/_auth/login.tsx';
+const START_LOGIN_FORM = 'apps/web/src/components/auth/login-form.tsx';
 
 const HELPER_PATH = 'apps/web/src/lib/safe-redirect.ts';
 
@@ -22,7 +27,7 @@ describe('post-login redirect target', () => {
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    for (const blueprint of Object.keys(FORMS_BY_BLUEPRINT)) {
+    for (const blueprint of [...Object.keys(FORMS_BY_BLUEPRINT), START_BLUEPRINT]) {
       const result = await runCli(
         [blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'],
         tempDir,
@@ -38,22 +43,25 @@ describe('post-login redirect target', () => {
 
   const loadHelper = async (blueprint: string): Promise<SafeRedirectPath> => {
     const source = await readTextFile(join(projectPaths.get(blueprint) as string, HELPER_PATH));
-    const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
-    const file = join(tempDir, `${blueprint}-safe-redirect.mjs`);
-    await Bun.write(file, js);
-    return (await import(file)).safeRedirectPath;
+    const { safeRedirectPath } = await evaluateGeneratedModule<{ safeRedirectPath: SafeRedirectPath }>(
+      source,
+      join(tempDir, `${blueprint}-safe-redirect.mjs`),
+    );
+    return safeRedirectPath;
   };
 
-  describe.each(Object.entries(FORMS_BY_BLUEPRINT))('%s', (blueprint, forms) => {
-    test.each([...forms])('%s navigates only to a validated destination', async (form) => {
-      const source = await readTextFile(join(projectPaths.get(blueprint) as string, form));
-      expect(source).toContain("from '@/lib/safe-redirect'");
-      expect(source).toMatch(/const destination = safeRedirectPath\(/);
-      const pushes = [...source.matchAll(/router\.push\(([^)]*)\)/g)].map((match) => match[1]);
-      expect(pushes).toContain('destination');
-      expect(pushes).not.toContain('redirectTo');
-      expect(source).not.toMatch(/params\.get\('redirectTo'\) \?\?/);
-    });
+  describe.each(HELPER_BLUEPRINTS)('%s', (blueprint, forms) => {
+    for (const form of forms) {
+      test(`${form} navigates only to a validated destination`, async () => {
+        const source = await readTextFile(join(projectPaths.get(blueprint) as string, form));
+        expect(source).toContain("from '@/lib/safe-redirect'");
+        expect(source).toMatch(/const destination = safeRedirectPath\(/);
+        const pushes = [...source.matchAll(/router\.push\(([^)]*)\)/g)].map((match) => match[1]);
+        expect(pushes).toContain('destination');
+        expect(pushes).not.toContain('redirectTo');
+        expect(source).not.toMatch(/params\.get\('redirectTo'\) \?\?/);
+      });
+    }
 
     test('safeRedirectPath keeps internal paths and refuses everything else', async () => {
       const safeRedirectPath = await loadHelper(blueprint);
@@ -118,6 +126,20 @@ describe('post-login redirect target', () => {
       expect(safeRedirectPath('/contacts?next=//evil.example')).toBe('/contacts?next=//evil.example');
       expect(safeRedirectPath('/contacts#//evil.example')).toBe('/contacts#//evil.example');
       expect(safeRedirectPath('/')).toBe('/');
+    });
+  });
+
+  describe(START_BLUEPRINT, () => {
+    test('the login route validates redirectTo with safeRedirectPath and the form only navigates to the result', async () => {
+      const projectPath = projectPaths.get(START_BLUEPRINT) as string;
+      const route = await readTextFile(join(projectPath, START_LOGIN_ROUTE));
+      expect(route).toContain("from '@/lib/safe-redirect'");
+      expect(route).toMatch(/validateSearch:[^]*safeRedirectPath\(search\.redirectTo\)/);
+
+      const form = await readTextFile(join(projectPath, START_LOGIN_FORM));
+      const pushes = [...form.matchAll(/history\.push\(([^)]*)\)/g)].map((match) => match[1]);
+      expect(pushes).toEqual(['destination']);
+      expect(form).not.toMatch(/redirectTo|location\.search|URLSearchParams/);
     });
   });
 });

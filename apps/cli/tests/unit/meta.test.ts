@@ -253,6 +253,7 @@ describe('META.blueprints names', () => {
       'lambda-terraform-aws-hono',
       'multitenant-saas-nextjs',
       'org-dashboard-nextjs',
+      'org-dashboard-tanstack-start',
       'showcase-nextjs',
     ]);
   });
@@ -293,6 +294,47 @@ describe('META.blueprints.org-dashboard-nextjs', () => {
         }
       }
     }
+  });
+});
+
+describe('META.blueprints.org-dashboard-tanstack-start', () => {
+  const nextjs = META.blueprints['org-dashboard-nextjs']!;
+  const tanstackStart = META.blueprints['org-dashboard-tanstack-start']!;
+
+  test('extends the Next.js blueprint and runs the same libraries and project on TanStack Start', () => {
+    expect(tanstackStart.extends).toBe('org-dashboard-nextjs');
+    expect(tanstackStart.context.apps.map(({ appName, stackName }) => [appName, stackName])).toEqual([
+      ['web', 'tanstack-start'],
+      ['batch', 'node'],
+    ]);
+    expect(tanstackStart.context.apps[0]!.libraries).toEqual(nextjs.context.apps[0]!.libraries);
+    expect(tanstackStart.context.project).toEqual(nextjs.context.project);
+  });
+
+  test('declares the same package.json, envs and first-run data as its parent, since META is not inherited', () => {
+    expect(tanstackStart.packageJson).toEqual(nextjs.packageJson);
+    expect(tanstackStart.pkgPackageJson).toEqual(nextjs.pkgPackageJson);
+    expect(tanstackStart.rootPackageJson).toEqual(nextjs.rootPackageJson);
+    expect(tanstackStart.envs).toEqual(nextjs.envs);
+    expect(tanstackStart.firstRun).toEqual(nextjs.firstRun);
+  });
+
+  test('carries the dependencies, workspace packages, scripts, env and first-run step the dashboard needs', () => {
+    expect(Object.keys(tanstackStart.packageJson?.dependencies ?? {}).sort()).toEqual([
+      'lucide-react',
+      'react-error-boundary',
+      'sonner',
+      'zod',
+    ]);
+    expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['auth', 'db', 'ui']);
+    expect(Object.keys(tanstackStart.rootPackageJson?.scripts ?? {}).sort()).toEqual(['db:seed', 'local-setup', 'start']);
+    expect(tanstackStart.envs?.map(({ value }) => value)).toEqual(['SEED_PASSWORD=password']);
+    expect(tanstackStart.firstRun?.flatMap(({ commands }) => commands)).toEqual([{ script: 'local-setup' }]);
+  });
+
+  test('describes TanStack Start, not Next.js, in the agent architecture', () => {
+    expect(tanstackStart.agentArchitecture).toContain('TanStack Start');
+    expect(tanstackStart.agentArchitecture).not.toContain('Next.js');
   });
 });
 

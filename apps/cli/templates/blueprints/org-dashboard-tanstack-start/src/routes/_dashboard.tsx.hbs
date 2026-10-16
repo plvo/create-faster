@@ -1,0 +1,26 @@
+import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { SidebarInset, SidebarProvider } from '@repo/ui/components/ui/sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
+import { AppSidebar } from '@/components/navigation/app-sidebar';
+import { requireSession } from '@/lib/auth/guards';
+
+export const Route = createFileRoute('/_dashboard')({
+  beforeLoad: async ({ location }) => ({ session: await requireSession(location) }),
+  component: DashboardLayout,
+});
+
+function DashboardLayout() {
+  const { session } = Route.useRouteContext();
+
+  return (
+    <SidebarProvider defaultOpen>
+      <AppSidebar session={session} />
+      <SidebarInset>
+        <AppHeader />
+        <main className='flex-1 p-6'>
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

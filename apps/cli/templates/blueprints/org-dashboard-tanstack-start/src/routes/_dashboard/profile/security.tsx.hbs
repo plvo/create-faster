@@ -1,0 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { SecurityForm } from '@/components/profile/security-form';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/profile/security')({
+  head: () => ({ meta: [{ title: pageTitle('Security') }] }),
+  component: SecurityForm,
+});

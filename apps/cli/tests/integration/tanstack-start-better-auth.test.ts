@@ -107,6 +107,11 @@ describe('TanStack Start + better-auth', () => {
       expect(agents).toContain('getSession');
       expect(agents).toContain('WeakMap<Headers, Promise<Session | null>>');
     });
+
+    test('agent docs tell to guard routes yourself, since no protected layout is generated', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('No protected layout is generated: guard routes yourself.');
+    });
   });
 
   describe('single repo on Cloudflare, D1 + drizzle', () => {
@@ -539,16 +544,21 @@ describe('TanStack Start + better-auth', () => {
     );
     const turborepoBlueprints = blueprintsWithAuth.filter(([, blueprint]) => blueprint.context.apps.length > 1);
 
-    test.each(turborepoBlueprints)('%s package factory appends the app cookie plugin last', async (name) => {
+    const COOKIE_PLUGIN_BY_STACK: Record<string, string> = {
+      nextjs: 'nextCookies()',
+      'tanstack-start': 'tanstackStartCookies()',
+    };
+
+    test.each(turborepoBlueprints)('%s package factory appends the app cookie plugin last', async (name, blueprint) => {
       const projectPath = await generate(`bp-factory-${name}`, ['--blueprint', name, '--linter', 'biome']);
       const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
       expect(auth).toMatch(/\.\.\.\(cookiePlugin \? \[cookiePlugin\] : \[\]\),\n\s*\],/);
       expect(auth).toContain('disableSessionRefresh: !cookiePlugin,');
-      expect(auth).not.toContain('better-auth/next-js');
+      expect(auth).not.toMatch(/better-auth\/(next-js|tanstack-start)/);
       const instance = await readTextFile(join(projectPath, 'apps/web/src/lib/auth/auth.ts')).catch(() =>
         readTextFile(join(projectPath, 'apps/web/src/lib/server.ts')),
       );
-      expect(instance).toContain('nextCookies()');
+      expect(instance).toContain(COOKIE_PLUGIN_BY_STACK[blueprint.context.apps[0]?.stackName ?? ''] as string);
     });
 
     test('dapp-rainbowkit-nextjs (single repo) appends the cookie plugin after siwe and builds its instance with nextCookies', async () => {

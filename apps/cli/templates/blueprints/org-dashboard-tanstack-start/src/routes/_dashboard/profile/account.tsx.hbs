@@ -1,0 +1,20 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { QueryBoundary } from '@/components/query-boundary';
+import { AccountForm } from '@/components/profile/account-form';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/profile/account')({
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(context.trpc.user.me.queryOptions());
+  },
+  head: () => ({ meta: [{ title: pageTitle('Account') }] }),
+  component: AccountPage,
+});
+
+function AccountPage() {
+  return (
+    <QueryBoundary>
+      <AccountForm />
+    </QueryBoundary>
+  );
+}

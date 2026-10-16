@@ -391,3 +391,20 @@ export async function runCliOnTerminal(args: string[], cwd: string, expectedProm
     proc.kill();
   }
 }
+
+/**
+ * Writes a generated TypeScript file as an ES module and imports it. `imports` rewrites module specifiers to
+ * paths relative to `target` (stand-ins for packages the test environment does not install).
+ */
+export async function evaluateGeneratedModule<T>(
+  source: string,
+  target: string,
+  imports: Record<string, string> = {},
+): Promise<T> {
+  const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
+  const rewritten = js.replace(/from\s+(["'])([^"']+)\1/g, (match, _quote, specifier: string) =>
+    imports[specifier] ? `from "${imports[specifier]}"` : match,
+  );
+  await Bun.write(target, rewritten);
+  return import(target);
+}

@@ -1,0 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { Preferences } from '@/components/profile/preferences';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/profile/preferences')({
+  head: () => ({ meta: [{ title: pageTitle('Preferences') }] }),
+  component: Preferences,
+});

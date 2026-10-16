@@ -1,0 +1,13 @@
+import type { LinkProps } from '@tanstack/react-router';
+import type { LucideIcon } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
+
+export interface RouteProps {
+  url: NonNullable<LinkProps['to']>;
+  title: string;
+  icon?: LucideIcon;
+  category?: string;
+  permissions?: Record<string, string[]>;
+}
+
+export const ROUTES: RouteProps[] = [{ url: '/', title: 'Dashboard', icon: LayoutDashboard }];

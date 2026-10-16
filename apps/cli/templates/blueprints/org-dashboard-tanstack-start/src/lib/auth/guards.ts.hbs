@@ -1,0 +1,26 @@
+import { notFound, type ParsedLocation, redirect } from '@tanstack/react-router';
+import type { Session } from '@repo/auth/types';
+import { hasPermission } from '@/lib/auth/permission';
+import { getSession } from '@/lib/auth/session';
+
+// The `_auth` and `_dashboard` layouts both decide through this check: a session one of them accepts is
+// never refused by the other, so the two never redirect to each other in a loop.
+export function isSignedIn(session: Session | null): session is Session {
+  return Boolean(session?.user.role);
+}
+
+// beforeLoad hooks run parent first and every loader starts after them all, so an anonymous visit redirects
+// before any protected query starts.
+export async function requireSession(location: ParsedLocation): Promise<Session> {
+  const session = await getSession();
+  if (!isSignedIn(session)) throw redirect({ to: '/login', search: { redirectTo: location.href } });
+  return session;
+}
+
+export function requireAdmin(session: Session): void {
+  if (session.user.role !== 'admin') throw redirect({ to: '/' });
+}
+
+export function requirePermission(session: Session, permissions: Record<string, string[]>): void {
+  if (!hasPermission(session.user.role, permissions)) throw notFound();
+}

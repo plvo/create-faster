@@ -1,0 +1,7 @@
+import { useRouteContext } from '@tanstack/react-router';
+import { hasPermission } from '@/lib/auth/permission';
+
+export function usePermission(permissions: Record<string, string[]>): boolean {
+  const role = useRouteContext({ from: '/_dashboard', select: (context) => context.session.user.role });
+  return hasPermission(role, permissions);
+}
