@@ -311,11 +311,24 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
     expect(tanstackStart.context.project).toEqual(nextjs.context.project);
   });
 
-  test('declares its own package.json, envs and first-run data, since META is not inherited', () => {
-    expect(Object.keys(tanstackStart.packageJson?.dependencies ?? {})).toEqual(expect.arrayContaining(['sonner', 'zod']));
+  test('declares the same package.json, envs and first-run data as its parent, since META is not inherited', () => {
+    expect(tanstackStart.packageJson).toEqual(nextjs.packageJson);
+    expect(tanstackStart.pkgPackageJson).toEqual(nextjs.pkgPackageJson);
+    expect(tanstackStart.rootPackageJson).toEqual(nextjs.rootPackageJson);
+    expect(tanstackStart.envs).toEqual(nextjs.envs);
+    expect(tanstackStart.firstRun).toEqual(nextjs.firstRun);
+  });
+
+  test('carries the dependencies, workspace packages, scripts, env and first-run step the dashboard needs', () => {
+    expect(Object.keys(tanstackStart.packageJson?.dependencies ?? {}).sort()).toEqual([
+      'lucide-react',
+      'react-error-boundary',
+      'sonner',
+      'zod',
+    ]);
     expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['auth', 'db', 'ui']);
-    expect(tanstackStart.rootPackageJson?.scripts).toHaveProperty('local-setup');
-    expect(tanstackStart.envs?.map(({ value }) => value)).toContain('SEED_PASSWORD=password');
+    expect(Object.keys(tanstackStart.rootPackageJson?.scripts ?? {}).sort()).toEqual(['db:seed', 'local-setup', 'start']);
+    expect(tanstackStart.envs?.map(({ value }) => value)).toEqual(['SEED_PASSWORD=password']);
     expect(tanstackStart.firstRun?.flatMap(({ commands }) => commands)).toEqual([{ script: 'local-setup' }]);
   });
 

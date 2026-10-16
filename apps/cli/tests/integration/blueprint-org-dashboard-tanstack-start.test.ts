@@ -2,7 +2,7 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, evaluateGeneratedModule, fileExists, readTextFile, runCli } from './helpers';
 
 const BLUEPRINT = 'org-dashboard-tanstack-start';
 const WEB = 'apps/web';
@@ -31,20 +31,24 @@ interface GeneratedGuards {
   requireSession: (location: { href: string }) => Promise<Session>;
   requireAdmin: (session: Session) => void;
   requirePermission: (session: Session, permissions: Record<string, string[]>) => void;
+  usePermission: (permissions: Record<string, string[]>) => boolean;
 }
 
 // Stand-ins for what the generated files import from packages: the router builds the value `throw`n by
 // redirect() and notFound(), and the auth client checks a role against the generated `roleDefinitions`.
 const STUBS: Record<string, string> = {
   'router.mjs': `export const redirect = (options) => ({ kind: 'redirect', ...options });
-export const notFound = () => ({ kind: 'notFound' });`,
+export const notFound = () => ({ kind: 'notFound' });
+export const useRouteContext = ({ select }) => select(globalThis.__testRouteContext);`,
   'access.mjs': 'export const createAccessControl = () => ({ newRole: (statements) => statements });',
   'admin-access.mjs': `export const defaultStatements = {};
 export const adminAc = { statements: { user: ['list', 'create', 'set-role'], session: ['list', 'revoke'] } };`,
   'auth-client.mjs': `import { roleDefinitions } from './permissions.mjs';
+// An empty requirement is never granted here, so only the short-circuit in hasPermission lets it through.
 export const authClient = {
   admin: {
     checkRolePermission: ({ role, permissions }) =>
+      Object.keys(permissions).length > 0 &&
       Object.entries(permissions).every(([resource, actions]) =>
         actions.every((action) => roleDefinitions[role]?.[resource]?.includes(action) ?? false)),
   },
@@ -61,14 +65,6 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@/lib/auth/permission': './permission.mjs',
   '@/lib/auth/session': './session.mjs',
 };
-
-async function writeEvaluable(source: string, target: string): Promise<void> {
-  const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
-  const rewritten = js.replace(/from\s+(["'])([^"']+)\1/g, (match, _quote, specifier: string) =>
-    IMPORT_TARGETS[specifier] ? `from "${IMPORT_TARGETS[specifier]}"` : match,
-  );
-  await Bun.write(target, rewritten);
-}
 
 async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
   try {
@@ -181,12 +177,13 @@ describe(`${BLUEPRINT} blueprint`, () => {
       const dir = join(tempDir, 'guards-eval');
       await mkdir(dir, { recursive: true });
       for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(dir, name), source);
-      await writeEvaluable(await read('packages/auth/src/permissions.ts'), join(dir, 'permissions.mjs'));
-      await writeEvaluable(await read(`${WEB}/src/lib/auth/permission.ts`), join(dir, 'permission.mjs'));
-      await writeEvaluable(await read(`${WEB}/src/lib/auth/guards.ts`), join(dir, 'guards.mjs'));
-      const permission = await import(join(dir, 'permission.mjs'));
-      const evaluated = await import(join(dir, 'guards.mjs'));
-      guards = { hasPermission: permission.hasPermission, ...evaluated };
+      const evaluate = async <T>(source: string, name: string): Promise<T> =>
+        evaluateGeneratedModule<T>(await read(source), join(dir, name), IMPORT_TARGETS);
+      await evaluate('packages/auth/src/permissions.ts', 'permissions.mjs');
+      const permission = await evaluate<Pick<GeneratedGuards, 'hasPermission'>>(`${WEB}/src/lib/auth/permission.ts`, 'permission.mjs');
+      const evaluated = await evaluate<Omit<GeneratedGuards, 'hasPermission' | 'usePermission'>>(`${WEB}/src/lib/auth/guards.ts`, 'guards.mjs');
+      const hook = await evaluate<Pick<GeneratedGuards, 'usePermission'>>(`${WEB}/src/hooks/use-permission.ts`, 'use-permission.mjs');
+      guards = { ...permission, ...evaluated, ...hook };
     });
 
     afterAll(() => signedInAs(null));
@@ -232,6 +229,21 @@ describe(`${BLUEPRINT} blueprint`, () => {
           search: { redirectTo: '/profile/sessions?x=1' },
         });
       }
+    });
+
+    test('usePermission reads the role from the dashboard route context', () => {
+      const inContext = (role: string | null | undefined) => {
+        (globalThis as { __testRouteContext?: { session: Session } }).__testRouteContext = { session: member(role ?? null) };
+      };
+      inContext('manager');
+      expect(guards.usePermission({ contact: ['read'] })).toBe(true);
+      expect(guards.usePermission({ contact: ['create'] })).toBe(false);
+      expect(guards.usePermission({})).toBe(true);
+      inContext('admin');
+      expect(guards.usePermission({ user: ['list'] })).toBe(true);
+      inContext(null);
+      expect(guards.usePermission({})).toBe(false);
+      expect(guards.usePermission({ contact: ['read'] })).toBe(false);
     });
 
     test('the login layout and the dashboard layout agree on every session shape', async () => {

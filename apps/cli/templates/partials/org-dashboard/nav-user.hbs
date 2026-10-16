@@ -31,9 +31,7 @@ export function NavUser({ session }: { session: Session }) {
   const router = useRouter();
 {{#if (eq stackName "tanstack-start")}}
   const queryClient = useQueryClient();
-{{/if}}
 
-{{#if (eq stackName "tanstack-start")}}
   // The cache is cleared once the login page replaced the dashboard, so no mounted query refetches without a session.
   const handleLogout = async () => {
     await authClient.signOut();
@@ -41,6 +39,7 @@ export function NavUser({ session }: { session: Session }) {
     queryClient.clear();
   };
 {{else}}
+
   const handleLogout = async () => {
     await authClient.signOut();
     router.push('/login');

@@ -1,7 +1,7 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
 
 const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
   'org-dashboard-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
@@ -43,10 +43,11 @@ describe('post-login redirect target', () => {
 
   const loadHelper = async (blueprint: string): Promise<SafeRedirectPath> => {
     const source = await readTextFile(join(projectPaths.get(blueprint) as string, HELPER_PATH));
-    const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
-    const file = join(tempDir, `${blueprint}-safe-redirect.mjs`);
-    await Bun.write(file, js);
-    return (await import(file)).safeRedirectPath;
+    const { safeRedirectPath } = await evaluateGeneratedModule<{ safeRedirectPath: SafeRedirectPath }>(
+      source,
+      join(tempDir, `${blueprint}-safe-redirect.mjs`),
+    );
+    return safeRedirectPath;
   };
 
   describe.each(HELPER_BLUEPRINTS)('%s', (blueprint, forms) => {
