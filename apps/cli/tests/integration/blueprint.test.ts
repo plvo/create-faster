@@ -220,7 +220,6 @@ describe('Blueprint generation - org-dashboard-nextjs', () => {
       join(projectPath, 'apps/web/package.json'),
     );
     expect(webPkg.dependencies.sonner).toBeDefined();
-
   });
 
   test('every template destination of the blueprint is generated', async () => {
