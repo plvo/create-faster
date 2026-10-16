@@ -26,11 +26,20 @@ describe('app names', () => {
       ['a parent directory', '..'],
       ['a leading dash', '-web'],
       ['a leading dot', '.web'],
+      ['a leading space', ' web'],
     ])('%s is refused before anything is written', async (_title, appName) => {
       const result = await runCli(['demo', '--app', `${appName}:nextjs`, '--app', 'api:hono', ...FLAGS], tempDir);
 
       expect(result.exitCode).toBe(1);
       expect(result.stdout + result.stderr).toContain(`App name "${appName}"`);
+      expect(await fileExists(join(tempDir, 'demo'))).toBe(false);
+    });
+
+    test('an invalid name on the second app is refused before anything is written', async () => {
+      const result = await runCli(['demo', '--app', 'web:nextjs', '--app', 'Bad:hono', ...FLAGS], tempDir);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout + result.stderr).toContain('App name "Bad"');
       expect(await fileExists(join(tempDir, 'demo'))).toBe(false);
     });
 

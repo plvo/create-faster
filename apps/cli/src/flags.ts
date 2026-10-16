@@ -292,7 +292,7 @@ function parseAppFlag(appFlag: string): AppContext {
   }
 
   return {
-    appName: appName.trim(),
+    appName,
     stackName: stackName as StackName,
     libraries,
   };
