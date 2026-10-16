@@ -22,6 +22,8 @@ export type PackageManager = PackageManagerName | undefined;
 
 export interface TemplateContext {
   projectName: string;
+  /** The project directory as typed (relative to the working directory, or absolute); the project name when absent. */
+  projectDir?: string;
   repo: 'single' | 'turborepo';
   apps: AppContext[];
   project: ProjectContext;

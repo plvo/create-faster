@@ -1,18 +1,19 @@
 import { log, outro } from '@clack/prompts';
 import color from 'picocolors';
 import type { InstallFailure } from '@/lib/post-generation';
+import { quoteProjectDir } from '@/lib/project-location';
 
-export function buildInstallFailureMessage(projectName: string, failure: InstallFailure): string {
+export function buildInstallFailureMessage(projectDir: string, failure: InstallFailure): string {
   return `Project files were generated, but the dependency install failed.
 
 ${failure.output}
 
 Fix the cause, then retry in the project directory:
 
-  cd ${projectName} && ${failure.command}`;
+  cd ${quoteProjectDir(projectDir)} && ${failure.command}`;
 }
 
-export function displayInstallFailure(projectName: string, failure: InstallFailure): void {
-  log.error(buildInstallFailureMessage(projectName, failure));
+export function displayInstallFailure(projectDir: string, failure: InstallFailure): void {
+  log.error(buildInstallFailureMessage(projectDir, failure));
   outro(color.red('Dependencies were not installed'));
 }

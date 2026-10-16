@@ -7,6 +7,7 @@ import { getErrorMessage } from './error-utils';
 import { pathExists, writeFileContent } from './file-writer';
 import { setupTemplateEngine } from './handlebars';
 import { generateAllPackageJsons } from './package-json-generator';
+import { getProjectPath } from './project-location';
 import { processTemplate } from './template-processor';
 
 interface GenerationOptions {
@@ -35,7 +36,7 @@ export async function generateProjectFiles(
   options: GenerationOptions = {},
 ): Promise<GenerationResult> {
   const { overwrite = false } = options;
-  const projectPath = join(process.cwd(), context.projectName);
+  const projectPath = getProjectPath(context);
 
   setupTemplateEngine();
 

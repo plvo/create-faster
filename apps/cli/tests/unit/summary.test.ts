@@ -21,7 +21,7 @@ describe('recreate command answers every prompt', () => {
     pm: 'bun',
   };
 
-  function recreateCommand(ctx: TemplateContext): string {
+  function printedOutput(ctx: TemplateContext): string {
     const written: string[] = [];
     const writeSpy = spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
       written.push(String(chunk));
@@ -29,7 +29,11 @@ describe('recreate command answers every prompt', () => {
     });
     displayOutroCliCommand(ctx, '/tmp/demo');
     writeSpy.mockRestore();
-    return written.join('').replaceAll('\\\n  ', '');
+    return written.join('');
+  }
+
+  function recreateCommand(ctx: TemplateContext): string {
+    return printedOutput(ctx).replaceAll('\\\n  ', '');
   }
 
   test('adds nothing when every category, git and the package manager are given', () => {
@@ -50,6 +54,21 @@ describe('recreate command answers every prompt', () => {
   test('adds --yes when git is off or no package manager is chosen', () => {
     expect(recreateCommand({ ...answered, git: false })).toContain('--yes');
     expect(recreateCommand({ ...answered, pm: undefined })).toContain('--yes');
+  });
+
+  test.each([
+    ['a--b/my--app', 'a--b/my--app'],
+    ['../my dir--x/my--app', "'../my dir--x/my--app'"],
+  ])('a long command wraps only before flags, keeping the directory %s whole', (projectDir, printedDir) => {
+    const ctx = { ...answered, projectName: 'my--app', projectDir };
+    const lines = printedOutput(ctx).split('following command:')[1]?.trim().split('\n') ?? [];
+
+    expect(lines.length).toBeGreaterThan(2);
+    expect(lines[0]).toContain(`create-faster ${printedDir} \\`);
+    for (const line of lines.slice(1)) {
+      expect(line).toStartWith('  --');
+    }
+    expect(recreateCommand(ctx)).toContain(`create-faster ${printedDir} --app demo:nextjs --database postgres`);
   });
 
   test('keeps --no-install next to the package manager when installation was skipped', () => {

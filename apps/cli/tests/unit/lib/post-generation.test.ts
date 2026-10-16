@@ -178,7 +178,7 @@ describe('buildInstallFailureMessage', () => {
   const failure = { command: 'pnpm install', output: 'ERR_PNPM_NO_MATCHING_VERSION' };
 
   test('says the files were generated and the install failed, without claiming success', () => {
-    const message = buildInstallFailureMessage('demo', failure);
+    const message = buildInstallFailureMessage('../out/demo', failure);
 
     expect(message).toContain('Project files were generated');
     expect(message).toContain('dependency install failed');
@@ -187,6 +187,10 @@ describe('buildInstallFailureMessage', () => {
   });
 
   test('gives the exact command to retry in the project directory', () => {
-    expect(buildInstallFailureMessage('demo', failure)).toContain('cd demo && pnpm install');
+    expect(buildInstallFailureMessage('../out/demo', failure)).toContain('cd ../out/demo && pnpm install');
+  });
+
+  test('quotes a project directory the shell would split', () => {
+    expect(buildInstallFailureMessage('../my dir/demo', failure)).toContain("cd '../my dir/demo' && pnpm install");
   });
 });
