@@ -14,7 +14,7 @@ const FORMATTER_CHECKS: Record<string, string[]> = {
   'eslint-prettier': ['bun', 'run', 'format:check'],
 };
 
-const PROJECTS: { name: string; routeTreeApp?: string; args: string[] }[] = [
+const PROJECTS: { name: string; startApp?: string; args: string[] }[] = [
   {
     name: 'next-single',
     args: [
@@ -27,8 +27,18 @@ const PROJECTS: { name: string; routeTreeApp?: string; args: string[] }[] = [
     ],
   },
   {
+    name: 'start-single',
+    startApp: '.',
+    args: ['--app', 'start-single:tanstack-start:tanstack-query'],
+  },
+  {
+    name: 'org-dashboard-tanstack-start',
+    startApp: 'apps/web',
+    args: ['--blueprint', 'org-dashboard-tanstack-start'],
+  },
+  {
     name: 'start-hono-turbo',
-    routeTreeApp: 'apps/admin',
+    startApp: 'apps/admin',
     args: [
       '--app',
       'admin:tanstack-start:shadcn,next-themes,tanstack-query,tanstack-devtools,react-hook-form,better-auth,trpc,evlog,vitest',
@@ -46,7 +56,7 @@ function tail(result: { stdout: string; stderr: string }): string {
   return `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
 }
 
-describe('a freshly generated project passes its own formatter check', () => {
+describe('a freshly generated project passes its own formatter check and type-checks after the format step', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -58,7 +68,7 @@ describe('a freshly generated project passes its own formatter check', () => {
   });
 
   for (const [linter, check] of Object.entries(FORMATTER_CHECKS)) {
-    for (const { name, args, routeTreeApp } of PROJECTS) {
+    for (const { name, args, startApp } of PROJECTS) {
       test(
         `${linter}: ${name}`,
         async () => {
@@ -72,12 +82,15 @@ describe('a freshly generated project passes its own formatter check', () => {
             const result = await runCommand(check, projectDir);
             if (result.exitCode !== 0) throw new Error(`${check.join(' ')} exited ${result.exitCode}:\n${tail(result)}`);
 
-            if (routeTreeApp) {
-              const routeTree = join(projectDir, routeTreeApp, 'src/routeTree.gen.ts');
+            if (startApp) {
+              const routeTree = join(projectDir, startApp, 'src/routeTree.gen.ts');
               const formatted = await readFile(routeTree, 'utf8');
-              const regenerated = await runCommand(['bun', 'run', 'tsr', 'generate'], join(projectDir, routeTreeApp));
+              const regenerated = await runCommand(['bun', 'run', 'tsr', 'generate'], join(projectDir, startApp));
               if (regenerated.exitCode !== 0) throw new Error(`tsr generate failed:\n${tail(regenerated)}`);
               expect(await readFile(routeTree, 'utf8')).toBe(formatted);
+
+              const typecheck = await runCommand(['bunx', 'tsc', '--noEmit'], join(projectDir, startApp));
+              if (typecheck.exitCode !== 0) throw new Error(`tsc --noEmit after the format step failed:\n${tail(typecheck)}`);
             }
             expect(await fileExists(join(projectDir, '.git'))).toBe(true);
           } finally {
