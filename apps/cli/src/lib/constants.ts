@@ -20,7 +20,7 @@ export const INTRO_MESSAGE = color.bgBlue(
   ` Creating a new project structure ${emojis[Math.floor(Math.random() * emojis.length)]} `,
 );
 
-const CLI_VERSION = packageJson.version;
+export const CLI_VERSION = packageJson.version;
 
 export const ASCII = color.blueBright(`
                         __             ____           __           
