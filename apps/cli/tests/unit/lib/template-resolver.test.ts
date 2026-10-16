@@ -1,11 +1,9 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { PARTIALS_DIR } from '@/lib/constants';
 import { getAllTemplatesForContext, resolveAddonNames, resolveDestination, scanTemplateFiles } from '@/lib/template-resolver';
 import type { TemplateContext } from '@/types/ctx';
+import { createFixtureTree, removeFixtureTree } from '../fixture-tree';
 
 const turborepoCtx: TemplateContext = {
   projectName: 'test',
@@ -345,16 +343,20 @@ describe('blueprint template resolution', () => {
 
 describe('scanTemplateFiles', () => {
   test('excludes __agent.md.hbs but keeps normal templates', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cf-scan-'));
-    writeFileSync(join(dir, 'page.tsx.hbs'), 'x');
-    writeFileSync(join(dir, '__agent.md.hbs'), 'fiche');
-    mkdirSync(join(dir, 'sub'), { recursive: true });
-    writeFileSync(join(dir, 'sub', '__agent.md.hbs'), 'nested fiche');
+    const dir = createFixtureTree('cf-scan-', {
+      'page.tsx.hbs': 'x',
+      '__agent.md.hbs': 'fiche',
+      'sub/__agent.md.hbs': 'nested fiche',
+    });
 
-    const files = scanTemplateFiles(dir);
+    try {
+      const files = scanTemplateFiles(dir);
 
-    expect(files).toContain('page.tsx.hbs');
-    expect(files.some((f) => f.endsWith('__agent.md.hbs'))).toBe(false);
+      expect(files).toContain('page.tsx.hbs');
+      expect(files.some((f) => f.endsWith('__agent.md.hbs'))).toBe(false);
+    } finally {
+      removeFixtureTree(dir);
+    }
   });
 });
 
