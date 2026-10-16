@@ -146,6 +146,18 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(batch).toContain('Processing batch event');
   });
 
+  test('the agent notes describe TanStack Start routing and guards, not Next.js', async () => {
+    const auth = await read('docs/agents/auth.md');
+    expect(auth).toContain('`_dashboard.tsx`');
+    expect(auth).toContain('requireSession(location)');
+    expect(auth).toContain('`validateSearch`');
+    expect(auth).not.toMatch(/router\.push|next\/|Server Component/);
+
+    const web = await read(`${WEB}/AGENTS.md`);
+    expect(web).not.toContain('No protected layout is generated');
+    expect(await read('AGENTS.md')).toContain('TanStack Start web app');
+  });
+
   test('the SST deployment renders the TanStack Start component', async () => {
     const result = await runCli(
       ['sst-project', '--blueprint', BLUEPRINT, '--deployment', 'sst', '--no-git', '--no-install', '--pm', 'bun'],

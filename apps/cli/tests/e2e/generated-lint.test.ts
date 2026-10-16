@@ -22,6 +22,7 @@ const BLUEPRINTS = [
   'lambda-sst-hono',
   'lambda-terraform-aws-hono',
   'org-dashboard-nextjs',
+  'org-dashboard-tanstack-start',
   'multitenant-saas-nextjs',
   'cloudflare-static-site-nextjs',
   'cloudflare-fullstack-nextjs',

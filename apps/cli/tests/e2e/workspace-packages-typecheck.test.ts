@@ -46,6 +46,10 @@ const PROJECTS: Project[] = [
     name: 'blueprint cloudflare-fullstack-nextjs',
     args: ['--blueprint', 'cloudflare-fullstack-nextjs'],
   },
+  {
+    name: 'blueprint org-dashboard-tanstack-start',
+    args: ['--blueprint', 'org-dashboard-tanstack-start'],
+  },
 ];
 
 async function workspaceDirs(projectPath: string): Promise<string[]> {

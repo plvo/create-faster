@@ -64,58 +64,58 @@ const ORG_DASHBOARD_WEB_LIBRARIES = [
 ];
 
 const ORG_DASHBOARD_PACKAGE_JSON: PackageJsonConfig = {
-    dependencies: {
-      'lucide-react': '^1.37.0',
-      'react-error-boundary': '^5.0.0',
-      sonner: '^2.0.7',
-      zod: '^4.5.4',
-    },
-  };
+  dependencies: {
+    'lucide-react': '^1.37.0',
+    'react-error-boundary': '^5.0.0',
+    sonner: '^2.0.7',
+    zod: '^4.5.4',
+  },
+};
 
 const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
-    auth: {
-      exports: {
-        './types': './src/types.ts',
-        './password': './src/password.ts',
-        './permissions': './src/permissions.ts',
-      },
+  auth: {
+    exports: {
+      './types': './src/types.ts',
+      './password': './src/password.ts',
+      './permissions': './src/permissions.ts',
     },
-    db: {
-      scripts: {
-        'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
-      },
+  },
+  db: {
+    scripts: {
+      'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
     },
-    ui: {
-      exports: {
-        './hooks/*': './src/hooks/*.ts',
-      },
-      dependencies: {
-        '@tanstack/react-form': '^1.33.5',
-        'react-dom': '^19.2.8',
-        vaul: '^1.1.2',
-      },
-      devDependencies: {
-        '@types/react-dom': '^19.2.5',
-      },
+  },
+  ui: {
+    exports: {
+      './hooks/*': './src/hooks/*.ts',
     },
-  };
-
-const ORG_DASHBOARD_ROOT_PACKAGE_JSON: PackageJsonConfig = {
     dependencies: {
-      '@repo/auth': '*',
-      '@repo/db': '*',
+      '@tanstack/react-form': '^1.33.5',
+      'react-dom': '^19.2.8',
+      vaul: '^1.1.2',
     },
     devDependencies: {
-      '@repo/config': '*',
-      '@faker-js/faker': '^10.4.0',
-      tsx: TSX_RUNNER,
+      '@types/react-dom': '^19.2.5',
     },
-    scripts: {
-      'local-setup': '{{tsRunner}} scripts/local-setup.ts',
-      'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
-      start: 'turbo start',
-    },
-  };
+  },
+};
+
+const ORG_DASHBOARD_ROOT_PACKAGE_JSON: PackageJsonConfig = {
+  dependencies: {
+    '@repo/auth': '*',
+    '@repo/db': '*',
+  },
+  devDependencies: {
+    '@repo/config': '*',
+    '@faker-js/faker': '^10.4.0',
+    tsx: TSX_RUNNER,
+  },
+  scripts: {
+    'local-setup': '{{tsRunner}} scripts/local-setup.ts',
+    'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
+    start: 'turbo start',
+  },
+};
 
 const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the generated files', script: 'format' }];
 
