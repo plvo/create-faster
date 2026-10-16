@@ -41,9 +41,11 @@ describe('collectInstallScripts', () => {
     expect(scripts).toEqual({});
   });
 
-  test('no package is allowed by one entry and denied by another, so no entry silently overrides one', () => {
+  test('no two entries rule differently on a package, so the merge never lets one silently win', () => {
+    const rulings = declaredInstallScripts();
+    expect(rulings.length).toBeGreaterThan(0);
     const verdicts = new Map<string, Set<boolean>>();
-    for (const scripts of declaredInstallScripts()) {
+    for (const scripts of rulings) {
       for (const [name, allowed] of Object.entries(scripts)) {
         verdicts.set(name, (verdicts.get(name) ?? new Set()).add(allowed));
       }

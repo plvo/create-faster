@@ -21,6 +21,12 @@ const TSX_VERSION = '^4.23.15';
 // Node runs no TypeScript file of the generated scripts itself; Bun does.
 const TSX_RUNNER = $when({ pm: { not: 'bun' } }, TSX_VERSION);
 
+// tsx (and drizzle-kit) install esbuild, and tsx the macOS file watcher fsevents; their install scripts are optional.
+const TSX_INSTALL_SCRIPTS = { esbuild: false, fsevents: false };
+
+// wrangler installs esbuild, fsevents and the workerd runtime; their install scripts are optional.
+const WRANGLER_INSTALL_SCRIPTS = { esbuild: false, fsevents: false, workerd: false };
+
 const ESBUILD_VERSION = '^0.28.2';
 
 // Bun bundles a Node target on its own; esbuild needs `require` back for the CommonJS packages it inlines into an ES module.
@@ -153,7 +159,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
-      installScripts: { esbuild: false, fsevents: false },
+      installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {
           hono: '^4.7.4',
@@ -176,7 +182,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
-      installScripts: { esbuild: false, fsevents: false },
+      installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {},
         devDependencies: {
@@ -624,7 +630,7 @@ export const META: Meta = {
         cloudflare: {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
-          installScripts: { esbuild: false, workerd: false, fsevents: false },
+          installScripts: WRANGLER_INSTALL_SCRIPTS,
           providesDbBindings: true,
           providesLocalFilesystem: false,
           packageJson: {
@@ -671,7 +677,7 @@ export const META: Meta = {
         'cloudflare-static': {
           label: 'Cloudflare Workers (static)',
           hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
-          installScripts: { esbuild: false, workerd: false, fsevents: false },
+          installScripts: WRANGLER_INSTALL_SCRIPTS,
           require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {
@@ -872,7 +878,7 @@ export const META: Meta = {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
-          installScripts: { esbuild: false, fsevents: false },
+          installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
           firstRun: [
@@ -917,7 +923,7 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
-          installScripts: { '@prisma/engines': true, prisma: false, esbuild: false, fsevents: false },
+          installScripts: { ...TSX_INSTALL_SCRIPTS, '@prisma/engines': true, prisma: false },
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],

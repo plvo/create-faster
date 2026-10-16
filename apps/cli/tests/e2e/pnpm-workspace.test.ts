@@ -1,15 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, fileExists, runCli, runCommand } from './helpers';
+import { type CommandResult, cleanupTempDir, createTempDir, fileExists, PNPM_AVAILABLE, runCli, runCommand } from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_BUILD = 180_000;
 
-const pnpmAvailable = Bun.spawnSync(['pnpm', '--version'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
-if (!pnpmAvailable) {
-  console.warn('Skipping pnpm workspace e2e: pnpm is not installed (`pnpm --version` failed)');
+if (!PNPM_AVAILABLE) {
+  console.warn('Skipping pnpm workspace e2e: pnpm is not installed');
 }
-const describeWithPnpm = describe.skipIf(!pnpmAvailable);
+const describeWithPnpm = describe.skipIf(!PNPM_AVAILABLE);
 
 const PNPM_PROJECTS = [
   {

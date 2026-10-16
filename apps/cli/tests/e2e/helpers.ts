@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 import { readJsonFile } from '../integration/helpers';
 
-export { cleanupTempDir, createTempDir, fileExists, runCli } from '../integration/helpers';
+export { cleanupTempDir, createTempDir, fileExists, PNPM_AVAILABLE, runCli } from '../integration/helpers';
 
 export interface CommandResult {
   exitCode: number;

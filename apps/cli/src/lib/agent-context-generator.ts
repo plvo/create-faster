@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { isLibraryCompatible } from '@/lib/addon-utils';
+import { getAppLibraries } from '@/lib/addon-utils';
 import { DOCS_URL, TEMPLATES_DIR } from '@/lib/constants';
 import { collectEnvGroups } from '@/lib/env-generator';
 import { readFrontmatterFile } from '@/lib/frontmatter';
@@ -89,9 +89,7 @@ function collectSections(ctx: TemplateContext): Section[] {
     const stackFiche = join(TEMPLATES_DIR, 'stack', app.stackName, AGENT_DOC_FILENAME);
     push(stackFiche, 'app', META.stacks[app.stackName].label, DEFAULT_ORDER.stack, ctx, app, app.appName);
 
-    for (const libraryName of app.libraries) {
-      const library = META.libraries[libraryName];
-      if (!library || !isLibraryCompatible(library, app.stackName)) continue;
+    for (const { name: libraryName, library } of getAppLibraries(app)) {
       const ficheSource = join(TEMPLATES_DIR, 'libraries', libraryName, AGENT_DOC_FILENAME);
       push(ficheSource, 'app', library.label, DEFAULT_ORDER.library, ctx, app, app.appName);
     }

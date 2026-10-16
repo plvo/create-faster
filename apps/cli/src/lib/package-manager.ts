@@ -101,3 +101,16 @@ export function getAppScriptCommand(ctx: TemplateContext, script: string): strin
 export function getPackageRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];
 }
+
+/**
+ * The root package.json field a package manager reads its install-script policy from. pnpm reads `pnpm-workspace.yaml`.
+ * Bun blocks untrusted scripts on its own, and its `trustedDependencies` can only list packages while replacing its
+ * built-in trusted list, so declaring one would block packages Bun runs today.
+ */
+const PACKAGE_MANAGER_INSTALL_SCRIPTS_FIELDS: Partial<Record<PackageManagerName, string>> = {
+  npm: 'allowScripts',
+};
+
+export function getInstallScriptsField(ctx: TemplateContext): string | undefined {
+  return PACKAGE_MANAGER_INSTALL_SCRIPTS_FIELDS[resolveCommandPackageManager(ctx)];
+}

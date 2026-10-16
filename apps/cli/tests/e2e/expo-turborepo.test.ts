@@ -1,20 +1,19 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { type CommandResult, cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import { type CommandResult, cleanupTempDir, createTempDir, PNPM_AVAILABLE, runCli, runCommand } from './helpers';
 
 const TIMEOUT_INSTALL = 240_000;
 const TIMEOUT_TYPECHECK = 120_000;
 const TIMEOUT_TEST = 120_000;
 const TIMEOUT_BUNDLE = 300_000;
 
-const pnpmAvailable = Bun.spawnSync(['pnpm', '--version'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0;
-if (!pnpmAvailable) {
-  console.warn('Skipping pnpm Expo turborepo e2e: pnpm is not installed (`pnpm --version` failed)');
+if (!PNPM_AVAILABLE) {
+  console.warn('Skipping pnpm Expo turborepo e2e: pnpm is not installed');
 }
 
 const PACKAGE_MANAGERS = [
   { pm: 'bun', exec: ['bunx'], available: true },
-  { pm: 'pnpm', exec: ['pnpm', 'exec'], available: pnpmAvailable },
+  { pm: 'pnpm', exec: ['pnpm', 'exec'], available: PNPM_AVAILABLE },
 ];
 
 for (const { pm, exec, available } of PACKAGE_MANAGERS) {

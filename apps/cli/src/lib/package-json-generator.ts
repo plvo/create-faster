@@ -2,8 +2,8 @@ import { META } from '@/__meta__';
 import {
   applyAppScripts,
   findRuntimeAddon,
+  getAppLibraries,
   getMonoPackageName,
-  isLibraryCompatible,
   resolveCompositeAddons,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
@@ -112,10 +112,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
 
   let merged = mergeResolved(ctx, stack.packageJson, packageManagerPackageJson(stack.packageManagerPackageJson, ctx));
 
-  for (const libraryName of app.libraries) {
-    const library = META.libraries[libraryName];
-    if (!library || !isLibraryCompatible(library, app.stackName)) continue;
-
+  for (const { library } of getAppLibraries(app)) {
     const stackOverride = library.stackPackageJson?.[app.stackName];
     if (isTurborepo && addRepoRef(merged, library)) {
       if (library.appPackageJson) {

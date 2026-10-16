@@ -1,4 +1,4 @@
 allowBuilds:
 {{#each (installScripts)}}
-  '{{name}}': {{allowed}}
+  '{{@key}}': {{this}}
 {{/each}}

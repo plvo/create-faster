@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { getMonoPackageName, isLibraryCompatible } from '@/lib/addon-utils';
+import { getAppLibraries, getMonoPackageName } from '@/lib/addon-utils';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import type { TemplateContext, TemplateFile } from '@/types/ctx';
 import type { MetaAddon, MetaBlueprint, MonoScope, ProjectCategoryName, TemplateFrontmatter } from '@/types/meta';
@@ -341,11 +341,8 @@ export function getAllTemplatesForContext(
   for (const app of ctx.apps) {
     templates.push(...resolveTemplatesForStack(app.stackName, app.appName, ctx, templatesDir));
 
-    for (const libraryName of app.libraries) {
-      const library = META.libraries[libraryName];
-      if (library && isLibraryCompatible(library, app.stackName)) {
-        templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName, templatesDir));
-      }
+    for (const { name: libraryName } of getAppLibraries(app)) {
+      templates.push(...resolveTemplatesForLibrary(libraryName, app.appName, ctx, app.stackName, templatesDir));
     }
   }
 

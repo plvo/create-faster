@@ -2,9 +2,16 @@ import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
-import { expect } from 'bun:test';
+import { expect, test } from 'bun:test';
 import { $ } from 'bun';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
+
+export const PNPM_AVAILABLE = Boolean(Bun.which('pnpm'));
+
+/** A test that needs pnpm: skipped, and titled as such, when pnpm is not installed. */
+export function pnpmTest(title: string, run: () => Promise<void>): void {
+  test.skipIf(!PNPM_AVAILABLE)(PNPM_AVAILABLE ? title : `${title} (skipped: pnpm is not installed)`, run);
+}
 
 interface CliResult {
   exitCode: number;
