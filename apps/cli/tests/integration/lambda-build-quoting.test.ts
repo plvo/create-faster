@@ -7,6 +7,7 @@ import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
 
 const DEFINE_FLAG = '--define:';
+const BANNER_FLAG = '--banner:js=';
 const COMMAND_SEPARATORS = /&&|\|\||[;|\n]/;
 const PORTABLE_COMMAND_NAME = /^[\w.@-]+$/;
 const ASSIGNMENT = /^\w+=/;
@@ -20,7 +21,7 @@ const APP_COMBINATIONS = [
 ];
 const TERRAFORM_LAMBDA_APPS = ['api', 'cron', 'worker'];
 
-interface DefineWord {
+interface FlagWord {
   script: string;
   word: string;
 }
@@ -79,20 +80,31 @@ async function packageJsonFilesOf(projectDir: string): Promise<string[]> {
 describe('--define flags of the scripts of generated projects', () => {
   let tempDir: string;
   let printersDir: string;
-  const defines = new Map<string, DefineWord[]>();
+  const defines = new Map<string, FlagWord[]>();
+  const banners = new Map<string, FlagWord[]>();
 
-  async function collectDefines(project: string, args: string[]): Promise<void> {
+  async function collectFlags(project: string, args: string[]): Promise<void> {
     const result = await runCli([project, ...args, '--no-git', '--no-install'], tempDir);
     expect(result.exitCode).toBe(0);
     const projectDir = join(tempDir, project);
     for (const file of await packageJsonFilesOf(projectDir)) {
       const { scripts = {} } = await readJsonFile<{ scripts?: Record<string, string> }>(file);
-      for (const script of Object.values(scripts).filter((script) => script.includes(DEFINE_FLAG))) {
+      for (const script of Object.values(scripts).filter(
+        (script) => script.includes(DEFINE_FLAG) || script.includes(BANNER_FLAG),
+      )) {
         await linkCommandNames(printersDir, commandNamesOf(script));
         const words = await wordsAfterShellSplitting(script, printersDir);
-        const found = words.filter((word) => word.startsWith(DEFINE_FLAG));
         const key = `${project}/${dirname(file).slice(projectDir.length + 1) || '.'}`;
-        defines.set(key, [...(defines.get(key) ?? []), ...found.map((word) => ({ script, word }))]);
+        for (const [flag, flagged] of [
+          [DEFINE_FLAG, defines],
+          [BANNER_FLAG, banners],
+        ] as const) {
+          if (!script.includes(flag)) continue;
+          // A script whose flag never reaches a command (a shell syntax error) is kept as an empty word, which no check accepts.
+          const found = words.filter((word) => word.startsWith(flag));
+          const reached = (found.length > 0 ? found : ['']).map((word) => ({ script, word }));
+          flagged.set(key, [...(flagged.get(key) ?? []), ...reached]);
+        }
       }
     }
   }
@@ -103,11 +115,11 @@ describe('--define flags of the scripts of generated projects', () => {
     await createArgumentPrinter(printersDir);
     const blueprintRuns = Object.keys(META.blueprints).flatMap((blueprint) =>
       BLUEPRINT_PACKAGE_MANAGERS.map((pm) =>
-        collectDefines(`${blueprint}-${pm}`, ['--blueprint', blueprint, '--pm', pm]),
+        collectFlags(`${blueprint}-${pm}`, ['--blueprint', blueprint, '--pm', pm]),
       ),
     );
     const combinationRuns = APP_COMBINATIONS.map((args, index) =>
-      collectDefines(`combination-${index}`, [...args, '--pm', 'npm']),
+      collectFlags(`combination-${index}`, [...args, '--pm', 'npm']),
     );
     await Promise.all([...blueprintRuns, ...combinationRuns]);
   });
@@ -135,5 +147,14 @@ describe('--define flags of the scripts of generated projects', () => {
     );
 
     expect(notLiterals).toEqual([]);
+  });
+
+  test('every banner reaches its command as one argument holding the quoted module name', () => {
+    const splitBanners = [...banners.entries()].flatMap(([location, words]) =>
+      words.filter(({ word }) => !word.includes("'node:module'")).map(({ word }) => `${location}: ${word}`),
+    );
+
+    expect([...banners.keys()].length).toBeGreaterThan(0);
+    expect(splitBanners).toEqual([]);
   });
 });
