@@ -1,81 +1,139 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { chmod, mkdir, readdir, symlink, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { $ } from 'bun';
+import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
 
-const LAMBDA_BLUEPRINTS = ['lambda-terraform-aws-hono', 'lambda-sst-hono'];
-const NODE_PACKAGE_MANAGERS = ['npm', 'pnpm'];
-const ESBUILD_BUILD = /^esbuild /;
-const DEFINE_FLAG = '--define:process.env.NODE_ENV=';
+const DEFINE_FLAG = '--define:';
+const COMMAND_SEPARATORS = /&&|\|\||[;|\n]/;
+const PORTABLE_COMMAND_NAME = /^[\w.@-]+$/;
+const ASSIGNMENT = /^\w+=/;
 
-/** The arguments `sh` hands to the command a package.json script starts, one per line. */
-async function wordsAfterShellSplitting(command: string): Promise<string[]> {
-  const { stdout } = await $`sh -c ${`printf '%s\\n' ${command}`}`.quiet();
-  return stdout.toString().trimEnd().split('\n');
+const BLUEPRINT_PACKAGE_MANAGERS = ['npm', 'pnpm'];
+const APP_COMBINATIONS = [
+  ['--app', 'web:nextjs', '--app', 'api:hono:aws-lambda', '--deployment', 'sst'],
+  ['--app', 'api:hono:aws-lambda', '--deployment', 'terraform-aws'],
+  ['--app', 'site:tanstack-start', '--app', 'jobs:node'],
+  ['--app', 'mobile:expo'],
+];
+const TERRAFORM_LAMBDA_APPS = ['api', 'cron', 'worker'];
+
+interface DefineWord {
+  script: string;
+  word: string;
 }
 
-/** The same through Bun's shell, which runs the scripts of a bun project. */
-async function wordsAfterBunShellSplitting(command: string): Promise<string[]> {
-  const stdout = await $`${{ raw: `printf '%s\\n' ${command}` }}`.text();
-  return stdout.trimEnd().split('\n');
+/**
+ * The command names a package.json script starts: the first word of each segment, without leading VAR=value
+ * assignments. A name that is not a plain word (a path, a quote left over from splitting) is ignored.
+ */
+function commandNamesOf(script: string): string[] {
+  const names = script.split(COMMAND_SEPARATORS).flatMap((segment) => {
+    const name = segment
+      .trim()
+      .split(/\s+/)
+      .find((word) => !ASSIGNMENT.test(word));
+    return name && PORTABLE_COMMAND_NAME.test(name) ? [name] : [];
+  });
+  return [...new Set(names)];
 }
 
-describe('esbuild build scripts of the Lambda blueprints', () => {
+const PRINTER = '.print-arguments';
+
+/**
+ * A directory where every command name is an executable that prints its arguments one per line and does nothing
+ * else, so a script run with only this directory on PATH shows the words `sh` hands to each command without
+ * running anything.
+ */
+async function createArgumentPrinter(dir: string): Promise<void> {
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, PRINTER), "#!/bin/sh\nfor argument in \"$@\"; do printf '%s\\n' \"$argument\"; done\n");
+  await chmod(join(dir, PRINTER), 0o755);
+}
+
+async function linkCommandNames(dir: string, names: string[]): Promise<void> {
+  await Promise.all(names.map((name) => symlink(join(dir, PRINTER), join(dir, name)).catch(() => undefined)));
+}
+
+async function wordsAfterShellSplitting(script: string, printersDir: string): Promise<string[]> {
+  const { stdout } = await $`/bin/sh -c ${script}`.env({ PATH: printersDir }).cwd(printersDir).quiet().nothrow();
+  return stdout.toString().split('\n');
+}
+
+function isJavaScriptLiteral(value: string): boolean {
+  try {
+    JSON.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function packageJsonFilesOf(projectDir: string): Promise<string[]> {
+  const entries = await readdir(projectDir, { recursive: true });
+  return entries.filter((entry) => basename(entry) === 'package.json').map((entry) => join(projectDir, entry));
+}
+
+describe('--define flags of the scripts of generated projects', () => {
   let tempDir: string;
-  const builds: { project: string; pm: string; app: string; build: string }[] = [];
+  let printersDir: string;
+  const defines = new Map<string, DefineWord[]>();
+
+  async function collectDefines(project: string, args: string[]): Promise<void> {
+    const result = await runCli([project, ...args, '--no-git', '--no-install'], tempDir);
+    expect(result.exitCode).toBe(0);
+    const projectDir = join(tempDir, project);
+    for (const file of await packageJsonFilesOf(projectDir)) {
+      const { scripts = {} } = await readJsonFile<{ scripts?: Record<string, string> }>(file);
+      for (const script of Object.values(scripts).filter((script) => script.includes(DEFINE_FLAG))) {
+        await linkCommandNames(printersDir, commandNamesOf(script));
+        const words = await wordsAfterShellSplitting(script, printersDir);
+        const found = words.filter((word) => word.startsWith(DEFINE_FLAG));
+        const key = `${project}/${dirname(file).slice(projectDir.length + 1) || '.'}`;
+        defines.set(key, [...(defines.get(key) ?? []), ...found.map((word) => ({ script, word }))]);
+      }
+    }
+  }
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    for (const blueprint of LAMBDA_BLUEPRINTS) {
-      for (const pm of NODE_PACKAGE_MANAGERS) {
-        const project = `${blueprint}-${pm}`;
-        const result = await runCli(
-          [project, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', pm],
-          tempDir,
-        );
-        expect(result.exitCode).toBe(0);
-        const appsDir = join(tempDir, project, 'apps');
-        for (const app of await readdir(appsDir)) {
-          const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(
-            join(appsDir, app, 'package.json'),
-          );
-          const build = scripts.build ?? '';
-          if (ESBUILD_BUILD.test(build)) builds.push({ project, pm, app, build });
-        }
-      }
-    }
+    printersDir = join(tempDir, 'printers');
+    await createArgumentPrinter(printersDir);
+    const blueprintRuns = Object.keys(META.blueprints).flatMap((blueprint) =>
+      BLUEPRINT_PACKAGE_MANAGERS.map((pm) =>
+        collectDefines(`${blueprint}-${pm}`, ['--blueprint', blueprint, '--pm', pm]),
+      ),
+    );
+    const combinationRuns = APP_COMBINATIONS.map((args, index) =>
+      collectDefines(`combination-${index}`, [...args, '--pm', 'npm']),
+    );
+    await Promise.all([...blueprintRuns, ...combinationRuns]);
   });
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('api, cron and worker of both blueprints are checked under npm and pnpm', () => {
-    expect(builds.map(({ project }) => project)).toHaveLength(LAMBDA_BLUEPRINTS.length * NODE_PACKAGE_MANAGERS.length * 3);
+  test('the terraform Lambda blueprint defines NODE_ENV once in each of api, cron and worker, under npm and pnpm', () => {
+    for (const pm of BLUEPRINT_PACKAGE_MANAGERS) {
+      const project = `lambda-terraform-aws-hono-${pm}`;
+      for (const app of TERRAFORM_LAMBDA_APPS) {
+        expect(defines.get(`${project}/apps/${app}`)?.map(({ word }) => word.split('=')[0])).toEqual([
+          `${DEFINE_FLAG}process.env.NODE_ENV`,
+        ]);
+      }
+    }
   });
 
-  for (const [shellName, split] of [
-    ['sh', wordsAfterShellSplitting],
-    ['the Bun shell', wordsAfterBunShellSplitting],
-  ] as const) {
-    test(`${shellName} passes the banner as one argument and the NODE_ENV define as a JSON string`, async () => {
-      const failures: string[] = [];
-      for (const { project, app, build } of builds) {
-        const words = await split(build);
-        const banner = words.filter((word) => word.startsWith('--banner:js='));
-        const defines = words.filter((word) => word.startsWith(DEFINE_FLAG));
-        const isBannerWhole = banner.length === 1 && banner[0]?.endsWith('createRequire(import.meta.url);');
-        const defined = defines.map((word) => word.slice(DEFINE_FLAG.length));
-        const isDefineString = defined.every((value) => value === '"production"');
-        const needsDefine = project.startsWith('lambda-terraform-aws-hono');
-        if (!isBannerWhole || !isDefineString || defined.length !== (needsDefine ? 1 : 0)) {
-          failures.push(`${project}/${app}: ${JSON.stringify(words.slice(1))}`);
-        }
-      }
+  test('every define reaches its command as a JavaScript literal after sh splits the script', () => {
+    const notLiterals = [...defines.entries()].flatMap(([location, words]) =>
+      words
+        .filter(({ word }) => !isJavaScriptLiteral(word.slice(word.indexOf('=') + 1)))
+        .map(({ word, script }) => `${location}: ${word} (script: ${script})`),
+    );
 
-      expect(failures).toEqual([]);
-    });
-  }
+    expect(notLiterals).toEqual([]);
+  });
 });
