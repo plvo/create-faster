@@ -515,7 +515,6 @@ export const META: Meta = {
       // The only nitro inside the peer, 3.0.260311-beta, has published advisories (GHSA-9phm-9p8f-hw5m,
       // GHSA-5w89-w975-hf9q), so npm is told to resolve evlog's peer to the nitro the app installs.
       // `npm ls` reports that nitro as `invalid` in a turborepo; the install, `npm ci` and the build are unaffected.
-      // Remove it once an evlog release widens the peer (tests/unit/lib/evlog-nitro-peer.test.ts fails then).
       rootPackageJson: {
         overrides: {
           evlog: {

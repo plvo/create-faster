@@ -114,6 +114,22 @@ describe('library rootPackageJson', () => {
     expect(root.content.allowScripts).toEqual({ fromInstallScripts: true, fromRootPackageJson: false });
   });
 
+  test('single repo: a blueprint rootPackageJson merges with the library keys in the app package.json', () => {
+    const ctx: TemplateContext = {
+      projectName: 'test-project',
+      repo: 'single',
+      apps: [{ appName: 'web', stackName: 'hono', libraries: ['stub-first'] }],
+      project: { tooling: [] },
+      blueprint: 'stub-blueprint',
+      git: false,
+    };
+
+    expect(generateAppPackageJson(ctx.apps[0]!, ctx, 0).content.overrides).toEqual({
+      shared: { first: '1.0.0', blueprint: '4.0.0' },
+      onlyFirst: { dep: '1.0.0' },
+    });
+  });
+
   test('a library that does not support the stack of its app contributes nothing', () => {
     const ctx: TemplateContext = {
       ...turborepo(),

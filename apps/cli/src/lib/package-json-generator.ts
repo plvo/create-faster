@@ -212,6 +212,9 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
         packageManagerPackageJson(blueprint.packageManagerPackageJson, ctx),
       );
     }
+    if (!isTurborepo && blueprint?.rootPackageJson) {
+      merged = mergeResolved(ctx, merged, blueprint.rootPackageJson);
+    }
   }
 
   const runtimeAddon = findRuntimeAddon(ctx);
