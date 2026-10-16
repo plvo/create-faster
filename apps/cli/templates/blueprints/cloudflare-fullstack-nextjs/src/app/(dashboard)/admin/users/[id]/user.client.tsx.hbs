@@ -1,0 +1,34 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/users/[id]/user.client.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { Button } from '@repo/ui/components/ui/button';
+import { EditUser } from '@/components/admin/edit-user';
+import { useTRPC } from '@/trpc/providers';
+
+export function UserClient() {
+  const trpc = useTRPC();
+  const { id } = useParams<{ id: string }>();
+  const { data: user } = useSuspenseQuery(trpc.users.get.queryOptions({ id }));
+
+  return (
+    <div className='space-y-6'>
+      <Button asChild variant='ghost' size='sm' className='-ml-2.5'>
+        <Link href='/admin/users'>
+          <ArrowLeft />
+          Back to users
+        </Link>
+      </Button>
+      <EditUser user={user} />
+    </div>
+  );
+}
+{{{{/raw}}}}

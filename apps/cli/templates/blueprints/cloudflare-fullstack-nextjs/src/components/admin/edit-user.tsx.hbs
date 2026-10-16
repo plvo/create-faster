@@ -126,7 +126,7 @@ export function EditUser({ user }: { user: AdminUser }) {
     <div className='max-w-2xl space-y-6'>
       <div className='space-y-0.5'>
         <div className='flex flex-wrap items-center gap-2'>
-          <h1 className='min-w-0 break-words text-lg font-semibold'>{user.name}</h1>
+          <h1 className='min-w-0 break-words text-3xl font-bold'>{user.name}</h1>
           {user.banned && <Badge variant='destructive'>Banned</Badge>}
         </div>
         <p className='text-sm wrap-anywhere text-muted-foreground'>{user.email}</p>

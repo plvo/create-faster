@@ -105,7 +105,7 @@ export const useQueryClient = () => ({ invalidateQueries() {} });`,
   'sonner.mjs': `// Records what the user is told, in order.
 const record = (kind) => (message) => { (globalThis.__toasts ??= []).push({ kind, message }); };
 export const toast = { success: record('success'), error: record('error') };`,
-  'passthrough.mjs': 'export const Can = ({ children }) => children;',
+  'passthrough.mjs': 'export const Can = ({ children }) => (globalThis.__testDenied ? null : children);',
   'leaf.mjs': `export const ContactForm = () => null;
 export const ContactDialog = () => null;
 export const ContactTable = () => null;
@@ -114,6 +114,7 @@ export const CreateUserDialog = () => null;
 export const UserActions = () => null;
 export const EditUser = () => null;
 export const UsersClient = () => null;
+export const UserClient = () => null;
 export const AppHeader = () => null;
 export const AppSidebar = () => null;`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
@@ -222,6 +223,7 @@ const COMMON_IMPORTS: Record<string, string> = {
   '@/components/admin/edit-user': './leaf.mjs',
   './user-actions': './leaf.mjs',
   './users.client': './leaf.mjs',
+  './user.client': './leaf.mjs',
   '@repo/auth/permissions': './permissions.mjs',
   '@repo/auth/auth-client': './auth-client.mjs',
   zod: './zod.mjs',
@@ -734,8 +736,8 @@ const FULLSTACK_PAGES = {
   dashboardLayout: { file: `${APP}/layout.tsx`, exportName: 'default' },
   usersRoute: { file: `${APP}/admin/users/page.tsx`, exportName: 'default' },
   usersPage: { file: `${APP}/admin/users/users.client.tsx`, exportName: 'UsersClient' },
-  userLayout: { file: `${APP}/admin/users/[id]/layout.tsx`, exportName: 'default' },
-  userDetailPage: { file: `${APP}/admin/users/[id]/page.tsx`, exportName: 'default' },
+  userRoute: { file: `${APP}/admin/users/[id]/page.tsx`, exportName: 'default' },
+  userDetailPage: { file: `${APP}/admin/users/[id]/user.client.tsx`, exportName: 'UserClient' },
   userTable: { file: 'src/components/admin/user-table.tsx', exportName: 'UserTable' },
   editUser: { file: 'src/components/admin/edit-user.tsx', exportName: 'EditUser' },
   createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
@@ -825,7 +827,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
   describe('page titles and headings', () => {
     test('the users list, a user and the roles are each titled, under the project template', async () => {
       expect((await load('usersRoute')).metadata).toEqual({ title: 'Users' });
-      expect((await load('userLayout')).metadata).toEqual({ title: 'User' });
+      expect((await load('userRoute')).metadata).toEqual({ title: 'User' });
       expect((await load('roles')).metadata).toEqual({ title: 'Roles' });
     });
 
@@ -834,6 +836,26 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       expect(withTag(users.tree, 'h1').map(textOf)).toEqual(['Users']);
       const roles = await mount('roles');
       expect(withTag(roles.tree, 'h1').map(textOf)).toEqual(['Roles']);
+    });
+
+    test('a viewer who may not list users still gets the page heading', async () => {
+      (globalThis as { __testDenied?: boolean }).__testDenied = true;
+      try {
+        const users = await mount('usersPage');
+        expect(withTag(users.tree, 'h1').map(textOf)).toEqual(['Users']);
+        expect(withTag(users.tree, 'table')).toEqual([]);
+      } finally {
+        (globalThis as { __testDenied?: boolean }).__testDenied = false;
+      }
+    });
+
+    test('the three pages share one heading scale', async () => {
+      const titles = [
+        withTag((await mount('usersPage')).tree, 'h1')[0],
+        withTag((await mount('editUser', { props: { user: USER } })).tree, 'h1')[0],
+        withTag((await mount('roles')).tree, 'h1')[0],
+      ];
+      for (const title of titles) expectClasses(title, 'text-3xl', 'font-bold');
     });
 
     test('the dashboard has one main landmark and a smaller padding on a phone', async () => {
@@ -1096,6 +1118,12 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       expect(withTag(frame, 'table')).toHaveLength(1);
       for (const cell of [...withTag(page.tree, 'th'), ...withTag(page.tree, 'td')]) expectClasses(cell, 'px-2', 'sm:px-4');
       expectClasses(headers(must(withTag(page.tree, 'table')[0], 'the table'), 'row')[0], 'whitespace-normal', 'wrap-anywhere');
+    });
+
+    test('rounds its corners over the header row and the current role column', async () => {
+      const page = await mount('roles');
+      const frame = must(find(page.tree, (element) => classesOf(element).includes('rounded-lg') && withTag(element, 'table').length === 1), 'the rounded frame');
+      expectClasses(frame, 'border', 'overflow-hidden');
     });
   });
 });

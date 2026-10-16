@@ -270,7 +270,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('per-user page edits a single user by id with inline edit + admin actions', () => {
-    const page = bpFile('src/app/(dashboard)/admin/users/[id]/page.tsx.hbs');
+    const page = bpFile('src/app/(dashboard)/admin/users/[id]/user.client.tsx.hbs');
     expect(page).toContain('useParams<{ id: string }>()');
     expect(page).toContain('trpc.users.get.queryOptions({ id })');
     const edit = bpFile('src/components/admin/edit-user.tsx.hbs');
