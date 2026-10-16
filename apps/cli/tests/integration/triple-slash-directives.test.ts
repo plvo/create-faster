@@ -1,9 +1,11 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDirectiveAtRisk } from '../triple-slash-directives';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const SOURCE_FILE = /\.(?:ts|tsx|mts|cts)$/;
 const VITE_CLIENT_TYPES = '/// <reference types="vite/client" />';

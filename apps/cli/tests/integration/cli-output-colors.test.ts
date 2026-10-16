@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { stripVTControlCharacters } from 'node:util';
 import { cleanupTempDir, createTempDir, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const INVALID_DATABASE_ARGS = ['x', '--app', 'x:nextjs', '--database', 'nope', '--no-git', '--no-install'];
 const COLOR_ESCAPE = '\u001b[';

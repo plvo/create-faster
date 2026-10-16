@@ -1,4 +1,3 @@
-import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
@@ -12,6 +11,9 @@ import {
   runCli,
   runCliOnTerminal,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
 const promptOf = (name: ProjectCategoryName) => META.project[name].prompt;

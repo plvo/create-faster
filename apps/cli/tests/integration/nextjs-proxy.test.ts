@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const SESSION_LOOKUP = /auth\.api\.(getSession|listOrganizations)/;
 const SQLITE_DRIZZLE = ['--database', 'sqlite', '--orm', 'drizzle'];

@@ -1,8 +1,10 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists } from './helpers';
 import { createStubbedCli, type GenerateProject } from './stubbed-cli';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const NOISY_LINE_COUNT = 200;
 

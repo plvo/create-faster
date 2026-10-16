@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import {
@@ -10,6 +9,9 @@ import {
   readTextFile,
   runCli,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 // A command written as `<pm> <script>` is only valid for scripts the package manager owns
 // (`bun build` runs Bun's bundler, `npm dev` is an unknown command): scripts need `<pm> run <script>`.

@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,6 +11,9 @@ import {
   renderElementTree,
   runCli,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const BLUEPRINTS = ['org-dashboard-nextjs', 'multitenant-saas-nextjs', 'cloudflare-fullstack-nextjs'];
 

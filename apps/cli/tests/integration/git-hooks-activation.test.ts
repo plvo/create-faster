@@ -1,9 +1,11 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import { cleanupTempDir, createTempDir, fileExists } from './helpers';
 import { createStubbedCli, type GenerateProject } from './stubbed-cli';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 describe('git hooks installed by a prepare script', () => {
   let tempDir: string;

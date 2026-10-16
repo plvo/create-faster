@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,6 +15,9 @@ import {
   textOf,
 } from './helpers';
 import { NEXTJS_PAGES, TANSTACK_START_PAGES } from './org-dashboard-pages';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 interface DetailPage {
   file: string;

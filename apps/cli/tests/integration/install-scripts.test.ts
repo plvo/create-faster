@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import matter from 'gray-matter';
@@ -13,6 +12,9 @@ import {
   readTextFile,
   runCli,
 } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 interface Manifest {
   allowScripts?: InstallScripts;

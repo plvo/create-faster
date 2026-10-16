@@ -1,7 +1,9 @@
-import './timeout';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { accept, cleanupTempDir, createTempDir, fileExists, runCli, runCliOnTerminal } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const FLAGS = ['--yes', '--no-install', '--no-git'];
 const CLEAR_FIELD = '\x7f'.repeat(40);

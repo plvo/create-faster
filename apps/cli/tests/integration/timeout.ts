@@ -1,4 +1,9 @@
 import { setDefaultTimeout } from 'bun:test';
 
-// Each integration test file imports this module first. The default applies to the files that import it, so unit and e2e tests keep their own timeouts.
-setDefaultTimeout(120_000);
+const INTEGRATION_TIMEOUT_MS = 120_000;
+
+// Bun evaluates a module once per run and applies a default timeout to the file that sets it, so every integration
+// test file calls this function itself instead of relying on an import side effect.
+export function setIntegrationTimeout(): void {
+  setDefaultTimeout(INTEGRATION_TIMEOUT_MS);
+}

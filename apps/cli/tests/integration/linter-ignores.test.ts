@@ -1,7 +1,9 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join, posix } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const ROUTE_TREE = 'routeTree.gen.ts';
 

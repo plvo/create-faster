@@ -1,8 +1,10 @@
-import './timeout';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
   const projectName = 'cf-fullstack';

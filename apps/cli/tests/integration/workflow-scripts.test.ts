@@ -1,10 +1,12 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { shipsWorkflows } from '../blueprint-workflows';
 import { cleanupTempDir, createTempDir, PNPM_AVAILABLE, readJsonFile, readTextFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const BLUEPRINTS_DIR = join(import.meta.dir, '../../templates/blueprints');
 const BLUEPRINTS_WITH_WORKFLOWS = Object.keys(META.blueprints).filter((name) => shipsWorkflows(name, BLUEPRINTS_DIR));

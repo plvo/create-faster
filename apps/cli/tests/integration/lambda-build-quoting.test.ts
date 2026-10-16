@@ -1,14 +1,13 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { chmod, mkdir, readdir, symlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { $ } from 'bun';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
+import { setIntegrationTimeout } from './timeout';
 
-// Bun applies the default timeout of `./timeout` to a hook in only some files of a multi-file run, so a hook that
-// generates many projects sets its own.
-const GENERATION_TIMEOUT_MS = 120_000;
+setIntegrationTimeout();
+
 const DEFINE_FLAG = '--define:';
 const BANNER_FLAG = '--banner:js=';
 const COMMAND_SEPARATORS = /&&|\|\||[;|\n]/;
@@ -125,7 +124,7 @@ describe('--define flags of the scripts of generated projects', () => {
       collectFlags(`combination-${index}`, [...args, '--pm', 'npm']),
     );
     await Promise.all([...blueprintRuns, ...combinationRuns]);
-  }, GENERATION_TIMEOUT_MS);
+  });
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);

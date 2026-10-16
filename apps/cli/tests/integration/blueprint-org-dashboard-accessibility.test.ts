@@ -1,4 +1,3 @@
-import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,6 +15,9 @@ import {
   textOf,
 } from './helpers';
 import { NEXTJS_PAGES, type OrgDashboardPageName, TANSTACK_START_PAGES } from './org-dashboard-pages';
+import { setIntegrationTimeout } from './timeout';
+
+setIntegrationTimeout();
 
 const GENERATED_PASSWORD = { file: 'src/components/admin/generated-password.tsx', exportName: 'GeneratedPassword' };
 const GENERATED_PASSWORD_MODULE = { '@/components/admin/generated-password': { ...GENERATED_PASSWORD, stub: 'generated-password.mjs' } };
