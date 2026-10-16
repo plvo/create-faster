@@ -4,10 +4,23 @@ mono:
   path: src/app/(dashboard)/admin/users/page.tsx
 ---
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Skeleton } from '@repo/ui/components/ui/skeleton';
+import { requireAdmin } from '@/lib/auth/session';
+import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { UsersClient } from './users.client';
 
 export const metadata: Metadata = { title: 'Users' };
 
-export default function AdminUsersPage() {
-  return <UsersClient />;
+export default async function AdminUsersPage() {
+  await requireAdmin();
+  prefetch(trpc.users.list.queryOptions());
+
+  return (
+    <HydrateClient>
+      <Suspense fallback={<Skeleton className='h-64 w-full' />}>
+        <UsersClient />
+      </Suspense>
+    </HydrateClient>
+  );
 }

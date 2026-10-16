@@ -6,11 +6,9 @@ mono:
 {{{{raw}}}}
 import { Check, Minus } from 'lucide-react';
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { roleDefinitions, statement } from '@repo/auth/permissions';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@repo/ui/components/ui/table';
-import { getAuth } from '@/lib/server';
+import { requireAdmin } from '@/lib/auth/session';
 
 export const metadata: Metadata = { title: 'Roles' };
 
@@ -24,9 +22,7 @@ function isGranted(role: RoleName, resource: string, action: string): boolean {
 }
 
 export default async function RolesPage() {
-  const auth = await getAuth();
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (session?.user.role !== 'admin') redirect('/');
+  const session = await requireAdmin();
 
   const currentRole = session.user.role as RoleName;
   const roleNames = Object.keys(roleDefinitions) as RoleName[];
