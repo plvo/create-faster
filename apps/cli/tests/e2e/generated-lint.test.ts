@@ -10,6 +10,12 @@ const OUTPUT_TAIL_LINES = 60;
 // `prettier` is left out: it only formats and defines no lint script.
 const LINTERS = ['biome', 'oxc', 'eslint', 'eslint-prettier'];
 
+// Only Biome is held to zero warnings. The `lint` script of an ESLint turborepo is `turbo lint`, which does not
+// forward a flag to eslint, and oxlint still warns on files unrelated to this check.
+const FAIL_ON_WARNINGS_FLAGS: Record<string, string[]> = {
+  biome: ['--error-on-warnings'],
+};
+
 const BLUEPRINTS = [
   'dapp-privy-nextjs',
   'dapp-rainbowkit-nextjs',
@@ -155,16 +161,17 @@ async function buildProject(projectDir: string): Promise<string[]> {
   return outcomes;
 }
 
-async function expectLintPasses(projectDir: string, moment: string): Promise<void> {
-  const result = await runCommand(['bun', 'run', 'lint'], projectDir);
+async function expectLintPasses(projectDir: string, linter: string, moment: string): Promise<void> {
+  const command = ['bun', 'run', 'lint', ...(FAIL_ON_WARNINGS_FLAGS[linter] ?? [])];
+  const result = await runCommand(command, projectDir);
   if (result.exitCode === 0) return;
   const tail = `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
-  throw new Error(`\`bun run lint\` exited ${result.exitCode} ${moment}:\n${tail}`);
+  throw new Error(`\`${command.join(' ')}\` exited ${result.exitCode} ${moment}:\n${tail}`);
 }
 
 // The build outcome is logged, not asserted: the other e2e files own it. What matters here is that
 // whatever the build writes (or leaves half written) is never linted.
-describe('generated projects pass their own lint script', () => {
+describe('generated projects pass their own lint script (Biome also without warnings)', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -192,9 +199,9 @@ describe('generated projects pass their own lint script', () => {
 
           try {
             await prepareBuild(projectDir);
-            await expectLintPasses(projectDir, 'before the build');
+            await expectLintPasses(projectDir, linter, 'before the build');
             const builds = await buildProject(projectDir);
-            if (builds.length > 0) await expectLintPasses(projectDir, 'after the build');
+            if (builds.length > 0) await expectLintPasses(projectDir, linter, 'after the build');
             console.log(`${linter}: ${name}: ${builds.join(', ') || 'no build script'}`);
           } finally {
             await cleanupTempDir(projectDir);

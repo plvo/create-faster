@@ -50,7 +50,8 @@
       "cache": false
     },
     "db:seed": {
-      "cache": false
+      "cache": false{{#with (taskEnv "db:seed") as |seedEnv|}},
+      "env": [{{#each seedEnv}}{{#unless @first}}, {{/unless}}"{{this}}"{{/each}}]{{/with}}
     },
     "db:studio": {
       "cache": false,

@@ -1,7 +1,7 @@
 const ORIGIN_PROBE = 'http://internal.invalid';
 
 export function safeRedirectPath(value: string | null | undefined, fallback = '/'): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return fallback;
+  if (!value?.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return fallback;
   const url = new URL(value, ORIGIN_PROBE);
   if (url.origin !== ORIGIN_PROBE) return fallback;
   return `${url.pathname}${url.search}${url.hash}`;

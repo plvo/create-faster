@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { collectAppSecrets, collectEnvFiles, collectEnvGroups, collectProjectSecrets } from '@/lib/env-generator';
+import {
+  collectAppSecrets,
+  collectEnvFiles,
+  collectEnvGroups,
+  collectProjectSecrets,
+  collectTaskEnv,
+} from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';
 import type { EnvVar, MetaAddon, MetaBlueprint } from '@/types/meta';
 
@@ -640,5 +646,27 @@ describe('EnvVar.secret', () => {
 
     expect(secretNames.length).toBeGreaterThan(0);
     expect(secretNames.filter((value) => /^(NEXT_PUBLIC|VITE)_/.test(value))).toEqual([]);
+  });
+});
+
+describe('collectTaskEnv', () => {
+  test('lists the database URL a seed reads', () => {
+    expect(collectTaskEnv(makeContext(), 'db:seed')).toEqual(['DATABASE_URL']);
+  });
+
+  test('lists the variables a blueprint declares for the task, once each', () => {
+    const ctx = makeContext({
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      blueprint: 'org-dashboard-nextjs',
+    });
+
+    expect([...collectTaskEnv(ctx, 'db:seed')].sort()).toEqual(['DATABASE_URL', 'SEED_PASSWORD']);
+  });
+
+  test('lists nothing for a database with no URL or for a task no variable names', () => {
+    const d1 = makeContext({ project: { ...makeContext().project, database: 'd1' } });
+
+    expect(collectTaskEnv(d1, 'db:seed')).toEqual([]);
+    expect(collectTaskEnv(makeContext(), 'build')).toEqual([]);
   });
 });

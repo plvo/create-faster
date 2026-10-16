@@ -1,5 +1,5 @@
 import { $when } from '@/lib/when';
-import type { FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
+import type { EnvVar, FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
@@ -33,6 +33,8 @@ const START_DOCKER_DATABASE: FirstRunStep[] = [
 const RUN_LOCAL_SETUP: FirstRunStep[] = [
   { description: 'Set up the local database and seed demo data', commands: [{ script: 'local-setup' }] },
 ];
+
+const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
 
 const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the generated files', script: 'format' }];
 
@@ -727,6 +729,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="postgresql://postgres:password@localhost:{{dbPort}}/postgres-{{projectName}}?sslmode=disable" # Local Docker PostgreSQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
               secret: { deployment: 'sst' },
             },
           ],
@@ -747,6 +750,7 @@ export const META: Meta = {
               value:
                 'DATABASE_URL="mysql://mysql:password@localhost:{{dbPort}}/mysql-{{projectName}}?ssl=false" # Local Docker MySQL, no TLS: never use this URL in production',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
               secret: { deployment: 'sst' },
             },
           ],
@@ -772,6 +776,7 @@ export const META: Meta = {
             {
               value: 'DATABASE_URL="file:./db.sqlite" # Local SQLite file, created by db:migrate',
               monoScope: [{ pkg: 'db' }, 'app'],
+              tasks: ['db:seed'],
             },
           ],
         },
@@ -1356,6 +1361,7 @@ export const META: Meta = {
           start: 'turbo start',
         },
       },
+      envs: [SEED_PASSWORD],
     },
     'multitenant-saas-nextjs': {
       label: 'Multitenant SaaS',
@@ -1457,6 +1463,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
+        SEED_PASSWORD,
       ],
     },
     'cloudflare-static-site-nextjs': {
@@ -1601,6 +1608,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
+        SEED_PASSWORD,
       ],
     },
     'showcase-nextjs': {

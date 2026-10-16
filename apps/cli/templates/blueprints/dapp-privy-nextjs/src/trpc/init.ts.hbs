@@ -7,10 +7,12 @@ import { db } from '@/lib/db';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 
-const privy = new PrivyClient(
-  process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
-  process.env.PRIVY_APP_SECRET!,
-);
+const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+const privyAppSecret = process.env.PRIVY_APP_SECRET;
+if (!privyAppId) throw new Error('NEXT_PUBLIC_PRIVY_APP_ID environment variable is not set');
+if (!privyAppSecret) throw new Error('PRIVY_APP_SECRET environment variable is not set');
+
+const privy = new PrivyClient(privyAppId, privyAppSecret);
 
 function getTokenFromHeaders(headers: Headers): string | undefined {
   const cookie = headers.get('cookie') ?? '';
