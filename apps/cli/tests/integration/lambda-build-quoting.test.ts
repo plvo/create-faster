@@ -41,7 +41,8 @@ describe('esbuild build scripts of the Lambda blueprints', () => {
           const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(
             join(appsDir, app, 'package.json'),
           );
-          if (ESBUILD_BUILD.test(scripts.build ?? '')) builds.push({ project, pm, app, build: scripts.build });
+          const build = scripts.build ?? '';
+          if (ESBUILD_BUILD.test(build)) builds.push({ project, pm, app, build });
         }
       }
     }
@@ -65,7 +66,7 @@ describe('esbuild build scripts of the Lambda blueprints', () => {
         const words = await split(build);
         const banner = words.filter((word) => word.startsWith('--banner:js='));
         const defines = words.filter((word) => word.startsWith(DEFINE_FLAG));
-        const isBannerWhole = banner.length === 1 && banner[0].endsWith('createRequire(import.meta.url);');
+        const isBannerWhole = banner.length === 1 && banner[0]?.endsWith('createRequire(import.meta.url);');
         const defined = defines.map((word) => word.slice(DEFINE_FLAG.length));
         const isDefineString = defined.every((value) => value === '"production"');
         const needsDefine = project.startsWith('lambda-terraform-aws-hono');
