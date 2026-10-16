@@ -94,7 +94,8 @@ export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ que
   'skeleton.mjs': 'export const Skeleton = () => null;',
   'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
-export const useNavigate = () => () => {};`,
+export const useNavigate = () => () => {};
+export const notFound = () => ({ kind: 'notFound' });`,
   'query.mjs': `// trpc.a.b.queryOptions(x) and mutationOptions(x) hand their argument back, as the real helpers do.
 const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
 export const useTRPC = () => deep();

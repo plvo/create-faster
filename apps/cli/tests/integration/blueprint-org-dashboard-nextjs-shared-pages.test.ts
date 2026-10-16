@@ -52,11 +52,10 @@ describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
 
   test('the contact page navigates with next/navigation and links back through next/link', async () => {
     const page = await read(NEXTJS_PAGES.contactDetail.file);
-    expect(page).toContain("import { useRouter } from 'next/navigation';");
+    expect(page).toContain("import { notFound, useRouter } from 'next/navigation';");
     expect(page).toContain("import Link from 'next/link';");
     expect(page).toContain("router.push('/contacts');");
     expect(page).toContain("<Link href='/contacts'>");
-    expect(page).toContain("<Link href='/contacts' className=");
   });
 
   test('the user page links back through next/link', async () => {
