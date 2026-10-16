@@ -1,7 +1,7 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { join, posix } from 'node:path';
+import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 const ROUTE_TREE = 'routeTree.gen.ts';
 
@@ -44,6 +44,82 @@ describe('linter ignore lists', () => {
       const dir = await generate('prettier-next', 'prettier', ['--app', 'prettier-next:nextjs']);
       expect(await readTextFile(join(dir, '.prettierignore'))).not.toContain(ROUTE_TREE);
     });
+  });
+
+  describe('Drizzle migrations', () => {
+    const MIGRATED_FILE = 'meta/_journal.json';
+    const SQLITE = ['--database', 'sqlite', '--orm', 'drizzle'];
+    const D1 = ['--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare'];
+    const TWO_APPS = ['--app', 'web:nextjs', '--app', 'api:hono'];
+    const LAYOUTS = [
+      { layout: 'sqlite single repo', args: ['--app', 'web:nextjs', ...SQLITE] },
+      { layout: 'sqlite turborepo', args: [...TWO_APPS, ...SQLITE] },
+      { layout: 'd1 single repo', args: ['--app', 'web:nextjs', ...D1] },
+      { layout: 'd1 turborepo', args: [...TWO_APPS, ...D1] },
+      { layout: 'multitenant-saas-nextjs blueprint', args: ['--blueprint', 'multitenant-saas-nextjs'] },
+    ];
+
+    type IgnoredBy = (dir: string, file: string) => Promise<boolean>;
+
+    const biomeIgnores: IgnoredBy = async (dir, file) => {
+      const { files } = JSON.parse(await readTextFile(join(dir, 'biome.json')));
+      const excluded = (files.includes as string[]).filter((glob) => glob.startsWith('!')).map((glob) => glob.slice(1));
+      return excluded.some((glob) => new Bun.Glob(glob).match(file));
+    };
+
+    const oxfmtIgnores: IgnoredBy = async (dir, file) => {
+      const config = await readTextFile(join(dir, 'oxfmt.config.mts'));
+      const list = /ignorePatterns: \[(.*)\]/.exec(config)?.[1] ?? '';
+      return [...list.matchAll(/'([^']+)'/g)].some((match) => new Bun.Glob(match[1] as string).match(file));
+    };
+
+    // gitignore semantics for the entries Prettier reads: a slash-free entry names a directory at any depth,
+    // an entry with a leading slash is anchored to the project root.
+    const prettierIgnores: IgnoredBy = async (dir, file) => {
+      const entries = (await readTextFile(join(dir, '.prettierignore'))).split('\n').filter(Boolean);
+      return entries.some((entry) => {
+        const name = entry.replace(/^\//, '').replace(/\/$/, '');
+        if (entry.startsWith('/') || name.includes('/')) return file.startsWith(`${name}/`);
+        return file.split('/').slice(0, -1).includes(name);
+      });
+    };
+
+    const FORMATTERS: { linter: string; ignores: IgnoredBy }[] = [
+      { linter: 'biome', ignores: biomeIgnores },
+      { linter: 'oxc', ignores: oxfmtIgnores },
+      { linter: 'prettier', ignores: prettierIgnores },
+      { linter: 'eslint-prettier', ignores: prettierIgnores },
+    ];
+
+    // drizzle-kit writes `out` of the Drizzle package, which is the project root or packages/db.
+    async function migrationFile(dir: string): Promise<string> {
+      const packageDir = (await fileExists(join(dir, 'drizzle.config.ts'))) ? '.' : 'packages/db';
+      const config = await readTextFile(join(dir, packageDir, 'drizzle.config.ts'));
+      const out = /out: '([^']+)'/.exec(config)?.[1];
+      if (!out) throw new Error(`no out in ${packageDir}/drizzle.config.ts`);
+      return posix.join(packageDir, out, MIGRATED_FILE);
+    }
+
+    for (const { linter, ignores } of FORMATTERS) {
+      for (const { layout, args } of LAYOUTS) {
+        test(`${linter} ignores the migrations drizzle-kit writes: ${layout}`, async () => {
+          const dir = await generate(`${linter}-${layout.replaceAll(' ', '-')}`, linter, args);
+          expect(await ignores(dir, await migrationFile(dir))).toBe(true);
+        });
+      }
+
+      test(`${linter} ignores nothing named drizzle under Prisma`, async () => {
+        const dir = await generate(`${linter}-prisma`, linter, [
+          '--app',
+          'web:nextjs',
+          '--database',
+          'postgres',
+          '--orm',
+          'prisma',
+        ]);
+        expect(await ignores(dir, `drizzle/${MIGRATED_FILE}`)).toBe(false);
+      });
+    }
   });
 
   describe('eslint', () => {

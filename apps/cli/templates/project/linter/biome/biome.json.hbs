@@ -18,7 +18,8 @@
       "!**/dist/**/*",
       "!**/out/**/*",
       "!**/generated/**/*",
-      "!**/.turbo/**/*"{{#if (has "stack" "tanstack-start")}},
+      "!**/.turbo/**/*"{{#if (has "orm" "drizzle")}},
+      "!**/drizzle/**/*"{{/if}}{{#if (has "stack" "tanstack-start")}},
       "!**/routeTree.gen.ts"{{/if}}
     ]
   },

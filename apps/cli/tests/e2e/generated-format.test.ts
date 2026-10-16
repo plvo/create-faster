@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readFile } from 'node:fs/promises';
+import { copyFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, runCli, runCommand } from './helpers';
 
@@ -52,6 +52,20 @@ const PROJECTS: { name: string; startApp?: string; args: string[] }[] = [
   },
 ];
 
+// The README's first-run step: drizzle-kit writes the migrations, which a formatter must leave alone.
+async function generateMigrations(projectDir: string): Promise<void> {
+  for (const dir of ['.', 'packages/db']) {
+    const example = join(projectDir, dir, '.env.example');
+    if (await fileExists(example)) await copyFile(example, join(projectDir, dir, '.env'));
+  }
+  const result = await runCommand(['bun', 'run', 'db:generate'], projectDir);
+  if (result.exitCode !== 0) throw new Error(`db:generate exited ${result.exitCode}:\n${tail(result)}`);
+  const journal = (await fileExists(join(projectDir, 'packages/db')))
+    ? 'packages/db/drizzle/meta/_journal.json'
+    : 'drizzle/meta/_journal.json';
+  if (!(await fileExists(join(projectDir, journal)))) throw new Error(`db:generate wrote no ${journal}`);
+}
+
 function tail(result: { stdout: string; stderr: string }): string {
   return `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
 }
@@ -79,6 +93,7 @@ describe('a freshly generated project passes its own formatter check and type-ch
 
           const projectDir = join(tempDir, name);
           try {
+            if (args.includes('drizzle')) await generateMigrations(projectDir);
             const result = await runCommand(check, projectDir);
             if (result.exitCode !== 0) throw new Error(`${check.join(' ')} exited ${result.exitCode}:\n${tail(result)}`);
 
