@@ -1,3 +1,4 @@
+import './timeout';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { stripVTControlCharacters } from 'node:util';
 import { cleanupTempDir, createTempDir, runCli } from './helpers';

@@ -266,7 +266,7 @@ bunx create-faster test-turbo --app web:nextjs --app api:hono
 ### Step 5: Run Tests
 
 ```bash
-cd apps/cli && bun test
+cd apps/cli && bun run test
 ```
 
 All existing tests must pass after template changes.

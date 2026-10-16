@@ -63,7 +63,7 @@ digraph updating {
 
 **Hard gates:**
 - Phase 2 gates Phase 3 (no changes without complete inventory)
-- Tests gate generation in Phase 4 (no generation until `bun test` passes)
+- Tests gate generation in Phase 4 (no generation until `bun run test` passes)
 - Generation gate commit in Phase 5 (no commit until generated projects build)
 
 ## Phase 1 — Research
@@ -219,7 +219,7 @@ Now make changes, guided by the inventory. For each file in the inventory, cross
 ### Step 1: Run tests
 
 ```bash
-cd apps/cli && bun test
+cd apps/cli && bun run test
 ```
 
 Fix all failures **caused by your changes** before proceeding. If there are pre-existing test failures (failures that exist on the branch before your changes), document them but don't let them block you — focus on ensuring your update doesn't introduce new failures. Compare test output against a clean run on the branch before your changes if needed.
@@ -295,7 +295,7 @@ Include a brief description of breaking changes addressed in the commit body.
 - [ ] Updated test assertions (if they check versions or API patterns)
 
 ### Verify (Phase 4)
-- [ ] `bun test` passes
+- [ ] `bun run test` passes
 - [ ] Derived critical combinations from cross-reference conditionals
 - [ ] Generated test projects for each combination
 - [ ] `bun install && bun run build` succeeds for all generated projects
@@ -336,5 +336,5 @@ Include a brief description of breaking changes addressed in the commit body.
 | 1. Research | Must produce research summary | context7 resolve + query-docs, WebFetch/WebSearch |
 | 2. Inventory | Must present full inventory | `grep -rn 'hasLibrary "{name}"' apps/cli/templates/` |
 | 3. Update | Guided by inventory | Edit `__meta__.ts`, templates, cross-refs |
-| 4. Verify | Tests → Generation → Build | `bun test`, `bunx create-faster ...`, `bun run build` |
+| 4. Verify | Tests → Generation → Build | `bun run test`, `bunx create-faster ...`, `bun run build` |
 | 5. Commit | All builds pass | `git commit` |

@@ -1,3 +1,4 @@
+import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, exportedNames, readTextFile, runCli } from './helpers';

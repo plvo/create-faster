@@ -48,7 +48,7 @@
     "dev:watch": "NODE_ENV=development bun run src/index.ts --watch",
     "publish:test:start": "bun run build && bun pm pack && sleep 1 && $(which npx) file:$(pwd)/create-faster-$(node -p \"require('./package.json').version\").tgz",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test tests/unit tests/integration",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
     "test:e2e": "bun test tests/e2e --timeout 600000"

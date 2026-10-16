@@ -1,3 +1,4 @@
+import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
