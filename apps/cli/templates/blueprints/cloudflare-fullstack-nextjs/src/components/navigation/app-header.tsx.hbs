@@ -26,31 +26,31 @@ import { useTRPC } from '@/trpc/providers';
 
 export function AppHeader() {
   const pathname = usePathname();
-  const breadcrumbs = buildBreadcrumbs(pathname);
+  const crumbs = buildCrumbs(pathname);
 
   return (
     <header className='sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
       <SidebarTrigger className='-ml-1' />
       <Separator orientation='vertical' className='mr-2 h-4' />
-      <Breadcrumb>
-        <BreadcrumbList>
+      <Breadcrumb className='min-w-0'>
+        <BreadcrumbList className='flex-nowrap'>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link href='/'>Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
-          {breadcrumbs.map((crumb, index) => (
+          {crumbs.map((crumb, index) => (
             <React.Fragment key={crumb.url}>
               <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                {index === breadcrumbs.length - 1 ? (
-                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              <BreadcrumbItem className={index === crumbs.length - 1 ? 'min-w-0' : undefined}>
+                {index === crumbs.length - 1 ? (
+                  <BreadcrumbPage className='truncate'><CrumbLabel crumb={crumb} /></BreadcrumbPage>
                 ) : crumb.hasPage ? (
                   <BreadcrumbLink asChild>
-                    <Link href={crumb.url}>{crumb.label}</Link>
+                    <Link href={crumb.url}><CrumbLabel crumb={crumb} /></Link>
                   </BreadcrumbLink>
                 ) : (
-                  <span>{crumb.label}</span>
+                  <span><CrumbLabel crumb={crumb} /></span>
                 )}
               </BreadcrumbItem>
             </React.Fragment>

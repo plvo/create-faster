@@ -29,14 +29,14 @@ export function AppHeader() {
 {{else}}
   const pathname = usePathname();
 {{/if}}
-  const breadcrumbs = buildBreadcrumbs(pathname);
+  const crumbs = buildCrumbs(pathname);
 
   return (
     <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
       <SidebarTrigger className='-ml-1' />
       <Separator orientation='vertical' className='mr-2 h-4' />
-      <Breadcrumb>
-        <BreadcrumbList>
+      <Breadcrumb className='min-w-0'>
+        <BreadcrumbList className='flex-nowrap'>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
 {{#if (eq stackName "tanstack-start")}}
@@ -46,22 +46,22 @@ export function AppHeader() {
 {{/if}}
             </BreadcrumbLink>
           </BreadcrumbItem>
-          {breadcrumbs.map((crumb, index) => (
+          {crumbs.map((crumb, index) => (
             <React.Fragment key={crumb.url}>
               <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                {index === breadcrumbs.length - 1 ? (
-                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              <BreadcrumbItem className={index === crumbs.length - 1 ? 'min-w-0' : undefined}>
+                {index === crumbs.length - 1 ? (
+                  <BreadcrumbPage className='truncate'><CrumbLabel crumb={crumb} /></BreadcrumbPage>
                 ) : crumb.hasPage ? (
                   <BreadcrumbLink asChild>
 {{#if (eq stackName "tanstack-start")}}
-                    <Link to={crumb.url}>{crumb.label}</Link>
+                    <Link to={crumb.url}><CrumbLabel crumb={crumb} /></Link>
 {{else}}
-                    <Link href={crumb.url}>{crumb.label}</Link>
+                    <Link href={crumb.url}><CrumbLabel crumb={crumb} /></Link>
 {{/if}}
                   </BreadcrumbLink>
                 ) : (
-                  <span>{crumb.label}</span>
+                  <span><CrumbLabel crumb={crumb} /></span>
                 )}
               </BreadcrumbItem>
             </React.Fragment>

@@ -16,6 +16,7 @@ export const ROUTES: RouteProps[] = [
   { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];
 
+// Routes that have a page: the breadcrumb links only these, so add a new page here.
 export const PAGE_URLS: string[] = [
   ...ROUTES.map((route) => route.url),
   '/profile',

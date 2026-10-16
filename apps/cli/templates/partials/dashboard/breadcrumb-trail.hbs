@@ -1,7 +1,11 @@
 {{!-- userQuery: the tRPC procedure that reads one user by id. contactQuery: the one that reads a contact, when the dashboard has contacts --}}
-interface Breadcrumb {
+type DetailName = React.ComponentType<{ id: string }>;
+
+interface Crumb {
   url: string;
-  label: React.ReactNode;
+  segment: string;
+  title: string;
+  Name?: DetailName;
   hasPage: boolean;
 }
 
@@ -27,20 +31,24 @@ function ContactName({ id }: { id: string }) {
 }
 {{/if}}
 
-const DETAIL_NAMES: Record<string, React.ComponentType<{ id: string }>> = {
+const DETAIL_NAMES: Record<string, DetailName> = {
   '/admin/users': UserName,
 {{#if contactQuery}}
   '/contacts': ContactName,
 {{/if}}
 };
 
-function buildBreadcrumbs(pathname: string): Breadcrumb[] {
+function CrumbLabel({ crumb }: { crumb: Crumb }) {
+  return crumb.Name ? <crumb.Name id={crumb.segment} /> : crumb.title;
+}
+
+function buildCrumbs(pathname: string): Crumb[] {
   const segments = pathname.split('/').filter(Boolean);
 
   return segments.map((segment, index) => {
     const url = `/${segments.slice(0, index + 1).join('/')}`;
+    const title = findRouteTitle(ROUTES, url) || formatSegment(segment);
     const Name = DETAIL_NAMES[`/${segments.slice(0, index).join('/')}`];
-    const label = Name ? <Name id={segment} /> : findRouteTitle(ROUTES, url) || formatSegment(segment);
-    return { url, label, hasPage: PAGE_URLS.includes(url) };
+    return { url, segment, title, Name, hasPage: PAGE_URLS.includes(url) };
   });
 }
