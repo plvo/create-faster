@@ -2,6 +2,7 @@
 'use client';
 
 {{/unless}}
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 {{#unless (eq stackName "tanstack-start")}}
 import { useRouter } from 'next/navigation';
@@ -10,6 +11,7 @@ import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-q
 {{#if (eq stackName "tanstack-start")}}
 import { Link, useNavigate } from '@tanstack/react-router';
 {{/if}}
+import { Button } from '@repo/ui/components/ui/button';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
 import { ContactForm } from '@/components/contacts/contact-form';
@@ -62,13 +64,10 @@ export function ContactDetail({ id }: { id: string }) {
     return (
       <div className='space-y-6'>
         <div className='flex items-center gap-4'>
-          <button
-            type='button'
-            onClick={() => setEditing(false)}
-            className='text-sm text-muted-foreground hover:text-foreground'
-          >
-            ← Cancel
-          </button>
+          <Button variant='ghost' size='sm' onClick={() => setEditing(false)}>
+            <ArrowLeft />
+            Cancel
+          </Button>
           <h1 className='text-3xl font-bold'>Edit Contact</h1>
         </div>
         <ContactForm
@@ -84,57 +83,43 @@ export function ContactDetail({ id }: { id: string }) {
 
   return (
     <div className='space-y-6'>
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-4'>
+      <div className='flex flex-wrap items-center justify-between gap-4'>
+        <div className='flex min-w-0 items-center gap-4'>
+          <Button asChild variant='ghost' size='sm'>
 {{#if (eq stackName "tanstack-start")}}
-          <Link to='/contacts' className='text-sm text-muted-foreground hover:text-foreground'>
+            <Link to='/contacts'>
 {{else}}
-          <Link href='/contacts' className='text-sm text-muted-foreground hover:text-foreground'>
+            <Link href='/contacts'>
 {{/if}}
 {{{{raw}}}}
-            ← Contacts
-          </Link>
-          <h1 className='text-3xl font-bold'>
+              <ArrowLeft />
+              Contacts
+            </Link>
+          </Button>
+          <h1 className='min-w-0 break-words text-3xl font-bold'>
             {contact.firstName} {contact.lastName}
           </h1>
         </div>
         <div className='flex gap-2'>
           <Can permissions={{ contact: ['update'] }}>
-            <button
-              type='button'
-              onClick={() => setEditing(true)}
-              className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
-            >
+            <Button variant='outline' onClick={() => setEditing(true)}>
               Edit
-            </button>
+            </Button>
           </Can>
           <Can permissions={{ contact: ['delete'] }}>
             {confirmDelete ? (
               <div className='flex gap-2'>
-                <button
-                  type='button'
-                  onClick={() => deleteContact.mutate({ id })}
-                  disabled={deleteContact.isPending}
-                  className='inline-flex h-9 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50'
-                >
+                <Button variant='destructive' onClick={() => deleteContact.mutate({ id })} disabled={deleteContact.isPending}>
                   {deleteContact.isPending ? 'Deleting...' : 'Confirm'}
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setConfirmDelete(false)}
-                  className='inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground'
-                >
+                </Button>
+                <Button variant='outline' onClick={() => setConfirmDelete(false)}>
                   Cancel
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                type='button'
-                onClick={() => setConfirmDelete(true)}
-                className='inline-flex h-9 items-center justify-center rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground'
-              >
+              <Button variant='outline' className='text-destructive' onClick={() => setConfirmDelete(true)}>
                 Delete
-              </button>
+              </Button>
             )}
           </Can>
         </div>

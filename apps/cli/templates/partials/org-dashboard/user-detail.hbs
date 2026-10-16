@@ -67,15 +67,18 @@ export function UserDetail({ id }: { id: string }) {
 
   return (
     <div className='max-w-2xl space-y-6'>
-      <div className='flex items-center gap-3'>
+      <div className='flex flex-wrap items-center gap-3'>
+        <Button asChild variant='ghost' size='sm'>
 {{#if (eq stackName "tanstack-start")}}
-        <Link to='/admin/users' className='text-muted-foreground hover:text-foreground'>
+          <Link to='/admin/users'>
 {{else}}
-        <Link href='/admin/users' className='text-muted-foreground hover:text-foreground'>
+          <Link href='/admin/users'>
 {{/if}}
-          <ArrowLeft className='size-5' />
-        </Link>
-        <h1 className='text-3xl font-bold'>{user.name}</h1>
+            <ArrowLeft />
+            Users
+          </Link>
+        </Button>
+        <h1 className='min-w-0 break-words text-3xl font-bold'>{user.name}</h1>
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
             user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
@@ -96,22 +99,22 @@ export function UserDetail({ id }: { id: string }) {
           <p className='text-sm text-muted-foreground'>View and edit user details.</p>
         </div>
 
-        <div className='space-y-3'>
+        <dl className='space-y-3'>
           <div>
-            <span className='text-sm font-medium'>Email</span>
-            <p className='text-sm text-muted-foreground'>{user.email}</p>
+            <dt className='text-sm font-medium'>Email</dt>
+            <dd className='text-sm wrap-anywhere text-muted-foreground'>{user.email}</dd>
           </div>
           <div>
-            <span className='text-sm font-medium'>Joined</span>
-            <p className='text-sm text-muted-foreground'>
+            <dt className='text-sm font-medium'>Joined</dt>
+            <dd className='text-sm text-muted-foreground'>
               {new Date(user.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
               })}
-            </p>
+            </dd>
           </div>
-        </div>
+        </dl>
 
         <form
           onSubmit={(e) => {
@@ -128,7 +131,7 @@ export function UserDetail({ id }: { id: string }) {
           }}
           className='space-y-4 pt-4 border-t'
         >
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid gap-4 sm:grid-cols-2'>
             <form.Field name='firstName'>
               {(field) => (
                 <div className='space-y-2'>
@@ -214,10 +217,16 @@ export function UserDetail({ id }: { id: string }) {
               <input
                 type='text'
                 readOnly
+                aria-label='Generated password'
                 value={generatedPassword}
                 className='flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm font-mono'
               />
-              <Button variant='outline' size='icon' onClick={copyPassword}>
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={copyPassword}
+                aria-label={copied ? 'Copied' : 'Copy password'}
+              >
                 {copied ? <Check className='size-4 text-success' /> : <Copy className='size-4' />}
               </Button>
             </div>

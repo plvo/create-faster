@@ -415,3 +415,48 @@ export async function evaluateGeneratedModule<T>(
   await Bun.write(target, rewritten);
   return import(target);
 }
+
+/**
+ * Source of a stand-in `react` module for `evaluateGeneratedModule` with the `tsx` loader: JSX compiles to
+ * `createElement` calls that build `{ type, props }` objects, rendered by `renderElementTree`.
+ */
+export const REACT_ELEMENT_STUB = `export const Fragment = Symbol.for('fragment');
+export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });`;
+
+export interface RenderedElement {
+  tag: string;
+  props: Record<string, unknown>;
+  children: RenderedChild[];
+}
+export type RenderedChild = RenderedElement | string;
+
+const isRenderedElement = (child: RenderedChild): child is RenderedElement => typeof child !== 'string';
+
+/**
+ * Renders the element objects `REACT_ELEMENT_STUB` builds into a tree of host elements and text: components
+ * (functions, possibly async) are called with their props, fragments are flattened, and empty values are dropped.
+ */
+export async function renderElementTree(node: unknown): Promise<RenderedChild[]> {
+  if (node === null || node === undefined || typeof node === 'boolean') return [];
+  if (typeof node === 'string' || typeof node === 'number') return [String(node)];
+  if (Array.isArray(node)) {
+    const rendered: RenderedChild[] = [];
+    for (const item of node) rendered.push(...(await renderElementTree(item)));
+    return rendered;
+  }
+  const { type, props } = node as { type: unknown; props: Record<string, unknown> };
+  if (typeof type === 'function') return renderElementTree(await (type as (props: unknown) => unknown)(props));
+  const children = await renderElementTree(props.children);
+  return typeof type === 'string' ? [{ tag: type, props, children }] : children;
+}
+
+/** Every element of a rendered tree, in document order. */
+export function elementsOf(children: RenderedChild[]): RenderedElement[] {
+  return children.filter(isRenderedElement).flatMap((element) => [element, ...elementsOf(element.children)]);
+}
+
+/** The text a screen reader reads: aria-hidden subtrees (icons) are skipped. */
+export function textOf(child: RenderedChild): string {
+  if (!isRenderedElement(child)) return child;
+  return child.props['aria-hidden'] === 'true' ? '' : child.children.map(textOf).join('');
+}

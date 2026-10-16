@@ -2,21 +2,13 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { NEXTJS_PAGES } from './org-dashboard-pages';
 
 const BLUEPRINT = 'org-dashboard-nextjs';
-const APP = 'src/app/(dashboard)';
 
 // The pages and tables below are rendered from partials that the TanStack Start blueprint renders too, with the
 // router parts behind the stack name. Each assertion pins a part the Next.js file must keep.
-const SHARED_FILES = [
-  'src/components/contacts/contact-table.tsx',
-  'src/components/admin/user-table.tsx',
-  `${APP}/contacts/contacts.client.tsx`,
-  `${APP}/contacts/[id]/contact.client.tsx`,
-  `${APP}/admin/users/users.client.tsx`,
-  `${APP}/admin/users/[id]/user-detail.tsx`,
-  `${APP}/admin/roles/page.tsx`,
-];
+const SHARED_FILES = Object.values(NEXTJS_PAGES).map((page) => page.file);
 
 describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
   let tempDir: string;
@@ -41,7 +33,7 @@ describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
   });
 
   test('every client component keeps its use client directive first', async () => {
-    for (const file of SHARED_FILES.filter((path) => path !== `${APP}/admin/roles/page.tsx`)) {
+    for (const file of SHARED_FILES.filter((path) => path !== NEXTJS_PAGES.roles.file)) {
       expect((await read(file)).startsWith("'use client';\n\n"), file).toBe(true);
     }
   });
@@ -59,25 +51,26 @@ describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
   });
 
   test('the contact page navigates with next/navigation and links back through next/link', async () => {
-    const page = await read(`${APP}/contacts/[id]/contact.client.tsx`);
+    const page = await read(NEXTJS_PAGES.contactDetail.file);
     expect(page).toContain("import { useRouter } from 'next/navigation';");
     expect(page).toContain("import Link from 'next/link';");
     expect(page).toContain("router.push('/contacts');");
-    expect(page.match(/<Link href='\/contacts' className=/g)).toHaveLength(2);
+    expect(page).toContain("<Link href='/contacts'>");
+    expect(page).toContain("<Link href='/contacts' className=");
   });
 
   test('the user page links back through next/link', async () => {
-    const page = await read(`${APP}/admin/users/[id]/user-detail.tsx`);
+    const page = await read(NEXTJS_PAGES.userDetail.file);
     expect(page).toContain("import Link from 'next/link';");
-    expect(page).toContain("<Link href='/admin/users' className=");
+    expect(page).toContain("<Link href='/admin/users'>");
   });
 
   test('the contacts page keeps the create permission gate', async () => {
-    expect(await read(`${APP}/contacts/contacts.client.tsx`)).toContain("<Can permissions={{ contact: ['create'] }}>");
+    expect(await read(NEXTJS_PAGES.contactsClient.file)).toContain("<Can permissions={{ contact: ['create'] }}>");
   });
 
   test('the roles page requires an admin before it renders', async () => {
-    const page = await read(`${APP}/admin/roles/page.tsx`);
+    const page = await read(NEXTJS_PAGES.roles.file);
     expect(page).toContain("import { requireAdmin } from '@/lib/auth/session';");
     expect(page).toContain('export default async function RolesPage() {\n  await requireAdmin();\n');
   });
