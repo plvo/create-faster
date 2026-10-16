@@ -1,6 +1,6 @@
 import { META } from '@/__meta__';
 import { getSelectedProjectAddons } from '@/lib/addon-utils';
-import { collectEnvGroups } from '@/lib/env-generator';
+import { collectEnvGroups, collectEnvsToGenerate } from '@/lib/env-generator';
 import { getScriptCommand } from '@/lib/package-manager';
 import type { TemplateContext } from '@/types/ctx';
 import type { FirstRunCommand, FirstRunStep } from '@/types/meta';
@@ -26,6 +26,16 @@ function collectEnvStep(ctx: TemplateContext): ResolvedFirstRunStep[] {
   ];
 }
 
+function collectGenerateSteps(ctx: TemplateContext): ResolvedFirstRunStep[] {
+  return collectEnvsToGenerate(ctx).map(({ name, command, paths }) => ({
+    description:
+      paths.length === 1
+        ? `Generate ${name} and set it in ${paths[0]}`
+        : `Generate ${name} once and set the same value in ${paths.join(', ')}`,
+    commands: [command],
+  }));
+}
+
 function collectAddonSteps(ctx: TemplateContext): FirstRunStep[] {
   return getSelectedProjectAddons(ctx).flatMap((addon) => addon.firstRun ?? []);
 }
@@ -37,6 +47,7 @@ export function collectFirstRunSteps(ctx: TemplateContext): ResolvedFirstRunStep
 
   return [
     ...collectEnvStep(ctx),
+    ...collectGenerateSteps(ctx),
     ...steps.map(({ description, commands }) => ({
       description,
       commands: commands.map((command) => resolveCommand(ctx, command)),

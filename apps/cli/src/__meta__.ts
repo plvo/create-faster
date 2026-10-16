@@ -45,6 +45,8 @@ const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudfl
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
 
+const GENERATE_SECRET = 'openssl rand -base64 32';
+
 const START_DOCKER_DATABASE: FirstRunStep[] = [
   { description: 'Start the database', commands: [{ command: 'docker compose up -d --wait' }] },
 ];
@@ -446,9 +448,10 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'BETTER_AUTH_SECRET= # generate with: openssl rand -base64 32',
+          value: 'BETTER_AUTH_SECRET=',
           monoScope: [{ pkg: 'auth' }, 'app'],
           secret: true,
+          generateCommand: GENERATE_SECRET,
         },
         {
           value: 'BETTER_AUTH_URL={{appUrl}}',

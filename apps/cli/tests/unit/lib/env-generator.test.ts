@@ -4,6 +4,7 @@ import {
   collectAppSecrets,
   collectEnvFiles,
   collectEnvGroups,
+  collectEnvsToGenerate,
   collectProjectSecrets,
   collectTaskEnv,
 } from '@/lib/env-generator';
@@ -668,5 +669,109 @@ describe('collectTaskEnv', () => {
 
     expect(collectTaskEnv(d1, 'db:seed')).toEqual([]);
     expect(collectTaskEnv(makeContext(), 'build')).toEqual([]);
+  });
+});
+
+describe('EnvVar.generateCommand', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const GENERATED_ENVS: EnvVar[] = [
+    { value: 'SIGNING_KEY=', monoScope: [{ pkg: 'db' }, 'app'], generateCommand: 'make-a-key' },
+    { value: 'DEDICATED_KEY=', monoScope: ['app'], file: 'secrets', generateCommand: 'make-a-key' },
+    { value: 'PLAIN=1', monoScope: ['app'] },
+  ];
+  const twoWebApps = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'admin', stackName: 'nextjs', libraries: [] },
+    ],
+  });
+
+  function collect<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = GENERATED_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('lists the .env of each app that receives the variable, never a package file or a dedicated file', () => {
+    expect(collect(() => collectEnvsToGenerate(twoWebApps))).toEqual([
+      { name: 'SIGNING_KEY', command: 'make-a-key', paths: ['apps/web/.env', 'apps/admin/.env'] },
+    ]);
+  });
+
+  test('a single repo names the root .env', () => {
+    const single = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }],
+    });
+
+    expect(collect(() => collectEnvsToGenerate(single))).toEqual([
+      { name: 'SIGNING_KEY', command: 'make-a-key', paths: ['.env'] },
+    ]);
+  });
+
+  test('a project that receives no generated variable has none to list', () => {
+    expect(collectEnvsToGenerate(makeContext({ apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }] }))).toEqual(
+      [],
+    );
+  });
+
+  test('the .env.example line names the command that generates the value', () => {
+    const files = collect(() => collectEnvFiles(twoWebApps));
+    const lines = (destination: string) => files.find((f) => f.destination === destination)?.content.split('\n');
+
+    expect(lines('apps/web/.env.example')).toContain('SIGNING_KEY= # generate with: make-a-key');
+    expect(lines('packages/db/.env.example')).toContain('SIGNING_KEY= # generate with: make-a-key');
+  });
+
+  test('a variable without a command has no generate comment', () => {
+    const files = collect(() => collectEnvFiles(twoWebApps));
+
+    expect(files.find((f) => f.destination === 'apps/web/.env.example')?.content).toContain('PLAIN=1\n');
+  });
+
+  test('the secret read by an app is listed for generation and for the runtime secrets by the same rule', () => {
+    const secretEnvs: EnvVar[] = [
+      { value: 'SIGNING_KEY=', monoScope: [{ pkg: 'db' }, 'app'], secret: true, generateCommand: 'make-a-key' },
+    ];
+    const previous = postgres.envs;
+    postgres.envs = secretEnvs;
+    try {
+      const generatedPaths = collectEnvsToGenerate(twoWebApps).flatMap(({ paths }) => paths);
+      const appsWithTheSecret = twoWebApps.apps.filter(({ appName }) =>
+        collectAppSecrets(twoWebApps, appName).includes('SIGNING_KEY'),
+      );
+
+      expect(generatedPaths).toEqual(appsWithTheSecret.map(({ appName }) => `apps/${appName}/.env`));
+    } finally {
+      postgres.envs = previous;
+    }
+  });
+
+  const addons: { envs?: EnvVar[] }[] = [
+    ...Object.values(META.libraries),
+    ...Object.values(META.blueprints),
+    ...Object.values(META.project).flatMap((category) => Object.values(category.options)),
+  ];
+  const metaEnvsToGenerate = addons.flatMap((addon) => addon.envs ?? []).filter((env) => env.generateCommand);
+
+  test('every generated variable of META ships blank, so no secret value is committed', () => {
+    expect(metaEnvsToGenerate.length).toBeGreaterThan(0);
+    for (const env of metaEnvsToGenerate) expect(env.value).toMatch(/^[A-Z_]+=$/);
+  });
+
+  test('one variable carries the same command in every META declaration', () => {
+    const commandsByName = new Map<string, Set<string>>();
+    for (const env of metaEnvsToGenerate) {
+      const name = env.value.split('=')[0] ?? '';
+      commandsByName.set(name, (commandsByName.get(name) ?? new Set()).add(env.generateCommand ?? ''));
+    }
+
+    for (const [name, commands] of commandsByName) {
+      expect({ name, commandCount: commands.size }).toEqual({ name, commandCount: 1 });
+    }
   });
 });
