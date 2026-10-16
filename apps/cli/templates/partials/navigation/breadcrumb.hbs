@@ -1,6 +1,7 @@
 {{!-- The whole AppBreadcrumb component file, imports included.
 userProcedure: the tRPC procedure that reads one user by id. contactProcedure: the one that reads a contact, for a dashboard with contacts.
-It reads from the project: PAGE_URLS, ROUTES and RouteProps from @/lib/constants, useTRPC from @/trpc/providers, and the breadcrumb and skeleton components of @repo/ui. --}}
+It reads from the project: ROUTES, RouteProps and PROFILE_TABS from @/lib/constants, useTRPC from @/trpc/providers, and the breadcrumb and skeleton components of @repo/ui.
+A record is labelled only under the list routes RECORD_LABELS is keyed by, so the project needs /admin/users (and /contacts when contactProcedure is given). --}}
 {{#if (eq stackName "tanstack-start")}}
 import { Link, useLocation } from '@tanstack/react-router';
 {{else}}
@@ -20,7 +21,7 @@ import {
   BreadcrumbSeparator,
 } from '@repo/ui/components/ui/breadcrumb';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
-import { PAGE_URLS, ROUTES, type RouteProps } from '@/lib/constants';
+import { PROFILE_TABS, ROUTES, type RouteProps } from '@/lib/constants';
 import { useTRPC } from '@/trpc/providers';
 
 type RecordLabelComponent = React.ComponentType<{ id: string }>;
@@ -33,6 +34,9 @@ interface Crumb {
   hasPage: boolean;
   RecordLabel?: RecordLabelComponent;
 }
+
+// The routes that have a page, which the breadcrumb links to.
+const PAGE_URLS: string[] = [...ROUTES.map((route) => route.url), '/profile', ...PROFILE_TABS.map((tab) => tab.url)];
 
 function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
   return routes.find((route) => route.url === url)?.title;

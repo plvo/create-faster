@@ -22,6 +22,3 @@ export const PROFILE_TABS = [
   { label: 'Sessions', url: '/profile/sessions' },
   { label: 'Preferences', url: '/profile/preferences' },
 ] as const;
-
-// The routes that have a page, which the breadcrumb links to.
-export const PAGE_URLS: string[] = [...ROUTES.map((route) => route.url), '/profile', ...PROFILE_TABS.map((tab) => tab.url)];

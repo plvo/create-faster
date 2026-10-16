@@ -227,7 +227,6 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
   let tempDir: string;
   let web: string;
   let pageUrls: string[];
-  let listedUrls: string[];
   let header: Component;
   let loadComponent: (page: DetailPage) => Promise<Component>;
 
@@ -261,12 +260,7 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     await mkdir(stubs, { recursive: true });
     for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
     const imports = { ...IMPORTS, ...ROUTER_IMPORTS[blueprint.router] };
-    const constants = await evaluateGeneratedModule<{ PAGE_URLS: string[] }>(
-      await readTextFile(join(web, 'src/lib/constants.ts')),
-      join(stubs, 'constants.mjs'),
-      imports,
-    );
-    listedUrls = constants.PAGE_URLS;
+    await evaluateGeneratedModule(await readTextFile(join(web, 'src/lib/constants.ts')), join(stubs, 'constants.mjs'), imports);
     await evaluateGeneratedModule(
       await readTextFile(join(web, 'src/components/navigation/app-breadcrumb.tsx')),
       join(stubs, 'app-breadcrumb.mjs'),
@@ -347,8 +341,20 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     }
   });
 
-  test('the pages the breadcrumb may link to are exactly the static pages of the app', () => {
-    expect([...listedUrls].sort()).toEqual(pageUrls.filter((url) => !isDynamic(url)).sort());
+  test('the pages the breadcrumb links to are exactly the static pages of the app', async () => {
+    const staticUrls = pageUrls.filter((url) => !isDynamic(url) && url !== '/');
+    const candidates = new Set(
+      staticUrls.flatMap((url) => {
+        const segments = url.split('/').filter(Boolean);
+        return segments.map((_, index) => `/${segments.slice(0, index + 1).join('/')}`);
+      }),
+    );
+    const linked: string[] = [];
+    for (const candidate of candidates) {
+      const rendered = await renderHeader(`${candidate}/below`);
+      if (links(rendered).some((link) => link.props.href === candidate)) linked.push(candidate);
+    }
+    expect(linked.sort()).toEqual(staticUrls.sort());
   });
 
   test('on the home page Home is the current page, not a link to itself', async () => {
