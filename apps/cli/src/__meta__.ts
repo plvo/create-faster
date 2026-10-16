@@ -1,5 +1,6 @@
 import { $when } from '@/lib/when';
 import type { EnvVar, FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
@@ -62,6 +63,28 @@ const ORG_DASHBOARD_WEB_LIBRARIES = [
   'tanstack-form',
   'next-themes',
 ];
+
+const ORG_DASHBOARD_HINT =
+  'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD';
+
+const orgDashboardContext = (webStack: StackName) => ({
+  apps: [
+    { appName: 'web', stackName: webStack, libraries: ORG_DASHBOARD_WEB_LIBRARIES },
+    { appName: 'batch', stackName: 'node' as const, libraries: [] },
+  ],
+  project: { database: 'postgres', orm: 'drizzle' },
+});
+
+const orgDashboardAgentArchitecture = (webFramework: string) =>
+  [
+    `Organization dashboard: ${webFramework} web app + Node.js batch app (Turborepo), Better Auth`,
+    'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
+    'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
+    '',
+    'Per-aspect detail in `docs/agents/`:',
+    '- [Auth & permissions](docs/agents/auth.md)',
+    '- [Data layer](docs/agents/data-layer.md)',
+  ].join('\n');
 
 const ORG_DASHBOARD_PACKAGE_JSON: PackageJsonConfig = {
   dependencies: {
@@ -1379,36 +1402,11 @@ export const META: Meta = {
     },
     'org-dashboard-nextjs': {
       label: 'Org Dashboard',
-      hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
+      hint: ORG_DASHBOARD_HINT,
       category: 'Business',
       firstRun: RUN_LOCAL_SETUP,
-      agentArchitecture: [
-        'Organization dashboard: Next.js web app + Node.js batch app (Turborepo), Better Auth',
-        'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
-        'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
-        '',
-        'Per-aspect detail in `docs/agents/`:',
-        '- [Auth & permissions](docs/agents/auth.md)',
-        '- [Data layer](docs/agents/data-layer.md)',
-      ].join('\n'),
-      context: {
-        apps: [
-          {
-            appName: 'web',
-            stackName: 'nextjs',
-            libraries: ORG_DASHBOARD_WEB_LIBRARIES,
-          },
-          {
-            appName: 'batch',
-            stackName: 'node',
-            libraries: [],
-          },
-        ],
-        project: {
-          database: 'postgres',
-          orm: 'drizzle',
-        },
-      },
+      agentArchitecture: orgDashboardAgentArchitecture('Next.js'),
+      context: orgDashboardContext('nextjs'),
       packageJson: ORG_DASHBOARD_PACKAGE_JSON,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
@@ -1416,37 +1414,12 @@ export const META: Meta = {
     },
     'org-dashboard-tanstack-start': {
       label: 'Org Dashboard (TanStack Start)',
-      hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
+      hint: ORG_DASHBOARD_HINT,
       category: 'Business',
       extends: 'org-dashboard-nextjs',
       firstRun: RUN_LOCAL_SETUP,
-      agentArchitecture: [
-        'Organization dashboard: TanStack Start web app + Node.js batch app (Turborepo), Better Auth',
-        'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
-        'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
-        '',
-        'Per-aspect detail in `docs/agents/`:',
-        '- [Auth & permissions](docs/agents/auth.md)',
-        '- [Data layer](docs/agents/data-layer.md)',
-      ].join('\n'),
-      context: {
-        apps: [
-          {
-            appName: 'web',
-            stackName: 'tanstack-start',
-            libraries: ORG_DASHBOARD_WEB_LIBRARIES,
-          },
-          {
-            appName: 'batch',
-            stackName: 'node',
-            libraries: [],
-          },
-        ],
-        project: {
-          database: 'postgres',
-          orm: 'drizzle',
-        },
-      },
+      agentArchitecture: orgDashboardAgentArchitecture('TanStack Start'),
+      context: orgDashboardContext('tanstack-start'),
       packageJson: ORG_DASHBOARD_PACKAGE_JSON,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
