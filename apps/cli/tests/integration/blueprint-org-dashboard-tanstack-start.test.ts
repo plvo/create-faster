@@ -2,7 +2,17 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, evaluateGeneratedModule, fileExists, readTextFile, runCli } from './helpers';
+import {
+  REACT_ELEMENT_STUB,
+  cleanupTempDir,
+  createTempDir,
+  elementsOf,
+  evaluateGeneratedModule,
+  fileExists,
+  readTextFile,
+  renderElementTree,
+  runCli,
+} from './helpers';
 
 const BLUEPRINT = 'org-dashboard-tanstack-start';
 const WEB = 'apps/web';
@@ -43,8 +53,7 @@ export const useRouteContext = ({ select }) => select(globalThis.__testRouteCont
 export const createFileRoute = (path) => (options) => ({ path, options });
 export const Link = ({ to, children }) => ({ type: 'a', props: { href: to, children } });
 export const useLocation = ({ select }) => select({ pathname: '/' });`,
-  'react.mjs': `export const Fragment = Symbol.for('fragment');
-export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });`,
+  'react.mjs': REACT_ELEMENT_STUB,
   'sidebar-ui.mjs': `const passThrough = ({ children }) => children;
 export const SidebarGroup = passThrough;
 export const SidebarGroupLabel = passThrough;
@@ -87,19 +96,12 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@/lib/auth/guards': './guards.mjs',
 };
 
-interface RenderedElement {
-  type: unknown;
-  props: { href?: string; children?: unknown };
-}
-
 // Renders the element tree the generated components return: components are called, the stand-in Link becomes an
 // `a`, and the hrefs come back in document order.
-function renderedLinks(node: unknown): string[] {
-  if (Array.isArray(node)) return node.flatMap(renderedLinks);
-  if (node === null || typeof node !== 'object') return [];
-  const { type, props } = node as RenderedElement;
-  if (typeof type === 'function') return renderedLinks(type(props));
-  return [...(type === 'a' && props.href ? [props.href] : []), ...renderedLinks(props.children)];
+async function renderedLinks(node: unknown): Promise<string[]> {
+  return elementsOf(await renderElementTree(node)).flatMap((element) =>
+    element.tag === 'a' && typeof element.props.href === 'string' ? [element.props.href] : [],
+  );
 }
 
 async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
@@ -355,15 +357,15 @@ describe(`${BLUEPRINT} blueprint`, () => {
         'sidebar-links.mjs',
         'tsx',
       );
-      const linksFor = (role: string): string[] => {
+      const linksFor = (role: string): Promise<string[]> => {
         inRouteContext(role);
         return renderedLinks(SidebarLinks());
       };
 
-      expect(linksFor('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
-      expect(linksFor('user')).toEqual(['/', '/contacts']);
-      expect(linksFor('manager')).toEqual(['/', '/contacts']);
-      expect(linksFor('ghost')).toEqual(['/']);
+      expect(await linksFor('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
+      expect(await linksFor('user')).toEqual(['/', '/contacts']);
+      expect(await linksFor('manager')).toEqual(['/', '/contacts']);
+      expect(await linksFor('ghost')).toEqual(['/']);
     });
 
     test('the contacts layout answers not found to a role without the contact permission', async () => {

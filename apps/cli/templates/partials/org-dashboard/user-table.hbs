@@ -40,6 +40,7 @@ export function UserTable() {
 {{/if}}
                   {user.name}
                 </Link>
+                <span className='block text-xs wrap-anywhere text-muted-foreground sm:hidden'>{user.email}</span>
               </td>
               <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>{user.email}</td>
               <td className='hidden px-4 py-3 md:table-cell'>

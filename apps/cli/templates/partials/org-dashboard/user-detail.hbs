@@ -68,14 +68,17 @@ export function UserDetail({ id }: { id: string }) {
   return (
     <div className='max-w-2xl space-y-6'>
       <div className='flex flex-wrap items-center gap-3'>
+        <Button asChild variant='ghost' size='sm'>
 {{#if (eq stackName "tanstack-start")}}
-        <Link to='/admin/users' aria-label='Back to users' className='text-muted-foreground hover:text-foreground'>
+          <Link to='/admin/users'>
 {{else}}
-        <Link href='/admin/users' aria-label='Back to users' className='text-muted-foreground hover:text-foreground'>
+          <Link href='/admin/users'>
 {{/if}}
-          <ArrowLeft className='size-5' />
-        </Link>
-        <h1 className='text-3xl font-bold'>{user.name}</h1>
+            <ArrowLeft />
+            Users
+          </Link>
+        </Button>
+        <h1 className='min-w-0 break-words text-3xl font-bold'>{user.name}</h1>
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
             user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
@@ -218,7 +221,12 @@ export function UserDetail({ id }: { id: string }) {
                 value={generatedPassword}
                 className='flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm font-mono'
               />
-              <Button variant='outline' size='icon' onClick={copyPassword} aria-label='Copy password'>
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={copyPassword}
+                aria-label={copied ? 'Copied' : 'Copy password'}
+              >
                 {copied ? <Check className='size-4 text-success' /> : <Copy className='size-4' />}
               </Button>
             </div>

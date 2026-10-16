@@ -84,7 +84,7 @@ export function ContactDetail({ id }: { id: string }) {
   return (
     <div className='space-y-6'>
       <div className='flex flex-wrap items-center justify-between gap-4'>
-        <div className='flex items-center gap-4'>
+        <div className='flex min-w-0 items-center gap-4'>
           <Button asChild variant='ghost' size='sm'>
 {{#if (eq stackName "tanstack-start")}}
             <Link to='/contacts'>
@@ -96,7 +96,7 @@ export function ContactDetail({ id }: { id: string }) {
               Contacts
             </Link>
           </Button>
-          <h1 className='text-3xl font-bold'>
+          <h1 className='min-w-0 break-words text-3xl font-bold'>
             {contact.firstName} {contact.lastName}
           </h1>
         </div>
@@ -117,11 +117,7 @@ export function ContactDetail({ id }: { id: string }) {
                 </Button>
               </div>
             ) : (
-              <Button
-                variant='outline'
-                onClick={() => setConfirmDelete(true)}
-                className='border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
-              >
+              <Button variant='destructive' onClick={() => setConfirmDelete(true)}>
                 Delete
               </Button>
             )}

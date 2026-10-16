@@ -11,16 +11,32 @@ function grantedActions(role: keyof typeof roleDefinitions, resource: string): r
   return perms[resource] ?? [];
 }
 
-function ActionList({ actions, allowed = false }: { actions: readonly string[]; allowed?: boolean }) {
-  if (actions.length === 0) return <span className='text-muted-foreground'>None</span>;
+interface PermissionRow {
+  resource: string;
+  allowed: string[];
+  denied: string[];
+}
+
+function permissionRows(role: keyof typeof roleDefinitions): PermissionRow[] {
+  return RESOURCES.map((resource) => {
+    const granted = grantedActions(role, resource);
+    const actions: readonly string[] = statement[resource];
+    return {
+      resource,
+      allowed: actions.filter((action) => granted.includes(action)),
+      denied: actions.filter((action) => !granted.includes(action)),
+    };
+  });
+}
+
+function AllowedActions({ actions }: { actions: string[] }) {
+  if (actions.length === 0) return <span className='text-sm text-muted-foreground'>None allowed</span>;
   return (
-    <ul className='flex flex-wrap gap-1.5'>
+    <ul aria-label='Allowed' className='flex flex-wrap gap-1.5'>
       {actions.map((action) => (
         <li
           key={action}
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            allowed ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-          }`}
+          className='inline-flex items-center whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary'
         >
           {action}
         </li>
@@ -49,17 +65,32 @@ export default async function RolesPage() {
         </p>
       </div>
       <div className='grid gap-4'>
-        {roleNames.map((role) => (
-          <section key={role} className='min-w-0 space-y-4 rounded-lg border bg-card p-4 sm:p-6'>
-            <h2 className='text-lg font-semibold capitalize'>{role}</h2>
-            <div className='overflow-x-auto'>
-              <table className='w-full table-fixed text-sm'>
+        {roleNames.map((role) => {
+          const headingId = `${role}-permissions`;
+          const rows = permissionRows(role);
+          return (
+            <section key={role} className='min-w-0 space-y-4 rounded-lg border bg-card p-4 sm:p-6'>
+              <h2 id={headingId} className='text-lg font-semibold capitalize'>
+                {role}
+              </h2>
+              <ul aria-labelledby={headingId} className='divide-y sm:hidden'>
+                {rows.map(({ resource, allowed, denied }) => (
+                  <li key={resource} className='space-y-2 py-3 first:pt-0 last:pb-0'>
+                    <p className='text-sm font-medium'>{resource}</p>
+                    <AllowedActions actions={allowed} />
+                    {denied.length > 0 && (
+                      <p className='text-xs text-muted-foreground'>Not allowed: {denied.join(', ')}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <table aria-labelledby={headingId} className='hidden w-full table-fixed text-sm sm:table'>
                 <thead>
                   <tr className='border-b text-left'>
-                    <th scope='col' className='w-20 py-2 pr-3 font-medium sm:w-24 sm:pr-4'>
+                    <th scope='col' className='w-24 py-2 pr-4 font-medium'>
                       Resource
                     </th>
-                    <th scope='col' className='py-2 pr-3 font-medium sm:pr-4'>
+                    <th scope='col' className='py-2 pr-4 font-medium'>
                       Allowed
                     </th>
                     <th scope='col' className='py-2 font-medium'>
@@ -68,28 +99,22 @@ export default async function RolesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {RESOURCES.map((resource) => {
-                    const granted = grantedActions(role, resource);
-                    const actions = statement[resource] as readonly string[];
-                    return (
-                      <tr key={resource} className='border-b align-top last:border-0'>
-                        <th scope='row' className='py-3 pr-3 text-left font-medium sm:pr-4'>
-                          {resource}
-                        </th>
-                        <td className='py-3 pr-3 sm:pr-4'>
-                          <ActionList actions={actions.filter((action) => granted.includes(action))} allowed />
-                        </td>
-                        <td className='py-3'>
-                          <ActionList actions={actions.filter((action) => !granted.includes(action))} />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {rows.map(({ resource, allowed, denied }) => (
+                    <tr key={resource} className='border-b align-top last:border-0'>
+                      <th scope='row' className='py-3 pr-4 text-left font-medium'>
+                        {resource}
+                      </th>
+                      <td className='py-3 pr-4'>
+                        <AllowedActions actions={allowed} />
+                      </td>
+                      <td className='py-3 text-muted-foreground'>{denied.length > 0 ? denied.join(', ') : 'None'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            </div>
-          </section>
-        ))}
+            </section>
+          );
+        })}
       </div>
     </div>
   );
