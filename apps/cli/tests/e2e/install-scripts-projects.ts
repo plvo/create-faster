@@ -79,7 +79,7 @@ function withChoice(project: ProjectChoices, choice: Choice): ProjectChoices | u
   return next;
 }
 
-export function toContext(project: ProjectChoices): TemplateContext {
+function toContext(project: ProjectChoices): TemplateContext {
   return {
     projectName: 'project',
     repo: project.apps.size > 1 ? 'turborepo' : 'single',
