@@ -1,11 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
 import { UserDetail } from '@/components/admin/user-detail';
 import { QueryBoundary } from '@/components/query-boundary';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/admin/users/$id')({
-  loader: ({ context, params }) => {
-    void context.queryClient.prefetchQuery(context.trpc.user.getById.queryOptions({ id: params.id }));
+  loader: async ({ context, params }) => {
+    const user = await context.queryClient.fetchQuery(context.trpc.user.getById.queryOptions({ id: params.id }));
+    if (!user) throw notFound();
   },
   head: () => ({ meta: [{ title: pageTitle('User') }] }),
   component: UserPage,

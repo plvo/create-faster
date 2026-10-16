@@ -7,7 +7,6 @@ mono:
 import { desc, eq, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
 import type { AppRole } from '@repo/auth/permissions';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
@@ -39,8 +38,7 @@ export const usersRouter = router({
 
   get: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
     const [user] = await ctx.db.select(userColumns).from(userTable).where(eq(userTable.id, input.id)).limit(1);
-    if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-    return user;
+    return user ?? null;
   }),
 
   create: adminProcedure

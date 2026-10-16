@@ -74,6 +74,10 @@ export const authClient = {
   },
 };`,
   'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
+  'page-parts.mjs': `export const ContactDetail = () => null;
+export const UserDetail = () => null;
+export const QueryBoundary = ({ children }) => children;
+export const pageTitle = (title) => title;`,
   'icons.mjs': `export const LayoutDashboard = 'LayoutDashboard';
 export const Users = 'Users';
 export const Shield = 'Shield';
@@ -94,6 +98,10 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@/hooks/use-permission': './use-permission.mjs',
   '@/lib/constants': './constants.mjs',
   '@/lib/auth/guards': './guards.mjs',
+  '@/components/contacts/contact-detail': './page-parts.mjs',
+  '@/components/admin/user-detail': './page-parts.mjs',
+  '@/components/query-boundary': './page-parts.mjs',
+  '@/lib/page-title': './page-parts.mjs',
 };
 
 // Renders the element tree the generated components return: components are called, the stand-in Link becomes an
@@ -103,6 +111,19 @@ async function renderedLinks(node: unknown): Promise<string[]> {
     element.tag === 'a' && typeof element.props.href === 'string' ? [element.props.href] : [],
   );
 }
+
+// trpc.user.getById.queryOptions(input) is { path: 'user.getById', input }: the loader and the component build the
+// same query key only when they name the same procedure and input.
+const recordingTrpc = (path: string[] = []): unknown =>
+  new Proxy(
+    {},
+    {
+      get: (_, key) =>
+        key === 'queryOptions'
+          ? (input: unknown) => ({ path: path.join('.'), input })
+          : recordingTrpc([...path, String(key)]),
+    },
+  );
 
 async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
   try {
@@ -208,13 +229,14 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(auth).toMatch(/if \(isSignedIn\(await getSession\(\)\)\) throw redirect\(\{ to: '\/'/);
   });
 
-  test('the contacts pages only prefetch, the permission is checked by their layout', async () => {
+  test('the contacts pages do not check the permission, their layout does', async () => {
     for (const page of ['index', '$id']) {
       const source = await read(`${WEB}/src/routes/_dashboard/contacts/${page}.tsx`);
       expect(source, page).not.toContain('requirePermission');
-      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
-      expect(source, page).not.toMatch(/await context\.queryClient/);
     }
+    const list = await read(`${WEB}/src/routes/_dashboard/contacts/index.tsx`);
+    expect(list).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+    expect(list).not.toMatch(/await context\.queryClient/);
     const detail = await read(`${WEB}/src/routes/_dashboard/contacts/$id.tsx`);
     expect(detail).toContain('context.trpc.contact.getById.queryOptions({ id: params.id })');
   });
@@ -224,11 +246,9 @@ describe(`${BLUEPRINT} blueprint`, () => {
       const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
       expect(source, page).not.toMatch(/requireAdmin|requirePermission/);
     }
-    for (const page of ['users/index', 'users/$id']) {
-      const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
-      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
-      expect(source, page).not.toMatch(/await context\.queryClient/);
-    }
+    const list = await read(`${WEB}/src/routes/_dashboard/admin/users/index.tsx`);
+    expect(list).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+    expect(list).not.toMatch(/await context\.queryClient/);
   });
 
   test('the shared tables and detail pages link through the router with typed params', async () => {
@@ -385,6 +405,44 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
       const bare = await routeOptions('admin/index.tsx', 'admin-index-route.mjs');
       expect(await thrownBy(() => bare.beforeLoad({ context: { session: member('admin') } }))).toEqual({ kind: 'notFound' });
+    });
+
+    describe.each([
+      { title: 'the user route', file: 'admin/users/$id.tsx', name: 'user-route.mjs', procedure: 'user.getById' },
+      { title: 'the contact route', file: 'contacts/$id.tsx', name: 'contact-route.mjs', procedure: 'contact.getById' },
+    ])('$title loader', ({ file, name, procedure }) => {
+      type Loader = (args: { context: unknown; params: { id: string } }) => Promise<unknown>;
+      const loaderOf = async (): Promise<Loader> =>
+        (await evaluate<{ Route: { options: { loader: Loader } } }>(
+          `${WEB}/src/routes/_dashboard/${file}`,
+          name,
+          'tsx',
+        )).Route.options.loader;
+      const contextFor = (record: unknown, fetched: unknown[]) => ({
+        queryClient: {
+          fetchQuery: async (options: unknown) => {
+            fetched.push(options);
+            return record;
+          },
+        },
+        trpc: recordingTrpc(),
+      });
+
+      test('answers not found for an id that matches no record, after loading it once', async () => {
+        const fetched: unknown[] = [];
+        const loader = await loaderOf();
+        expect(await thrownBy(() => loader({ context: contextFor(null, fetched), params: { id: 'nobody' } }))).toEqual({
+          kind: 'notFound',
+        });
+        expect(fetched).toEqual([{ path: procedure, input: { id: 'nobody' } }]);
+      });
+
+      test('loads the record into the query cache and renders when the id exists', async () => {
+        const fetched: unknown[] = [];
+        const loader = await loaderOf();
+        expect(await thrownBy(() => loader({ context: contextFor({ id: 'u1' }, fetched), params: { id: 'u1' } }))).toBeUndefined();
+        expect(fetched).toEqual([{ path: procedure, input: { id: 'u1' } }]);
+      });
     });
 
     test('the login layout and the dashboard layout agree on every session shape', async () => {
