@@ -37,7 +37,7 @@ The contacts and admin pages render the same markup in both variants (shared par
 | Routing | App Router, route groups `(auth)` and `(dashboard)` | File routes in `src/routes/`, pathless layouts `_auth` and `_dashboard` |
 | Auth guard | `requireSession()` in the layout and in each protected page | `beforeLoad` of the `_dashboard` layout, once for every dashboard route |
 | Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, and of the dashboard home route |
-| Data prefetch | Server component prefetch inside a `HydrateClient` boundary | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component |
+| Data prefetch | Server component prefetch inside a `HydrateClient` boundary; a detail page awaits its record and calls `notFound()` for an unknown id | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component; a detail loader awaits its record and throws `notFound()` for an unknown id |
 | Post-login redirect | Query parameter validated by `safeRedirectPath` | `redirectTo` search parameter validated in `validateSearch` with the same `safeRedirectPath` |
 | Production server | `next start` | Nitro server (`.output/server/index.mjs`) started with Node |
 | Profile tabs | Directional slide animation with React `ViewTransition` | Plain tab navigation, no transition |
