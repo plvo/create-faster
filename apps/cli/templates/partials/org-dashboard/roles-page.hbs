@@ -1,16 +1,7 @@
-{{#if (eq stackName "tanstack-start")}}
-import { createFileRoute } from '@tanstack/react-router';
-import { roleDefinitions, statement } from '@repo/auth/permissions';
-import { pageTitle } from '@/lib/page-title';
-
-export const Route = createFileRoute('/_dashboard/admin/roles')({
-  head: () => ({ meta: [{ title: pageTitle('Roles') }] }),
-  component: RolesPage,
-});
-{{else}}
+{{#unless (eq stackName "tanstack-start")}}
 import { requireAdmin } from '@/lib/auth/session';
+{{/unless}}
 import { roleDefinitions, statement } from '@repo/auth/permissions';
-{{/if}}
 
 const RESOURCES = Object.keys(statement) as Array<keyof typeof statement>;
 
@@ -21,7 +12,7 @@ function grantedActions(role: keyof typeof roleDefinitions, resource: string): r
 }
 
 {{#if (eq stackName "tanstack-start")}}
-function RolesPage() {
+export function RolesPage() {
 {{else}}
 export default async function RolesPage() {
   await requireAdmin();

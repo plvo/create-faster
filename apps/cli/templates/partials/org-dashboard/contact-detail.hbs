@@ -1,21 +1,21 @@
-{{#if (eq stackName "tanstack-start")}}
-import { useState } from 'react';
-import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { useTRPC } from '@/trpc/providers';
-import { Can } from '@/components/can';
-import { ContactForm } from '@/components/contacts/contact-form';
-{{else}}
+{{#unless (eq stackName "tanstack-start")}}
 'use client';
 
+{{/unless}}
 import { useState } from 'react';
+{{#unless (eq stackName "tanstack-start")}}
 import { useRouter } from 'next/navigation';
+{{/unless}}
 import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+{{#if (eq stackName "tanstack-start")}}
+import { Link, useNavigate } from '@tanstack/react-router';
+{{/if}}
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
 import { ContactForm } from '@/components/contacts/contact-form';
+{{#unless (eq stackName "tanstack-start")}}
 import Link from 'next/link';
-{{/if}}
+{{/unless}}
 
 export function ContactDetail({ id }: { id: string }) {
   const trpc = useTRPC();
@@ -91,6 +91,7 @@ export function ContactDetail({ id }: { id: string }) {
 {{else}}
           <Link href='/contacts' className='text-sm text-muted-foreground hover:text-foreground'>
 {{/if}}
+{{{{raw}}}}
             ← Contacts
           </Link>
           <h1 className='text-3xl font-bold'>
@@ -98,7 +99,7 @@ export function ContactDetail({ id }: { id: string }) {
           </h1>
         </div>
         <div className='flex gap-2'>
-          <Can permissions=\{{ contact: ['update'] }}>
+          <Can permissions={{ contact: ['update'] }}>
             <button
               type='button'
               onClick={() => setEditing(true)}
@@ -107,7 +108,7 @@ export function ContactDetail({ id }: { id: string }) {
               Edit
             </button>
           </Can>
-          <Can permissions=\{{ contact: ['delete'] }}>
+          <Can permissions={{ contact: ['delete'] }}>
             {confirmDelete ? (
               <div className='flex gap-2'>
                 <button
@@ -161,3 +162,4 @@ export function ContactDetail({ id }: { id: string }) {
     </div>
   );
 }
+{{{{/raw}}}}

@@ -1,11 +1,11 @@
-{{#if (eq stackName "tanstack-start")}}
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-{{else}}
+{{#unless (eq stackName "tanstack-start")}}
 'use client';
 
 import Link from 'next/link';
+{{/unless}}
 import { useSuspenseQuery } from '@tanstack/react-query';
+{{#if (eq stackName "tanstack-start")}}
+import { Link } from '@tanstack/react-router';
 {{/if}}
 import { useTRPC } from '@/trpc/providers';
 
@@ -37,7 +37,9 @@ export function ContactTable() {
             <tr key={contact.id} className='border-b last:border-0 hover:bg-muted/50'>
               <td className='px-4 py-3'>
 {{#if (eq stackName "tanstack-start")}}
-                <Link to='/contacts/$id' params=\{{ id: contact.id }} className='font-medium text-primary hover:underline'>
+{{{{raw}}}}
+                <Link to='/contacts/$id' params={{ id: contact.id }} className='font-medium text-primary hover:underline'>
+{{{{/raw}}}}
 {{else}}
                 <Link href={`/contacts/${contact.id}`} className='font-medium text-primary hover:underline'>
 {{/if}}

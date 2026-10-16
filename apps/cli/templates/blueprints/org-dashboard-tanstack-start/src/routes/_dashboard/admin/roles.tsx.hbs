@@ -1,1 +1,8 @@
-{{> org-dashboard/roles-page}}
+import { createFileRoute } from '@tanstack/react-router';
+import { RolesPage } from '@/components/admin/roles-page';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/admin/roles')({
+  head: () => ({ meta: [{ title: pageTitle('Roles') }] }),
+  component: RolesPage,
+});

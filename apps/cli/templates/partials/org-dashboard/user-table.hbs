@@ -1,10 +1,11 @@
-{{#if (eq stackName "tanstack-start")}}
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-{{else}}
+{{#unless (eq stackName "tanstack-start")}}
 'use client';
 
+{{/unless}}
 import { useSuspenseQuery } from '@tanstack/react-query';
+{{#if (eq stackName "tanstack-start")}}
+import { Link } from '@tanstack/react-router';
+{{else}}
 import Link from 'next/link';
 {{/if}}
 import { useTRPC } from '@/trpc/providers';
@@ -31,7 +32,9 @@ export function UserTable() {
             <tr key={user.id} className='border-b last:border-0 hover:bg-muted/30 transition-colors'>
               <td className='px-4 py-3'>
 {{#if (eq stackName "tanstack-start")}}
-                <Link to='/admin/users/$id' params=\{{ id: user.id }} className='hover:underline font-medium'>
+{{{{raw}}}}
+                <Link to='/admin/users/$id' params={{ id: user.id }} className='hover:underline font-medium'>
+{{{{/raw}}}}
 {{else}}
                 <Link href={`/admin/users/${user.id}`} className='hover:underline font-medium'>
 {{/if}}
