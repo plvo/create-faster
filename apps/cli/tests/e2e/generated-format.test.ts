@@ -46,7 +46,7 @@ function tail(result: { stdout: string; stderr: string }): string {
   return `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
 }
 
-describe('a freshly generated project passes its own formatter check', () => {
+describe('a freshly generated project passes its own formatter check and type-checks after the format step', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -78,6 +78,9 @@ describe('a freshly generated project passes its own formatter check', () => {
               const regenerated = await runCommand(['bun', 'run', 'tsr', 'generate'], join(projectDir, routeTreeApp));
               if (regenerated.exitCode !== 0) throw new Error(`tsr generate failed:\n${tail(regenerated)}`);
               expect(await readFile(routeTree, 'utf8')).toBe(formatted);
+
+              const typecheck = await runCommand(['bunx', 'tsc', '--noEmit'], join(projectDir, routeTreeApp));
+              if (typecheck.exitCode !== 0) throw new Error(`tsc --noEmit after the format step failed:\n${tail(typecheck)}`);
             }
             expect(await fileExists(join(projectDir, '.git'))).toBe(true);
           } finally {
