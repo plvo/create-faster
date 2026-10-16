@@ -81,13 +81,37 @@ describe('runPostGeneration', () => {
     );
   }
 
-  test('runs the script of a selected addon after the install and before git init', async () => {
-    await writeManifestWithFormatScript('test -d node_modules/dependency && test ! -d .git && echo ran > formatted.txt');
+  test('runs the script of a selected addon after the install, inside the repository', async () => {
+    await writeManifestWithFormatScript('test -d node_modules/dependency && test -d .git && echo ran > formatted.txt');
 
     const result = await runPostGeneration(contextWith({ pm: 'bun', git: true, project: { tooling: [], linter: 'prettier' } }), projectPath);
 
     expect(result.pendingPostGenerate).toEqual([]);
     expect(await readFile(join(projectPath, 'formatted.txt'), 'utf8')).toBe('ran\n');
+  });
+
+  test('initializes git before the install so an install script finds the repository', async () => {
+    await writeFile(
+      join(projectPath, 'package.json'),
+      JSON.stringify({
+        name: 'demo',
+        version: '1.0.0',
+        scripts: { prepare: 'test -d .git && echo ran > prepared.txt' },
+      }),
+    );
+
+    const result = await runPostGeneration(contextWith({ pm: 'bun', git: true }), projectPath);
+
+    expect(result.installFailure).toBeUndefined();
+    expect(await readFile(join(projectPath, 'prepared.txt'), 'utf8')).toBe('ran\n');
+  });
+
+  test('keeps the repository when the install fails', async () => {
+    await writeManifest({ unresolvable: 'file:./does-not-exist' });
+
+    const result = await runPostGeneration(contextWith({ pm: 'bun', git: true }), projectPath);
+
+    expect(result.installFailure).toBeDefined();
     expect(await fileExists(join(projectPath, '.git'))).toBe(true);
   });
 

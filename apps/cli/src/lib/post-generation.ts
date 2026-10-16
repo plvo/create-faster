@@ -75,9 +75,9 @@ async function initializeGit(projectPath: string): Promise<GitFailure | undefine
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {
   const steps = collectPostGenerateSteps(ctx);
   const installs = ctx.pm && !ctx.skipInstall;
+  const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
   const installFailure = installs ? await installDependencies(ctx, projectPath) : undefined;
   const pendingPostGenerate = installs && !installFailure ? await runPostGenerateSteps(steps, projectPath) : steps;
-  const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
 
   return { installFailure, gitFailure, pendingPostGenerate };
 }

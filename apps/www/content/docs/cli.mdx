@@ -241,7 +241,7 @@ Choose whether to initialize a Git repository:
 │  Yes / No (default: Yes)
 ```
 
-If enabled, the CLI runs `git init` after file generation. This is required if you plan to use Husky for git hooks.
+If enabled, the CLI runs `git init` after file generation and before the dependency install, so the `prepare` script of Husky finds the repository and activates the git hooks. This is required if you plan to use Husky for git hooks. With `--no-install`, the hooks activate on your first install.
 
 </Step>
 

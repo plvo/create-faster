@@ -5,6 +5,7 @@ import { delimiter, join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, runCli } from './helpers';
 
 const FORMAT_RAN_MARKER = 'format-ran.txt';
+const FORMAT_IN_REPOSITORY_MARKER = 'format-in-repository.txt';
 
 describe('post-generate steps run by the CLI', () => {
   let tempDir: string;
@@ -22,8 +23,8 @@ case "$1 $2" in
   "install "*) mkdir -p node_modules ;;
   "run format")
     test -d node_modules || exit 3
-    test ! -d .git || exit 4
     if [ -n "$STUB_FORMAT_FAILS" ]; then echo "stub formatter: cannot parse src/app.ts" >&2; exit 1; fi
+    if [ -d .git ]; then echo in-repository > ${FORMAT_IN_REPOSITORY_MARKER}; fi
     echo ran > ${FORMAT_RAN_MARKER} ;;
 esac
 `,
@@ -45,12 +46,12 @@ esac
     return { result, projectPath: join(workDir, name), output: result.stdout + result.stderr };
   }
 
-  test('runs the format script after the install and before git init', async () => {
+  test('runs the format script after the install, in the repository created beforehand', async () => {
     const { result, projectPath } = await generate('formats', ['--linter', 'prettier', '--git']);
 
     expect(result.exitCode).toBe(0);
     expect(await readFile(join(projectPath, FORMAT_RAN_MARKER), 'utf8')).toBe('ran\n');
-    expect(await fileExists(join(projectPath, '.git'))).toBe(true);
+    expect(await fileExists(join(projectPath, FORMAT_IN_REPOSITORY_MARKER))).toBe(true);
   });
 
   test('runs it for the formatter of a composite linter', async () => {
