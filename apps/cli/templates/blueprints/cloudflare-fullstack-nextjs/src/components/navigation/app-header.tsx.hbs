@@ -3,60 +3,16 @@ mono:
   scope: app
   path: src/components/navigation/app-header.tsx
 ---
-'use client';
-
-import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import * as React from 'react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@repo/ui/components/ui/breadcrumb';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarTrigger } from '@repo/ui/components/ui/sidebar';
-import { PAGE_URLS, ROUTES, type RouteProps } from '@/lib/constants';
-import { useTRPC } from '@/trpc/providers';
-
-{{> dashboard/breadcrumb-trail userQuery="users.get"}}
+import { AppBreadcrumb } from '@/components/navigation/app-breadcrumb';
 
 export function AppHeader() {
-  const pathname = usePathname();
-  const crumbs = buildCrumbs(pathname);
-
   return (
     <header className='sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
       <SidebarTrigger className='-ml-1' />
       <Separator orientation='vertical' className='mr-2 h-4' />
-      <Breadcrumb className='min-w-0'>
-        <BreadcrumbList className='flex-nowrap'>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href='/'>Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          {crumbs.map((crumb, index) => (
-            <React.Fragment key={crumb.url}>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem className={index === crumbs.length - 1 ? 'min-w-0' : undefined}>
-                {index === crumbs.length - 1 ? (
-                  <BreadcrumbPage className='truncate'><CrumbLabel crumb={crumb} /></BreadcrumbPage>
-                ) : crumb.hasPage ? (
-                  <BreadcrumbLink asChild>
-                    <Link href={crumb.url}><CrumbLabel crumb={crumb} /></Link>
-                  </BreadcrumbLink>
-                ) : (
-                  <span><CrumbLabel crumb={crumb} /></span>
-                )}
-              </BreadcrumbItem>
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
+      <AppBreadcrumb />
     </header>
   );
 }

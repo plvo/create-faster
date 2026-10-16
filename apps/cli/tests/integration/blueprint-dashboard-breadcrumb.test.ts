@@ -87,12 +87,13 @@ const host = (tag) => ({ children, ...props }) => createElement(tag, props, ...c
 export const Breadcrumb = host('nav');
 export const BreadcrumbList = host('ol');
 export const BreadcrumbItem = host('li');
-export const BreadcrumbPage = host('span');
+export const BreadcrumbPage = ({ children, ...props }) => createElement('span', { 'aria-current': 'page', ...props }, ...children);
 export const BreadcrumbSeparator = () => createElement('li', { role: 'presentation', 'aria-hidden': 'true' });
 export const BreadcrumbLink = ({ asChild, children, ...props }) =>
   asChild ? children[0] : createElement('a', props, ...children);`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 export const SidebarTrigger = () => createElement('button', { 'aria-label': 'Toggle sidebar' });`,
+  'skeleton.mjs': `export const Skeleton = (props) => ({ type: 'div', props: { 'data-component': 'Skeleton', ...props, children: [] } });`,
   'separator.mjs': `import { createElement } from './react.mjs';
 export const Separator = () => createElement('hr', {});`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
@@ -109,7 +110,8 @@ export const useNavigate = () => () => {};`,
 export const useTRPC = () => procedures([]);
 const read = (options) => {
   globalThis.__queries.push(options);
-  return { data: globalThis.__queryData?.[options.procedure] };
+  const status = globalThis.__queryStatus ?? 'success';
+  return { data: status === 'success' ? globalThis.__queryData?.[options.procedure] : undefined, isPending: status === 'pending' };
 };
 export const useQuery = read;
 export const useSuspenseQuery = read;
@@ -133,6 +135,8 @@ const IMPORTS: Record<string, string> = {
   '@repo/ui/components/ui/breadcrumb': './breadcrumb.mjs',
   '@repo/ui/components/ui/sidebar': './sidebar.mjs',
   '@repo/ui/components/ui/separator': './separator.mjs',
+  '@repo/ui/components/ui/skeleton': './skeleton.mjs',
+  '@/components/navigation/app-breadcrumb': './app-breadcrumb.mjs',
   '@repo/ui/components/ui/button': './button.mjs',
   '@tanstack/react-query': './query.mjs',
   '@tanstack/react-form': './form.mjs',
@@ -151,6 +155,7 @@ const ROUTER_IMPORTS = {
 
 type Component = (props: Record<string, unknown>) => unknown;
 type QueryData = Record<string, unknown>;
+type QueryStatus = 'success' | 'pending' | 'error';
 interface RecordedQuery {
   procedure: string;
   input: unknown;
@@ -161,6 +166,7 @@ const globals = globalThis as {
   __routeId?: string;
   __queries?: RecordedQuery[];
   __queryData?: QueryData;
+  __queryStatus?: QueryStatus;
 };
 
 async function filesUnder(root: string): Promise<string[]> {
@@ -204,6 +210,12 @@ interface Rendered {
   queries: RecordedQuery[];
 }
 
+const classesOf = (element: RenderedElement): string[] => String(element.props.className ?? '').split(/\s+/);
+
+function expectClasses(element: RenderedElement | undefined, ...expected: string[]): void {
+  expect(classesOf(must(element, `an element with ${expected.join(' ')}`))).toEqual(expect.arrayContaining(expected));
+}
+
 function must<T>(value: T | undefined, what: string): T {
   if (value === undefined) throw new Error(`${what} is not in the rendered header`);
   return value;
@@ -213,13 +225,19 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
   let tempDir: string;
   let web: string;
   let pageUrls: string[];
+  let listedUrls: string[];
   let header: Component;
   let loadComponent: (page: DetailPage) => Promise<Component>;
 
-  const renderHeader = async (pathname: string, queryData: QueryData = {}): Promise<Rendered> => {
+  const renderHeader = async (
+    pathname: string,
+    queryData: QueryData = {},
+    status: QueryStatus = 'success',
+  ): Promise<Rendered> => {
     globals.__pathname = pathname;
     globals.__queries = [];
     globals.__queryData = queryData;
+    globals.__queryStatus = status;
     const tree = await renderElementTree(await header({}));
     const crumbs = elementsOf(tree).filter((element) => element.tag === 'li' && element.props['aria-hidden'] !== 'true');
     return { tree, crumbs, queries: globals.__queries };
@@ -241,7 +259,18 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     await mkdir(stubs, { recursive: true });
     for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
     const imports = { ...IMPORTS, ...ROUTER_IMPORTS[blueprint.router] };
-    await evaluateGeneratedModule(await readTextFile(join(web, 'src/lib/constants.ts')), join(stubs, 'constants.mjs'), imports);
+    const constants = await evaluateGeneratedModule<{ PAGE_URLS: string[] }>(
+      await readTextFile(join(web, 'src/lib/constants.ts')),
+      join(stubs, 'constants.mjs'),
+      imports,
+    );
+    listedUrls = constants.PAGE_URLS;
+    await evaluateGeneratedModule(
+      await readTextFile(join(web, 'src/components/navigation/app-breadcrumb.tsx')),
+      join(stubs, 'app-breadcrumb.mjs'),
+      imports,
+      'tsx',
+    );
 
     loadComponent = async (page) => {
       const source = await readTextFile(join(web, page.file));
@@ -272,11 +301,6 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     });
     expect(lastCrumbText(rendered)).toBe('Ada Lovelace');
     expect(textOf({ tag: 'div', props: {}, children: rendered.tree }).toLowerCase()).not.toContain(SAMPLE_ID);
-  });
-
-  test('the last crumb of a user page does not show the id while the name loads', async () => {
-    const rendered = await renderHeader(`/admin/users/${SAMPLE_ID}`);
-    expect(lastCrumbText(rendered)).toBe('User');
   });
 
   test('the user crumb reads the query the page already reads, so no request is added', async () => {
@@ -316,9 +340,63 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
       for (const href of hrefs) {
         expect(pageUrls, `the crumb link ${href} on ${sampleOf(url)}`).toContain(href);
       }
-      if (url === '/') continue;
       const last = must(rendered.crumbs.at(-1), 'a crumb');
       expect(elementsOf([last]).some((element) => element.tag === 'a'), `last crumb of ${sampleOf(url)}`).toBe(false);
+    }
+  });
+
+  test('the pages the breadcrumb may link to are exactly the static pages of the app', () => {
+    expect([...listedUrls].sort()).toEqual(pageUrls.filter((url) => !isDynamic(url)).sort());
+  });
+
+  test('on the home page Home is the current page, not a link to itself', async () => {
+    const rendered = await renderHeader('/');
+    expect(links(rendered)).toEqual([]);
+    const current = elementsOf(rendered.tree).filter((element) => element.props['aria-current'] === 'page');
+    expect(current.map(textOf)).toEqual(['Home']);
+  });
+
+  test('exactly one crumb is the current page, and Home links on every other page', async () => {
+    for (const url of pageUrls.filter((candidate) => candidate !== '/')) {
+      const rendered = await renderHeader(sampleOf(url));
+      const current = elementsOf(rendered.tree).filter((element) => element.props['aria-current'] === 'page');
+      expect(current, `current crumb on ${sampleOf(url)}`).toHaveLength(1);
+      expect(links(rendered)[0]?.props.href).toBe('/');
+    }
+  });
+
+  test('a long last crumb truncates on one line and keeps its full name in a title', async () => {
+    const name = 'Alexandria Montgomery-Featherstonehaugh the Third';
+    const rendered = await renderHeader(`/admin/users/${SAMPLE_ID}`, {
+      [blueprint.userProcedure]: { id: SAMPLE_ID, name },
+    });
+    const all = elementsOf(rendered.tree);
+    expectClasses(all.find((element) => element.tag === 'nav'), 'min-w-0');
+    expectClasses(all.find((element) => element.tag === 'ol'), 'flex-nowrap');
+    const page = must(
+      all.find((element) => element.props['aria-current'] === 'page'),
+      'the current crumb',
+    );
+    expectClasses(page, 'truncate');
+    expect(all.find((element) => element.props.title === name && textOf(element) === name)).toBeDefined();
+    expectClasses(rendered.crumbs.at(-1), 'min-w-0');
+    for (const earlier of rendered.crumbs.slice(0, -1)) expectClasses(earlier, 'shrink-0');
+  });
+
+  test('every crumb of a trail keeps its full label in a title', async () => {
+    const rendered = await renderHeader('/admin/roles');
+    const titled = elementsOf(rendered.tree).filter((element) => typeof element.props.title === 'string');
+    expect(titled.map((element) => element.props.title)).toEqual(['Admin', 'Roles']);
+  });
+
+  test('the user crumb shows a skeleton while loading, and the fallback when the user cannot be read', async () => {
+    const loading = await renderHeader(`/admin/users/${SAMPLE_ID}`, {}, 'pending');
+    expect(elementsOf(loading.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(true);
+    expect(lastCrumbText(loading)).toBe('');
+    for (const status of ['error', 'success'] as const) {
+      const settled = await renderHeader(`/admin/users/${SAMPLE_ID}`, {}, status);
+      expect(elementsOf(settled.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(false);
+      expect(lastCrumbText(settled)).toBe('User');
     }
   });
 
@@ -343,6 +421,17 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
       });
       expect(lastCrumbText(rendered)).toBe('Grace Hopper');
       expect(textOf({ tag: 'div', props: {}, children: rendered.tree }).toLowerCase()).not.toContain(SAMPLE_ID);
+    });
+
+    test('the contact crumb shows a skeleton while loading, and the fallback when the contact cannot be read', async () => {
+      const loading = await renderHeader(`/contacts/${SAMPLE_ID}`, {}, 'pending');
+      expect(elementsOf(loading.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(true);
+      expect(lastCrumbText(loading)).toBe('');
+      for (const status of ['error', 'success'] as const) {
+        const settled = await renderHeader(`/contacts/${SAMPLE_ID}`, {}, status);
+        expect(elementsOf(settled.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(false);
+        expect(lastCrumbText(settled)).toBe('Contact');
+      }
     });
 
     test('the contact crumb reads the query the page already reads, so no request is added', async () => {

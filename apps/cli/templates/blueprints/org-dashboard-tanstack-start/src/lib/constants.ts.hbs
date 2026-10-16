@@ -17,12 +17,12 @@ export const ROUTES: RouteProps[] = [
   { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];
 
-// Routes that have a page: the breadcrumb links only these, so add a new page here.
-export const PAGE_URLS: string[] = [
-  ...ROUTES.map((route) => route.url),
-  '/profile',
-  '/profile/account',
-  '/profile/preferences',
-  '/profile/security',
-  '/profile/sessions',
-];
+export const PROFILE_TABS = [
+  { label: 'Account', url: '/profile/account' },
+  { label: 'Security', url: '/profile/security' },
+  { label: 'Sessions', url: '/profile/sessions' },
+  { label: 'Preferences', url: '/profile/preferences' },
+] as const;
+
+// The routes that have a page, which the breadcrumb links to.
+export const PAGE_URLS: string[] = [...ROUTES.map((route) => route.url), '/profile', ...PROFILE_TABS.map((tab) => tab.url)];

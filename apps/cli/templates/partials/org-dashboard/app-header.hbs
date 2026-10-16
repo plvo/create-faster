@@ -1,73 +1,13 @@
-{{#if (eq stackName "tanstack-start")}}
-import { Link, useLocation } from '@tanstack/react-router';
-{{else}}
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-{{/if}}
-import { useQuery } from '@tanstack/react-query';
-import * as React from 'react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@repo/ui/components/ui/breadcrumb';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarTrigger } from '@repo/ui/components/ui/sidebar';
-import { PAGE_URLS, ROUTES, type RouteProps } from '@/lib/constants';
-import { useTRPC } from '@/trpc/providers';
-
-{{> dashboard/breadcrumb-trail userQuery="user.getById" contactQuery="contact.getById"}}
+import { AppBreadcrumb } from '@/components/navigation/app-breadcrumb';
 
 export function AppHeader() {
-{{#if (eq stackName "tanstack-start")}}
-  const pathname = useLocation({ select: (location) => location.pathname });
-{{else}}
-  const pathname = usePathname();
-{{/if}}
-  const crumbs = buildCrumbs(pathname);
-
   return (
     <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
       <SidebarTrigger className='-ml-1' />
       <Separator orientation='vertical' className='mr-2 h-4' />
-      <Breadcrumb className='min-w-0'>
-        <BreadcrumbList className='flex-nowrap'>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-{{#if (eq stackName "tanstack-start")}}
-              <Link to='/'>Home</Link>
-{{else}}
-              <Link href='/'>Home</Link>
-{{/if}}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          {crumbs.map((crumb, index) => (
-            <React.Fragment key={crumb.url}>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem className={index === crumbs.length - 1 ? 'min-w-0' : undefined}>
-                {index === crumbs.length - 1 ? (
-                  <BreadcrumbPage className='truncate'><CrumbLabel crumb={crumb} /></BreadcrumbPage>
-                ) : crumb.hasPage ? (
-                  <BreadcrumbLink asChild>
-{{#if (eq stackName "tanstack-start")}}
-                    <Link to={crumb.url}><CrumbLabel crumb={crumb} /></Link>
-{{else}}
-                    <Link href={crumb.url}><CrumbLabel crumb={crumb} /></Link>
-{{/if}}
-                  </BreadcrumbLink>
-                ) : (
-                  <span><CrumbLabel crumb={crumb} /></span>
-                )}
-              </BreadcrumbItem>
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
+      <AppBreadcrumb />
     </header>
   );
 }
