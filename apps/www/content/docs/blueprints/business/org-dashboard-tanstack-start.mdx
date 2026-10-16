@@ -1,0 +1,220 @@
+---
+title: Org Dashboard (TanStack Start)
+description: Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD on TanStack Start. Ships as a turborepo with a TanStack Start web app, a Node batch worker, and shared packages.
+---
+
+## Presentation
+
+The [Org Dashboard](/docs/blueprints/business/org-dashboard-nextjs) starter with a TanStack Start web app instead of Next.js. You get the same product: email/password login, three roles (admin, user, manager) enforced on the server and in the UI, an admin panel, a contacts CRUD, a profile area, a Node batch worker, a one-command local setup, and an idempotent seed. Only the web app changes: routing, route guards, and the production server follow TanStack Start.
+
+## Composition
+
+**Apps:**
+- `web` — TanStack Start ([→ docs](/docs/stacks/tanstack-start)) + shadcn/ui ([→ module](/docs/modules/ui/shadcn)), Better Auth ([→ module](/docs/modules/auth/better-auth)), tRPC ([→ module](/docs/modules/api/trpc)), TanStack Query ([→ module](/docs/modules/data-fetching/tanstack-query)), TanStack Devtools ([→ module](/docs/modules/data-fetching/tanstack-devtools)), TanStack Form ([→ module](/docs/modules/forms/tanstack-form)), Next Themes ([→ module](/docs/modules/ui/next-themes))
+- `batch` — Node ([→ docs](/docs/stacks/node))
+
+**Project addons:**
+- Database: [→ PostgreSQL](/docs/database/postgresql)
+- ORM: [→ Drizzle](/docs/orm/drizzle)
+
+## Shared with the Next.js variant
+
+The blueprint inherits the templates of [Org Dashboard](/docs/blueprints/business/org-dashboard-nextjs) (META `extends`) and replaces only what is specific to the web framework. Everything else is the same, and documented on that page:
+
+- the `api`, `auth`, `db`, `ui` and `config` packages, the tRPC routers (`user`, `contact`, `session`) and the RBAC middleware (`adminProcedure`, `permissionProcedure`)
+- the roles and permission catalog in `packages/auth/src/permissions.ts`, with the `admin`, `user` and `manager` roles
+- the database schema, the Docker PostgreSQL setup, `scripts/local-setup.ts` and the seed (`--fixtures`, `--reset`, `--force`), with the same three accounts (`admin@example.com`, `user@example.com`, `manager@example.com`)
+- the `batch` Node worker
+- the pages: login, dashboard home, contacts list and detail, admin users list and detail, admin roles, and the four profile tabs (account, security, sessions, preferences)
+- the generated `AGENTS.md` and `docs/agents/` guides (the TanStack Start variant documents its own guards in `docs/agents/auth.md`)
+
+The contacts and admin pages render the same markup in both variants (shared partials), so the two apps look and behave alike.
+
+## What differs from the Next.js variant
+
+| | Next.js | TanStack Start |
+|---|---|---|
+| Routing | App Router, route groups `(auth)` and `(dashboard)` | File routes in `src/routes/`, pathless layouts `_auth` and `_dashboard` |
+| Auth guard | `requireSession()` in the layout and in each protected page | `beforeLoad` of the `_dashboard` layout, once for every dashboard route |
+| Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages |
+| Data prefetch | Server component prefetch inside a `HydrateClient` boundary | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component |
+| Post-login redirect | Query parameter validated by `safeRedirectPath` | `redirectTo` search parameter validated in `validateSearch` with the same `safeRedirectPath` |
+| Production server | `next start` | Nitro server (`.output/server/index.mjs`) started with Node |
+| Profile tabs | Directional slide animation with React `ViewTransition` | Plain tab navigation, no transition |
+
+### Pathless layouts and guards
+
+`_dashboard.tsx` and `_auth.tsx` add no segment to the URL. Both decide through one `isSignedIn(session)` check in `src/lib/auth/guards.ts`, so a session one layout accepts is never refused by the other and the two never redirect to each other in a loop:
+
+- `_dashboard` calls `requireSession(location)` in `beforeLoad`. Without a session (or without a role) it redirects to `/login?redirectTo=<requested path>`, and returns `{ session }` into the route context, so every child route and component reads the session from there. `beforeLoad` hooks run parent first and every loader starts after them, so an anonymous visit redirects before any protected query starts.
+- `_auth` wraps the login page and redirects a signed-in user to `/`.
+- `admin.tsx` calls `requireAdmin(context.session)` once for every page under `/admin`: a member is redirected to `/`. The bare `/admin` answers 404 through `admin/index.tsx`.
+- `contacts.tsx` calls `requirePermission(context.session, { contact: ['read'] })` once for every page under `/contacts`: a role without the permission gets the not-found page with a 404 status.
+
+The server still enforces every permission: each tRPC procedure keeps its `adminProcedure` or `permissionProcedure`, so the route guards only decide what a page shows.
+
+### Validated redirect
+
+The login route reads `redirectTo` in `validateSearch` and passes it through `safeRedirectPath` (`src/lib/safe-redirect.ts`): only an internal path survives, anything else falls back to `/`. The login form navigates to the validated destination and never to a raw query parameter.
+
+### Session on the server
+
+`getSession` (`src/lib/auth/session.ts`) is a server function that returns the current session through a per-request cache shared with the tRPC context, so a request looks the session up once. Better Auth uses the `tanstackStartCookies()` plugin, built into the app's own instance in `src/lib/auth/auth.ts`.
+
+## Architecture
+
+### Turborepo structure
+
+```
+apps/
+  web/              # TanStack Start app
+  batch/            # Node worker
+packages/
+  api/              # tRPC routers
+  auth/             # Better Auth config + permissions + types
+  db/               # Drizzle schema + client
+  ui/               # shadcn components
+  config/           # Shared tsconfig
+scripts/
+  local-setup.ts    # One-command local bootstrap (env, docker, schema, seed)
+  seed.ts           # Idempotent, flag-driven database seeder
+```
+
+### Web app
+
+```
+src/
+├── routes/
+│   ├── __root.tsx                        # Root document: theme provider, Toaster, devtools, not-found component
+│   ├── _auth.tsx                         # Pathless layout: redirect a signed-in user to /
+│   ├── _auth/
+│   │   └── login.tsx                     # Login page, redirectTo validated in validateSearch
+│   ├── _dashboard.tsx                    # Pathless layout: sidebar, header, requireSession in beforeLoad
+│   ├── _dashboard/
+│   │   ├── index.tsx                     # Dashboard home (contact count)
+│   │   ├── admin.tsx                     # Layout route: requireAdmin
+│   │   ├── admin/
+│   │   │   ├── index.tsx                 # Bare /admin answers 404
+│   │   │   ├── roles.tsx                 # Read-only roles + permission matrix
+│   │   │   └── users/
+│   │   │       ├── index.tsx             # User list
+│   │   │       └── $id.tsx               # User detail
+│   │   ├── contacts.tsx                  # Layout route: requirePermission contact:read
+│   │   ├── contacts/
+│   │   │   ├── index.tsx                 # Contact list
+│   │   │   └── $id.tsx                   # Contact detail + edit
+│   │   ├── profile.tsx                   # Tab navigation layout
+│   │   └── profile/
+│   │       ├── index.tsx                 # Redirect → /profile/account
+│   │       ├── account.tsx               # Account info + edit name
+│   │       ├── security.tsx              # Change password
+│   │       ├── sessions.tsx              # Active sessions + revoke
+│   │       └── preferences.tsx           # Theme switcher
+│   └── api/
+│       ├── auth/$.ts                     # Better Auth handler
+│       └── trpc/$.ts                     # tRPC handler
+├── components/
+│   ├── admin/                            # Create user dialog, user actions, user table, user detail
+│   ├── auth/login-form.tsx               # Email/password login form
+│   ├── contacts/                         # Contact dialog, form, table, detail
+│   ├── navigation/                       # Sidebar, header, nav-user dropdown
+│   ├── profile/                          # Account form, security form, session list, preferences, tab nav
+│   ├── can.tsx                           # Permission gate component
+│   ├── not-found.tsx                     # Not-found component (404)
+│   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
+├── hooks/
+│   └── use-permission.ts                 # Synchronous role permission check
+├── lib/
+│   ├── auth/
+│   │   ├── guards.ts                     # isSignedIn, requireSession, requireAdmin, requirePermission
+│   │   ├── session.ts                    # getSession server function
+│   │   ├── permission.ts                 # hasPermission (client-side role check, also used by the guards)
+│   │   └── auth.ts                       # Better Auth instance with tanstackStartCookies()
+│   ├── constants.ts                      # Route definitions with required permissions
+│   ├── page-title.ts                     # Page title helper
+│   └── safe-redirect.ts                  # Validates post-login redirect paths
+└── routeTree.gen.ts                      # Generated by `tsr generate` (postinstall), committed
+```
+
+The API package, the auth package, and the scripts are identical to the [Next.js variant](/docs/blueprints/business/org-dashboard-nextjs#architecture).
+
+## What's included
+
+### Authentication and route guards
+
+Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`): accounts are created by admins, or by the seed. The admin plugin powers the custom access-control model (admin/user/manager), ban/unban, and session management. The guards are described in [Pathless layouts and guards](#pathless-layouts-and-guards).
+
+### Role-based access control
+
+Same model as the Next.js variant: roles are code-defined in `packages/auth/src/permissions.ts`, gated on the server by `permissionProcedure(resource, action)` and in the UI by `<Can>`, `usePermission` and a permission-filtered sidebar (`lib/constants.ts`). On TanStack Start the route guards add a third layer, so a member without the contact permission never reaches the contacts pages, and a member is redirected away from the admin pages.
+
+### Admin panel and contacts
+
+Admins get the users list, user detail (edit name, phone, role, ban/unban, one-time password regeneration), and the read-only roles page. Creating a user never asks for a password: `user.create` generates one server-side and returns it once. Contacts have full create, read, update and delete for roles with the permissions; the read-only `manager` role sees the pages without the create, edit and delete actions.
+
+### Profile
+
+Four route-based tabs: account (user info and display name), security (change password, revokes other sessions), sessions (list and revoke), preferences (theme switcher). Unlike the Next.js variant, the tabs switch without a view transition.
+
+### Local setup and seed
+
+`scripts/local-setup.ts` copies every `.env.example` to `.env`, starts the database with `docker compose up -d --wait`, applies the schema, then seeds demo data:
+
+```bash
+bun run local-setup
+```
+
+The seed is the one of the [Next.js variant](/docs/blueprints/business/org-dashboard-nextjs#database-seed): `bun run db:seed` with `--fixtures`, `--reset` and `--force`, and the same three local-development accounts.
+
+> **Warning:** These credentials are for local development only. Change passwords or disable seed accounts before deploying to any shared environment.
+
+### Production server
+
+`vite build` emits a Nitro server to `apps/web/.output/`. `start` runs it with Node, loading `.env` when it exists, then `.env.start` (`NODE_ENV=production` and the default `PORT`). In the turborepo, `bun run start` runs `turbo start`. A client-address Nitro plugin (`src/lib/nitro/client-ip.ts`) fills `x-forwarded-for` with the connection address when a request has none, so Better Auth rate limits each client separately when the server is exposed directly.
+
+### Deployment
+
+The blueprint supports the [SST](/docs/deployment/sst) deployment: `sst.config.ts` deploys the web app with `sst.aws.TanStackStart` on an AWS Lambda Nitro preset, and each runtime secret (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`) becomes an `sst.Secret`.
+
+Cloudflare deployments are not available: PostgreSQL with Better Auth is not yet supported there, because Better Auth uses a module-singleton database while Cloudflare reaches PostgreSQL through a per-request binding. The CLI rejects `--deployment cloudflare` with this blueprint, as it does for the Next.js variant.
+
+## Extra dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `lucide-react` | Icons in navigation, forms, session list |
+| `react-error-boundary` | QueryBoundary error handling |
+| `sonner` | Toast notifications |
+| `zod` | Form validation schemas |
+| `vaul` | Drawer behind the responsive dialog (mobile) |
+| `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
+
+## Environment variables
+
+- `SEED_PASSWORD` - Password of the seeded accounts, `password` by default (scope: app, used by `db:seed`)
+
+## Root scripts
+
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `local-setup` | `bun scripts/local-setup.ts` (`tsx` under npm and pnpm) | One-command local bootstrap (env, docker, schema, seed) |
+| `db:push` | `cd packages/db && bun run db:push` | Push schema to database |
+| `db:generate` | `turbo db:generate` | Generate migration files |
+| `db:migrate` | `turbo db:migrate` | Apply migrations |
+| `db:studio` | `turbo db:studio` | Open Drizzle Studio |
+| `db:seed` | `bun --env-file=apps/web/.env scripts/seed.ts` (`tsx` under npm and pnpm) | Seed core data (`--fixtures` for demo data) |
+| `start` | `turbo start` | Start production server |
+
+## CLI usage
+
+```bash
+bunx create-faster my-app \
+  --blueprint org-dashboard-tanstack-start \
+  --linter biome \
+  --git \
+  --pm bun
+```
+
+## Agent context
+
+This blueprint ships `AGENTS.md` + `docs/agents/` guides (auth & permissions, data layer) so AI coding agents understand the project out of the box. See [Agent Context](/docs/concepts/agent-context).
