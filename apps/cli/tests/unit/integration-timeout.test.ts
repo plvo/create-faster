@@ -6,6 +6,8 @@ import { cleanupTempDir, createTempDir } from '../integration/helpers';
 const INTEGRATION_DIR = join(import.meta.dir, '../integration');
 const IMPORT_LINE = /^import \{ setIntegrationTimeout \} from '\.\/timeout';$/m;
 const CALL_LINE = /^setIntegrationTimeout\(\);$/m;
+// The test starts a child `bun test`, which takes longer than Bun's 5 s unit default on a loaded runner.
+const CHILD_RUN_TIMEOUT_MS = 30_000;
 
 describe('integration test timeout', () => {
   test('every integration test file sets the integration timeout itself', async () => {
@@ -60,6 +62,6 @@ describe('integration test timeout', () => {
         exitCode: 0,
         summary: ['3 pass', '0 fail'],
       });
-    });
+    }, CHILD_RUN_TIMEOUT_MS);
   });
 });
