@@ -9,25 +9,19 @@ mono:
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@repo/ui/lib/utils';
-
-const TABS = [
-  { label: 'Account', href: '/profile/account' },
-  { label: 'Security', href: '/profile/security' },
-  { label: 'Sessions', href: '/profile/sessions' },
-  { label: 'Preferences', href: '/profile/preferences' },
-] as const;
+import { PROFILE_TABS } from '@/lib/constants';
 
 export function ProfileTabNav() {
   const pathname = usePathname();
 
   return (
     <nav className='flex flex-row gap-1 overflow-x-auto md:flex-col'>
-      {TABS.map((tab) => {
-        const isActive = pathname.startsWith(tab.href);
+      {PROFILE_TABS.map((tab) => {
+        const isActive = pathname.startsWith(tab.url);
         return (
           <Link
-            key={tab.href}
-            href={tab.href}
+            key={tab.url}
+            href={tab.url}
             className={cn(
               'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
               isActive

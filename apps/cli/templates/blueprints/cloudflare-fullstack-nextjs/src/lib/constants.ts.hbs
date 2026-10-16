@@ -19,3 +19,10 @@ export const ROUTES: RouteProps[] = [
   { url: '/admin/users', title: 'Users', icon: Users, category: 'Administration', permissions: { user: ['list'] } },
   { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];
+
+export const PROFILE_TABS = [
+  { label: 'Account', url: '/profile/account' },
+  { label: 'Security', url: '/profile/security' },
+  { label: 'Sessions', url: '/profile/sessions' },
+  { label: 'Preferences', url: '/profile/preferences' },
+] as const;

@@ -1,0 +1,171 @@
+{{!-- The whole AppBreadcrumb component file, imports included.
+userProcedure: the tRPC procedure that reads one user by id. contactProcedure: the one that reads a contact, for a dashboard with contacts.
+It reads from the project: ROUTES, RouteProps and PROFILE_TABS from @/lib/constants, useTRPC from @/trpc/providers, and the breadcrumb and skeleton components of @repo/ui.
+A record is labelled only under the list routes RECORD_LABELS is keyed by, so the project needs /admin/users (and /contacts when contactProcedure is given). --}}
+{{#if (eq stackName "tanstack-start")}}
+import { Link, useLocation } from '@tanstack/react-router';
+{{else}}
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+{{/if}}
+import { useQuery } from '@tanstack/react-query';
+import * as React from 'react';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@repo/ui/components/ui/breadcrumb';
+import { Skeleton } from '@repo/ui/components/ui/skeleton';
+import { PROFILE_TABS, ROUTES, type RouteProps } from '@/lib/constants';
+import { useTRPC } from '@/trpc/providers';
+
+type RecordLabelComponent = React.ComponentType<{ id: string }>;
+
+interface Crumb {
+  url: string;
+  segment: string;
+  title: string;
+  isLast: boolean;
+  hasPage: boolean;
+  RecordLabel?: RecordLabelComponent;
+}
+
+// The routes that have a page, which the breadcrumb links to.
+const PAGE_URLS: string[] = [...ROUTES.map((route) => route.url), '/profile', ...PROFILE_TABS.map((tab) => tab.url)];
+
+function findRouteTitle(routes: RouteProps[], url: string): string | undefined {
+  return routes.find((route) => route.url === url)?.title;
+}
+
+function formatSegment(segment: string): string {
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
+}
+
+function CrumbText({ text }: { text: string }) {
+  return <span title={text}>{text}</span>;
+}
+
+function LabelSkeleton() {
+  return <Skeleton className='inline-block h-4 w-24 align-middle' />;
+}
+
+function UserLabel({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const { data: user, isPending } = useQuery(trpc.{{userProcedure}}.queryOptions({ id }));
+  if (isPending) return <LabelSkeleton />;
+  return <CrumbText text={user?.name || 'User'} />;
+}
+{{#if contactProcedure}}
+
+function ContactLabel({ id }: { id: string }) {
+  const trpc = useTRPC();
+  const { data: contact, isPending } = useQuery(trpc.{{contactProcedure}}.queryOptions({ id }));
+  if (isPending) return <LabelSkeleton />;
+  return <CrumbText text={[contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || 'Contact'} />;
+}
+{{/if}}
+
+// The label of a record page, keyed by the URL of the list that holds the record.
+const RECORD_LABELS: Record<string, RecordLabelComponent> = {
+  '/admin/users': UserLabel,
+{{#if contactProcedure}}
+  '/contacts': ContactLabel,
+{{/if}}
+};
+
+function buildCrumbs(pathname: string): Crumb[] {
+  const segments = pathname.split('/').filter(Boolean);
+
+  return segments.map((segment, index) => {
+    const url = `/${segments.slice(0, index + 1).join('/')}`;
+    const listUrl = `/${segments.slice(0, index).join('/')}`;
+    return {
+      url,
+      segment,
+      title: findRouteTitle(ROUTES, url) || formatSegment(segment),
+      isLast: index === segments.length - 1,
+      hasPage: PAGE_URLS.includes(url),
+      RecordLabel: RECORD_LABELS[listUrl],
+    };
+  });
+}
+
+function CrumbLabel({ crumb }: { crumb: Crumb }) {
+  return crumb.RecordLabel ? <crumb.RecordLabel id={crumb.segment} /> : <CrumbText text={crumb.title} />;
+}
+
+function CrumbItem({ crumb }: { crumb: Crumb }) {
+  if (crumb.isLast) {
+    return (
+      <BreadcrumbItem className='min-w-0'>
+        <BreadcrumbPage className='truncate'>
+          <CrumbLabel crumb={crumb} />
+        </BreadcrumbPage>
+      </BreadcrumbItem>
+    );
+  }
+
+  if (!crumb.hasPage) {
+    return (
+      <BreadcrumbItem className='shrink-0'>
+        <span>
+          <CrumbLabel crumb={crumb} />
+        </span>
+      </BreadcrumbItem>
+    );
+  }
+
+  return (
+    <BreadcrumbItem className='shrink-0'>
+      <BreadcrumbLink asChild>
+{{#if (eq stackName "tanstack-start")}}
+        <Link to={crumb.url}>
+{{else}}
+        <Link href={crumb.url}>
+{{/if}}
+          <CrumbLabel crumb={crumb} />
+        </Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+  );
+}
+
+export function AppBreadcrumb() {
+{{#if (eq stackName "tanstack-start")}}
+  const pathname = useLocation({ select: (location) => location.pathname });
+{{else}}
+  const pathname = usePathname();
+{{/if}}
+  const crumbs = buildCrumbs(pathname);
+
+  return (
+    <Breadcrumb className='min-w-0'>
+      <BreadcrumbList className='flex-nowrap'>
+        <BreadcrumbItem className='shrink-0'>
+          {crumbs.length === 0 ? (
+            <BreadcrumbPage>Home</BreadcrumbPage>
+          ) : (
+            <BreadcrumbLink asChild>
+{{#if (eq stackName "tanstack-start")}}
+              <Link to='/'>Home</Link>
+{{else}}
+              <Link href='/'>Home</Link>
+{{/if}}
+            </BreadcrumbLink>
+          )}
+        </BreadcrumbItem>
+        {crumbs.map((crumb) => (
+          <React.Fragment key={crumb.url}>
+            <BreadcrumbSeparator />
+            <CrumbItem crumb={crumb} />
+          </React.Fragment>
+        ))}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
