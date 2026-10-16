@@ -119,7 +119,7 @@ A real, single-tenant RBAC built on the Better Auth `admin` plugin's access cont
 - `user` (default) — full CRUD on `contact`, no user management
 - `manager` — `contact: ['read']` only, a read-only example role
 
-Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. See [Auth & Permissions](/docs/concepts/agent-context) in the generated `docs/agents/auth.md`.
+Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. The generated `docs/agents/auth.md` covers it in detail (see [Agent Context](/docs/concepts/agent-context)).
 
 ### Admin panel
 
@@ -187,7 +187,7 @@ The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-
 | Script | Command | Purpose |
 |--------|---------|---------|
 | `local-setup` | `bun scripts/local-setup.ts` (`tsx` under npm and pnpm) | One-command local bootstrap (env, docker, schema, seed) |
-| `db:push` | `turbo db:push` | Push schema to database |
+| `db:push` | `cd packages/db && bun run db:push` | Push schema to database |
 | `db:generate` | `turbo db:generate` | Generate migration files |
 | `db:migrate` | `turbo db:migrate` | Apply migrations |
 | `db:studio` | `turbo db:studio` | Open Drizzle Studio |
