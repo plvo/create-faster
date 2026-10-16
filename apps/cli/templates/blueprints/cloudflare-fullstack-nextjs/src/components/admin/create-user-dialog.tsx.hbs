@@ -7,7 +7,7 @@ mono:
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from '@repo/ui/components/ui/dialog';
 import { useAppForm } from '@repo/ui/lib/form';
+import { GeneratedPassword } from '@/components/admin/generated-password';
 import { useTRPC } from '@/trpc/providers';
 
 const schema = z.object({
@@ -43,7 +44,6 @@ export function CreateUserDialog() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const createMutation = useMutation(
     trpc.users.create.mutationOptions({
@@ -74,16 +74,8 @@ export function CreateUserDialog() {
     setOpen(next);
     if (!next) {
       setCreatedPassword(null);
-      setCopied(false);
       form.reset();
     }
-  }
-
-  async function copyPassword() {
-    if (!createdPassword) return;
-    await navigator.clipboard.writeText(createdPassword);
-    setCopied(true);
-    toast.success('Password copied');
   }
 
   return (
@@ -94,7 +86,7 @@ export function CreateUserDialog() {
           Create user
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className='max-h-[calc(100dvh-2rem)] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Create a user</DialogTitle>
           <DialogDescription>A random password is generated and shown once after the account is created.</DialogDescription>
@@ -105,12 +97,7 @@ export function CreateUserDialog() {
             <p className='text-sm text-muted-foreground'>
               Account created. Copy the password now — it won&apos;t be shown again.
             </p>
-            <div className='flex items-center gap-2 rounded-md border bg-muted/40 p-2'>
-              <code className='flex-1 truncate font-mono text-sm'>{createdPassword}</code>
-              <Button type='button' variant='outline' size='icon' onClick={copyPassword} aria-label='Copy password'>
-                {copied ? <Check className='size-4' /> : <Copy className='size-4' />}
-              </Button>
-            </div>
+            <GeneratedPassword password={createdPassword} />
             <DialogFooter>
               <Button type='button' onClick={() => onOpenChange(false)}>
                 Done
@@ -132,7 +119,7 @@ export function CreateUserDialog() {
               {(f) => <f.InputField label='Email' props={{ type: 'email', placeholder: 'jane@example.com' }} />}
             </form.AppField>
             <form.AppField name='role'>{(f) => <f.SelectField label='Role' options={ROLE_OPTIONS} />}</form.AppField>
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid gap-3 sm:grid-cols-2'>
               <form.AppField name='firstName'>{(f) => <f.InputField label='First name' />}</form.AppField>
               <form.AppField name='lastName'>{(f) => <f.InputField label='Last name' />}</form.AppField>
             </div>

@@ -28,6 +28,7 @@ interface InlineEditProps {
   size?: InlineEditSize;
   placeholder?: string;
   canEdit?: boolean;
+  labelledBy?: string;
   children?: (api: {
     value: string;
     setValue: (v: string) => void;
@@ -63,10 +64,12 @@ function InlineEdit({
   size = 'default',
   placeholder = '—',
   canEdit = true,
+  labelledBy,
   children,
 }: InlineEditProps) {
   const [state, setState] = React.useState<State>({ kind: 'reading' });
   const errorId = React.useId();
+  const valueId = React.useId();
 
   const fieldClassName = cn(
     'w-full rounded-md text-left outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50',
@@ -100,31 +103,27 @@ function InlineEdit({
   let content: React.ReactNode;
   if (state.kind === 'reading') {
     const isEmpty = value === '';
-    content = (
-      <span
+    const displayed = isEmpty ? placeholder : value;
+    const readingClassName = cn(
+      fieldClassName,
+      'block',
+      input === 'textarea' && 'whitespace-pre-wrap',
+      isEmpty && 'text-muted-foreground',
+    );
+    content = canEdit ? (
+      <button
+        id={valueId}
+        type='button'
         data-slot='inline-edit'
-        role={canEdit ? 'button' : undefined}
-        tabIndex={canEdit ? 0 : undefined}
-        onClick={canEdit ? startEdit : undefined}
-        onKeyDown={
-          canEdit
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  startEdit();
-                }
-              }
-            : undefined
-        }
-        className={cn(
-          fieldClassName,
-          'block',
-          canEdit ? 'cursor-text' : 'cursor-default',
-          input === 'textarea' && 'whitespace-pre-wrap',
-          isEmpty && 'text-muted-foreground',
-        )}
+        aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
+        onClick={startEdit}
+        className={cn(readingClassName, 'cursor-text')}
       >
-        {isEmpty ? placeholder : value}
+        {displayed}
+      </button>
+    ) : (
+      <span data-slot='inline-edit' className={cn(readingClassName, 'cursor-default')}>
+        {displayed}
       </span>
     );
   } else {
@@ -158,6 +157,7 @@ function InlineEdit({
     ) : input === 'textarea' ? (
       <Textarea
         autoFocus
+        aria-labelledby={labelledBy}
         value={draft}
         disabled={isSaving}
         aria-invalid={!!displayedError}
@@ -170,6 +170,7 @@ function InlineEdit({
     ) : (
       <Input
         autoFocus
+        aria-labelledby={labelledBy}
         type='text'
         value={draft}
         disabled={isSaving}
@@ -199,7 +200,7 @@ function InlineEdit({
 }
 
 export interface InlineEditFieldProps
-  extends Pick<InlineEditProps, 'input' | 'variant' | 'size' | 'placeholder' | 'canEdit' | 'children'> {
+  extends Pick<InlineEditProps, 'input' | 'variant' | 'size' | 'placeholder' | 'canEdit' | 'labelledBy' | 'children'> {
   label?: string;
   description?: string;
   orientation?: 'vertical' | 'horizontal';

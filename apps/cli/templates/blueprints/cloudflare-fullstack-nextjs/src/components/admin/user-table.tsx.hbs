@@ -24,36 +24,46 @@ type UserRow = {
   createdAt: string | Date;
 };
 
+function RoleBadge({ role }: { role: string | null }) {
+  return (
+    <Badge variant={role === 'admin' ? 'default' : 'secondary'} className='capitalize'>
+      {role ?? 'user'}
+    </Badge>
+  );
+}
+
 const columns: DataTableShellColumn<UserRow>[] = [
   {
     accessorKey: 'name',
     header: 'Name',
     meta: { label: 'Name', variant: 'text' },
     cell: ({ row }) => (
-      <div className='flex items-center gap-2'>
-        <Link href={`/admin/users/${row.original.id}`} className='font-medium hover:underline'>
-          {row.original.name}
-        </Link>
-        {row.original.banned && <Badge variant='destructive'>Banned</Badge>}
+      <div className='space-y-1'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Link href={`/admin/users/${row.original.id}`} className='font-medium hover:underline'>
+            {row.original.name}
+          </Link>
+          {row.original.banned && <Badge variant='destructive'>Banned</Badge>}
+        </div>
+        <div className='flex flex-wrap items-center gap-x-2 gap-y-1 md:hidden'>
+          <span className='text-xs wrap-anywhere text-muted-foreground sm:hidden'>{row.original.email}</span>
+          <RoleBadge role={row.original.role} />
+        </div>
       </div>
     ),
   },
   {
     accessorKey: 'email',
     header: 'Email',
-    meta: { label: 'Email', variant: 'text' },
+    meta: { label: 'Email', variant: 'text', className: 'hidden sm:table-cell' },
     cell: ({ row }) => <span className='text-muted-foreground'>{row.original.email}</span>,
   },
   {
     accessorKey: 'role',
     header: 'Role',
-    meta: { label: 'Role', variant: 'text' },
+    meta: { label: 'Role', variant: 'text', className: 'hidden md:table-cell' },
     enableSorting: false,
-    cell: ({ row }) => (
-      <Badge variant={row.original.role === 'admin' ? 'default' : 'secondary'} className='capitalize'>
-        {row.original.role ?? 'user'}
-      </Badge>
-    ),
+    cell: ({ row }) => <RoleBadge role={row.original.role} />,
   },
 ];
 

@@ -190,8 +190,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('roles page renders the static role × permission matrix (read-only)', () => {
     const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
     expect(page).toContain("import { roleDefinitions, statement } from '@repo/auth/permissions'");
-    // the duplicate page h1 is gone (breadcrumb + sidebar already name the page); the matrix stays read-only.
-    expect(page).not.toContain("<h1");
+    // the matrix stays read-only.
     expect(page).toContain('read-only');
     expect(page).toContain('isGranted(role, resource, action)');
     expect(page).toContain("session?.user.role !== 'admin'");
@@ -247,12 +246,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('admin users page composes the datatable + create dialog behind a permission gate', () => {
-    const page = bpFile('src/app/(dashboard)/admin/users/page.tsx.hbs');
+    const page = bpFile('src/app/(dashboard)/admin/users/users.client.tsx.hbs');
     expect(page).toContain('<CreateUserDialog />');
     expect(page).toContain('<UserTable />');
     expect(page).toContain("permissions={{ user: ['list'] }}");
-    // the duplicate page h1 is gone.
-    expect(page).not.toContain('<h1');
   });
 
   test('user table renders through the shuip DataTableShell over trpc.users.list', () => {
@@ -273,7 +270,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('per-user page edits a single user by id with inline edit + admin actions', () => {
-    const page = bpFile('src/app/(dashboard)/admin/users/[id]/page.tsx.hbs');
+    const page = bpFile('src/app/(dashboard)/admin/users/[id]/user.client.tsx.hbs');
     expect(page).toContain('useParams<{ id: string }>()');
     expect(page).toContain('trpc.users.get.queryOptions({ id })');
     const edit = bpFile('src/components/admin/edit-user.tsx.hbs');
@@ -512,6 +509,12 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(() => bpFile('packages/ui/src/components/ui/shuip/tanstack-form/inline-edit.tsx.hbs')).not.toThrow();
     const form = bpFile('packages/ui/src/lib/form.ts.hbs');
     expect(form).toContain('InlineEditField');
+  });
+
+  test('the search input names its hotkey button in English', () => {
+    const search = bpFile('packages/ui/src/components/ui/search-input.tsx.hbs');
+    expect(search).toContain('aria-label={`Press ${hotkey} to search`}');
+    expect(search).not.toContain('Appuyer');
   });
 
   test('blueprint adds the datatable/inline-edit ui deps', () => {

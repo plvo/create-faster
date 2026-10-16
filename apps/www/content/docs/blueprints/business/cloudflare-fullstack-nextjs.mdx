@@ -46,15 +46,15 @@ apps/
 │       │   │   │   └── preferences/page.tsx # Theme
 │       │   │   └── admin/
 │       │   │       ├── layout.tsx      # Admin-only server gate
-│       │   │       ├── users/page.tsx       # Users datatable + create dialog
-│       │   │       ├── users/[id]/page.tsx  # Per-user editor (inline edit, role, password, ban)
+│       │   │       ├── users/page.tsx       # Server page (title), renders users.client.tsx: datatable + create dialog
+│       │   │       ├── users/[id]/page.tsx  # Server page (title), renders user.client.tsx: per-user editor (inline edit, role, password, ban)
 │       │   │       └── roles/page.tsx       # Roles: role × permission matrix (read-only)
 │       │   └── api/
 │       │       ├── documents/upload/route.ts  # Multipart → R2 STORAGE.put
 │       │       └── avatar/{route,[userId]/route}.ts  # Avatar upload + serve from R2
 │       ├── components/
 │       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links
-│       │   ├── admin/                  # user-table, create-user-dialog, edit-user
+│       │   ├── admin/                  # user-table, create-user-dialog, edit-user, generated-password
 │       │   ├── profile/                # avatar-upload, account/security forms, session-list, tab-nav
 │       │   ├── shared/data-table-shell.tsx  # shuip datatable wrapper (search + sort)
 │       │   └── can.tsx                 # <Can> permission gate

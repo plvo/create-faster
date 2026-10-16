@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@repo/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,14 +86,9 @@ export function UserActions({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type='button'
-          disabled={loading}
-          className='inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent disabled:opacity-50'
-        >
-          <MoreHorizontal className='h-4 w-4' />
-          <span className='sr-only'>Actions</span>
-        </button>
+        <Button variant='ghost' size='icon' disabled={loading} aria-label='Actions'>
+          <MoreHorizontal />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
         {(['admin', 'user', 'manager'] as const)
