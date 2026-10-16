@@ -6,6 +6,7 @@ import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-genera
 import { findMissingPackageManager, missingPackageManagerMessage } from '@/lib/package-manager';
 import { runPostGeneration } from '@/lib/post-generation';
 import { getProjectDir, getProjectPath } from '@/lib/project-location';
+import { missingAnswersWithoutTerminal } from '@/lib/project-prompts';
 import { getAllTemplatesForContext } from '@/lib/template-resolver';
 import { displayInstallFailure } from '@/tui/install-failure';
 import { printError } from '@/tui/print-error';
@@ -18,6 +19,12 @@ import { selectBlueprintPrompt } from './prompts/stack-prompts';
 
 async function main() {
   const partial = parseFlags();
+
+  const missingAnswers = missingAnswersWithoutTerminal(partial);
+  if (missingAnswers.length > 0) {
+    for (const { title, hint } of missingAnswers) printError(title, hint);
+    process.exit(1);
+  }
 
   console.log(ASCII);
 

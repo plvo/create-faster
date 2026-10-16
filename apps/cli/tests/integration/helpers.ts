@@ -31,7 +31,7 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   const cliPath = join(import.meta.dir, '../../src/index.ts');
 
   try {
-    const result = await $`${process.execPath} run ${cliPath} ${args}`
+    const result = await $`${process.execPath} run ${cliPath} ${args} < /dev/null`
       .cwd(cwd)
       .env({ ...process.env, ...PLAIN_OUTPUT_ENV, ...env })
       .quiet();
@@ -335,6 +335,7 @@ export async function printedScriptsMissingFrom(projectPath: string, document: s
 
 const ENTER = '\r';
 const DOWN_THEN_ENTER = '\x1b[B\r';
+const CTRL_C = '\x03';
 const TERMINAL_RUN_TIMEOUT_MS = 60_000;
 
 interface PromptAnswer {
@@ -344,6 +345,7 @@ interface PromptAnswer {
 
 export const accept = (prompt: string): PromptAnswer => ({ prompt, keys: ENTER });
 export const pickFirstOption = (prompt: string): PromptAnswer => ({ prompt, keys: DOWN_THEN_ENTER });
+export const interrupt = (prompt: string): PromptAnswer => ({ prompt, keys: CTRL_C });
 
 /** Runs the CLI on a pseudo-terminal and answers each expected prompt as it appears. */
 export async function runCliOnTerminal(args: string[], cwd: string, expectedPrompts: PromptAnswer[]) {

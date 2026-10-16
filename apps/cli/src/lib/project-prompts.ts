@@ -30,6 +30,37 @@ export function arePromptsSuppressed({ hasFlags, interactive, skipPrompts }: Pro
   return skipPrompts || (hasFlags && !interactive);
 }
 
+interface MissingAnswer {
+  title: string;
+  hint: string;
+}
+
+/**
+ * The project directory and the apps (or a blueprint, which brings them) have no default: only a prompt
+ * can give them when no flag did. Outside an interactive terminal nothing can answer that prompt.
+ */
+export function missingAnswersWithoutTerminal(
+  answers: FlagAnswers | undefined,
+  interactive: boolean = isInteractiveTerminal(),
+): MissingAnswer[] {
+  if (interactive) return [];
+
+  const missing: MissingAnswer[] = [];
+  if (!answers?.projectDir) {
+    missing.push({
+      title: 'Missing project name',
+      hint: 'Pass the project directory as the first argument: create-faster <project-name>',
+    });
+  }
+  if (!answers?.apps || answers.apps.length === 0) {
+    missing.push({
+      title: 'Missing apps',
+      hint: 'Pass at least one --app <name:stack:libraries> or a --blueprint <name>',
+    });
+  }
+  return missing;
+}
+
 function isCategoryAnswered(categoryName: ProjectCategoryName, ctx: Pick<TemplateContext, 'project'>): boolean {
   const answer = ctx.project[categoryName];
   return Array.isArray(answer) ? answer.length > 0 : Boolean(answer);
