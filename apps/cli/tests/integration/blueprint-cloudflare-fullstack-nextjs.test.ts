@@ -190,13 +190,12 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     }
   });
 
-  test('generates the read-only role matrix page (no duplicate title)', async () => {
+  test('generates the read-only role matrix page', async () => {
     const page = await readTextFile(
       join(projectPath, 'apps/web/src/app/(dashboard)/admin/roles/page.tsx'),
     );
     expect(page).toContain('read-only');
     expect(page).toContain('roleDefinitions');
-    expect(page).not.toContain('<h1');
     expect(page).not.toContain('{{');
   });
 

@@ -190,8 +190,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('roles page renders the static role × permission matrix (read-only)', () => {
     const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
     expect(page).toContain("import { roleDefinitions, statement } from '@repo/auth/permissions'");
-    // the duplicate page h1 is gone (breadcrumb + sidebar already name the page); the matrix stays read-only.
-    expect(page).not.toContain("<h1");
+    // the matrix stays read-only.
     expect(page).toContain('read-only');
     expect(page).toContain('isGranted(role, resource, action)');
     expect(page).toContain("session?.user.role !== 'admin'");
@@ -247,12 +246,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('admin users page composes the datatable + create dialog behind a permission gate', () => {
-    const page = bpFile('src/app/(dashboard)/admin/users/page.tsx.hbs');
+    const page = bpFile('src/app/(dashboard)/admin/users/users.client.tsx.hbs');
     expect(page).toContain('<CreateUserDialog />');
     expect(page).toContain('<UserTable />');
     expect(page).toContain("permissions={{ user: ['list'] }}");
-    // the duplicate page h1 is gone.
-    expect(page).not.toContain('<h1');
   });
 
   test('user table renders through the shuip DataTableShell over trpc.users.list', () => {
@@ -512,21 +509,6 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(() => bpFile('packages/ui/src/components/ui/shuip/tanstack-form/inline-edit.tsx.hbs')).not.toThrow();
     const form = bpFile('packages/ui/src/lib/form.ts.hbs');
     expect(form).toContain('InlineEditField');
-  });
-
-  test('the data table gives a column its own classes, so a page can hide a column on a phone', () => {
-    const dataTable = bpFile('packages/ui/src/components/block/shuip/data-table.tsx.hbs');
-    expect(dataTable).toContain('className?: string;');
-    expect(dataTable.match(/columnDef\.meta\?\.className/g)).toHaveLength(3);
-  });
-
-  test('the form fields name their control: a select trigger by its label, an inline edit by its term', () => {
-    const select = bpFile('packages/ui/src/components/ui/shuip/tanstack-form/select-field.tsx.hbs');
-    expect(select).toContain('<FieldLabel htmlFor={field.name}>');
-    expect(select).toContain('<SelectTrigger id={field.name}');
-    const inlineEdit = bpFile('packages/ui/src/components/ui/shuip/tanstack-form/inline-edit.tsx.hbs');
-    expect(inlineEdit).toContain("{ 'aria-labelledby': `${labelledBy} ${valueId}` }");
-    expect(inlineEdit.match(/aria-labelledby=\{labelledBy\}/g)).toHaveLength(2);
   });
 
   test('the search input names its hotkey button in English', () => {

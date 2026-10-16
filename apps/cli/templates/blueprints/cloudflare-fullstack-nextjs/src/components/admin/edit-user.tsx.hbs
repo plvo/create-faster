@@ -41,18 +41,14 @@ const profileSchema = z.object({
 
 const ROLES = Object.keys(roleDefinitions);
 
-const labelId = (field: string) => `edit-user-${field}`;
+const PROFILE_FIELDS = [
+  { name: 'name', label: 'Display name' },
+  { name: 'firstName', label: 'First name' },
+  { name: 'lastName', label: 'Last name' },
+  { name: 'phone', label: 'Phone' },
+] as const;
 
-function Row({ field, label, children }: { field: string; label: string; children: React.ReactNode }) {
-  return (
-    <div className='space-y-1'>
-      <dt id={labelId(field)} className='text-sm font-medium'>
-        {label}
-      </dt>
-      <dd>{children}</dd>
-    </div>
-  );
-}
+const labelId = (field: string) => `edit-user-${field}`;
 
 export function EditUser({ user }: { user: AdminUser }) {
   const trpc = useTRPC();
@@ -142,24 +138,18 @@ export function EditUser({ user }: { user: AdminUser }) {
           <p className='text-sm text-muted-foreground'>Click a value to edit it.</p>
         </div>
         <dl className='space-y-4'>
-          <Row field='name' label='Display name'>
-            <form.AppField name='name'>{(f) => <f.InlineEditField variant='boxed' labelledBy={labelId('name')} />}</form.AppField>
-          </Row>
-          <Row field='firstName' label='First name'>
-            <form.AppField name='firstName'>
-              {(f) => <f.InlineEditField variant='boxed' placeholder='—' labelledBy={labelId('firstName')} />}
-            </form.AppField>
-          </Row>
-          <Row field='lastName' label='Last name'>
-            <form.AppField name='lastName'>
-              {(f) => <f.InlineEditField variant='boxed' placeholder='—' labelledBy={labelId('lastName')} />}
-            </form.AppField>
-          </Row>
-          <Row field='phone' label='Phone'>
-            <form.AppField name='phone'>
-              {(f) => <f.InlineEditField variant='boxed' placeholder='—' labelledBy={labelId('phone')} />}
-            </form.AppField>
-          </Row>
+          {PROFILE_FIELDS.map(({ name, label }) => (
+            <div key={name} className='space-y-1'>
+              <dt id={labelId(name)} className='text-sm font-medium'>
+                {label}
+              </dt>
+              <dd>
+                <form.AppField name={name}>
+                  {(f) => <f.InlineEditField variant='boxed' labelledBy={labelId(name)} />}
+                </form.AppField>
+              </dd>
+            </div>
+          ))}
         </dl>
       </section>
 
@@ -187,7 +177,7 @@ export function EditUser({ user }: { user: AdminUser }) {
           <h2 className='text-sm font-semibold'>Password</h2>
           <p className='text-sm text-muted-foreground'>Generate a new password. It is shown only once.</p>
         </div>
-        {newPassword && <GeneratedPassword key={newPassword} password={newPassword} />}
+        {newPassword && <GeneratedPassword password={newPassword} />}
         <Button
           type='button'
           variant='outline'

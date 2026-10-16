@@ -103,34 +103,27 @@ function InlineEdit({
   let content: React.ReactNode;
   if (state.kind === 'reading') {
     const isEmpty = value === '';
-    const labelledByTerm = canEdit && labelledBy ? { 'aria-labelledby': `${labelledBy} ${valueId}` } : undefined;
-    content = (
-      <span
+    const displayed = isEmpty ? placeholder : value;
+    const readingClassName = cn(
+      fieldClassName,
+      'block',
+      input === 'textarea' && 'whitespace-pre-wrap',
+      isEmpty && 'text-muted-foreground',
+    );
+    content = canEdit ? (
+      <button
         id={valueId}
+        type='button'
         data-slot='inline-edit'
-        {...labelledByTerm}
-        role={canEdit ? 'button' : undefined}
-        tabIndex={canEdit ? 0 : undefined}
-        onClick={canEdit ? startEdit : undefined}
-        onKeyDown={
-          canEdit
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  startEdit();
-                }
-              }
-            : undefined
-        }
-        className={cn(
-          fieldClassName,
-          'block',
-          canEdit ? 'cursor-text' : 'cursor-default',
-          input === 'textarea' && 'whitespace-pre-wrap',
-          isEmpty && 'text-muted-foreground',
-        )}
+        aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
+        onClick={startEdit}
+        className={cn(readingClassName, 'cursor-text')}
       >
-        {isEmpty ? placeholder : value}
+        {displayed}
+      </button>
+    ) : (
+      <span data-slot='inline-edit' className={cn(readingClassName, 'cursor-default')}>
+        {displayed}
       </span>
     );
   } else {

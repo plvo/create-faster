@@ -39,7 +39,7 @@ const columns: DataTableShellColumn<UserRow>[] = [
     meta: { label: 'Name', variant: 'text' },
     cell: ({ row }) => (
       <div className='space-y-1'>
-        <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
           <Link href={`/admin/users/${row.original.id}`} className='font-medium hover:underline'>
             {row.original.name}
           </Link>

@@ -1,0 +1,12 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/users/[id]/layout.tsx
+---
+import type {Metadata} from 'next';
+
+export const metadata: Metadata = { title: 'User' };
+
+export default function UserLayout({ children }: { children: React.ReactNode }) {
+  return children;
+}

@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <AppSidebar session={session} />
       <SidebarInset className='min-w-0'>
         <AppHeader />
-        <main className='min-w-0 flex-1 overflow-auto p-6'>{children}</main>
+        <div className='min-w-0 flex-1 overflow-auto p-4 sm:p-6'>{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
