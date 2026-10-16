@@ -3,6 +3,98 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 
+// Destinations of the files the org-dashboard-nextjs templates generate in a turborepo. A rename that drops or
+// moves one makes the blueprint lose it, so each must still exist in the generated project.
+const ORG_DASHBOARD_NEXTJS_DESTINATIONS = [
+  'apps/batch/src/index.ts',
+  'apps/web/src/app/(auth)/layout.tsx',
+  'apps/web/src/app/(auth)/login/login-form.tsx',
+  'apps/web/src/app/(auth)/login/page.tsx',
+  'apps/web/src/app/(dashboard)/admin/roles/page.tsx',
+  'apps/web/src/app/(dashboard)/admin/users/[id]/page.tsx',
+  'apps/web/src/app/(dashboard)/admin/users/[id]/user-detail.tsx',
+  'apps/web/src/app/(dashboard)/admin/users/page.tsx',
+  'apps/web/src/app/(dashboard)/admin/users/users.client.tsx',
+  'apps/web/src/app/(dashboard)/contacts/[id]/contact.client.tsx',
+  'apps/web/src/app/(dashboard)/contacts/[id]/page.tsx',
+  'apps/web/src/app/(dashboard)/contacts/contacts.client.tsx',
+  'apps/web/src/app/(dashboard)/contacts/page.tsx',
+  'apps/web/src/app/(dashboard)/dashboard.client.tsx',
+  'apps/web/src/app/(dashboard)/layout.tsx',
+  'apps/web/src/app/(dashboard)/page.tsx',
+  'apps/web/src/app/(dashboard)/profile/account/page.tsx',
+  'apps/web/src/app/(dashboard)/profile/layout.tsx',
+  'apps/web/src/app/(dashboard)/profile/page.tsx',
+  'apps/web/src/app/(dashboard)/profile/preferences/page.tsx',
+  'apps/web/src/app/(dashboard)/profile/security/page.tsx',
+  'apps/web/src/app/(dashboard)/profile/sessions/page.tsx',
+  'apps/web/src/app/layout.tsx',
+  'apps/web/src/components/admin/create-user-dialog.tsx',
+  'apps/web/src/components/admin/user-actions.tsx',
+  'apps/web/src/components/admin/user-table.tsx',
+  'apps/web/src/components/can.tsx',
+  'apps/web/src/components/contacts/contact-dialog.tsx',
+  'apps/web/src/components/contacts/contact-form.tsx',
+  'apps/web/src/components/contacts/contact-table.tsx',
+  'apps/web/src/components/navigation/app-header.tsx',
+  'apps/web/src/components/navigation/app-sidebar.tsx',
+  'apps/web/src/components/navigation/nav-user.tsx',
+  'apps/web/src/components/navigation/sidebar-links.tsx',
+  'apps/web/src/components/profile/account-form.tsx',
+  'apps/web/src/components/profile/preferences.tsx',
+  'apps/web/src/components/profile/security-form.tsx',
+  'apps/web/src/components/profile/session-list.tsx',
+  'apps/web/src/components/profile/tab-nav.tsx',
+  'apps/web/src/components/query-boundary.tsx',
+  'apps/web/src/hooks/use-permission.ts',
+  'apps/web/src/lib/auth/session.ts',
+  'apps/web/src/lib/constants.ts',
+  'apps/web/src/lib/safe-redirect.ts',
+  'apps/web/src/styles/globals.css',
+  'docs/agents/auth.md',
+  'docs/agents/data-layer.md',
+  'packages/api/src/middleware/rbac.ts',
+  'packages/api/src/root.ts',
+  'packages/api/src/router/contact.ts',
+  'packages/api/src/router/session.ts',
+  'packages/api/src/router/user.ts',
+  'packages/auth/src/auth-client.ts',
+  'packages/auth/src/auth.ts',
+  'packages/auth/src/password.ts',
+  'packages/auth/src/permissions.ts',
+  'packages/auth/src/types.ts',
+  'packages/db/src/schema.ts',
+  'packages/ui/src/components/block/shuip/responsive-dialog.tsx',
+  'packages/ui/src/components/ui/breadcrumb.tsx',
+  'packages/ui/src/components/ui/card.tsx',
+  'packages/ui/src/components/ui/checkbox.tsx',
+  'packages/ui/src/components/ui/drawer.tsx',
+  'packages/ui/src/components/ui/dropdown-menu.tsx',
+  'packages/ui/src/components/ui/field.tsx',
+  'packages/ui/src/components/ui/input-group.tsx',
+  'packages/ui/src/components/ui/input.tsx',
+  'packages/ui/src/components/ui/label.tsx',
+  'packages/ui/src/components/ui/select.tsx',
+  'packages/ui/src/components/ui/separator.tsx',
+  'packages/ui/src/components/ui/sheet.tsx',
+  'packages/ui/src/components/ui/shuip/side-dialog.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/checkbox-field.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/form-context.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/input-field.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/password-field.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/select-field.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/submit-button.tsx',
+  'packages/ui/src/components/ui/shuip/tanstack-form/textarea-field.tsx',
+  'packages/ui/src/components/ui/sidebar.tsx',
+  'packages/ui/src/components/ui/skeleton.tsx',
+  'packages/ui/src/components/ui/textarea.tsx',
+  'packages/ui/src/components/ui/tooltip.tsx',
+  'packages/ui/src/hooks/use-mobile.ts',
+  'packages/ui/src/lib/form.ts',
+  'scripts/local-setup.ts',
+  'scripts/seed.ts',
+];
+
 describe('Blueprint CLI flag', () => {
   let tempDir: string;
 
@@ -129,9 +221,25 @@ describe('Blueprint generation - org-dashboard-nextjs', () => {
     );
     expect(webPkg.dependencies.sonner).toBeDefined();
 
-    expect(await fileExists(join(projectPath, 'apps/web/src/app/(dashboard)/page.tsx'))).toBe(true);
-    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/app-sidebar.tsx'))).toBe(true);
-    expect(await fileExists(join(projectPath, 'apps/web/src/components/navigation/app-header.tsx'))).toBe(true);
+  });
+
+  test('every template destination of the blueprint is generated', async () => {
+    const projectPath = join(tempDir, 'test-dashboard');
+    const generated = new Set(
+      await Array.fromAsync(new Bun.Glob('**/*').scan({ cwd: projectPath, dot: true, onlyFiles: true })),
+    );
+    expect(ORG_DASHBOARD_NEXTJS_DESTINATIONS.filter((destination) => !generated.has(destination))).toEqual([]);
+  });
+
+  test('auth notes name the Next.js cookie plugin, session guard and redirect helper usage', async () => {
+    const projectPath = join(tempDir, 'test-dashboard');
+    const notes = await readTextFile(join(projectPath, 'docs/agents/auth.md'));
+    expect(notes).toContain('with `createAuth(nextCookies())`');
+    expect(notes).toContain('## Reading the session server-side');
+    expect(notes).toContain('Call `requireSession()` from `apps/web/src/lib/auth/session.ts`');
+    expect(notes).toContain('## Post-login redirect');
+    expect(notes).toContain('(`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path');
+    expect(notes).toContain('straight to `router.push` or `redirect`');
   });
 
   test('env file includes better-auth envs', async () => {
