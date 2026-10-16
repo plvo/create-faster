@@ -1,5 +1,174 @@
 # Changelog
 
+## [1.6.8](https://github.com/plvo/create-faster/compare/create-faster-v1.6.7...create-faster-v1.6.8) (2026-10-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **blueprints:** blueprint names changed, the old names are no longer accepted. dapp-privy -> dapp-privy-nextjs dapp-rainbowkit -> dapp-rainbowkit-nextjs org-dashboard -> org-dashboard-nextjs multitenant-saas -> multitenant-saas-nextjs cloudflare-static-site -> cloudflare-static-site-nextjs cloudflare-fullstack -> cloudflare-fullstack-nextjs showcase -> showcase-nextjs lambda-sst -> lambda-sst-hono lambda-terraform-aws -> lambda-terraform-aws-hono
+
+### Features
+
+* add $when negation, deployment keys for all templates, EnvVar.stacks ([#192](https://github.com/plvo/create-faster/issues/192)) ([8f80701](https://github.com/plvo/create-faster/commit/8f8070145e33f06a499a84c8e21ba3f21d5256d0))
+* **blueprints:** add a generic extends field that inherits templates ([#303](https://github.com/plvo/create-faster/issues/303)) ([9bcab65](https://github.com/plvo/create-faster/commit/9bcab65c13b52ea324c84bc34f5f65b2dc10fab4))
+* **blueprints:** add contacts and admin pages on TanStack Start ([#317](https://github.com/plvo/create-faster/issues/317)) ([2dc4a04](https://github.com/plvo/create-faster/commit/2dc4a0455ed3a9d8a2ad250f30ddcfc7df4f6bcf))
+* **blueprints:** add the org-dashboard-tanstack-start core ([#314](https://github.com/plvo/create-faster/issues/314)) ([07a6034](https://github.com/plvo/create-faster/commit/07a60345a0ddf360bddd689cb4365c1cc6d73cbc))
+* **blueprints:** suffix every blueprint name with its main stack ([#297](https://github.com/plvo/create-faster/issues/297)) ([0970360](https://github.com/plvo/create-faster/commit/097036033bf89549e5d3e5b3466eb671295b6be9))
+* **cli:** add --version and -V flags ([#355](https://github.com/plvo/create-faster/issues/355)) ([8587cc7](https://github.com/plvo/create-faster/commit/8587cc75bca9c90c497b07d6ca3492ee4213e918))
+* **cli:** add --yes and none per category, ask nothing without a terminal ([#292](https://github.com/plvo/create-faster/issues/292)) ([51f060d](https://github.com/plvo/create-faster/commit/51f060dcc0e4b7af4343e85c5f9afd1412e734e1))
+* **cli:** print the first-run steps in the summary ([#272](https://github.com/plvo/create-faster/issues/272)) ([f8c2a36](https://github.com/plvo/create-faster/commit/f8c2a367b85c6e608fa6b5460336c57aa6c11083))
+* **cloudflare:** require each Worker's runtime secrets in wrangler.jsonc ([#278](https://github.com/plvo/create-faster/issues/278)) ([f33d800](https://github.com/plvo/create-faster/commit/f33d800f2502a0e94dbcbd9eac6f9283cd535beb))
+* **evlog:** wire tanstack start on cloudflare workers ([#200](https://github.com/plvo/create-faster/issues/200)) ([2b61bdc](https://github.com/plvo/create-faster/commit/2b61bdc0be2865693802c0d5a6cff9f39d82c74d))
+* **library:** extract posthog from the showcase blueprint ([#163](https://github.com/plvo/create-faster/issues/163)) ([e758793](https://github.com/plvo/create-faster/commit/e758793d72a4fd3d17603253a0442bb50fd952ef)), closes [#116](https://github.com/plvo/create-faster/issues/116)
+* **linter:** add oxc option with oxlint, oxfmt and @shadcn/lint ([#167](https://github.com/plvo/create-faster/issues/167)) ([0286651](https://github.com/plvo/create-faster/commit/02866510cac4466c47fe14e16bcbf1d6dac7ec88))
+* **post-generate:** format generated files after install ([#288](https://github.com/plvo/create-faster/issues/288)) ([30ccd79](https://github.com/plvo/create-faster/commit/30ccd79af8c4afd0102a1d411590c967b5fee55a))
+* **sst:** pass runtime secrets to deployed apps via sst.Secret ([#290](https://github.com/plvo/create-faster/issues/290)) ([0b16ca9](https://github.com/plvo/create-faster/commit/0b16ca9e80b375041c5018b13453a73d5fcce8bc))
+* **tanstack-start:** deploy to cloudflare workers with the vite plugin ([#195](https://github.com/plvo/create-faster/issues/195)) ([c3e0cb6](https://github.com/plvo/create-faster/commit/c3e0cb6273be39dc0465904f88e4c8739dc50616))
+* **tanstack-start:** support better-auth ([#201](https://github.com/plvo/create-faster/issues/201)) ([c817206](https://github.com/plvo/create-faster/commit/c8172065877435bd84ecd2bfdcdbaeebed149ecf))
+* **tanstack-start:** support cloudflare-static ([#199](https://github.com/plvo/create-faster/issues/199)) ([02375ce](https://github.com/plvo/create-faster/commit/02375ce1da501ddabfd5250d2a3ac2c49867670e))
+* **tanstack-start:** support mdx ([#194](https://github.com/plvo/create-faster/issues/194)) ([cd3d238](https://github.com/plvo/create-faster/commit/cd3d2387f25b5c060d195929ace1bf8b61274a6c))
+* **tanstack-start:** support next-themes ([#193](https://github.com/plvo/create-faster/issues/193)) ([39b57ce](https://github.com/plvo/create-faster/commit/39b57ce33c20130bfc8245724fb67b5f5c04e1e7))
+* **tanstack-start:** support posthog ([#198](https://github.com/plvo/create-faster/issues/198)) ([cd5ad4c](https://github.com/plvo/create-faster/commit/cd5ad4c881fb7afc88d90774d740ca9d2f4d436c))
+* **tanstack-start:** support trpc ([#213](https://github.com/plvo/create-faster/issues/213)) ([559075b](https://github.com/plvo/create-faster/commit/559075b74ad82788f7f00bab4f5f9bac73df13d7))
+* **templates:** add handlebars partials for shared template blocks ([#209](https://github.com/plvo/create-faster/issues/209)) ([5cd8907](https://github.com/plvo/create-faster/commit/5cd890722d8d846c31d8d6f78f1a82992cb63a8f))
+
+
+### Bug Fixes
+
+* **better-auth:** allow users to share a display name ([#234](https://github.com/plvo/create-faster/issues/234)) ([73feff0](https://github.com/plvo/create-faster/commit/73feff0c31ec8475e7007390ca71bc49cedb7de7))
+* **better-auth:** rate limit per client on Start apps on Nitro ([#286](https://github.com/plvo/create-faster/issues/286)) ([870c747](https://github.com/plvo/create-faster/commit/870c7476c7054f8da8e34fae8e87805aefba0489))
+* **better-auth:** sign up on postgres projects ([#202](https://github.com/plvo/create-faster/issues/202)) ([151fc36](https://github.com/plvo/create-faster/commit/151fc3673e3f82eb46a1b79599794b6e48af7b76))
+* **better-auth:** trust the platform client ip header for rate limiting ([#223](https://github.com/plvo/create-faster/issues/223)) ([0fe5c29](https://github.com/plvo/create-faster/commit/0fe5c292b57ad9c49421c0a4b6f81d94d7cd61c0))
+* **blueprints:** accessible fullstack admin pages on phones ([#327](https://github.com/plvo/create-faster/issues/327)) ([45ff971](https://github.com/plvo/create-faster/commit/45ff971d27cdca299fa3b5e24b5a9e9dacd628de))
+* **blueprints:** accessible names and phone layout on org dashboards ([#323](https://github.com/plvo/create-faster/issues/323)) ([90647d3](https://github.com/plvo/create-faster/commit/90647d30cda2c798c64b09f375df757d1bfe3dc7))
+* **blueprints:** add the better-auth admin session column to the schemas ([#232](https://github.com/plvo/create-faster/issues/232)) ([4485755](https://github.com/plvo/create-faster/commit/4485755b21c5873d6c35dcd500af63d83459f77e))
+* **blueprints:** answer 404 for an unknown id on detail pages ([#333](https://github.com/plvo/create-faster/issues/333)) ([a314fcd](https://github.com/plvo/create-faster/commit/a314fcdb7dbf69a1cd392186450d717056fb998a))
+* **blueprints:** close org-dashboard sign-up and fix auth redirects ([#246](https://github.com/plvo/create-faster/issues/246)) ([44c73d6](https://github.com/plvo/create-faster/commit/44c73d6bb14ed7058f68afe23478a3a2056fb2fb))
+* **blueprints:** complete og and twitter metadata on every page ([#261](https://github.com/plvo/create-faster/issues/261)) ([710c6a3](https://github.com/plvo/create-faster/commit/710c6a31848b254c7844c03f1ab5121c78205cd1))
+* **blueprints:** guard signup and admin pages for signed-in users ([#254](https://github.com/plvo/create-faster/issues/254)) ([a172d54](https://github.com/plvo/create-faster/commit/a172d54ef5e0156872f4220562c9fb5c7ef56503))
+* **blueprints:** keep the NODE_ENV define quoted under npm and pnpm ([#346](https://github.com/plvo/create-faster/issues/346)) ([db74d6d](https://github.com/plvo/create-faster/commit/db74d6dae64745fdbafa3f63a7f77965f9f7d9e5))
+* **blueprints:** link the og image in showcase and static site ([#256](https://github.com/plvo/create-faster/issues/256)) ([c241614](https://github.com/plvo/create-faster/commit/c2416148c770d6ed95ec637483d425a228bbebe8))
+* **blueprints:** load the environment in every Node seed ([#347](https://github.com/plvo/create-faster/issues/347)) ([57a6435](https://github.com/plvo/create-faster/commit/57a6435ca8ff6b34b1e0510f457f3da6ca1be980))
+* **blueprints:** name records in dashboard breadcrumbs ([#329](https://github.com/plvo/create-faster/issues/329)) ([c86f48f](https://github.com/plvo/create-faster/commit/c86f48f671d728097d8df24abb136accc22039d6))
+* **blueprints:** one app url variable and canonical urls in SEO blueprints ([#270](https://github.com/plvo/create-faster/issues/270)) ([2fdec6f](https://github.com/plvo/create-faster/commit/2fdec6f6da0286562932423b83d4c81bd6f6c843))
+* **blueprints:** pin the Privy packages and viem to one set ([#312](https://github.com/plvo/create-faster/issues/312)) ([820f9bd](https://github.com/plvo/create-faster/commit/820f9bdc886bf6a91eb191b0ecd10b052270af73))
+* **blueprints:** prefetch fullstack admin queries on the server ([#331](https://github.com/plvo/create-faster/issues/331)) ([47a9da0](https://github.com/plvo/create-faster/commit/47a9da0643cfdd1b3e84366695e474c795cdb1d6))
+* **blueprints:** run only the scripts a project defines in its deploy workflow ([#210](https://github.com/plvo/create-faster/issues/210)) ([fdb3148](https://github.com/plvo/create-faster/commit/fdb3148494796cbcaf3f28cc1d221f587298a422))
+* **blueprints:** warn in production when links are only logged ([#284](https://github.com/plvo/create-faster/issues/284)) ([dd925f3](https://github.com/plvo/create-faster/commit/dd925f3523d5c9aabac9ed53bb5d50e82a625e7d))
+* **cli:** exit 1 without a terminal when answers are missing ([#345](https://github.com/plvo/create-faster/issues/345)) ([1df54ce](https://github.com/plvo/create-faster/commit/1df54ce8c7702234872e99d208554b758e996392))
+* **cli:** explain a missing package manager before generating ([#222](https://github.com/plvo/create-faster/issues/222)) ([7573c9c](https://github.com/plvo/create-faster/commit/7573c9cce240acf3916a579b791e52fdaac56ad1))
+* **cli:** initialize git before installing dependencies ([#351](https://github.com/plvo/create-faster/issues/351)) ([a1964e0](https://github.com/plvo/create-faster/commit/a1964e0ae024303d25e9f4a8c40502c022c196da))
+* **cli:** prompt each project category no flag answered ([#289](https://github.com/plvo/create-faster/issues/289)) ([c83bfa7](https://github.com/plvo/create-faster/commit/c83bfa7073989b6d628eb21c3c074818c273537b))
+* **cli:** reflect a failed git init and make knip pass in CI ([#260](https://github.com/plvo/create-faster/issues/260)) ([1375c5f](https://github.com/plvo/create-faster/commit/1375c5f3c86000298f1c165af21a090ddc595a1e))
+* **cli:** report a failed git init unambiguously ([#262](https://github.com/plvo/create-faster/issues/262)) ([62d7c1c](https://github.com/plvo/create-faster/commit/62d7c1c7f112ea5628bf1ed00492a785bc389f0e))
+* **cli:** tell the user to generate BETTER_AUTH_SECRET ([#356](https://github.com/plvo/create-faster/issues/356)) ([b3d8c1b](https://github.com/plvo/create-faster/commit/b3d8c1b1c7d3932554d6a5b38f90643064a45dd3))
+* **cli:** use the last path segment as the project name ([#321](https://github.com/plvo/create-faster/issues/321)) ([df68eb4](https://github.com/plvo/create-faster/commit/df68eb4dc1d2eeebba36247d046e816f4f96fe63))
+* **cli:** validate app names like the project name ([#326](https://github.com/plvo/create-faster/issues/326)) ([3df6ead](https://github.com/plvo/create-faster/commit/3df6ead1c631097c68fbb6e50eb76e90a49b12bc))
+* **cloudflare-fullstack:** print per-app scripts from their directory ([#266](https://github.com/plvo/create-faster/issues/266)) ([e9a243d](https://github.com/plvo/create-faster/commit/e9a243d8436238ceb79d4bcf69fffe6df87072e2))
+* **cloudflare:** generate binding types on install, one script name ([#264](https://github.com/plvo/create-faster/issues/264)) ([5cb14c4](https://github.com/plvo/create-faster/commit/5cb14c40fdbe9d8b9310bbd4485984db8380118a))
+* **cloudflare:** pair next and OpenNext inside the peer range ([#295](https://github.com/plvo/create-faster/issues/295)) ([bc1e1b8](https://github.com/plvo/create-faster/commit/bc1e1b828db1780bd56dd202e27df721673f4dad))
+* **cloudflare:** pin Next.js to 16.3 for OpenNext Workers ([#281](https://github.com/plvo/create-faster/issues/281)) ([8227e40](https://github.com/plvo/create-faster/commit/8227e40a88cdfd8b4aef95c066eb6192244e7be6))
+* **cloudflare:** run next build once, declare wrangler in db ([#259](https://github.com/plvo/create-faster/issues/259)) ([4862a74](https://github.com/plvo/create-faster/commit/4862a745fc569ad9797c5819451d71c34a1dfd5a))
+* **d1:** read the local database where migrations write it ([#196](https://github.com/plvo/create-faster/issues/196)) ([2471491](https://github.com/plvo/create-faster/commit/2471491ef1a0d49107809b2b7adaeab37961f91a))
+* **d1:** share one database and local state across Workers ([#235](https://github.com/plvo/create-faster/issues/235)) ([1a2ce49](https://github.com/plvo/create-faster/commit/1a2ce499074d0ceacbf5641e5c789c283556047f))
+* **dapp-privy:** use a placeholder app ID the Privy SDK accepts ([#275](https://github.com/plvo/create-faster/issues/275)) ([c7ae4b6](https://github.com/plvo/create-faster/commit/c7ae4b6f150d5a57453e89c533fabf07b96eff2c))
+* **dapp-rainbowkit:** build and verify SIWE on any host ([#241](https://github.com/plvo/create-faster/issues/241)) ([d1da9aa](https://github.com/plvo/create-faster/commit/d1da9aa9d605aa5044c1b164298fe02ef48b07c6))
+* **db:** generate the db package env only when an orm creates the package ([#221](https://github.com/plvo/create-faster/issues/221)) ([3207a78](https://github.com/plvo/create-faster/commit/3207a78022bac71f4ef1ab0fcd2ad352dc7fae86))
+* **db:** keep mysql tls in production and let the local url disable it ([#285](https://github.com/plvo/create-faster/issues/285)) ([728a4c2](https://github.com/plvo/create-faster/commit/728a4c2f5d1a0d853ee1e9208be3d6814368d4ad))
+* **db:** keep postgres tls in production and let the local url disable it ([#207](https://github.com/plvo/create-faster/issues/207)) ([a675ef1](https://github.com/plvo/create-faster/commit/a675ef1945def02a857363047448090c66befd97))
+* **db:** make the database first run work from a fresh clone ([#243](https://github.com/plvo/create-faster/issues/243)) ([148953c](https://github.com/plvo/create-faster/commit/148953c5af73cc5a22048936a916c79a7e12aaee))
+* **db:** probe the compose database over tcp before --wait returns ([#287](https://github.com/plvo/create-faster/issues/287)) ([fa17f80](https://github.com/plvo/create-faster/commit/fa17f80efd12b7c6a9bf5feb0fca249779f9a440))
+* **deployment:** reject sqlite under sst and terraform-aws ([#283](https://github.com/plvo/create-faster/issues/283)) ([f72b3c4](https://github.com/plvo/create-faster/commit/f72b3c4d40106d64a011148c2f18e4f7ea21fe3a))
+* **deps:** declare which dependency install scripts may run ([#309](https://github.com/plvo/create-faster/issues/309)) ([b96e267](https://github.com/plvo/create-faster/commit/b96e267479c080e2f7d7aa9284537418895129de))
+* **docs:** correct generated commands, apps and packages ([#247](https://github.com/plvo/create-faster/issues/247)) ([9ae2c2a](https://github.com/plvo/create-faster/commit/9ae2c2a6f1d85eb0ea81c88d30bc24a03c525b3d))
+* **drizzle:** use a per-request pg Client over Hyperdrive ([#191](https://github.com/plvo/create-faster/issues/191)) ([d813169](https://github.com/plvo/create-faster/commit/d8131692d69d64b05785f1023ae22a8270af7bd5))
+* **evlog:** import createInstrumentation from its create subpath ([#165](https://github.com/plvo/create-faster/issues/165)) ([efbeaa1](https://github.com/plvo/create-faster/commit/efbeaa1660e270e39f6a5aae9b968f2a253246e2))
+* **evlog:** install Start apps under npm within the nitro peer ([#313](https://github.com/plvo/create-faster/issues/313)) ([1aa8526](https://github.com/plvo/create-faster/commit/1aa8526019c04b16095aa41cb9820029f2ebd09b))
+* **expo:** upgrade to Expo SDK 57 and fix the app setup ([#249](https://github.com/plvo/create-faster/issues/249)) ([19f3a4d](https://github.com/plvo/create-faster/commit/19f3a4dd61a8c91114a1fd79ce90538d8e357a9d))
+* **flags:** check requirements when no project flag is given ([#227](https://github.com/plvo/create-faster/issues/227)) ([9716806](https://github.com/plvo/create-faster/commit/97168065d7922e4e7640dee3238a769e38518662))
+* **generated:** scope worker names, mdx content, app url and test scripts ([#251](https://github.com/plvo/create-faster/issues/251)) ([0f533fb](https://github.com/plvo/create-faster/commit/0f533fba9a8645fcb9b2d9fad236378afc055c79))
+* **generated:** ship favicons and seo images, title the 404 page ([#252](https://github.com/plvo/create-faster/issues/252)) ([c15b56c](https://github.com/plvo/create-faster/commit/c15b56cc571071e5634d04ce765b39891b8cc92d))
+* **generated:** silence vitest warnings and ignore tool output ([#245](https://github.com/plvo/create-faster/issues/245)) ([20a8279](https://github.com/plvo/create-faster/commit/20a827904e00147cc3177442e4fa70803a55e64a))
+* **hono:** allow put, patch and delete in the cors preflight ([#255](https://github.com/plvo/create-faster/issues/255)) ([f27ef38](https://github.com/plvo/create-faster/commit/f27ef385cd2542964f1ca23aec1d3b8b0786cf19))
+* **hono:** declare the hyperdrive binding on cloudflare ([#212](https://github.com/plvo/create-faster/issues/212)) ([26de90b](https://github.com/plvo/create-faster/commit/26de90b352a770692b47757e9e39a571358c469e))
+* **hono:** listen on the app port in dev and start ([#238](https://github.com/plvo/create-faster/issues/238)) ([44df545](https://github.com/plvo/create-faster/commit/44df5451e06ac69fbb68a77765e870786b21053b))
+* **lambda-terraform-aws:** build lambdas in production mode ([#224](https://github.com/plvo/create-faster/issues/224)) ([3078972](https://github.com/plvo/create-faster/commit/30789728354de1b370bd3d5d40646fa11e70356b))
+* **lambda-terraform-aws:** ship handlers lambda can load ([#208](https://github.com/plvo/create-faster/issues/208)) ([158e733](https://github.com/plvo/create-faster/commit/158e733b16cdf60a92074a9dbdcc76cc96ee5170))
+* **linter:** leave the Drizzle migrations to drizzle-kit ([#354](https://github.com/plvo/create-faster/issues/354)) ([f6e11e2](https://github.com/plvo/create-faster/commit/f6e11e2a39c96595f0cf6ee6c10cf20235bb7f6c))
+* **linters:** make generated projects pass their own lint script ([#267](https://github.com/plvo/create-faster/issues/267)) ([bbcdafc](https://github.com/plvo/create-faster/commit/bbcdafc32bb50c7ba3ad0fdbff4cf8cef40ae3cc))
+* **multitenant-saas:** guard prefetching pages with a server session check ([#257](https://github.com/plvo/create-faster/issues/257)) ([9f71294](https://github.com/plvo/create-faster/commit/9f71294f979a35cb74ea12adbdfc1146f73d417e))
+* **nextjs:** align @next/bundle-analyzer with the next range ([#269](https://github.com/plvo/create-faster/issues/269)) ([6fc4dec](https://github.com/plvo/create-faster/commit/6fc4deca1a63d5aeb4802658e5934477e396ac87))
+* **nextjs:** drop the webpack-only bundle analyzer wrapper ([#271](https://github.com/plvo/create-faster/issues/271)) ([ef4a101](https://github.com/plvo/create-faster/commit/ef4a10136252a5cf3b769a131d47dc501a165784))
+* **nextjs:** drop trailing slashes from the app url ([#276](https://github.com/plvo/create-faster/issues/276)) ([8f8affe](https://github.com/plvo/create-faster/commit/8f8affe655f9b9cc92de8f1a90980d4ce2190751))
+* **nextjs:** mount AppProviders in the stack root layout ([#189](https://github.com/plvo/create-faster/issues/189)) ([cea1912](https://github.com/plvo/create-faster/commit/cea19123512b5d51464ff8b8f44ce1dc9e454e74))
+* **nextjs:** run cloudflare deployments with NODE_ENV=production ([#217](https://github.com/plvo/create-faster/issues/217)) ([1dc8a82](https://github.com/plvo/create-faster/commit/1dc8a826bad1efd7a6509cb5a48a919e349e77c0))
+* **nextjs:** serve the mdx example under /mdx ([#204](https://github.com/plvo/create-faster/issues/204)) ([a3607bb](https://github.com/plvo/create-faster/commit/a3607bbd9ff501fcdd62b2af2bdbb083ee242a30))
+* **nextjs:** stop next dev from writing into AGENTS.md ([#258](https://github.com/plvo/create-faster/issues/258)) ([875c11a](https://github.com/plvo/create-faster/commit/875c11a6e8281d6e2e704f95a6775bc5274e6349))
+* **nextjs:** stop querying the session in the generated proxy ([#242](https://github.com/plvo/create-faster/issues/242)) ([867667c](https://github.com/plvo/create-faster/commit/867667c40b1fa83c998b7370f7a51203a3c61c73))
+* **orm:** generate the Prisma client in the first-run steps ([#348](https://github.com/plvo/create-faster/issues/348)) ([ea2b3bd](https://github.com/plvo/create-faster/commit/ea2b3bd0cc6b73ebcc7042d4200dce0d0cfe60b2))
+* **playwright:** run the dev server with the selected package manager ([#273](https://github.com/plvo/create-faster/issues/273)) ([f25f9bc](https://github.com/plvo/create-faster/commit/f25f9bca50d6c94714bcc51f3feec196010cf425))
+* **portless:** keep env assignments in front of portless run ([#239](https://github.com/plvo/create-faster/issues/239)) ([4ce167b](https://github.com/plvo/create-faster/commit/4ce167b3dd5cebcb51d7bd7f310ef2d29c872607))
+* **post-generation:** exit non-zero when the dependency install fails ([#237](https://github.com/plvo/create-faster/issues/237)) ([e12e83f](https://github.com/plvo/create-faster/commit/e12e83f4b98014195f82bc354d17abbf3dd09b6e))
+* **prisma:** use hyperdrive on cloudflare and keep mysql tls settings ([#225](https://github.com/plvo/create-faster/issues/225)) ([179b061](https://github.com/plvo/create-faster/commit/179b061e9fd8b6981eea29d554d1f3d385b91956))
+* render generated readme sections and fix stale help and docs paths ([#219](https://github.com/plvo/create-faster/issues/219)) ([8563a38](https://github.com/plvo/create-faster/commit/8563a3886c79dc002aaaefca336579887b1e63a2))
+* **scripts:** run blueprint and seed scripts without Bun ([#294](https://github.com/plvo/create-faster/issues/294)) ([23a60e5](https://github.com/plvo/create-faster/commit/23a60e549727f4adb78473fe8b042a1ab30e5a02))
+* **sqlite:** reject sqlite on the cloudflare deployment ([#229](https://github.com/plvo/create-faster/issues/229)) ([380e47c](https://github.com/plvo/create-faster/commit/380e47c5743c0489636f97764e782471a8ffaea3))
+* **sst:** deploy hono apps with a lambda handler ([#206](https://github.com/plvo/create-faster/issues/206)) ([b04b856](https://github.com/plvo/create-faster/commit/b04b856ac614717327b285767d8566e6ca14389f))
+* **sst:** deploy tanstack start with sst.aws.TanStackStart ([#197](https://github.com/plvo/create-faster/issues/197)) ([8f29a7d](https://github.com/plvo/create-faster/commit/8f29a7de5f97a2f7fb9ddd37f09db710bdff8e3c))
+* **sst:** keep sst.config.ts out of the app tsconfig ([#291](https://github.com/plvo/create-faster/issues/291)) ([92d836f](https://github.com/plvo/create-faster/commit/92d836f76e051df45402deca04e6009fc1310b26))
+* **stacks:** run Hono, Node and Lambda builds without Bun ([#296](https://github.com/plvo/create-faster/issues/296)) ([6e00749](https://github.com/plvo/create-faster/commit/6e0074968ee31cfccc72f93f892f59210d24c008))
+* **summary:** print the install step when install is skipped ([#277](https://github.com/plvo/create-faster/issues/277)) ([a3c18d7](https://github.com/plvo/create-faster/commit/a3c18d7a4982df3f7aaa31e0c5c63a33306981d5))
+* **tanstack-devtools:** mount only the selected panels on Next.js ([#240](https://github.com/plvo/create-faster/issues/240)) ([ed0c7c4](https://github.com/plvo/create-faster/commit/ed0c7c4b9c17e23eb991823d5d8fbc9e0dd8e872))
+* **tanstack-devtools:** wire the devtools shell into TanStack Start ([#230](https://github.com/plvo/create-faster/issues/230)) ([85bde98](https://github.com/plvo/create-faster/commit/85bde987f34c38a0d33296607809cd731ead8468))
+* **tanstack-start:** declare the Vite client types in vite-env.d.ts ([#350](https://github.com/plvo/create-faster/issues/350)) ([e247f47](https://github.com/plvo/create-faster/commit/e247f47397d7830835944dbe38a4b6ab68ae969e))
+* **tanstack-start:** install the router CLI as a dependency ([#274](https://github.com/plvo/create-faster/issues/274)) ([6f8dbc9](https://github.com/plvo/create-faster/commit/6f8dbc90329d93ebd700781b3adb5d302e990c10))
+* **tanstack-start:** keep csrf protection when start.ts is generated ([#215](https://github.com/plvo/create-faster/issues/215)) ([5533282](https://github.com/plvo/create-faster/commit/5533282e298b41fc27205257fcd55d63f8582cc3))
+* **tanstack-start:** load native sqlite bindings under nitro ([#203](https://github.com/plvo/create-faster/issues/203)) ([9f800f9](https://github.com/plvo/create-faster/commit/9f800f9236834f83bd2b2e5f3155651a846e055d))
+* **tanstack-start:** load the app env file in the start script ([#205](https://github.com/plvo/create-faster/issues/205)) ([8f1bc08](https://github.com/plvo/create-faster/commit/8f1bc08705e878984373d33f396ba68aea47e111))
+* **tanstack-start:** remove hydration error on static 404 page ([#244](https://github.com/plvo/create-faster/issues/244)) ([ccfbefe](https://github.com/plvo/create-faster/commit/ccfbefed1237cd4fa7fa3b71252bd02be2ab8c16))
+* **tanstack-start:** route tree on install, per-app deploy notes ([#265](https://github.com/plvo/create-faster/issues/265)) ([47982b1](https://github.com/plvo/create-faster/commit/47982b12c9e5b924838ae2c9ea5bfd8a078ad4f2))
+* **tanstack-start:** run production servers with NODE_ENV=production ([#214](https://github.com/plvo/create-faster/issues/214)) ([267b55a](https://github.com/plvo/create-faster/commit/267b55a5dd1f18a8291be8ab4c2d0dbf6e76b813))
+* **tanstack-start:** serve production builds through nitro ([#168](https://github.com/plvo/create-faster/issues/168)) ([f7d2b0b](https://github.com/plvo/create-faster/commit/f7d2b0b25e7b3225a757ce28920e4e78bd1b1084))
+* **templates:** generate projects that lint without biome warnings ([#307](https://github.com/plvo/create-faster/issues/307)) ([a9c9f9a](https://github.com/plvo/create-faster/commit/a9c9f9a11d73a767519bdb14a8a14b5fabb8cee4))
+* **templates:** pass eslint on Start MDX and trpc apps ([#353](https://github.com/plvo/create-faster/issues/353)) ([8a6d59b](https://github.com/plvo/create-faster/commit/8a6d59b90a80def4e3c070301e39e580e8d888ab))
+* **trpc:** keep Next.js control-flow errors out of the server log ([#280](https://github.com/plvo/create-faster/issues/280)) ([3e7c3fc](https://github.com/plvo/create-faster/commit/3e7c3fc9d0d1a07c38cdd3594abf57ef4ba6ec7b))
+* **trpc:** log unexpected errors in every environment ([#231](https://github.com/plvo/create-faster/issues/231)) ([8a03444](https://github.com/plvo/create-faster/commit/8a03444a294906eab4fe02de3bef302bb09924fc))
+* **trpc:** log unexpected errors of server-side tRPC calls ([#253](https://github.com/plvo/create-faster/issues/253)) ([e325f71](https://github.com/plvo/create-faster/commit/e325f719053cc944217c68f7aac643854b6f2ca5))
+* **trpc:** use the prisma client export with prisma projects ([#218](https://github.com/plvo/create-faster/issues/218)) ([d17d7be](https://github.com/plvo/create-faster/commit/d17d7bee497cf21f9a605a80127a5808c1f8eacd))
+* **turborepo:** declare the pnpm workspace ([#211](https://github.com/plvo/create-faster/issues/211)) ([ed1485d](https://github.com/plvo/create-faster/commit/ed1485d22c97432de4b0733cba4006b199e0def0))
+* **turborepo:** list every root script in the README ([#268](https://github.com/plvo/create-faster/issues/268)) ([2e0dd2c](https://github.com/plvo/create-faster/commit/2e0dd2cee5af8e4254661532b61d8a8aa2fe02d8))
+* **turborepo:** resolve package exports and type-check packages ([#250](https://github.com/plvo/create-faster/issues/250)) ([8e64475](https://github.com/plvo/create-faster/commit/8e64475d0823ca9dc2b3924915a1477b3080a623))
+
+
+### Performance
+
+* **trpc:** build the server context once per request ([#190](https://github.com/plvo/create-faster/issues/190)) ([e8c6d0a](https://github.com/plvo/create-faster/commit/e8c6d0aa8003480411da78363588b72bcef2a5cc))
+
+
+### Refactor
+
+* **blueprints:** suffix org-dashboard-nextjs framework files ([#308](https://github.com/plvo/create-faster/issues/308)) ([98041ca](https://github.com/plvo/create-faster/commit/98041ca5734d8a63a7669cb063401b9fa13ee8d3))
+
+
+### Documentation
+
+* **cloudflare:** pass --ignore-scripts on a production install ([#279](https://github.com/plvo/create-faster/issues/279)) ([944c906](https://github.com/plvo/create-faster/commit/944c906df8b27ae4937af44d42eb2177d27e2201))
+* make AGENTS.md the root agent guide and gitignore .tanstack ([#216](https://github.com/plvo/create-faster/issues/216)) ([2595d9b](https://github.com/plvo/create-faster/commit/2595d9bf4b1fc0b4fb7046042246b08860576a41))
+* **trpc:** say a Next.js page that prefetches must be dynamic ([#282](https://github.com/plvo/create-faster/issues/282)) ([75a6169](https://github.com/plvo/create-faster/commit/75a61695c8026b2eed590cfa83f9855f7ad39d08))
+
+
+### Tests
+
+* **cli:** read plain CLI output in every environment ([#263](https://github.com/plvo/create-faster/issues/263)) ([7c817d7](https://github.com/plvo/create-faster/commit/7c817d7d6a8e606da1e29a48d7c3e434b155d659))
+* **cli:** set the integration timeout in every test file ([#357](https://github.com/plvo/create-faster/issues/357)) ([81778d8](https://github.com/plvo/create-faster/commit/81778d85994be44ecfb799bd47b5783795d34af6))
+* **integration:** raise the per-test timeout to 120 s ([#305](https://github.com/plvo/create-faster/issues/305)) ([459e634](https://github.com/plvo/create-faster/commit/459e6341e67efd00ff0d667c646e6342f5e25ec8))
+* **resolver:** remove the temp directory the scan test creates ([#316](https://github.com/plvo/create-faster/issues/316)) ([12c957e](https://github.com/plvo/create-faster/commit/12c957e87dcec28cfc90491c278f973d099410e1))
+
+
+### Build
+
+* **cli:** typecheck in ci and fix existing type errors ([#220](https://github.com/plvo/create-faster/issues/220)) ([7ec3aa1](https://github.com/plvo/create-faster/commit/7ec3aa1f09e9cc6fc980b8a30c268d3a9db00f75))
+
 ## [1.6.7](https://github.com/plvo/create-faster/compare/create-faster-v1.6.6...create-faster-v1.6.7) (2026-10-01)
 
 
