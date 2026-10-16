@@ -109,19 +109,27 @@ describe('summary first-run steps', () => {
     expectInOrder(output, ['cd demo', 'npm install', 'npm run dev']);
   });
 
-  test('Prisma pushes the schema and never runs the interactive migrate', () => {
-    const output = summarize({
-      projectName: 'demo',
-      repo: 'single',
-      apps: [nextjsApp],
-      project: { database: 'postgres', orm: 'prisma', tooling: [] },
-      git: false,
-      pm: 'bun',
-    });
+  for (const pm of ['bun', 'npm', 'pnpm'] as const) {
+    test(`Prisma with ${pm} copies the env file, generates the client, pushes the schema and never runs the interactive migrate`, () => {
+      const output = summarize({
+        projectName: 'demo',
+        repo: 'single',
+        apps: [nextjsApp],
+        project: { database: 'postgres', orm: 'prisma', tooling: [] },
+        git: false,
+        pm,
+      });
 
-    expectInOrder(output, ['docker compose up -d --wait', 'bun run db:push', 'bun run dev']);
-    expect(output).not.toContain('db:migrate');
-  });
+      expectInOrder(output, [
+        'cp .env.example .env',
+        'docker compose up -d --wait',
+        `${pm} run db:generate`,
+        `${pm} run db:push`,
+        `${pm} run dev`,
+      ]);
+      expect(output).not.toContain('db:migrate');
+    });
+  }
 
   test('D1 on Cloudflare has no Docker step and generates then applies the migrations', () => {
     const output = summarize({

@@ -1031,7 +1031,12 @@ export const META: Meta = {
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],
-          firstRun: [{ description: 'Create the tables from the schema', commands: [{ script: 'db:push' }] }],
+          firstRun: [
+            {
+              description: 'Generate the client and create the tables from the schema',
+              commands: [{ script: 'db:generate' }, { script: 'db:push' }],
+            },
+          ],
           packageJson: {
             dependencies: {
               '@prisma/client': '^7.10.0',

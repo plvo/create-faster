@@ -40,16 +40,37 @@ describe('first-run steps shared by the README and the CLI summary', () => {
       '--orm',
       'drizzle',
     ]);
-    const commands = [
-      'cp .env.example .env',
-      'docker compose up -d --wait',
-      'bun run db:generate',
-      'bun run db:migrate',
-      'bun run dev',
+    const startFromDatabase = ['docker compose up -d --wait', 'bun run db:generate', 'bun run db:push', 'bun run dev'];
+    const single = await generate(tempDir, 'prisma-single', [
+      '--app',
+      'web:nextjs',
+      '--database',
+      'postgres',
+      '--orm',
+      'prisma',
+    ]);
+    const turborepo = await generate(tempDir, 'prisma-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--database',
+      'mysql',
+      '--orm',
+      'prisma',
+    ]);
+
+    const cases = [
+      { ...single, envCopy: 'cp .env.example .env' },
+      { ...turborepo, envCopy: 'cp packages/db/.env.example packages/db/.env' },
     ];
 
-    expectInOrder(readme, commands);
-    expectInOrder(stdout, commands);
+    for (const { readme, stdout, envCopy } of cases) {
+      expect(readme.split('## Available Scripts')[0]).not.toContain('db:migrate');
+      expect(stdout).not.toContain('db:migrate');
+      expectInOrder(readme, [envCopy, ...startFromDatabase]);
+      expectInOrder(stdout, [envCopy, ...startFromDatabase]);
+    }
   });
 
   test('a database without an ORM still starts the database first', async () => {
