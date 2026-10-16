@@ -65,6 +65,9 @@ const STUBS: Record<string, string> = {
 let slots = [];
 let next = 0;
 export const resetState = () => { slots = []; next = 0; };
+// A client render reads the snapshot of the client; globalThis.__serverRender renders the page as the server does.
+export const useSyncExternalStore = (_subscribe, getSnapshot, getServerSnapshot) =>
+  globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
 export const useState = (initial) => {
   const store = slots;
   const index = next++;
@@ -97,7 +100,8 @@ export const SidebarTrigger = () => createElement('button', { 'aria-label': 'Tog
   'separator.mjs': `import { createElement } from './react.mjs';
 export const Separator = () => createElement('hr', {});`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
-  'next-navigation.mjs': `export const usePathname = () => globalThis.__pathname;
+  'next-navigation.mjs': `export const notFound = () => { throw new Error('not-found'); };
+export const usePathname = () => globalThis.__pathname;
 export const useParams = () => ({ id: globalThis.__routeId });
 export const useRouter = () => ({ push() {} });`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
@@ -169,6 +173,7 @@ const globals = globalThis as {
   __queries?: RecordedQuery[];
   __queryData?: QueryData;
   __queryStatus?: QueryStatus;
+  __serverRender?: boolean;
 };
 
 async function filesUnder(root: string): Promise<string[]> {
@@ -187,7 +192,7 @@ async function nextjsPageUrls(web: string): Promise<string[]> {
 }
 
 // A TanStack Start file route is a page when it is not a layout (a sibling directory holds its children) and does
-// not answer 404 itself. `_auth` routes are not part of the dashboard.
+// not answer 404 for every visit. `_auth` routes are not part of the dashboard.
 async function startPageUrls(web: string): Promise<string[]> {
   const root = join(web, 'src/routes/_dashboard');
   const files = (await filesUnder(root)).map((file) => file.slice(root.length + 1));
@@ -197,7 +202,7 @@ async function startPageUrls(web: string): Promise<string[]> {
     const route = file.replace(/\.tsx$/, '');
     if (directories.has(route)) continue;
     const source = await readTextFile(join(root, file));
-    if (source.includes('throw notFound()')) continue;
+    if (/beforeLoad:\s*\(\)\s*=>\s*\{\s*throw notFound\(\)/.test(source)) continue;
     urls.push(`/${route.replace(/\/?index$/, '')}`.replace(/\$(\w+)/g, ':$1'));
   }
   return urls;
@@ -310,6 +315,18 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     await renderElementTree(await page({ id: SAMPLE_ID }));
     expect(rendered.queries).toEqual([{ procedure: blueprint.userProcedure, input: { id: SAMPLE_ID } }]);
     expect(globals.__queries).toEqual(rendered.queries);
+  });
+
+  // The header sits in the layout, above the page's hydration boundary. A query it creates while the server renders
+  // keeps the page from hydrating its own copy of the record, and the page fetches it again without the cookies.
+  test.if(blueprint.router === 'next')('a server render creates no query for the record', async () => {
+    globals.__serverRender = true;
+    try {
+      const trails = [`/admin/users/${SAMPLE_ID}`, ...(blueprint.contact ? [`/contacts/${SAMPLE_ID}`] : [])];
+      for (const trail of trails) expect((await renderHeader(trail)).queries, trail).toEqual([]);
+    } finally {
+      globals.__serverRender = false;
+    }
   });
 
   test('a page without a detail record reads nothing', async () => {

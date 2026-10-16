@@ -95,8 +95,33 @@ function buildCrumbs(pathname: string): Crumb[] {
   });
 }
 
+{{#unless (eq stackName "tanstack-start")}}
+const subscribeToNothing = () => () => {};
+
+// A record label reads its query after hydration only. Rendered on the server it would create the query before the
+// page's HydrationBoundary renders, and TanStack Query hydrates a query that already exists in an effect, which the
+// server never runs: the page's own useSuspenseQuery would then fetch the record again, without the request cookies.
+function RecordLabelSlot({ children }: { children: React.ReactNode }) {
+  const hydrated = React.useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+  return hydrated ? children : <LabelSkeleton />;
+}
+
+{{/unless}}
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
-  return crumb.RecordLabel ? <crumb.RecordLabel id={crumb.segment} /> : <CrumbText text={crumb.title} />;
+  if (!crumb.RecordLabel) return <CrumbText text={crumb.title} />;
+{{#if (eq stackName "tanstack-start")}}
+  return <crumb.RecordLabel id={crumb.segment} />;
+{{else}}
+  return (
+    <RecordLabelSlot>
+      <crumb.RecordLabel id={crumb.segment} />
+    </RecordLabelSlot>
+  );
+{{/if}}
 }
 
 function CrumbItem({ crumb }: { crumb: Crumb }) {
