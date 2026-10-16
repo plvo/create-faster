@@ -277,7 +277,9 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       const page = await mount('userDetail', { data: USER });
       const list = must(find(page.tree, (element) => element.tag === 'dl'), 'the description list');
       expect(withTag(list, 'dt').map(textOf)).toEqual(['Email', 'Joined']);
-      expect(withTag(list, 'dd').map(textOf)[0]).toBe('ada@example.com');
+      const email = must(withTag(list, 'dd')[0], 'the email');
+      expect(textOf(email)).toBe('ada@example.com');
+      expectClasses(email, 'wrap-anywhere');
     });
 
     test('the first and last name stack on a phone, and a long name wraps instead of widening the page', async () => {
@@ -351,6 +353,16 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expectClasses(pill, 'whitespace-nowrap');
     });
 
+    test('the allowed list is named by its column header in the table and labelled in the phone list', async () => {
+      const page = await mount('roles');
+      const section = must(withTag(page.tree, 'section')[0], 'the first section');
+      const inTable = withTag(must(withTag(section, 'table')[0], 'the table'), 'ul');
+      expect(inTable.length).toBeGreaterThan(0);
+      for (const list of inTable) expect(list.props['aria-label']).toBeUndefined();
+      const phoneList = must(withTag(section, 'ul').find((candidate) => candidate.props['aria-labelledby']), 'the phone list');
+      for (const list of withTag(phoneList, 'ul').filter((candidate) => candidate !== phoneList)) expect(list.props['aria-label']).toBe('Allowed');
+    });
+
     test('the table replaces the phone list from the sm breakpoint', async () => {
       const page = await mount('roles');
       expectClasses(withTag(page.tree, 'table')[0], 'hidden', 'sm:table');
@@ -378,11 +390,15 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expect(find(editing.tree, (element) => element.props['data-icon'] === 'ArrowLeft')).toBeDefined();
     });
 
-    test('Delete takes the destructive variant instead of a hand-written class string', async () => {
+    test('Delete rests as a quiet outline button with destructive text and Confirm is solid destructive', async () => {
       const page = await mount('contactDetail', { data: CONTACT });
       const remove = must(find(page.tree, (element) => element.tag === 'button' && textOf(element) === 'Delete'), 'the Delete button');
-      expect(remove.props.variant).toBe('destructive');
-      expect(remove.props.className).toBeUndefined();
+      expect(remove.props.variant).toBe('outline');
+      expect(remove.props.className).toBe('text-destructive');
+
+      await page.click('Delete');
+      const confirm = must(find(page.tree, (element) => element.tag === 'button' && textOf(element) === 'Confirm'), 'the Confirm button');
+      expect(confirm.props.variant).toBe('destructive');
     });
 
     test('no state draws an arrow with a character', async () => {
@@ -447,11 +463,15 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expectClasses(find(table.tree, (element) => element.tag === 'td' && textOf(element) === USER.role), 'hidden', 'md:table-cell');
     });
 
-    test('the email shows under the name where the Email column is hidden', async () => {
+    test('the email and the role show under the name where their columns are hidden', async () => {
       const table = await mount('userTable', { data: [USER] });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(USER.name)), 'the name cell');
-      const subline = must(find(nameCell, (element) => element.tag === 'span' && textOf(element) === USER.email), 'the email line');
-      expectClasses(subline, 'sm:hidden', 'text-muted-foreground');
+      const subline = must(find(nameCell, (element) => element.tag === 'div'), 'the line under the name');
+      expectClasses(subline, 'md:hidden');
+      const email = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.email), 'the email line');
+      expectClasses(email, 'sm:hidden', 'text-muted-foreground');
+      const role = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.role), 'the role pill');
+      expect(classesOf(role)).not.toContain('sm:hidden');
     });
   });
 });

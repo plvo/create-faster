@@ -117,7 +117,7 @@ export function ContactDetail({ id }: { id: string }) {
                 </Button>
               </div>
             ) : (
-              <Button variant='destructive' onClick={() => setConfirmDelete(true)}>
+              <Button variant='outline' className='text-destructive' onClick={() => setConfirmDelete(true)}>
                 Delete
               </Button>
             )}

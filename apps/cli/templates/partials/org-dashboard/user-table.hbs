@@ -11,6 +11,18 @@ import Link from 'next/link';
 import { useTRPC } from '@/trpc/providers';
 import { UserActions } from './user-actions';
 
+function RoleBadge({ role }: { role: string | null | undefined }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+      }`}
+    >
+      {role}
+    </span>
+  );
+}
+
 export function UserTable() {
   const trpc = useTRPC();
   const { data: users } = useSuspenseQuery(trpc.user.list.queryOptions());
@@ -40,17 +52,14 @@ export function UserTable() {
 {{/if}}
                   {user.name}
                 </Link>
-                <span className='block text-xs wrap-anywhere text-muted-foreground sm:hidden'>{user.email}</span>
+                <div className='mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 md:hidden'>
+                  <span className='text-xs wrap-anywhere text-muted-foreground sm:hidden'>{user.email}</span>
+                  <RoleBadge role={user.role} />
+                </div>
               </td>
               <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>{user.email}</td>
               <td className='hidden px-4 py-3 md:table-cell'>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {user.role}
-                </span>
+                <RoleBadge role={user.role} />
               </td>
               <td className='px-4 py-3'>
                 <span
