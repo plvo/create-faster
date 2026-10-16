@@ -60,6 +60,10 @@ async function generateMigrations(projectDir: string): Promise<void> {
   }
   const result = await runCommand(['bun', 'run', 'db:generate'], projectDir);
   if (result.exitCode !== 0) throw new Error(`db:generate exited ${result.exitCode}:\n${tail(result)}`);
+  const journal = (await fileExists(join(projectDir, 'packages/db')))
+    ? 'packages/db/drizzle/meta/_journal.json'
+    : 'drizzle/meta/_journal.json';
+  if (!(await fileExists(join(projectDir, journal)))) throw new Error(`db:generate wrote no ${journal}`);
 }
 
 function tail(result: { stdout: string; stderr: string }): string {
