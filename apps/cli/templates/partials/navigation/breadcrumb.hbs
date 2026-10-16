@@ -10,7 +10,11 @@ import { Link, useLocation } from '@tanstack/react-router';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 {{/if}}
+{{#if (eq stackName "tanstack-start")}}
 import { useQuery } from '@tanstack/react-query';
+{{else}}
+import { type QueryKey, useQueryClient } from '@tanstack/react-query';
+{{/if}}
 import * as React from 'react';
 import {
   Breadcrumb,
@@ -54,18 +58,45 @@ function LabelSkeleton() {
   return <Skeleton className='inline-block h-4 w-24 align-middle' />;
 }
 
+{{#unless (eq stackName "tanstack-start")}}
+// The label of a record reads the record its page puts in the cache and never creates the query. This header sits in the
+// layout, above the page's HydrationBoundary: a query created here first would make the boundary hydrate it in an effect,
+// after the page's own useSuspenseQuery has fetched the record again from the browser. Until the page has hydrated the
+// record, the label is a skeleton; a record the page found gone is null.
+function useCachedRecord<T>(queryKey: QueryKey): T | null | undefined {
+  const queryClient = useQueryClient();
+  return React.useSyncExternalStore(
+    (notify) => queryClient.getQueryCache().subscribe(notify),
+    () => queryClient.getQueryData<T | null>(queryKey),
+    () => undefined,
+  );
+}
+
+{{/unless}}
 function UserLabel({ id }: { id: string }) {
   const trpc = useTRPC();
+{{#if (eq stackName "tanstack-start")}}
   const { data: user, isPending } = useQuery(trpc.{{userProcedure}}.queryOptions({ id }));
   if (isPending) return <LabelSkeleton />;
+{{else}}
+  const user = useCachedRecord<{ name?: string | null }>(trpc.{{userProcedure}}.queryKey({ id }));
+  if (user === undefined) return <LabelSkeleton />;
+{{/if}}
   return <CrumbText text={user?.name || 'User'} />;
 }
 {{#if contactProcedure}}
 
 function ContactLabel({ id }: { id: string }) {
   const trpc = useTRPC();
+{{#if (eq stackName "tanstack-start")}}
   const { data: contact, isPending } = useQuery(trpc.{{contactProcedure}}.queryOptions({ id }));
   if (isPending) return <LabelSkeleton />;
+{{else}}
+  const contact = useCachedRecord<{ firstName?: string | null; lastName?: string | null }>(
+    trpc.{{contactProcedure}}.queryKey({ id }),
+  );
+  if (contact === undefined) return <LabelSkeleton />;
+{{/if}}
   return <CrumbText text={[contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || 'Contact'} />;
 }
 {{/if}}
@@ -95,33 +126,8 @@ function buildCrumbs(pathname: string): Crumb[] {
   });
 }
 
-{{#unless (eq stackName "tanstack-start")}}
-const subscribeToNothing = () => () => {};
-
-// A record label reads its query after hydration only. Rendered on the server it would create the query before the
-// page's HydrationBoundary renders, and TanStack Query hydrates a query that already exists in an effect, which the
-// server never runs: the page's own useSuspenseQuery would then fetch the record again, without the request cookies.
-function RecordLabelSlot({ children }: { children: React.ReactNode }) {
-  const hydrated = React.useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
-  );
-  return hydrated ? children : <LabelSkeleton />;
-}
-
-{{/unless}}
 function CrumbLabel({ crumb }: { crumb: Crumb }) {
-  if (!crumb.RecordLabel) return <CrumbText text={crumb.title} />;
-{{#if (eq stackName "tanstack-start")}}
-  return <crumb.RecordLabel id={crumb.segment} />;
-{{else}}
-  return (
-    <RecordLabelSlot>
-      <crumb.RecordLabel id={crumb.segment} />
-    </RecordLabelSlot>
-  );
-{{/if}}
+  return crumb.RecordLabel ? <crumb.RecordLabel id={crumb.segment} /> : <CrumbText text={crumb.title} />;
 }
 
 function CrumbItem({ crumb }: { crumb: Crumb }) {
