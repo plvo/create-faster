@@ -1,5 +1,5 @@
 ---
-title: Org Dashboard
+title: Org Dashboard (Next.js)
 description: Dashboard with auth, RBAC, admin panel, and example CRUD. Ships as a turborepo with a Next.js web app, a Node batch worker, and shared packages.
 ---
 
@@ -25,7 +25,7 @@ apps/
   batch/            # Node worker
 packages/
   api/              # tRPC routers
-  auth/             # Better Auth config + types
+  auth/             # Better Auth config + permissions + types
   db/               # Drizzle schema + client
   ui/               # shadcn components
   config/           # Shared tsconfig
@@ -181,6 +181,10 @@ The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-
 | `zod` | Form validation schemas |
 | `vaul` | Drawer behind the responsive dialog (mobile) |
 | `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
+
+## Environment variables
+
+- `SEED_PASSWORD` - Password of the seeded accounts, `password` by default (scope: app, read by `db:seed`)
 
 ## Root scripts
 
