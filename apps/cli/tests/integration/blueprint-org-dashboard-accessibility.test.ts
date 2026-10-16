@@ -228,7 +228,9 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       const module = await evaluateGeneratedModule<Record<string, Component>>(source, join(stubs, `${page}.mjs`), imports, 'tsx');
       (globalThis as { __testQueryData?: unknown }).__testQueryData = options.data;
       setStates(options.states ?? []);
-      return render(await module[exportName]({ id: 'x' }));
+      const component = module[exportName];
+      if (!component) throw new Error(`${file} does not export ${exportName}`);
+      return render(await component({ id: 'x' }));
     };
   });
 
@@ -272,14 +274,14 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
         const headers = elements(table.children).filter((element) => element.tag === 'th');
         expect(headers.map((header) => header.props.scope).sort()).toEqual(['col', 'col', 'col', 'row', 'row']);
         const rows = elements(table.children).filter((element) => element.tag === 'tr');
-        for (const row of rows.slice(1)) expect(elements(row.children)[0].props.scope).toBe('row');
+        for (const row of rows.slice(1)) expect(elements(row.children)[0]?.props.scope).toBe('row');
       }
     });
 
     test('lists a granted action under Allowed and a denied one under Denied', async () => {
       const page = await renderPage('roles');
       const manager = elements(page).filter((element) => element.tag === 'table')[1];
-      const rows = elements(manager.children).filter((element) => element.tag === 'tr');
+      const rows = elements(manager?.children ?? []).filter((element) => element.tag === 'tr');
       const cells = (resource: string) => {
         const row = rows.find((candidate) => textOf(candidate).startsWith(resource));
         return elements(row?.children ?? [])
