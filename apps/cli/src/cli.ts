@@ -1,12 +1,11 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
-import { projectNameOf, validateProjectName } from '@/lib/project-location';
+import { projectNameOf, resolveProjectDir, validateProjectName } from '@/lib/project-location';
 import { arePromptsSuppressed, promptModeOf, shouldPromptCategory } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
@@ -191,16 +190,17 @@ async function promptOrUseProjectName(
   partial: FlagAnswers | undefined,
   message: string,
 ): Promise<Pick<TemplateContext, 'projectName' | 'projectDir'>> {
-  if (partial?.projectName && partial.projectDir) {
-    log.info(`${color.green('✓')} Using project name: ${color.bold(partial.projectName)}`);
-    if (existsSync(resolve(process.cwd(), partial.projectDir))) {
+  if (partial?.projectDir) {
+    const projectName = projectNameOf(partial.projectDir);
+    log.info(`${color.green('✓')} Using project name: ${color.bold(projectName)}`);
+    if (existsSync(resolveProjectDir(partial.projectDir))) {
       cancel(`Directory "${partial.projectDir}" already exists.`);
       process.exit(1);
     }
-    return { projectName: partial.projectName, projectDir: partial.projectDir };
+    return { projectName, projectDir: partial.projectDir };
   }
 
-  const projectDir = await promptText<string>(message, {
+  const answer = await promptText<string>(message, {
     placeholder: 'my-app',
     initialValue: 'my-app',
     validate: (value) => {
@@ -208,11 +208,12 @@ async function promptOrUseProjectName(
       if (!trimmed) return 'Project name is required';
       const nameError = validateProjectName(projectNameOf(trimmed));
       if (nameError) return nameError;
-      if (existsSync(resolve(process.cwd(), trimmed))) {
+      if (existsSync(resolveProjectDir(trimmed))) {
         return `Directory "${trimmed}" already exists.`;
       }
     },
   });
+  const projectDir = answer.trim();
   return { projectName: projectNameOf(projectDir), projectDir };
 }
 

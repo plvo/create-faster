@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
-import { getProjectDir, getProjectPath, projectNameOf, validateProjectName } from '@/lib/project-location';
+import { getProjectDir, getProjectPath, projectNameOf, quoteForShell, validateProjectName } from '@/lib/project-location';
 
 describe('projectNameOf', () => {
   test.each([
@@ -39,5 +39,20 @@ describe('project location', () => {
 
   test('an absolute directory is kept', () => {
     expect(getProjectPath({ projectName: 'my-app', projectDir: '/abs/out/my-app' })).toBe('/abs/out/my-app');
+  });
+});
+
+describe('quoteForShell', () => {
+  test.each(['my-app', '../out/my-app', '/abs/out/my-app', './apps/my-app'])('leaves %s as is', (value) => {
+    expect(quoteForShell(value)).toBe(value);
+  });
+
+  test.each([
+    ['../my dir/my-app', "'../my dir/my-app'"],
+    ['a$(id)/my-app', "'a$(id)/my-app'"],
+    ['a;rm -rf x/my-app', "'a;rm -rf x/my-app'"],
+    ["it's/my-app", "'it'\\''s/my-app'"],
+  ])('quotes %s', (value, expected) => {
+    expect(quoteForShell(value)).toBe(expected);
   });
 });

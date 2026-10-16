@@ -19,6 +19,18 @@ export function getProjectDir(ctx: ProjectLocation): string {
   return ctx.projectDir ?? ctx.projectName;
 }
 
+export function resolveProjectDir(projectDir: string): string {
+  return resolve(process.cwd(), projectDir);
+}
+
 export function getProjectPath(ctx: ProjectLocation): string {
-  return resolve(process.cwd(), getProjectDir(ctx));
+  return resolveProjectDir(getProjectDir(ctx));
+}
+
+const SHELL_SAFE_PATTERN = /^[A-Za-z0-9_@%+=:,./-]+$/;
+
+/** Quotes a value for a POSIX shell command line, leaving it as is when it holds only characters the shell never interprets. */
+export function quoteForShell(value: string): string {
+  if (SHELL_SAFE_PATTERN.test(value)) return value;
+  return `'${value.replaceAll("'", `'\\''`)}'`;
 }

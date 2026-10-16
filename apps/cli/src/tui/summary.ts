@@ -6,7 +6,7 @@ import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
-import { getProjectDir } from '@/lib/project-location';
+import { getProjectDir, quoteForShell } from '@/lib/project-location';
 import { shouldPromptCategory } from '@/lib/project-prompts';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
@@ -18,7 +18,7 @@ function leavesAnswersToPrompts(ctx: TemplateContext): boolean {
 }
 
 export function displayOutroCliCommand(ctx: TemplateContext, projectPath: string): void {
-  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${getProjectDir(ctx)}`;
+  let flagsCommand: string = `${getPackageRunner(ctx)} create-faster ${quoteForShell(getProjectDir(ctx))}`;
 
   if (ctx.blueprint) {
     flagsCommand += ` --blueprint ${ctx.blueprint}`;
@@ -168,7 +168,7 @@ function buildStepsNote(
   steps.push(color.white(color.bold('#💡 Next steps:')));
   steps.push('');
 
-  steps.push(`cd ${getProjectDir(ctx)}`);
+  steps.push(`cd ${quoteForShell(getProjectDir(ctx))}`);
   steps.push('');
   if (ctx.skipInstall || !ctx.pm) {
     steps.push('# Install dependencies:');

@@ -155,7 +155,6 @@ ${color.bold('Examples:')}
       printError('Invalid project name', nameError);
       process.exit(1);
     }
-    partial.projectName = projectName;
     partial.projectDir = projectDir;
   }
 
