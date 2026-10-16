@@ -57,17 +57,18 @@ describe('MDX Integration', () => {
       expect(content).not.toContain('prerender');
     });
 
-    test('the example route is /mdx/{-$slug} and loads each document lazily', async () => {
+    test('the example route is /mdx/{-$slug} and renders a lazy component created once per document at module level', async () => {
       const route = await readTextFile(join(projectPath, 'src/routes/mdx/{-$slug}.tsx'));
       expect(route).toContain("createFileRoute('/mdx/{-$slug}')");
       expect(route).toContain('notFound()');
 
       const lib = await readTextFile(join(projectPath, 'src/lib/mdx.ts'));
       expect(lib).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
-      expect(lib).toContain('lazy(() => loadDocument(slug))');
+      expect(lib).toContain('lazy(load)');
       expect(lib).not.toContain('eager');
       expect(lib).not.toContain('node:fs');
       expect(route).toContain('<Suspense>');
+      expect(route).toContain('const Document = documentComponents[slug];');
       expect(route).toContain('frontmatter');
     });
 

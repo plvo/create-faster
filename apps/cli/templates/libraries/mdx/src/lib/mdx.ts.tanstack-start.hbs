@@ -13,11 +13,18 @@ type MdxModule = {
 };
 
 const documentLoaders = import.meta.glob<MdxModule>('/contents/*.mdx');
-const documentComponents = new Map<string, LazyExoticComponent<ComponentType>>();
 
 function documentPath(slug: string): string {
   return `/contents/${slug}.mdx`;
 }
+
+function documentSlug(path: string): string {
+  return path.replace(/^\/contents\/|\.mdx$/g, '');
+}
+
+export const documentComponents: Record<string, LazyExoticComponent<ComponentType>> = Object.fromEntries(
+  Object.entries(documentLoaders).map(([path, load]) => [documentSlug(path), lazy(load)]),
+);
 
 export function hasDocument(slug: string): boolean {
   return documentPath(slug) in documentLoaders;
@@ -25,13 +32,4 @@ export function hasDocument(slug: string): boolean {
 
 export function loadDocument(slug: string): Promise<MdxModule> {
   return documentLoaders[documentPath(slug)]();
-}
-
-export function documentComponent(slug: string): LazyExoticComponent<ComponentType> {
-  const cached = documentComponents.get(slug);
-  if (cached) return cached;
-
-  const component = lazy(() => loadDocument(slug));
-  documentComponents.set(slug, component);
-  return component;
 }

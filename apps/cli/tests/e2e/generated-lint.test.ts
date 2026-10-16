@@ -56,6 +56,7 @@ const PROJECTS: { name: string; args: string[] }[] = [
       'drizzle',
     ],
   },
+  { name: 'start-mdx', args: ['--app', 'start-mdx:tanstack-start:mdx'] },
   { name: 'start-trpc', args: ['--app', 'start-trpc:tanstack-start:trpc'] },
   { name: 'hono-single', args: ['--app', 'hono-single:hono:vitest-node'] },
   { name: 'node-single', args: ['--app', 'node-single:node:vitest-node'] },
