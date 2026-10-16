@@ -204,7 +204,7 @@ A login or signup form never passes a query parameter (`redirectTo`, `redirect`)
 
 ### Privy and viem
 
-`dapp-privy-nextjs` declares `@privy-io/react-auth`, `@privy-io/wagmi` and `viem` as exact versions (`PRIVY_REACT_AUTH_VERSION`, `PRIVY_WAGMI_VERSION`, `PRIVY_VIEM_VERSION` in `__meta__.ts`), never ranges. Privy pins viem: each `@privy-io/react-auth` release depends on one viem version and each `@privy-io/wagmi` release peers on one, and the latest releases of the two can disagree (`react-auth@3.49.1` depends on `viem@2.57.7`, `wagmi@4.0.19` peers on `viem@2.57.5`), which npm rejects with ERESOLVE. Move the three together to a pair whose viem pins match (`npm view @privy-io/react-auth@<v> dependencies.viem`, `npm view @privy-io/wagmi@<v> peerDependencies.viem`) and check with `npm install --package-lock-only` on a generated project. `tests/integration/blueprint-dapp-privy-nextjs.test.ts` checks that the three stay exact.
+`dapp-privy-nextjs` declares `@privy-io/react-auth`, `@privy-io/wagmi` and `viem` as exact versions (`PRIVY_REACT_AUTH_VERSION`, `PRIVY_WAGMI_VERSION`, `PRIVY_VIEM_VERSION` in `__meta__.ts`), never ranges. Privy pins viem exactly per release: `@privy-io/react-auth` depends on one viem version and `@privy-io/wagmi` peers on one, and the latest releases of the two can disagree, which npm rejects with ERESOLVE. Move the three together to a set where both Privy packages require the same viem (`npm view @privy-io/react-auth@<v> dependencies.viem`, `npm view @privy-io/wagmi@<v> peerDependencies.viem`) and check it with `npm install --package-lock-only` on a generated project. `tests/unit/privy-viem-pin.test.ts` records the viem each pinned release requires and fails until the table and the three constants agree.
 
 ### Expo
 
