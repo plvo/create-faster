@@ -1,7 +1,9 @@
 ---
-title: Org Dashboard
+title: Org Dashboard (Next.js)
 description: Dashboard with auth, RBAC, admin panel, and example CRUD. Ships as a turborepo with a Next.js web app, a Node batch worker, and shared packages.
 ---
+
+A [TanStack Start variant](/docs/blueprints/business/org-dashboard-tanstack-start) generates the same dashboard with a TanStack Start web app instead of Next.js.
 
 ## Composition
 
@@ -23,7 +25,7 @@ apps/
   batch/            # Node worker
 packages/
   api/              # tRPC routers
-  auth/             # Better Auth config + types
+  auth/             # Better Auth config + permissions + types
   db/               # Drizzle schema + client
   ui/               # shadcn components
   config/           # Shared tsconfig
@@ -117,7 +119,7 @@ A real, single-tenant RBAC built on the Better Auth `admin` plugin's access cont
 - `user` (default) — full CRUD on `contact`, no user management
 - `manager` — `contact: ['read']` only, a read-only example role
 
-Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. See [Auth & Permissions](/docs/concepts/agent-context) in the generated `docs/agents/auth.md`.
+Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. The generated `docs/agents/auth.md` covers it in detail (see [Agent Context](/docs/concepts/agent-context)).
 
 ### Admin panel
 
@@ -180,12 +182,16 @@ The seed runs from the repo root, so `db:seed` loads `apps/web/.env` via `--env-
 | `vaul` | Drawer behind the responsive dialog (mobile) |
 | `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
 
+## Environment variables
+
+- `SEED_PASSWORD` - Password of the seeded accounts, `password` by default (scope: app, read by `db:seed`)
+
 ## Root scripts
 
 | Script | Command | Purpose |
 |--------|---------|---------|
 | `local-setup` | `bun scripts/local-setup.ts` (`tsx` under npm and pnpm) | One-command local bootstrap (env, docker, schema, seed) |
-| `db:push` | `turbo db:push` | Push schema to database |
+| `db:push` | `cd packages/db && bun run db:push` | Push schema to database |
 | `db:generate` | `turbo db:generate` | Generate migration files |
 | `db:migrate` | `turbo db:migrate` | Apply migrations |
 | `db:studio` | `turbo db:studio` | Open Drizzle Studio |
