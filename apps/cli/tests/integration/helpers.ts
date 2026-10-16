@@ -409,8 +409,8 @@ export async function evaluateGeneratedModule<T>(
     loader === 'tsx'
       ? `import { createElement as __jsx, Fragment as __fragment } from "react";\n${compiled}`
       : compiled;
-  const rewritten = js.replace(/from\s+(["'])([^"']+)\1/g, (match, _quote, specifier: string) =>
-    imports[specifier] ? `from "${imports[specifier]}"` : match,
+  const rewritten = js.replace(/(from|import)\s*(["'])([^"']+)\2/g, (match, keyword: string, _quote, specifier: string) =>
+    imports[specifier] ? `${keyword} "${imports[specifier]}"` : match,
   );
   await Bun.write(target, rewritten);
   return import(target);
