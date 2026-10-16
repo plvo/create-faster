@@ -74,7 +74,9 @@ export const authClient = {
   },
 };`,
   'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
+  'skeleton.mjs': 'export const Skeleton = () => null;',
   'page-parts.mjs': `export const ContactDetail = () => null;
+export const DetailPending = () => null;
 export const UserDetail = () => null;
 export const QueryBoundary = ({ children }) => children;
 export const pageTitle = (title) => title;`,
@@ -101,6 +103,7 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@/components/contacts/contact-detail': './page-parts.mjs',
   '@/components/admin/user-detail': './page-parts.mjs',
   '@/components/query-boundary': './page-parts.mjs',
+  '@/components/detail-pending': './page-parts.mjs',
   '@/lib/page-title': './page-parts.mjs',
 };
 
@@ -288,6 +291,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
       (globalThis as { __testSession?: Session | null }).__testSession = session;
     };
 
+    let guardsDir: string;
     let evaluate: <T>(source: string, name: string, loader?: 'ts' | 'tsx') => Promise<T>;
     const routeOptions = async (file: string, name: string) =>
       (
@@ -302,6 +306,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
     beforeAll(async () => {
       const dir = join(tempDir, 'guards-eval');
+      guardsDir = dir;
       await mkdir(dir, { recursive: true });
       for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(dir, name), source);
       evaluate = async <T>(source: string, name: string, loader: 'ts' | 'tsx' = 'ts'): Promise<T> =>
@@ -405,6 +410,29 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
       const bare = await routeOptions('admin/index.tsx', 'admin-index-route.mjs');
       expect(await thrownBy(() => bare.beforeLoad({ context: { session: member('admin') } }))).toEqual({ kind: 'notFound' });
+    });
+
+    // A loader that awaits its record leaves the old page on screen: the route shows the skeleton while it runs.
+    test.each([
+      { file: 'admin/users/$id.tsx', name: 'user-pending-route.mjs' },
+      { file: 'contacts/$id.tsx', name: 'contact-pending-route.mjs' },
+    ])('the route $file shows the detail skeleton while its loader runs', async ({ file, name }) => {
+      const skeletonImports = { ...IMPORT_TARGETS, '@repo/ui/components/ui/skeleton': './skeleton.mjs' };
+      const { DetailPending } = await evaluateGeneratedModule<{ DetailPending: () => { type: unknown; props: unknown } }>(
+        await read(`${WEB}/src/components/detail-pending.tsx`),
+        join(guardsDir, 'detail-pending.mjs'),
+        skeletonImports,
+        'tsx',
+      );
+      const { Route } = await evaluateGeneratedModule<{ Route: { options: { pendingComponent: unknown } } }>(
+        await read(`${WEB}/src/routes/_dashboard/${file}`),
+        join(guardsDir, name),
+        { ...IMPORT_TARGETS, '@/components/detail-pending': './detail-pending.mjs' },
+        'tsx',
+      );
+      expect(Route.options.pendingComponent).toBe(DetailPending);
+      const skeleton = (await import(join(guardsDir, 'skeleton.mjs'))) as { Skeleton: unknown };
+      expect(DetailPending()).toMatchObject({ type: skeleton.Skeleton, props: { className: 'h-64 w-full' } });
     });
 
     describe.each([

@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { UserDetail } from '@/components/admin/user-detail';
+import { DetailPending } from '@/components/detail-pending';
 import { QueryBoundary } from '@/components/query-boundary';
 import { pageTitle } from '@/lib/page-title';
 
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/_dashboard/admin/users/$id')({
     if (!user) throw notFound();
   },
   head: () => ({ meta: [{ title: pageTitle('User') }] }),
+  pendingComponent: DetailPending,
   component: UserPage,
 });
 
