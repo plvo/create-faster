@@ -12,39 +12,27 @@ const IMPORT_SPECIFIER = /(?:\bfrom|\bimport)\s+['"]([^'"]+)['"]/g;
 const PRISMA_SEED_COMMAND = /^prisma db seed$/;
 const SOURCE_EXTENSIONS = ['', '.ts', '.tsx', '/index.ts'];
 
-const GENERIC_SEEDS: { name: string; args: string[] }[] = [
-  ...[
-    ['postgres', []],
-    ['mysql', []],
-    ['sqlite', []],
-    ['d1', ['--deployment', 'cloudflare']],
-  ].flatMap(([database, extra]) => [
-    {
-      name: `single-drizzle-${database}`,
-      args: ['--app', 'web:nextjs', '--database', database as string, '--orm', 'drizzle', ...(extra as string[])],
-    },
-    {
-      name: `mono-drizzle-${database}`,
-      args: [
-        '--app',
-        'web:nextjs',
-        '--app',
-        'api:hono',
-        '--database',
-        database as string,
-        '--orm',
-        'drizzle',
-        ...(extra as string[]),
-      ],
-    },
-  ]),
-  ...['postgres', 'mysql'].flatMap((database) => [
-    { name: `single-prisma-${database}`, args: ['--app', 'web:nextjs', '--database', database, '--orm', 'prisma'] },
-    {
-      name: `mono-prisma-${database}`,
-      args: ['--app', 'web:nextjs', '--app', 'api:hono', '--database', database, '--orm', 'prisma'],
-    },
-  ]),
+const SECOND_APP = ['--app', 'api:hono'];
+const DRIZZLE_DATABASES: [string, string[]][] = [
+  ['postgres', []],
+  ['mysql', []],
+  ['sqlite', []],
+  ['d1', ['--deployment', 'cloudflare']],
+];
+const PRISMA_DATABASES = ['postgres', 'mysql'];
+
+function seedProjects(orm: string, database: string, extra: string[]): { name: string; args: string[] }[] {
+  const project = ['--app', 'web:nextjs'];
+  const choices = ['--database', database, '--orm', orm, ...extra];
+  return [
+    { name: `single-${orm}-${database}`, args: [...project, ...choices] },
+    { name: `mono-${orm}-${database}`, args: [...project, ...SECOND_APP, ...choices] },
+  ];
+}
+
+const GENERIC_SEEDS = [
+  ...DRIZZLE_DATABASES.flatMap(([database, extra]) => seedProjects('drizzle', database, extra)),
+  ...PRISMA_DATABASES.flatMap((database) => seedProjects('prisma', database, [])),
 ];
 
 interface Manifest {
@@ -92,7 +80,8 @@ async function findSeeds(project: string): Promise<Seed[]> {
     if (PRISMA_SEED_COMMAND.test(script)) {
       const config = join(packageDir, 'prisma.config.ts');
       const command = (await readTextFile(config)).match(/seed:\s*'([^']+)'/)?.[1] ?? '';
-      seeds.push({ manifest, script: command, file: join(packageDir, command.match(/\S+\.ts\b/)?.[0] ?? ''), loaders: [config] });
+      const file = join(packageDir, command.match(/\S+\.ts\b/)?.[0] ?? '');
+      seeds.push({ manifest, script: command, file, loaders: [config] });
       continue;
     }
     const runsFile = script.match(/\S+\.ts\b/)?.[0];
@@ -106,9 +95,9 @@ async function findSeeds(project: string): Promise<Seed[]> {
 async function sourcesImportedBy(file: string, project: string): Promise<string[]> {
   const source = await readTextFile(file);
   const resolved = await Promise.all(
-    [...source.matchAll(IMPORT_SPECIFIER)].map(async ([, specifier]) => {
+    [...source.matchAll(IMPORT_SPECIFIER)].map(async ([, specifier = '']) => {
       if (specifier.startsWith('@repo/')) {
-        return listFiles(join(project, 'packages', specifier.split('/')[1], 'src'));
+        return listFiles(join(project, 'packages', specifier.split('/')[1] ?? '', 'src'));
       }
       const base = specifier.startsWith('@/')
         ? join(project, 'src', specifier.slice(2))
