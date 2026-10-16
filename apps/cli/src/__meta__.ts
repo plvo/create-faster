@@ -38,7 +38,8 @@ const ESBUILD_VERSION = '^0.28.2';
 // Bun bundles a Node target on its own; esbuild needs `require` back for the CommonJS packages it inlines into an ES module.
 const BUNDLE_FOR_NODE = `esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"`;
 
-const INLINE_PRODUCTION_NODE_ENV = '--define:process.env.NODE_ENV="production"';
+// esbuild needs the define value as a JSON string. The backslashes keep the quotes through sh, which runs the scripts under npm and pnpm.
+const INLINE_PRODUCTION_NODE_ENV = '--define:process.env.NODE_ENV=\\"production\\"';
 
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
 
