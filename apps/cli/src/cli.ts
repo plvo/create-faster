@@ -6,7 +6,13 @@ import { isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
-import { arePromptsSuppressed, promptModeOf, shouldPromptCategory } from '@/lib/project-prompts';
+import {
+  areAppsAnswered,
+  arePromptsSuppressed,
+  isProjectDirAnswered,
+  promptModeOf,
+  shouldPromptCategory,
+} from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
@@ -29,7 +35,7 @@ export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 
   Object.assign(ctx, await promptOrUseProjectName(partial, progress.message('Name of your project?')));
   progress.next();
 
-  if (partial?.apps && partial.apps.length > 0) {
+  if (areAppsAnswered(partial)) {
     ctx.apps = partial.apps;
     log.info(
       `${color.green('✓')} Using ${partial.apps.length} app(s): ${partial.apps.map((a) => a.appName).join(', ')}`,
@@ -190,7 +196,7 @@ async function promptOrUseProjectName(
   partial: FlagAnswers | undefined,
   message: string,
 ): Promise<Pick<TemplateContext, 'projectName' | 'projectDir'>> {
-  if (partial?.projectDir) {
+  if (isProjectDirAnswered(partial)) {
     const projectName = projectNameOf(partial.projectDir);
     log.info(`${color.green('✓')} Using project name: ${color.bold(projectName)}`);
     if (existsSync(resolveProjectDir(partial.projectDir))) {
@@ -313,10 +319,6 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
   const stackName = (await selectStackPrompt(progress.message(`Stack for ${color.bold(appName)}`))) as StackName;
 
   const metaStack = META.stacks[stackName];
-  if (!metaStack) {
-    cancel(`Stack "${stackName}" not found`);
-    process.exit(0);
-  }
 
   const libraries = await multiselectLibrariesPrompt(
     stackName,

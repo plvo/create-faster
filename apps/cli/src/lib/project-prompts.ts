@@ -1,5 +1,5 @@
 import { isProjectCategoryAvailable } from '@/lib/addon-utils';
-import type { FlagAnswers, TemplateContext } from '@/types/ctx';
+import type { AppContext, FlagAnswers, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 
 interface PromptMode {
@@ -28,6 +28,47 @@ export function promptModeOf(answers: FlagAnswers | undefined): PromptMode {
  */
 export function arePromptsSuppressed({ hasFlags, interactive, skipPrompts }: PromptMode): boolean {
   return skipPrompts || (hasFlags && !interactive);
+}
+
+interface MissingAnswer {
+  title: string;
+  hint: string;
+}
+
+export function isProjectDirAnswered(
+  answers: FlagAnswers | undefined,
+): answers is FlagAnswers & { projectDir: string } {
+  return Boolean(answers?.projectDir);
+}
+
+export function areAppsAnswered(answers: FlagAnswers | undefined): answers is FlagAnswers & { apps: AppContext[] } {
+  return (answers?.apps?.length ?? 0) > 0;
+}
+
+/**
+ * The project directory and the apps (or a blueprint, which brings them) have no default: only a prompt
+ * can give them when no flag did. Outside an interactive terminal nothing can answer that prompt.
+ */
+export function missingAnswersWithoutTerminal(
+  answers: FlagAnswers | undefined,
+  { interactive }: PromptMode,
+): MissingAnswer[] {
+  if (interactive) return [];
+
+  const missing: MissingAnswer[] = [];
+  if (!isProjectDirAnswered(answers)) {
+    missing.push({
+      title: 'Missing project name',
+      hint: 'Pass the project directory as the first argument: create-faster <project-name>',
+    });
+  }
+  if (!areAppsAnswered(answers)) {
+    missing.push({
+      title: 'Missing apps',
+      hint: 'Pass at least one --app <name:stack:libraries> or a --blueprint <name>',
+    });
+  }
+  return missing;
 }
 
 function isCategoryAnswered(categoryName: ProjectCategoryName, ctx: Pick<TemplateContext, 'project'>): boolean {

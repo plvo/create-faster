@@ -14,7 +14,7 @@ import { S_GRAY_BAR, S_RADIO_DISABLED, symbol } from '@/tui/symbols';
 
 export function handlePromptCancel(): never {
   cancel('👋 Bye');
-  process.exit(0);
+  process.exit(1);
 }
 
 export async function promptText<T extends string | number = string>(
