@@ -107,6 +107,15 @@ describe('project name given as a path', () => {
     expect(result.stdout).toContain("create-faster '../a$(id)/my-app' --app my-app:nextjs");
   });
 
+  test('a directory starting with a dash is read as a directory after --, and printed with ./', async () => {
+    const result = await runCli(['--app', 'my-app:nextjs', ...FLAGS, '--', '-x/my-app'], workDir);
+
+    expect(result.exitCode).toBe(0);
+    expect(await fileExists(join(workDir, '-x', 'my-app', 'package.json'))).toBe(true);
+    expect(result.stdout).toContain('cd ./-x/my-app');
+    expect(result.stdout).toContain('create-faster ./-x/my-app --app my-app:nextjs');
+  });
+
   test('a turborepo takes its root package name from the last segment', async () => {
     const result = await runCli(
       ['../out/my-app', '--app', 'web:nextjs', '--app', 'api:hono', ...FLAGS],

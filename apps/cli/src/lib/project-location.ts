@@ -27,10 +27,15 @@ export function getProjectPath(ctx: ProjectLocation): string {
   return resolveProjectDir(getProjectDir(ctx));
 }
 
-const SHELL_SAFE_PATTERN = /^[A-Za-z0-9_@%+=:,./-]+$/;
+const SHELL_SAFE_PATTERN = /^[A-Za-z0-9_@%:,./][A-Za-z0-9_@%+=:,./-]*$/;
 
-/** Quotes a value for a POSIX shell command line, leaving it as is when it holds only characters the shell never interprets. */
-export function quoteForShell(value: string): string {
+/** Quotes a value for a POSIX shell command line, leaving it as is when it holds only characters the shell never interprets (a leading `+`, `-` or `=` is one a shell or zsh gives a meaning). */
+function quoteForShell(value: string): string {
   if (SHELL_SAFE_PATTERN.test(value)) return value;
   return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+/** The project directory as a shell command argument: quoted, and kept from being read as an option by a leading `./`. */
+export function quoteProjectDir(projectDir: string): string {
+  return quoteForShell(projectDir.startsWith('-') ? `./${projectDir}` : projectDir);
 }

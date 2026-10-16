@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
-import { getProjectDir, getProjectPath, projectNameOf, quoteForShell, validateProjectName } from '@/lib/project-location';
+import { getProjectDir, getProjectPath, projectNameOf, quoteProjectDir, validateProjectName } from '@/lib/project-location';
 
 describe('projectNameOf', () => {
   test.each([
@@ -42,17 +42,22 @@ describe('project location', () => {
   });
 });
 
-describe('quoteForShell', () => {
+describe('quoteProjectDir', () => {
   test.each(['my-app', '../out/my-app', '/abs/out/my-app', './apps/my-app'])('leaves %s as is', (value) => {
-    expect(quoteForShell(value)).toBe(value);
+    expect(quoteProjectDir(value)).toBe(value);
   });
 
   test.each([
+    ['-x/my-app', './-x/my-app'],
+    ['-x/my app', "'./-x/my app'"],
+    ['=ls/my-app', "'=ls/my-app'"],
+    ['+1/my-app', "'+1/my-app'"],
+    ['~/my-app', "'~/my-app'"],
     ['../my dir/my-app', "'../my dir/my-app'"],
     ['a$(id)/my-app', "'a$(id)/my-app'"],
     ['a;rm -rf x/my-app', "'a;rm -rf x/my-app'"],
     ["it's/my-app", "'it'\\''s/my-app'"],
   ])('quotes %s', (value, expected) => {
-    expect(quoteForShell(value)).toBe(expected);
+    expect(quoteProjectDir(value)).toBe(expected);
   });
 });
