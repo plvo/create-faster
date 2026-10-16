@@ -448,10 +448,10 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: `BETTER_AUTH_SECRET= # generate with: ${GENERATE_SECRET}`,
+          value: 'BETTER_AUTH_SECRET=',
           monoScope: [{ pkg: 'auth' }, 'app'],
           secret: true,
-          generate: GENERATE_SECRET,
+          generateCommand: GENERATE_SECRET,
         },
         {
           value: 'BETTER_AUTH_URL={{appUrl}}',

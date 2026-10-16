@@ -2,9 +2,12 @@ import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
+import type { FirstRunCommand, FirstRunStep, MetaAddon, MetaBlueprint } from '@/types/meta';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 
 const GENERATE_SECRET = 'openssl rand -base64 32';
+const SECRET_LINE = `BETTER_AUTH_SECRET= # generate with: ${GENERATE_SECRET}`;
+const ENV_STEP = 'Set up environment variables';
 
 interface Generated {
   projectDir: string;
@@ -12,23 +15,88 @@ interface Generated {
   stdout: string;
 }
 
-const blueprintsWithBetterAuth = Object.entries(META.blueprints).flatMap(([name, blueprint]) => {
-  const app = blueprint.context.apps.find((candidate) => candidate.libraries.includes('better-auth'));
-  const ownFirstRun = 'firstRun' in blueprint && blueprint.firstRun !== undefined;
-  return app ? [{ name, appName: app.appName, nextStep: ownFirstRun ? 'run local-setup' : 'docker compose up' }] : [];
-});
+interface Step {
+  description: string;
+  commands: string[];
+}
 
-function expectInOrder(text: string, parts: string[]): void {
+function resolveCommand(command: FirstRunCommand): string {
+  return 'script' in command ? `bun run ${command.script}` : command.command;
+}
+
+function firstCommandOf(steps: FirstRunStep[] | undefined): string | undefined {
+  const command = steps?.[0]?.commands[0];
+  return command ? resolveCommand(command) : undefined;
+}
+
+function firstCommandOfFirstRun(blueprint: MetaBlueprint): string | undefined {
+  if (blueprint.firstRun) return firstCommandOf(blueprint.firstRun);
+  const { database, orm } = blueprint.context.project ?? {};
+  const addons = [
+    database ? META.project.database.options[database as keyof typeof META.project.database.options] : undefined,
+    orm ? META.project.orm.options[orm as keyof typeof META.project.orm.options] : undefined,
+  ] as (MetaAddon | undefined)[];
+  return firstCommandOf(addons.flatMap((addon) => addon?.firstRun ?? []));
+}
+
+const blueprintsWithBetterAuth = (Object.entries(META.blueprints) as [string, MetaBlueprint][]).flatMap(
+  ([name, blueprint]) => {
+    const apps = blueprint.context.apps.filter((app) => app.libraries.includes('better-auth'));
+    return apps.length > 0
+      ? [{ name, appNames: apps.map((app) => app.appName), nextCommand: firstCommandOfFirstRun(blueprint) }]
+      : [];
+  },
+);
+
+function generateStep(envFiles: string[]): Step {
+  const [only] = envFiles;
+  return {
+    description:
+      envFiles.length === 1
+        ? `Generate BETTER_AUTH_SECRET and set it in ${only}`
+        : `Generate BETTER_AUTH_SECRET once and set the same value in ${envFiles.join(', ')}`,
+    commands: [GENERATE_SECRET],
+  };
+}
+
+function envCopyStep(envFiles: string[]): Step {
+  return { description: ENV_STEP, commands: envFiles.map((file) => `cp ${file}.example ${file}`) };
+}
+
+/** The lines the user reads: the README as written, the summary without its frame. */
+function printedLines(text: string): string[] {
+  return text.split('\n').map((line) => line.replace(/^[│\s]+|[│\s]+$/g, ''));
+}
+
+function expectLinesInOrder(lines: string[], expected: string[]): void {
   let from = 0;
-  for (const part of parts) {
-    const position = text.indexOf(part, from);
-    expect(position, `"${part}" after offset ${from}`).toBeGreaterThanOrEqual(0);
-    from = position + part.length;
+  for (const wanted of expected) {
+    const position = lines.findIndex((line, index) => index >= from && (line === wanted || line.startsWith(`${wanted} `)));
+    expect(position, `line "${wanted}" after line ${from}`).toBeGreaterThanOrEqual(0);
+    from = position + 1;
   }
+}
+
+/** The steps as the README prints them, then as the summary prints them (`# description:`), each followed by dev. */
+function expectStepsInOrder({ readme, stdout }: Generated, steps: Step[], nextCommands: string[] = []): void {
+  const lines = (describe: (description: string) => string) => [
+    ...steps.flatMap((step) => [describe(step.description), ...step.commands]),
+    ...nextCommands,
+    'bun run dev',
+  ];
+
+  expectLinesInOrder(printedLines(readme), lines((description) => `${description}:`));
+  expectLinesInOrder(printedLines(stdout), lines((description) => `# ${description}:`));
 }
 
 async function envFileOf(projectDir: string, appName: string): Promise<string> {
   return (await fileExists(join(projectDir, 'apps', appName, '.env.example'))) ? `apps/${appName}/.env` : '.env';
+}
+
+async function expectBlankSecret(projectDir: string, envFile: string): Promise<void> {
+  const example = await readTextFile(join(projectDir, `${envFile}.example`));
+  expect(example.split('\n')).toContain(SECRET_LINE);
+  expect(example).not.toMatch(/^BETTER_AUTH_SECRET=\S/m);
 }
 
 describe('BETTER_AUTH_SECRET first-run step', () => {
@@ -50,7 +118,7 @@ describe('BETTER_AUTH_SECRET first-run step', () => {
   }
 
   test('a single repo with Better Auth generates the secret after copying the env file and before dev', async () => {
-    const { projectDir, readme, stdout } = await generate('single-auth', [
+    const generated = await generate('single-auth', [
       '--app',
       'web:nextjs:better-auth',
       '--database',
@@ -58,19 +126,13 @@ describe('BETTER_AUTH_SECRET first-run step', () => {
       '--orm',
       'drizzle',
     ]);
-    const steps = ['cp .env.example .env', GENERATE_SECRET, 'bun run dev'];
 
-    expectInOrder(readme, steps);
-    expectInOrder(stdout, steps);
-    expect(readme).toContain('Generate BETTER_AUTH_SECRET and set it in .env');
-    expect(stdout).toContain('Generate BETTER_AUTH_SECRET and set it in .env');
-
-    const example = await readTextFile(join(projectDir, '.env.example'));
-    expect(example).toMatch(/^BETTER_AUTH_SECRET=\s*(#.*)?$/m);
+    expectStepsInOrder(generated, [envCopyStep(['.env']), generateStep(['.env'])]);
+    await expectBlankSecret(generated.projectDir, '.env');
   });
 
   test('a turborepo names the env file of the app that reads the secret', async () => {
-    const { readme, stdout } = await generate('turbo-auth', [
+    const generated = await generate('turbo-auth', [
       '--app',
       'web:nextjs:better-auth',
       '--app',
@@ -80,12 +142,26 @@ describe('BETTER_AUTH_SECRET first-run step', () => {
       '--orm',
       'drizzle',
     ]);
-    const steps = ['cp apps/web/.env.example apps/web/.env', GENERATE_SECRET, 'bun run dev'];
+    const envFiles = ['apps/web/.env'];
 
-    expectInOrder(readme, steps);
-    expectInOrder(stdout, steps);
-    expect(readme).toContain('Generate BETTER_AUTH_SECRET and set it in apps/web/.env');
-    expect(stdout).toContain('Generate BETTER_AUTH_SECRET and set it in apps/web/.env');
+    expectStepsInOrder(generated, [envCopyStep(envFiles), generateStep(envFiles)]);
+    await expectBlankSecret(generated.projectDir, 'apps/web/.env');
+  });
+
+  test('several apps with Better Auth share one generated value', async () => {
+    const generated = await generate('turbo-two-auth', [
+      '--app',
+      'web:nextjs:better-auth',
+      '--app',
+      'admin:nextjs:better-auth',
+      '--database',
+      'postgres',
+      '--orm',
+      'drizzle',
+    ]);
+    const envFiles = ['apps/web/.env', 'apps/admin/.env'];
+
+    expectStepsInOrder(generated, [envCopyStep(envFiles), generateStep(envFiles)]);
   });
 
   test('a project without Better Auth is not asked for a secret', async () => {
@@ -96,19 +172,19 @@ describe('BETTER_AUTH_SECRET first-run step', () => {
   });
 
   test('every blueprint with Better Auth is covered by the META scan', () => {
-    expect(blueprintsWithBetterAuth.map(({ name }) => name)).toContain('org-dashboard-nextjs');
-    expect(blueprintsWithBetterAuth.map(({ name }) => name)).toContain('dapp-rainbowkit-nextjs');
+    const names = blueprintsWithBetterAuth.map(({ name }) => name);
+
+    expect(names).toContain('org-dashboard-nextjs');
+    expect(names).toContain('dapp-rainbowkit-nextjs');
   });
 
-  for (const { name, appName, nextStep } of blueprintsWithBetterAuth) {
-    test(`${name} generates the secret before its own first-run steps`, async () => {
-      const { projectDir, readme, stdout } = await generate(`bp-${name}`, ['--blueprint', name]);
-      const envFile = await envFileOf(projectDir, appName);
-      const description = `Generate BETTER_AUTH_SECRET and set it in ${envFile}`;
-      const steps = [description, GENERATE_SECRET, nextStep, 'run dev'];
+  for (const { name, appNames, nextCommand } of blueprintsWithBetterAuth) {
+    test(`${name} generates the secret after the env copy and before its own first-run steps`, async () => {
+      const generated = await generate(`bp-${name}`, ['--blueprint', name]);
+      const envFiles = await Promise.all(appNames.map((appName) => envFileOf(generated.projectDir, appName)));
 
-      expectInOrder(readme, steps);
-      expectInOrder(stdout, steps);
+      expectStepsInOrder(generated, [envCopyStep(envFiles), generateStep(envFiles)], nextCommand ? [nextCommand] : []);
+      for (const envFile of envFiles) await expectBlankSecret(generated.projectDir, envFile);
     });
   }
 });

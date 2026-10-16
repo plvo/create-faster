@@ -26,10 +26,10 @@ interface CollectedEnv {
   file?: string;
   secret?: boolean;
   tasks?: string[];
-  generate?: string;
+  generateCommand?: string;
 }
 
-interface GeneratedEnv {
+interface EnvToGenerate {
   name: string;
   command: string;
   paths: string[];
@@ -61,6 +61,11 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
   return resolved;
 }
 
+function renderEnvLine(env: CollectedEnv, ctx: TemplateContext, appName?: string): string {
+  const line = resolveEnvValue(env.value, ctx, appName);
+  return env.generateCommand ? `${line} # generate with: ${env.generateCommand}` : line;
+}
+
 function extractEnvKey(value: string): string {
   const [key = ''] = value.split('=');
   return key.trim();
@@ -85,7 +90,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         file: env.file,
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
         tasks: env.tasks,
-        generate: env.generate,
+        generateCommand: env.generateCommand,
         ...origin,
       });
     }
@@ -144,6 +149,15 @@ function resolveScopeToPath(scope: EnvScope, ctx: TemplateContext, appName?: str
   return null;
 }
 
+function toEnvPath(examplePath: string): string {
+  return examplePath.replace(/\.example$/, '');
+}
+
+/** The variable is written to the `.env` of the app that runs it: the file the runtime loads, not a package or dedicated file. */
+function isReadFromAppEnvFile(env: CollectedEnv, ctx: TemplateContext): boolean {
+  return !env.file && (ctx.repo === 'single' || env.scope === 'app');
+}
+
 function addToGroup(grouped: Map<string, string[]>, path: string, value: string): void {
   if (!grouped.has(path)) grouped.set(path, []);
   grouped.get(path)?.push(value);
@@ -167,13 +181,13 @@ function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map
         if (!appAcceptsEnv(env, app)) continue;
         const path = resolveScopeToPath('app', ctx, app.appName, env.file);
         if (!path) continue;
-        addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
+        addToGroup(grouped, path, renderEnvLine(env, ctx, app.appName));
       }
     } else {
       if (!isReceivedByProject(env, ctx)) continue;
       const path = resolveScopeToPath(env.scope, ctx, undefined, env.file);
       if (!path) continue;
-      addToGroup(grouped, path, resolveEnvValue(env.value, ctx));
+      addToGroup(grouped, path, renderEnvLine(env, ctx));
     }
   }
 
@@ -216,9 +230,7 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
   if (!app) return [];
 
   const names = collectAllEnvs(ctx)
-    .filter(
-      (env) => env.secret && !env.file && (ctx.repo === 'single' || env.scope === 'app') && appAcceptsEnv(env, app),
-    )
+    .filter((env) => env.secret && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
@@ -242,20 +254,23 @@ export function collectTaskEnv(ctx: TemplateContext, task: string): string[] {
   return [...new Set(names)];
 }
 
-/** The variables to fill with a generated value, with the command and the `.env` of each app that reads them. */
-export function collectGeneratedEnvs(ctx: TemplateContext): GeneratedEnv[] {
-  const generated = collectAllEnvs(ctx).filter(
-    (env) => env.generate && !env.file && (ctx.repo === 'single' || env.scope === 'app'),
-  );
-  const byName = new Map<string, GeneratedEnv>();
+function hasGenerateCommand(env: CollectedEnv): env is CollectedEnv & { generateCommand: string } {
+  return env.generateCommand !== undefined;
+}
 
-  for (const env of generated) {
+/** The variables the user fills with a generated value, with the command and the `.env` of each app that reads them. */
+export function collectEnvsToGenerate(ctx: TemplateContext): EnvToGenerate[] {
+  const byName = new Map<string, EnvToGenerate>();
+
+  for (const env of collectAllEnvs(ctx).filter(hasGenerateCommand)) {
+    if (!isReadFromAppEnvFile(env, ctx)) continue;
     const name = extractEnvKey(env.value);
-    const entry = byName.get(name) ?? { name, command: env.generate!, paths: [] };
-    const examples = [...groupEnvsByDestination([env], ctx).keys()];
-    for (const example of examples) {
-      const path = example.replace(/\.example$/, '');
-      if (!entry.paths.includes(path)) entry.paths.push(path);
+    const entry = byName.get(name) ?? { name, command: env.generateCommand, paths: [] };
+
+    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate))) {
+      const examplePath = resolveScopeToPath(env.scope, ctx, app.appName);
+      const path = examplePath ? toEnvPath(examplePath) : undefined;
+      if (path && !entry.paths.includes(path)) entry.paths.push(path);
     }
     byName.set(name, entry);
   }
@@ -267,7 +282,7 @@ export function collectEnvGroups(ctx: TemplateContext): EnvGroup[] {
   const files = collectEnvFiles(ctx);
 
   return files.map((file) => ({
-    path: file.destination.replace(/\.example$/, ''),
+    path: toEnvPath(file.destination),
     vars: file.content
       .split('\n')
       .filter((line) => line.trim().length > 0)
