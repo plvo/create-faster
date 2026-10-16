@@ -17,7 +17,7 @@ import {
   spreadExtraKeys,
   usesPortPlaceholder,
 } from '@/lib/utils';
-import { resolveConditionals } from '@/lib/when';
+import { isWhenItem, resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { MetaAddon, PackageJsonConfig, PackageManagerPackageJson, ResolvedPackageJsonConfig } from '@/types/meta';
 import type { Conditional } from '@/types/when';
@@ -46,6 +46,17 @@ function mergeResolved(ctx: TemplateContext, ...configs: (PackageJsonConfig | un
   return mergePackageJsonConfigs(...configs.map((c) => (c ? resolveConditionals(c, ctx) : undefined)));
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && !isWhenItem(value);
+}
+
+function mergeDeep(base: unknown, extra: unknown): unknown {
+  if (!isPlainObject(base) || !isPlainObject(extra)) return extra;
+  const merged: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(extra)) merged[key] = mergeDeep(base[key], value);
+  return merged;
+}
+
 export function mergePackageJsonConfigs<Config extends PackageJsonConfig>(...configs: (Config | undefined)[]): Config {
   const result: PackageJsonConfig = {};
 
@@ -59,7 +70,7 @@ export function mergePackageJsonConfigs<Config extends PackageJsonConfig>(...con
           ...(value as Record<string, Conditional<string>>),
         };
       } else {
-        result[key] = value;
+        result[key] = mergeDeep(result[key], value);
       }
     }
   }
@@ -122,7 +133,14 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
         merged = mergeResolved(ctx, merged, stackOverride);
       }
     } else {
-      merged = mergeResolved(ctx, merged, library.packageJson, library.appPackageJson, stackOverride);
+      merged = mergeResolved(
+        ctx,
+        merged,
+        library.packageJson,
+        library.appPackageJson,
+        stackOverride,
+        isTurborepo ? undefined : library.rootPackageJson,
+      );
     }
   }
 
@@ -194,6 +212,9 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
         packageManagerPackageJson(blueprint.packageManagerPackageJson, ctx),
       );
     }
+    if (!isTurborepo && blueprint?.rootPackageJson) {
+      merged = mergeResolved(ctx, merged, blueprint.rootPackageJson);
+    }
   }
 
   const runtimeAddon = findRuntimeAddon(ctx);
@@ -229,8 +250,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
     devDependencies: sortObjectKeys(merged.devDependencies ?? {}),
   };
 
-  spreadExtraKeys(pkg, merged);
-  if (!isTurborepo) spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
+  spreadExtraKeys(pkg, isTurborepo ? merged : mergeResolved(ctx, merged, installScriptsPackageJson(ctx)));
 
   return { packageJson: pkg, listensOnPort };
 }
@@ -319,6 +339,12 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
     }
   }
 
+  for (const app of ctx.apps) {
+    for (const { library } of getAppLibraries(app)) {
+      if (library.rootPackageJson) rootConfigs.push(library.rootPackageJson);
+    }
+  }
+
   let hasAppLintScript = false;
   if (ctx.project.linter) {
     const parts = resolveCompositeAddons('linter', ctx.project.linter);
@@ -333,7 +359,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
     if (blueprint?.rootPackageJson) rootConfigs.push(blueprint.rootPackageJson);
   }
 
-  const merged = mergeResolved(ctx, ...rootConfigs);
+  const merged = mergeResolved(ctx, ...rootConfigs, installScriptsPackageJson(ctx));
   Object.assign(dependencies, merged.dependencies ?? {});
   devDependencies = { ...devDependencies, ...(merged.devDependencies ?? {}) };
   Object.assign(scripts, merged.scripts ?? {});
@@ -357,7 +383,6 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   };
 
   spreadExtraKeys(pkg, merged);
-  spreadExtraKeys(pkg, installScriptsPackageJson(ctx));
 
   return pkg;
 }

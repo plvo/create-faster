@@ -5,7 +5,7 @@ import type { MatchValue, Resolved, WHEN_TAG, WhenItem, WhenMatch } from '@/type
 
 const TAG: typeof WHEN_TAG = Symbol('when') as typeof WHEN_TAG;
 
-function isWhenItem(v: unknown): v is WhenItem {
+export function isWhenItem(v: unknown): v is WhenItem {
   return !!v && typeof v === 'object' && TAG in v;
 }
 

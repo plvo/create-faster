@@ -5,6 +5,8 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 
 const NODE_TYPES_VERSION = '^22';
 
+const NITRO_VERSION = '^3.0.260903-beta';
+
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
 const WORKERS_TYPES_IN_PACKAGE = $when({ repo: 'turborepo', deployment: 'cloudflare' }, '^5.20261012.1');
 
@@ -224,7 +226,7 @@ export const META: Meta = {
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
-          nitro: $when(RUNS_NODE_SERVER, '^3.0.260903-beta'),
+          nitro: $when(RUNS_NODE_SERVER, NITRO_VERSION),
           tailwindcss: '^4.3.3',
           vite: '^8.3.4',
         },
@@ -506,6 +508,18 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           evlog: '^2.28.0',
+        },
+      },
+      // evlog peers `nitro@^3.0.260311-beta`. npm matches a prerelease only against a range naming a prerelease of the
+      // same major.minor.patch, so it rejects every later nitro beta with ERESOLVE (bun and pnpm do not enforce it).
+      // The only nitro inside the peer, 3.0.260311-beta, has published advisories (GHSA-9phm-9p8f-hw5m,
+      // GHSA-5w89-w975-hf9q), so npm is told to resolve evlog's peer to the nitro the app installs.
+      // `npm ls` reports that nitro as `invalid` in a turborepo; the install, `npm ci` and the build are unaffected.
+      rootPackageJson: {
+        overrides: {
+          evlog: {
+            nitro: $when({ ...RUNS_NODE_SERVER, pm: 'npm', stack: 'tanstack-start' }, NITRO_VERSION),
+          },
         },
       },
     },

@@ -1,7 +1,7 @@
 import { META } from '@/__meta__';
 import { getTypeScriptRunner, resolveCommandPackageManager } from '@/lib/package-manager';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { AddonRequire, AppScriptTransform, MetaAddon, ProjectCategoryName } from '@/types/meta';
+import type { AddonRequire, AppScriptTransform, MetaAddon, MetaLibrary, ProjectCategoryName } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
@@ -11,7 +11,7 @@ export function isLibraryCompatible(library: MetaAddon, stackName: StackName): b
 }
 
 /** The libraries of an app that its stack supports, in the order they were selected. */
-export function getAppLibraries(app: AppContext): { name: string; library: MetaAddon }[] {
+export function getAppLibraries(app: AppContext): { name: string; library: MetaLibrary }[] {
   return app.libraries.flatMap((name) => {
     const library = META.libraries[name];
     return library && isLibraryCompatible(library, app.stackName) ? [{ name, library }] : [];
