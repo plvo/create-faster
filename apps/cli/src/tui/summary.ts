@@ -170,9 +170,19 @@ function buildStepsNote(
 
   steps.push(`cd ${quoteProjectDir(getProjectDir(ctx))}`);
   steps.push('');
+  const gitInitFailed = ctx.git && !hasGitRepository;
+  if (gitInitFailed) {
+    steps.push('# git init failed, run it manually before installing:');
+    steps.push('git init');
+    steps.push('');
+  }
   if (ctx.skipInstall || !ctx.pm) {
     steps.push('# Install dependencies:');
     steps.push(`${ctx.pm ?? 'npm'} install`);
+    steps.push('');
+  } else if (gitInitFailed) {
+    steps.push('# Install again so install scripts find the repository:');
+    steps.push(`${ctx.pm} install`);
     steps.push('');
   }
   for (const { description, command } of pendingPostGenerate) {
@@ -196,10 +206,6 @@ function buildStepsNote(
     steps.push('# Git:');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
-  } else if (ctx.git) {
-    steps.push('');
-    steps.push('# git init failed, run it manually:');
-    steps.push('git init');
   }
 
   return steps;

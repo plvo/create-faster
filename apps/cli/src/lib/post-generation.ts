@@ -68,7 +68,11 @@ async function initializeGit(projectPath: string): Promise<GitFailure | undefine
     s.stop('Git repository initialized successfully!');
     return undefined;
   }
-  s.stop(color.yellow(`⚠ Warning: Failed to initialize git: ${result.output}\nYou can manually run "git init" later.`));
+  s.stop(
+    color.yellow(
+      `⚠ Warning: Failed to initialize git: ${result.output}\nRun "git init" in the project, then install the dependencies (again if already installed) so install scripts find the repository.`,
+    ),
+  );
   return { output: result.output };
 }
 

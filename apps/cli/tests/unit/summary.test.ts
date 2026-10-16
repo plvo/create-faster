@@ -121,6 +121,29 @@ describe('summary note', () => {
     expect(output).toContain('# git init failed');
   });
 
+  function manualGitInitIndex(output: string): number {
+    const index = output.search(/│\s+git init\s+│/);
+    expect(index).toBeGreaterThan(-1);
+    return index;
+  }
+
+  test('puts the manual git init before the install when the install is still to run', () => {
+    displaySummaryNote({ ...ctx, skipInstall: true }, { output: 'fatal: git failed' }, []);
+    const output = written.join('');
+
+    expect(output.match(/bun install/g)).toHaveLength(1);
+    expect(output.indexOf('bun install')).toBeGreaterThan(manualGitInitIndex(output));
+  });
+
+  test('lists the install again after the manual git init when the install already ran', () => {
+    displaySummaryNote(ctx, { output: 'fatal: git failed' }, []);
+    const output = written.join('');
+
+    expect(output).toContain('so install scripts find the repository');
+    expect(output.indexOf('bun install')).toBeGreaterThan(manualGitInitIndex(output));
+    expect(output.indexOf('# Development:')).toBeGreaterThan(output.indexOf('bun install'));
+  });
+
   test('lists a step that did not run among the next steps, after the install', () => {
     displaySummaryNote({ ...ctx, skipInstall: true }, undefined, [
       { description: 'Format the generated files', command: 'bun run format' },

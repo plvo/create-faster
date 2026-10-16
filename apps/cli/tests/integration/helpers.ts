@@ -13,7 +13,7 @@ export function pnpmTest(title: string, run: () => Promise<void>): void {
   test.skipIf(!PNPM_AVAILABLE)(PNPM_AVAILABLE ? title : `${title} (skipped: pnpm is not installed)`, run);
 }
 
-interface CliResult {
+export interface CliResult {
   exitCode: number;
   stdout: string;
   stderr: string;
