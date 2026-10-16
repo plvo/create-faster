@@ -65,6 +65,9 @@ const STUBS: Record<string, string> = {
 let slots = [];
 let next = 0;
 export const resetState = () => { slots = []; next = 0; };
+// A client render reads the snapshot of the client; globalThis.__serverRender renders the page as the server does.
+export const useSyncExternalStore = (_subscribe, getSnapshot, getServerSnapshot) =>
+  globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
 export const useState = (initial) => {
   const store = slots;
   const index = next++;
@@ -97,14 +100,16 @@ export const SidebarTrigger = () => createElement('button', { 'aria-label': 'Tog
   'separator.mjs': `import { createElement } from './react.mjs';
 export const Separator = () => createElement('hr', {});`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
-  'next-navigation.mjs': `export const usePathname = () => globalThis.__pathname;
+  'next-navigation.mjs': `export const notFound = () => { throw { kind: 'notFound' }; };
+export const usePathname = () => globalThis.__pathname;
 export const useParams = () => ({ id: globalThis.__routeId });
 export const useRouter = () => ({ push() {} });`,
-  'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
+  'tanstack-router.mjs': `export const notFound = () => ({ kind: 'notFound' });
+export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
 export const useLocation = ({ select }) => select({ pathname: globalThis.__pathname });
 export const useNavigate = () => () => {};`,
   'query.mjs': `const procedures = (path) => new Proxy(function () {}, {
-  get: (_, key) => (key === 'then' ? undefined : key === 'queryOptions' ? (input) => ({ procedure: path.join('.'), input }) : procedures([...path, key])),
+  get: (_, key) => (key === 'then' ? undefined : key === 'queryOptions' || key === 'queryKey' ? (input) => ({ procedure: path.join('.'), input }) : procedures([...path, key])),
   apply: (_, __, args) => args[0] ?? {},
 });
 export const useTRPC = () => procedures([]);
@@ -113,10 +118,21 @@ const read = (options) => {
   const status = globalThis.__queryStatus ?? 'success';
   return { data: status === 'success' ? globalThis.__queryData?.[options.procedure] : undefined, isPending: status === 'pending' };
 };
-export const useQuery = read;
+// useQuery creates a query (an observer), useSuspenseQuery too; getQueryData only looks in the cache.
+export const useQuery = (options) => {
+  globalThis.__observed.push(options);
+  return read(options);
+};
 export const useSuspenseQuery = read;
 export const useMutation = () => ({ mutate() {}, isPending: false });
-export const useQueryClient = () => ({ invalidateQueries() {} });`,
+export const useQueryClient = () => ({
+  invalidateQueries() {},
+  getQueryCache: () => ({ subscribe: () => () => {} }),
+  getQueryData: (key) => {
+    globalThis.__queries.push(key);
+    return (globalThis.__queryStatus ?? 'success') === 'success' ? globalThis.__queryData?.[key.procedure] : undefined;
+  },
+});`,
   'form.mjs': `export const useForm = () => ({
   state: { values: {} },
   Field: ({ children }) => children[0]({ state: { value: '' }, handleChange() {} }),
@@ -167,8 +183,10 @@ const globals = globalThis as {
   __pathname?: string;
   __routeId?: string;
   __queries?: RecordedQuery[];
+  __observed?: RecordedQuery[];
   __queryData?: QueryData;
   __queryStatus?: QueryStatus;
+  __serverRender?: boolean;
 };
 
 async function filesUnder(root: string): Promise<string[]> {
@@ -187,7 +205,7 @@ async function nextjsPageUrls(web: string): Promise<string[]> {
 }
 
 // A TanStack Start file route is a page when it is not a layout (a sibling directory holds its children) and does
-// not answer 404 itself. `_auth` routes are not part of the dashboard.
+// not answer 404 for every visit. `_auth` routes are not part of the dashboard.
 async function startPageUrls(web: string): Promise<string[]> {
   const root = join(web, 'src/routes/_dashboard');
   const files = (await filesUnder(root)).map((file) => file.slice(root.length + 1));
@@ -197,7 +215,7 @@ async function startPageUrls(web: string): Promise<string[]> {
     const route = file.replace(/\.tsx$/, '');
     if (directories.has(route)) continue;
     const source = await readTextFile(join(root, file));
-    if (source.includes('throw notFound()')) continue;
+    if (/beforeLoad:\s*\(\)\s*=>\s*\{\s*throw notFound\(\)/.test(source)) continue;
     urls.push(`/${route.replace(/\/?index$/, '')}`.replace(/\$(\w+)/g, ':$1'));
   }
   return urls;
@@ -210,6 +228,7 @@ interface Rendered {
   tree: RenderedChild[];
   crumbs: RenderedElement[];
   queries: RecordedQuery[];
+  observed: RecordedQuery[];
 }
 
 const classesOf = (element: RenderedElement): string[] => String(element.props.className ?? '').split(/\s+/);
@@ -237,17 +256,28 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
   ): Promise<Rendered> => {
     globals.__pathname = pathname;
     globals.__queries = [];
+    globals.__observed = [];
     globals.__queryData = queryData;
     globals.__queryStatus = status;
     const tree = await renderElementTree(await header({}));
     const crumbs = elementsOf(tree).filter((element) => element.tag === 'li' && element.props['aria-hidden'] !== 'true');
-    return { tree, crumbs, queries: globals.__queries };
+    return { tree, crumbs, queries: globals.__queries, observed: globals.__observed };
   };
 
   const links = (rendered: Rendered): RenderedElement[] =>
     elementsOf(rendered.tree).filter((element) => element.tag === 'a');
 
   const lastCrumbText = (rendered: Rendered): string => textOf(must(rendered.crumbs.at(-1), 'a crumb'));
+
+  // A record the label cannot name: Start's query ends in error or has no data, a Next.js page puts null in the cache
+  // for a record that is gone (an entry that is not in the cache yet is still loading).
+  const unreadable = (procedure: string): { data: QueryData; status: QueryStatus }[] =>
+    blueprint.router === 'start'
+      ? [
+          { data: {}, status: 'error' },
+          { data: {}, status: 'success' },
+        ]
+      : [{ data: { [procedure]: null }, status: 'success' }];
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -310,6 +340,50 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     await renderElementTree(await page({ id: SAMPLE_ID }));
     expect(rendered.queries).toEqual([{ procedure: blueprint.userProcedure, input: { id: SAMPLE_ID } }]);
     expect(globals.__queries).toEqual(rendered.queries);
+  });
+
+  // The header sits in the layout, above the page's hydration boundary. A query it creates keeps the page from
+  // hydrating its own copy of the record (TanStack Query hydrates an existing entry in an effect), and the browser
+  // fetches the record again: on the server render, and on a soft navigation from a list.
+  test.if(blueprint.router === 'next')('the record crumb only reads the cache, on the server and in the browser', async () => {
+    const trails = [`/admin/users/${SAMPLE_ID}`, ...(blueprint.contact ? [`/contacts/${SAMPLE_ID}`] : [])];
+    for (const serverRender of [true, false]) {
+      globals.__serverRender = serverRender;
+      try {
+        for (const trail of trails) expect((await renderHeader(trail)).observed, `${trail} ${serverRender}`).toEqual([]);
+      } finally {
+        globals.__serverRender = false;
+      }
+    }
+  });
+
+  test.if(blueprint.router === 'next')('the record crumb fills in once the page has put the record in the cache', async () => {
+    const name = 'Ada Lovelace';
+    const rendered = await renderHeader(`/admin/users/${SAMPLE_ID}`, { [blueprint.userProcedure]: { id: SAMPLE_ID, name } });
+    expect(lastCrumbText(rendered)).toBe(name);
+    expect(rendered.queries).toEqual([{ procedure: blueprint.userProcedure, input: { id: SAMPLE_ID } }]);
+  });
+
+  // A refetch can find the record gone while its page is open: the page answers the framework's not found, and no
+  // inline state is left to drift from the one an unknown id gets.
+  test('a detail page whose record is gone answers not found', async () => {
+    const pages = [
+      { page: blueprint.user, procedure: blueprint.userProcedure },
+      ...(blueprint.contact ? [{ page: blueprint.contact.page, procedure: blueprint.contact.procedure }] : []),
+    ];
+    for (const { page, procedure } of pages) {
+      const component = await loadComponent(page);
+      globals.__routeId = SAMPLE_ID;
+      globals.__queries = [];
+      globals.__queryData = { [procedure]: null };
+      let thrown: unknown;
+      try {
+        await renderElementTree(await component({ id: SAMPLE_ID }));
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown, page.file).toEqual({ kind: 'notFound' });
+    }
   });
 
   test('a page without a detail record reads nothing', async () => {
@@ -401,8 +475,8 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     const loading = await renderHeader(`/admin/users/${SAMPLE_ID}`, {}, 'pending');
     expect(elementsOf(loading.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(true);
     expect(lastCrumbText(loading)).toBe('');
-    for (const status of ['error', 'success'] as const) {
-      const settled = await renderHeader(`/admin/users/${SAMPLE_ID}`, {}, status);
+    for (const { data, status } of unreadable(blueprint.userProcedure)) {
+      const settled = await renderHeader(`/admin/users/${SAMPLE_ID}`, data, status);
       expect(elementsOf(settled.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(false);
       expect(lastCrumbText(settled)).toBe('User');
     }
@@ -435,8 +509,8 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
       const loading = await renderHeader(`/contacts/${SAMPLE_ID}`, {}, 'pending');
       expect(elementsOf(loading.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(true);
       expect(lastCrumbText(loading)).toBe('');
-      for (const status of ['error', 'success'] as const) {
-        const settled = await renderHeader(`/contacts/${SAMPLE_ID}`, {}, status);
+      for (const { data, status } of unreadable(procedure)) {
+        const settled = await renderHeader(`/contacts/${SAMPLE_ID}`, data, status);
         expect(elementsOf(settled.tree).some((element) => element.props['data-component'] === 'Skeleton')).toBe(false);
         expect(lastCrumbText(settled)).toBe('Contact');
       }

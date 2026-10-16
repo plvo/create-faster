@@ -84,15 +84,18 @@ export const Trash2 = icon('Trash2');`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
   'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
 export const useParams = () => ({ id: 'u1' });
-export const redirect = (path) => { throw new Error('redirected to ' + path); };`,
+export const redirect = (path) => { throw new Error('redirected to ' + path); };
+export const notFound = () => { throw new Error('not found'); };`,
   'next-headers.mjs': 'export const headers = async () => ({});',
   'trpc-server.mjs': `export const HydrateClient = ({ children }) => children;
 export const prefetch = () => {};
+export const getQueryClient = () => ({ fetchQuery: async () => ({}) });
 export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ queryOptions: (input) => input ?? {} }) }) });`,
   'skeleton.mjs': 'export const Skeleton = () => null;',
   'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
-export const useNavigate = () => () => {};`,
+export const useNavigate = () => () => {};
+export const notFound = () => ({ kind: 'notFound' });`,
   'query.mjs': `// trpc.a.b.queryOptions(x) and mutationOptions(x) hand their argument back, as the real helpers do.
 const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
 export const useTRPC = () => deep();

@@ -6,9 +6,10 @@ import { useForm } from '@tanstack/react-form';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowLeft, KeyRound } from 'lucide-react';
 {{#if (eq stackName "tanstack-start")}}
-import { Link } from '@tanstack/react-router';
+import { Link, notFound } from '@tanstack/react-router';
 {{else}}
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 {{/if}}
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -52,9 +53,11 @@ export function UserDetail({ id }: { id: string }) {
     }),
   );
 
-  if (!user) {
-    return <p className='text-muted-foreground'>User not found.</p>;
-  }
+{{#if (eq stackName "tanstack-start")}}
+  if (!user) throw notFound();
+{{else}}
+  if (!user) notFound();
+{{/if}}
 
   return (
     <div className='max-w-2xl space-y-6'>

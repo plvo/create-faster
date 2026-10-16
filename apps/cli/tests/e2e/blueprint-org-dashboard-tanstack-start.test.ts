@@ -208,6 +208,10 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     expect(detailHtml).toContain(contact.lastName);
     expect(detailHtml).toContain('href="/contacts"');
     expect(detailHtml).toContain('>Edit<');
+
+    const missing = await fetch(new URL('/contacts/no-such-contact', server.url), { headers: { cookie } });
+    expect(missing.status).toBe(404);
+    expect(await missing.text()).toContain('Page not found');
   });
 
   test('a read-only role opens the contacts without the buttons that write', async () => {
@@ -240,6 +244,9 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     const bare = await fetch(new URL('/admin', server.url), { headers: { cookie } });
     expect(bare.status).toBe(404);
     expect(await bare.text()).toContain('Page not found');
+    const missingUser = await fetch(new URL('/admin/users/no-such-user', server.url), { headers: { cookie } });
+    expect(missingUser.status).toBe(404);
+    expect(await missingUser.text()).toContain('Page not found');
     const roles = await fetch(new URL('/admin/roles', server.url), { headers: { cookie } });
     expect(roles.status).toBe(200);
     expect(await roles.text()).toContain('packages/auth/src/permissions.ts');

@@ -34,7 +34,7 @@ import { getDb } from '@/lib/server';
 {{#if (hasLibrary "tanstack-query")}}
 // IMPORTANT: Create a stable getter for the query client that
 //            will return the same client during the same request.
-const getQueryClient = cache(makeQueryClient);
+export const getQueryClient = cache(makeQueryClient);
 
 {{/if}}
 {{#if (and (has "database" "d1") project.orm)}}

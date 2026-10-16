@@ -14,7 +14,7 @@ const redirectTo = (path: string): RegExp => new RegExp(`^redirect:${path}$`);
 // what they are called with, in `calls`, so a test asserts on behaviour and not on how the source is written.
 const STUBS: Record<string, string> = {
   'recorder.mjs': `export const calls = [];
-export const state = { denied: false, session: null };`,
+export const state = { denied: false, session: null, data: [] };`,
   'react.mjs': `${REACT_ELEMENT_STUB}
 export const Suspense = ({ children }) => children;
 export const cache = (fn) => fn;
@@ -31,6 +31,7 @@ const guard = (name) => async () => {
 };
 export const requireSession = guard('requireSession');
 export const requireAdmin = guard('requireAdmin');
+export const requirePermission = guard('requirePermission');
 export const getSession = async () => {
   calls.push('getSession');
   return state.session;
@@ -38,7 +39,7 @@ export const getSession = async () => {
   'server.mjs': `import { state } from './recorder.mjs';
 export const getAuth = async () => ({ api: { getSession: async () => state.session } });
 export const auth = { api: { getSession: async () => state.session } };`,
-  'trpc.mjs': `import { calls } from './recorder.mjs';
+  'trpc.mjs': `import { calls, state } from './recorder.mjs';
 // trpc.users.get.queryOptions(input) is { path: 'users.get', input }: two calls build the same key only when they name the same procedure and input.
 const make = (path) => new Proxy({}, {
   get: (_, key) => {
@@ -50,9 +51,11 @@ const make = (path) => new Proxy({}, {
 export const trpc = make([]);
 export const useTRPC = () => trpc;
 export const HydrateClient = ({ children }) => children;
-export const prefetch = (options) => { calls.push(['prefetch', options]); };`,
-  'react-query.mjs': `import { calls } from './recorder.mjs';
-export const useSuspenseQuery = (options) => { calls.push(['read', options]); return { data: [] }; };
+export const prefetch = (options) => { calls.push(['prefetch', options]); };
+// A query resolves to state.data; null stands for an id that matches no row.
+export const getQueryClient = () => ({ fetchQuery: async (options) => { calls.push(['fetch', options]); return state.data; } });`,
+  'react-query.mjs': `import { calls, state } from './recorder.mjs';
+export const useSuspenseQuery = (options) => { calls.push(['read', options]); return { data: state.data }; };
 export const useMutation = () => ({ mutate() {}, isPending: false });
 export const useQueryClient = () => ({ invalidateQueries() {} });`,
   'form.mjs': 'export const useAppForm = () => ({ handleSubmit() {} });',
@@ -81,7 +84,7 @@ const SHARED_IMPORTS: Record<string, string> = {
 
 interface Recorder {
   calls: unknown[];
-  state: { denied: boolean; session: unknown };
+  state: { denied: boolean; session: unknown; data: unknown };
 }
 
 type Component = (props?: unknown) => unknown;
@@ -108,6 +111,7 @@ const PROTECTED_PAGES = [
     props: {},
     guard: 'requireAdmin',
     key: { path: 'users.list' },
+    loads: 'prefetch',
     reader: { file: 'src/components/admin/user-table.tsx', exportName: 'UserTable' },
     client: 'UsersClient',
   },
@@ -117,6 +121,7 @@ const PROTECTED_PAGES = [
     props: { params: Promise.resolve({ id: 'u1' }) },
     guard: 'requireAdmin',
     key: { path: 'users.get', input: { id: 'u1' } },
+    loads: 'fetch',
     reader: { file: `${APP}/admin/users/[id]/user.client.tsx`, exportName: 'UserClient' },
     client: 'UserClient',
   },
@@ -126,6 +131,7 @@ const PROTECTED_PAGES = [
     props: {},
     guard: 'requireSession',
     key: { path: 'documents.list' },
+    loads: 'prefetch',
     reader: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient' },
     client: 'DocumentsClient',
   },
@@ -194,13 +200,14 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     recorder.calls.length = 0;
     recorder.state.denied = false;
     recorder.state.session = null;
+    recorder.state.data = [];
   });
 
-  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, key, reader, client }) => {
-    test(`prefetches the key its client reads, after ${guard}`, async () => {
+  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, key, loads, reader, client }) => {
+    test(`loads the key its client reads, after ${guard}`, async () => {
       const route = await load(page);
       await route.default?.(props);
-      expect(recorder.calls).toEqual([guard, ['prefetch', key]]);
+      expect(recorder.calls).toEqual([guard, [loads, key]]);
 
       recorder.calls.length = 0;
       const readerModule = await load(reader.file);
@@ -227,7 +234,56 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
   test('the user page asks for the user named in the URL', async () => {
     const route = await load(`${APP}/admin/users/[id]/page.tsx`);
     await route.default?.({ params: Promise.resolve({ id: 'someone-else' }) });
-    expect(recorder.calls).toEqual(['requireAdmin', ['prefetch', { path: 'users.get', input: { id: 'someone-else' } }]]);
+    expect(recorder.calls).toEqual(['requireAdmin', ['fetch', { path: 'users.get', input: { id: 'someone-else' } }]]);
+  });
+
+  // An id that matches no row answers 404 from the server, before anything is hydrated: a rejected prefetch
+  // would be dehydrated as pending and reject in the browser, with the server logging an error.
+  describe.each([
+    {
+      title: 'the fullstack user page',
+      blueprint: FULLSTACK,
+      page: `${APP}/admin/users/[id]/page.tsx`,
+      guard: 'requireAdmin',
+      key: { path: 'users.get', input: { id: 'nobody' } },
+    },
+    {
+      title: 'the org dashboard user page',
+      blueprint: ORG_DASHBOARD,
+      page: `${APP}/admin/users/[id]/page.tsx`,
+      guard: 'requireAdmin',
+      key: { path: 'user.getById', input: { id: 'nobody' } },
+    },
+    {
+      title: 'the org dashboard contact page',
+      blueprint: ORG_DASHBOARD,
+      page: `${APP}/contacts/[id]/page.tsx`,
+      guard: 'requirePermission',
+      key: { path: 'contact.getById', input: { id: 'nobody' } },
+    },
+  ])('$title with an unknown id', ({ blueprint, page, guard, key }) => {
+    const props = { params: Promise.resolve({ id: 'nobody' }) };
+    const root = () => join(tempDir, blueprint, 'apps/web');
+
+    test('answers not found after loading the record once, and hydrates nothing', async () => {
+      recorder.state.data = null;
+      const route = await load(page, {}, root());
+      await expect(route.default?.(props)).rejects.toThrow('not-found');
+      expect(recorder.calls).toEqual([guard, ['fetch', key]]);
+    });
+
+    test('renders the record it loaded, inside the hydration boundary, when the id exists', async () => {
+      const route = await load(page, {}, root());
+      const rendered = (await route.default?.(props)) as Element;
+      expect(rendered.type).toBe(trpcStub.HydrateClient);
+      expect(recorder.calls).toEqual([guard, ['fetch', key]]);
+    });
+  });
+
+  test('the user client answers not found when the user is gone after a refetch', async () => {
+    recorder.state.data = null;
+    const reader = await load(`${APP}/admin/users/[id]/user.client.tsx`);
+    expect(() => reader.UserClient?.()).toThrow('not-found');
   });
 
   describe('every session lookup goes through the cached guards', () => {

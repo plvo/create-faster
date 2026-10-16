@@ -160,7 +160,7 @@ import { headers } from 'next/headers';
 import { type AppRouter, appRouter } from '@/trpc/routers/_app';
 import { createTRPCContext } from '@/trpc/init';
 
-const getQueryClient = cache(makeQueryClient);
+export const getQueryClient = cache(makeQueryClient);
 
 const getTRPCContext = cache(async () => createTRPCContext({ headers: await headers() }));
 
@@ -214,6 +214,20 @@ export const dynamic = 'force-dynamic';
 ```
 
 A page under a layout that already reads the request (`headers()`, `cookies()`, the session) is dynamic already, which is the case of the blueprints' dashboards.
+
+**A page for one record awaits it.** A prefetch cannot answer 404: a record that does not exist is dehydrated as pending and rejects in the browser. The page loads the record through the exported `getQueryClient`, turns `null` into `notFound()`, and hydrates the loaded data. The procedure returns `null` for an unknown id instead of throwing, since the server link logs a thrown error in development.
+
+```tsx title="src/app/users/[id]/page.tsx"
+import { notFound } from 'next/navigation';
+import { getQueryClient, HydrateClient, trpc } from '@/trpc/server';
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id }));
+  if (!user) notFound();
+  return <HydrateClient>{/* components reading the query with useSuspenseQuery */}</HydrateClient>;
+}
+```
 
 **Without TanStack Query** — provides a direct caller for server-side procedure calls:
 
