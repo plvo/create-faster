@@ -1,6 +1,7 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import ts from 'typescript';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 
 const STACKS = ['nextjs', 'tanstack-start'];
@@ -23,27 +24,31 @@ const REPOS = [
   { name: 'turborepo', extraApps: ['--app', 'api:hono'], initPath: 'packages/api/src/trpc.ts' },
 ];
 
-/** The local names an `import` statement brings in, with the statement text removed from the source. */
-function splitImports(source: string): { imported: string[]; body: string } {
-  const imported: string[] = [];
-  const body = source.replace(/^import\s+([^;]*?)\s+from\s+'[^']*';\n/gm, (_, clause: string) => {
-    const named = /\{([^}]*)\}/.exec(clause)?.[1] ?? '';
-    for (const specifier of named.split(',')) {
-      const local = specifier
-        .trim()
-        .replace(/^type\s+/, '')
-        .split(/\s+as\s+/)
-        .pop();
-      if (local) imported.push(local);
-    }
-    const defaultImport = clause.replace(/\{[^}]*\}/, '').replace(/,/, '').trim();
-    if (defaultImport) imported.push(defaultImport);
-    return '';
+const UNRESOLVED_NAME = [2304, 2552];
+const UNUSED_IMPORT = [6133, 6192];
+
+/**
+ * Compiles the file alone, without resolving its modules: a name the file uses and never imports is an
+ * unresolved name, and an import it never reads is an unused local. Everything else (missing packages, node
+ * globals) is out of scope here.
+ */
+function importProblems(file: string): string[] {
+  const program = ts.createProgram([file], {
+    noResolve: true,
+    noEmit: true,
+    noUnusedLocals: true,
+    skipLibCheck: true,
+    types: [],
+    target: ts.ScriptTarget.ES2022,
+    lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
   });
-  return { imported, body };
+  return ts
+    .getPreEmitDiagnostics(program, program.getSourceFile(file))
+    .filter((diagnostic) => [...UNRESOLVED_NAME, ...UNUSED_IMPORT].includes(diagnostic.code))
+    .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
 }
 
-describe('the tRPC init file imports only what it uses', () => {
+describe('the tRPC init file imports exactly what it uses', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -75,13 +80,9 @@ describe('the tRPC init file imports only what it uses', () => {
           );
           expect(result.exitCode).toBe(0);
 
-          const init = await readTextFile(join(tempDir, projectName, repo.initPath));
-          const { imported, body } = splitImports(init);
-
-          expect(imported).toContain('initTRPC');
-          for (const name of imported) {
-            expect({ name, used: new RegExp(`\\b${name}\\b`).test(body) }).toEqual({ name, used: true });
-          }
+          const initPath = join(tempDir, projectName, repo.initPath);
+          expect(await readTextFile(initPath)).toContain('initTRPC');
+          expect(importProblems(initPath)).toEqual([]);
         });
       }
     }
