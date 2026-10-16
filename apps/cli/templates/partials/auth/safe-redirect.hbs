@@ -1,13 +1,22 @@
 const ORIGIN_PROBE = 'http://internal.invalid';
 
-function isExternalLooking(path: string): boolean {
-  return !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\');
+function isRootRelativePath(value: string): boolean {
+  return value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\');
+}
+
+function parseOnProbeOrigin(value: string): URL | null {
+  try {
+    const url = new URL(value, ORIGIN_PROBE);
+    return url.origin === ORIGIN_PROBE ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 export function safeRedirectPath(value: string | null | undefined, fallback = '/'): string {
-  if (!value || isExternalLooking(value)) return fallback;
-  const url = new URL(value, ORIGIN_PROBE);
-  if (url.origin !== ORIGIN_PROBE) return fallback;
+  if (!value || !isRootRelativePath(value)) return fallback;
+  const url = parseOnProbeOrigin(value);
+  if (!url) return fallback;
   const path = `${url.pathname}${url.search}${url.hash}`;
-  return isExternalLooking(path) ? fallback : path;
+  return path.startsWith('//') ? fallback : path;
 }

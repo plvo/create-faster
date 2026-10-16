@@ -89,12 +89,24 @@ describe('post-login redirect target', () => {
         '/a/../\\evil.example',
         '/.//\\evil.example',
         '/.\t//evil.example',
-        '/\n/evil.example',
-        '/\r/evil.example',
       ]) {
         expect(safeRedirectPath(hostile), JSON.stringify(hostile)).toBe('/');
       }
       expect(safeRedirectPath('/.//evil.example', '/dashboard')).toBe('/dashboard');
+    });
+
+    test('safeRedirectPath refuses control characters that move the URL to another origin', async () => {
+      const safeRedirectPath = await loadHelper(blueprint);
+      for (const hostile of ['/\t/evil.example', '/\n/evil.example', '/\r/evil.example']) {
+        expect(safeRedirectPath(hostile), JSON.stringify(hostile)).toBe('/');
+      }
+    });
+
+    test('safeRedirectPath falls back instead of throwing on a value the URL parser rejects', async () => {
+      const safeRedirectPath = await loadHelper(blueprint);
+      for (const unparsable of ['/\t/', '/\n/', '/\r/', '/\t//', '/\t/?x=1', '/\t/#top']) {
+        expect(safeRedirectPath(unparsable, '/dashboard'), JSON.stringify(unparsable)).toBe('/dashboard');
+      }
     });
 
     test('safeRedirectPath keeps legitimate paths that need normalization', async () => {
