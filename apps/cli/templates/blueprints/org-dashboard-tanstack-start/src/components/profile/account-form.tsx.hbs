@@ -1,0 +1,57 @@
+{{{{raw}}}}
+import { useTransition } from 'react';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useTRPC } from '@/trpc/providers';
+import { useAppForm } from '@repo/ui/lib/form';
+
+const schema = z.object({
+  name: z.string().min(1, 'Display name required').max(64),
+});
+
+export function AccountForm() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
+  const { data: user } = useSuspenseQuery(trpc.user.me.queryOptions());
+  const [isPending, startTransition] = useTransition();
+
+  const form = useAppForm({
+    defaultValues: { name: user?.name ?? '' },
+    validators: { onChange: schema },
+    onSubmit: async ({ value }) => {
+      await new Promise<void>((resolve) => {
+        startTransition(async () => {
+          const result = await authClient.updateUser({ name: value.name });
+          if (result.error) {
+            toast.error(result.error.message ?? 'Update failed');
+            resolve();
+            return;
+          }
+          toast.success('Profile updated');
+          await Promise.all([queryClient.invalidateQueries(trpc.user.me.pathFilter()), router.invalidate()]);
+          resolve();
+        });
+      });
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.handleSubmit();
+      }}
+      className='flex max-w-md flex-col gap-3'
+    >
+      <form.AppField name='name'>{(f) => <f.InputField label='Display name' />}</form.AppField>
+      <form.AppForm>
+        <form.SubmitButton props={{ disabled: isPending }}>{isPending ? 'Saving...' : 'Save'}</form.SubmitButton>
+      </form.AppForm>
+    </form>
+  );
+}
+{{{{/raw}}}}

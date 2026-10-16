@@ -53,6 +53,70 @@ const RUN_LOCAL_SETUP: FirstRunStep[] = [
 
 const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
 
+const ORG_DASHBOARD_WEB_LIBRARIES = [
+  'shadcn',
+  'better-auth',
+  'trpc',
+  'tanstack-query',
+  'tanstack-devtools',
+  'tanstack-form',
+  'next-themes',
+];
+
+const ORG_DASHBOARD_PACKAGE_JSON: PackageJsonConfig = {
+    dependencies: {
+      'lucide-react': '^1.37.0',
+      'react-error-boundary': '^5.0.0',
+      sonner: '^2.0.7',
+      zod: '^4.5.4',
+    },
+  };
+
+const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
+    auth: {
+      exports: {
+        './types': './src/types.ts',
+        './password': './src/password.ts',
+        './permissions': './src/permissions.ts',
+      },
+    },
+    db: {
+      scripts: {
+        'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
+      },
+    },
+    ui: {
+      exports: {
+        './hooks/*': './src/hooks/*.ts',
+      },
+      dependencies: {
+        '@tanstack/react-form': '^1.33.5',
+        'react-dom': '^19.2.8',
+        vaul: '^1.1.2',
+      },
+      devDependencies: {
+        '@types/react-dom': '^19.2.5',
+      },
+    },
+  };
+
+const ORG_DASHBOARD_ROOT_PACKAGE_JSON: PackageJsonConfig = {
+    dependencies: {
+      '@repo/auth': '*',
+      '@repo/db': '*',
+    },
+    devDependencies: {
+      '@repo/config': '*',
+      '@faker-js/faker': '^10.4.0',
+      tsx: TSX_RUNNER,
+    },
+    scripts: {
+      'local-setup': '{{tsRunner}} scripts/local-setup.ts',
+      'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
+      start: 'turbo start',
+    },
+  };
+
 const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the generated files', script: 'format' }];
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
@@ -1332,15 +1396,7 @@ export const META: Meta = {
           {
             appName: 'web',
             stackName: 'nextjs',
-            libraries: [
-              'shadcn',
-              'better-auth',
-              'trpc',
-              'tanstack-query',
-              'tanstack-devtools',
-              'tanstack-form',
-              'next-themes',
-            ],
+            libraries: ORG_DASHBOARD_WEB_LIBRARIES,
           },
           {
             appName: 'batch',
@@ -1353,57 +1409,47 @@ export const META: Meta = {
           orm: 'drizzle',
         },
       },
-      packageJson: {
-        dependencies: {
-          'lucide-react': '^1.37.0',
-          'react-error-boundary': '^5.0.0',
-          sonner: '^2.0.7',
-          zod: '^4.5.4',
+      packageJson: ORG_DASHBOARD_PACKAGE_JSON,
+      pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
+      rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
+      envs: [SEED_PASSWORD],
+    },
+    'org-dashboard-tanstack-start': {
+      label: 'Org Dashboard (TanStack Start)',
+      hint: 'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD',
+      category: 'Business',
+      extends: 'org-dashboard-nextjs',
+      firstRun: RUN_LOCAL_SETUP,
+      agentArchitecture: [
+        'Organization dashboard: TanStack Start web app + Node.js batch app (Turborepo), Better Auth',
+        'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
+        'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Auth & permissions](docs/agents/auth.md)',
+        '- [Data layer](docs/agents/data-layer.md)',
+      ].join('\n'),
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'tanstack-start',
+            libraries: ORG_DASHBOARD_WEB_LIBRARIES,
+          },
+          {
+            appName: 'batch',
+            stackName: 'node',
+            libraries: [],
+          },
+        ],
+        project: {
+          database: 'postgres',
+          orm: 'drizzle',
         },
       },
-      pkgPackageJson: {
-        auth: {
-          exports: {
-            './types': './src/types.ts',
-            './password': './src/password.ts',
-            './permissions': './src/permissions.ts',
-          },
-        },
-        db: {
-          scripts: {
-            'db:seed': 'cd {{workspaceRoot}} && {{packageManager}} run db:seed',
-          },
-        },
-        ui: {
-          exports: {
-            './hooks/*': './src/hooks/*.ts',
-          },
-          dependencies: {
-            '@tanstack/react-form': '^1.33.5',
-            'react-dom': '^19.2.8',
-            vaul: '^1.1.2',
-          },
-          devDependencies: {
-            '@types/react-dom': '^19.2.5',
-          },
-        },
-      },
-      rootPackageJson: {
-        dependencies: {
-          '@repo/auth': '*',
-          '@repo/db': '*',
-        },
-        devDependencies: {
-          '@repo/config': '*',
-          '@faker-js/faker': '^10.4.0',
-          tsx: TSX_RUNNER,
-        },
-        scripts: {
-          'local-setup': '{{tsRunner}} scripts/local-setup.ts',
-          'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
-          start: 'turbo start',
-        },
-      },
+      packageJson: ORG_DASHBOARD_PACKAGE_JSON,
+      pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
+      rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
       envs: [SEED_PASSWORD],
     },
     'multitenant-saas-nextjs': {

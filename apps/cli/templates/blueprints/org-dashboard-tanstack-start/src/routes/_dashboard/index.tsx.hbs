@@ -1,0 +1,40 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { QueryBoundary } from '@/components/query-boundary';
+import { requirePermission } from '@/lib/auth/guards';
+import { pageTitle } from '@/lib/page-title';
+import { useTRPC } from '@/trpc/providers';
+
+export const Route = createFileRoute('/_dashboard/')({
+  beforeLoad: ({ context }) => requirePermission(context.session, { contact: ['read'] }),
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(context.trpc.contact.count.queryOptions());
+  },
+  head: () => ({ meta: [{ title: pageTitle() }] }),
+  component: DashboardPage,
+});
+
+function DashboardPage() {
+  return (
+    <QueryBoundary>
+      <DashboardOverview />
+    </QueryBoundary>
+  );
+}
+
+function DashboardOverview() {
+  const trpc = useTRPC();
+  const { data: contactCount } = useSuspenseQuery(trpc.contact.count.queryOptions());
+
+  return (
+    <div className='space-y-6'>
+      <h1 className='text-3xl font-bold'>Dashboard</h1>
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+        <div className='rounded-lg border bg-card p-6'>
+          <p className='text-sm text-muted-foreground'>Total Contacts</p>
+          <p className='text-2xl font-bold'>{contactCount}</p>
+        </div>
+      </div>
+    </div>
+  );
+}

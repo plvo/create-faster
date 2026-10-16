@@ -1,0 +1,22 @@
+{{{{raw}}}}
+import { createFileRoute } from '@tanstack/react-router';
+import { QueryBoundary } from '@/components/query-boundary';
+import { SessionList } from '@/components/profile/session-list';
+import { pageTitle } from '@/lib/page-title';
+
+export const Route = createFileRoute('/_dashboard/profile/sessions')({
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(context.trpc.session.list.queryOptions());
+  },
+  head: () => ({ meta: [{ title: pageTitle('Sessions') }] }),
+  component: SessionsPage,
+});
+
+function SessionsPage() {
+  return (
+    <QueryBoundary loadingFallback={<p className='text-sm text-muted-foreground p-6'>Loading sessions...</p>}>
+      <SessionList />
+    </QueryBoundary>
+  );
+}
+{{{{/raw}}}}
