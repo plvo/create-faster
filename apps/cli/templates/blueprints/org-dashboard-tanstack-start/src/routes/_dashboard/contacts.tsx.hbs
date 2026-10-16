@@ -1,0 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { requirePermission } from '@/lib/auth/guards';
+
+export const Route = createFileRoute('/_dashboard/contacts')({
+  beforeLoad: ({ context }) => requirePermission(context.session, { contact: ['read'] }),
+});

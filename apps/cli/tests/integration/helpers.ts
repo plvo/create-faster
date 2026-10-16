@@ -394,14 +394,21 @@ export async function runCliOnTerminal(args: string[], cwd: string, expectedProm
 
 /**
  * Writes a generated TypeScript file as an ES module and imports it. `imports` rewrites module specifiers to
- * paths relative to `target` (stand-ins for packages the test environment does not install).
+ * paths relative to `target` (stand-ins for packages the test environment does not install). JSX of a `tsx`
+ * file compiles to `createElement` and `Fragment` calls on the stand-in registered for `react`.
  */
 export async function evaluateGeneratedModule<T>(
   source: string,
   target: string,
   imports: Record<string, string> = {},
+  loader: 'ts' | 'tsx' = 'ts',
 ): Promise<T> {
-  const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
+  const jsx = { compilerOptions: { jsx: 'react', jsxFactory: '__jsx', jsxFragmentFactory: '__fragment' } } as const;
+  const compiled = new Bun.Transpiler({ loader, tsconfig: jsx }).transformSync(source);
+  const js =
+    loader === 'tsx'
+      ? `import { createElement as __jsx, Fragment as __fragment } from "react";\n${compiled}`
+      : compiled;
   const rewritten = js.replace(/from\s+(["'])([^"']+)\1/g, (match, _quote, specifier: string) =>
     imports[specifier] ? `from "${imports[specifier]}"` : match,
   );

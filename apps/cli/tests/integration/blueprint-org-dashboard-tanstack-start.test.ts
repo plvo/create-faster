@@ -39,7 +39,18 @@ interface GeneratedGuards {
 const STUBS: Record<string, string> = {
   'router.mjs': `export const redirect = (options) => ({ kind: 'redirect', ...options });
 export const notFound = () => ({ kind: 'notFound' });
-export const useRouteContext = ({ select }) => select(globalThis.__testRouteContext);`,
+export const useRouteContext = ({ select }) => select(globalThis.__testRouteContext);
+export const createFileRoute = (path) => (options) => ({ path, options });
+export const Link = ({ to, children }) => ({ type: 'a', props: { href: to, children } });
+export const useLocation = ({ select }) => select({ pathname: '/' });`,
+  'react.mjs': `export const Fragment = Symbol.for('fragment');
+export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });`,
+  'sidebar-ui.mjs': `const passThrough = ({ children }) => children;
+export const SidebarGroup = passThrough;
+export const SidebarGroupLabel = passThrough;
+export const SidebarMenu = passThrough;
+export const SidebarMenuButton = passThrough;
+export const SidebarMenuItem = passThrough;`,
   'access.mjs': 'export const createAccessControl = () => ({ newRole: (statements) => statements });',
   'admin-access.mjs': `export const defaultStatements = {};
 export const adminAc = { statements: { user: ['list', 'create', 'set-role'], session: ['list', 'revoke'] } };`,
@@ -54,6 +65,10 @@ export const authClient = {
   },
 };`,
   'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
+  'icons.mjs': `export const LayoutDashboard = 'LayoutDashboard';
+export const Users = 'Users';
+export const Shield = 'Shield';
+export const ShieldCheck = 'ShieldCheck';`,
 };
 
 const IMPORT_TARGETS: Record<string, string> = {
@@ -64,7 +79,28 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@repo/auth/permissions': './permissions.mjs',
   '@/lib/auth/permission': './permission.mjs',
   '@/lib/auth/session': './session.mjs',
+  'lucide-react': './icons.mjs',
+  react: './react.mjs',
+  '@repo/ui/components/ui/sidebar': './sidebar-ui.mjs',
+  '@/hooks/use-permission': './use-permission.mjs',
+  '@/lib/constants': './constants.mjs',
+  '@/lib/auth/guards': './guards.mjs',
 };
+
+interface RenderedElement {
+  type: unknown;
+  props: { href?: string; children?: unknown };
+}
+
+// Renders the element tree the generated components return: components are called, the stand-in Link becomes an
+// `a`, and the hrefs come back in document order.
+function renderedLinks(node: unknown): string[] {
+  if (Array.isArray(node)) return node.flatMap(renderedLinks);
+  if (node === null || typeof node !== 'object') return [];
+  const { type, props } = node as RenderedElement;
+  if (typeof type === 'function') return renderedLinks(type(props));
+  return [...(type === 'a' && props.href ? [props.href] : []), ...renderedLinks(props.children)];
+}
 
 async function thrownBy(run: () => unknown): Promise<Thrown | undefined> {
   try {
@@ -104,6 +140,21 @@ describe(`${BLUEPRINT} blueprint`, () => {
       'src/routes/_dashboard/profile/security.tsx',
       'src/routes/_dashboard/profile/sessions.tsx',
       'src/routes/_dashboard/profile/preferences.tsx',
+      'src/routes/_dashboard/contacts.tsx',
+      'src/routes/_dashboard/contacts/index.tsx',
+      'src/routes/_dashboard/contacts/$id.tsx',
+      'src/routes/_dashboard/admin.tsx',
+      'src/routes/_dashboard/admin/index.tsx',
+      'src/routes/_dashboard/admin/users/index.tsx',
+      'src/routes/_dashboard/admin/users/$id.tsx',
+      'src/routes/_dashboard/admin/roles.tsx',
+      'src/components/contacts/contact-table.tsx',
+      'src/components/contacts/contacts-client.tsx',
+      'src/components/contacts/contact-detail.tsx',
+      'src/components/admin/user-table.tsx',
+      'src/components/admin/users-client.tsx',
+      'src/components/admin/user-detail.tsx',
+      'src/components/admin/roles-page.tsx',
       'src/lib/auth/guards.ts',
       'src/components/navigation/app-sidebar.tsx',
       'src/components/navigation/nav-user.tsx',
@@ -155,6 +206,48 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(auth).toMatch(/if \(isSignedIn\(await getSession\(\)\)\) throw redirect\(\{ to: '\/'/);
   });
 
+  test('the contacts pages only prefetch, the permission is checked by their layout', async () => {
+    for (const page of ['index', '$id']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/contacts/${page}.tsx`);
+      expect(source, page).not.toContain('requirePermission');
+      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+      expect(source, page).not.toMatch(/await context\.queryClient/);
+    }
+    const detail = await read(`${WEB}/src/routes/_dashboard/contacts/$id.tsx`);
+    expect(detail).toContain('context.trpc.contact.getById.queryOptions({ id: params.id })');
+  });
+
+  test('the admin pages do not repeat the admin check, their layout makes it once', async () => {
+    for (const page of ['users/index', 'users/$id', 'roles']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
+      expect(source, page).not.toMatch(/requireAdmin|requirePermission/);
+    }
+    for (const page of ['users/index', 'users/$id']) {
+      const source = await read(`${WEB}/src/routes/_dashboard/admin/${page}.tsx`);
+      expect(source, page).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+      expect(source, page).not.toMatch(/await context\.queryClient/);
+    }
+  });
+
+  test('the shared tables and detail pages link through the router with typed params', async () => {
+    const contactTable = await read(`${WEB}/src/components/contacts/contact-table.tsx`);
+    expect(contactTable).toContain("<Link to='/contacts/$id' params={{ id: contact.id }}");
+    const userTable = await read(`${WEB}/src/components/admin/user-table.tsx`);
+    expect(userTable).toContain("<Link to='/admin/users/$id' params={{ id: user.id }}");
+    expect(await read(`${WEB}/src/components/contacts/contact-detail.tsx`)).toContain("navigate({ to: '/contacts' })");
+
+    for (const file of [
+      'contacts/contact-table',
+      'contacts/contacts-client',
+      'contacts/contact-detail',
+      'admin/user-table',
+      'admin/users-client',
+      'admin/user-detail',
+    ]) {
+      expect(await read(`${WEB}/src/components/${file}.tsx`), file).not.toContain("'use client'");
+    }
+  });
+
   test('a route checks its permission in beforeLoad, before its loader prefetches', async () => {
     const home = await read(`${WEB}/src/routes/_dashboard/index.tsx`);
     const beforeLoad = home.indexOf('beforeLoad:');
@@ -173,12 +266,24 @@ describe(`${BLUEPRINT} blueprint`, () => {
       (globalThis as { __testSession?: Session | null }).__testSession = session;
     };
 
+    let evaluate: <T>(source: string, name: string, loader?: 'ts' | 'tsx') => Promise<T>;
+    const routeOptions = async (file: string, name: string) =>
+      (
+        await evaluate<{ Route: { options: { beforeLoad: (args: { context: { session: Session } }) => unknown } } }>(
+          `${WEB}/src/routes/_dashboard/${file}`,
+          name,
+        )
+      ).Route.options;
+    const inRouteContext = (role: string | null) => {
+      (globalThis as { __testRouteContext?: { session: Session } }).__testRouteContext = { session: member(role) };
+    };
+
     beforeAll(async () => {
       const dir = join(tempDir, 'guards-eval');
       await mkdir(dir, { recursive: true });
       for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(dir, name), source);
-      const evaluate = async <T>(source: string, name: string): Promise<T> =>
-        evaluateGeneratedModule<T>(await read(source), join(dir, name), IMPORT_TARGETS);
+      evaluate = async <T>(source: string, name: string, loader: 'ts' | 'tsx' = 'ts'): Promise<T> =>
+        evaluateGeneratedModule<T>(await read(source), join(dir, name), IMPORT_TARGETS, loader);
       await evaluate('packages/auth/src/permissions.ts', 'permissions.mjs');
       const permission = await evaluate<Pick<GeneratedGuards, 'hasPermission'>>(`${WEB}/src/lib/auth/permission.ts`, 'permission.mjs');
       const evaluated = await evaluate<Omit<GeneratedGuards, 'hasPermission' | 'usePermission'>>(`${WEB}/src/lib/auth/guards.ts`, 'guards.mjs');
@@ -232,18 +337,52 @@ describe(`${BLUEPRINT} blueprint`, () => {
     });
 
     test('usePermission reads the role from the dashboard route context', () => {
-      const inContext = (role: string | null | undefined) => {
-        (globalThis as { __testRouteContext?: { session: Session } }).__testRouteContext = { session: member(role ?? null) };
-      };
-      inContext('manager');
+      inRouteContext('manager');
       expect(guards.usePermission({ contact: ['read'] })).toBe(true);
       expect(guards.usePermission({ contact: ['create'] })).toBe(false);
       expect(guards.usePermission({})).toBe(true);
-      inContext('admin');
+      inRouteContext('admin');
       expect(guards.usePermission({ user: ['list'] })).toBe(true);
-      inContext(null);
+      inRouteContext(null);
       expect(guards.usePermission({})).toBe(false);
       expect(guards.usePermission({ contact: ['read'] })).toBe(false);
+    });
+
+    test('the sidebar renders each role only the links its permissions open', async () => {
+      await evaluate(`${WEB}/src/lib/constants.ts`, 'constants.mjs');
+      const { SidebarLinks } = await evaluate<{ SidebarLinks: () => unknown }>(
+        `${WEB}/src/components/navigation/sidebar-links.tsx`,
+        'sidebar-links.mjs',
+        'tsx',
+      );
+      const linksFor = (role: string): string[] => {
+        inRouteContext(role);
+        return renderedLinks(SidebarLinks());
+      };
+
+      expect(linksFor('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
+      expect(linksFor('user')).toEqual(['/', '/contacts']);
+      expect(linksFor('manager')).toEqual(['/', '/contacts']);
+      expect(linksFor('ghost')).toEqual(['/']);
+    });
+
+    test('the contacts layout answers not found to a role without the contact permission', async () => {
+      const { beforeLoad } = await routeOptions('contacts.tsx', 'contacts-route.mjs');
+      expect(await thrownBy(() => beforeLoad({ context: { session: member('manager') } }))).toBeUndefined();
+      for (const role of ['ghost', null]) {
+        expect(await thrownBy(() => beforeLoad({ context: { session: member(role) } }))).toEqual({ kind: 'notFound' });
+      }
+    });
+
+    test('the admin layout sends everyone but an admin home, and the bare admin route is not found', async () => {
+      const { beforeLoad } = await routeOptions('admin.tsx', 'admin-route.mjs');
+      expect(await thrownBy(() => beforeLoad({ context: { session: member('admin') } }))).toBeUndefined();
+      for (const role of ['user', 'manager']) {
+        expect(await thrownBy(() => beforeLoad({ context: { session: member(role) } }))).toEqual({ kind: 'redirect', to: '/' });
+      }
+
+      const bare = await routeOptions('admin/index.tsx', 'admin-index-route.mjs');
+      expect(await thrownBy(() => bare.beforeLoad({ context: { session: member('admin') } }))).toEqual({ kind: 'notFound' });
     });
 
     test('the login layout and the dashboard layout agree on every session shape', async () => {

@@ -1,0 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { requireAdmin } from '@/lib/auth/guards';
+
+export const Route = createFileRoute('/_dashboard/admin')({
+  beforeLoad: ({ context }) => requireAdmin(context.session),
+});
