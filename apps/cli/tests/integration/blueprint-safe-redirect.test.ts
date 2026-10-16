@@ -13,6 +13,7 @@ const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
 };
 
 const START_BLUEPRINT = 'org-dashboard-tanstack-start';
+const HELPER_BLUEPRINTS: [string, string[]][] = [...Object.entries(FORMS_BY_BLUEPRINT), [START_BLUEPRINT, []]];
 const START_LOGIN_ROUTE = 'apps/web/src/routes/_auth/login.tsx';
 const START_LOGIN_FORM = 'apps/web/src/components/auth/login-form.tsx';
 
@@ -48,16 +49,18 @@ describe('post-login redirect target', () => {
     return (await import(file)).safeRedirectPath;
   };
 
-  describe.each(Object.entries(FORMS_BY_BLUEPRINT))('%s', (blueprint, forms) => {
-    test.each([...forms])('%s navigates only to a validated destination', async (form) => {
-      const source = await readTextFile(join(projectPaths.get(blueprint) as string, form));
-      expect(source).toContain("from '@/lib/safe-redirect'");
-      expect(source).toMatch(/const destination = safeRedirectPath\(/);
-      const pushes = [...source.matchAll(/router\.push\(([^)]*)\)/g)].map((match) => match[1]);
-      expect(pushes).toContain('destination');
-      expect(pushes).not.toContain('redirectTo');
-      expect(source).not.toMatch(/params\.get\('redirectTo'\) \?\?/);
-    });
+  describe.each(HELPER_BLUEPRINTS)('%s', (blueprint, forms) => {
+    for (const form of forms) {
+      test(`${form} navigates only to a validated destination`, async () => {
+        const source = await readTextFile(join(projectPaths.get(blueprint) as string, form));
+        expect(source).toContain("from '@/lib/safe-redirect'");
+        expect(source).toMatch(/const destination = safeRedirectPath\(/);
+        const pushes = [...source.matchAll(/router\.push\(([^)]*)\)/g)].map((match) => match[1]);
+        expect(pushes).toContain('destination');
+        expect(pushes).not.toContain('redirectTo');
+        expect(source).not.toMatch(/params\.get\('redirectTo'\) \?\?/);
+      });
+    }
 
     test('safeRedirectPath keeps internal paths and refuses everything else', async () => {
       const safeRedirectPath = await loadHelper(blueprint);
@@ -124,6 +127,7 @@ describe('post-login redirect target', () => {
       expect(safeRedirectPath('/')).toBe('/');
     });
   });
+
   describe(START_BLUEPRINT, () => {
     test('the login route validates redirectTo with safeRedirectPath and the form only navigates to the result', async () => {
       const projectPath = projectPaths.get(START_BLUEPRINT) as string;
@@ -135,14 +139,6 @@ describe('post-login redirect target', () => {
       const pushes = [...form.matchAll(/history\.push\(([^)]*)\)/g)].map((match) => match[1]);
       expect(pushes).toEqual(['destination']);
       expect(form).not.toMatch(/redirectTo|location\.search|URLSearchParams/);
-    });
-
-    test('safeRedirectPath keeps internal paths and refuses everything else', async () => {
-      const safeRedirectPath = await loadHelper(START_BLUEPRINT);
-      expect(safeRedirectPath('/profile/account?x=1')).toBe('/profile/account?x=1');
-      for (const hostile of ['https://evil.example', '//evil.example', '/\\evil.example', 'javascript:alert(1)', '', null]) {
-        expect(safeRedirectPath(hostile), String(hostile)).toBe('/');
-      }
     });
   });
 });

@@ -312,7 +312,7 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
   });
 
   test('declares its own package.json, envs and first-run data, since META is not inherited', () => {
-    expect(tanstackStart.packageJson?.dependencies).toMatchObject({ sonner: expect.any(String), zod: expect.any(String) });
+    expect(Object.keys(tanstackStart.packageJson?.dependencies ?? {})).toEqual(expect.arrayContaining(['sonner', 'zod']));
     expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['auth', 'db', 'ui']);
     expect(tanstackStart.rootPackageJson?.scripts).toHaveProperty('local-setup');
     expect(tanstackStart.envs?.map(({ value }) => value)).toContain('SEED_PASSWORD=password');
