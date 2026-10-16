@@ -149,6 +149,10 @@ function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number]):
   return !env.stacks || env.stacks.includes(app.stackName);
 }
 
+function isReceivedByProject(env: CollectedEnv, ctx: TemplateContext): boolean {
+  return !env.stacks || ctx.apps.some((app) => appAcceptsEnv(env, app));
+}
+
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
   const grouped = new Map<string, string[]>();
 
@@ -161,7 +165,7 @@ function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map
         addToGroup(grouped, path, resolveEnvValue(env.value, ctx, app.appName));
       }
     } else {
-      if (env.stacks && !ctx.apps.some((app) => appAcceptsEnv(env, app))) continue;
+      if (!isReceivedByProject(env, ctx)) continue;
       const path = resolveScopeToPath(env.scope, ctx, undefined, env.file);
       if (!path) continue;
       addToGroup(grouped, path, resolveEnvValue(env.value, ctx));
@@ -227,7 +231,7 @@ export function collectProjectSecrets(ctx: TemplateContext, stacks: readonly Sta
 /** The names of the variables the project declares for a Turborepo task, each listed once, for the `env` of that task. */
 export function collectTaskEnv(ctx: TemplateContext, task: string): string[] {
   const names = collectAllEnvs(ctx)
-    .filter((env) => env.tasks?.includes(task))
+    .filter((env) => env.tasks?.includes(task) && !env.file && isReceivedByProject(env, ctx))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
