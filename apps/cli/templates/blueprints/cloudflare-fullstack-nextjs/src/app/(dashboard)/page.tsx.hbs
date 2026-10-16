@@ -5,10 +5,12 @@ mono:
 ---
 import { Suspense } from 'react';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
+import { requireSession } from '@/lib/auth/session';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { DocumentsClient } from './documents.client';
 
-export default function DocumentsPage() {
+export default async function DocumentsPage() {
+  await requireSession();
   prefetch(trpc.documents.list.queryOptions());
 
   return (

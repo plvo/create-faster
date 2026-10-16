@@ -61,7 +61,8 @@ export const useState = (initial) => {
   if (!(index in store)) store[index] = initial;
   return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
 };
-export const useId = () => useState('id-' + next)[0];`,
+export const useId = () => useState('id-' + next)[0];
+export const Suspense = ({ children }) => children;`,
   'icons.mjs': `import { createElement } from './react.mjs';
 // lucide-react passes the props of the caller to the svg and marks it aria-hidden unless the caller names it.
 const hasAccessibleName = (props) => Object.keys(props).some((key) => key.startsWith('aria-') || key === 'role' || key === 'title');
@@ -85,6 +86,10 @@ export const Trash2 = icon('Trash2');`,
 export const useParams = () => ({ id: 'u1' });
 export const redirect = (path) => { throw new Error('redirected to ' + path); };`,
   'next-headers.mjs': 'export const headers = async () => ({});',
+  'trpc-server.mjs': `export const HydrateClient = ({ children }) => children;
+export const prefetch = () => {};
+export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ queryOptions: (input) => input ?? {} }) }) });`,
+  'skeleton.mjs': 'export const Skeleton = () => null;',
   'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
 export const useNavigate = () => () => {};`,
@@ -804,7 +809,14 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       tempDir,
       web,
       FULLSTACK_PAGES,
-      { ...COMMON_IMPORTS, 'next/link': './next-link.mjs', 'next/navigation': './next-navigation.mjs' },
+      {
+        ...COMMON_IMPORTS,
+        'next/link': './next-link.mjs',
+        'next/navigation': './next-navigation.mjs',
+        '@/lib/auth/session': './session.mjs',
+        '@/trpc/server': './trpc-server.mjs',
+        '@repo/ui/components/ui/skeleton': './skeleton.mjs',
+      },
       { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE },
     ));
 
