@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import { cleanupTempDir, createTempDir, PNPM_AVAILABLE, runCli, runCommand } from './helpers';
+import { describeProject, groupChoices, listChoices, toCliArgs } from './install-scripts-projects';
 
 /**
  * Fails when a dependency with an install script is brought by a choice without a ruling in META (`installScripts`).
@@ -12,61 +13,15 @@ const STRICT_PNPM_MAJOR = 11;
 const FALLBACK_PNPM = ['env', 'pnpm_config_manage_package_manager_versions=false', 'npx', '--yes', 'pnpm@12'];
 const TIMEOUT_INSTALL = 600_000;
 
-const REPRESENTATIVE_PROJECTS = [
-  {
-    name: 'cloudflare-nextjs',
-    args: [
-      '--app',
-      'web:nextjs:shadcn,posthog,pwa,better-auth,trpc,vitest,playwright',
-      '--database',
-      'd1',
-      '--orm',
-      'drizzle',
-      '--deployment',
-      'cloudflare',
-      '--linter',
-      'biome',
-    ],
-  },
-  {
-    name: 'prisma-sst',
-    args: ['--app', 'web:nextjs:trpc,tanstack-query', '--database', 'mysql', '--orm', 'prisma', '--deployment', 'sst', '--linter', 'oxc'],
-  },
-  {
-    name: 'all-stacks-turborepo',
-    args: [
-      '--app',
-      'web:nextjs:shadcn,vitest',
-      '--app',
-      'api:hono:vitest-node',
-      '--app',
-      'mobile:expo:nativewind,jest-expo',
-      '--app',
-      'site:tanstack-start:vitest',
-      '--database',
-      'postgres',
-      '--orm',
-      'prisma',
-      '--deployment',
-      'cloudflare',
-      '--linter',
-      'eslint-prettier',
-      '--tooling',
-      'portless',
-    ],
-  },
-  {
-    name: 'tanstack-start-sqlite',
-    args: ['--app', 'web:tanstack-start:vitest,playwright', '--database', 'sqlite', '--orm', 'drizzle', '--linter', 'prettier'],
-  },
-  {
-    name: 'hono-lambda',
-    args: ['--app', 'api:hono:aws-lambda,vitest-node', '--app', 'worker:node', '--deployment', 'terraform-aws'],
-  },
-];
+const CHOICE_PROJECTS = groupChoices().map((project, index) => ({
+  name: `choices-${index + 1}`,
+  description: describeProject(project),
+  args: toCliArgs(project),
+}));
 
 const BLUEPRINT_PROJECTS = Object.keys(META.blueprints).map((blueprint) => ({
   name: blueprint,
+  description: blueprint,
   args: ['--blueprint', blueprint],
 }));
 
@@ -83,12 +38,31 @@ function ignoredBuilds(output: string): string[] {
   return listing.match(PACKAGE_WITH_VERSION) ?? [];
 }
 
-describe.each([...REPRESENTATIVE_PROJECTS, ...BLUEPRINT_PROJECTS])('$name', ({ name, args }) => {
+test('the projects hold every library on each stack it supports and every project option', () => {
+  const projects = groupChoices();
+  for (const choice of listChoices()) {
+    const held = projects.some((project) =>
+      choice.kind === 'library'
+        ? project.apps.get(choice.stack)?.includes(choice.name)
+        : choice.category === 'tooling'
+          ? project.tooling.includes(choice.name)
+          : project[choice.category] === choice.name,
+    );
+    expect(held).toBe(true);
+  }
+});
+
+if (!PNPM_AVAILABLE) {
+  console.warn('Skipping install scripts e2e: pnpm is not installed');
+}
+
+describe.skipIf(!PNPM_AVAILABLE).each([...CHOICE_PROJECTS, ...BLUEPRINT_PROJECTS])('$name: $description', ({ name, args }) => {
   let tempDir: string;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'pnpm'], tempDir);
+    const git = args.includes('--git') ? [] : ['--no-git'];
+    const result = await runCli([name, ...args, ...git, '--no-install', '--pm', 'pnpm'], tempDir);
     expect(result.exitCode).toBe(0);
   });
 
