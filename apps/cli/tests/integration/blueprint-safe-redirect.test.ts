@@ -12,6 +12,10 @@ const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
   ],
 };
 
+const START_BLUEPRINT = 'org-dashboard-tanstack-start';
+const START_LOGIN_ROUTE = 'apps/web/src/routes/_auth/login.tsx';
+const START_LOGIN_FORM = 'apps/web/src/components/auth/login-form.tsx';
+
 const HELPER_PATH = 'apps/web/src/lib/safe-redirect.ts';
 
 type SafeRedirectPath = (value: string | null | undefined, fallback?: string) => string;
@@ -22,7 +26,7 @@ describe('post-login redirect target', () => {
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    for (const blueprint of Object.keys(FORMS_BY_BLUEPRINT)) {
+    for (const blueprint of [...Object.keys(FORMS_BY_BLUEPRINT), START_BLUEPRINT]) {
       const result = await runCli(
         [blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'],
         tempDir,
@@ -118,6 +122,27 @@ describe('post-login redirect target', () => {
       expect(safeRedirectPath('/contacts?next=//evil.example')).toBe('/contacts?next=//evil.example');
       expect(safeRedirectPath('/contacts#//evil.example')).toBe('/contacts#//evil.example');
       expect(safeRedirectPath('/')).toBe('/');
+    });
+  });
+  describe(START_BLUEPRINT, () => {
+    test('the login route validates redirectTo with safeRedirectPath and the form only navigates to the result', async () => {
+      const projectPath = projectPaths.get(START_BLUEPRINT) as string;
+      const route = await readTextFile(join(projectPath, START_LOGIN_ROUTE));
+      expect(route).toContain("from '@/lib/safe-redirect'");
+      expect(route).toMatch(/validateSearch:[^]*safeRedirectPath\(search\.redirectTo\)/);
+
+      const form = await readTextFile(join(projectPath, START_LOGIN_FORM));
+      const pushes = [...form.matchAll(/history\.push\(([^)]*)\)/g)].map((match) => match[1]);
+      expect(pushes).toEqual(['destination']);
+      expect(form).not.toMatch(/redirectTo|location\.search|URLSearchParams/);
+    });
+
+    test('safeRedirectPath keeps internal paths and refuses everything else', async () => {
+      const safeRedirectPath = await loadHelper(START_BLUEPRINT);
+      expect(safeRedirectPath('/profile/account?x=1')).toBe('/profile/account?x=1');
+      for (const hostile of ['https://evil.example', '//evil.example', '/\\evil.example', 'javascript:alert(1)', '', null]) {
+        expect(safeRedirectPath(hostile), String(hostile)).toBe('/');
+      }
     });
   });
 });

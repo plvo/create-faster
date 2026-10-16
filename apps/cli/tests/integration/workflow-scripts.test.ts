@@ -3,11 +3,12 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
+import { resolveBlueprintChain } from '@/lib/template-resolver';
 import { cleanupTempDir, createTempDir, PNPM_AVAILABLE, readJsonFile, readTextFile, runCli } from './helpers';
 
 const BLUEPRINTS_DIR = join(import.meta.dir, '../../templates/blueprints');
-const BLUEPRINTS_WITH_WORKFLOWS = readdirSync(BLUEPRINTS_DIR).filter((name) =>
-  existsSync(join(BLUEPRINTS_DIR, name, '__github/workflows')),
+const BLUEPRINTS_WITH_WORKFLOWS = Object.keys(META.blueprints).filter((name) =>
+  resolveBlueprintChain(name).some((folder) => existsSync(join(BLUEPRINTS_DIR, folder, '__github/workflows'))),
 );
 const LINTERS = [undefined, ...Object.keys(META.project.linter.options)];
 const PACKAGE_MANAGERS = ['bun', 'npm', 'pnpm', undefined];
