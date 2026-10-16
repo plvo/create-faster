@@ -74,5 +74,38 @@ describe('post-login redirect target', () => {
       }
       expect(safeRedirectPath('https://evil.example', '/dashboard')).toBe('/dashboard');
     });
+
+    test('safeRedirectPath refuses a path that normalizes to a protocol-relative URL', async () => {
+      const safeRedirectPath = await loadHelper(blueprint);
+      for (const hostile of [
+        '/.//evil.example',
+        '/a/..//evil.example',
+        '/%2e//evil.example',
+        '/%2E/%2e//evil.example',
+        '/a/%2e%2e//evil.example',
+        '/..//evil.example',
+        '/././/evil.example',
+        '/./\\evil.example',
+        '/a/../\\evil.example',
+        '/.//\\evil.example',
+        '/.\t//evil.example',
+        '/\n/evil.example',
+        '/\r/evil.example',
+      ]) {
+        expect(safeRedirectPath(hostile), JSON.stringify(hostile)).toBe('/');
+      }
+      expect(safeRedirectPath('/.//evil.example', '/dashboard')).toBe('/dashboard');
+    });
+
+    test('safeRedirectPath keeps legitimate paths that need normalization', async () => {
+      const safeRedirectPath = await loadHelper(blueprint);
+      expect(safeRedirectPath('/a/../contacts?x=1#top')).toBe('/contacts?x=1#top');
+      expect(safeRedirectPath('/./contacts')).toBe('/contacts');
+      expect(safeRedirectPath('/a/..\\contacts')).toBe('/contacts');
+      expect(safeRedirectPath('/%2f/contacts')).toBe('/%2f/contacts');
+      expect(safeRedirectPath('/contacts?next=//evil.example')).toBe('/contacts?next=//evil.example');
+      expect(safeRedirectPath('/contacts#//evil.example')).toBe('/contacts#//evil.example');
+      expect(safeRedirectPath('/')).toBe('/');
+    });
   });
 });

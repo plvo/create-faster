@@ -197,7 +197,7 @@ Production rate limiting keys on a client address header, which better-auth read
 
 ### Post-login redirect
 
-A login or signup form never passes a query parameter (`redirectTo`, `redirect`) straight to `router.push` or `redirect()`: an absolute URL would send a signed-in user to another site (open redirect). The `org-dashboard-nextjs`, `cloudflare-fullstack-nextjs` and `multitenant-saas-nextjs` blueprints each generate `src/lib/safe-redirect.ts` from the `auth/safe-redirect` partial (`safeRedirectPath(value, fallback = '/')`: a single leading `/`, not `//` or `/\`, same origin once parsed, else the fallback), and their forms navigate to `const destination = safeRedirectPath(...)`. `tests/integration/blueprint-safe-redirect.test.ts` evaluates the generated helper and checks every form. A new form that follows a user-supplied destination uses the same file.
+A login or signup form never passes a query parameter (`redirectTo`, `redirect`) straight to `router.push` or `redirect()`: an absolute URL would send a signed-in user to another site (open redirect). The `org-dashboard-nextjs`, `cloudflare-fullstack-nextjs` and `multitenant-saas-nextjs` blueprints each generate `src/lib/safe-redirect.ts` from the `auth/safe-redirect` partial (`safeRedirectPath(value, fallback = '/')`: a single leading `/`, not `//` or `/\`, same origin once parsed, and the normalized path (`/.//host` becomes `//host`) again not starting with `//` or `/\`, else the fallback), and their forms navigate to `const destination = safeRedirectPath(...)`. `tests/integration/blueprint-safe-redirect.test.ts` evaluates the generated helper and checks every form. A new form that follows a user-supplied destination uses the same file.
 
 ### Cloudflare
 

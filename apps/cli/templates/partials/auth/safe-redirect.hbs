@@ -1,8 +1,13 @@
 const ORIGIN_PROBE = 'http://internal.invalid';
 
+function isExternalLooking(path: string): boolean {
+  return !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\');
+}
+
 export function safeRedirectPath(value: string | null | undefined, fallback = '/'): string {
-  if (!value?.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return fallback;
+  if (!value || isExternalLooking(value)) return fallback;
   const url = new URL(value, ORIGIN_PROBE);
   if (url.origin !== ORIGIN_PROBE) return fallback;
-  return `${url.pathname}${url.search}${url.hash}`;
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  return isExternalLooking(path) ? fallback : path;
 }
