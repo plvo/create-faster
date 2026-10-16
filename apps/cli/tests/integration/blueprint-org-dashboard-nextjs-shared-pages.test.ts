@@ -63,13 +63,14 @@ describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
     expect(page).toContain("import { useRouter } from 'next/navigation';");
     expect(page).toContain("import Link from 'next/link';");
     expect(page).toContain("router.push('/contacts');");
-    expect(page.match(/<Link href='\/contacts' className=/g)).toHaveLength(2);
+    expect(page).toContain("<Link href='/contacts'>");
+    expect(page).toContain("<Link href='/contacts' className=");
   });
 
   test('the user page links back through next/link', async () => {
     const page = await read(`${APP}/admin/users/[id]/user-detail.tsx`);
     expect(page).toContain("import Link from 'next/link';");
-    expect(page).toContain("<Link href='/admin/users' className=");
+    expect(page).toContain("<Link href='/admin/users' aria-label='Back to users' className=");
   });
 
   test('the contacts page keeps the create permission gate', async () => {

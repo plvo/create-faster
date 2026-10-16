@@ -16,13 +16,13 @@ export function UserTable() {
   const { data: users } = useSuspenseQuery(trpc.user.list.queryOptions());
 
   return (
-    <div className='rounded-lg border'>
+    <div className='overflow-x-auto rounded-lg border'>
       <table className='w-full text-sm'>
         <thead>
           <tr className='border-b bg-muted/50'>
             <th className='px-4 py-3 text-left font-medium'>Name</th>
-            <th className='px-4 py-3 text-left font-medium'>Email</th>
-            <th className='px-4 py-3 text-left font-medium'>Role</th>
+            <th className='hidden px-4 py-3 text-left font-medium sm:table-cell'>Email</th>
+            <th className='hidden px-4 py-3 text-left font-medium md:table-cell'>Role</th>
             <th className='px-4 py-3 text-left font-medium'>Status</th>
             <th className='px-4 py-3 text-right font-medium'>Actions</th>
           </tr>
@@ -41,8 +41,8 @@ export function UserTable() {
                   {user.name}
                 </Link>
               </td>
-              <td className='px-4 py-3 text-muted-foreground'>{user.email}</td>
-              <td className='px-4 py-3'>
+              <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>{user.email}</td>
+              <td className='hidden px-4 py-3 md:table-cell'>
                 <span
                   className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                     user.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'

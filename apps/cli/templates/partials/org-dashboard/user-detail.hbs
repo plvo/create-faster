@@ -67,11 +67,11 @@ export function UserDetail({ id }: { id: string }) {
 
   return (
     <div className='max-w-2xl space-y-6'>
-      <div className='flex items-center gap-3'>
+      <div className='flex flex-wrap items-center gap-3'>
 {{#if (eq stackName "tanstack-start")}}
-        <Link to='/admin/users' className='text-muted-foreground hover:text-foreground'>
+        <Link to='/admin/users' aria-label='Back to users' className='text-muted-foreground hover:text-foreground'>
 {{else}}
-        <Link href='/admin/users' className='text-muted-foreground hover:text-foreground'>
+        <Link href='/admin/users' aria-label='Back to users' className='text-muted-foreground hover:text-foreground'>
 {{/if}}
           <ArrowLeft className='size-5' />
         </Link>
@@ -96,22 +96,22 @@ export function UserDetail({ id }: { id: string }) {
           <p className='text-sm text-muted-foreground'>View and edit user details.</p>
         </div>
 
-        <div className='space-y-3'>
+        <dl className='space-y-3'>
           <div>
-            <span className='text-sm font-medium'>Email</span>
-            <p className='text-sm text-muted-foreground'>{user.email}</p>
+            <dt className='text-sm font-medium'>Email</dt>
+            <dd className='break-all text-sm text-muted-foreground'>{user.email}</dd>
           </div>
           <div>
-            <span className='text-sm font-medium'>Joined</span>
-            <p className='text-sm text-muted-foreground'>
+            <dt className='text-sm font-medium'>Joined</dt>
+            <dd className='text-sm text-muted-foreground'>
               {new Date(user.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
               })}
-            </p>
+            </dd>
           </div>
-        </div>
+        </dl>
 
         <form
           onSubmit={(e) => {
@@ -128,7 +128,7 @@ export function UserDetail({ id }: { id: string }) {
           }}
           className='space-y-4 pt-4 border-t'
         >
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid gap-4 sm:grid-cols-2'>
             <form.Field name='firstName'>
               {(field) => (
                 <div className='space-y-2'>
@@ -214,10 +214,11 @@ export function UserDetail({ id }: { id: string }) {
               <input
                 type='text'
                 readOnly
+                aria-label='Generated password'
                 value={generatedPassword}
                 className='flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm font-mono'
               />
-              <Button variant='outline' size='icon' onClick={copyPassword}>
+              <Button variant='outline' size='icon' onClick={copyPassword} aria-label='Copy password'>
                 {copied ? <Check className='size-4 text-success' /> : <Copy className='size-4' />}
               </Button>
             </div>
