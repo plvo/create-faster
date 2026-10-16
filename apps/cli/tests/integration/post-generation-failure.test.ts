@@ -1,45 +1,34 @@
 import './timeout';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { delimiter, join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, runCli } from './helpers';
+import { join } from 'node:path';
+import { cleanupTempDir, createTempDir, fileExists } from './helpers';
+import { createStubbedCli, type GenerateProject } from './stubbed-cli';
 
 const NOISY_LINE_COUNT = 200;
 
 describe('post-generation failures', () => {
   let tempDir: string;
-  let stubBinDir: string;
+  let stubbedGenerate: GenerateProject;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    stubBinDir = join(tempDir, 'stub-bin');
-    await mkdir(stubBinDir);
-    await writeStub(
-      'npm',
-      `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+    ({ generate: stubbedGenerate } = await createStubbedCli(tempDir, {
+      npm: `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
 i=1
 while [ $i -le ${NOISY_LINE_COUNT} ]; do echo "npm http fetch line-$i" >&2; i=$((i+1)); done
 echo "npm error 404 No match found for version 9.9.9 of transitive-dep" >&2
 exit 1`,
-    );
-    await writeStub('git', 'echo "fatal: simulated git failure" >&2\nexit 1');
+      git: `echo "fatal: simulated git failure" >&2
+exit 1`,
+    }));
   });
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);
   });
 
-  async function writeStub(name: string, body: string) {
-    await writeFile(join(stubBinDir, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
-  }
-
-  async function generate(name: string, args: string[]) {
-    const workDir = join(tempDir, name);
-    await mkdir(workDir);
-    const result = await runCli([name, '--app', `${name}:nextjs`, ...args], workDir, {
-      PATH: `${stubBinDir}${delimiter}${process.env.PATH}`,
-    });
-    return { result, projectPath: join(workDir, name) };
+  function generate(name: string, args: string[]) {
+    return stubbedGenerate(name, ['--app', `${name}:nextjs`, ...args]);
   }
 
   test('a failed install exits non-zero, keeps the files and tells how to retry', async () => {
@@ -73,7 +62,7 @@ exit 1`,
     expect(output).toContain('AGENTS.md');
     expect(output).not.toContain('Git, AGENTS.md');
     expect(output).not.toContain('git remote add origin');
-    expect(output).toContain('# git init failed');
+    expect(output).toMatch(/# git init failed[^\n]*\n[\s│]+git init[\s│]+# Install dependencies:[\s│]+npm install/);
     expect(await fileExists(join(projectPath, 'package.json'))).toBe(true);
   });
 

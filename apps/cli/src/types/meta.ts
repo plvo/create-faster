@@ -120,7 +120,7 @@ export interface MetaAddon {
   interactiveScripts?: string[];
   /** Steps of a fresh project's first run, in order (README and CLI summary). */
   firstRun?: FirstRunStep[];
-  /** Scripts run once the dependencies are installed, before `git init`. A failing step only warns. */
+  /** Scripts run once the dependencies are installed. A failing step only warns. */
   postGenerate?: PostGenerateStep[];
 }
 

@@ -68,16 +68,20 @@ async function initializeGit(projectPath: string): Promise<GitFailure | undefine
     s.stop('Git repository initialized successfully!');
     return undefined;
   }
-  s.stop(color.yellow(`⚠ Warning: Failed to initialize git: ${result.output}\nYou can manually run "git init" later.`));
+  s.stop(
+    color.yellow(
+      `⚠ Warning: Failed to initialize git: ${result.output}\nRun "git init" in the project, then install the dependencies (again if already installed) so install scripts find the repository.`,
+    ),
+  );
   return { output: result.output };
 }
 
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {
   const steps = collectPostGenerateSteps(ctx);
   const installs = ctx.pm && !ctx.skipInstall;
+  const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
   const installFailure = installs ? await installDependencies(ctx, projectPath) : undefined;
   const pendingPostGenerate = installs && !installFailure ? await runPostGenerateSteps(steps, projectPath) : steps;
-  const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
 
   return { installFailure, gitFailure, pendingPostGenerate };
 }
