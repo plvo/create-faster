@@ -65,12 +65,27 @@ Install dependencies:
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
+{{#if (developmentSteps)}}
+Start the applications that have a `dev` script in development mode:
+{{else}}
 Start all applications in development mode:
+{{/if}}
 
 ```bash
 {{runScript "dev"}}
 ```
 
+{{#if (developmentSteps)}}
+Then start each application the root `dev` leaves out, in a terminal of its own:
+
+```bash
+{{#each (developmentSteps)}}
+# {{description}}
+{{command}}
+{{/each}}
+```
+
+{{/if}}
 {{#each apps}}
 {{#if (appUrl appName)}}
 - {{appName}}: [{{appUrl appName}}]({{appUrl appName}})
@@ -79,7 +94,10 @@ Start all applications in development mode:
 
 ## Available Scripts
 
-- `{{runScript "dev"}}` - Start all apps in development mode
+- `{{runScript "dev"}}` - Start {{#if (developmentSteps)}}the apps that have a `dev` script{{else}}all apps{{/if}} in development mode
+{{#each (developmentSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
 {{#each (productionSteps)}}
 - `{{command}}` - {{description}}
 {{/each}}

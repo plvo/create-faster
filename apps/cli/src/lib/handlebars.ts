@@ -20,7 +20,7 @@ import {
   getScriptCommand,
   getTypeScriptRunner,
 } from './package-manager';
-import { collectProductionSteps } from './production-steps';
+import { collectDevelopmentSteps, collectProductionSteps } from './script-steps';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -143,6 +143,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('firstRunSteps', (options: Handlebars.HelperOptions) => {
     return collectFirstRunSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('developmentSteps', (options: Handlebars.HelperOptions) => {
+    return collectDevelopmentSteps(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {

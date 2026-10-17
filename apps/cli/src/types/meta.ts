@@ -30,8 +30,8 @@ export interface FirstRunStep {
   commands: FirstRunCommand[];
 }
 
-/** A package.json script that builds, serves or ships a project, with the sentence the READMEs and the CLI summary give it. */
-export interface ProductionScript {
+/** A package.json script with the sentence the READMEs, AGENTS.md and the CLI summary give it. */
+export interface DescribedScript {
   script: string;
   description: string;
 }
@@ -131,7 +131,9 @@ export interface MetaAddon {
   /** Scripts run once the dependencies are installed. A failing step only warns. */
   postGenerate?: PostGenerateStep[];
   /** The scripts this addon adds that build, serve or ship an app, in the order a user runs them. */
-  productionScripts?: Conditional<ProductionScript>[];
+  productionScripts?: Conditional<DescribedScript>[];
+  /** The scripts this addon adds that start an app for development and that the turborepo root dev does not run. */
+  developmentScripts?: Conditional<DescribedScript>[];
 }
 
 export interface MetaProjectCategory {
@@ -154,7 +156,9 @@ interface MetaStack {
   /** Install scripts of the dependencies this stack brings, direct or transitive. */
   installScripts?: InstallScripts;
   /** The scripts of this stack that build, serve or ship an app, in the order a user runs them. */
-  productionScripts?: Conditional<ProductionScript>[];
+  productionScripts?: Conditional<DescribedScript>[];
+  /** The scripts of this stack that start an app for development and that the turborepo root dev does not run. */
+  developmentScripts?: Conditional<DescribedScript>[];
 }
 
 interface MetaRepoStack {

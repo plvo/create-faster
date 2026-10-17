@@ -20,3 +20,11 @@ Start the development server:
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 {{/if}}
 {{/if}}
+{{#each (developmentSteps)}}
+{{description}}:
+
+```bash
+{{command}}
+```
+
+{{/each}}

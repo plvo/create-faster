@@ -6,9 +6,9 @@ import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages, getRootScripts } from '@/lib/package-json-generator';
 import { getPackageRunner, getScriptCommand } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
-import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
 import { shouldPromptCategory } from '@/lib/project-prompts';
+import { collectDevelopmentSteps, collectProductionSteps } from '@/lib/script-steps';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 
@@ -205,11 +205,15 @@ function buildStepsNote(
     steps.push(...commands);
     steps.push('');
   }
-  if ('dev' in getRootScripts(ctx)) {
+  const developmentSteps = [
+    ...('dev' in getRootScripts(ctx)
+      ? [{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]
+      : []),
+    ...collectDevelopmentSteps(ctx),
+  ];
+  if (developmentSteps.length > 0) {
     steps.push('# Development:');
-    steps.push(
-      ...describeCommands([{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]),
-    );
+    steps.push(...describeCommands(developmentSteps));
     steps.push('');
   }
 
