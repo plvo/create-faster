@@ -3,23 +3,12 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, runCli, runCommand } from './helpers';
+import { cleanupTempDir, generateInstalledProject, runCommand } from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_DB = 120_000;
 
 const LOCAL_D1_DIR = '.wrangler/v3/d1/miniflare-D1DatabaseObject';
-
-async function generateInstalledProject(name: string, flags: string[], pm = 'bun'): Promise<string> {
-  const tempDir = await createTempDir();
-  const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', pm], tempDir);
-  expect(result.exitCode).toBe(0);
-
-  const projectDir = join(tempDir, name);
-  const install = await runCommand([pm, 'install'], projectDir);
-  expect(install.exitCode).toBe(0);
-  return projectDir;
-}
 
 function countRows(projectDir: string, table: string): number {
   const dir = join(projectDir, LOCAL_D1_DIR);

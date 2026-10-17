@@ -8,7 +8,7 @@ mono:
 
 Blog posts are MDX files in `contents/blog/`. Frontmatter fields read by the app: `title`, `summary`, `publishedAt`, optional `author` and `imageUrl` (parsed in `src/lib/blog.ts`).
 
-Reading utilities live in `src/lib/blog.ts`: `getAllPosts()` returns posts sorted newest-first (used by `src/app/blog/page.tsx` and `src/app/sitemap.ts`); `getPost(slug)` returns `{ metadata, content }`. Frontmatter is split out by `parseFrontmatter` from `src/lib/mdx.ts`.
+Reading utilities live in `src/lib/blog.ts`: `getAllPosts()` returns posts sorted newest-first (used by `src/app/blog/page.tsx` and `src/app/sitemap.ts`); `getPost(slug)` returns `{ metadata, content }`. Frontmatter is split out by `parseFrontmatter` from `src/lib/frontmatter.ts`.
 
 The post route `src/app/blog/[slug]/page.tsx` calls `generateStaticParams()` from `getAllPosts()`, renders the body with `MDXRemote` + `src/mdx-components.tsx`, and emits `ArticleJsonLd` plus `Breadcrumbs`.
 
@@ -17,7 +17,7 @@ Persona data lives in `src/lib/data/personas.ts` (`slug`, `title`, `headline`, `
 
 ## Adding a blog post
 1. Create `contents/blog/my-post.mdx` with `title`, `summary`, `publishedAt` (and optional `author`/`imageUrl`) frontmatter.
-2. Write MDX below the frontmatter — it is picked up automatically (slug = filename) and added to the sitemap.
+2. Write MDX below the frontmatter, starting at `##`: the post page renders `title` as the only `h1`. It is picked up automatically (slug = filename) and added to the sitemap.
 
 ## Adding a persona
 1. Append a `Persona` object to the `personas` array in `src/lib/data/personas.ts`.

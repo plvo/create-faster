@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { type AddressInfo, createServer } from 'node:net';
 import { join } from 'node:path';
 import { $ } from 'bun';
-import { readJsonFile } from '../integration/helpers';
+import { cleanupTempDir, createTempDir, readJsonFile, runCli } from '../integration/helpers';
 
 export { cleanupTempDir, createTempDir, fileExists, PNPM_AVAILABLE, runCli } from '../integration/helpers';
 
@@ -155,6 +155,23 @@ export async function runCommand(args: string[], cwd: string): Promise<CommandRe
       stdout: e.stdout?.toString() ?? '',
       stderr: e.stderr?.toString() ?? '',
     };
+  }
+}
+
+/** Generates a project and installs its dependencies; its parent directory is the temp dir to clean up. */
+export async function generateInstalledProject(name: string, flags: string[], pm = 'bun'): Promise<string> {
+  const tempDir = await createTempDir();
+  try {
+    const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', pm], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+
+    const projectDir = join(tempDir, name);
+    const install = await runCommand([pm, 'install'], projectDir);
+    expect(install.exitCode, install.stderr).toBe(0);
+    return projectDir;
+  } catch (error) {
+    await cleanupTempDir(tempDir);
+    throw error;
   }
 }
 

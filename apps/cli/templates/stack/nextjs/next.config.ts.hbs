@@ -97,7 +97,9 @@ const nextConfig: NextConfig = {
 {{#if (hasLibrary "mdx")}}
 const withMDX = createMDX({
   extension: /\.(md|mdx)$/,
-  options: {}
+  options: {
+    remarkPlugins: ['remark-frontmatter', 'remark-mdx-frontmatter'],
+  },
 });
 {{/if}}
 

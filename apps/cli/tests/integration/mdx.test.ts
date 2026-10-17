@@ -26,8 +26,48 @@ interface PackageJsonShape {
   devDependencies?: Record<string, string>;
 }
 
+const STATIC_PARAMS_FUNCTION = /export function generateStaticParams[\s\S]*?\n\}\n/;
+const IMPORT_STATEMENT = /^import .* from .*;$/gm;
+const FILE_ACCESS = /\b(?:fs|readdir|readdirSync|readFile|readFileSync|existsSync|statSync|cwd)\b/;
+
+/** What a page does with the filesystem once its module runs, i.e. everything but `generateStaticParams`, which only runs at build. */
+function renderTimeFileAccess(source: string): string[] {
+  return source
+    .replace(STATIC_PARAMS_FUNCTION, '')
+    .replace(IMPORT_STATEMENT, '')
+    .split('\n')
+    .filter((line) => FILE_ACCESS.test(line));
+}
+
+function expectHeadingsWrap(css: string): void {
+  for (const level of [1, 2, 3, 4]) {
+    const rule = new RegExp(`\\.h${level}-mdx \\{([^}]*)\\}`).exec(css);
+    expect(rule, `.h${level}-mdx is styled`).not.toBeNull();
+    expect(rule?.[1]).toMatch(/\bwrap-break-word\b/);
+    expect(rule?.[1]).not.toContain('nowrap');
+  }
+}
+
 describe('MDX Integration', () => {
   let tempDir: string;
+
+  describe('the render-time file access guard', () => {
+    test('flags every way a page reads a file while it renders and spares generateStaticParams', () => {
+      const page = (body: string) => `import fs from 'node:fs';\n\nexport default async function Page() {\n  ${body}\n}\n`;
+      for (const body of [
+        "fs.readFileSync('x');",
+        "(await import('node:fs')).readFileSync('x');",
+        "require('fs').readFileSync('x');",
+        "(await import('fs/promises')).readFile('x');",
+        "process.cwd();",
+      ]) {
+        expect(renderTimeFileAccess(page(body)), body).not.toEqual([]);
+      }
+
+      const buildOnly = `import fs from 'node:fs';\n\nexport function generateStaticParams() {\n  return fs.readdirSync('contents');\n}\n\nexport default function Page() {\n  return null;\n}\n`;
+      expect(renderTimeFileAccess(buildOnly)).toEqual([]);
+    });
+  });
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -126,6 +166,18 @@ describe('MDX Integration', () => {
       expect(content).toContain('export function useMDXComponents()');
     });
 
+    test('headings wrap instead of scrolling the page sideways', async () => {
+      expectHeadingsWrap(await readTextFile(join(projectPath, 'src/styles/mdx.css')));
+    });
+
+    test('tells the agent how documents are added and served', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('## MDX');
+      expect(agents).toContain('contents/<name>.mdx');
+      expect(agents).toContain('import.meta.glob');
+      expect(agents).not.toContain('next-mdx-remote');
+    });
+
     test('does not generate the Next.js example route', async () => {
       expect(await fileExists(join(projectPath, 'src/app'))).toBe(false);
     });
@@ -189,10 +241,17 @@ describe('MDX Integration', () => {
       expect(pkg.dependencies['@next/mdx']).toBeDefined();
       expect(pkg.dependencies['@mdx-js/loader']).toBeDefined();
       expect(pkg.dependencies['@mdx-js/react']).toBeDefined();
-      expect(pkg.dependencies['next-mdx-remote']).toBeDefined();
+      expect(pkg.dependencies['next-mdx-remote']).toBeUndefined();
       expect(pkg.devDependencies?.['@types/mdx']).toBeDefined();
       expect(pkg.dependencies['@mdx-js/rollup']).toBeUndefined();
-      expect(pkg.dependencies['remark-frontmatter']).toBeUndefined();
+    });
+
+    test('compiles the documents with the YAML frontmatter plugins, named as strings for Turbopack', async () => {
+      const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
+      expect(pkg.dependencies['remark-frontmatter']).toBeDefined();
+      expect(pkg.dependencies['remark-mdx-frontmatter']).toBeDefined();
+      const config = await readTextFile(join(projectPath, 'next.config.ts'));
+      expect(config).toContain("remarkPlugins: ['remark-frontmatter', 'remark-mdx-frontmatter']");
     });
 
     test('serves the example under /mdx with an optional slug, like the Start route', async () => {
@@ -208,15 +267,58 @@ describe('MDX Integration', () => {
     test('prerenders every document at build time and 404s any other slug from the page', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
       expect(route).toContain('export function generateStaticParams()');
+      expect(route).toContain('export const dynamicParams = false');
       expect(route).toContain('notFound()');
     });
 
-    test('keeps its components and frontmatter parser', async () => {
+    test('imports the document of the slug by a relative path, so a file added to contents/ needs no edit of the page', async () => {
+      const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      expect(route).toContain('import(`../../../../contents/${');
+      expect(route).not.toContain('#/contents');
+      expect(route).not.toMatch(/import\(['"]/);
+    });
+
+    test('reads no file while the page renders, only generateStaticParams lists contents/ at build', async () => {
+      const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      expect(route).toContain('export function generateStaticParams()');
+      expect(renderTimeFileAccess(route)).toEqual([]);
+    });
+
+    test('renders the document inside the layout main, without a metadata dump', async () => {
+      const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      const layout = await readTextFile(join(projectPath, 'src/app/layout.tsx'));
+      expect(layout.match(/<main\b/g)).toHaveLength(1);
+      expect(route.match(/<main\b/g)).toBeNull();
+      expect(route).not.toContain('JSON.stringify');
+      expect(route).not.toContain('<pre');
+    });
+
+    test('types the frontmatter export and the shape of a document in lib/mdx', async () => {
+      expect(await readTextFile(join(projectPath, 'src/mdx.d.ts'))).toContain('export const frontmatter');
+      const lib = await readTextFile(join(projectPath, 'src/lib/mdx.ts'));
+      expect(lib).toContain('export type MdxFrontmatter');
+      expect(lib).toContain('export type MdxModule');
+      expect(lib).not.toContain('parseFrontmatter');
+    });
+
+    test('headings wrap instead of scrolling the page sideways', async () => {
+      expectHeadingsWrap(await readTextFile(join(projectPath, 'src/styles/mdx.css')));
+    });
+
+    test('tells the agent how documents are added and served', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('## MDX');
+      expect(agents).toContain('contents/<name>.mdx');
+      expect(agents).toContain('generateStaticParams');
+      expect(agents).not.toContain('import.meta.glob');
+    });
+
+    test('keeps its components and ships no frontmatter parser', async () => {
       const components = await readTextFile(join(projectPath, 'src/mdx-components.tsx'));
       expect(components).toContain("import Link from 'next/link'");
       expect(components).toContain('<Link href={href}');
       expect(components).not.toContain('@tanstack/react-router');
-      expect(await readTextFile(join(projectPath, 'src/lib/mdx.ts'))).toContain('parseFrontmatter');
+      expect(await fileExists(join(projectPath, 'src/lib/frontmatter.ts'))).toBe(false);
       expect(await fileExists(join(projectPath, 'src/routes'))).toBe(false);
     });
 
@@ -245,6 +347,11 @@ describe('MDX Integration', () => {
       expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(true);
       expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(true);
     });
+
+    test('imports the documents from the contents/ of the app', async () => {
+      const route = await readTextFile(join(appPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      expect(route).toContain('import(`../../../../contents/${');
+    });
   });
 
   describe('Blueprints with mdx', () => {
@@ -268,6 +375,49 @@ describe('MDX Integration', () => {
         expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(false);
         expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(false);
         expect(await fileExists(join(appPath, 'contents/blog'))).toBe(true);
+      });
+    }
+  });
+
+  describe('Blog posts of the blueprints with mdx', () => {
+    const blogBlueprints = ['cloudflare-static-site-nextjs', 'showcase-nextjs'];
+
+    for (const blueprint of blogBlueprints) {
+      describe(blueprint, () => {
+        const projectName = `blog-${blueprint}`;
+        let projectPath: string;
+
+        beforeAll(async () => {
+          projectPath = join(tempDir, projectName);
+          const result = await runCli([projectName, '--blueprint', blueprint, '--no-git', '--no-install'], tempDir);
+          expect(result.exitCode).toBe(0);
+        });
+
+        test('posts leave the h1 to the page header', async () => {
+          const blogDir = join(projectPath, 'contents/blog');
+          const posts = (await readdir(blogDir)).filter((file) => file.endsWith('.mdx'));
+          expect(posts.length).toBeGreaterThan(0);
+          for (const post of posts) {
+            const body = (await readTextFile(join(blogDir, post)))
+              .replace(/^---\n[\s\S]*?\n---\n/, '')
+              .replace(/^(```|~~~)[\s\S]*?^\1/gm, '');
+            expect(body, post).not.toMatch(/^# /m);
+            expect(body, post).not.toContain('<h1');
+          }
+          expect(await readTextFile(join(projectPath, 'src/app/blog/[slug]/page.tsx'))).toContain('<h1');
+        });
+
+        test('owns the MDX renderer and the frontmatter parser the example page no longer needs', async () => {
+          const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
+          expect(pkg.dependencies['next-mdx-remote']).toBeDefined();
+          expect(await readTextFile(join(projectPath, 'src/lib/frontmatter.ts'))).toContain(
+            'export function parseFrontmatter',
+          );
+          expect(await readTextFile(join(projectPath, 'src/lib/blog.ts'))).toContain(
+            "import { parseFrontmatter } from '@/lib/frontmatter'",
+          );
+          expect(await readTextFile(join(projectPath, 'src/lib/mdx.ts'))).not.toContain('parseFrontmatter');
+        });
       });
     }
   });

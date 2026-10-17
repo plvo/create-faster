@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startServer } from './helpers';
+import { generateInstalledProject, startServer } from './helpers';
 
 const HANGING_SERVER = `
 import { createServer } from 'node:net';
@@ -88,4 +88,18 @@ describe('startServer', () => {
 
     expect(await isAnswering(server.url)).toBe(false);
   }, 15_000);
+});
+
+describe('generateInstalledProject', () => {
+  async function tempDirs(): Promise<string[]> {
+    return (await readdir(tmpdir())).filter((entry) => entry.startsWith('create-faster-test-'));
+  }
+
+  test('removes its temp dir when the generation fails', async () => {
+    const before = await tempDirs();
+
+    await expect(generateInstalledProject('unknown-stack', ['--app', 'unknown-stack:no-such-stack'])).rejects.toThrow();
+
+    expect((await tempDirs()).filter((entry) => !before.includes(entry))).toEqual([]);
+  });
 });

@@ -1,0 +1,12 @@
+Documents are MDX files in `contents/` with YAML frontmatter (`title`, `summary`, `publishedAt`, optional `imageUrl`). `contents/home.mdx` is served at `/mdx` and `contents/<name>.mdx` at `/mdx/<name>`; any other path is a 404.
+{{#if (eq stackName "tanstack-start")}}
+
+To add a page, create `contents/<name>.mdx`: `@mdx-js/rollup` compiles it at build time and `src/lib/mdx.ts` finds it through `import.meta.glob('/contents/*.mdx')`, so no code changes. `src/routes/mdx/{-$slug}.tsx` renders the document, loaded lazily as its own chunk, and throws `notFound()` for a slug that is not a document.
+{{else}}
+
+To add a page, create `contents/<name>.mdx`: `@next/mdx` compiles it at build time and `src/app/mdx/[[...slug]]/page.tsx` imports the document of the slug, so the page needs no edit. `generateStaticParams` lists `contents/` at build time and prerenders one page per document; `dynamicParams = false` makes every other slug a 404.
+
+Never read `contents/` (or any file) with `fs` while a page renders: a Cloudflare Worker has no such directory. Only `generateStaticParams` may, because it runs at build time only. Import the document instead.
+{{/if}}
+
+Components used by documents are mapped in `src/mdx-components.tsx` and styled in `src/styles/mdx.css`; the page renders the document inside the layout's `<main>`, so a document never needs its own.
