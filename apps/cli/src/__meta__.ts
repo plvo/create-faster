@@ -206,6 +206,7 @@ const NODE_ON_NODE: PackageJsonConfig = {
   },
 };
 
+// The bundle is an ES module in a package without `"type": "module"`: only an `.mjs` outfile loads as one without Node's MODULE_TYPELESS_PACKAGE_JSON warning.
 const BUNDLE_LAMBDA_WITH_ESBUILD = (outfile: string, extraFlags = ''): PackageJsonConfig => ({
   devDependencies: { esbuild: ESBUILD_VERSION },
   scripts: { build: `${BUNDLE_FOR_NODE} --outfile=${outfile}${extraFlags}` },
@@ -1423,12 +1424,12 @@ export const META: Meta = {
           '@types/aws-lambda': '^8.10.0',
         },
         scripts: {
-          build: 'bun build src/index.ts --outfile dist/index.js --target node',
+          build: 'bun build src/index.ts --outfile dist/index.mjs --target node',
         },
       },
       packageManagerPackageJson: {
-        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
-        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
+        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs'),
+        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs'),
       },
     },
     'lambda-terraform-aws-hono': {
