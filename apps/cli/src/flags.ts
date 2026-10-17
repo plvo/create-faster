@@ -93,7 +93,7 @@ function libraryStacksHelp(): string {
   return Object.entries(META.libraries)
     .map(([name, library]) => {
       const supported = stackNames.filter((stackName) => isLibraryCompatible(library, stackName));
-      return `    ${name.padEnd(nameWidth)}  ${supported.join(', ')}`;
+      return `${HELP_INDENT}${HELP_INDENT}${name.padEnd(nameWidth)}  ${supported.join(', ')}`;
     })
     .join('\n');
 }

@@ -1,19 +1,17 @@
 import { log, spinner } from '@clack/prompts';
 
-interface TaskSpinner {
-  start(message: string): void;
-  message(message: string): void;
-  stop(message: string, code?: number): void;
-}
+type TaskSpinner = ReturnType<typeof spinner>;
 
-const STOP_CODE_ERROR = 1;
+/** The code a clack spinner stops with: 0 succeeded, 1 was cancelled, 2 and up failed. */
+const STOP_CODE_SUCCESS = 0;
 
 /** Prints a task with a status line that carries no animation, for output that is not a terminal. */
 function plainTask(): TaskSpinner {
   return {
-    start: (message) => log.message(message),
+    start: (message = '') => log.message(message),
     message: () => {},
-    stop: (message, code) => (code === STOP_CODE_ERROR ? log.error(message) : log.step(message)),
+    stop: (message = '', code = STOP_CODE_SUCCESS) =>
+      code === STOP_CODE_SUCCESS ? log.step(message) : log.error(message),
   };
 }
 

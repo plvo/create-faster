@@ -2,7 +2,7 @@ import { isCancel, SelectPrompt } from '@clack/core';
 import { groupMultiselect, multiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
+import { getCategoryOptionUnavailability, getCompatibleLibraryNames } from '@/lib/addon-utils';
 import { type DisableableChoice, handlePromptCancel, promptSelectWithDisabled } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
@@ -48,12 +48,6 @@ export async function selectStackPrompt(message: string): Promise<string> {
   if (isCancel(result)) handlePromptCancel();
 
   return result;
-}
-
-export function getCompatibleLibraryNames(stackName: StackName): string[] {
-  return Object.entries(META.libraries)
-    .filter(([, lib]) => isLibraryCompatible(lib, stackName))
-    .map(([name]) => name);
 }
 
 export async function multiselectLibrariesPrompt(

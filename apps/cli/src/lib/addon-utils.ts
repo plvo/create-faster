@@ -10,6 +10,12 @@ export function isLibraryCompatible(library: MetaAddon, stackName: StackName): b
   return library.support.stacks.includes(stackName);
 }
 
+export function getCompatibleLibraryNames(stackName: StackName): string[] {
+  return Object.entries(META.libraries)
+    .filter(([, library]) => isLibraryCompatible(library, stackName))
+    .map(([name]) => name);
+}
+
 /** The libraries of an app that its stack supports, in the order they were selected. */
 export function getAppLibraries(app: AppContext): { name: string; library: MetaLibrary }[] {
   return app.libraries.flatMap((name) => {

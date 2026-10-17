@@ -1,6 +1,6 @@
 import { META } from '@/__meta__';
 import { isProjectCategoryAvailable } from '@/lib/addon-utils';
-import type { AppContext, FlagAnswers, TemplateContext } from '@/types/ctx';
+import type { AppContext, FlagAnswers, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 
 interface PromptMode {
@@ -96,6 +96,12 @@ export function shouldPromptCategory(
   return isCategoryAskable(categoryName, ctx, mode) && isProjectCategoryAvailable(categoryName, ctx);
 }
 
+/** The project with each named category given an answer, to ask whether a later category would be available. */
+function assumingAnswered(project: ProjectContext, categoryNames: ProjectCategoryName[]): ProjectContext {
+  const answers = categoryNames.map((name) => [name, META.project[name].selection === 'multi' ? [name] : name]);
+  return { ...project, ...Object.fromEntries(answers) };
+}
+
 /**
  * The categories among `categoryNames` that will be asked, in order, as far as the answers so far tell: a category
  * whose requirement is met only by a category asked earlier in the list, or by the one being answered
@@ -109,21 +115,18 @@ export function expectedCategoryPrompts(
 ): ProjectCategoryName[] {
   const expected: ProjectCategoryName[] = [];
   for (const categoryName of categoryNames) {
-    if (!isCategoryAskable(categoryName, ctx, mode)) continue;
-    const required = (META.project[categoryName].require ?? []) as ProjectCategoryName[];
-    if (
-      required.every((name) => isCategoryAnswered(name, ctx) || expected.includes(name) || answering.includes(name))
-    ) {
+    const project = assumingAnswered(ctx.project, [...expected, ...answering]);
+    if (isCategoryAskable(categoryName, ctx, mode) && isProjectCategoryAvailable(categoryName, { project })) {
       expected.push(categoryName);
     }
   }
   return expected;
 }
 
-export function isGitPrompted(answers: FlagAnswers | undefined, mode: PromptMode): boolean {
-  return answers?.git === undefined && !arePromptsSuppressed(mode);
+export function isGitPrompted(answers: FlagAnswers, mode: PromptMode): boolean {
+  return answers.git === undefined && !arePromptsSuppressed(mode);
 }
 
-export function isPackageManagerPrompted(answers: FlagAnswers | undefined, mode: PromptMode): boolean {
-  return !answers?.skipInstall && answers?.pm === undefined && !arePromptsSuppressed(mode);
+export function isPackageManagerPrompted(answers: FlagAnswers, mode: PromptMode): boolean {
+  return !answers.skipInstall && answers.pm === undefined && !arePromptsSuppressed(mode);
 }

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { isRequirementMet } from '@/lib/addon-utils';
+import { getCompatibleLibraryNames, isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
@@ -17,7 +17,6 @@ import {
 } from '@/lib/project-prompts';
 import { promptConfirm, promptSelect, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
 import {
-  getCompatibleLibraryNames,
   multiselectLibrariesPrompt,
   promptProjectCategory,
   selectBlueprintPrompt,
@@ -49,6 +48,9 @@ interface AppsFlow {
   stacks: StackName[];
 }
 
+const asksAppName = (appCount: number) => appCount > 1;
+const asksLibraries = (stackName: StackName) => getCompatibleLibraryNames(stackName).length > 0;
+
 function unaskedCategoryPrompts(
   categoryNames: ProjectCategoryName[],
   ctx: Omit<TemplateContext, 'repo'>,
@@ -63,16 +65,29 @@ function unaskedCategoryPrompts(
 function expectedAppPrompts({ count, stacks }: AppsFlow): string[] {
   return Array.from({ length: count }, (_, index) => {
     const stackName = stacks[index];
-    const asksLibraries = stackName === undefined || getCompatibleLibraryNames(stackName).length > 0;
     return [
-      ...(count > 1 ? [appPromptId(index, 'name')] : []),
+      ...(asksAppName(count) ? [appPromptId(index, 'name')] : []),
       appPromptId(index, 'stack'),
-      ...(asksLibraries ? [appPromptId(index, 'libraries')] : []),
+      ...(stackName === undefined || asksLibraries(stackName) ? [appPromptId(index, 'libraries')] : []),
     ];
   }).flat();
 }
 
-function startCustomFlow(partial: FlagAnswers | undefined, alreadyAsked: string[]) {
+/** The prompts every flow asks around its own: the project name first, then git and the package manager. */
+function plannedPrompts(
+  partial: FlagAnswers,
+  mode: ReturnType<typeof promptModeOf>,
+  ownPrompts: () => string[],
+): string[] {
+  return [
+    ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
+    ...ownPrompts(),
+    ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),
+    ...(isPackageManagerPrompted(partial, mode) ? [PACKAGE_MANAGER_PROMPT] : []),
+  ];
+}
+
+function startCustomFlow(partial: FlagAnswers) {
   const mode = promptModeOf(partial);
   const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
   const appsFlow: AppsFlow = { count: 1, stacks: [] };
@@ -80,73 +95,56 @@ function startCustomFlow(partial: FlagAnswers | undefined, alreadyAsked: string[
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
-    project: partial?.project ? { ...partial.project, tooling: [...partial.project.tooling] } : { tooling: [] },
+    project: partial.project ? { ...partial.project, tooling: [...partial.project.tooling] } : { tooling: [] },
     git: false,
   };
 
-  const progress: Progress = new Progress(
-    () => [
-      ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
+  const progress: Progress = new Progress(() =>
+    plannedPrompts(partial, mode, () => [
       ...(areAppsAnswered(partial) ? [] : [APP_COUNT_PROMPT, ...expectedAppPrompts(appsFlow)]),
       ...unaskedCategoryPrompts(categoryNames, ctx, mode, progress),
-      ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),
-      ...(isPackageManagerPrompted(partial, mode) ? [PACKAGE_MANAGER_PROMPT] : []),
-    ],
-    alreadyAsked,
+    ]),
   );
 
   return { categoryNames, appsFlow, ctx, progress };
 }
 
-function startBlueprintFlow(
-  partial: FlagAnswers | undefined,
-  blueprintName: string | undefined,
-  alreadyAsked: string[],
-) {
+function startBlueprintFlow(partial: FlagAnswers, blueprintName: string, alreadyAsked: string[]) {
+  const blueprint = META.blueprints[blueprintName];
+  if (!blueprint) {
+    cancel(`Blueprint "${blueprintName}" not found`);
+    process.exit(1);
+  }
+
   const mode = promptModeOf(partial);
-  const blueprint = blueprintName ? META.blueprints[blueprintName] : undefined;
 
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
-    apps: blueprint?.context.apps.map((app) => ({ ...app })) ?? [],
+    apps: blueprint.context.apps.map((app) => ({ ...app })),
     project: {
-      ...blueprint?.context.project,
-      ...(partial?.project?.deployment && { deployment: partial.project.deployment }),
-      ...(partial?.project?.linter && { linter: partial.project.linter }),
-      tooling: partial?.project?.tooling ?? [],
+      ...blueprint.context.project,
+      ...(partial.project?.deployment && { deployment: partial.project.deployment }),
+      ...(partial.project?.linter && { linter: partial.project.linter }),
+      tooling: partial.project?.tooling ?? [],
     },
     git: false,
     blueprint: blueprintName,
   };
 
   const progress: Progress = new Progress(
-    () => [
-      ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
-      ...unaskedCategoryPrompts(BLUEPRINT_CATEGORIES, ctx, mode, progress),
-      ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),
-      ...(isPackageManagerPrompted(partial, mode) ? [PACKAGE_MANAGER_PROMPT] : []),
-    ],
+    () => plannedPrompts(partial, mode, () => unaskedCategoryPrompts(BLUEPRINT_CATEGORIES, ctx, mode, progress)),
     alreadyAsked,
   );
 
-  return { ctx, progress };
+  return { blueprint, ctx, progress };
 }
 
-async function promptCreationMode(partial: FlagAnswers | undefined): Promise<'custom' | 'blueprint'> {
-  const { progress } = startCustomFlow(partial, []);
-  return promptSelect<'custom' | 'blueprint'>(
-    progress.message(CREATION_MODE_PROMPT, 'What would you like to create?'),
-    {
-      options: [
-        { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
-        { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },
-      ],
-    },
-  );
-}
+type CustomFlow = ReturnType<typeof startCustomFlow>;
 
-async function promptBlueprint(partial: FlagAnswers | undefined): Promise<string> {
-  const { progress } = startBlueprintFlow(partial, undefined, [CREATION_MODE_PROMPT]);
+/** Before a template is chosen, only the prompts every template flow asks are known. */
+async function promptBlueprint(partial: FlagAnswers): Promise<string> {
+  const mode = promptModeOf(partial);
+  const progress = new Progress(() => plannedPrompts(partial, mode, () => []), [CREATION_MODE_PROMPT]);
   return selectBlueprintPrompt(progress.message(BLUEPRINT_CHOICE_PROMPT, 'Choose a template:'));
 }
 
@@ -164,15 +162,26 @@ export async function promptForContext(partial: FlagAnswers): Promise<Omit<Templ
   const hasBlueprints = Object.keys(META.blueprints).length > 0;
   if (hasCompositionFlags || !hasBlueprints) return cli(partial);
 
-  if ((await promptCreationMode(partial)) === 'custom') return cli(partial, [CREATION_MODE_PROMPT]);
+  const customFlow = startCustomFlow(partial);
+  const creationMode = await promptSelect<'custom' | 'blueprint'>(
+    customFlow.progress.message(CREATION_MODE_PROMPT, 'What would you like to create?'),
+    {
+      options: [
+        { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
+        { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },
+      ],
+    },
+  );
+  if (creationMode === 'custom') return cli(partial, customFlow);
 
   const blueprintName = await promptBlueprint(partial);
   return blueprintCli(blueprintName, partial, [CREATION_MODE_PROMPT, BLUEPRINT_CHOICE_PROMPT]);
 }
 
-async function cli(partial?: FlagAnswers, alreadyAsked: string[] = []): Promise<Omit<TemplateContext, 'repo'>> {
-  const { categoryNames, appsFlow, ctx, progress } = startCustomFlow(partial, alreadyAsked);
-
+async function cli(
+  partial: FlagAnswers,
+  { categoryNames, appsFlow, ctx, progress }: CustomFlow = startCustomFlow(partial),
+): Promise<Omit<TemplateContext, 'repo'>> {
   Object.assign(
     ctx,
     await promptOrUseProjectName(partial, () => progress.message(PROJECT_NAME_PROMPT, 'Name of your project?')),
@@ -206,7 +215,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
 
   ctx.git = await promptOrUseGit(partial, () => progress.message(GIT_PROMPT, `Initialize ${color.bold('Git')}?`));
 
-  validateRequirements(partial ?? {}, ctx);
+  validateRequirements(partial, ctx);
   filterToolingByRequirements(ctx);
 
   const { pm, skipInstall } = await promptOrUsePackageManager(partial, () =>
@@ -214,23 +223,17 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
-  if (partial?.agentContext === false) ctx.agentContext = false;
+  if (partial.agentContext === false) ctx.agentContext = false;
 
   return ctx;
 }
 
 async function blueprintCli(
   blueprintName: string,
-  partial?: FlagAnswers,
+  partial: FlagAnswers,
   alreadyAsked: string[] = [],
 ): Promise<Omit<TemplateContext, 'repo'>> {
-  const blueprint = META.blueprints[blueprintName];
-  if (!blueprint) {
-    cancel(`Blueprint "${blueprintName}" not found`);
-    process.exit(1);
-  }
-
-  const { ctx, progress } = startBlueprintFlow(partial, blueprintName, alreadyAsked);
+  const { blueprint, ctx, progress } = startBlueprintFlow(partial, blueprintName, alreadyAsked);
 
   Object.assign(
     ctx,
@@ -242,15 +245,15 @@ async function blueprintCli(
     `${color.gray('  Stack:')} ${ctx.apps.map((a) => `${a.appName} (${META.stacks[a.stackName as StackName]?.label})`).join(', ')}`,
   );
 
-  if (partial?.project?.deployment) {
+  if (partial.project?.deployment) {
     log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
   }
 
-  if (partial?.project?.linter) {
+  if (partial.project?.linter) {
     log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
   }
 
-  if (partial?.project?.tooling && partial.project.tooling.length > 0) {
+  if (partial.project?.tooling && partial.project.tooling.length > 0) {
     log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
   }
 
@@ -258,7 +261,7 @@ async function blueprintCli(
 
   ctx.git = await promptOrUseGit(partial, () => progress.message(GIT_PROMPT, `Initialize ${color.bold('Git')}?`));
 
-  validateRequirements(partial ?? {}, ctx);
+  validateRequirements(partial, ctx);
   filterToolingByRequirements(ctx);
 
   const { pm, skipInstall } = await promptOrUsePackageManager(partial, () =>
@@ -266,7 +269,7 @@ async function blueprintCli(
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
-  if (partial?.agentContext === false) ctx.agentContext = false;
+  if (partial.agentContext === false) ctx.agentContext = false;
 
   return ctx;
 }
@@ -286,7 +289,7 @@ function logProjectConfig(project: ProjectContext): void {
 async function promptUnansweredCategories(
   ctx: Omit<TemplateContext, 'repo'>,
   categoryNames: ProjectCategoryName[],
-  partial: FlagAnswers | undefined,
+  partial: FlagAnswers,
   progress: Progress,
 ): Promise<void> {
   const mode = promptModeOf(partial);
@@ -321,7 +324,7 @@ async function promptUnansweredCategories(
 }
 
 async function promptOrUseProjectName(
-  partial: FlagAnswers | undefined,
+  partial: FlagAnswers,
   message: () => string,
 ): Promise<Pick<TemplateContext, 'projectName' | 'projectDir'>> {
   if (isProjectDirAnswered(partial)) {
@@ -351,8 +354,8 @@ async function promptOrUseProjectName(
   return { projectName: projectNameOf(projectDir), projectDir };
 }
 
-async function promptOrUseGit(partial: FlagAnswers | undefined, message: () => string): Promise<boolean> {
-  if (partial?.git !== undefined) {
+async function promptOrUseGit(partial: FlagAnswers, message: () => string): Promise<boolean> {
+  if (partial.git !== undefined) {
     if (partial.git) {
       log.info(`${color.green('✓')} Git initialization enabled`);
     }
@@ -365,10 +368,10 @@ async function promptOrUseGit(partial: FlagAnswers | undefined, message: () => s
 }
 
 async function promptOrUsePackageManager(
-  partial: FlagAnswers | undefined,
+  partial: FlagAnswers,
   message: () => string,
 ): Promise<{ pm?: PackageManager; skipInstall?: boolean }> {
-  if (partial?.skipInstall) {
+  if (partial.skipInstall) {
     log.info(`${color.green('✓')} Skipping dependency installation`);
     if (partial.pm) {
       log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
@@ -376,7 +379,7 @@ async function promptOrUsePackageManager(
     return { pm: partial.pm, skipInstall: true };
   }
 
-  if (partial?.pm !== undefined) {
+  if (partial.pm !== undefined) {
     log.info(`${color.green('✓')} Using package manager: ${color.bold(partial.pm)}`);
     return { pm: partial.pm };
   }
@@ -415,13 +418,9 @@ function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
 }
 
 async function promptAllApps(appsFlow: AppsFlow, projectName: string, progress: Progress): Promise<AppContext[]> {
-  if (appsFlow.count <= 1) {
-    return [await promptApp(0, appsFlow, progress, projectName)];
-  }
-
   const apps: AppContext[] = [];
   for (let index = 0; index < appsFlow.count; index++) {
-    apps.push(await promptApp(index, appsFlow, progress));
+    apps.push(await promptApp(index, appsFlow, progress, projectName));
   }
   return apps;
 }
@@ -430,22 +429,18 @@ async function promptApp(
   index: number,
   appsFlow: AppsFlow,
   progress: Progress,
-  projectNameIfOneApp?: string,
+  projectName: string,
 ): Promise<AppContext> {
-  let appName = '';
-
-  if (projectNameIfOneApp) {
-    appName = projectNameIfOneApp;
-  } else {
-    appName = await promptText<string>(
-      progress.message(appPromptId(index, 'name'), `Name of app ${color.bold(`#${index + 1}`)}?`),
-      {
-        defaultValue: `app-${index + 1}`,
-        placeholder: `app-${index + 1}`,
-        validate: validateAppName,
-      },
-    );
-  }
+  const appName = asksAppName(appsFlow.count)
+    ? await promptText<string>(
+        progress.message(appPromptId(index, 'name'), `Name of app ${color.bold(`#${index + 1}`)}?`),
+        {
+          defaultValue: `app-${index + 1}`,
+          placeholder: `app-${index + 1}`,
+          validate: validateAppName,
+        },
+      )
+    : projectName;
 
   const stackName = (await selectStackPrompt(
     progress.message(appPromptId(index, 'stack'), `Stack for ${color.bold(appName)}`),
@@ -454,17 +449,16 @@ async function promptApp(
 
   const metaStack = META.stacks[stackName];
 
-  const libraries =
-    getCompatibleLibraryNames(stackName).length > 0
-      ? await multiselectLibrariesPrompt(
-          stackName,
-          progress.message(
-            appPromptId(index, 'libraries'),
-            `Add ${color.bold(metaStack.label)} libraries to ${color.bold(appName)}?`,
-          ),
-          false,
-        )
-      : [];
+  const libraries = asksLibraries(stackName)
+    ? await multiselectLibrariesPrompt(
+        stackName,
+        progress.message(
+          appPromptId(index, 'libraries'),
+          `Add ${color.bold(metaStack.label)} libraries to ${color.bold(appName)}?`,
+        ),
+        false,
+      )
+    : [];
 
   return { appName, stackName, libraries };
 }

@@ -363,7 +363,11 @@ export const pickFirstOption = (prompt: string): PromptAnswer => ({ prompt, keys
 export const interrupt = (prompt: string): PromptAnswer => ({ prompt, keys: CTRL_C });
 
 /** Runs the CLI on a pseudo-terminal and answers each expected prompt as it appears. */
-export function runCliOnTerminal(args: string[], cwd: string, expectedPrompts: PromptAnswer[]) {
+export function runCliOnTerminal(
+  args: string[],
+  cwd: string,
+  expectedPrompts: PromptAnswer[],
+): ReturnType<typeof runOnPseudoTerminal> {
   const cliPath = join(import.meta.dir, '../../src/index.ts');
   return runOnPseudoTerminal([process.execPath, 'run', cliPath, ...args], cwd, expectedPrompts);
 }

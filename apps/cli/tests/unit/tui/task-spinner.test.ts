@@ -42,12 +42,12 @@ describe('taskSpinner', () => {
     expect(written).not.toContain(ERASE_LINE);
   });
 
-  test('reports a failed task as an error line when stdout is not a terminal', () => {
+  test.each([1, 2])('reports a task that stops with code %d as an error line, off a terminal', (code) => {
     setTerminal(false);
 
     const task = taskSpinner();
     task.start('Installing dependencies with npm...');
-    task.stop('Failed to install dependencies', 1);
+    task.stop('Failed to install dependencies', code);
 
     expect(written).toContain('Failed to install dependencies');
     expect(written).not.toContain(ERASE_LINE);
