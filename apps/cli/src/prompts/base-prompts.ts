@@ -3,6 +3,8 @@ import {
   type ConfirmOptions,
   cancel,
   confirm,
+  type GroupMultiSelectOptions,
+  groupMultiselect,
   isCancel,
   type SelectOptions,
   select,
@@ -100,6 +102,21 @@ export async function promptConfirm(message: string, options?: Partial<ConfirmOp
   const result = await confirm({ message, ...options });
 
   if (isCancel(result)) handlePromptCancel();
+
+  return result;
+}
+
+const MOVE_UP_AND_CLEAR_LINE = '\x1b[1A\x1b[2K';
+
+/** An empty answer to clack's group multi-select prints a blank line: it is replaced by `none`, as clack's multiselect does. */
+export async function promptGroupMultiselect<Value>(options: GroupMultiSelectOptions<Value>): Promise<Value[]> {
+  const result = await groupMultiselect(options);
+
+  if (isCancel(result)) handlePromptCancel();
+
+  if (result.length === 0) {
+    process.stdout.write(`${MOVE_UP_AND_CLEAR_LINE}${S_GRAY_BAR}  ${color.dim('none')}\n`);
+  }
 
   return result;
 }

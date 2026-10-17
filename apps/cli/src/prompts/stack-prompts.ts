@@ -1,9 +1,14 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import { groupMultiselect, type Option } from '@clack/prompts';
+import type { Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
-import { type DisableableChoice, handlePromptCancel, promptSelectWithDisabled } from '@/prompts/base-prompts';
+import {
+  type DisableableChoice,
+  handlePromptCancel,
+  promptGroupMultiselect,
+  promptSelectWithDisabled,
+} from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
 import type { MetaProjectCategory, ProjectCategoryName } from '@/types/meta';
@@ -76,16 +81,12 @@ export async function multiselectLibrariesPrompt(
     });
   }
 
-  const result = await groupMultiselect({
+  return promptGroupMultiselect({
     options: groupedOptions,
     message,
     required,
     selectableGroups: true,
   });
-
-  if (isCancel(result)) handlePromptCancel();
-
-  return result;
 }
 
 export async function selectBlueprintPrompt(message: string): Promise<string> {
@@ -157,16 +158,12 @@ async function promptProjectCategoryMulti(category: MetaProjectCategory, categor
     })),
   };
 
-  const result = await groupMultiselect({
+  return promptGroupMultiselect({
     options: groupedOptions,
     message: category.prompt,
     required: false,
     selectableGroups: false,
   });
-
-  if (isCancel(result)) handlePromptCancel();
-
-  return result;
 }
 
 export async function promptProjectCategory(
