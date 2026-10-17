@@ -17,7 +17,7 @@ Persona data lives in `src/lib/data/personas.ts` (`slug`, `title`, `headline`, `
 
 ## Adding a blog post
 1. Create `contents/blog/my-post.mdx` with `title`, `summary`, `publishedAt` (and optional `author`/`imageUrl`) frontmatter.
-2. Write MDX below the frontmatter — it is picked up automatically (slug = filename) and added to the sitemap.
+2. Write MDX below the frontmatter, starting at `##`: the post page renders `title` as the only `h1`. It is picked up automatically (slug = filename) and added to the sitemap.
 
 ## Adding a persona
 1. Append a `Persona` object to the `personas` array in `src/lib/data/personas.ts`.
