@@ -663,12 +663,12 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN= # PostHog project token: https://us.posthog.com/settings/project',
           monoScope: ['app'],
           stacks: ['nextjs'],
         },
         {
-          value: 'VITE_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          value: 'VITE_POSTHOG_PROJECT_TOKEN= # PostHog project token: https://us.posthog.com/settings/project',
           monoScope: ['app'],
           stacks: ['tanstack-start'],
         },
@@ -1310,15 +1310,15 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_PRIVY_APP_ID=replace-with-privy-app-id',
+          value: 'NEXT_PUBLIC_PRIVY_APP_ID= # Privy app ID: https://dashboard.privy.io',
           monoScope: ['app'],
         },
         {
-          value: 'NEXT_PUBLIC_PRIVY_CLIENT_ID=your-privy-client-id',
+          value: 'NEXT_PUBLIC_PRIVY_CLIENT_ID= # Privy client ID, optional: https://dashboard.privy.io',
           monoScope: ['app'],
         },
         {
-          value: 'PRIVY_APP_SECRET=your-privy-app-secret',
+          value: 'PRIVY_APP_SECRET= # Privy app secret: https://dashboard.privy.io',
           monoScope: ['app'],
           secret: true,
         },
@@ -1361,7 +1361,7 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id',
+          value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID= # WalletConnect project ID: https://dashboard.reown.com',
           monoScope: ['app'],
         },
       ],

@@ -7,12 +7,19 @@ import { db } from '@/lib/db';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 
-const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-const privyAppSecret = process.env.PRIVY_APP_SECRET;
-if (!privyAppId) throw new Error('NEXT_PUBLIC_PRIVY_APP_ID environment variable is not set');
-if (!privyAppSecret) throw new Error('PRIVY_APP_SECRET environment variable is not set');
+let privyClient: PrivyClient | undefined;
 
-const privy = new PrivyClient(privyAppId, privyAppSecret);
+function getPrivyClient(): PrivyClient {
+  if (privyClient) return privyClient;
+
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const privyAppSecret = process.env.PRIVY_APP_SECRET;
+  if (!privyAppId) throw new Error('NEXT_PUBLIC_PRIVY_APP_ID environment variable is not set');
+  if (!privyAppSecret) throw new Error('PRIVY_APP_SECRET environment variable is not set');
+
+  privyClient = new PrivyClient(privyAppId, privyAppSecret);
+  return privyClient;
+}
 
 function getTokenFromHeaders(headers: Headers): string | undefined {
   const cookie = headers.get('cookie') ?? '';
@@ -26,6 +33,7 @@ export async function createTRPCContext(opts?: { headers?: Headers; req?: Reques
 
   let privyUserId: string | null = null;
   if (token) {
+    const privy = getPrivyClient();
     try {
       const claims = await privy.verifyAuthToken(token);
       privyUserId = claims.userId;

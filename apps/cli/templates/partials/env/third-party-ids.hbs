@@ -1,0 +1,23 @@
+{{!-- Where the ids of third-party services come from and what the app does while they are blank; renders nothing when no selected choice needs one, so every caller includes it unconditionally. --}}
+{{#if (or (hasLibrary "posthog") (eq blueprint "dapp-privy-nextjs") (eq blueprint "dapp-rainbowkit-nextjs"))}}
+
+### Third-party ids
+
+`.env.example` leaves these blank because the values come from your own accounts.
+
+{{#each apps}}
+{{#each libraries}}
+{{#if (eq this "posthog")}}
+- `{{#if (eq ../stackName "tanstack-start")}}VITE_POSTHOG_PROJECT_TOKEN{{/if}}{{#if (eq ../stackName "nextjs")}}NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN{{/if}}`{{#if (eq @root.repo "turborepo")}} in `apps/{{../appName}}/.env`{{/if}}: the project token of your PostHog project, in the project settings (https://us.posthog.com/settings/project). While it is blank, analytics stay off and nothing is sent to PostHog.
+{{/if}}
+{{/each}}
+{{/each}}
+{{#if (eq blueprint "dapp-privy-nextjs")}}
+- `NEXT_PUBLIC_PRIVY_APP_ID`: the app ID of an app created in the Privy dashboard (https://dashboard.privy.io). While it is blank, the app shows a setup message instead of the wallet UI.
+- `PRIVY_APP_SECRET`: the app secret of the same app. The server uses it to verify the `privy-token` cookie, so a request that carries one fails with an error naming this variable while it is blank.
+- `NEXT_PUBLIC_PRIVY_CLIENT_ID`: optional, the client ID of an app client from the same dashboard. Leave it blank to use the settings of the app itself.
+{{/if}}
+{{#if (eq blueprint "dapp-rainbowkit-nextjs")}}
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: the project ID of a project created in the Reown dashboard, formerly WalletConnect Cloud (https://dashboard.reown.com). While it is blank, the app shows a setup message instead of the wallet UI.
+{{/if}}
+{{/if}}

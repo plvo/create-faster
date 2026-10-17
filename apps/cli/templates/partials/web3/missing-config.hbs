@@ -1,0 +1,20 @@
+{{!-- service: the third-party service; variable: the env variable left blank; instruction: how to get its value; url: where --}}
+export function MissingConfig() {
+  return (
+    <main className='flex min-h-svh items-center justify-center p-6'>
+      <div className='max-w-md space-y-4 rounded-lg border bg-card p-6 text-sm'>
+        <h1 className='text-lg font-semibold'>{{service}} is not configured</h1>
+        <p className='text-muted-foreground'>
+          Set <code className='font-mono text-foreground'>{{variable}}</code> in{' '}
+          <code className='font-mono text-foreground'>.env</code>, then restart the dev server.
+        </p>
+        <p className='text-muted-foreground'>
+          {{instruction}}{' '}
+          <a href='{{url}}' className='font-medium text-foreground underline underline-offset-4'>
+            {{url}}
+          </a>
+        </p>
+      </div>
+    </main>
+  );
+}

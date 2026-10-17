@@ -8,6 +8,9 @@ mono:
 
 Privy and wagmi are wired in `src/components/app-providers.tsx`: `PrivyProvider` (embedded wallets) wraps `TRPCReactProvider` and `@privy-io/wagmi`'s `WagmiProvider`. Chains and transports live in `src/lib/wagmi.ts`. The `Header` (`src/components/header.tsx`) drives login/logout via `usePrivy` and reads the connected address via wagmi's `useAccount`.
 
+## Configuration
+`NEXT_PUBLIC_PRIVY_APP_ID` is blank in `.env.example`: it comes from your Privy app (https://dashboard.privy.io). While it is blank, `AppProviders` renders `MissingConfig` (`src/components/missing-config.tsx`) instead of the app, so no Privy client starts. `NEXT_PUBLIC_PRIVY_CLIENT_ID` is optional and `PRIVY_APP_SECRET` is only read when a request carries a `privy-token` cookie (`getPrivyClient` in `src/trpc/init.ts`).
+
 ## Session
 Privy stores the session in a `privy-token` cookie. There is no server session store; the cookie is the source of truth.
 

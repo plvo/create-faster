@@ -58,7 +58,7 @@ src/
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID (from [WalletConnect Cloud](https://cloud.walletconnect.com)) |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID (from the [Reown dashboard](https://dashboard.reown.com), formerly WalletConnect Cloud). Blank in `.env.example`: while it is blank the app shows a setup message that names the variable and the dashboard instead of the wallet UI, and RainbowKit is never started with a made-up ID |
 | `BETTER_AUTH_URL` | Public origin of the deployed app (for example `https://app.example.com`). Read at runtime on the server: its host is the SIWE domain a signed message must carry, so it must match the host the browser signs for. `.env.example` sets `http://localhost:3000` |
 
 ## CLI usage

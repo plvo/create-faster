@@ -62,6 +62,7 @@ Copy each `.env*.example` file to the same name without `.example` and fill in:
 {{#each envGroups}}{{#each vars~}}
 - `{{this}}`
 {{/each}}{{/each~}}
+{{> env/third-party-ids}}
 {{else~}}
 
 No environment variables required.
