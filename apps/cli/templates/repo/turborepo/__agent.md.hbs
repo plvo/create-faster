@@ -44,7 +44,9 @@ Generated with create-faster. Turborepo monorepo.
 
 ## Scripts
 - `{{runScript "dev"}}` — run all apps via Turborepo
-- `{{runScript "build"}}` — build all apps
+{{#each (productionSteps)}}
+- `{{command}}` — {{description}}
+{{/each}}
 {{#if (has "orm" "drizzle")~}}
 - `{{runScript "db:generate"}}` — write a SQL migration from the schema (from `packages/db`)
 - `{{runScript "db:migrate"}}` — apply the migrations (from `packages/db`)

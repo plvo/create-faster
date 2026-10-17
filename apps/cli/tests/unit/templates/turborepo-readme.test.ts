@@ -25,7 +25,7 @@ describe('turborepo README start script', () => {
   };
 
   test('lists start when the root package.json defines it', () => {
-    expect(renderReadme(ctx)).toContain('- `npm run start` - Start all apps in production mode');
+    expect(renderReadme(ctx)).toContain('- `npm run start` - Start every app');
   });
 
   test('omits start when no app has a start script', () => {

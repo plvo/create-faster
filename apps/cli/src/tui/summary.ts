@@ -3,9 +3,10 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getMonoPackageName } from '@/lib/addon-utils';
 import { collectFirstRunSteps } from '@/lib/first-run';
-import { collectMonoPackages } from '@/lib/package-json-generator';
-import { getPackageRunner } from '@/lib/package-manager';
+import { collectMonoPackages, getRootScripts } from '@/lib/package-json-generator';
+import { getPackageRunner, getScriptCommand } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
+import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
 import { shouldPromptCategory } from '@/lib/project-prompts';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
@@ -90,6 +91,10 @@ export function displaySummaryNote(
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
 
+function describeLibraryCount(count: number): string {
+  return count === 0 ? '' : color.dim(` +${count} ${count === 1 ? 'library' : 'libraries'}`);
+}
+
 function describeOrmPackage(ctx: TemplateContext, packageName: string): string {
   const { orm, database } = ctx.project;
   const ormAddon = orm ? META.project.orm.options[orm] : undefined;
@@ -105,7 +110,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
 
   const packageNames = [...collectMonoPackages(ctx).keys()];
 
-  lines.push(color.white(color.bold('#🏠 Structure:')));
+  lines.push(color.white(color.bold('🏠 Structure:')));
   lines.push('');
 
   lines.push(`📦 ${color.bold(color.cyan(ctx.projectName))}/`);
@@ -114,7 +119,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     lines.push('├─ 🚀 apps/');
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
-      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
+      const librariesInfo = describeLibraryCount(app.libraries.length);
       const isLast = i === ctx.apps.length - 1 && packageNames.length === 0;
       const prefix = isLast ? '│  └─' : '│  ├─';
       lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
@@ -123,7 +128,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     const app = ctx.apps[0];
     if (app) {
       const stack = META.stacks[app.stackName];
-      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
+      const librariesInfo = describeLibraryCount(app.libraries.length);
       lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     }
   }
@@ -157,6 +162,11 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
   return lines;
 }
 
+function describeCommands(steps: { command: string; description: string }[]): string[] {
+  const width = Math.max(...steps.map(({ command }) => command.length));
+  return steps.map(({ command, description }) => `${command.padEnd(width)}  # ${description}`);
+}
+
 function buildStepsNote(
   ctx: TemplateContext,
   hasGitRepository: boolean,
@@ -165,7 +175,7 @@ function buildStepsNote(
   const steps: string[] = [];
 
   steps.push('');
-  steps.push(color.white(color.bold('#💡 Next steps:')));
+  steps.push(color.white(color.bold('💡 Next steps:')));
   steps.push('');
 
   steps.push(`cd ${quoteProjectDir(getProjectDir(ctx))}`);
@@ -195,18 +205,31 @@ function buildStepsNote(
     steps.push(...commands);
     steps.push('');
   }
-  steps.push('# Development:');
-  steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
-  steps.push('');
-  steps.push('# Build:');
-  steps.push(`${ctx.pm ?? 'npm'} run build      # Build for production`);
+  if ('dev' in getRootScripts(ctx)) {
+    steps.push('# Development:');
+    steps.push(
+      ...describeCommands([{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]),
+    );
+    steps.push('');
+  }
+
+  const productionSteps = collectProductionSteps(ctx);
+  if (productionSteps.length > 0) {
+    steps.push('# Production:');
+    steps.push(...describeCommands(productionSteps));
+    steps.push('');
+  }
 
   if (hasGitRepository) {
-    steps.push('');
     steps.push('# Git:');
+    steps.push('git add .');
+    steps.push('git commit -m "Initial commit"');
+    steps.push('git branch -M main');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
   }
+
+  while (steps.at(-1) === '') steps.pop();
 
   return steps;
 }

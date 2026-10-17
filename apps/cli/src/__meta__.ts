@@ -6,6 +6,19 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 
 const NODE_TYPES_VERSION = '^22';
 
+/** A production script whose sentence changes when a turborepo root runs it in every app. */
+const rootProductionScript = (script: string, description: string, everyAppDescription: string) => [
+  $when({ repo: 'single' }, { script, description }),
+  $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
+];
+
+const BUILD_FOR_PRODUCTION = rootProductionScript('build', 'Build for production', 'Build every app for production');
+const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', 'Start every app');
+const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', 'Start every app');
+const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
+const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
+const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };
+
 const NITRO_VERSION = '^3.0.260903-beta';
 
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
@@ -192,6 +205,7 @@ export const META: Meta = {
       type: 'app',
       label: 'Next.js',
       hint: 'React framework with SSR',
+      productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       packageJson: {
         dependencies: {
           next: '^16.3.0',
@@ -219,6 +233,7 @@ export const META: Meta = {
       type: 'app',
       label: 'Expo',
       hint: 'React Native framework',
+      productionScripts: [...BUILD_FOR_PRODUCTION, ...START_EXPO_DEV_SERVER],
       packageJson: {
         main: 'expo-router/entry',
         dependencies: {
@@ -256,6 +271,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
+      productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {
@@ -279,6 +295,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
+      productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
         dependencies: {},
@@ -300,6 +317,7 @@ export const META: Meta = {
       type: 'app',
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
+      productionScripts: [...BUILD_FOR_PRODUCTION, PREVIEW_PRODUCTION_BUILD, ...START_PRODUCTION_SERVER],
       installScripts: { fsevents: false },
       moduleType: 'module',
       packageJson: {
@@ -742,6 +760,7 @@ export const META: Meta = {
           label: 'Cloudflare Workers',
           hint: 'Deploy to Cloudflare Workers with Wrangler',
           installScripts: WRANGLER_INSTALL_SCRIPTS,
+          productionScripts: [BUILD_WORKER_BUNDLE, PREVIEW_PRODUCTION_BUILD, DEPLOY_TO_WORKERS],
           providesDbBindings: true,
           providesLocalFilesystem: false,
           packageJson: {
@@ -789,6 +808,7 @@ export const META: Meta = {
           label: 'Cloudflare Workers (static)',
           hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
           installScripts: WRANGLER_INSTALL_SCRIPTS,
+          productionScripts: [PREVIEW_PRODUCTION_BUILD, DEPLOY_TO_WORKERS],
           require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {

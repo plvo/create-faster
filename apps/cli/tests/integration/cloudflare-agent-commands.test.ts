@@ -5,7 +5,7 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const PER_APP_SCRIPT = /(cd apps\/<app> && )?bun run (build:cf|preview|deploy)\b/g;
+const PER_APP_SCRIPT = /(cd apps\/(?:<app>|[\w-]+) && )?bun run (build:cf|preview|deploy)\b/g;
 
 describe('Cloudflare agent notes name the commands as a user runs them', () => {
   let tempDir: string;

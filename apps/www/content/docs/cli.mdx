@@ -320,28 +320,32 @@ Then displays a comprehensive summary with an auto-generated command to recreate
 ```bash
 ◇  📂 Summary ────────────────────────────────────╮
 │                                                 │
-│  #🏠 Structure:                                 │
+│  🏠 Structure:                                  │
 │                                                 │
 │  📦 my-app/                                     │
 │  ├─ 🚀 apps/                                    │
-│  │  ├─ web/ (Next.js +4 modules)                │
-│  │  ├─ mobile/ (Expo +1 modules)                │
-│  │  ├─ api/ (Hono +1 modules)                   │
+│  │  ├─ web/ (Next.js +4 libraries)              │
+│  │  ├─ mobile/ (Expo +1 library)                │
+│  │  ├─ api/ (Hono +1 library)                   │
 │  ├─ 📦 packages/                                │
 │  │  └─ db/ (Drizzle + PostgreSQL)               │
 │  └─ ⚙️  Turborepo, Git, Biome                   │
 │                                                 │
-│  #💡 Next steps:                                │
+│  💡 Next steps:                                 │
 │                                                 │
 │  cd my-app                                      │
 │                                                 │
 │  # Development:                                 │
 │  bun run dev        # Start development server  │
 │                                                 │
-│  # Build:                                       │
-│  bun run build      # Build for production      │
+│  # Production:                                  │
+│  bun run build  # Build for production          │
+│  bun run start  # Start the app                 │
 │                                                 │
 │  # Git:                                         │
+│  git add .                                      │
+│  git commit -m "Initial commit"                 │
+│  git branch -M main                             │
 │  git remote add origin <your-repo-url>          │
 │  git push -u origin main                        │
 │                                                 │

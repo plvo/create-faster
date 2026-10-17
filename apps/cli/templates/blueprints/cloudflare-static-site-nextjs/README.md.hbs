@@ -5,20 +5,13 @@ path: README.md
 
 Generated with [create-faster](https://github.com/plvo/create-faster) using the **Cloudflare Static Site** blueprint — a static Next.js (`output: 'export'`) marketing site with an MDX blog, served as Cloudflare Workers static assets.
 
-## Getting started
+{{> readme/getting-started}}
 
-```bash
-{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
-{{runScript "dev"}}
-```
+## Production
 
-## Build & deploy
-
-```bash
-{{runScript "build"}}      # next build → static export in out/
-{{runScript "preview"}}    # serve the built assets locally with wrangler
-{{runScript "deploy"}}     # next build && wrangler deploy
-```
+{{#each (productionSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
 
 Deploying and pointing a custom domain is documented in [`docs/agents/cloudflare-deploy.md`](docs/agents/cloudflare-deploy.md).
 

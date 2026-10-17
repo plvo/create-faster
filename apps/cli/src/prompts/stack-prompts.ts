@@ -1,5 +1,5 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import { groupMultiselect, type Option } from '@clack/prompts';
+import { groupMultiselect, multiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
@@ -146,22 +146,15 @@ async function promptProjectCategorySingle(
   return promptSelectWithDisabled<string | undefined>(category.prompt, choices);
 }
 
-async function promptProjectCategoryMulti(category: MetaProjectCategory, categoryName: string): Promise<string[]> {
-  const groupLabel = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
-
-  const groupedOptions: Record<string, Option<string>[]> = {
-    [groupLabel]: Object.entries(category.options).map(([name, addon]) => ({
+async function promptProjectCategoryMulti(category: MetaProjectCategory): Promise<string[]> {
+  const result = await multiselect({
+    message: category.prompt,
+    options: Object.entries(category.options).map(([name, addon]) => ({
       value: name,
       label: addon.label,
       hint: addon.hint,
     })),
-  };
-
-  const result = await groupMultiselect({
-    options: groupedOptions,
-    message: category.prompt,
     required: false,
-    selectableGroups: false,
   });
 
   if (isCancel(result)) handlePromptCancel();
@@ -178,5 +171,5 @@ export async function promptProjectCategory(
   if (category.selection === 'single') {
     return promptProjectCategorySingle(category, categoryName, ctx);
   }
-  return promptProjectCategoryMulti(category, categoryName);
+  return promptProjectCategoryMulti(category);
 }

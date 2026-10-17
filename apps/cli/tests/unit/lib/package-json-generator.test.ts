@@ -4,9 +4,12 @@ import {
   generateAllPackageJsons,
   generateAppPackageJson,
   generateRootPackageJson,
+  getAppScripts,
+  getRootScripts,
   mergePackageJsonConfigs,
 } from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';
+import type { StackName } from '@/types/stack-name';
 
 describe('mergePackageJsonConfigs', () => {
   test('merges dependencies', () => {
@@ -1229,5 +1232,32 @@ describe('packageManagerPackageJson', () => {
     expect(generateAppPackageJson(ctx(undefined).apps[0]!, ctx(undefined), 0).content.scripts?.dev).toBe(
       'tsx watch src/server.ts',
     );
+  });
+});
+
+describe('getAppScripts', () => {
+  const app = (appName: string, stackName: StackName) => ({ appName, stackName, libraries: [] });
+  const ctxOf = (apps: ReturnType<typeof app>[]): TemplateContext => ({
+    projectName: 'demo',
+    repo: apps.length > 1 ? 'turborepo' : 'single',
+    apps,
+    project: { deployment: 'cloudflare', tooling: [] },
+    git: false,
+    pm: 'npm',
+  });
+
+  test('lists the scripts of each app by app name, including those a turborepo root does not define', () => {
+    const ctx = ctxOf([app('web', 'nextjs'), app('api', 'hono')]);
+    const scripts = Object.fromEntries(getAppScripts(ctx).map(({ appName, scripts }) => [appName, Object.keys(scripts)]));
+
+    expect(scripts.web).toEqual(expect.arrayContaining(['build', 'build:cf', 'deploy']));
+    expect(scripts.api).not.toContain('build:cf');
+    expect(getRootScripts(ctx)).not.toHaveProperty('deploy');
+  });
+
+  test('a single repo has the one app, whose scripts are the root scripts', () => {
+    const ctx = ctxOf([app('web', 'nextjs')]);
+
+    expect(getAppScripts(ctx)).toEqual([{ appName: 'web', scripts: getRootScripts(ctx) }]);
   });
 });

@@ -97,6 +97,11 @@ export function getAppScriptCommand(ctx: TemplateContext, script: string): strin
   return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
 }
 
+/** A script of one app run from the workspace root; the subshell leaves the shell at the root, so steps paste in order. */
+export function getScriptCommandInApp(ctx: TemplateContext, script: string, appName: string): string {
+  return `(cd apps/${appName} && ${getScriptCommand(ctx, script)})`;
+}
+
 /** The command that runs a package binary without installing it. */
 export function getPackageRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];
