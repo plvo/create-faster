@@ -50,21 +50,19 @@ export async function selectStackPrompt(message: string): Promise<string> {
   return result;
 }
 
+export function getCompatibleLibraryNames(stackName: StackName): string[] {
+  return Object.entries(META.libraries)
+    .filter(([, lib]) => isLibraryCompatible(lib, stackName))
+    .map(([name]) => name);
+}
+
 export async function multiselectLibrariesPrompt(
   stackName: StackName,
   message: string,
   required: boolean,
 ): Promise<string[]> {
-  const compatibleLibraries = Object.entries(META.libraries)
-    .filter(([, lib]) => isLibraryCompatible(lib, stackName))
-    .map(([name]) => name);
-
-  if (compatibleLibraries.length === 0) {
-    return [];
-  }
-
   const groupedOptions: Record<string, Option<string>[]> = {};
-  for (const libraryName of compatibleLibraries) {
+  for (const libraryName of getCompatibleLibraryNames(stackName)) {
     const library = META.libraries[libraryName];
     if (!library) continue;
     const group = library.category ?? 'Other';
@@ -132,6 +130,7 @@ async function promptProjectCategorySingle(
   category: MetaProjectCategory,
   categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
+  message: string,
 ): Promise<string | undefined> {
   const choices: DisableableChoice[] = [
     { value: undefined, label: 'None', hint: 'Skip this option' },
@@ -143,12 +142,12 @@ async function promptProjectCategorySingle(
     })),
   ];
 
-  return promptSelectWithDisabled<string | undefined>(category.prompt, choices);
+  return promptSelectWithDisabled<string | undefined>(message, choices);
 }
 
-async function promptProjectCategoryMulti(category: MetaProjectCategory): Promise<string[]> {
+async function promptProjectCategoryMulti(category: MetaProjectCategory, message: string): Promise<string[]> {
   const result = await multiselect({
-    message: category.prompt,
+    message,
     options: Object.entries(category.options).map(([name, addon]) => ({
       value: name,
       label: addon.label,
@@ -165,11 +164,12 @@ async function promptProjectCategoryMulti(category: MetaProjectCategory): Promis
 export async function promptProjectCategory(
   categoryName: ProjectCategoryName,
   ctx: Partial<TemplateContext>,
+  message: string = META.project[categoryName].prompt,
 ): Promise<string | string[] | undefined> {
   const category = META.project[categoryName];
 
   if (category.selection === 'single') {
-    return promptProjectCategorySingle(category, categoryName, ctx);
+    return promptProjectCategorySingle(category, categoryName, ctx, message);
   }
-  return promptProjectCategoryMulti(category);
+  return promptProjectCategoryMulti(category, message);
 }

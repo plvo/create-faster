@@ -1,3 +1,4 @@
+import { META } from '@/__meta__';
 import { isProjectCategoryAvailable } from '@/lib/addon-utils';
 import type { AppContext, FlagAnswers, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
@@ -76,14 +77,49 @@ function isCategoryAnswered(categoryName: ProjectCategoryName, ctx: Pick<Templat
   return Array.isArray(answer) ? answer.length > 0 : Boolean(answer);
 }
 
+function isCategoryAskable(
+  categoryName: ProjectCategoryName,
+  ctx: Pick<TemplateContext, 'project'>,
+  mode: PromptMode,
+): boolean {
+  if (arePromptsSuppressed(mode)) return false;
+  if (mode.noSelection.includes(categoryName)) return false;
+  return !isCategoryAnswered(categoryName, ctx);
+}
+
 /** A category is asked when its requirements are met, no flag answered it and prompts are not suppressed. */
 export function shouldPromptCategory(
   categoryName: ProjectCategoryName,
   ctx: Omit<TemplateContext, 'repo'>,
   mode: PromptMode,
 ): boolean {
-  if (arePromptsSuppressed(mode)) return false;
-  if (mode.noSelection.includes(categoryName)) return false;
-  if (isCategoryAnswered(categoryName, ctx)) return false;
-  return isProjectCategoryAvailable(categoryName, ctx);
+  return isCategoryAskable(categoryName, ctx, mode) && isProjectCategoryAvailable(categoryName, ctx);
+}
+
+/**
+ * The categories among `categoryNames` that will be asked, in order, as far as the answers so far tell: a category
+ * whose requirement is met only by a category asked earlier in the list counts as asked.
+ */
+export function expectedCategoryPrompts(
+  categoryNames: ProjectCategoryName[],
+  ctx: Omit<TemplateContext, 'repo'>,
+  mode: PromptMode,
+): ProjectCategoryName[] {
+  const expected: ProjectCategoryName[] = [];
+  for (const categoryName of categoryNames) {
+    if (!isCategoryAskable(categoryName, ctx, mode)) continue;
+    const required = (META.project[categoryName].require ?? []) as ProjectCategoryName[];
+    if (required.every((name) => isCategoryAnswered(name, ctx) || expected.includes(name))) {
+      expected.push(categoryName);
+    }
+  }
+  return expected;
+}
+
+export function isGitPrompted(answers: FlagAnswers | undefined, mode: PromptMode): boolean {
+  return answers?.git === undefined && !arePromptsSuppressed(mode);
+}
+
+export function isPackageManagerPrompted(answers: FlagAnswers | undefined, mode: PromptMode): boolean {
+  return !answers?.skipInstall && answers?.pm === undefined && !arePromptsSuppressed(mode);
 }

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { PLAIN_OUTPUT_ENV } from '../../plain-output-env';
 
 const WAIT_TIMEOUT_MS = 10_000;
 
@@ -22,8 +23,9 @@ async function waitFor(condition: () => boolean): Promise<void> {
 /** Runs a script of `apps/cli` on a pseudo-terminal, sending each key once the prompt has printed what precedes it. */
 export async function runOnPseudoTerminal(script: string, keystrokes: Keystroke[]): Promise<string> {
   let output = '';
-  const process = Bun.spawn(['bun', '-e', script], {
+  const child = Bun.spawn(['bun', '-e', script], {
     cwd: join(import.meta.dir, '../../..'),
+    env: { ...process.env, ...PLAIN_OUTPUT_ENV },
     terminal: {
       cols: 100,
       rows: 30,
@@ -38,11 +40,11 @@ export async function runOnPseudoTerminal(script: string, keystrokes: Keystroke[
     for (const { after, send } of keystrokes) {
       await waitFor(() => (after ? output.slice(printedBefore).includes(after) : output.length > printedBefore));
       printedBefore = output.length;
-      process.terminal?.write(send);
+      child.terminal?.write(send);
     }
-    await process.exited;
+    await child.exited;
   } finally {
-    process.kill();
+    child.kill();
   }
   return output;
 }

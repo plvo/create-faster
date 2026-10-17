@@ -8,13 +8,20 @@ import { readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
 import {
   areAppsAnswered,
-  arePromptsSuppressed,
+  expectedCategoryPrompts,
+  isGitPrompted,
+  isPackageManagerPrompted,
   isProjectDirAnswered,
   promptModeOf,
   shouldPromptCategory,
 } from '@/lib/project-prompts';
 import { promptConfirm, promptSelectWithDisabled, promptText } from '@/prompts/base-prompts';
-import { multiselectLibrariesPrompt, promptProjectCategory, selectStackPrompt } from '@/prompts/stack-prompts';
+import {
+  getCompatibleLibraryNames,
+  multiselectLibrariesPrompt,
+  promptProjectCategory,
+  selectStackPrompt,
+} from '@/prompts/stack-prompts';
 import { Progress } from '@/tui/progress';
 import type { AppContext, FlagAnswers, PackageManager, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
@@ -24,18 +31,67 @@ import { S_GRAY_BAR } from './tui/symbols';
 
 const DEFAULT_PROJECT_NAME = 'my-app';
 
+const PROJECT_NAME_PROMPT = 'project-name';
+const APP_COUNT_PROMPT = 'app-count';
+const GIT_PROMPT = 'git';
+const PACKAGE_MANAGER_PROMPT = 'package-manager';
+const BLUEPRINT_CATEGORIES: ProjectCategoryName[] = ['deployment', 'linter', 'tooling'];
+
+const categoryPromptId = (categoryName: ProjectCategoryName) => `category:${categoryName}`;
+const appPromptId = (index: number, prompt: 'name' | 'stack' | 'libraries') => `app:${index}:${prompt}`;
+
+/** What the flow knows of the apps it is asking for: how many, and the stack of each one asked so far. */
+interface AppsFlow {
+  count: number;
+  stacks: StackName[];
+}
+
+function unaskedCategoryPrompts(
+  categoryNames: ProjectCategoryName[],
+  ctx: Omit<TemplateContext, 'repo'>,
+  mode: ReturnType<typeof promptModeOf>,
+  progress: Progress,
+): string[] {
+  const unasked = categoryNames.filter((categoryName) => !progress.hasAsked(categoryPromptId(categoryName)));
+  return expectedCategoryPrompts(unasked, ctx, mode).map(categoryPromptId);
+}
+
+function expectedAppPrompts({ count, stacks }: AppsFlow): string[] {
+  return Array.from({ length: count }, (_, index) => {
+    const stackName = stacks[index];
+    const asksLibraries = stackName === undefined || getCompatibleLibraryNames(stackName).length > 0;
+    return [
+      ...(count > 1 ? [appPromptId(index, 'name')] : []),
+      appPromptId(index, 'stack'),
+      ...(asksLibraries ? [appPromptId(index, 'libraries')] : []),
+    ];
+  }).flat();
+}
+
 export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 'repo'>> {
-  const progress = new Progress(['Project', 'Apps', 'Database', 'Extras', 'Install']);
+  const mode = promptModeOf(partial);
+  const categoryNames = Object.keys(META.project) as ProjectCategoryName[];
+  const appsFlow: AppsFlow = { count: 1, stacks: [] };
 
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: [],
-    project: { tooling: [] },
+    project: partial?.project ? { ...partial.project, tooling: [...partial.project.tooling] } : { tooling: [] },
     git: false,
   };
 
-  Object.assign(ctx, await promptOrUseProjectName(partial, progress.message('Name of your project?')));
-  progress.next();
+  const progress = new Progress(() => [
+    ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
+    ...(areAppsAnswered(partial) ? [] : [APP_COUNT_PROMPT, ...expectedAppPrompts(appsFlow)]),
+    ...unaskedCategoryPrompts(categoryNames, ctx, mode, progress),
+    ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),
+    ...(isPackageManagerPrompted(partial, mode) ? [PACKAGE_MANAGER_PROMPT] : []),
+  ]);
+
+  Object.assign(
+    ctx,
+    await promptOrUseProjectName(partial, () => progress.message(PROJECT_NAME_PROMPT, 'Name of your project?')),
+  );
 
   if (areAppsAnswered(partial)) {
     ctx.apps = partial.apps;
@@ -44,42 +100,36 @@ export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 
     );
   } else {
     const appCount = await promptText<number>(
-      `${progress.message('How many apps?')}
+      `${progress.message(APP_COUNT_PROMPT, 'How many apps?')}
 ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}`,
       {
-        initialValue: '1',
-        placeholder: 'Enter a number',
+        defaultValue: '1',
+        placeholder: '1',
         validate: (value) => {
           const num = Number(value);
           if (Number.isNaN(num) || num < 1) return 'Must be a number >= 1';
         },
       },
     );
+    appsFlow.count = Number(appCount);
 
-    ctx.apps = await promptAllApps(Number(appCount), ctx.projectName, progress);
+    ctx.apps = await promptAllApps(appsFlow, ctx.projectName, progress);
   }
-  progress.next();
 
-  if (partial?.project) {
-    ctx.project = { ...partial.project, tooling: [...partial.project.tooling] };
-  }
   logProjectConfig(ctx.project);
-  await promptUnansweredCategories(ctx, Object.keys(META.project) as ProjectCategoryName[], partial, progress);
-  progress.next();
+  await promptUnansweredCategories(ctx, categoryNames, partial, progress);
 
-  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
+  ctx.git = await promptOrUseGit(partial, () => progress.message(GIT_PROMPT, `Initialize ${color.bold('Git')}?`));
 
   validateRequirements(partial ?? {}, ctx);
   filterToolingByRequirements(ctx);
 
-  const { pm, skipInstall } = await promptOrUsePackageManager(
-    partial,
-    progress.message(`Install dependencies ${color.bold('now')}?`),
+  const { pm, skipInstall } = await promptOrUsePackageManager(partial, () =>
+    progress.message(PACKAGE_MANAGER_PROMPT, `Install dependencies ${color.bold('now')}?`),
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
   if (partial?.agentContext === false) ctx.agentContext = false;
-  progress.next();
 
   return ctx;
 }
@@ -94,55 +144,63 @@ export async function blueprintCli(
     process.exit(1);
   }
 
-  const progress = new Progress(['Project', 'Extras', 'Install']);
+  const mode = promptModeOf(partial);
 
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
     apps: blueprint.context.apps.map((app) => ({ ...app })),
-    project: { ...blueprint.context.project, tooling: [] },
+    project: {
+      ...blueprint.context.project,
+      ...(partial?.project?.deployment && { deployment: partial.project.deployment }),
+      ...(partial?.project?.linter && { linter: partial.project.linter }),
+      tooling: partial?.project?.tooling ?? [],
+    },
     git: false,
     blueprint: blueprintName,
   };
 
-  Object.assign(ctx, await promptOrUseProjectName(partial, progress.message('Name of your project?')));
+  const progress = new Progress(() => [
+    ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
+    ...unaskedCategoryPrompts(BLUEPRINT_CATEGORIES, ctx, mode, progress),
+    ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),
+    ...(isPackageManagerPrompted(partial, mode) ? [PACKAGE_MANAGER_PROMPT] : []),
+  ]);
+
+  Object.assign(
+    ctx,
+    await promptOrUseProjectName(partial, () => progress.message(PROJECT_NAME_PROMPT, 'Name of your project?')),
+  );
 
   log.info(`${color.green('✓')} Using blueprint: ${color.bold(blueprint.label)}`);
   log.info(
     `${color.gray('  Stack:')} ${ctx.apps.map((a) => `${a.appName} (${META.stacks[a.stackName as StackName]?.label})`).join(', ')}`,
   );
-  progress.next();
 
   if (partial?.project?.deployment) {
-    ctx.project.deployment = partial.project.deployment;
     log.info(`${color.green('✓')} Using deployment: ${color.bold(partial.project.deployment)}`);
   }
 
   if (partial?.project?.linter) {
-    ctx.project.linter = partial.project.linter;
     log.info(`${color.green('✓')} Using linter: ${color.bold(partial.project.linter)}`);
   }
 
   if (partial?.project?.tooling && partial.project.tooling.length > 0) {
-    ctx.project.tooling = partial.project.tooling;
     log.info(`${color.green('✓')} Using tooling: ${color.bold(partial.project.tooling.join(', '))}`);
   }
 
-  await promptUnansweredCategories(ctx, ['deployment', 'linter', 'tooling'], partial);
-  progress.next();
+  await promptUnansweredCategories(ctx, BLUEPRINT_CATEGORIES, partial, progress);
 
-  ctx.git = await promptOrUseGit(partial, progress.message(`Initialize ${color.bold('Git')}?`));
+  ctx.git = await promptOrUseGit(partial, () => progress.message(GIT_PROMPT, `Initialize ${color.bold('Git')}?`));
 
   validateRequirements(partial ?? {}, ctx);
   filterToolingByRequirements(ctx);
 
-  const { pm, skipInstall } = await promptOrUsePackageManager(
-    partial,
-    progress.message(`Install dependencies ${color.bold('now')}?`),
+  const { pm, skipInstall } = await promptOrUsePackageManager(partial, () =>
+    progress.message(PACKAGE_MANAGER_PROMPT, `Install dependencies ${color.bold('now')}?`),
   );
   ctx.pm = pm;
   if (skipInstall) ctx.skipInstall = true;
   if (partial?.agentContext === false) ctx.agentContext = false;
-  progress.next();
 
   return ctx;
 }
@@ -163,13 +221,17 @@ async function promptUnansweredCategories(
   ctx: Omit<TemplateContext, 'repo'>,
   categoryNames: ProjectCategoryName[],
   partial: FlagAnswers | undefined,
-  progress?: Progress,
+  progress: Progress,
 ): Promise<void> {
   const mode = promptModeOf(partial);
 
   for (const categoryName of categoryNames) {
     if (shouldPromptCategory(categoryName, ctx, mode)) {
-      const result = await promptProjectCategory(categoryName, ctx);
+      const result = await promptProjectCategory(
+        categoryName,
+        ctx,
+        progress.message(categoryPromptId(categoryName), META.project[categoryName].prompt),
+      );
 
       switch (categoryName) {
         case 'database':
@@ -189,14 +251,12 @@ async function promptUnansweredCategories(
           break;
       }
     }
-
-    if (categoryName === 'database') progress?.next();
   }
 }
 
 async function promptOrUseProjectName(
   partial: FlagAnswers | undefined,
-  message: string,
+  message: () => string,
 ): Promise<Pick<TemplateContext, 'projectName' | 'projectDir'>> {
   if (isProjectDirAnswered(partial)) {
     const projectName = projectNameOf(partial.projectDir);
@@ -208,7 +268,7 @@ async function promptOrUseProjectName(
     return { projectName, projectDir: partial.projectDir };
   }
 
-  const answer = await promptText<string>(message, {
+  const answer = await promptText<string>(message(), {
     placeholder: DEFAULT_PROJECT_NAME,
     defaultValue: DEFAULT_PROJECT_NAME,
     validate: (value) => {
@@ -225,7 +285,7 @@ async function promptOrUseProjectName(
   return { projectName: projectNameOf(projectDir), projectDir };
 }
 
-async function promptOrUseGit(partial: FlagAnswers | undefined, message: string): Promise<boolean> {
+async function promptOrUseGit(partial: FlagAnswers | undefined, message: () => string): Promise<boolean> {
   if (partial?.git !== undefined) {
     if (partial.git) {
       log.info(`${color.green('✓')} Git initialization enabled`);
@@ -233,14 +293,14 @@ async function promptOrUseGit(partial: FlagAnswers | undefined, message: string)
     return partial.git;
   }
 
-  if (arePromptsSuppressed(promptModeOf(partial))) return false;
+  if (!isGitPrompted(partial, promptModeOf(partial))) return false;
 
-  return promptConfirm(message, { initialValue: true });
+  return promptConfirm(message(), { initialValue: true });
 }
 
 async function promptOrUsePackageManager(
   partial: FlagAnswers | undefined,
-  message: string,
+  message: () => string,
 ): Promise<{ pm?: PackageManager; skipInstall?: boolean }> {
   if (partial?.skipInstall) {
     log.info(`${color.green('✓')} Skipping dependency installation`);
@@ -255,9 +315,9 @@ async function promptOrUsePackageManager(
     return { pm: partial.pm };
   }
 
-  if (arePromptsSuppressed(promptModeOf(partial))) return { pm: undefined };
+  if (!isPackageManagerPrompted(partial, promptModeOf(partial))) return { pm: undefined };
 
-  const pm = await promptSelectWithDisabled<PackageManager>(message, [
+  const pm = await promptSelectWithDisabled<PackageManager>(message(), [
     ...PACKAGE_MANAGERS.map((name) => ({
       value: name,
       label: `Install with ${name}`,
@@ -288,44 +348,57 @@ function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
   ctx.project.tooling = filtered;
 }
 
-async function promptAllApps(count: number, projectName: string, progress: Progress): Promise<AppContext[]> {
-  if (count <= 1) {
-    const app = await promptApp(1, progress, projectName);
-    return [app];
+async function promptAllApps(appsFlow: AppsFlow, projectName: string, progress: Progress): Promise<AppContext[]> {
+  if (appsFlow.count <= 1) {
+    return [await promptApp(0, appsFlow, progress, projectName)];
   }
 
   const apps: AppContext[] = [];
-  for (let i = 0; i < count; i++) {
-    const app = await promptApp(i + 1, progress, undefined);
-    apps.push(app);
+  for (let index = 0; index < appsFlow.count; index++) {
+    apps.push(await promptApp(index, appsFlow, progress));
   }
   return apps;
 }
 
-async function promptApp(index: number, progress: Progress, projectNameIfOneApp?: string): Promise<AppContext> {
+async function promptApp(
+  index: number,
+  appsFlow: AppsFlow,
+  progress: Progress,
+  projectNameIfOneApp?: string,
+): Promise<AppContext> {
   let appName = '';
 
   if (projectNameIfOneApp) {
     appName = projectNameIfOneApp;
   } else {
-    appName = await promptText<string>(progress.message(`Name of app ${color.bold(`#${index}`)}?`), {
-      defaultValue: `app-${index}`,
-      placeholder: `app-${index}`,
-      validate: (value) => {
-        return validateAppName(value);
+    appName = await promptText<string>(
+      progress.message(appPromptId(index, 'name'), `Name of app ${color.bold(`#${index + 1}`)}?`),
+      {
+        defaultValue: `app-${index + 1}`,
+        placeholder: `app-${index + 1}`,
+        validate: validateAppName,
       },
-    });
+    );
   }
 
-  const stackName = (await selectStackPrompt(progress.message(`Stack for ${color.bold(appName)}`))) as StackName;
+  const stackName = (await selectStackPrompt(
+    progress.message(appPromptId(index, 'stack'), `Stack for ${color.bold(appName)}`),
+  )) as StackName;
+  appsFlow.stacks[index] = stackName;
 
   const metaStack = META.stacks[stackName];
 
-  const libraries = await multiselectLibrariesPrompt(
-    stackName,
-    progress.message(`Add ${color.bold(metaStack.label)} libraries to ${color.bold(appName)}?`),
-    false,
-  );
+  const libraries =
+    getCompatibleLibraryNames(stackName).length > 0
+      ? await multiselectLibrariesPrompt(
+          stackName,
+          progress.message(
+            appPromptId(index, 'libraries'),
+            `Add ${color.bold(metaStack.label)} libraries to ${color.bold(appName)}?`,
+          ),
+          false,
+        )
+      : [];
 
   return { appName, stackName, libraries };
 }

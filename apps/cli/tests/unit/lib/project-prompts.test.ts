@@ -1,10 +1,18 @@
 import { describe, expect, test } from 'bun:test';
-import { arePromptsSuppressed, shouldPromptCategory } from '@/lib/project-prompts';
+import { META } from '@/__meta__';
+import {
+  arePromptsSuppressed,
+  expectedCategoryPrompts,
+  isGitPrompted,
+  isPackageManagerPrompted,
+  shouldPromptCategory,
+} from '@/lib/project-prompts';
 import type { ProjectCategoryName } from '@/types/meta';
 import type { TemplateContext } from '@/types/ctx';
 
 type Project = TemplateContext['project'];
 
+const META_ORDER = Object.keys(META.project) as ProjectCategoryName[];
 const ALL_CATEGORIES: ProjectCategoryName[] = ['database', 'orm', 'deployment', 'linter', 'tooling'];
 
 function contextWith(project: Partial<Project> = {}): Omit<TemplateContext, 'repo'> {
@@ -94,5 +102,56 @@ describe('arePromptsSuppressed', () => {
     expect(arePromptsSuppressed({ ...INTERACTIVE_WITH_FLAGS, skipPrompts: true })).toBe(true);
     expect(arePromptsSuppressed(SCRIPTED_WITH_FLAGS)).toBe(true);
     expect(arePromptsSuppressed(NO_FLAGS_NO_TERMINAL)).toBe(false);
+  });
+});
+
+describe('expectedCategoryPrompts', () => {
+  test('lists every category in META order when nothing is answered', () => {
+    expect(expectedCategoryPrompts(META_ORDER, contextWith(), NO_FLAGS)).toEqual(META_ORDER);
+  });
+
+  test('counts the orm while the database that satisfies it is still to be asked', () => {
+    const asked = expectedCategoryPrompts(META_ORDER, contextWith(), INTERACTIVE_WITH_FLAGS);
+
+    expect(asked).toContain('orm');
+  });
+
+  test('leaves the orm out when no database is answered or asked', () => {
+    const mode = { ...INTERACTIVE_WITH_FLAGS, noSelection: ['database' as const] };
+
+    expect(expectedCategoryPrompts(META_ORDER, contextWith(), mode)).not.toContain('orm');
+  });
+
+  test('leaves out the categories a flag answered and the ones prompts are suppressed for', () => {
+    const ctx = contextWith({ database: 'postgres', linter: 'biome' });
+
+    expect(expectedCategoryPrompts(META_ORDER, ctx, INTERACTIVE_WITH_FLAGS)).toEqual([
+      'deployment',
+      'orm',
+      'tooling',
+    ]);
+    expect(expectedCategoryPrompts(META_ORDER, ctx, SCRIPTED_WITH_FLAGS)).toEqual([]);
+  });
+
+  test('keeps to the categories it is given', () => {
+    expect(expectedCategoryPrompts(['linter'], contextWith(), NO_FLAGS)).toEqual(['linter']);
+  });
+});
+
+describe('isGitPrompted and isPackageManagerPrompted', () => {
+  test('are asked when no flag answers them, in an interactive terminal', () => {
+    expect(isGitPrompted({}, INTERACTIVE_WITH_FLAGS)).toBe(true);
+    expect(isPackageManagerPrompted({}, INTERACTIVE_WITH_FLAGS)).toBe(true);
+  });
+
+  test('are not asked once a flag answers them', () => {
+    expect(isGitPrompted({ git: false }, INTERACTIVE_WITH_FLAGS)).toBe(false);
+    expect(isPackageManagerPrompted({ pm: 'npm' }, INTERACTIVE_WITH_FLAGS)).toBe(false);
+    expect(isPackageManagerPrompted({ skipInstall: true }, INTERACTIVE_WITH_FLAGS)).toBe(false);
+  });
+
+  test('are not asked when prompts are suppressed', () => {
+    expect(isGitPrompted({}, SCRIPTED_WITH_FLAGS)).toBe(false);
+    expect(isPackageManagerPrompted({}, SCRIPTED_WITH_FLAGS)).toBe(false);
   });
 });

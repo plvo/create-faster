@@ -1,46 +1,37 @@
 import color from 'picocolors';
 
-type ProgressStep = {
-  label: string;
-  status: 'pending' | 'active' | 'done';
-};
-
+/**
+ * Numbers the prompts of a flow. `expectedPrompts` lists the ids of the prompts the answers so far say will be
+ * asked, so the total follows the flow: a prompt that stops being expected shrinks it, one that appears grows it.
+ */
 export class Progress {
-  private steps: ProgressStep[];
-  private current = 0;
+  private readonly asked: string[] = [];
 
-  constructor(labels: string[]) {
-    this.steps = labels.map((label, i) => ({
-      label,
-      status: i === 0 ? 'active' : 'pending',
-    }));
+  constructor(private readonly expectedPrompts: () => string[]) {}
+
+  hasAsked(promptId: string): boolean {
+    return this.asked.includes(promptId);
   }
 
   render(): string {
-    const icons = this.steps
-      .map((s) => {
-        if (s.status === 'done') return color.green('●');
-        if (s.status === 'active') return color.cyan('◆');
-        return color.dim('○');
-      })
-      .join(' ');
+    const upcoming = this.expectedPrompts().filter((id) => !this.asked.includes(id));
+    const total = this.asked.length + upcoming.length;
+    const position = this.asked.length;
 
-    const percent = Math.round((this.current / this.steps.length) * 100);
-    const counter = color.blueBright(`${this.current}/${this.steps.length}`);
+    const icons = Array.from({ length: total }, (_, i) => {
+      if (i < position - 1) return color.green('●');
+      if (i === position - 1) return color.cyan('◆');
+      return color.dim('○');
+    }).join('');
+
+    const percent = Math.round(((position - 1) / total) * 100);
+    const counter = color.blueBright(`${position}/${total}`);
 
     return `${color.blueBright('[ ')}${icons}${color.blueBright(' ]')} ${counter} ${color.dim(`${percent}%`)}`;
   }
 
-  message(text: string): string {
+  message(promptId: string, text: string): string {
+    if (!this.asked.includes(promptId)) this.asked.push(promptId);
     return `${text} ${this.render()}`;
-  }
-
-  next() {
-    const current = this.steps[this.current];
-    if (!current) return;
-    current.status = 'done';
-    this.current++;
-    const next = this.steps[this.current];
-    if (next) next.status = 'active';
   }
 }

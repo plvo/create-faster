@@ -1,0 +1,65 @@
+import { describe, expect, test } from 'bun:test';
+import { META } from '@/__meta__';
+import { ENTER, type Keystroke, runOnPseudoTerminal } from './pseudo-terminal';
+
+const [blueprintName, blueprint] = Object.entries(META.blueprints)[0] ?? [];
+if (!blueprintName || !blueprint) throw new Error('META has no blueprint');
+
+const PROMPT_SCRIPT = `
+import { blueprintCli } from '@/cli';
+const ctx = await blueprintCli(${JSON.stringify(blueprintName)}, {});
+console.log('ANSWER=' + JSON.stringify(ctx.project));
+`;
+
+const PROJECT_NAME_PROMPT = 1;
+const GIT_PROMPT = 1;
+const PACKAGE_MANAGER_PROMPT = 1;
+const categoriesAsked = (['deployment', 'linter', 'tooling'] as const).filter(
+  (category) => !(category in blueprint.context.project),
+);
+const promptCount = PROJECT_NAME_PROMPT + categoriesAsked.length + GIT_PROMPT + PACKAGE_MANAGER_PROMPT;
+
+describe('the progress of the blueprint flow', () => {
+  test('numbers each prompt asked over the number of prompts asked', async () => {
+    const answerEveryPrompt: Keystroke[] = Array.from({ length: promptCount }, (_, i) => ({
+      after: `${i + 1}/${promptCount}`,
+      send: ENTER,
+    }));
+
+    const output = await runOnPseudoTerminal(PROMPT_SCRIPT, answerEveryPrompt);
+
+    expect(output).toContain('ANSWER=');
+    const counters = [...output.matchAll(/(\d+)\/(\d+) \d+%/g)].map(([, position, total]) => `${position}/${total}`);
+    expect(new Set(counters)).toEqual(new Set(Array.from({ length: promptCount }, (_, i) => `${i + 1}/${promptCount}`)));
+  });
+});
+
+describe('the progress of the app flow', () => {
+  const categoryCount = Object.keys(META.project).length;
+  const ORM_PROMPT_DROPPED_WITHOUT_DATABASE = 1;
+  const promptsAnswered =
+    PROJECT_NAME_PROMPT + 1 /* app count */ + 2 /* stack, libraries */ + categoryCount - ORM_PROMPT_DROPPED_WITHOUT_DATABASE + GIT_PROMPT + PACKAGE_MANAGER_PROMPT;
+
+  test('drops the orm prompt from the total once no database is chosen, and never skips a number', async () => {
+    const answerEveryPrompt: Keystroke[] = Array.from({ length: promptsAnswered }, (_, i) => ({
+      after: `${i + 1}/`,
+      send: ENTER,
+    }));
+
+    const output = await runOnPseudoTerminal(
+      `
+      import { cli } from '@/cli';
+      const ctx = await cli();
+      console.log('ANSWER=' + JSON.stringify(ctx.project));
+      `,
+      answerEveryPrompt,
+    );
+
+    expect(output).toContain('ANSWER=');
+    const counters = [...output.matchAll(/(\d+)\/(\d+) \d+%/g)].map(([, position, total]) => [Number(position), Number(total)]);
+    const positions = [...new Set(counters.map(([position]) => position))];
+    expect(positions).toEqual(Array.from({ length: promptsAnswered }, (_, i) => i + 1));
+    expect(counters.at(0)?.[1]).toBe(promptsAnswered + ORM_PROMPT_DROPPED_WITHOUT_DATABASE);
+    expect(counters.at(-1)).toEqual([promptsAnswered, promptsAnswered]);
+  });
+});
