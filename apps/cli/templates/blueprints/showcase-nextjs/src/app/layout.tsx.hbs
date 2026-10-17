@@ -9,17 +9,7 @@ import { Footer } from '@/components/layout/footer';
 import { siteConfig } from '@/lib/data/site-config';
 import { siteOpenGraph, siteTwitter } from '@/lib/seo';
 
-const geistSans = localFont({
-  src: '../styles/fonts/geist-sans-vf.woff',
-  variable: '--font-geist-sans',
-  weight: '100 900',
-});
-
-const geistMono = localFont({
-  src: '../styles/fonts/geist-mono-vf.woff',
-  variable: '--font-geist-mono',
-  weight: '100 900',
-});
+{{> nextjs/fonts}}
 
 export const metadata: Metadata = {
   title: {
@@ -46,8 +36,8 @@ export default {{#if (hasLibrary "tanstack-devtools")}}async {{/if}}function Roo
 
   {{/if}}
   return (
-    <html lang='en' className='scroll-smooth' suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+    <html lang='en' className={`scroll-smooth ${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <body className='antialiased' suppressHydrationWarning>
         <AppProviders>
           <OrganizationJsonLd />
           <WebSiteJsonLd />
