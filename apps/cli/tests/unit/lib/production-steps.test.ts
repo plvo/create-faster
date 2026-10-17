@@ -70,15 +70,27 @@ describe('collectProductionSteps', () => {
     ]);
   });
 
-  test('a turborepo runs a script only its apps define once per app, from a subshell that leaves the shell at the root', () => {
+  test('a turborepo runs the scripts only its apps define app by app, from a subshell that leaves the shell at the root', () => {
     expect(collectProductionSteps(turborepo(['nextjs', 'nextjs'], 'cloudflare')).slice(1)).toEqual([
       { description: 'Build the Worker bundle (web)', command: '(cd apps/web && npm run build:cf)' },
-      { description: 'Build the Worker bundle (docs)', command: '(cd apps/docs && npm run build:cf)' },
       { description: 'Preview the production build locally (web)', command: '(cd apps/web && npm run preview)' },
-      { description: 'Preview the production build locally (docs)', command: '(cd apps/docs && npm run preview)' },
       { description: 'Deploy to Cloudflare Workers (web)', command: '(cd apps/web && npm run deploy)' },
+      { description: 'Build the Worker bundle (docs)', command: '(cd apps/docs && npm run build:cf)' },
+      { description: 'Preview the production build locally (docs)', command: '(cd apps/docs && npm run preview)' },
       { description: 'Deploy to Cloudflare Workers (docs)', command: '(cd apps/docs && npm run deploy)' },
     ]);
+  });
+
+  test('each app of a mixed Cloudflare turborepo keeps its own order: the Worker build before its preview and deploy', () => {
+    const steps = commands(turborepo(['tanstack-start', 'nextjs', 'hono'], 'cloudflare'));
+    const positionOf = (appName: string, script: string) => steps.indexOf(`(cd apps/${appName} && npm run ${script})`);
+
+    expect(positionOf('docs', 'build:cf')).toBeGreaterThan(-1);
+    for (const script of ['preview', 'deploy']) {
+      expect(positionOf('docs', script)).toBeGreaterThan(positionOf('docs', 'build:cf'));
+      expect(positionOf('web', script)).toBeGreaterThan(-1);
+      expect(positionOf('api', script)).toBeGreaterThan(-1);
+    }
   });
 
   test('a turborepo names only the apps that define the script', () => {

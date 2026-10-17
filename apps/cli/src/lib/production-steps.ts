@@ -5,16 +5,17 @@ import { getScriptCommand, getScriptCommandInApp } from '@/lib/package-manager';
 import { resolveConditionals } from '@/lib/when';
 import type { TemplateContext } from '@/types/ctx';
 import type { ProductionScript } from '@/types/meta';
+import type { StackName } from '@/types/stack-name';
 
 interface ProductionStep {
   description: string;
   command: string;
 }
 
-/** The production scripts the stacks of the apps and the selected addons declare, in order, each script once. */
-function collectProductionScripts(ctx: TemplateContext): ProductionScript[] {
+/** The production scripts the given stacks and the selected addons declare, stacks first, each script once. */
+function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): ProductionScript[] {
   const declared = [
-    ...ctx.apps.flatMap((app) => META.stacks[app.stackName].productionScripts ?? []),
+    ...stacks.flatMap((stack) => META.stacks[stack].productionScripts ?? []),
     ...getSelectedProjectAddons(ctx).flatMap((addon) => addon.productionScripts ?? []),
   ];
   const scripts = new Map<string, ProductionScript>();
@@ -29,20 +30,29 @@ function collectProductionScripts(ctx: TemplateContext): ProductionScript[] {
 
 /**
  * The production commands the project defines: the README, AGENTS.md and the CLI summary print them. A script the
- * root defines runs from the root; one only the apps define gets a line per app that has it.
+ * root defines runs from the root, in the order the stacks of the apps and the addons declare. A script only the
+ * apps define gets a line per app that has it, app by app, each app in its own declared order (its stack, then the
+ * addons), so every app's sequence runs as printed.
  */
 export function collectProductionSteps(ctx: TemplateContext): ProductionStep[] {
   const rootScripts = getRootScripts(ctx);
-  const apps = getAppScripts(ctx);
+  const appScripts = getAppScripts(ctx);
 
-  return collectProductionScripts(ctx).flatMap(({ script, description }) => {
-    if (script in rootScripts) return [{ description, command: getScriptCommand(ctx, script) }];
+  const rootSteps = declaredProductionScripts(
+    ctx,
+    ctx.apps.map((app) => app.stackName),
+  )
+    .filter(({ script }) => script in rootScripts)
+    .map(({ script, description }) => ({ description, command: getScriptCommand(ctx, script) }));
 
-    return apps
-      .filter(({ scripts }) => script in scripts)
-      .map(({ appName }) => ({
-        description: `${description} (${appName})`,
-        command: getScriptCommandInApp(ctx, script, appName),
-      }));
-  });
+  const appSteps = ctx.apps.flatMap((app, index) =>
+    declaredProductionScripts(ctx, [app.stackName])
+      .filter(({ script }) => !(script in rootScripts) && script in (appScripts[index]?.scripts ?? {}))
+      .map(({ script, description }) => ({
+        description: `${description} (${app.appName})`,
+        command: getScriptCommandInApp(ctx, script, app.appName),
+      })),
+  );
+
+  return [...rootSteps, ...appSteps];
 }

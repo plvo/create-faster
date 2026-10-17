@@ -90,6 +90,32 @@ describe('next steps printed by the summary, the README and AGENTS.md', () => {
     });
   });
 
+  test('a mixed Cloudflare turborepo runs the Worker build of an app before its preview and deploy', async () => {
+    const generated = await generate('mixed-cloudflare-turbo', [
+      '--app',
+      'start:tanstack-start',
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--deployment',
+      'cloudflare',
+    ]);
+
+    for (const text of [generated.readme, generated.stdout]) {
+      expectInOrder(text, [
+        '(cd apps/web && npm run build:cf)',
+        '(cd apps/web && npm run preview)',
+        '(cd apps/web && npm run deploy)',
+      ]);
+      for (const app of ['start', 'api']) {
+        expect(text).not.toContain(`(cd apps/${app} && npm run build:cf)`);
+        expect(text).toContain(`(cd apps/${app} && npm run deploy)`);
+      }
+    }
+    await expectEveryPrintedScriptToExist(generated);
+  });
+
   test('an Expo single repo has no dev script, so no document tells to run one', async () => {
     const generated = await generate('expo-single', ['--app', 'mobile:expo']);
 
