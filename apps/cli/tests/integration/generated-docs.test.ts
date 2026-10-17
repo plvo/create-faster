@@ -292,7 +292,7 @@ describe('generated docs write commands every package manager runs', () => {
     const project = await generate('bp-npm', ['--blueprint', 'cloudflare-static-site-nextjs'], 'npm');
     const readme = await readTextFile(join(project, 'README.md'));
     expect(readme).toContain('npm install');
-    expect(readme).toContain('npm run dev');
+    expect(readme.indexOf('npm run dev')).toBeGreaterThan(readme.indexOf('npm install'));
     expect(readme).not.toMatch(BUN_FORM);
     const guide = await readTextFile(join(project, 'docs/agents/cloudflare-deploy.md'));
     expect(guide).toContain('npm run deploy');
@@ -321,6 +321,7 @@ describe('turborepo README lists the scripts the root package.json defines', () 
     ['eslint-prettier', [...MONO, '--linter', 'eslint-prettier']],
     ['multitenant-saas-nextjs', ['--blueprint', 'multitenant-saas-nextjs']],
     ['cloudflare-fullstack-nextjs', ['--blueprint', 'cloudflare-fullstack-nextjs']],
+    ['cloudflare', ['--app', 'web:nextjs', '--app', 'docs:nextjs', '--deployment', 'cloudflare']],
   ] as const;
   let dir: string;
 
@@ -346,6 +347,7 @@ describe('turborepo README lists the scripts the root package.json defines', () 
       expect(listed.sort()).toEqual(Object.keys(scripts).sort());
       expect(await printedScriptsMissingFrom(project, readme)).toEqual([]);
       expect(await printedScriptsMissingFrom(project, await readTextFile(join(project, 'AGENTS.md')))).toEqual([]);
+      expect(await printedScriptsMissingFrom(project, result.stdout)).toEqual([]);
     }, 30_000);
   });
 });

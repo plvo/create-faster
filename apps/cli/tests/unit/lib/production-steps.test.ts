@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { META } from '@/__meta__';
 import { collectProductionSteps } from '@/lib/production-steps';
 import type { TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
@@ -11,6 +12,14 @@ function singleRepo(stackName: StackName, deployment?: string): TemplateContext 
     project: { deployment, tooling: [] },
     git: false,
     pm: 'npm',
+  };
+}
+
+function turborepo(stacks: StackName[], deployment?: string): TemplateContext {
+  return {
+    ...singleRepo('nextjs', deployment),
+    repo: 'turborepo',
+    apps: stacks.map((stackName, index) => ({ appName: ['web', 'docs', 'api'][index] as string, stackName, libraries: [] })),
   };
 }
 
@@ -44,48 +53,51 @@ describe('collectProductionSteps', () => {
     ]);
   });
 
-  test('every step carries a description', () => {
-    for (const { description } of collectProductionSteps(singleRepo('nextjs', 'cloudflare'))) {
-      expect(description).not.toBe('');
-    }
-  });
-
   test('the commands follow the package manager', () => {
     expect(commands({ ...singleRepo('nextjs'), pm: 'bun' })).toEqual(['bun run build', 'bun run start']);
   });
 
-  test('a turborepo runs the scripts only its apps define from the app directory', () => {
-    const turborepo: TemplateContext = {
-      ...singleRepo('nextjs', 'cloudflare'),
-      repo: 'turborepo',
-      apps: [
-        { appName: 'web', stackName: 'nextjs', libraries: [] },
-        { appName: 'docs', stackName: 'nextjs', libraries: [] },
-      ],
-    };
-
-    expect(commands(turborepo)).toEqual([
-      'npm run build',
-      'cd apps/<app> && npm run build:cf',
-      'cd apps/<app> && npm run preview',
-      'cd apps/<app> && npm run deploy',
+  test('an Expo app starts its dev server, which its description says', () => {
+    expect(collectProductionSteps(singleRepo('expo'))).toEqual([
+      { description: 'Start the Expo dev server', command: 'npm run start' },
     ]);
   });
 
-  test('a turborepo prints a script the root forwards to the apps as a root command', () => {
-    const turborepo: TemplateContext = {
-      ...singleRepo('nextjs'),
-      repo: 'turborepo',
-      apps: [
-        { appName: 'web', stackName: 'nextjs', libraries: [] },
-        { appName: 'api', stackName: 'hono', libraries: [] },
-      ],
-    };
-
-    expect(commands(turborepo)).toEqual(['npm run build', 'npm run start']);
+  test('a turborepo root runs its build and start in every app, which the description says', () => {
+    expect(collectProductionSteps(turborepo(['nextjs', 'hono']))).toEqual([
+      { description: 'Build every app for production', command: 'npm run build' },
+      { description: 'Start every app', command: 'npm run start' },
+    ]);
   });
 
-  test('an Expo app has no build script and starts its dev server', () => {
-    expect(commands(singleRepo('expo'))).toEqual(['npm run start']);
+  test('a turborepo runs a script only its apps define once per app, from a subshell that leaves the shell at the root', () => {
+    expect(collectProductionSteps(turborepo(['nextjs', 'nextjs'], 'cloudflare')).slice(1)).toEqual([
+      { description: 'Build the Worker bundle (web)', command: '(cd apps/web && npm run build:cf)' },
+      { description: 'Build the Worker bundle (docs)', command: '(cd apps/docs && npm run build:cf)' },
+      { description: 'Preview the production build locally (web)', command: '(cd apps/web && npm run preview)' },
+      { description: 'Preview the production build locally (docs)', command: '(cd apps/docs && npm run preview)' },
+      { description: 'Deploy to Cloudflare Workers (web)', command: '(cd apps/web && npm run deploy)' },
+      { description: 'Deploy to Cloudflare Workers (docs)', command: '(cd apps/docs && npm run deploy)' },
+    ]);
+  });
+
+  test('a turborepo names only the apps that define the script', () => {
+    const steps = commands(turborepo(['nextjs', 'hono'], 'cloudflare'));
+
+    expect(steps).toContain('(cd apps/web && npm run build:cf)');
+    expect(steps).not.toContain('(cd apps/api && npm run build:cf)');
+  });
+
+  test('prints the scripts a stack declares in META and no other', () => {
+    const stack = META.stacks.nextjs;
+    const declared = stack.productionScripts;
+    Object.assign(stack, { productionScripts: [{ script: 'analyze', description: 'Analyze the bundle' }] });
+    try {
+      expect(collectProductionSteps(singleRepo('nextjs'))).toEqual([
+        { description: 'Analyze the bundle', command: 'npm run analyze' },
+      ]);
+    } finally {
+      Object.assign(stack, { productionScripts: declared });
+    }
   });
 });

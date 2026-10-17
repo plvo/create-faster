@@ -162,6 +162,11 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
   return lines;
 }
 
+function describeCommands(steps: { command: string; description: string }[]): string[] {
+  const width = Math.max(...steps.map(({ command }) => command.length));
+  return steps.map(({ command, description }) => `${command.padEnd(width)}  # ${description}`);
+}
+
 function buildStepsNote(
   ctx: TemplateContext,
   hasGitRepository: boolean,
@@ -202,17 +207,16 @@ function buildStepsNote(
   }
   if ('dev' in getRootScripts(ctx)) {
     steps.push('# Development:');
-    steps.push(`${getScriptCommand(ctx, 'dev')}        # Start development server`);
+    steps.push(
+      ...describeCommands([{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]),
+    );
     steps.push('');
   }
 
   const productionSteps = collectProductionSteps(ctx);
   if (productionSteps.length > 0) {
-    const width = Math.max(...productionSteps.map(({ command }) => command.length));
     steps.push('# Production:');
-    for (const { command, description } of productionSteps) {
-      steps.push(`${command.padEnd(width)}  # ${description}`);
-    }
+    steps.push(...describeCommands(productionSteps));
     steps.push('');
   }
 

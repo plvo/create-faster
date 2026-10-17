@@ -9,6 +9,7 @@ import {
   mergePackageJsonConfigs,
 } from '@/lib/package-json-generator';
 import type { TemplateContext } from '@/types/ctx';
+import type { StackName } from '@/types/stack-name';
 
 describe('mergePackageJsonConfigs', () => {
   test('merges dependencies', () => {
@@ -1235,27 +1236,28 @@ describe('packageManagerPackageJson', () => {
 });
 
 describe('getAppScripts', () => {
-  const nextjsOnCloudflare = (appNames: string[]): TemplateContext => ({
+  const app = (appName: string, stackName: StackName) => ({ appName, stackName, libraries: [] });
+  const ctxOf = (apps: ReturnType<typeof app>[]): TemplateContext => ({
     projectName: 'demo',
-    repo: appNames.length > 1 ? 'turborepo' : 'single',
-    apps: appNames.map((appName) => ({ appName, stackName: 'nextjs', libraries: [] })),
+    repo: apps.length > 1 ? 'turborepo' : 'single',
+    apps,
     project: { deployment: 'cloudflare', tooling: [] },
     git: false,
     pm: 'npm',
   });
 
-  test('a turborepo lists the scripts its apps define, which its root does not', () => {
-    const ctx = nextjsOnCloudflare(['web', 'docs']);
+  test('lists the scripts of each app by app name, including those a turborepo root does not define', () => {
+    const ctx = ctxOf([app('web', 'nextjs'), app('api', 'hono')]);
+    const scripts = Object.fromEntries(getAppScripts(ctx).map(({ appName, scripts }) => [appName, Object.keys(scripts)]));
 
-    expect(getAppScripts(ctx)).toEqual(expect.arrayContaining(['build:cf', 'preview', 'deploy']));
+    expect(scripts.web).toEqual(expect.arrayContaining(['build', 'build:cf', 'deploy']));
+    expect(scripts.api).not.toContain('build:cf');
     expect(getRootScripts(ctx)).not.toHaveProperty('deploy');
   });
 
-  test('a single repo lists the scripts of its only app', () => {
-    expect(getAppScripts(nextjsOnCloudflare(['web']))).toEqual(expect.arrayContaining(['build:cf', 'deploy']));
-  });
+  test('a single repo has the one app, whose scripts are the root scripts', () => {
+    const ctx = ctxOf([app('web', 'nextjs')]);
 
-  test('a script no app defines is not listed', () => {
-    expect(getAppScripts(nextjsOnCloudflare(['web', 'docs']))).not.toContain('start');
+    expect(getAppScripts(ctx)).toEqual([{ appName: 'web', scripts: getRootScripts(ctx) }]);
   });
 });

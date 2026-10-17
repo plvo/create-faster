@@ -35,31 +35,10 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 {{/each}}
 
 {{/if}}
-## Getting Started
-
-Install dependencies:
-
-```bash
-{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
-```
-
-{{> readme/cloudflare-types}}
-{{> readme/route-tree}}
-{{> readme/first-run}}
-{{#if (hasRootScript "dev")}}
-Start the development server:
-
-```bash
-{{runScript "dev"}}
-```
-
-{{#if (has "stack" "nextjs")}}
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-{{/if}}
-{{/if}}
+{{> readme/getting-started}}
 
 {{#if (productionSteps)}}
-## Build for Production
+## Production
 
 {{#each (productionSteps)}}
 - `{{command}}` - {{description}}

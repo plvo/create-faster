@@ -292,6 +292,14 @@ function generatePackagePackageJson(
   };
 }
 
+/** The scripts each app defines: a turborepo root has only those it forwards through turbo. */
+export function getAppScripts(ctx: TemplateContext): { appName: string; scripts: Record<string, string> }[] {
+  return ctx.apps.map((app, index) => ({
+    appName: app.appName,
+    scripts: composeAppPackageJson(app, ctx, index).scripts ?? {},
+  }));
+}
+
 const APP_SCRIPTS_RUN_BY_TURBO = ['start', 'test', 'test:e2e', 'cf-typegen'];
 
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
@@ -320,9 +328,9 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
     }
   }
 
-  const appScripts = ctx.apps.map((app, index) => composeAppPackageJson(app, ctx, index).scripts ?? {});
+  const appScripts = getAppScripts(ctx);
   for (const script of APP_SCRIPTS_RUN_BY_TURBO) {
-    if (appScripts.some((scripts) => script in scripts)) scripts[script] = `turbo ${script}`;
+    if (appScripts.some((app) => script in app.scripts)) scripts[script] = `turbo ${script}`;
   }
 
   const rootConfigs: PackageJsonConfig[] = [];
@@ -398,12 +406,6 @@ export function getRootScripts(ctx: TemplateContext): Record<string, string> {
   const root =
     ctx.repo === 'turborepo' || !firstApp ? composeRootPackageJson(ctx) : composeAppPackageJson(firstApp, ctx, 0);
   return root.scripts ?? {};
-}
-
-/** The names of the scripts at least one app defines: a turborepo root has only those it forwards through turbo. */
-export function getAppScripts(ctx: TemplateContext): string[] {
-  const names = ctx.apps.flatMap((app, index) => Object.keys(composeAppPackageJson(app, ctx, index).scripts ?? {}));
-  return [...new Set(names)];
 }
 
 /** The workspace packages of a turborepo, keyed by name, each with its merged package.json config. */

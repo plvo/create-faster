@@ -113,9 +113,11 @@ describe('summary note', () => {
   test('commits before it pushes, on a branch named main', () => {
     displaySummaryNote(ctx, undefined, []);
     const output = written.join('');
+    const gitBlock = output.slice(output.indexOf('# Git:'));
     const steps = ['git add .', 'git commit -m', 'git branch -M main', 'git remote add origin', 'git push -u origin main'];
-    const positions = steps.map((step) => output.indexOf(step));
+    const positions = steps.map((step) => gitBlock.indexOf(step));
 
+    expect(output).toContain('# Git:');
     expect(positions).not.toContain(-1);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
@@ -221,7 +223,11 @@ describe('summary note', () => {
         [],
       );
 
-      expect(written.join('')).toContain('cd apps/<app> && bun run deploy');
+      const output = written.join('');
+
+      expect(output).toContain('(cd apps/web && bun run deploy)');
+      expect(output).toContain('(cd apps/docs && bun run deploy)');
+      expect(output).not.toContain('<app>');
     });
 
     test('a Next.js app on Cloudflare lists the Worker build, the preview and the deploy, and no start', () => {
