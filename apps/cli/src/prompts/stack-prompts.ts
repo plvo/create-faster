@@ -1,14 +1,9 @@
 import { isCancel, SelectPrompt } from '@clack/core';
-import type { Option } from '@clack/prompts';
+import { groupMultiselect, multiselect, type Option } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getCategoryOptionUnavailability, isLibraryCompatible } from '@/lib/addon-utils';
-import {
-  type DisableableChoice,
-  handlePromptCancel,
-  promptGroupMultiselect,
-  promptSelectWithDisabled,
-} from '@/prompts/base-prompts';
+import { type DisableableChoice, handlePromptCancel, promptSelectWithDisabled } from '@/prompts/base-prompts';
 import { S_CONNECT_LEFT, S_GRAY_BAR, symbol } from '@/tui/symbols';
 import type { TemplateContext } from '@/types/ctx';
 import type { MetaProjectCategory, ProjectCategoryName } from '@/types/meta';
@@ -81,12 +76,16 @@ export async function multiselectLibrariesPrompt(
     });
   }
 
-  return promptGroupMultiselect({
+  const result = await groupMultiselect({
     options: groupedOptions,
     message,
     required,
     selectableGroups: true,
   });
+
+  if (isCancel(result)) handlePromptCancel();
+
+  return result;
 }
 
 export async function selectBlueprintPrompt(message: string): Promise<string> {
@@ -147,23 +146,20 @@ async function promptProjectCategorySingle(
   return promptSelectWithDisabled<string | undefined>(category.prompt, choices);
 }
 
-async function promptProjectCategoryMulti(category: MetaProjectCategory, categoryName: string): Promise<string[]> {
-  const groupLabel = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
-
-  const groupedOptions: Record<string, Option<string>[]> = {
-    [groupLabel]: Object.entries(category.options).map(([name, addon]) => ({
+async function promptProjectCategoryMulti(category: MetaProjectCategory): Promise<string[]> {
+  const result = await multiselect({
+    message: category.prompt,
+    options: Object.entries(category.options).map(([name, addon]) => ({
       value: name,
       label: addon.label,
       hint: addon.hint,
     })),
-  };
-
-  return promptGroupMultiselect({
-    options: groupedOptions,
-    message: category.prompt,
     required: false,
-    selectableGroups: false,
   });
+
+  if (isCancel(result)) handlePromptCancel();
+
+  return result;
 }
 
 export async function promptProjectCategory(
@@ -175,5 +171,5 @@ export async function promptProjectCategory(
   if (category.selection === 'single') {
     return promptProjectCategorySingle(category, categoryName, ctx);
   }
-  return promptProjectCategoryMulti(category, categoryName);
+  return promptProjectCategoryMulti(category);
 }
