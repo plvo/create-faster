@@ -50,15 +50,15 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 ## Environment Variables
 
 Copy each `.env*.example` file to the same name without `.example` and configure:
-{{> env/third-party-ids}}
-
 {{#each envGroups}}
+
 ### `{{path}}`
 {{#each vars}}
 - `{{this}}`
 {{/each}}
-
 {{/each}}
+{{> env/third-party-ids}}
+
 {{/if}}
 ## Learn More
 

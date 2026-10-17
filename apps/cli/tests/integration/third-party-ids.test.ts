@@ -92,12 +92,13 @@ describe('third-party ids', () => {
     await cleanupTempDir(tempDir);
   });
 
-  for (const { title, project, envFiles, variables } of THIRD_PARTY_CASES) {
-    test(`${title} commits blank ids, so a copied .env never activates a client`, async () => {
+  for (const { title, project, envFiles, variables, source } of THIRD_PARTY_CASES) {
+    test(`${title} commits blank ids that name their source, so a copied .env never activates a client`, async () => {
       for (const envFile of envFiles) {
         const env = await readTextFile(join(tempDir, project, envFile));
         for (const variable of variables) {
           expect(valueOf(env, variable), `${variable} in ${envFile}`).toBe('');
+          expect(env.split('\n').find((line) => line.startsWith(`${variable}=`))).toContain(source);
         }
       }
     });
@@ -133,6 +134,17 @@ describe('third-party ids', () => {
     expect(result.exitCode, result.stderr).toBe(0);
     for (const file of ['README.md', 'AGENTS.md']) {
       expect(await readTextFile(join(tempDir, 'ids-plain', file))).not.toContain('Third-party ids');
+    }
+  });
+});
+
+describe('the partials that render third-party ids', () => {
+  const PARTIALS_DIR = join(import.meta.dir, '../../templates/partials');
+
+  test('hold no variable name, URL or blueprint check: META is the only source', async () => {
+    for (const partial of ['env/third-party-ids.hbs', 'setup/missing-config.hbs']) {
+      const source = await readTextFile(join(PARTIALS_DIR, partial));
+      expect(source, partial).not.toMatch(/https?:\/\/|dapp-|posthog|privy|walletconnect|NEXT_PUBLIC|VITE_/i);
     }
   });
 });
