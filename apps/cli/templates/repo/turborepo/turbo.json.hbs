@@ -17,11 +17,11 @@
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "cache": false,
       "persistent": true
-    },
+    }{{#if (hasRootScript "start")}},
     "start": {
       "cache": false,
       "persistent": true
-    }{{#if (hasRootScript "test")}},
+    }{{/if}}{{#if (hasRootScript "test")}},
     "test": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env"]

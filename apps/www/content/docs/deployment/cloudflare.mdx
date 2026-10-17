@@ -14,7 +14,7 @@ Cloudflare Workers is a project-level deployment platform. Generation is stack-a
 
 ### Hono apps
 
-Hono already exports a Workers-compatible fetch handler (`export default app`), so no adapter is needed — local dev keeps running on Bun while Wrangler handles preview and deploy.
+Hono already exports a Workers-compatible fetch handler (`export default app`), so no adapter is needed. `dev` runs Wrangler too, so the app develops in the Workers runtime with its bindings on `c.env`. There is no Node or Bun server: the app has no `start` script, no `src/server.ts` and no `@hono/node-server`, and the root `start` of a turborepo does not run it.
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -27,8 +27,9 @@ Hono already exports a Workers-compatible fetch handler (`export default app`), 
 ```
 
 **Scripts:**
+- `dev` - Run the Worker locally on the Workers runtime, on the app port (3000 in a single repo, the port of the app in a turborepo; `PORT` overrides it, which is how [portless](/docs/extras/portless) reaches it), sharing the local state of the repo root (`wrangler dev --persist-to <repo root>/.wrangler`)
 - `deploy` - Deploy the Worker (`wrangler deploy`)
-- `preview` - Run the Worker locally on the Workers runtime (`wrangler dev`)
+- `preview` - Run the Worker locally with the same runtime and local state as `dev` (`wrangler dev`), on Wrangler's default port
 - `cf-typegen` - Generate binding types (`wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts`). The app's `postinstall` runs it, so a fresh install type-checks; run it again after each change to `wrangler.jsonc`.
 
 ### Next.js apps
