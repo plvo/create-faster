@@ -9,10 +9,14 @@ import { contactTable, desc, eq, count as dbCount } from '@repo/db';
 import { router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';
 
+const optionalEmail = z
+  .union([z.string().email(), z.literal('')])
+  .transform((email) => email || null);
+
 const contactInput = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  email: z.string().email().optional(),
+  email: optionalEmail.optional(),
   phone: z.string().optional(),
   company: z.string().optional(),
   notes: z.string().optional(),
