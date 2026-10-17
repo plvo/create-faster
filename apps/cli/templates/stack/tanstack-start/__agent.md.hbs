@@ -3,7 +3,7 @@ Import alias `@/*` maps to `src/*`.
 {{#unless (or (has "deployment" "cloudflare") (has "deployment" "cloudflare-static"))}}
 
 `build` emits a Nitro server to `.output/`. `start` runs it with Node, which loads `.env` when it exists, then `.env.start` (`NODE_ENV=production` and the app's default `PORT`, which win over the same variables in `.env`). Without a `.env`, Node prints `.env not found. Continuing without it.` on stderr and starts anyway.
-A variable exported in the shell wins over both files when `start` runs from the app directory.{{#if (isMono)}} `turbo start` from the root runs in turbo's strict env mode, which drops shell variables, so only the two files apply there.{{/if}}
+A variable exported in the shell wins over both files when `start` runs from the app directory.{{#if (isMono)}} `turbo start` from the root runs in turbo's strict env mode, which drops shell variables other than `PORT`, so only the two files apply to the others there.{{/if}}
 {{/unless}}
 {{#unless (has "deployment" "cloudflare-static")}}
 

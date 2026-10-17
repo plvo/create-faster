@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readdir, readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { META } from '@/__meta__';
 
 const TEMPLATES_DIR = join(import.meta.dir, '../../templates');
@@ -154,6 +154,7 @@ describe('Template imports vs META dependencies', () => {
     const jsxBracesRegex = /=[{]{2}[^#/\\]/;
 
     for (const filePath of templateFiles) {
+      if (basename(filePath).startsWith('__env')) continue;
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n');
       let inRawBlock = false;

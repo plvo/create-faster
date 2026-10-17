@@ -70,7 +70,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         requireEmailVerificationOnInvitation: false,
         cancelPendingInvitationsOnReInvite: true,
         async sendInvitationEmail(data) {
-          const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${data.id}`;
+          const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? '{{appUrl "web"}}'}/accept-invitation/${data.id}`;
           deliverLink({ kind: 'invitation', to: data.email, link: inviteLink });
         },
       }),

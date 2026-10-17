@@ -36,8 +36,8 @@ describe('Hono app port', () => {
       '--app',
       'api:hono',
     ]);
-    expect(scripts.dev).toBe('bun run --port 3002 --hot src/index.ts');
-    expect(scripts.start).toBe('NODE_ENV=production bun run --port 3002 src/index.ts');
+    expect(scripts.dev).toBe('bun run --port ${PORT:-3002} --hot src/index.ts');
+    expect(scripts.start).toBe('NODE_ENV=production bun run --port ${PORT:-3002} src/index.ts');
   });
 
   test('a single-repo Hono app keeps the runtime default of 3000', async () => {
@@ -57,7 +57,7 @@ describe('Hono app port', () => {
     ]);
     expect(scripts.dev).toBe('portless run bun run --hot src/index.ts');
     expect(scripts['start:portless']).toBe('NODE_ENV=production portless run bun run src/index.ts');
-    expect(scripts.start).toBe('NODE_ENV=production bun run --port 3001 src/index.ts');
+    expect(scripts.start).toBe('NODE_ENV=production bun run --port ${PORT:-3001} src/index.ts');
   });
 
   test('the cloudflare-fullstack-nextjs cron app does not take the port of the web app', async () => {

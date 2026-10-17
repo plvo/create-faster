@@ -19,7 +19,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
 
 const config = defineConfig(({{#if (has "deployment" "cloudflare")}}{ command }{{/if}}) => ({
   server: {
-    port: {{#if (isMono)}}{{appPort appName}}{{else}}3000{{/if}},
+    port: Number(process.env.PORT ?? {{appPort appName}}),
   },
   resolve: {
     tsconfigPaths: true,

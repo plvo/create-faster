@@ -72,9 +72,14 @@ describe('spreadExtraKeys', () => {
 });
 
 describe('processScriptPorts', () => {
-  test('replaces {{port}} placeholder with port number', () => {
+  test('lets PORT override the port of the flag', () => {
     const result = processScriptPorts({ dev: 'next dev --port {{port}}' }, 3000);
-    expect(result.dev).toBe('next dev --port 3000');
+    expect(result.dev).toBe('next dev --port ${PORT:-3000}');
+  });
+
+  test('replaces a {{port}} outside the flag with the port number', () => {
+    const result = processScriptPorts({ dev: 'sh -c "serve --port=${PORT:-{{port}}}" sh' }, 3002);
+    expect(result.dev).toBe('sh -c "serve --port=${PORT:-3002}" sh');
   });
 
   test('removes --port {{port}} when no port provided', () => {
@@ -99,7 +104,7 @@ describe('processScriptPorts', () => {
 
   test('handles multiple scripts', () => {
     const result = processScriptPorts({ dev: 'next dev --port {{port}}', build: 'next build' }, 3001);
-    expect(result.dev).toBe('next dev --port 3001');
+    expect(result.dev).toBe('next dev --port ${PORT:-3001}');
     expect(result.build).toBe('next build');
   });
 
