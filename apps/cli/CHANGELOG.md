@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.9](https://github.com/plvo/create-faster/compare/create-faster-v1.6.8...create-faster-v1.6.9) (2026-10-17)
+
+
+### Bug Fixes
+
+* **blueprints:** repair the shell of the four dashboards ([#385](https://github.com/plvo/create-faster/issues/385)) ([c206c9b](https://github.com/plvo/create-faster/commit/c206c9b9c92b9e286d25aca5e4a9704ff9103bf2))
+* **blueprints:** saas member removal, role-gated write actions, 404 ([#388](https://github.com/plvo/create-faster/issues/388)) ([1e03a33](https://github.com/plvo/create-faster/commit/1e03a33de9d4606b4d9fd1a7de9bce8e3c1f1f5e))
+* **blueprints:** serve the blog from the bundle on a Worker ([#393](https://github.com/plvo/create-faster/issues/393)) ([b2acb09](https://github.com/plvo/create-faster/commit/b2acb0968a8ab73b78afa653968506cd57f509b0))
+* **blueprints:** surface and map errors of dashboard mutations ([#384](https://github.com/plvo/create-faster/issues/384)) ([6b4076b](https://github.com/plvo/create-faster/commit/6b4076b4c3242b068d40638c2156f8bac43ec186))
+* **cli:** polish interactive prompts, help and redirected output ([#391](https://github.com/plvo/create-faster/issues/391)) ([1585f75](https://github.com/plvo/create-faster/commit/1585f75e431609c1e23b64ea2b7474f381d593db))
+* **cli:** print only the steps the project can run ([#374](https://github.com/plvo/create-faster/issues/374)) ([90d67f2](https://github.com/plvo/create-faster/commit/90d67f2a210fe2b2b4c01106c3f2cb1432b8ff97))
+* **cloudflare:** document ordered D1 provisioning for every repo type ([#389](https://github.com/plvo/create-faster/issues/389)) ([3aa9bff](https://github.com/plvo/create-faster/commit/3aa9bff3524a9b95e6481411928481d63bd147ae))
+* **cloudflare:** document the production URL and first admin ([#394](https://github.com/plvo/create-faster/issues/394)) ([761c4e1](https://github.com/plvo/create-faster/commit/761c4e146ef664c53cb91a8a568492259cce33d8))
+* **hono:** run dev in Wrangler on cloudflare so bindings exist ([#382](https://github.com/plvo/create-faster/issues/382)) ([dbb0d2b](https://github.com/plvo/create-faster/commit/dbb0d2bdfff3094c0eb614e6d414243ead29820a))
+* **mdx:** serve the Next.js MDX pages on Cloudflare ([#380](https://github.com/plvo/create-faster/issues/380)) ([5eb79bc](https://github.com/plvo/create-faster/commit/5eb79bc0a4a8d6cf0232adff9cb0892e1699a599))
+* **nextjs:** apply the Geist fonts through the html element ([#386](https://github.com/plvo/create-faster/issues/386)) ([c036b58](https://github.com/plvo/create-faster/commit/c036b58a73b9a1eecae6bd4e143f6cfc3e790366))
+* **ports:** let PORT override the port of every app under turbo ([#396](https://github.com/plvo/create-faster/issues/396)) ([26185f8](https://github.com/plvo/create-faster/commit/26185f8c6b3b9f1f7d3dc30fd72c615c605472b3))
+* **shadcn:** make shadcn add work in a turborepo ([#390](https://github.com/plvo/create-faster/issues/390)) ([ef85356](https://github.com/plvo/create-faster/commit/ef853560be9fa9246c48168004904ed8f7a1a50d))
+* **templates:** leave third-party ids blank and say where to get them ([#397](https://github.com/plvo/create-faster/issues/397)) ([7c80908](https://github.com/plvo/create-faster/commit/7c80908694bb636fe4f7540b819ae1ae80ca8007))
+
 ## [1.6.8](https://github.com/plvo/create-faster/compare/create-faster-v1.6.7...create-faster-v1.6.8) (2026-10-16)
 
 
