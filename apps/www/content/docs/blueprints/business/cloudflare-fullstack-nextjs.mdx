@@ -130,9 +130,11 @@ bun run local-setup     # .env files, reset + migrate local D1, generate CF type
 cd apps/web && bun run preview   # OpenNext preview against local bindings
 ```
 
-Provisioning the live D1 database + R2 bucket, pasting the `database_id` into both `wrangler.jsonc` files, setting secrets, and deploying both Workers are documented in the generated `docs/agents/cloudflare-deploy.md`.
+Provisioning the live D1 database + R2 bucket, pasting the `database_id` into both `wrangler.jsonc` files, learning the production URL (`https://<project>-web.<subdomain>.workers.dev`) before the first build, setting secrets, deploying both Workers and promoting the first admin are documented in the generated `docs/agents/cloudflare-deploy.md`.
 
-The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.required` in its `wrangler.jsonc` (the cron Worker has none), so its deploy fails until both are set. Because `build:cf` bundles every `.env*` value into the Worker, build the one you deploy where `apps/web/.env` holds no real secret, and set production secrets with `wrangler secret put` (a new Worker takes them from a gitignored file on its first deploy: `deploy -- --secrets-file .prod.env`). The generated `docs/agents/cloudflare-deploy.md` has the details. See [Cloudflare](/docs/deployment/cloudflare) for the deployment details.
+Sign-up is open and every account gets the `user` role, and the seed only writes the local database, so the first admin of a deployed app is promoted by hand: sign up, then run `wrangler d1 execute DB --remote --command "UPDATE users SET role = 'admin' WHERE email = '<your email>'"` from `apps/web` (with the `bunx`, `npx` or `pnpm exec` of your package manager). The role is read on every request, so the session sees `/admin` as soon as the app reloads.
+
+The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.required` in its `wrangler.jsonc` (the cron Worker has none), so its deploy fails until both are set. Because `build:cf` bundles every `.env*` value into the Worker, build the one you deploy where `apps/web/.env` holds no real secret, with `NEXT_PUBLIC_APP_URL` exported in the shell as the production URL, and set production secrets with `wrangler secret put` (a new Worker takes them from a gitignored file on its first deploy: `deploy -- --secrets-file .prod.env`). The generated `docs/agents/cloudflare-deploy.md` has the details. See [Cloudflare](/docs/deployment/cloudflare) for the deployment details.
 
 ## Extra dependencies
 

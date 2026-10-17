@@ -148,5 +148,23 @@ Local secrets go in `.env` (already gitignored), not `.dev.vars`: Wrangler ignor
 
 `vite build` writes `dist/server/.dev.vars`, a local copy of `.env` for `vite preview` (only the `secrets.required` keys when the Worker lists any). `wrangler deploy` does not upload it. Never ship `dist` other than through `wrangler deploy`, and rebuild after editing `.env`.
 
+## Production URL
+
+A project with Better Auth lists `BETTER_AUTH_URL`, the public URL of the Worker, under `secrets.required`, so the first deploy needs a URL that `wrangler deploy` is the first to print. `https://<worker name>.<subdomain>.workers.dev` is known before: the worker name is the `name` of the `wrangler.jsonc` (`<project>`, or `<project>-<app>` in a turborepo) and the subdomain belongs to the Cloudflare account. Wrangler has no command that prints the subdomain; the Workers API does, with the token of the Wrangler login (`wrangler auth token`; `WRANGLER_HIDE_BANNER=true` keeps the banner out of the token). The account id is in `wrangler whoami`:
+
+```bash
+curl -s -H "Authorization: Bearer $(WRANGLER_HIDE_BANNER=true npx wrangler auth token)" https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain
+```
+
+The answer holds `"subdomain": "<subdomain>"` under `result`. Error code `10007` means the account has no `workers.dev` subdomain yet: register one at `https://dash.cloudflare.com/<account id>/workers/onboarding`. A Next.js app that reads `NEXT_PUBLIC_APP_URL` (the server-side tRPC client does) needs the same URL when it is built, as `NEXT_PUBLIC_*` values are frozen into the build: export it in the shell of the build, so `.env` needs no production value. The generated `AGENTS.md` prints these commands for the package manager and the directory of your project, and the `cloudflare-fullstack-nextjs` blueprint adds the whole first deploy and its first admin to `docs/agents/cloudflare-deploy.md`.
+
+### Known warnings
+
+A Next.js (OpenNext) build and deploy print messages that change nothing:
+
+- `Missing required secrets: <names>` at the start of `deploy`, even with `--secrets-file`: the local Wrangler session OpenNext starts reads `.dev.vars`, `.env` and the environment, not the secrets file, and the upload is not affected.
+- `The "middleware" file convention is deprecated. Please use "proxy" instead.` during `next build`: OpenNext runs the Edge runtime only, so on Cloudflare the app keeps `src/middleware.ts` where it would otherwise have `src/proxy.ts`.
+- `DeprecationWarning: Passing args to a child process with shell option true` (`DEP0190`) at the end of `deploy`, from the OpenNext CLI.
+
 **Turborepo mode:**
 `wrangler.jsonc` (and `open-next.config.ts` for Next.js apps) is placed in `apps/<name>/`, and the Worker is named `<project>-<app>`. Run the scripts from the app directory.
