@@ -89,7 +89,7 @@ describe('evlog Integration', () => {
       const content = await readTextFile(join(projectPath, 'src/proxy.ts'));
       expect(content).not.toContain('auth.api.getSession');
       expect(content).toContain('evlogMiddleware');
-      expect(content).toContain('withEvlog(new NextRequest(request, { headers: requestHeaders }))');
+      expect(content).toContain('withEvlog(request)');
     });
   });
 

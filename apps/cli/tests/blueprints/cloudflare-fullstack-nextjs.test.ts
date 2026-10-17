@@ -108,13 +108,14 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(signupForm).not.toContain("import { auth } from");
   });
 
-  test('ships can.tsx and use-permission.ts (verbatim from org-dashboard-nextjs)', () => {
+  test('ships can.tsx and use-permission.ts (the partial the org dashboard renders)', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src');
     const can = readFileSync(join(base, 'components/can.tsx.hbs'), 'utf8');
     expect(can).toContain("import { usePermission } from '@/hooks/use-permission'");
     expect(can).toContain('usePermission(permissions)');
     expect(can).toContain('{{{{raw}}}}');
-    const usePerm = readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8');
+    expect(readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8')).toContain('{{> hooks/use-permission}}');
+    const usePerm = partial('hooks/use-permission');
     expect(usePerm).toContain("import type { AppRole } from '@repo/auth/permissions'");
     expect(usePerm).toContain('authClient.admin.checkRolePermission');
     expect(usePerm).toContain('{{{{raw}}}}');
@@ -474,7 +475,8 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(links).toContain("import { can } from '@/hooks/use-permission'");
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
     expect(links).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
-    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function can(');
+    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('{{> hooks/use-permission}}');
+    expect(partial('hooks/use-permission')).toContain('export function can(');
   });
 
   test('sidebar user menu keeps the dropdown open when confirming logout', () => {
