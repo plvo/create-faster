@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { ENTER, runOnPseudoTerminal, SPACE } from './pseudo-terminal';
+import { ENTER, runScriptOnPseudoTerminal, SPACE } from '../../pseudo-terminal';
 
 const [firstName, firstOption] = Object.entries(META.project.tooling.options)[0] ?? [];
 if (!firstName || !firstOption) throw new Error('META.project.tooling has no option');
@@ -12,11 +12,12 @@ const selected = await promptProjectCategory('tooling', {});
 console.log('ANSWER=' + JSON.stringify(selected));
 `;
 
-function answer(selectFirstOption: boolean): Promise<string> {
-  return runOnPseudoTerminal(PROMPT_SCRIPT, [
-    ...(selectFirstOption ? [{ after: firstLabel, send: SPACE }] : []),
-    { after: selectFirstOption ? undefined : firstLabel, send: ENTER },
+async function answer(selectFirstOption: boolean): Promise<string> {
+  const { output } = await runScriptOnPseudoTerminal(PROMPT_SCRIPT, [
+    ...(selectFirstOption ? [{ prompt: firstLabel, keys: SPACE }] : []),
+    { prompt: selectFirstOption ? undefined : firstLabel, keys: ENTER },
   ]);
+  return output;
 }
 
 describe('promptProjectCategory on a multi-select category', () => {

@@ -5,6 +5,7 @@ import { format } from 'node:util';
 import { expect, test } from 'bun:test';
 import { $ } from 'bun';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
+import { CTRL_C, DOWN, ENTER, runOnPseudoTerminal } from '../pseudo-terminal';
 
 export const PNPM_AVAILABLE = Boolean(Bun.which('pnpm'));
 
@@ -350,10 +351,7 @@ export async function printedScriptsMissingFrom(projectPath: string, document: s
   return missing;
 }
 
-const ENTER = '\r';
-const DOWN_THEN_ENTER = '\x1b[B\r';
-const CTRL_C = '\x03';
-const TERMINAL_RUN_TIMEOUT_MS = 60_000;
+const DOWN_THEN_ENTER = `${DOWN}${ENTER}`;
 
 interface PromptAnswer {
   prompt: string;
@@ -365,50 +363,9 @@ export const pickFirstOption = (prompt: string): PromptAnswer => ({ prompt, keys
 export const interrupt = (prompt: string): PromptAnswer => ({ prompt, keys: CTRL_C });
 
 /** Runs the CLI on a pseudo-terminal and answers each expected prompt as it appears. */
-export async function runCliOnTerminal(args: string[], cwd: string, expectedPrompts: PromptAnswer[]) {
+export function runCliOnTerminal(args: string[], cwd: string, expectedPrompts: PromptAnswer[]) {
   const cliPath = join(import.meta.dir, '../../src/index.ts');
-  let output = '';
-
-  const proc = Bun.spawn([process.execPath, 'run', cliPath, ...args], {
-    cwd,
-    env: { ...process.env, ...PLAIN_OUTPUT_ENV },
-    terminal: {
-      cols: 120,
-      rows: 40,
-      data: (_terminal, chunk) => {
-        output += new TextDecoder().decode(chunk);
-      },
-    },
-  });
-
-  const runName = `create-faster ${args.join(' ')}`;
-  const deadline = Date.now() + TERMINAL_RUN_TIMEOUT_MS;
-  const timeoutMessage = (waitingFor: string) =>
-    `"${runName}" did not ${waitingFor} within ${TERMINAL_RUN_TIMEOUT_MS} ms. Output:\n${output}`;
-
-  try {
-    let searchFrom = 0;
-    for (const { prompt, keys } of expectedPrompts) {
-      while (output.indexOf(prompt, searchFrom) === -1) {
-        if (Date.now() > deadline) throw new Error(timeoutMessage(`show the prompt "${prompt}"`));
-        await Bun.sleep(50);
-      }
-      searchFrom = output.length;
-      await Bun.sleep(100);
-      proc.terminal?.write(keys);
-    }
-    let stopWaiting = () => {};
-    const deadlineReached = new Promise<null>((resolve) => {
-      const timer = setTimeout(() => resolve(null), Math.max(deadline - Date.now(), 0));
-      stopWaiting = () => clearTimeout(timer);
-    });
-    const exitCode = await Promise.race([proc.exited, deadlineReached]);
-    stopWaiting();
-    if (exitCode === null) throw new Error(timeoutMessage('exit'));
-    return { exitCode, output };
-  } finally {
-    proc.kill();
-  }
+  return runOnPseudoTerminal([process.execPath, 'run', cliPath, ...args], cwd, expectedPrompts);
 }
 
 /**
