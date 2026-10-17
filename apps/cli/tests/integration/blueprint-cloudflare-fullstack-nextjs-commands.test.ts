@@ -44,9 +44,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
   test('remote migrations run from packages/db, in the deploy and data layer notes', async () => {
     const deployNotes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
     expect(deployNotes).toContain(`${pm} run db:migrate:remote`);
-    expect(await readTextFile(join(projectPath, 'docs/agents/data-layer.md'))).toContain(
-      `cd packages/db && ${pm} run db:migrate:remote`,
-    );
+    expect(await readTextFile(join(projectPath, 'docs/agents/data-layer.md'))).toContain(`${pm} run db:migrate:remote`);
     const root = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
     expect(root.scripts['db:migrate:remote']).toBe(`cd packages/db && ${pm} run db:migrate:remote`);
   });
@@ -72,7 +70,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
       expect(await readTextFile(join(projectPath, file))).not.toMatch(/run deploy --secrets-file/);
     }
     expect(await readTextFile(join(projectPath, 'AGENTS.md'))).toContain(
-      `cd apps/<app> && ${pm} run deploy -- --secrets-file .prod.env`,
+      `(cd apps/<app> && ${pm} run deploy -- --secrets-file .prod.env)`,
     );
   });
 });

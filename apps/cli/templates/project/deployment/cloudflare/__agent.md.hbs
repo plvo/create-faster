@@ -36,7 +36,7 @@ The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.req
 
 **Key rules**
 - Build the Worker that you deploy where `.env` holds no real secret (CI, or a checkout without a `.env`). A build run next to a `.env` with production values ships them inside the Worker.
-- Set production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runAppScript "deploy"}} -- --secrets-file .prod.env` (gitignored).
+- Set production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{#inDirectory "apps/<app>"}}{{runScript "deploy"}} -- --secrets-file .prod.env{{/inDirectory}}` (gitignored).
 - `{{runAppScript "preview"}}` serves the build as it is: the values of `.env` are frozen when `{{runAppScript "build:cf"}}` runs, so run it again after every `.env` change.
 - Keep local secrets in `.env`. Do NOT add `.dev.vars`: Next.js and OpenNext read `.env`, and a second file would hold a second copy of each secret.
 - `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which reads `development` in workerd without the var. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.

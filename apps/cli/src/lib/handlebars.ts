@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import Handlebars from 'handlebars';
-import { getProjectAddon } from '@/lib/addon-utils';
+import { getProjectAddon, resolveDeployAppDir } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -130,6 +130,10 @@ function registerHelpers(): void {
       args.join('/'),
       options.fn(this).trim(),
     );
+  });
+
+  Handlebars.registerHelper('deployAppDir', (options: Handlebars.HelperOptions) => {
+    return resolveDeployAppDir(options.data.root as TemplateContext) ?? '';
   });
 
   Handlebars.registerHelper('installScripts', (options: Handlebars.HelperOptions) => {

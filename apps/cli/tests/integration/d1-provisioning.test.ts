@@ -190,3 +190,53 @@ describe('D1 provisioning docs list the secrets a deploy needs', () => {
     ]);
   });
 });
+
+describe('D1 provisioning docs run Wrangler from the app that holds the D1 config', () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli(
+      [
+        'expo-first',
+        '--app',
+        'mobile:expo',
+        '--app',
+        'web:nextjs',
+        '--app',
+        'api:hono',
+        '--database',
+        'd1',
+        '--orm',
+        'drizzle',
+        '--deployment',
+        'cloudflare',
+        '--no-git',
+        '--no-install',
+        '--pm',
+        'bun',
+      ],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test.each(['README.md', 'AGENTS.md'])('%s: d1 create runs in the app the migrate scripts point at, not the first app', async (file) => {
+    const doc = await readTextFile(join(tempDir, 'expo-first', file));
+    const migrate = (await readJsonFile<{ scripts: Record<string, string> }>(join(tempDir, 'expo-first/packages/db/package.json')))
+      .scripts['db:migrate:remote'];
+    expect(migrate).toContain('--config ../../apps/web/wrangler.jsonc');
+    expect(doc).toContain('(cd apps/web && bunx wrangler d1 create expo-first-db --no-update-config)');
+    expect(doc).not.toContain('apps/mobile && bunx');
+  });
+
+  test.each(['README.md', 'AGENTS.md'])('%s: every command that changes directory is a subshell', async (file) => {
+    const doc = await readTextFile(join(tempDir, 'expo-first', file));
+    expect(doc).toContain('(cd apps/');
+    expect(doc).not.toMatch(/(?<!\()cd (apps|packages)\/[\w<>-]+ &&/);
+  });
+});

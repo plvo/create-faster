@@ -100,8 +100,7 @@ export function getTypeScriptRunner(ctx: TemplateContext): string {
 
 /** A script only the apps define: a turborepo root has none, so it runs from the app directory. */
 export function getAppScriptCommand(ctx: TemplateContext, script: string): string {
-  const command = getScriptCommand(ctx, script);
-  return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
+  return getCommandInWorkspaceDirectory(ctx, 'apps/<app>', getScriptCommand(ctx, script));
 }
 
 /** A command run from a directory of the workspace; the subshell leaves the shell where it was, so steps paste in order. */
