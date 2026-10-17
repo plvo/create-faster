@@ -5,10 +5,9 @@ import { describeWithDocker } from './docker-database';
 import {
   type CommandResult,
   cleanupTempDir,
-  createTempDir,
+  generateInstalledProject,
   getFreePort,
   type RunningServer,
-  runCli,
   runCommand,
   startServer,
 } from './helpers';
@@ -23,17 +22,6 @@ const SEEDED_ADMIN = 'admin@example.com';
 const SEEDED_MEMBER = 'user@example.com';
 const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 const UNKNOWN_ID = 'no-such-record';
-
-async function generateInstalledBlueprint(blueprint: string, name: string): Promise<string> {
-  const tempDir = await createTempDir();
-  const result = await runCli([name, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-  expect(result.exitCode).toBe(0);
-
-  const projectDir = join(tempDir, name);
-  const install = await runCommand(['bun', 'install'], projectDir);
-  expect(install.exitCode, install.stderr).toBe(0);
-  return projectDir;
-}
 
 function describeFailure(result: CommandResult): string {
   return `${result.stdout}\n${result.stderr}`;
@@ -83,7 +71,7 @@ describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
   let setup: CommandResult;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('cloudflare-fullstack-nextjs', 'bp-seed-cloudflare');
+    projectDir = await generateInstalledProject('bp-seed-cloudflare', ['--blueprint', 'cloudflare-fullstack-nextjs']);
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
@@ -167,7 +155,7 @@ describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: 
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('org-dashboard-nextjs', 'bp-seed-org-dashboard');
+    projectDir = await generateInstalledProject('bp-seed-org-dashboard', ['--blueprint', 'org-dashboard-nextjs']);
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
@@ -278,7 +266,7 @@ describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-ne
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledBlueprint('multitenant-saas-nextjs', 'bp-seed-multitenant-saas');
+    projectDir = await generateInstalledProject('bp-seed-multitenant-saas', ['--blueprint', 'multitenant-saas-nextjs']);
     const setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
     expect(setup.exitCode, describeFailure(setup)).toBe(0);
     server = await buildAndStartWeb(projectDir);
