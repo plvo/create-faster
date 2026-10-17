@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
+import { filesystemAccess } from '../render-time-file-access';
 import {
   cleanupTempDir,
   createTempDir,
@@ -26,19 +27,6 @@ interface PackageJsonShape {
   devDependencies?: Record<string, string>;
 }
 
-const STATIC_PARAMS_FUNCTION = /export function generateStaticParams[\s\S]*?\n\}\n/;
-const IMPORT_STATEMENT = /^import .* from .*;$/gm;
-const FILE_ACCESS = /\b(?:fs|readdir|readdirSync|readFile|readFileSync|existsSync|statSync|cwd)\b/;
-
-/** What a page does with the filesystem once its module runs, i.e. everything but `generateStaticParams`, which only runs at build. */
-function renderTimeFileAccess(source: string): string[] {
-  return source
-    .replace(STATIC_PARAMS_FUNCTION, '')
-    .replace(IMPORT_STATEMENT, '')
-    .split('\n')
-    .filter((line) => FILE_ACCESS.test(line));
-}
-
 function expectHeadingsWrap(css: string): void {
   for (const level of [1, 2, 3, 4]) {
     const rule = new RegExp(`\\.h${level}-mdx \\{([^}]*)\\}`).exec(css);
@@ -50,24 +38,6 @@ function expectHeadingsWrap(css: string): void {
 
 describe('MDX Integration', () => {
   let tempDir: string;
-
-  describe('the render-time file access guard', () => {
-    test('flags every way a page reads a file while it renders and spares generateStaticParams', () => {
-      const page = (body: string) => `import fs from 'node:fs';\n\nexport default async function Page() {\n  ${body}\n}\n`;
-      for (const body of [
-        "fs.readFileSync('x');",
-        "(await import('node:fs')).readFileSync('x');",
-        "require('fs').readFileSync('x');",
-        "(await import('fs/promises')).readFile('x');",
-        "process.cwd();",
-      ]) {
-        expect(renderTimeFileAccess(page(body)), body).not.toEqual([]);
-      }
-
-      const buildOnly = `import fs from 'node:fs';\n\nexport function generateStaticParams() {\n  return fs.readdirSync('contents');\n}\n\nexport default function Page() {\n  return null;\n}\n`;
-      expect(renderTimeFileAccess(buildOnly)).toEqual([]);
-    });
-  });
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -271,17 +241,14 @@ describe('MDX Integration', () => {
       expect(route).toContain('notFound()');
     });
 
-    test('imports the document of the slug by a relative path, so a file added to contents/ needs no edit of the page', async () => {
+    test('bundles the documents with import.meta.glob, so a file added to contents/ needs no edit of the page', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('import(`../../../../contents/${');
-      expect(route).not.toContain('#/contents');
-      expect(route).not.toMatch(/import\(['"]/);
+      expect(route).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
     });
 
-    test('reads no file while the page renders, only generateStaticParams lists contents/ at build', async () => {
+    test('reads no file, neither while the page renders nor to list the documents', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('export function generateStaticParams()');
-      expect(renderTimeFileAccess(route)).toEqual([]);
+      expect(filesystemAccess(route)).toEqual([]);
     });
 
     test('renders the document inside the layout main, without a metadata dump', async () => {
@@ -310,7 +277,7 @@ describe('MDX Integration', () => {
       expect(agents).toContain('## MDX');
       expect(agents).toContain('contents/<name>.mdx');
       expect(agents).toContain('generateStaticParams');
-      expect(agents).not.toContain('import.meta.glob');
+      expect(agents).toContain("import.meta.glob('/contents/*.mdx')");
     });
 
     test('keeps its components and ships no frontmatter parser', async () => {
@@ -348,9 +315,9 @@ describe('MDX Integration', () => {
       expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(true);
     });
 
-    test('imports the documents from the contents/ of the app', async () => {
+    test('bundles the documents from the contents/ of the app', async () => {
       const route = await readTextFile(join(appPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('import(`../../../../contents/${');
+      expect(route).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
     });
   });
 
@@ -407,16 +374,17 @@ describe('MDX Integration', () => {
           expect(await readTextFile(join(projectPath, 'src/app/blog/[slug]/page.tsx'))).toContain('<h1');
         });
 
-        test('owns the MDX renderer and the frontmatter parser the example page no longer needs', async () => {
+        test('compiles the posts at build time, with no runtime renderer or frontmatter parser', async () => {
           const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
-          expect(pkg.dependencies['next-mdx-remote']).toBeDefined();
-          expect(await readTextFile(join(projectPath, 'src/lib/frontmatter.ts'))).toContain(
-            'export function parseFrontmatter',
-          );
-          expect(await readTextFile(join(projectPath, 'src/lib/blog.ts'))).toContain(
-            "import { parseFrontmatter } from '@/lib/frontmatter'",
-          );
+          expect(pkg.dependencies['@next/mdx']).toBeDefined();
+          expect(pkg.dependencies['next-mdx-remote']).toBeUndefined();
+          expect(await fileExists(join(projectPath, 'src/lib/frontmatter.ts'))).toBe(false);
           expect(await readTextFile(join(projectPath, 'src/lib/mdx.ts'))).not.toContain('parseFrontmatter');
+        });
+
+        test('reads no file to list or load the posts', async () => {
+          expect(filesystemAccess(await readTextFile(join(projectPath, 'src/lib/blog.ts')))).toEqual([]);
+          expect(filesystemAccess(await readTextFile(join(projectPath, 'src/app/blog/[slug]/page.tsx')))).toEqual([]);
         });
       });
     }
