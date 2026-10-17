@@ -19,6 +19,11 @@ export class Progress {
     return this.asked.includes(promptId);
   }
 
+  /** The prompt being answered, the last one shown. */
+  isCurrent(promptId: string): boolean {
+    return this.asked.at(-1) === promptId;
+  }
+
   render(): string {
     const upcoming = this.expectedPrompts().filter((id) => !this.asked.includes(id));
     const total = this.asked.length + upcoming.length;

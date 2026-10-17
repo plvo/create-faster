@@ -116,6 +116,12 @@ describe('expectedCategoryPrompts', () => {
     expect(asked).toContain('orm');
   });
 
+  test('counts the orm while the database that satisfies it is being answered', () => {
+    const asked = expectedCategoryPrompts(['orm', 'linter'], contextWith(), INTERACTIVE_WITH_FLAGS, ['database']);
+
+    expect(asked).toEqual(['orm', 'linter']);
+  });
+
   test('leaves the orm out when no database is answered or asked', () => {
     const mode = { ...INTERACTIVE_WITH_FLAGS, noSelection: ['database' as const] };
 

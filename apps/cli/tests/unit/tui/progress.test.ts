@@ -43,4 +43,14 @@ describe('Progress', () => {
 
     expect(progress.message('b', 'B?')).toContain('●◆○○');
   });
+
+  test('tells the prompt being answered from the ones already answered', () => {
+    const progress = new Progress(() => ['a', 'b']);
+    progress.message('a', 'A?');
+    progress.message('b', 'B?');
+
+    expect(progress.isCurrent('b')).toBe(true);
+    expect(progress.isCurrent('a')).toBe(false);
+    expect(progress.hasAsked('a')).toBe(true);
+  });
 });

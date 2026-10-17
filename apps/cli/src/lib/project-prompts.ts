@@ -98,18 +98,22 @@ export function shouldPromptCategory(
 
 /**
  * The categories among `categoryNames` that will be asked, in order, as far as the answers so far tell: a category
- * whose requirement is met only by a category asked earlier in the list counts as asked.
+ * whose requirement is met only by a category asked earlier in the list, or by the one being answered
+ * (`answering`), counts as asked.
  */
 export function expectedCategoryPrompts(
   categoryNames: ProjectCategoryName[],
   ctx: Omit<TemplateContext, 'repo'>,
   mode: PromptMode,
+  answering: ProjectCategoryName[] = [],
 ): ProjectCategoryName[] {
   const expected: ProjectCategoryName[] = [];
   for (const categoryName of categoryNames) {
     if (!isCategoryAskable(categoryName, ctx, mode)) continue;
     const required = (META.project[categoryName].require ?? []) as ProjectCategoryName[];
-    if (required.every((name) => isCategoryAnswered(name, ctx) || expected.includes(name))) {
+    if (
+      required.every((name) => isCategoryAnswered(name, ctx) || expected.includes(name) || answering.includes(name))
+    ) {
       expected.push(categoryName);
     }
   }

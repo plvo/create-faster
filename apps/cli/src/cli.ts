@@ -56,7 +56,8 @@ function unaskedCategoryPrompts(
   progress: Progress,
 ): string[] {
   const unasked = categoryNames.filter((categoryName) => !progress.hasAsked(categoryPromptId(categoryName)));
-  return expectedCategoryPrompts(unasked, ctx, mode).map(categoryPromptId);
+  const answering = categoryNames.filter((categoryName) => progress.isCurrent(categoryPromptId(categoryName)));
+  return expectedCategoryPrompts(unasked, ctx, mode, answering).map(categoryPromptId);
 }
 
 function expectedAppPrompts({ count, stacks }: AppsFlow): string[] {
@@ -169,7 +170,7 @@ export async function promptForContext(partial: FlagAnswers): Promise<Omit<Templ
   return blueprintCli(blueprintName, partial, [CREATION_MODE_PROMPT, BLUEPRINT_CHOICE_PROMPT]);
 }
 
-export async function cli(partial?: FlagAnswers, alreadyAsked: string[] = []): Promise<Omit<TemplateContext, 'repo'>> {
+async function cli(partial?: FlagAnswers, alreadyAsked: string[] = []): Promise<Omit<TemplateContext, 'repo'>> {
   const { categoryNames, appsFlow, ctx, progress } = startCustomFlow(partial, alreadyAsked);
 
   Object.assign(
@@ -218,7 +219,7 @@ ${S_GRAY_BAR}  ${color.italic(color.gray('Multiple apps = Turborepo monorepo'))}
   return ctx;
 }
 
-export async function blueprintCli(
+async function blueprintCli(
   blueprintName: string,
   partial?: FlagAnswers,
   alreadyAsked: string[] = [],
