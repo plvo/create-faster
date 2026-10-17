@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Glob } from 'bun';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, matchesExportKey, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 import { COMBINATIONS } from './workspace-combinations';
 
@@ -32,12 +32,6 @@ async function missingExportTargets(packageDir: string): Promise<string[]> {
 }
 
 const WORKSPACE_IMPORT = /from\s+['"]@repo\/([\w-]+)(\/[^'"]*)?['"]/g;
-
-function matchesExportKey(key: string, subpath: string): boolean {
-  if (!key.includes('*')) return key === subpath;
-  const [prefix = '', suffix = ''] = key.split('*');
-  return subpath.startsWith(prefix) && subpath.endsWith(suffix) && subpath.length >= prefix.length + suffix.length;
-}
 
 async function unresolvedWorkspaceImports(projectPath: string): Promise<string[]> {
   const exportKeys = new Map<string, string[]>();

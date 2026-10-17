@@ -3,24 +3,27 @@ mono:
   scope: app
 ---
 {
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "new-york",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "{{#if (eq stackName "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}",
-    "baseColor": "neutral",
-    "cssVariables": true
-  },
-  "iconLibrary": "lucide",
+  {{#if (isMono)}}
+  {{> shadcn/components-config css="../../packages/ui/src/base.css"}}
+  {{/if}}
+  {{#unless (isMono)}}
+  {{#if (eq stackName "tanstack-start")}}
+  {{> shadcn/components-config css="src/styles.css"}}
+  {{else}}
+  {{> shadcn/components-config css="src/styles/globals.css"}}
+  {{/if}}
+  {{/unless}}
   "aliases": {
     "components": "@/components",
+    {{#if (isMono)}}
+    "hooks": "@repo/ui/hooks",
+    {{else}}
     "hooks": "@/hooks",
+    {{/if}}
     "lib": "@/lib",
     {{#if (isMono)}}
     "utils": "@repo/ui/lib/utils",
-    "ui": "@repo/ui"
+    "ui": "@repo/ui/components/ui"
     {{else}}
     "utils": "src/lib/utils"
     {{/if}}

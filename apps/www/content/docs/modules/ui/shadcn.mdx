@@ -26,6 +26,7 @@ postcss.config.mjs        # PostCSS config for Tailwind
 # Turborepo only:
 packages/ui/
 ├── src/components/ui/
+├── components.json       # shadcn CLI configuration of the package
 ├── package.json          # @repo/ui with exports
 └── postcss.config.mjs
 ```
@@ -123,7 +124,39 @@ shadcn CLI configuration:
 }
 ```
 
-In turborepo mode, paths point to `@repo/ui` package instead of local directories.
-
 **Turborepo mode:**
-Creates `@repo/ui` package with shared components accessible via `@repo/ui` imports.
+Creates the `@repo/ui` package with shared components, imported as `@repo/ui/components/ui/<name>`. The shadcn CLI needs a `components.json` in every workspace, so each app has one and `packages/ui` has its own:
+
+```json title="packages/ui/components.json"
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/base.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@repo/ui/components",
+    "hooks": "@repo/ui/hooks",
+    "lib": "@repo/ui/lib",
+    "utils": "@repo/ui/lib/utils",
+    "ui": "@repo/ui/components/ui"
+  }
+}
+```
+
+The `components.json` of an app keeps `components` and `lib` local (`@/components`, `@/lib`) and points `ui`, `hooks` and `utils` to `@repo/ui`, and its `tailwind.css` to `../../packages/ui/src/base.css`. `style`, `iconLibrary` and `baseColor` stay equal in both files.
+
+Add a component by running the command from an app directory; the CLI installs it into `packages/ui`:
+
+```bash
+cd apps/web
+bunx shadcn@latest add card
+```
+
+Then import it with `import { Card } from '@repo/ui/components/ui/card'`.
