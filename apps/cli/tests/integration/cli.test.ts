@@ -602,7 +602,7 @@ describe('CLI Integration', () => {
       expect(webPkg.devDependencies?.oxlint).toBeUndefined();
 
       const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'apps/web/components.json'));
-      expect(components.tailwind.css).toBe('src/styles/globals.css');
+      expect(components.tailwind.css).toBe('../../packages/ui/src/base.css');
     });
   });
 
@@ -686,7 +686,7 @@ describe('CLI Integration', () => {
       const components = await readJsonFile<{ tailwind: { css: string } }>(
         join(projectPath, 'apps/web/components.json'),
       );
-      expect(components.tailwind.css).toBe('src/styles.css');
+      expect(components.tailwind.css).toBe('../../packages/ui/src/base.css');
     });
 
     test('tanstack-start without shadcn keeps its plain stylesheet', async () => {

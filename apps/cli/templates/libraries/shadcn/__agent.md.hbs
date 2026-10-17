@@ -1,1 +1,5 @@
+{{#if (isMono)}}
+shadcn/ui components live in the `@repo/ui` package, in `packages/ui/src/components/ui/`, and an app imports them as `@repo/ui/components/ui/<name>`. Hooks go to `packages/ui/src/hooks/`. Add components with `cd apps/{{appName}} && {{packageRunner}} shadcn@latest add <name>`: run it from an app directory, the shadcn CLI reads the `components.json` of the app and of `packages/ui` (their `style`, `iconLibrary` and `baseColor` must stay equal) and installs into the package. Style tokens are defined in `packages/ui/src/base.css`, not hardcoded per component.
+{{else}}
 shadcn/ui components live in `src/components/ui/`. Config is in `components.json`. Add components with `{{packageRunner}} shadcn@latest add <name>`. Style tokens are defined in the global CSS, not hardcoded per component.
+{{/if}}

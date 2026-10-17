@@ -394,6 +394,7 @@ export const META: Meta = {
           './': './src/components/',
           './base.css': './src/base.css',
           './components/*': './src/components/*.tsx',
+          './hooks/*': './src/hooks/*.ts',
           './lib/*': './src/lib/*.ts',
           './postcss.config.mjs': './postcss.config.mjs',
         },

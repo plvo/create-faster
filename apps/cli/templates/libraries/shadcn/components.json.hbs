@@ -9,19 +9,21 @@ mono:
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "{{#if (eq stackName "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}",
+    "css": "{{#if (isMono)}}../../packages/ui/src/base.css{{else if (eq stackName "tanstack-start")}}src/styles.css{{else}}src/styles/globals.css{{/if}}",
     "baseColor": "neutral",
     "cssVariables": true
   },
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
+    {{#if (isMono)}}
+    "hooks": "@repo/ui/hooks",
+    "lib": "@/lib",
+    "utils": "@repo/ui/lib/utils",
+    "ui": "@repo/ui/components/ui"
+    {{else}}
     "hooks": "@/hooks",
     "lib": "@/lib",
-    {{#if (isMono)}}
-    "utils": "@repo/ui/lib/utils",
-    "ui": "@repo/ui"
-    {{else}}
     "utils": "src/lib/utils"
     {{/if}}
   }
