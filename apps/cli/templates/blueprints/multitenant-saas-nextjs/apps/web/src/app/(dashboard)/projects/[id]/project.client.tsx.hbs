@@ -11,6 +11,7 @@ import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Can } from '@/components/can';
 import { useTRPC } from '@/trpc/providers';
 import { ProjectDeleteDialog } from '@/components/projects/project-delete-dialog';
 import { ProjectEditDialog } from '@/components/projects/project-edit-dialog';
@@ -33,12 +34,16 @@ export function ProjectDetailClient({ id }: { id: string }) {
           <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>{project.status}</Badge>
         </div>
         <div className='space-x-2'>
-          <Button variant='outline' onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
-          <Button variant='destructive' onClick={() => setDeleteOpen(true)}>
-            Delete
-          </Button>
+          <Can permissions={{ project: ['update'] }}>
+            <Button variant='outline' onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          </Can>
+          <Can permissions={{ project: ['delete'] }}>
+            <Button variant='destructive' onClick={() => setDeleteOpen(true)}>
+              Delete
+            </Button>
+          </Can>
         </div>
       </div>
       <Card>

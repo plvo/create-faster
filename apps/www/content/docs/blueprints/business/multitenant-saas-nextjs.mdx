@@ -81,18 +81,19 @@ src/
 │           └── preferences/page.tsx                  # Theme switcher
 ├── components/
 │   ├── members/                                      # Members table, invite dialog, invitation link dialog, pending invitations table
-│   ├── navigation/                                   # App sidebar, org switcher, nav-user dropdown, sidebar links
+│   ├── navigation/                                   # App sidebar, header with breadcrumb, org switcher, nav-user dropdown, sidebar links
 │   ├── profile/                                      # Account form, security form, session list, preferences, tab nav
 │   ├── projects/                                     # Project table, create/edit/delete dialogs, project form
 │   ├── roles/                                        # Roles table, permissions grid, role form dialog
 │   ├── can.tsx                                       # Permission gate component (<Can permissions={{ resource: ['action'] }}>)
+│   ├── confirm-dialog.tsx                            # Confirmation dialog for removing a member or deleting a role
 │   └── query-boundary.tsx                            # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── hooks/
 │   └── use-permission.ts                             # usePermission({ resource: ['action'] }) → { allowed, loading }
 ├── lib/
 │   ├── auth/
 │   │   └── session.ts                                # requireSession(): cached session check, redirects to /login or /onboarding
-│   └── constants.ts                                  # ROUTES with per-route { resource, action } permission gating
+│   └── constants.ts                                  # ROUTES with per-route { resource, action } permission gating, PROFILE_TABS
 └── proxy.ts                                          # Next.js middleware (proxy export): session cookie guard
 ```
 
@@ -141,7 +142,7 @@ Email/password auth backed by Better Auth, with all four standard flows pre-wire
 
 ### Multi-tenant organizations
 
-Organizations are first-class entities powered by Better Auth's organization plugin. Each user belongs to one or more organizations with their own members, roles, and projects. After sign-in, unauthenticated users and users with no organization are redirected to `/onboarding` to create their first org. The dashboard layout reads the active organization from the session and gates all API calls to it.
+Organizations are first-class entities powered by Better Auth's organization plugin. Each user belongs to one or more organizations with their own members, roles, and projects. After sign-in, unauthenticated users and users with no active organization are redirected to `/onboarding`, which lists the organizations the user already belongs to (the session can lose its active organization) next to the form that creates a new one. The dashboard layout reads the active organization from the session and gates all API calls to it.
 
 ### Custom RBAC
 
@@ -152,10 +153,12 @@ The permission system is defined in `packages/auth/src/permissions.ts` using Bet
 | Resource | Actions |
 |----------|---------|
 | `organization` | `update`, `delete` |
-| `member` | `invite`, `update`, `remove` |
+| `member` | `create`, `update`, `delete` |
 | `invitation` | `create`, `cancel` |
 | `ac` | `create`, `read`, `update`, `delete` |
 | `project` | `create`, `read`, `update`, `delete` |
+
+> The statement and the owner and admin grants start from the ones Better Auth's organization plugin ships (without `team`, which is not enabled) and add `project`, so every action name is one Better Auth checks on its own endpoints (`removeMember` needs `member.delete`, `createInvitation` needs `invitation.create`). `permissionProcedure`, `usePermission` and `<Can>` are typed on the statement, so an action it does not declare fails to compile.
 
 > The role-management resource is named `ac` (access control), not `role` — Better Auth's dynamic-access-control endpoints (`createOrgRole`, `updateOrgRole`, `deleteOrgRole`) require this internal name when checking permissions on custom org roles.
 
@@ -180,6 +183,8 @@ The `<Can>` component and `usePermission` hook provide declarative permission ch
 ```ts
 const { allowed, loading } = usePermission({ project: ['create'] });
 ```
+
+Both ask the endpoint the server's `permissionProcedure` asks, and the write actions of the dashboard (new project, edit and delete project, save and delete organization, invite, change role, remove member, cancel invitation, create, edit and delete role) render only for a role that holds the permission. A page read that is refused shows its error at once: the query client does not retry a 4xx answer in the browser. Removing a member or deleting a role asks for confirmation in the app's dialog.
 
 On the server, tRPC enforces the same model through two composable procedures in `packages/api/src/middleware/rbac.ts`:
 

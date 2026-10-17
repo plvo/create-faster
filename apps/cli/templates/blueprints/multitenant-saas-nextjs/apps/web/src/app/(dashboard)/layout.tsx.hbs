@@ -5,8 +5,8 @@ mono:
   path: src/app/(dashboard)/layout.tsx
 ---
 import { requireSession } from '@/lib/auth/session';
-import { Separator } from '@repo/ui/components/ui/separator';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@repo/ui/components/ui/sidebar';
+import { SidebarInset, SidebarProvider } from '@repo/ui/components/ui/sidebar';
+import { AppHeader } from '@/components/navigation/app-header';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 
 {{{{raw}}}}
@@ -17,10 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SidebarProvider>
       <AppSidebar session={session} />
       <SidebarInset>
-        <header className='flex h-14 shrink-0 items-center gap-2 border-b px-4'>
-          <SidebarTrigger />
-          <Separator orientation='vertical' className='h-4' />
-        </header>
+        <AppHeader />
         <div className='flex-1 p-6'>{children}</div>
       </SidebarInset>
     </SidebarProvider>

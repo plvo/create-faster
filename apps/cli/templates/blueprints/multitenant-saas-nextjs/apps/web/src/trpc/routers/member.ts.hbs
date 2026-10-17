@@ -34,7 +34,7 @@ export const memberRouter = router({
       });
     }),
 
-  remove: permissionProcedure('member', 'remove')
+  remove: permissionProcedure('member', 'delete')
     .input(z.object({ memberId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return auth.api.removeMember({

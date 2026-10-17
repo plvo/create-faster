@@ -13,22 +13,25 @@ The blueprint has no mailer. `sendResetPassword` and the organization plugin's `
 
 ## Access control model
 `packages/auth/src/permissions.ts` defines the `statement` (resources → actions) and built-in roles:
-- Resources/actions: `organization` (update, delete), `member` (invite, update, remove), `invitation` (create, cancel), `ac` (create, read, update, delete), `project` (create, read, update, delete).
+- Resources/actions: `organization` (update, delete), `member` (create, update, delete), `invitation` (create, cancel), `ac` (create, read, update, delete), `project` (create, read, update, delete).
 - Roles: `owner` (all), `admin` (all except `organization.delete`), `member` (`project.read`).
 - `ac` is the resource that gates managing custom roles themselves — name it `ac` exactly; it is what the roles UI checks.
+- The statement and the owner and admin grants start from better-auth's (`defaultStatements`, `ownerAc` and `adminAc` of `better-auth/plugins/organization/access`, without `team`, which is not enabled) and add `project`. Every action name is therefore one better-auth's endpoints check: `removeMember` needs `member.delete`, `updateMemberRole` `member.update`, `createInvitation` `invitation.create`, `cancelInvitation` `invitation.cancel`, the organization endpoints `organization.update` and `organization.delete`, the role endpoints `ac.create|read|update|delete`. Add custom resources next to `project`; never rename an action better-auth checks.
 
 Custom roles are created at runtime via the `role` router (`auth.api.createOrgRole`) and stored in `organizationRoleTable`.
 
 ## Server-side enforcement
 In `packages/api/src/middleware/rbac.ts`:
 - `orgProcedure` requires `session.activeOrganizationId`, exposing it as `ctx.orgId`.
-- `permissionProcedure(resource, action)` builds on `orgProcedure` and calls `auth.api.hasPermission`.
+- `permissionProcedure(resource, action)` builds on `orgProcedure` and calls `auth.api.hasPermission`; it is typed on `Statement` (exported from `permissions.ts`), as are `usePermission`, `<Can>` and `RouteProps.permission`, so a resource or action the statement does not declare fails `tsc`.
 - `assertInScope(row, ctx)` throws `NOT_FOUND` unless `row.organizationId === ctx.orgId`.
 
 Routers use these — e.g. `permissionProcedure('project', 'create')` in `packages/api/src/router/project.ts`.
 
 ## UI gating
-`<Can>` (`apps/web/src/components/can.tsx`) wraps the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`), which calls `authClient.organization.hasPermission`. Sidebar links carry a `permission` field in `apps/web/src/lib/constants.ts`.
+`<Can>` (`apps/web/src/components/can.tsx`) wraps the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`), which calls `authClient.organization.hasPermission` (the endpoint `permissionProcedure` calls) through TanStack Query: one request per permission set, shared by every component that asks, never retried. Sidebar links carry a `permission` field in `apps/web/src/lib/constants.ts`. Every write action (new, edit, delete, invite, remove, cancel) sits in `<Can>` or reads `usePermission`, and a new one must too.
+
+The query client (`apps/web/src/trpc/query-client.ts`) does not retry a 4xx answer in the browser (403 without the permission, 404 for an unknown id), only a server error or a dropped connection. A by-id page checks the row on the server (`projects/[id]/page.tsx` fetches `project.get` and calls `notFound()` on `NOT_FOUND`), so an unknown id answers 404 at once. The header shows the shared breadcrumb (`components/navigation/app-breadcrumb.tsx`), which labels a project by its name.
 
 ```tsx
 {{{{raw}}}}

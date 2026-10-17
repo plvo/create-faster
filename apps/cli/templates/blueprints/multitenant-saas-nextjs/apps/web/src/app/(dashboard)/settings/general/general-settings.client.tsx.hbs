@@ -17,6 +17,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { Can } from '@/components/can';
+import { usePermission } from '@/hooks/use-permission';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
@@ -29,6 +31,7 @@ export function GeneralSettingsClient() {
   const router = useRouter();
   const trpc = useTRPC();
   const { data: active, refetch } = useActiveOrganization();
+  const { allowed: canUpdate } = usePermission({ organization: ['update'] });
   const [confirmInput, setConfirmInput] = useState('');
 
   const updateOrg = useMutation(
@@ -86,35 +89,39 @@ export function GeneralSettingsClient() {
             className='space-y-4'
           >
             <form.AppField name='name'>
-              {(field) => <field.InputField label='Name' />}
+              {(field) => <field.InputField label='Name' props={{ disabled: !canUpdate }} />}
             </form.AppField>
             <form.AppField name='slug'>
-              {(field) => <field.InputField label='Slug' />}
+              {(field) => <field.InputField label='Slug' props={{ disabled: !canUpdate }} />}
             </form.AppField>
-            <form.AppForm>
-              <form.SubmitButton props={{ disabled: updateOrg.isPending }}>Save</form.SubmitButton>
-            </form.AppForm>
+            {canUpdate ? (
+              <form.AppForm>
+                <form.SubmitButton props={{ disabled: updateOrg.isPending }}>Save</form.SubmitButton>
+              </form.AppForm>
+            ) : null}
           </form>
         </CardContent>
       </Card>
 
-      <Card className='border-destructive'>
-        <CardHeader>
-          <CardTitle className='text-destructive'>Danger zone</CardTitle>
-          <CardDescription>Deleting an organization is permanent.</CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='confirm'>
-              Type the slug <span className='font-mono'>{active.slug}</span> to confirm.
-            </Label>
-            <Input id='confirm' value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
-          </div>
-          <Button variant='destructive' onClick={handleDelete}>
-            Delete organization
-          </Button>
-        </CardContent>
-      </Card>
+      <Can permissions={{ organization: ['delete'] }}>
+        <Card className='border-destructive'>
+          <CardHeader>
+            <CardTitle className='text-destructive'>Danger zone</CardTitle>
+            <CardDescription>Deleting an organization is permanent.</CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='confirm'>
+                Type the slug <span className='font-mono'>{active.slug}</span> to confirm.
+              </Label>
+              <Input id='confirm' value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
+            </div>
+            <Button variant='destructive' onClick={handleDelete}>
+              Delete organization
+            </Button>
+          </CardContent>
+        </Card>
+      </Can>
     </div>
   );
 }

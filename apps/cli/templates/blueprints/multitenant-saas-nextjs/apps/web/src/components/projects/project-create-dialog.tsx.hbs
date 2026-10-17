@@ -15,23 +15,26 @@ import {
   DialogTrigger,
 } from '@repo/ui/components/ui/dialog';
 import { useState } from 'react';
+import { Can } from '@/components/can';
 import { ProjectForm } from './project-form';
 
 {{{{raw}}}}
 export function ProjectCreateDialog() {
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>New project</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create project</DialogTitle>
-        </DialogHeader>
-        <ProjectForm mode='create' onSuccess={() => setOpen(false)} />
-      </DialogContent>
-    </Dialog>
+    <Can permissions={{ project: ['create'] }}>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button>New project</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create project</DialogTitle>
+          </DialogHeader>
+          <ProjectForm mode='create' onSuccess={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </Can>
   );
 }
 {{{{/raw}}}}

@@ -6,20 +6,12 @@ mono:
 ---
 'use client';
 
-import { Button } from '@repo/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@repo/ui/components/ui/dialog';
 import { Input } from '@repo/ui/components/ui/input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
@@ -48,29 +40,21 @@ export function ProjectDeleteDialog({ open, onOpenChange, project, redirectAfter
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete project</DialogTitle>
-          <DialogDescription>
-            Type <span className='font-mono'>{project.name}</span> to confirm deletion.
-          </DialogDescription>
-        </DialogHeader>
-        <Input value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
-        <DialogFooter>
-          <Button variant='outline' onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant='destructive'
-            disabled={confirmInput !== project.name || remove.isPending}
-            onClick={() => remove.mutate({ id: project.id })}
-          >
-            Delete
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title='Delete project'
+      description={
+        <>
+          Type <span className='font-mono'>{project.name}</span> to confirm deletion.
+        </>
+      }
+      confirmLabel='Delete'
+      disabled={confirmInput !== project.name || remove.isPending}
+      onConfirm={() => remove.mutate({ id: project.id })}
+    >
+      <Input value={confirmInput} onChange={(e) => setConfirmInput(e.target.value)} />
+    </ConfirmDialog>
   );
 }
 {{{{/raw}}}}

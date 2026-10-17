@@ -11,6 +11,7 @@ import {
   UserGroupIcon,
   UserIcon,
 } from '@hugeicons/core-free-icons';
+import type { Statement } from '@repo/auth/permissions';
 
 {{{{raw}}}}
 export type RouteProps = {
@@ -18,7 +19,7 @@ export type RouteProps = {
   title: string;
   icon: typeof DashboardSquare01Icon;
   category?: string;
-  permission?: { resource: string; action: string };
+  permission?: { [Resource in keyof Statement]: { resource: Resource; action: Statement[Resource][number] } }[keyof Statement];
 };
 
 export const ROUTES: RouteProps[] = [
@@ -36,7 +37,7 @@ export const ROUTES: RouteProps[] = [
     title: 'Members',
     icon: UserGroupIcon,
     category: 'Settings',
-    permission: { resource: 'member', action: 'invite' },
+    permission: { resource: 'member', action: 'update' },
   },
   {
     url: '/settings/roles',
@@ -46,4 +47,11 @@ export const ROUTES: RouteProps[] = [
     permission: { resource: 'ac', action: 'read' },
   },
 ];
+
+export const PROFILE_TABS = [
+  { label: 'Account', url: '/profile/account' },
+  { label: 'Security', url: '/profile/security' },
+  { label: 'Sessions', url: '/profile/sessions' },
+  { label: 'Preferences', url: '/profile/preferences' },
+] as const;
 {{{{/raw}}}}
