@@ -5,6 +5,7 @@ mono:
   name: api
   path: src/middleware/rbac.ts
 ---
+import type { statement } from '@repo/auth/permissions';
 import { TRPCError } from '@trpc/server';
 import { auth } from '../auth';
 {{#if (isMono)}}
@@ -25,7 +26,13 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next({ ctx: { ...ctx, orgId } });
 });
 
-export const permissionProcedure = (resource: string, action: string) =>
+type Statement = typeof statement;
+
+// A resource and action that the statement does not declare fail to compile.
+export const permissionProcedure = <Resource extends keyof Statement>(
+  resource: Resource,
+  action: Statement[Resource][number],
+) =>
   orgProcedure.use(async ({ ctx, next }) => {
     const result = await auth.api.hasPermission({
       headers: ctx.headers,
