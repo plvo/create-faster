@@ -5,31 +5,31 @@ mono:
   path: src/permissions.ts
 ---
 import { createAccessControl } from 'better-auth/plugins/access';
+import { adminAc, defaultStatements, ownerAc } from 'better-auth/plugins/organization/access';
 
 {{{{raw}}}}
+// The statement and the owner and admin grants start from the ones the organization plugin ships: its endpoints check
+// those names. Teams are not enabled, so their resource stays out of the statement and of the roles UI.
+const { team: _teamStatement, ...organizationStatement } = defaultStatements;
+const { team: _ownerTeam, ...ownerOrganization } = ownerAc.statements;
+const { team: _adminTeam, ...adminOrganization } = adminAc.statements;
+
 export const statement = {
-  organization: ['update', 'delete'],
-  member: ['create', 'update', 'delete'],
-  invitation: ['create', 'cancel'],
-  ac: ['create', 'read', 'update', 'delete'],
+  ...organizationStatement,
   project: ['create', 'read', 'update', 'delete'],
 } as const;
+
+export type Statement = typeof statement;
 
 export const ac = createAccessControl(statement);
 
 export const owner = ac.newRole({
-  organization: ['update', 'delete'],
-  member: ['create', 'update', 'delete'],
-  invitation: ['create', 'cancel'],
-  ac: ['create', 'read', 'update', 'delete'],
+  ...ownerOrganization,
   project: ['create', 'read', 'update', 'delete'],
 });
 
 export const admin = ac.newRole({
-  organization: ['update'],
-  member: ['create', 'update', 'delete'],
-  invitation: ['create', 'cancel'],
-  ac: ['create', 'read', 'update', 'delete'],
+  ...adminOrganization,
   project: ['create', 'read', 'update', 'delete'],
 });
 

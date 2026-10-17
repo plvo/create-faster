@@ -7,10 +7,11 @@ mono:
 'use client';
 
 import { authClient } from '@repo/auth/auth-client';
+import type { Statement } from '@repo/auth/permissions';
 import { useQuery } from '@tanstack/react-query';
 
 {{{{raw}}}}
-type Permissions = Record<string, string[]>;
+export type Permissions = { [Resource in keyof Statement]?: Statement[Resource][number][] };
 
 // Asks the endpoint the server's permissionProcedure asks, so the UI and the router agree on who may write.
 // The answer is cached per permission set and shared by every component that asks.

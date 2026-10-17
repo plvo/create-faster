@@ -136,7 +136,7 @@ export function RolesTable() {
         title='Delete role'
         description={`Delete role "${deleting ?? ''}"? Members with this role will be reset.`}
         confirmLabel='Delete'
-        pending={remove.isPending}
+        disabled={remove.isPending}
         onConfirm={() => {
           if (deleting) remove.mutate({ roleName: deleting });
         }}

@@ -1,7 +1,7 @@
 {{!-- The whole AppBreadcrumb component file, imports included.
-userProcedure: the tRPC procedure that reads one user by id. contactProcedure: the one that reads a contact, for a dashboard with contacts.
+userProcedure: the tRPC procedure that reads one user by id, for a dashboard with /admin/users. contactProcedure: the one that reads a contact, for a dashboard with contacts. projectProcedure: the one that reads a project, for a dashboard with /projects.
 It reads from the project: ROUTES, RouteProps and PROFILE_TABS from @/lib/constants, useTRPC from @/trpc/providers, and the breadcrumb and skeleton components of @repo/ui.
-A record is labelled only under the list routes RECORD_LABELS is keyed by, so the project needs /admin/users (and /contacts when contactProcedure is given). --}}
+A record is labelled only under the list routes RECORD_LABELS is keyed by, so the project needs the list route of each procedure it gives. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { Link, useLocation } from '@tanstack/react-router';
 {{else}}
@@ -83,6 +83,7 @@ function useCachedRecord<T>(queryKey: QueryKey): T | null | undefined {
 }
 
 {{/unless}}
+{{#if userProcedure}}
 function UserLabel({ id }: { id: string }) {
   const trpc = useTRPC();
 {{#if (eq stackName "tanstack-start")}}
@@ -94,6 +95,7 @@ function UserLabel({ id }: { id: string }) {
 {{/if}}
   return <CrumbText text={user?.name || 'User'} />;
 }
+{{/if}}
 {{#if contactProcedure}}
 
 function ContactLabel({ id }: { id: string }) {
@@ -111,9 +113,29 @@ function ContactLabel({ id }: { id: string }) {
 }
 {{/if}}
 
+{{#if projectProcedure}}
+
+function ProjectLabel({ id }: { id: string }) {
+  const trpc = useTRPC();
+{{#if (eq stackName "tanstack-start")}}
+  const { data: project, isPending } = useQuery(trpc.{{projectProcedure}}.queryOptions({ id }));
+  if (isPending) return <LabelSkeleton />;
+{{else}}
+  const project = useCachedRecord<{ name?: string | null }>(trpc.{{projectProcedure}}.queryKey({ id }));
+  if (project === undefined) return <LabelSkeleton />;
+{{/if}}
+  return <CrumbText text={project?.name || 'Project'} />;
+}
+{{/if}}
+
 // The label of a record page, keyed by the URL of the list that holds the record.
 const RECORD_LABELS: Record<string, RecordLabelComponent> = {
+{{#if userProcedure}}
   '/admin/users': UserLabel,
+{{/if}}
+{{#if projectProcedure}}
+  '/projects': ProjectLabel,
+{{/if}}
 {{#if contactProcedure}}
   '/contacts': ContactLabel,
 {{/if}}

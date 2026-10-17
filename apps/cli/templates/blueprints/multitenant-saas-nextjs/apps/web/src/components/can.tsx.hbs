@@ -7,11 +7,11 @@ mono:
 'use client';
 
 import type { ReactNode } from 'react';
-import { usePermission } from '@/hooks/use-permission';
+import { type Permissions, usePermission } from '@/hooks/use-permission';
 
 {{{{raw}}}}
 type CanProps = {
-  permissions: Record<string, string[]>;
+  permissions: Permissions;
   fallback?: ReactNode;
   loadingFallback?: ReactNode;
   children: ReactNode;

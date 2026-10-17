@@ -118,7 +118,7 @@ export function MembersTable() {
         title='Remove member'
         description={`${removing?.user?.email ?? 'This member'} loses access to this organization.`}
         confirmLabel='Remove'
-        pending={remove.isPending}
+        disabled={remove.isPending}
         onConfirm={() => {
           if (removing) remove.mutate({ memberId: removing.id });
         }}

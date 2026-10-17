@@ -15,19 +15,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@repo/ui/components/ui/dialog';
+import type { ReactNode } from 'react';
 
 {{{{raw}}}}
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmLabel: string;
-  pending?: boolean;
+  disabled?: boolean;
   onConfirm: () => void;
+  children?: ReactNode;
 };
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, pending, onConfirm }: Props) {
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  disabled,
+  onConfirm,
+  children,
+}: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -35,11 +46,12 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant='destructive' disabled={pending} onClick={onConfirm}>
+          <Button variant='destructive' disabled={disabled} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </DialogFooter>
