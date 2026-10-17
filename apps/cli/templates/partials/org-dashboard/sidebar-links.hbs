@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-import { useCan } from '@/hooks/use-permission';
+import { can } from '@/hooks/use-permission';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
 function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
@@ -37,15 +37,15 @@ function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
   );
 }
 
-export function SidebarLinks() {
+// The role comes from the layout, which read the session on the server, so the first render already lists the links.
+export function SidebarLinks({ role }: { role: string | null | undefined }) {
 {{#if (eq stackName "tanstack-start")}}
   const pathname = useLocation({ select: (location) => location.pathname });
 {{else}}
   const pathname = usePathname();
 {{/if}}
-  const can = useCan();
 
-  const allowedPages = ROUTES.filter((item) => can(item.permissions ?? {}));
+  const allowedPages = ROUTES.filter((item) => can(role, item.permissions ?? {}));
   const grouplessPages = allowedPages.filter((item) => !item.category);
   const groupedPages = allowedPages.reduce<Record<string, RouteProps[]>>((acc, item) => {
     if (!item.category) return acc;

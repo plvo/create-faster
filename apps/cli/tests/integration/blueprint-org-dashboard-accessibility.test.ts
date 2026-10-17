@@ -55,6 +55,7 @@ const STUBS: Record<string, string> = {
 // useState behaves as React's does: a component reads its slots in call order, and a setter writes its slot.
 let slots = [];
 let next = 0;
+export const cache = (fn) => fn;
 export const resetState = () => { slots = []; next = 0; };
 export const startRender = () => { next = 0; };
 export const useState = (initial) => {

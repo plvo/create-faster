@@ -198,8 +198,8 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(await read(`${WEB}/src/components/profile/tab-nav.tsx`)).toContain("<nav aria-label='Profile sections'");
     expect(await fileExists(join(project, WEB, 'src/styles/globals.css'))).toBe(false);
     const notFound = await read(`${WEB}/src/components/not-found.tsx`);
-    expect(notFound).toContain("<main className='flex flex-col items-center justify-center h-screen'>");
-    expect(notFound).toContain('<h1>404 - Page not found</h1>');
+    expect(notFound).toContain("<main className='flex min-h-screen flex-col items-center justify-center");
+    expect(notFound).toContain("<h1 className='text-2xl font-semibold'>Page not found</h1>");
     expect(await fileExists(join(project, 'scripts/seed.ts'))).toBe(true);
     expect(await fileExists(join(project, 'packages/db/scripts/seed.ts'))).toBe(false);
     expect(await fileExists(join(project, 'apps/batch/src/index.ts'))).toBe(true);
@@ -381,15 +381,12 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
     test('the sidebar renders each role only the links its permissions open', async () => {
       await evaluate(`${WEB}/src/lib/constants.ts`, 'constants.mjs');
-      const { SidebarLinks } = await evaluate<{ SidebarLinks: () => unknown }>(
+      const { SidebarLinks } = await evaluate<{ SidebarLinks: (props: { role: string }) => unknown }>(
         `${WEB}/src/components/navigation/sidebar-links.tsx`,
         'sidebar-links.mjs',
         'tsx',
       );
-      const linksFor = (role: string): Promise<string[]> => {
-        inRouteContext(role);
-        return renderedLinks(SidebarLinks());
-      };
+      const linksFor = (role: string): Promise<string[]> => renderedLinks(SidebarLinks({ role }));
 
       expect(await linksFor('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
       expect(await linksFor('user')).toEqual(['/', '/contacts']);

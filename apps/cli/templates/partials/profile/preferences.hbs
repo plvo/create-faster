@@ -1,23 +1,17 @@
 {{!-- The whole Preferences component file, imports included.
-It reads from the project: Button of @repo/ui. --}}
+It reads from the project: Button of @repo/ui and useMounted of @/hooks/use-mounted. --}}
 'use client';
 
 import { useTheme } from 'next-themes';
-import { useSyncExternalStore } from 'react';
 import { Button } from '@repo/ui/components/ui/button';
+import { useMounted } from '@/hooks/use-mounted';
 
 const THEMES = ['light', 'dark', 'system'] as const;
 
-// The theme only exists in the browser, so the server markup marks no theme and the client marks it once hydrated.
-const subscribeToNothing = () => () => {};
-
 export function Preferences() {
   const { theme, setTheme } = useTheme();
-  const isHydrated = useSyncExternalStore(
-    subscribeToNothing,
-    () => true,
-    () => false,
-  );
+  // The theme only exists in the browser, so the server markup marks no theme and the client marks it once mounted.
+  const isMounted = useMounted();
 
   return (
     <section className='space-y-4 rounded-lg border bg-card p-6'>
@@ -26,18 +20,24 @@ export function Preferences() {
         <p className='text-sm text-muted-foreground'>Customize your experience.</p>
       </div>
       <div className='space-y-2'>
-        <span className='text-sm font-medium'>Theme</span>
-        <div className='flex gap-2'>
-          {THEMES.map((t) => (
-            <Button
-              key={t}
-              variant={isHydrated && theme === t ? 'default' : 'outline'}
-              size='sm'
-              onClick={() => setTheme(t)}
-            >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </Button>
-          ))}
+        <span id='theme-label' className='text-sm font-medium'>
+          Theme
+        </span>
+        <div role='group' aria-labelledby='theme-label' className='flex gap-2'>
+          {THEMES.map((t) => {
+            const isSelected = isMounted && theme === t;
+            return (
+              <Button
+                key={t}
+                variant={isSelected ? 'default' : 'outline'}
+                size='sm'
+                aria-pressed={isSelected}
+                onClick={() => setTheme(t)}
+              >
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </section>

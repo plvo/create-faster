@@ -7,11 +7,12 @@ mono:
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -21,6 +22,9 @@ const schema = z.object({
 
 export function SignupForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const destination = safeRedirectPath(params.get('redirectTo'));
+  const loginHref = destination === '/' ? '/login' : `/login?redirectTo=${encodeURIComponent(destination)}`;
 
   const form = useAppForm({
     defaultValues: { name: '', email: '', password: '' },
@@ -35,7 +39,7 @@ export function SignupForm() {
         toast.error(result.error.message ?? 'Sign-up failed');
         return;
       }
-      router.push('/');
+      router.push(destination);
     },
   });
 
@@ -61,7 +65,7 @@ export function SignupForm() {
       </form.AppForm>
       <p className='text-center text-sm text-muted-foreground'>
         Already have an account?{' '}
-        <Link href='/login' className='underline'>
+        <Link href={loginHref} className='underline underline-offset-4 hover:text-foreground'>
           Sign in
         </Link>
       </p>

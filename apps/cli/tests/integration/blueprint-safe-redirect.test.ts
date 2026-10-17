@@ -7,7 +7,10 @@ setIntegrationTimeout();
 
 const FORMS_BY_BLUEPRINT: Record<string, string[]> = {
   'org-dashboard-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
-  'cloudflare-fullstack-nextjs': ['apps/web/src/app/(auth)/login/login-form.tsx'],
+  'cloudflare-fullstack-nextjs': [
+    'apps/web/src/app/(auth)/login/login-form.tsx',
+    'apps/web/src/app/(auth)/signup/signup-form.tsx',
+  ],
   'multitenant-saas-nextjs': [
     'apps/web/src/app/(auth)/login/login-form.tsx',
     'apps/web/src/app/(auth)/signup/signup-form.tsx',

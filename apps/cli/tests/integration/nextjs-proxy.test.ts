@@ -30,8 +30,33 @@ describe('Next.js proxy', () => {
       const projectPath = await generate('proxy-auth', ['--app', 'web:nextjs:better-auth', ...SQLITE_DRIZZLE]);
       const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
       expect(proxy).not.toMatch(SESSION_LOOKUP);
-      expect(proxy).not.toContain('@/lib/auth');
+      expect(proxy).not.toMatch(/@\/lib\/auth\/(auth|session)/);
       expect(proxy).not.toContain('user.id');
+    });
+
+    test('better-auth: the proxy hands the requested path to server components', async () => {
+      const projectPath = await generate('proxy-path', ['--app', 'web:nextjs:better-auth', ...SQLITE_DRIZZLE]);
+      const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
+      expect(proxy).toContain("import { REQUEST_PATH_HEADER } from '@/lib/auth/request-path';");
+      expect(proxy).toContain('requestHeaders.set(REQUEST_PATH_HEADER, `${pathname}${request.nextUrl.search}`);');
+      expect(proxy).toContain('NextResponse.next({ request: { headers: requestHeaders } })');
+      expect(await readTextFile(join(projectPath, 'src/lib/auth/request-path.ts'))).toContain(
+        "export const REQUEST_PATH_HEADER = 'x-request-path';",
+      );
+    });
+
+    test('without better-auth the proxy forwards nothing and has no header module', async () => {
+      const projectPath = await generate('proxy-no-path', ['--app', 'web:nextjs']);
+      const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
+      expect(proxy).not.toContain('REQUEST_PATH_HEADER');
+      expect(proxy).toContain('NextResponse.next()');
+    });
+
+    test('better-auth with posthog keeps the ingest exclusion of the matcher', async () => {
+      const projectPath = await generate('proxy-posthog', ['--app', 'web:nextjs:better-auth,posthog', ...SQLITE_DRIZZLE]);
+      const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
+      expect(proxy).toContain('api|ingest|_next/static');
+      expect(proxy).toContain('REQUEST_PATH_HEADER');
     });
 
     test('the request log only runs in development', async () => {
@@ -44,7 +69,15 @@ describe('Next.js proxy', () => {
       const projectPath = await generate('proxy-evlog', ['--app', 'web:nextjs:better-auth,evlog', ...SQLITE_DRIZZLE]);
       const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
       expect(proxy).not.toMatch(SESSION_LOOKUP);
+      expect(proxy).toContain('withEvlog(new NextRequest(request, { headers: requestHeaders }))');
+      expect(proxy).toContain("import { NextRequest } from 'next/server';");
+    });
+
+    test('evlog without better-auth: the proxy only wraps the request with evlog', async () => {
+      const projectPath = await generate('proxy-evlog-only', ['--app', 'web:nextjs:evlog']);
+      const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
       expect(proxy).toContain('withEvlog(request)');
+      expect(proxy).not.toContain('REQUEST_PATH_HEADER');
     });
 
     test('cloudflare with d1: the middleware does not resolve auth per request', async () => {

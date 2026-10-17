@@ -1,14 +1,18 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { requirePermission } from '@/lib/auth/session';
 import { getQueryClient, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { ContactDetail } from './contact.client';
 
+// The metadata and the page read the same record: one fetch per request.
+const getContact = cache((id: string) => getQueryClient().fetchQuery(trpc.contact.getById.queryOptions({ id })));
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   await requirePermission('contact', 'read');
-  const contact = await getQueryClient().fetchQuery(trpc.contact.getById.queryOptions({ id }));
+  const contact = await getContact(id);
   return { title: contact ? 'Contact' : 'Page not found' };
 }
 
@@ -19,7 +23,7 @@ export default async function ContactDetailPage({
 }) {
   const { id } = await params;
   await requirePermission('contact', 'read');
-  const contact = await getQueryClient().fetchQuery(trpc.contact.getById.queryOptions({ id }));
+  const contact = await getContact(id);
   if (!contact) notFound();
 
   return (

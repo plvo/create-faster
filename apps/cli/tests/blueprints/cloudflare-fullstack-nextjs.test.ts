@@ -371,10 +371,11 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('the sidebar user menu owns sign-out, the theme toggle, and the avatar', () => {
-    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> org-dashboard/nav-user avatar="image"');
+    const navUser = partial('org-dashboard/nav-user');
     expect(navUser).toContain('authClient.signOut()');
     expect(navUser).toContain("import { useTheme } from 'next-themes'");
-    expect(navUser).toContain('<AvatarImage src={session.user.image ?? undefined}');
+    expect(navUser).toContain('<AvatarImage src={user.image ?? undefined}');
   });
 
   test('cron purge counts actual R2 successes and batches the row delete', () => {
@@ -468,21 +469,21 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('sidebar hides a permission category when none of its routes are visible', () => {
-    const links = bpFile('src/components/navigation/sidebar-links.tsx.hbs');
-    expect(links).toContain("import { useCan } from '@/hooks/use-permission'");
-    expect(links).toContain('const can = useCan();');
+    expect(bpFile('src/components/navigation/sidebar-links.tsx.hbs')).toContain('{{> org-dashboard/sidebar-links}}');
+    const links = partial('org-dashboard/sidebar-links');
+    expect(links).toContain("import { can } from '@/hooks/use-permission'");
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
-    expect(links).toContain('ROUTES.filter((item) => can(item.permissions ?? {}))');
-    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function useCan()');
+    expect(links).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
+    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function can(');
   });
 
   test('sidebar user menu keeps the dropdown open when confirming logout', () => {
-    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> navigation/logout-menu-item');
-    const logout = partial('navigation/logout-menu-item');
+    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> org-dashboard/nav-user');
+    const navUser = partial('org-dashboard/nav-user');
     // onSelect + preventDefault stops the menu from closing on the first Logout click.
-    expect(logout).toContain('onSelect={(event) => {');
-    expect(logout).toContain('event.preventDefault();');
-    expect(logout).toContain('setShowLogout(true);');
+    expect(navUser).toContain('onSelect={(event) => {');
+    expect(navUser).toContain('event.preventDefault();');
+    expect(navUser).toContain('swapLogoutItems(true);');
   });
 
   test('account display name uses an inline-edit field; documents upload uses a normal input', () => {

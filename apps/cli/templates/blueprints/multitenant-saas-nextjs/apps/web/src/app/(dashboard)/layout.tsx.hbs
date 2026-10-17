@@ -4,13 +4,10 @@ mono:
   scope: app
   path: src/app/(dashboard)/layout.tsx
 ---
-import type { Metadata } from 'next';
 import { requireSession } from '@/lib/auth/session';
 import { Separator } from '@repo/ui/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@repo/ui/components/ui/sidebar';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
-
-export const metadata: Metadata = { title: 'Dashboard' };
 
 {{{{raw}}}}
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

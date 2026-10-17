@@ -425,6 +425,46 @@ export async function evaluateGeneratedModule<T>(
 export const REACT_ELEMENT_STUB = `export const Fragment = Symbol.for('fragment');
 export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });`;
 
+/**
+ * Source of a stand-in `react` module with the hooks a generated component calls, on top of `REACT_ELEMENT_STUB`.
+ * Hook state lives in slots read in call order, like React's: `resetState` starts from nothing, `beginRender` starts
+ * a re-render that keeps the slots, and effects wait for `flushEffects`, as React runs them after a commit.
+ * `globalThis.__serverRender` makes `useSyncExternalStore` answer with the server snapshot, and the subscribe
+ * functions it receives are pushed to `globalThis.__subscriptions` when a test sets that array.
+ */
+export const REACT_HOOKS_STUB = `${REACT_ELEMENT_STUB}
+let slots = [];
+let next = 0;
+let effects = [];
+export const beginRender = () => { next = 0; };
+export const resetState = () => { slots = []; next = 0; effects = []; };
+export const flushEffects = () => { const pending = effects; effects = []; for (const effect of pending) effect(); };
+export const useState = (initial) => {
+  const store = slots;
+  const index = next++;
+  if (!(index in store)) store[index] = initial;
+  return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
+};
+export const useRef = (initial) => {
+  const index = next++;
+  if (!(index in slots)) slots[index] = { current: initial };
+  return slots[index];
+};
+export const useEffect = (effect) => { effects.push(effect); };
+export const useSyncExternalStore = (subscribe, getSnapshot, getServerSnapshot) => {
+  globalThis.__subscriptions?.push(subscribe);
+  return globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
+};
+export const cache = (fn) => fn;
+export const Suspense = ({ children }) => children[0];
+export default { useState, useRef, useEffect, useSyncExternalStore, createElement, Fragment };`;
+
+/** Every file under a directory, recursively, as absolute paths. */
+export async function filesUnder(root: string): Promise<string[]> {
+  const entries = await readdir(root, { recursive: true, withFileTypes: true });
+  return entries.filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name));
+}
+
 export interface RenderedElement {
   tag: string;
   props: Record<string, unknown>;

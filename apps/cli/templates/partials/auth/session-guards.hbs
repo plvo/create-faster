@@ -7,11 +7,12 @@ export const getSession = cache(async () => {
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 {{/if}}
 
-// The proxy puts the requested path in x-request-path, so signing in returns to the page that was asked for:
-// the login form passes redirectTo through safeRedirectPath before navigating.
+// The proxy puts the requested path in REQUEST_PATH_HEADER, so signing in returns to the page that was asked for. A
+// client can send that header on the paths the proxy matcher skips, so the value goes through safeRedirectPath here
+// as well as in the login form.
 async function redirectToLogin(): Promise<never> {
-  const requestedPath = (await headers()).get('x-request-path');
-  redirect(requestedPath ? `/login?redirectTo=${encodeURIComponent(requestedPath)}` : '/login');
+  const destination = safeRedirectPath((await headers()).get(REQUEST_PATH_HEADER));
+  redirect(destination === '/' ? '/login' : `/login?redirectTo=${encodeURIComponent(destination)}`);
 }
 
 // Layouts and pages render in parallel: a layout redirect does not stop the page from running. Every

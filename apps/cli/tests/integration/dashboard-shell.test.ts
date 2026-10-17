@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  REACT_ELEMENT_STUB,
+  REACT_HOOKS_STUB,
   type RenderedChild,
   type RenderedElement,
   cleanupTempDir,
@@ -10,6 +10,7 @@ import {
   elementsOf,
   evaluateGeneratedModule,
   fileExists,
+  filesUnder,
   readTextFile,
   renderElementTree,
   runCli,
@@ -32,25 +33,7 @@ type Component = (props: Record<string, unknown>) => unknown;
 // (see `renderElementTree`); hooks keep their state in slots that survive a re-render, and effects wait for
 // `flushEffects` the way React runs them after a commit.
 const STUBS: Record<string, string> = {
-  'react.mjs': `${REACT_ELEMENT_STUB}
-let slots = [];
-let next = 0;
-let effects = [];
-export const beginRender = () => { next = 0; };
-export const resetState = () => { slots = []; next = 0; effects = []; };
-export const flushEffects = () => { const pending = effects; effects = []; for (const effect of pending) effect(); };
-export const useState = (initial) => {
-  const store = slots;
-  const index = next++;
-  if (!(index in store)) store[index] = initial;
-  return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
-};
-export const useEffect = (effect) => { effects.push(effect); };
-export const useSyncExternalStore = (_subscribe, getSnapshot, getServerSnapshot) =>
-  globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
-export const cache = (fn) => fn;
-export const Suspense = ({ children }) => children[0];
-export default { useState, useEffect, useSyncExternalStore, createElement, Fragment };`,
+  'react.mjs': REACT_HOOKS_STUB,
   'ui.mjs': `import { createElement } from './react.mjs';
 const host = (tag) => ({ children, ...props }) => createElement(tag, props, ...children);
 export const Box = host('div');
@@ -60,8 +43,11 @@ export const List = host('ul');
 export const Item = host('li');
 export const Rule = () => createElement('hr', {});
 export const Button = ({ asChild, children, ...props }) => (asChild ? children[0] : createElement('button', props, ...children));
+// A Radix item given asChild hands its behaviour to its child, so the child becomes the menu item.
 export const MenuItem = ({ asChild, children, ...props }) =>
-  asChild ? children[0] : createElement('div', { role: 'menuitem', ...props }, ...children);
+  asChild
+    ? { ...children[0], props: { role: 'menuitem', ...children[0].props, ...props } }
+    : createElement('div', { role: 'menuitem', ...props }, ...children);
 export const useSidebar = () => ({ isMobile: false });`,
   'icons.mjs': `import { createElement } from './react.mjs';
 const icon = (name) => () => createElement('svg', { 'aria-hidden': 'true', 'data-icon': name });
@@ -83,7 +69,7 @@ export const HugeiconsIcon = ({ icon: name }) => createElement('svg', { 'aria-hi
   'themes.mjs': `export const useTheme = () => ({ theme: globalThis.__theme, resolvedTheme: globalThis.__theme, setTheme() {} });`,
   'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
 export const usePathname = () => globalThis.__pathname ?? '/';
-export const useSearchParams = () => new URLSearchParams();
+export const useSearchParams = () => new URLSearchParams(globalThis.__search ?? '');
 export const notFound = () => { throw { kind: 'notFound' }; };
 export const redirect = (url) => { throw { redirectTo: url }; };`,
   'next-link.mjs': `export default ({ href, children, ...props }) => ({ type: 'a', props: { href, ...props, children } });`,
@@ -104,12 +90,11 @@ export const getAuth = async () => auth;`,
   user: { contact: ['create', 'read', 'update', 'delete'] },
   manager: { contact: ['read'] },
 };
-const allowed = (permissions) => {
-  const granted = DEFINITIONS[globalThis.__role] ?? {};
+// Only the pure check: a component that asks for a session hook of this module fails to import.
+export const can = (role, permissions) => {
+  const granted = DEFINITIONS[role] ?? {};
   return Object.entries(permissions).every(([resource, actions]) => actions.every((action) => granted[resource]?.includes(action)));
-};
-export const useCan = () => allowed;
-export const usePermission = (permissions) => allowed(permissions);`,
+};`,
   'trpc-server.mjs': `export const getQueryClient = () => ({ fetchQuery: async (options) => globalThis.__records?.[options.procedure] });
 const procedures = (path) => new Proxy(function () {}, {
   get: (_, key) => (key === 'then' ? undefined : key === 'queryOptions' ? (input) => ({ procedure: path.join('.'), input }) : procedures([...path, key])),
@@ -219,17 +204,12 @@ const fakeEvent = (): FakeEvent => {
 const globals = globalThis as {
   __serverRender?: boolean;
   __theme?: string;
-  __role?: string;
+  __search?: string;
   __pathname?: string;
   __requestHeaders?: Record<string, string>;
   __session?: unknown;
   __records?: Record<string, unknown>;
 };
-
-async function filesUnder(root: string): Promise<string[]> {
-  const entries = await readdir(root, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name));
-}
 
 const treeText = (tree: RenderedChild[]): string => textOf({ tag: 'div', props: {}, children: tree });
 const must = <T>(value: T | undefined, what: string): T => {
@@ -244,6 +224,10 @@ describe('dashboard shell', () => {
   const webOf = (blueprint: string): string => join(tempDir, blueprint, 'apps/web');
   const read = (blueprint: string, file: string): Promise<string> => readTextFile(join(webOf(blueprint), file));
 
+  const modulePath = (blueprint: string, file: string): string =>
+    join(stubs, `${blueprint}-${file.replace(/\W/g, '_')}.mjs`);
+  const relativeModule = (blueprint: string, file: string): string => `./${modulePath(blueprint, file).split('/').at(-1)}`;
+
   const load = async <T,>(
     blueprint: string,
     file: string,
@@ -251,8 +235,7 @@ describe('dashboard shell', () => {
     loader: 'ts' | 'tsx' = 'tsx',
   ): Promise<T> => {
     const imports = { ...UI_IMPORTS, ...extra };
-    const target = join(stubs, `${blueprint}-${file.replace(/\W/g, '_')}.mjs`);
-    return evaluateGeneratedModule<T>(await read(blueprint, file), target, imports, loader);
+    return evaluateGeneratedModule<T>(await read(blueprint, file), modulePath(blueprint, file), imports, loader);
   };
 
   const render = async (component: Component, props: Record<string, unknown> = {}): Promise<RenderedChild[]> => {
@@ -280,92 +263,194 @@ describe('dashboard shell', () => {
   });
 
   describe.each(BLUEPRINTS)('%s user menu', (blueprint) => {
-    test('selecting Logout keeps the menu open and shows the confirmation', async () => {
-      const { NavUser } = await load<{ NavUser: Component }>(blueprint, 'src/components/navigation/nav-user.tsx');
-      react.resetState();
-      const session = { user: { name: 'Ada Lovelace', email: 'ada@example.com', role: 'admin', image: null } };
-      const logout = (tree: RenderedChild[]): RenderedElement | undefined =>
-        elementsOf(tree).find((element) => element.props.role === 'menuitem' && textOf(element) === 'Logout');
+    const session = { user: { name: 'Ada Lovelace', email: 'ada@example.com', role: 'admin', image: null } };
+    let NavUser: Component;
 
-      const before = await render(NavUser, { session });
-      const item = must(logout(before), 'the Logout menu item');
-      expect(treeText(before)).not.toContain('Are you sure?');
-      const select = item.props.onSelect as ((event: FakeEvent) => void) | undefined;
-      expect(select, 'a Radix item closes the menu on select unless onSelect prevents it').toBeInstanceOf(Function);
+    const items = (tree: RenderedChild[]): RenderedElement[] =>
+      elementsOf(tree).filter((element) => element.props.role === 'menuitem');
+    const itemNamed = (tree: RenderedChild[], name: string): RenderedElement | undefined =>
+      items(tree).find((element) => textOf(element) === name);
+    const select = (item: RenderedElement | undefined, what: string): FakeEvent => {
+      const handler = item?.props.onSelect as ((event: FakeEvent) => void) | undefined;
+      expect(handler, `${what} acts on select, the event of a Radix menu item`).toBeInstanceOf(Function);
       const event = fakeEvent();
-      select?.(event);
-      expect(event.defaultPrevented).toBe(true);
+      handler?.(event);
+      return event;
+    };
+    const askConfirmation = async (): Promise<RenderedChild[]> => {
+      react.resetState();
+      const event = select(itemNamed(await render(NavUser, { session }), 'Logout'), 'Logout');
+      expect(event.defaultPrevented, 'a Radix item closes the menu on select unless the handler prevents it').toBe(true);
+      return render(NavUser, { session });
+    };
 
-      const after = await render(NavUser, { session });
-      expect(treeText(after)).toContain('Are you sure?');
-      expect(logout(after)).toBeUndefined();
+    beforeAll(async () => {
+      ({ NavUser } = await load<{ NavUser: Component }>(blueprint, 'src/components/navigation/nav-user.tsx'));
+    });
+
+    test('selecting Logout keeps the menu open and shows the confirmation', async () => {
+      react.resetState();
+      expect(treeText(await render(NavUser, { session }))).not.toContain('Are you sure?');
+      expect(treeText(await askConfirmation())).toContain('Are you sure?');
+    });
+
+    test('the confirmation is made of menu items, so the keyboard reaches it', async () => {
+      const confirming = await askConfirmation();
+      expect(items(confirming).map(textOf)).toEqual(expect.arrayContaining(['Logout', 'Cancel']));
+      const confirm = must(itemNamed(confirming, 'Logout'), 'the confirm item');
+      expect(confirm.props.variant).toBe('destructive');
+      expect(confirm.props.size).toBe('sm');
+
+      const cancel = select(itemNamed(confirming, 'Cancel'), 'Cancel');
+      expect(cancel.defaultPrevented, 'cancelling keeps the menu open').toBe(true);
+      const cancelled = await render(NavUser, { session });
+      expect(treeText(cancelled)).not.toContain('Are you sure?');
+      expect(itemNamed(cancelled, 'Logout')).toBeDefined();
+    });
+
+    test('Cancel takes the focus the removed Logout item leaves behind', async () => {
+      const confirming = await askConfirmation();
+      const cancel = must(itemNamed(confirming, 'Cancel'), 'the Cancel item');
+      let focused = false;
+      (cancel.props.ref as { current: unknown }).current = {
+        focus: () => {
+          focused = true;
+        },
+      };
+      react.flushEffects();
+      expect(focused).toBe(true);
+    });
+
+    test('Logout takes the focus back when Cancel removes the confirmation', async () => {
+      const confirming = await askConfirmation();
+      select(itemNamed(confirming, 'Cancel'), 'Cancel');
+      const cancelled = await render(NavUser, { session });
+      const logout = must(itemNamed(cancelled, 'Logout'), 'the Logout item');
+      let focused = false;
+      (logout.props.ref as { current: unknown }).current = {
+        focus: () => {
+          focused = true;
+        },
+      };
+      react.flushEffects();
+      expect(focused).toBe(true);
+    });
+
+    test('closing the menu forgets the confirmation', async () => {
+      const menuOf = (tree: RenderedChild[]): RenderedElement =>
+        must(
+          elementsOf(tree).find((element) => typeof element.props.onOpenChange === 'function'),
+          'the menu',
+        );
+      const confirming = await askConfirmation();
+      const onOpenChange = menuOf(confirming).props.onOpenChange as (open: boolean) => void;
+      onOpenChange(false);
+      const closed = await render(NavUser, { session });
+      expect(menuOf(closed).props.open).toBe(false);
+      expect(treeText(closed)).not.toContain('Are you sure?');
     });
   });
 
   describe.each(BLUEPRINTS)('%s theme preference', (blueprint) => {
-    const file = 'src/components/profile/preferences.tsx';
+    const hook = 'src/hooks/use-mounted.ts';
+
+    const rendered = async (serverRender: boolean): Promise<RenderedChild[]> => {
+      await load(blueprint, hook, {}, 'ts');
+      const { Preferences } = await load<{ Preferences: Component }>(blueprint, 'src/components/profile/preferences.tsx', {
+        '@/hooks/use-mounted': relativeModule(blueprint, hook),
+      });
+      globals.__theme = 'dark';
+      globals.__serverRender = serverRender;
+      try {
+        react.resetState();
+        return await render(Preferences);
+      } finally {
+        globals.__serverRender = false;
+      }
+    };
+    const buttonsOf = (tree: RenderedChild[]): Record<string, unknown[]> =>
+      Object.fromEntries(
+        elementsOf(tree)
+          .filter((element) => element.tag === 'button')
+          .map((element) => [textOf(element), [element.props.variant, element.props['aria-pressed']]]),
+      );
 
     test('the server render marks no theme, so the client markup matches it', async () => {
-      const { Preferences } = await load<{ Preferences: Component }>(blueprint, file);
-      globals.__theme = 'dark';
-      const buttons = async (serverRender: boolean): Promise<Record<string, unknown>> => {
-        globals.__serverRender = serverRender;
-        try {
-          react.resetState();
-          const tree = await render(Preferences);
-          return Object.fromEntries(
-            elementsOf(tree)
-              .filter((element) => element.tag === 'button')
-              .map((element) => [textOf(element), element.props.variant]),
-          );
-        } finally {
-          globals.__serverRender = false;
-        }
-      };
-      expect(await buttons(true)).toEqual({ Light: 'outline', Dark: 'outline', System: 'outline' });
-      expect(await buttons(false)).toEqual({ Light: 'outline', Dark: 'default', System: 'outline' });
+      expect(buttonsOf(await rendered(true))).toEqual({
+        Light: ['outline', false],
+        Dark: ['outline', false],
+        System: ['outline', false],
+      });
+      expect(buttonsOf(await rendered(false))).toEqual({
+        Light: ['outline', false],
+        Dark: ['default', true],
+        System: ['outline', false],
+      });
+    });
+
+    test('the theme buttons are a labelled group', async () => {
+      const tree = await rendered(false);
+      const group = must(
+        elementsOf(tree).find((element) => element.props.role === 'group'),
+        'the theme group',
+      );
+      const label = elementsOf(tree).find((element) => element.props.id === group.props['aria-labelledby']);
+      expect(label && textOf(label)).toBe('Theme');
+      expect(elementsOf(group.children).filter((element) => element.tag === 'button')).toHaveLength(3);
     });
   });
 
-  describe.each(['org-dashboard-nextjs', START_BLUEPRINT])('%s sidebar', (blueprint) => {
-    const roles: [string, string[]][] = [
-      ['admin', ['Dashboard', 'Contacts', 'Administration']],
-      ['manager', ['Dashboard', 'Contacts']],
-      ['user', ['Dashboard', 'Contacts']],
+  const SIDEBAR_BLUEPRINTS: [string, string][] = [
+    ['org-dashboard-nextjs', 'Dashboard'],
+    [START_BLUEPRINT, 'Dashboard'],
+    ['cloudflare-fullstack-nextjs', 'Documents'],
+  ];
+  describe.each(SIDEBAR_BLUEPRINTS)('%s sidebar', (blueprint, homeTitle) => {
+    const roles: [string, boolean][] = [
+      ['admin', true],
+      ['manager', false],
+      ['user', false],
     ];
 
-    test.each(roles)('%s sees no group without a link', async (role, expectedTitles) => {
-      const icons = { 'lucide-react': './icons.mjs' };
-      const constants = join(stubs, `${blueprint}-constants.mjs`);
-      await evaluateGeneratedModule(await read(blueprint, 'src/lib/constants.ts'), constants, icons, 'ts');
+    // The role comes from the layout as a prop, so a server render lists the same links as the browser does: the
+    // permission module of this test has no session hook, and a component that asked for one would not import.
+    test.each(roles)('%s sees no group without a link, on the server too', async (role, seesAdministration) => {
+      await load(blueprint, 'src/lib/constants.ts', {}, 'ts');
       const { SidebarLinks } = await load<{ SidebarLinks: Component }>(blueprint, 'src/components/navigation/sidebar-links.tsx', {
-        '@/lib/constants': `./${blueprint}-constants.mjs`,
+        '@/lib/constants': relativeModule(blueprint, 'src/lib/constants.ts'),
       });
-      globals.__role = role;
-      const tree = await render(SidebarLinks);
-      const groups = elementsOf(tree).filter((element) => element.tag === 'section');
-      for (const group of groups) {
-        const links = elementsOf(group.children).filter((element) => element.tag === 'a');
-        expect(links.length, `a group of ${blueprint} for ${role} has no link: ${textOf(group)}`).toBeGreaterThan(0);
+      globals.__serverRender = true;
+      try {
+        const tree = await render(SidebarLinks, { role });
+        const groups = elementsOf(tree).filter((element) => element.tag === 'section');
+        for (const group of groups) {
+          const links = elementsOf(group.children).filter((element) => element.tag === 'a');
+          expect(links.length, `a group of ${blueprint} for ${role} has no link: ${textOf(group)}`).toBeGreaterThan(0);
+        }
+        const labels = elementsOf(tree)
+          .filter((element) => element.tag === 'h3')
+          .map(textOf);
+        const linkTexts = elementsOf(tree)
+          .filter((element) => element.tag === 'a')
+          .map(textOf);
+        expect(labels.includes('Administration')).toBe(seesAdministration);
+        expect(linkTexts).toContain(homeTitle);
+      } finally {
+        globals.__serverRender = false;
       }
-      const labels = elementsOf(tree)
-        .filter((element) => element.tag === 'h3')
-        .map(textOf);
-      const linkTexts = elementsOf(tree)
-        .filter((element) => element.tag === 'a')
-        .map(textOf);
-      expect(labels.includes('Administration')).toBe(expectedTitles.includes('Administration'));
-      expect(linkTexts).toEqual(expect.arrayContaining(expectedTitles.filter((title) => title !== 'Administration')));
     });
 
-    test('the permission hook exposes useCan, so a group is decided before it renders', async () => {
-      const source = await read(blueprint, 'src/hooks/use-permission.ts');
-      expect(source).toMatch(/export function useCan\(/);
+    test('the sidebar is handed the role of the session, and the permission module exports the check', async () => {
+      const appSidebar = await read(blueprint, 'src/components/navigation/app-sidebar.tsx');
+      expect(appSidebar).toContain('<SidebarLinks role={session.user.role} />');
+      expect(await read(blueprint, 'src/hooks/use-permission.ts')).toMatch(/export function can\(/);
     });
   });
 
   describe.each(SIGNED_OUT_GUARD_BLUEPRINTS)('%s guard redirect', (blueprint) => {
     const proxyFile = blueprint === 'cloudflare-fullstack-nextjs' ? 'src/middleware.ts' : 'src/proxy.ts';
+    let header: string;
+    let imports: Record<string, string>;
 
     const forwardedHeaders = async (
       incoming: Record<string, string>,
@@ -375,22 +460,17 @@ describe('dashboard shell', () => {
       const proxy = await load<{ default: (request: unknown) => Promise<{ init: { request: { headers: Headers } } }> }>(
         blueprint,
         proxyFile,
-        {},
+        imports,
         'ts',
       );
       const response = await proxy.default({ headers: new Headers(incoming), nextUrl: { pathname, search } });
       return response.init.request.headers;
     };
 
-    const requestPathHeader = async (): Promise<string> => {
-      const forwarded = await forwardedHeaders({}, '/probe', '');
-      return must([...forwarded.keys()][0], 'the header the proxy adds');
-    };
-
-    const guardRedirect = async (headerName: string, value?: string): Promise<string> => {
-      const { requireSession } = await load<{ requireSession: Component }>(blueprint, 'src/lib/auth/session.ts', {}, 'ts');
+    const guardRedirect = async (value?: string): Promise<string> => {
+      const { requireSession } = await load<{ requireSession: Component }>(blueprint, 'src/lib/auth/session.ts', imports, 'ts');
       globals.__session = null;
-      globals.__requestHeaders = value === undefined ? {} : { [headerName]: value };
+      globals.__requestHeaders = value === undefined ? {} : { [header]: value };
       try {
         await requireSession({});
       } catch (thrown) {
@@ -399,34 +479,44 @@ describe('dashboard shell', () => {
       throw new Error('requireSession did not redirect');
     };
 
+    beforeAll(async () => {
+      const module = await load<{ REQUEST_PATH_HEADER: string }>(blueprint, 'src/lib/auth/request-path.ts', {}, 'ts');
+      header = module.REQUEST_PATH_HEADER;
+      await load(blueprint, 'src/lib/safe-redirect.ts', {}, 'ts');
+      imports = {
+        '@/lib/auth/request-path': relativeModule(blueprint, 'src/lib/auth/request-path.ts'),
+        '@/lib/safe-redirect': relativeModule(blueprint, 'src/lib/safe-redirect.ts'),
+      };
+    });
+
+    test('the header name is exported once, and the proxy and the guard import it', async () => {
+      expect(header).toBeTruthy();
+      for (const file of [proxyFile, 'src/lib/auth/session.ts']) {
+        const source = await read(blueprint, file);
+        expect(source, file).toContain("from '@/lib/auth/request-path'");
+        expect(source, file).not.toContain(header);
+      }
+    });
+
     test('the proxy hands the requested path and query to server components, whatever the client sent', async () => {
-      const headerName = await requestPathHeader();
-      const forwarded = await forwardedHeaders({ [headerName]: '/spoofed' }, '/admin/users/42', '?tab=roles');
-      expect(forwarded.get(headerName)).toBe('/admin/users/42?tab=roles');
+      const forwarded = await forwardedHeaders({ [header]: '/spoofed' }, '/admin/users/42', '?tab=roles');
+      expect(forwarded.get(header)).toBe('/admin/users/42?tab=roles');
     });
 
     test('an anonymous visit redirects to the login with the requested path', async () => {
-      const headerName = await requestPathHeader();
-      const target = await guardRedirect(headerName, '/admin/users/42?tab=roles');
-      const url = new URL(target, 'http://localhost');
+      const url = new URL(await guardRedirect('/admin/users/42?tab=roles'), 'http://localhost');
       expect(url.pathname).toBe('/login');
       expect(url.searchParams.get('redirectTo')).toBe('/admin/users/42?tab=roles');
     });
 
-    test('the login form turns that parameter into the destination through safeRedirectPath', async () => {
-      const { safeRedirectPath } = await load<{ safeRedirectPath: (value: string | null) => string }>(
-        blueprint,
-        'src/lib/safe-redirect.ts',
-        {},
-        'ts',
-      );
-      expect(safeRedirectPath('/admin/users/42?tab=roles')).toBe('/admin/users/42?tab=roles');
-      expect(safeRedirectPath('https://evil.example/admin')).toBe('/');
+    test('a header value that is not an internal path is dropped, as the proxy skips some paths', async () => {
+      for (const hostile of ['//evil.example', 'https://evil.example/admin', '/\\evil.example']) {
+        expect(await guardRedirect(hostile), hostile).toBe('/login');
+      }
     });
 
     test('without a forwarded path the redirect is the plain login', async () => {
-      const headerName = await requestPathHeader();
-      expect(await guardRedirect(headerName)).toBe('/login');
+      expect(await guardRedirect()).toBe('/login');
     });
   });
 
@@ -436,6 +526,10 @@ describe('dashboard shell', () => {
       elementsOf(tree)
         .filter((element) => element.tag === 'a')
         .map((element) => element.props.href);
+    const linkStyles = (tree: RenderedChild[]): string[] =>
+      elementsOf(tree)
+        .filter((element) => element.tag === 'a')
+        .map((element) => String(element.props.className).replace(/\btext-sm\b|\btext-muted-foreground\b/g, '').trim());
 
     const formStubs = {
       '@repo/ui/lib/form': './form.mjs',
@@ -458,14 +552,42 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
       await Bun.write(join(stubs, 'safe-redirect.mjs'), "export const safeRedirectPath = (value) => value ?? '/';");
     });
 
-    test('the login page links to the signup page', async () => {
-      const { LoginForm } = await load<{ LoginForm: Component }>(blueprint, 'src/app/(auth)/login/login-form.tsx', formStubs);
-      expect(hrefsOf(await render(LoginForm))).toContain('/signup');
+    const renderForm = async (file: string, name: string, search = ''): Promise<RenderedChild[]> => {
+      const module = await load<Record<string, Component>>(blueprint, file, formStubs);
+      globals.__search = search;
+      try {
+        return await render(must(module[name], name));
+      } finally {
+        globals.__search = undefined;
+      }
+    };
+    const LOGIN = 'src/app/(auth)/login/login-form.tsx';
+    const SIGNUP = 'src/app/(auth)/signup/signup-form.tsx';
+    const REQUESTED = 'redirectTo=%2Fadmin%2Fusers';
+
+    test('the login page links to the signup page, and keeps the page the visitor asked for', async () => {
+      expect(hrefsOf(await renderForm(LOGIN, 'LoginForm'))).toContain('/signup');
+      expect(hrefsOf(await renderForm(LOGIN, 'LoginForm', REQUESTED))).toContain(`/signup?${REQUESTED}`);
     });
 
-    test('the signup page links back to the login page', async () => {
-      const { SignupForm } = await load<{ SignupForm: Component }>(blueprint, 'src/app/(auth)/signup/signup-form.tsx', formStubs);
-      expect(hrefsOf(await render(SignupForm))).toContain('/login');
+    test('the signup page links back to the login page, and keeps the page the visitor asked for', async () => {
+      expect(hrefsOf(await renderForm(SIGNUP, 'SignupForm'))).toContain('/login');
+      expect(hrefsOf(await renderForm(SIGNUP, 'SignupForm', REQUESTED))).toContain(`/login?${REQUESTED}`);
+    });
+
+    test('every link of the login form has the same style', async () => {
+      expect(new Set(linkStyles(await renderForm(LOGIN, 'LoginForm'))).size).toBe(1);
+    });
+  });
+
+  describe.each(NEXTJS_BLUEPRINTS)('%s catch-all page', (blueprint) => {
+    test('a URL no page matches answers not found inside the dashboard group', async () => {
+      const module = await load<{ default: Component; metadata: { title: string } }>(
+        blueprint,
+        'src/app/(dashboard)/[...slug]/page.tsx',
+      );
+      expect(module.metadata.title).toBe('Page not found');
+      await expect(render(module.default)).rejects.toEqual({ kind: 'notFound' });
     });
   });
 
@@ -473,8 +595,9 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
     const declaresTitle = (source: string): boolean =>
       /export const metadata\b/.test(source) || /export (async )?function generateMetadata\b/.test(source);
 
-    // The root layout only holds the default title ("Home"), so a page has a title of its own when it, or a layout
-    // between it and the root, declares one.
+    // The root layout holds the default title and the template that adds the project name. A title declared by a
+    // layout between the root and a page replaces that template for every page below it, so each page declares its
+    // own, which also keeps a 'use client' page apart from its server page.
     test('every page that renders content has a title of its own', async () => {
       const root = join(webOf(blueprint), 'src/app');
       const pages = (await filesUnder(root)).filter((file) => file.endsWith('/page.tsx'));
@@ -483,20 +606,15 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
       for (const page of pages) {
         const source = await readTextFile(page);
         const redirectsOnly = /redirect\(/.test(source) && !/return\s*\(?\s*</.test(source);
-        if (redirectsOnly || declaresTitle(source)) continue;
-        const layouts = page
-          .slice(root.length + 1)
-          .split('/')
-          .slice(0, -1)
-          .map((_, index, directories) => join(root, ...directories.slice(0, index + 1), 'layout.tsx'));
-        const titledByLayout = (
-          await Promise.all(
-            layouts.map(async (layout) => (await fileExists(layout)) && declaresTitle(await readTextFile(layout))),
-          )
-        ).some(Boolean);
-        if (!titledByLayout) untitled.push(page.slice(root.length + 1));
+        if (!redirectsOnly && !declaresTitle(source)) untitled.push(page.slice(root.length + 1));
       }
       expect(untitled).toEqual([]);
+    });
+
+    test('no layout below the root declares a title, which would drop the title template of its pages', async () => {
+      const root = join(webOf(blueprint), 'src/app');
+      const layouts = (await filesUnder(root)).filter((file) => file.endsWith('/layout.tsx') && file !== join(root, 'layout.tsx'));
+      for (const layout of layouts) expect(declaresTitle(await readTextFile(layout)), layout).toBe(false);
     });
   });
 
@@ -601,14 +719,23 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
     });
   });
 
-  describe('the devtools trigger', () => {
-    test('does not sit over the sidebar toggle', async () => {
-      const startRoot = await read(START_BLUEPRINT, 'src/routes/__root.tsx');
-      expect(startRoot).toContain('TanStackDevtools');
-      expect(startRoot).not.toContain("position: 'top-left'");
-      const nextDevtools = await read('org-dashboard-nextjs', 'src/components/devtools.tsx');
-      expect(nextDevtools).toContain('TanStackDevtools');
-      expect(nextDevtools).not.toContain("position: 'top-left'");
+  // Top left holds the sidebar toggle, bottom left the avatar of the sidebar footer and bottom right the toasts, so
+  // the devtools trigger takes the middle of the left edge (empty sidebar space) and the Next.js dev indicator the top right.
+  describe('the devtools', () => {
+    test('the trigger sits at the middle of the left edge', async () => {
+      const files: [string, string][] = [
+        [START_BLUEPRINT, 'src/routes/__root.tsx'],
+        ['org-dashboard-nextjs', 'src/components/devtools.tsx'],
+      ];
+      for (const [blueprint, file] of files) {
+        const source = await read(blueprint, file);
+        expect(source, file).toContain('TanStackDevtools');
+        expect(source, file).toContain("position: 'middle-left'");
+      }
+    });
+
+    test('the Next.js dev indicator sits at the top right', async () => {
+      expect(await read('org-dashboard-nextjs', 'next.config.ts')).toContain("devIndicators: { position: 'top-right' }");
     });
   });
 });

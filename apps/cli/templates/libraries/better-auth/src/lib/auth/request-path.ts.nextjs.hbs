@@ -1,0 +1,8 @@
+---
+mono:
+  scope: app
+---
+// The request header the proxy fills with the requested path and query, for the server-side guards that redirect to
+// the login. The proxy replaces a client-sent value on every request its matcher covers; the paths it skips (API
+// routes, static files) keep what the client sent, so a guard never trusts the value without safeRedirectPath.
+export const REQUEST_PATH_HEADER = 'x-request-path';

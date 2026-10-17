@@ -4,11 +4,18 @@ deploymentPath:
 deploymentSkip:
   - cloudflare-static
 ---
-{{#if (hasLibrary "evlog")}}
+{{#if (and (hasLibrary "evlog") (hasLibrary "better-auth"))}}
+import { NextRequest } from 'next/server';
+{{else if (hasLibrary "evlog")}}
 import type { NextRequest } from 'next/server';
-import { evlogMiddleware } from 'evlog/next';
 {{else}}
 import { type NextRequest, NextResponse } from 'next/server';
+{{/if}}
+{{#if (hasLibrary "evlog")}}
+import { evlogMiddleware } from 'evlog/next';
+{{/if}}
+{{#if (hasLibrary "better-auth")}}
+import { REQUEST_PATH_HEADER } from '@/lib/auth/request-path';
 {{/if}}
 
 {{#if (hasLibrary "evlog")}}
@@ -22,8 +29,18 @@ export default async function {{#if (has "deployment" "cloudflare")}}middleware{
     console.log(`{{#if (has "deployment" "cloudflare")}}MIDDLEWARE{{else}}PROXY{{/if}} "${pathname}"`);
   }
 
-  {{#if (hasLibrary "evlog")}}
+  {{#if (hasLibrary "better-auth")}}
+  // Server components cannot read their own URL: the guards that send a visitor to the login read the path here.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(REQUEST_PATH_HEADER, `${pathname}${request.nextUrl.search}`);
+
+  {{/if}}
+  {{#if (and (hasLibrary "evlog") (hasLibrary "better-auth"))}}
+  return await withEvlog(new NextRequest(request, { headers: requestHeaders }));
+  {{else if (hasLibrary "evlog")}}
   return await withEvlog(request);
+  {{else if (hasLibrary "better-auth")}}
+  return NextResponse.next({ request: { headers: requestHeaders } });
   {{else}}
   return NextResponse.next();
   {{/if}}

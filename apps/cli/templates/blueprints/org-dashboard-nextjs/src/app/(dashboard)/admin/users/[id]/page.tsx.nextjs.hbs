@@ -1,21 +1,25 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { requireAdmin } from '@/lib/auth/session';
 import { getQueryClient, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { UserDetail } from './user-detail';
 
+// The metadata and the page read the same record: one fetch per request.
+const getUser = cache((id: string) => getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id })));
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   await requireAdmin();
-  const user = await getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id }));
+  const user = await getUser(id);
   return { title: user ? 'User' : 'Page not found' };
 }
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requireAdmin();
-  const user = await getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id }));
+  const user = await getUser(id);
   if (!user) notFound();
 
   return (

@@ -1,14 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  REACT_ELEMENT_STUB,
+  REACT_HOOKS_STUB,
   type RenderedChild,
   type RenderedElement,
   cleanupTempDir,
   createTempDir,
   elementsOf,
   evaluateGeneratedModule,
+  filesUnder,
   readTextFile,
   renderElementTree,
   runCli,
@@ -63,27 +64,7 @@ const WEB = 'apps/web';
 // returns the procedure and its input, and both query hooks record what they were asked, so a test can compare the
 // query the header reads with the one the page reads.
 const STUBS: Record<string, string> = {
-  'react.mjs': `${REACT_ELEMENT_STUB}
-let slots = [];
-let next = 0;
-let effects = [];
-export const beginRender = () => { next = 0; };
-export const resetState = () => { slots = []; next = 0; effects = []; };
-// React runs the effects of a render after it commits.
-export const flushEffects = () => { const pending = effects; effects = []; for (const effect of pending) effect(); };
-export const useEffect = (effect) => { effects.push(effect); };
-// A client render reads the snapshot of the client; globalThis.__serverRender renders the page as the server does.
-// The subscribe functions are kept so a test can fire a store change.
-export const useSyncExternalStore = (subscribe, getSnapshot, getServerSnapshot) => {
-  globalThis.__subscriptions?.push(subscribe);
-  return globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
-};
-export const useState = (initial) => {
-  const store = slots;
-  const index = next++;
-  if (!(index in store)) store[index] = initial;
-  return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
-};`,
+  'react.mjs': REACT_HOOKS_STUB,
   'icons.mjs': `import { createElement } from './react.mjs';
 const icon = (name) => () => createElement('svg', { 'aria-hidden': 'true', 'data-icon': name });
 export const ArrowLeft = icon('ArrowLeft');
@@ -206,16 +187,14 @@ const globals = globalThis as {
   __cacheListeners?: ((event: { type: string }) => void)[];
 };
 
-async function filesUnder(root: string): Promise<string[]> {
-  const entries = await readdir(root, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name));
-}
-
 const withoutGroups = (path: string): string => path.replace(/\([^/]+\)\//g, '');
 
 async function nextjsPageUrls(web: string): Promise<string[]> {
   const root = join(web, 'src/app');
-  const pages = (await filesUnder(join(root, '(dashboard)'))).filter((file) => file.endsWith('/page.tsx'));
+  // The catch-all page answers not found for every URL no page matches, so it is not a page of the app.
+  const pages = (await filesUnder(join(root, '(dashboard)'))).filter(
+    (file) => file.endsWith('/page.tsx') && !file.includes('/[...'),
+  );
   return pages
     .map((file) => withoutGroups(file.slice(root.length + 1)).replace(/\/?page\.tsx$/, ''))
     .map((route) => `/${route}`.replace(/\[(\w+)\]/g, ':$1'));
