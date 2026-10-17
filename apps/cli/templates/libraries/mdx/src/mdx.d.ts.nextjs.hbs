@@ -1,0 +1,6 @@
+---
+only: no-blueprint
+---
+declare module '*.mdx' {
+  export const frontmatter: import('@/lib/mdx').MdxFrontmatter;
+}

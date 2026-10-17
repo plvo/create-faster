@@ -192,7 +192,14 @@ describe('MDX Integration', () => {
       expect(pkg.dependencies['next-mdx-remote']).toBeDefined();
       expect(pkg.devDependencies?.['@types/mdx']).toBeDefined();
       expect(pkg.dependencies['@mdx-js/rollup']).toBeUndefined();
-      expect(pkg.dependencies['remark-frontmatter']).toBeUndefined();
+    });
+
+    test('compiles the documents with the YAML frontmatter plugins, named as strings for Turbopack', async () => {
+      const pkg = await readJsonFile<PackageJsonShape>(join(projectPath, 'package.json'));
+      expect(pkg.dependencies['remark-frontmatter']).toBeDefined();
+      expect(pkg.dependencies['remark-mdx-frontmatter']).toBeDefined();
+      const config = await readTextFile(join(projectPath, 'next.config.ts'));
+      expect(config).toContain("remarkPlugins: ['remark-frontmatter', 'remark-mdx-frontmatter']");
     });
 
     test('serves the example under /mdx with an optional slug, like the Start route', async () => {
@@ -208,7 +215,38 @@ describe('MDX Integration', () => {
     test('prerenders every document at build time and 404s any other slug from the page', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
       expect(route).toContain('export function generateStaticParams()');
+      expect(route).toContain('export const dynamicParams = false');
       expect(route).toContain('notFound()');
+    });
+
+    test('imports every document into the bundle and reads no file at request time', async () => {
+      const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      expect(route).not.toMatch(/\bfrom ['"](node:)?(fs|path)['"]/);
+      expect(route).not.toContain('process.cwd()');
+
+      const documents = (await readdir(join(projectPath, 'contents')))
+        .filter((file) => file.endsWith('.mdx'))
+        .map((file) => file.replace(/\.mdx$/, ''));
+      expect(documents.length).toBeGreaterThan(0);
+      for (const document of documents) {
+        expect(route).toContain(`import('#/contents/${document}.mdx')`);
+      }
+    });
+
+    test('renders the document inside the layout main, without a metadata dump', async () => {
+      const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
+      expect(route).not.toContain('<main');
+      expect(route).not.toContain('JSON.stringify');
+      expect(route).not.toContain('<pre');
+      expect(await readTextFile(join(projectPath, 'src/app/layout.tsx'))).toContain('<main>{children}</main>');
+    });
+
+    test('types the frontmatter export of a document', async () => {
+      expect(await readTextFile(join(projectPath, 'src/mdx.d.ts'))).toContain('export const frontmatter');
+    });
+
+    test('headings wrap instead of scrolling the page sideways', async () => {
+      expect(await readTextFile(join(projectPath, 'src/styles/mdx.css'))).not.toContain('whitespace-nowrap');
     });
 
     test('keeps its components and frontmatter parser', async () => {
@@ -268,6 +306,27 @@ describe('MDX Integration', () => {
         expect(await fileExists(join(appPath, 'contents/home.mdx'))).toBe(false);
         expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(false);
         expect(await fileExists(join(appPath, 'contents/blog'))).toBe(true);
+      });
+    }
+  });
+
+  describe('Blog posts of the blueprints with mdx', () => {
+    const blogBlueprints = ['cloudflare-static-site-nextjs', 'showcase-nextjs'];
+
+    for (const blueprint of blogBlueprints) {
+      test(`${blueprint} posts leave the h1 to the page header`, async () => {
+        const projectName = `h1-${blueprint}`;
+        const result = await runCli([projectName, '--blueprint', blueprint, '--no-git', '--no-install'], tempDir);
+        expect(result.exitCode).toBe(0);
+        const blogDir = join(tempDir, projectName, 'contents/blog');
+        const posts = (await readdir(blogDir)).filter((file) => file.endsWith('.mdx'));
+        expect(posts.length).toBeGreaterThan(0);
+        for (const post of posts) {
+          const body = (await readTextFile(join(blogDir, post))).replace(/^---\n[\s\S]*?\n---\n/, '');
+          expect(body).not.toMatch(/^# /m);
+        }
+        const page = await readTextFile(join(tempDir, projectName, 'src/app/blog/[slug]/page.tsx'));
+        expect(page).toContain('<h1');
       });
     }
   });

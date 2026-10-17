@@ -385,6 +385,10 @@ export const META: Meta = {
       category: 'Content',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       packageJson: {
+        dependencies: {
+          'remark-frontmatter': '^5.0.0',
+          'remark-mdx-frontmatter': '^6.0.0',
+        },
         devDependencies: {
           '@types/mdx': '^2.0.14',
         },
@@ -401,8 +405,6 @@ export const META: Meta = {
         'tanstack-start': {
           dependencies: {
             '@mdx-js/rollup': '^3.1.1',
-            'remark-frontmatter': '^5.0.0',
-            'remark-mdx-frontmatter': '^6.0.0',
           },
         },
       },
