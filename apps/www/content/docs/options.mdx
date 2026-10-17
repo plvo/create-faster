@@ -20,10 +20,10 @@ To state "no selection" explicitly, pass `none` to a category flag (`--database 
 
 ## Available Flags
 
-### Project Name (Positional)
+### Project Directory (Positional)
 
 ```bash
-bunx create-faster <project-name>
+bunx create-faster [project-dir]
 ```
 
 The first argument is the project directory: a name, or a relative or absolute path. The project name is its last segment and must be a valid package name (lowercase letters, digits, `-`, `_` and `.`, starting with a letter or digit). If omitted, the CLI prompts for it, and the prompt accepts a path too.

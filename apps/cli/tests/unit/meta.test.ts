@@ -156,6 +156,12 @@ describe('META.project validation', () => {
 });
 
 describe('META.stacks validation', () => {
+  test('every stack has a hint for the stack prompt', () => {
+    for (const [name, stack] of Object.entries(META.stacks)) {
+      expect(stack.hint.trim(), `${name} should have a hint`).not.toBe('');
+    }
+  });
+
   test('expected stacks exist', () => {
     expect(META.stacks.nextjs).toBeDefined();
     expect(META.stacks['tanstack-start']).toBeDefined();

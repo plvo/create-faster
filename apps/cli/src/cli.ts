@@ -80,7 +80,7 @@ export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 
     git: false,
   };
 
-  const progress = new Progress(() => [
+  const progress: Progress = new Progress(() => [
     ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
     ...(areAppsAnswered(partial) ? [] : [APP_COUNT_PROMPT, ...expectedAppPrompts(appsFlow)]),
     ...unaskedCategoryPrompts(categoryNames, ctx, mode, progress),
@@ -159,7 +159,7 @@ export async function blueprintCli(
     blueprint: blueprintName,
   };
 
-  const progress = new Progress(() => [
+  const progress: Progress = new Progress(() => [
     ...(isProjectDirAnswered(partial) ? [] : [PROJECT_NAME_PROMPT]),
     ...unaskedCategoryPrompts(BLUEPRINT_CATEGORIES, ctx, mode, progress),
     ...(isGitPrompted(partial, mode) ? [GIT_PROMPT] : []),

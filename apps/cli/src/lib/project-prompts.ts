@@ -60,7 +60,7 @@ export function missingAnswersWithoutTerminal(
   if (!isProjectDirAnswered(answers)) {
     missing.push({
       title: 'Missing project name',
-      hint: 'Pass the project directory as the first argument: create-faster <project-name>',
+      hint: 'Pass the project directory as the first argument: create-faster <project-dir>',
     });
   }
   if (!areAppsAnswered(answers)) {
