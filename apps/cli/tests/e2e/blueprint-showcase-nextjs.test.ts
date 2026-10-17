@@ -70,6 +70,7 @@ describe('blueprint-showcase-nextjs', () => {
     expect(result.exitCode).toBe(0);
 
     projectDir = join(tempDir, 'showcase');
+    await writeFile(join(projectDir, 'contents/blog/added-post.mdx'), ADDED_POST);
     installResult = await runCommand(['bun', 'install'], projectDir);
   }, TIMEOUT_INSTALL + 30_000);
 
@@ -106,10 +107,6 @@ describe('blueprint-showcase-nextjs', () => {
   test(
     'next start serves /blog, every post and a post added to contents/blog, and answers 404 for an unknown slug',
     async () => {
-      await writeFile(join(projectDir, 'contents/blog/added-post.mdx'), ADDED_POST);
-      const build = await runCommand(['bun', 'run', 'build'], projectDir);
-      expect(build.exitCode, build.stderr).toBe(0);
-
       const server = await startServer(['bun', 'run', 'start'], projectDir, { readyPath: '/blog' });
       try {
         const slugs = await postSlugs(projectDir);

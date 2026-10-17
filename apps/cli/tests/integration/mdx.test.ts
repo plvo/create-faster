@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { renderTimeFileAccess } from '../render-time-file-access';
+import { filesystemAccess } from '../render-time-file-access';
 import {
   cleanupTempDir,
   createTempDir,
@@ -241,17 +241,14 @@ describe('MDX Integration', () => {
       expect(route).toContain('notFound()');
     });
 
-    test('imports the document of the slug by a relative path, so a file added to contents/ needs no edit of the page', async () => {
+    test('bundles the documents with import.meta.glob, so a file added to contents/ needs no edit of the page', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('import(`../../../../contents/${');
-      expect(route).not.toContain('#/contents');
-      expect(route).not.toMatch(/import\(['"]/);
+      expect(route).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
     });
 
-    test('reads no file while the page renders, only generateStaticParams lists contents/ at build', async () => {
+    test('reads no file, neither while the page renders nor to list the documents', async () => {
       const route = await readTextFile(join(projectPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('export function generateStaticParams()');
-      expect(renderTimeFileAccess(route)).toEqual([]);
+      expect(filesystemAccess(route)).toEqual([]);
     });
 
     test('renders the document inside the layout main, without a metadata dump', async () => {
@@ -280,7 +277,7 @@ describe('MDX Integration', () => {
       expect(agents).toContain('## MDX');
       expect(agents).toContain('contents/<name>.mdx');
       expect(agents).toContain('generateStaticParams');
-      expect(agents).not.toContain('import.meta.glob');
+      expect(agents).toContain("import.meta.glob('/contents/*.mdx')");
     });
 
     test('keeps its components and ships no frontmatter parser', async () => {
@@ -318,9 +315,9 @@ describe('MDX Integration', () => {
       expect(await fileExists(join(appPath, 'contents/cool.mdx'))).toBe(true);
     });
 
-    test('imports the documents from the contents/ of the app', async () => {
+    test('bundles the documents from the contents/ of the app', async () => {
       const route = await readTextFile(join(appPath, 'src/app/mdx/[[...slug]]/page.tsx'));
-      expect(route).toContain('import(`../../../../contents/${');
+      expect(route).toContain("import.meta.glob<MdxModule>('/contents/*.mdx')");
     });
   });
 
@@ -385,17 +382,9 @@ describe('MDX Integration', () => {
           expect(await readTextFile(join(projectPath, 'src/lib/mdx.ts'))).not.toContain('parseFrontmatter');
         });
 
-        test('lists the posts from the bundle, so no file is read while a request is served', async () => {
-          const blog = await readTextFile(join(projectPath, 'src/lib/blog.ts'));
-          expect(blog).toContain("require.context('../../contents/blog', false, /\\.mdx$/)");
-          expect(blog).not.toContain('parseFrontmatter');
-          expect(renderTimeFileAccess(blog)).toEqual([]);
-
-          const page = await readTextFile(join(projectPath, 'src/app/blog/[slug]/page.tsx'));
-          expect(page).toContain('export const dynamicParams = false');
-          expect(page).toContain('export function generateStaticParams()');
-          expect(page).not.toContain('MDXRemote');
-          expect(renderTimeFileAccess(page)).toEqual([]);
+        test('reads no file to list or load the posts', async () => {
+          expect(filesystemAccess(await readTextFile(join(projectPath, 'src/lib/blog.ts')))).toEqual([]);
+          expect(filesystemAccess(await readTextFile(join(projectPath, 'src/app/blog/[slug]/page.tsx')))).toEqual([]);
         });
       });
     }

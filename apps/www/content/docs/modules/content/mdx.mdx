@@ -37,7 +37,7 @@ contents/
 
 ## Next.js
 
-Documents in `contents/` are compiled at build time by `@next/mdx`, with `remark-frontmatter` and `remark-mdx-frontmatter` exporting the YAML frontmatter as `frontmatter`. The example route `/mdx/[[...slug]]` imports the document of the slug, so nothing reads the filesystem while a page renders and the route also runs on a Cloudflare Worker. It prerenders one page per document, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page. To add a document, create the file in `contents/`: the page needs no edit.
+Documents in `contents/` are compiled at build time by `@next/mdx`, with `remark-frontmatter` and `remark-mdx-frontmatter` exporting the YAML frontmatter as `frontmatter`. The example route `/mdx/[[...slug]]` finds the document of the slug with `import.meta.glob`, so nothing reads the filesystem while a page renders and the route also runs on a Cloudflare Worker. It prerenders one page per document, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page. To add a document, create the file in `contents/`: the page needs no edit.
 
 Files added:
 ```
@@ -81,15 +81,15 @@ export type MdxModule = {
 
 ### page.tsx
 
-MDX route prerendered for every document, with metadata generation. `generateStaticParams` lists `contents/` at build time; the page itself reads no file:
+MDX route prerendered for every document, with metadata generation. `import.meta.glob` bundles the documents, so no file is read at build time or while a page renders:
 
 ```tsx title="src/app/mdx/[[...slug]]/page.tsx"
-import fs from 'node:fs';
-import path from 'node:path';
 import { notFound } from 'next/navigation';
 import type { MdxModule } from '@/lib/mdx';
 
 const HOME_DOCUMENT = 'home';
+
+const documentLoaders = import.meta.glob<MdxModule>('/contents/*.mdx');
 
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
@@ -98,10 +98,8 @@ interface PageProps {
 export const dynamicParams = false;
 
 export function generateStaticParams(): { slug: string[] }[] {
-  return fs
-    .readdirSync(path.join(process.cwd(), 'contents'))
-    .filter((file) => file.endsWith('.mdx'))
-    .map((file) => path.basename(file, '.mdx'))
+  return Object.keys(documentLoaders)
+    .map((path) => path.slice('/contents/'.length, -'.mdx'.length))
     .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
 }
 
@@ -123,14 +121,12 @@ export default async function Page({ params }: PageProps) {
 }
 
 async function loadDocument(slug: string[] = []): Promise<MdxModule> {
-  if (slug.length > 1 || slug[0] === HOME_DOCUMENT) {
+  const loadDocumentModule = documentLoaders[`/contents/${slug[0] ?? HOME_DOCUMENT}.mdx`];
+
+  if (slug.length > 1 || slug[0] === HOME_DOCUMENT || !loadDocumentModule) {
     notFound();
   }
 
-  try {
-    return await import(`../../../../contents/${slug[0] ?? HOME_DOCUMENT}.mdx`);
-  } catch {
-    notFound();
-  }
+  return loadDocumentModule();
 }
 ```

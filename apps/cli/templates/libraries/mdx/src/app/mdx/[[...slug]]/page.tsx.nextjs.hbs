@@ -1,12 +1,12 @@
 ---
 only: no-blueprint
 ---
-import fs from 'node:fs';
-import path from 'node:path';
 import { notFound } from 'next/navigation';
 import type { MdxModule } from '@/lib/mdx';
 
 const HOME_DOCUMENT = 'home';
+
+const documentLoaders = import.meta.glob<MdxModule>('/contents/*.mdx');
 
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
@@ -15,10 +15,8 @@ interface PageProps {
 export const dynamicParams = false;
 
 export function generateStaticParams(): { slug: string[] }[] {
-  return fs
-    .readdirSync(path.join(process.cwd(), 'contents'))
-    .filter((file) => file.endsWith('.mdx'))
-    .map((file) => path.basename(file, '.mdx'))
+  return Object.keys(documentLoaders)
+    .map((path) => path.slice('/contents/'.length, -'.mdx'.length))
     .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
 }
 
@@ -46,13 +44,11 @@ export default async function Page({ params }: PageProps) {
 }
 
 async function loadDocument(slug: string[] = []): Promise<MdxModule> {
-  if (slug.length > 1 || slug[0] === HOME_DOCUMENT) {
+  const loadDocumentModule = documentLoaders[`/contents/${slug[0] ?? HOME_DOCUMENT}.mdx`];
+
+  if (slug.length > 1 || slug[0] === HOME_DOCUMENT || !loadDocumentModule) {
     notFound();
   }
 
-  try {
-    return await import(`../../../../contents/${slug[0] ?? HOME_DOCUMENT}.mdx`);
-  } catch {
-    notFound();
-  }
+  return loadDocumentModule();
 }
