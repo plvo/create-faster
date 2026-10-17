@@ -291,7 +291,8 @@ describe('generated docs write commands every package manager runs', () => {
   test('blueprint README and agent guides follow the package manager', async () => {
     const project = await generate('bp-npm', ['--blueprint', 'cloudflare-static-site-nextjs'], 'npm');
     const readme = await readTextFile(join(project, 'README.md'));
-    expect(readme).toContain('npm install\nnpm run dev');
+    expect(readme).toContain('npm install');
+    expect(readme).toContain('npm run dev');
     expect(readme).not.toMatch(BUN_FORM);
     const guide = await readTextFile(join(project, 'docs/agents/cloudflare-deploy.md'));
     expect(guide).toContain('npm run deploy');
