@@ -1,0 +1,10 @@
+
+### 6. Check the live URL
+
+{{> aws/live-check urlCommand="node -p 'require(\"./.sst/outputs.json\").api'"}}
+
+### 7. Deploy from GitHub Actions
+
+On a push to `main` the workflow deploys the `staging` stage; a manual run deploys `staging` or `production`. The GitHub environments are named after the stages.
+
+{{> aws/github-oidc environments="staging production"}}

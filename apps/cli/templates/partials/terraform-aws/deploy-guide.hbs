@@ -5,9 +5,7 @@ Follow the steps in order, from the repository root. Nothing is created in AWS b
 ### 1. Install the tools
 
 Install [Terraform](https://developer.hashicorp.com/terraform/install) 1.10 or later (`infra/providers.tf` requires it: the state lock is a file in the bucket, with no DynamoDB table).
-{{#if (eq blueprint "lambda-terraform-aws-hono")}}
-The `justfile` wraps the Terraform commands below (`just init dev`, `just plan dev`, `just apply dev`, `just output`); install [`just`](https://github.com/casey/just) to use it. The steps call Terraform directly, so they do not need it.
-{{/if}}
+{{> (blueprintPartial "deploy-tools")}}
 
 ### 2. Set the credentials and the region
 
@@ -32,49 +30,11 @@ rm infra/backend/dev.hcl.bak infra/backend/prod.hcl.bak
 
 Commit both files: a bucket name is not a secret, and CI reads it from them. They hold no profile and no region on purpose: the S3 backend reads `AWS_PROFILE` and `AWS_REGION` from the environment, so the same files work on your machine (a profile) and in CI (OIDC credentials). Do not add a `profile` or a `region` to them.
 
-{{#if (eq blueprint "lambda-terraform-aws-hono")}}
-### 5. Build the functions
-
-Terraform zips the `dist` directory of `apps/api`, `apps/cron` and `apps/worker` (the zips go to `.build/`, which git ignores), so build them first:
-
-```bash
-{{runScript "build"}}
-```
-
-### 6. Deploy the dev environment
-
-```bash
-terraform -chdir=infra init -backend-config=backend/dev.hcl
-terraform -chdir=infra apply -var="env=dev"
-```
-
-`apply` shows the plan and waits for `yes`. For prod, switch the backend and apply with the prod environment:
-
-```bash
-terraform -chdir=infra init -reconfigure -backend-config=backend/prod.hcl
-terraform -chdir=infra apply -var="env=prod"
-```
-
-### 7. Check the live URL
-
-```bash
-API_URL=$(terraform -chdir=infra output -raw api_url)
-curl "${API_URL%/}/health/ping"
-```
-
-The answer is `{"ok":true,"message":"Health check","data":{"id":"ping"}}`. `output` reads the state of the backend initialized last, so run it right after the `apply` of the environment you want to check.
-
-### 8. Deploy from GitHub Actions
-
-On a push to `main` the workflow deploys `dev`; a manual run deploys `dev` or `prod`. The GitHub environments are named after the Terraform environments.
-
-{{> aws/github-oidc environments="dev prod"}}
-{{else}}
 ### 5. Initialize the backend
 
 ```bash
 terraform -chdir=infra init -backend-config=backend/dev.hcl
 ```
 
-`infra/` holds the provider and the backend only: `main.tf` has no resource yet. Add yours, then `terraform -chdir=infra plan -var="env=dev"` shows what `apply` creates. Use `-backend-config=backend/prod.hcl` with `-reconfigure` and `-var="env=prod"` for prod.
-{{/if}}
+`infra/` holds the AWS provider, the backend and the resources you declare in it. `terraform -chdir=infra plan -var="env=dev"` shows what `apply` would create. For prod, run `init -reconfigure -backend-config=backend/prod.hcl` first and pass `-var="env=prod"`.
+{{> (blueprintPartial "deploy")}}

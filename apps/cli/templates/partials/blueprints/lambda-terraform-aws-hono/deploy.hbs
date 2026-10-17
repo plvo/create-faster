@@ -1,0 +1,33 @@
+
+### 6. Build the functions
+
+Terraform zips the `dist` directory of `apps/api`, `apps/cron` and `apps/worker` (the zips go to `.build/`, which git ignores), so build them first:
+
+```bash
+{{runScript "build"}}
+```
+
+### 7. Deploy the dev environment
+
+```bash
+terraform -chdir=infra apply -var="env=dev"
+```
+
+`apply` shows the plan and waits for `yes`. For prod, switch the backend and apply with the prod environment:
+
+```bash
+terraform -chdir=infra init -reconfigure -backend-config=backend/prod.hcl
+terraform -chdir=infra apply -var="env=prod"
+```
+
+### 8. Check the live URL
+
+{{> aws/live-check urlCommand="terraform -chdir=infra output -raw api_url"}}
+
+`output` reads the state of the backend initialized last, so run it right after the `apply` of the environment you want to check.
+
+### 9. Deploy from GitHub Actions
+
+On a push to `main` the workflow deploys `dev`; a manual run deploys `dev` or `prod`. The GitHub environments are named after the Terraform environments.
+
+{{> aws/github-oidc environments="dev prod"}}

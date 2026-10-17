@@ -21,11 +21,11 @@ Infrastructure is modular Terraform under `infra/`. The root `infra/main.tf` wir
 
 ## First deploy
 
-The ordered first deploy, from the credentials to the live URL and the GitHub setup, is the "Deploying to AWS (Terraform)" section of `README.md`: credentials and region, the state bucket (created by hand before `terraform init`), the `<BUCKET_NAME>` placeholder of both backend files, `{{runScript "build"}}` (Terraform zips `apps/*/dist`), `init`, `apply`, `output -raw api_url`, then the OIDC role and the GitHub environments. Keep the section and the commands below in step.
+The ordered first deploy, from the credentials to the live URL and the GitHub setup, is the "Deploying to AWS (Terraform)" section of `README.md`. The commands live only there.
 
 ## Ops (justfile)
 
-Install `just` first (https://github.com/casey/just): the `justfile` is not part of the Terraform install. Run from repo root; it sets `working-directory := 'infra'` and takes an `env` param (default `dev`):
+Install `just` first (https://github.com/casey/just). Run from repo root; it sets `working-directory := 'infra'` and takes an `env` param (default `dev`):
 
 - `just init <env>` — `terraform init` with the env's backend config.
 - `just plan <env>` / `just apply <env>` / `just destroy <env>` — pass `-var="env=<env>"`.
@@ -33,7 +33,7 @@ Install `just` first (https://github.com/casey/just): the `justfile` is not part
 
 ## CD (`.github/workflows/deploy.yml`)
 
-Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is OIDC via `aws-actions/configure-aws-credentials` (`secrets.AWS_ROLE_ARN`, `vars.AWS_REGION`, `permissions: id-token: write`), both set on each GitHub environment (`dev`, `prod`). The role's trust policy matches the `sub` claim of that environment (`<repository subject>:environment:<env>`). The action exports `AWS_REGION`, which the backend and the provider read. It lints (when the project has a linter), builds, then `terraform init -backend-config=backend/<env>.hcl`, plan, apply. The install is frozen, so the lockfile must be committed.
+Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is OIDC via `aws-actions/configure-aws-credentials` (`secrets.AWS_ROLE_ARN` and `vars.AWS_REGION` of the GitHub environment `dev` or `prod`, `permissions: id-token: write`); the action exports `AWS_REGION`, which the backend and the provider read. It lints (when the project has a linter), builds, then `terraform init -backend-config=backend/<env>.hcl`, plan, apply. The README section sets up the role and the GitHub values.
 
 ## Add a Lambda function
 

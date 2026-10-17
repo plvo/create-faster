@@ -46,25 +46,5 @@ Set each runtime secret for the stage first; a deploy fails until they exist:
 {{installedBinaryRunner}} sst deploy --stage staging
 ```
 
-`staging` is the stage the workflow deploys on a push to `main`; use `production` for the production stage. `sst deploy` prints the URL of each app and writes the same values to `.sst/outputs.json`. Remove a stage with `{{installedBinaryRunner}} sst remove --stage staging`.
-
-### 6. Check the live URL
-
-{{#if (eq blueprint "lambda-sst-hono")}}
-```bash
-API_URL=$(node -p "require('./.sst/outputs.json').api")
-curl "${API_URL%/}/health/ping"
-```
-
-The answer is `{"ok":true,"message":"Health check","data":{"id":"ping"}}`.
-{{else}}
-Open the URL `sst deploy` printed for each app, or read them with `cat .sst/outputs.json`.
-{{/if}}
-{{#if (eq blueprint "lambda-sst-hono")}}
-
-### 7. Deploy from GitHub Actions
-
-On a push to `main` the workflow deploys the `staging` stage; a manual run deploys `staging` or `production`. The GitHub environments are named after the stages.
-
-{{> aws/github-oidc environments="staging production"}}
-{{/if}}
+`staging` is a stage name; any name works, and `production` retains its resources on removal. `sst deploy` prints the URL of each app and writes the same values to `.sst/outputs.json`. Remove a stage with `{{installedBinaryRunner}} sst remove --stage staging`.
+{{> (blueprintPartial "deploy")}}

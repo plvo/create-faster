@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, expectInOrder, fileExists, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -36,13 +36,15 @@ const deploySection = (readme: string): string => readme.slice(readme.indexOf('#
 
 const unique = (values: string[]): string[] => [...new Set(values)];
 
-function expectInOrder(text: string, steps: string[]): void {
-  const positions = steps.map((step) => {
-    const position = text.indexOf(step);
-    expect(position, `"${step}" is missing`).toBeGreaterThanOrEqual(0);
-    return position;
-  });
-  expect(positions, `the steps ${steps.join(' / ')} are out of order`).toEqual([...positions].sort((a, b) => a - b));
+async function expectReadmeSetsWhatWorkflowReads(project: string): Promise<void> {
+  const [workflow, readme] = await Promise.all([read(project, WORKFLOW_PATH), read(project, 'README.md')]);
+
+  for (const variable of unique(matches(workflow, WORKFLOW_VARIABLE))) {
+    expect(readme, `variable ${variable}`).toContain(`gh variable set ${variable} `);
+  }
+  for (const secret of unique(matches(workflow, WORKFLOW_SECRET))) {
+    expect(readme, `secret ${secret}`).toContain(`gh secret set ${secret} `);
+  }
 }
 
 async function workflowEnvironments(project: string): Promise<string[]> {
@@ -96,15 +98,8 @@ describe('Terraform (AWS) state backend and region', () => {
     });
 
     test('the workflow takes its region from the GitHub variable the README tells to set', async () => {
-      const [workflow, readme] = await Promise.all([read(project, WORKFLOW_PATH), read(project, 'README.md')]);
-
-      expect(workflow).toContain('aws-region: ${{ vars.AWS_REGION }}');
-      for (const variable of unique(matches(workflow, WORKFLOW_VARIABLE))) {
-        expect(readme, `variable ${variable}`).toContain(`gh variable set ${variable} `);
-      }
-      for (const secret of unique(matches(workflow, WORKFLOW_SECRET))) {
-        expect(readme, `secret ${secret}`).toContain(`gh secret set ${secret} `);
-      }
+      expect(await read(project, WORKFLOW_PATH)).toContain('aws-region: ${{ vars.AWS_REGION }}');
+      await expectReadmeSetsWhatWorkflowReads(project);
     });
 
     test('the README sets up every environment the workflow can deploy', async () => {
@@ -125,8 +120,8 @@ describe('Terraform (AWS) state backend and region', () => {
         'aws s3 mb "s3://$STATE_BUCKET"',
         'put-bucket-versioning',
         'sed -i.bak "s/<BUCKET_NAME>/',
-        'npm run build',
         'terraform -chdir=infra init -backend-config=backend/dev.hcl',
+        'npm run build',
         'terraform -chdir=infra apply -var="env=dev"',
         'output -raw api_url',
         'create-open-id-connect-provider',
@@ -171,6 +166,8 @@ describe('Terraform (AWS) state backend and region', () => {
         'terraform -chdir=infra init -backend-config=backend/dev.hcl',
       ]);
       expect(readme).not.toContain('output -raw');
+      expect(readme).not.toContain('health/ping');
+      expect(readme).not.toContain('just');
       expect(readme).not.toContain('create-open-id-connect-provider');
     });
   });
@@ -220,7 +217,7 @@ describe('SST first deploy guide', () => {
         'npx sst install',
         'npx sst dev',
         'npx sst deploy --stage staging',
-        ".sst/outputs.json').api",
+        'require("./.sst/outputs.json").api',
         'create-open-id-connect-provider',
         'gh secret set AWS_ROLE_ARN',
       ]);
@@ -233,18 +230,12 @@ describe('SST first deploy guide', () => {
     });
 
     test('the README sets up every stage the workflow can deploy, with the names it reads', async () => {
-      const [readme, workflow] = await Promise.all([read(project, 'README.md'), read(project, WORKFLOW_PATH)]);
+      const readme = await read(project, 'README.md');
       const stages = await workflowEnvironments(project);
 
       expect(stages).toEqual(['staging', 'production']);
       expect(readme).toContain(`for ENVIRONMENT in ${stages.join(' ')}; do`);
-      expect(readme).toContain('npx sst deploy --stage staging');
-      for (const variable of unique(matches(workflow, WORKFLOW_VARIABLE))) {
-        expect(readme, `variable ${variable}`).toContain(`gh variable set ${variable} `);
-      }
-      for (const secret of unique(matches(workflow, WORKFLOW_SECRET))) {
-        expect(readme, `secret ${secret}`).toContain(`gh secret set ${secret} `);
-      }
+      await expectReadmeSetsWhatWorkflowReads(project);
     });
 
     test('the output the README reads is one sst.config.ts returns', async () => {
@@ -264,6 +255,8 @@ describe('SST first deploy guide', () => {
         'bunx sst deploy --stage',
       ]);
       expect(readme).not.toContain('create-open-id-connect-provider');
+      expect(readme).not.toContain('health/ping');
+      expect(readme).not.toContain('outputs.json").api');
       expect(await fileExists(join(project, WORKFLOW_PATH))).toBe(false);
     });
   });

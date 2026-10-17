@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, expectInOrder, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -10,15 +10,6 @@ const SUBDOMAIN_URL = 'https://api.cloudflare.com/client/v4/accounts/<account id
 const TOKEN_TO_CURL = `| sed 's/^/Authorization: Bearer /' | curl -s -H @- ${SUBDOMAIN_URL}`;
 
 type PackageManager = keyof typeof BINARY_RUNNER;
-
-function expectInOrder(text: string, markers: string[]): void {
-  let from = 0;
-  for (const marker of markers) {
-    const at = text.indexOf(marker, from);
-    expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
-    from = at + marker.length;
-  }
-}
 
 describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('cloudflare-fullstack-nextjs deploy notes with %s', (pm) => {
   const projectName = `urls-${pm}`;
