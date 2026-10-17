@@ -149,6 +149,8 @@ const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.7';
 
+const NEXT_MDX_REMOTE_VERSION = '^6.0.0';
+
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';
 
@@ -399,7 +401,6 @@ export const META: Meta = {
             '@mdx-js/loader': '^3.1.1',
             '@mdx-js/react': '^3.1.1',
             '@next/mdx': '^16.3.3',
-            'next-mdx-remote': '^6.0.0',
           },
         },
         'tanstack-start': {
@@ -1569,6 +1570,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {
           motion: '^12.26.0',
+          'next-mdx-remote': NEXT_MDX_REMOTE_VERSION,
         },
       },
       envs: [
@@ -1712,6 +1714,7 @@ export const META: Meta = {
         dependencies: {
           '@c15t/nextjs': '^2.2.1',
           motion: '^12.26.0',
+          'next-mdx-remote': NEXT_MDX_REMOTE_VERSION,
         },
       },
       envs: [

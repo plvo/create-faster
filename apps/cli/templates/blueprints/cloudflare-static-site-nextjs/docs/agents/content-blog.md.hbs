@@ -8,7 +8,7 @@ mono:
 
 Blog posts are MDX files in `contents/blog/`. Frontmatter fields read by the app: `title`, `summary`, `publishedAt`, optional `author` and `imageUrl` (parsed in `src/lib/blog.ts`).
 
-Reading utilities live in `src/lib/blog.ts`: `getAllPosts()` returns posts sorted newest-first (used by `src/app/blog/page.tsx` and `src/app/sitemap.ts`); `getPost(slug)` returns `{ metadata, content }`. Frontmatter is split out by `parseFrontmatter` from `src/lib/mdx.ts`.
+Reading utilities live in `src/lib/blog.ts`: `getAllPosts()` returns posts sorted newest-first (used by `src/app/blog/page.tsx` and `src/app/sitemap.ts`); `getPost(slug)` returns `{ metadata, content }`. Frontmatter is split out by `parseFrontmatter` from `src/lib/frontmatter.ts`.
 
 The post route `src/app/blog/[slug]/page.tsx` calls `generateStaticParams()` from `getAllPosts()`, renders the body with `MDXRemote` + `src/mdx-components.tsx`, and emits `ArticleJsonLd` plus `Breadcrumbs`.
 

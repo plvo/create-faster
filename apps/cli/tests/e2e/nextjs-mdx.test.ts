@@ -1,50 +1,62 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  cleanupTempDir,
-  createTempDir,
-  fileExists,
-  getFreePort,
-  runCli,
-  runCommand,
-  startServer,
-} from './helpers';
+import { cleanupTempDir, fileExists, generateInstalledProject, getFreePort, runCommand, startServer } from './helpers';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_BUILD = 300_000;
 const TIMEOUT_PREVIEW = 120_000;
 
-async function generateAndInstall(name: string, extraFlags: string[]): Promise<{ tempDir: string; projectDir: string }> {
-  const tempDir = await createTempDir();
-  const result = await runCli(
-    [name, '--app', `${name}:nextjs:mdx`, ...extraFlags, '--no-git', '--no-install', '--pm', 'bun'],
-    tempDir,
-  );
-  expect(result.exitCode).toBe(0);
+const ADDED_DOCUMENT = `---
+title: Added
+summary: A document added without editing the page
+publishedAt: 2025-10-23
+---
 
-  const projectDir = join(tempDir, name);
-  const install = await runCommand(['bun', 'install'], projectDir);
-  expect(install.exitCode).toBe(0);
-  return { tempDir, projectDir };
+# Added
+
+Served without registration.
+`;
+
+const UNKNOWN_PATHS = [
+  '/mdx/nope',
+  '/mdx/home',
+  '/mdx/cool/nope',
+  '/mdx/constructor',
+  '/mdx/__proto__',
+  '/mdx/..%2Fpackage',
+  '/mdx/cool.mdx',
+];
+
+async function expectNotFound(baseUrl: string): Promise<void> {
+  for (const path of UNKNOWN_PATHS) {
+    const response = await fetch(new URL(path, baseUrl));
+    expect(response.status, path).toBe(404);
+  }
 }
 
 describe('nextjs-mdx on cloudflare', () => {
-  let tempDir: string;
   let projectDir: string;
 
   beforeAll(async () => {
-    ({ tempDir, projectDir } = await generateAndInstall('nextjs-mdx-cloudflare', ['--deployment', 'cloudflare']));
+    projectDir = await generateInstalledProject('nextjs-mdx-cloudflare', [
+      '--app',
+      'nextjs-mdx-cloudflare:nextjs:mdx',
+      '--deployment',
+      'cloudflare',
+    ]);
+    await writeFile(join(projectDir, 'contents/added.mdx'), ADDED_DOCUMENT);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
-    if (tempDir) await cleanupTempDir(tempDir);
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
   });
 
   test(
-    'build:cf then preview serves /mdx and a document, and answers 404 for an unknown slug in workerd',
+    'build:cf then preview serves /mdx, a document and one added to contents/, and answers 404 for any other slug in workerd',
     async () => {
       const build = await runCommand(['bun', 'run', 'build:cf'], projectDir);
-      expect(build.exitCode).toBe(0);
+      expect(build.exitCode, build.stderr).toBe(0);
 
       const port = await getFreePort();
       const inspectorPort = await getFreePort();
@@ -64,6 +76,7 @@ describe('nextjs-mdx on cloudflare', () => {
         projectDir,
         { port, readyPath: '/mdx', readyTimeout: TIMEOUT_PREVIEW / 2 },
       );
+      let stderr: string;
       try {
         const home = await fetch(new URL('/mdx', server.url));
         expect(home.status).toBe(200);
@@ -76,41 +89,42 @@ describe('nextjs-mdx on cloudflare', () => {
         expect(cool.status).toBe(200);
         expect(await cool.text()).toContain('<h1 class="h1-mdx">Cool</h1>');
 
-        expect((await fetch(new URL('/mdx/nope', server.url))).status).toBe(404);
-        expect((await fetch(new URL('/mdx/home', server.url))).status).toBe(404);
-        expect((await fetch(new URL('/mdx/cool/nope', server.url))).status).toBe(404);
+        const added = await fetch(new URL('/mdx/added', server.url));
+        expect(added.status).toBe(200);
+        expect(await added.text()).toContain('<h1 class="h1-mdx">Added</h1>');
+
+        await expectNotFound(server.url);
       } finally {
-        const { stderr } = await server.stop();
-        expect(stderr).not.toContain("readdir '/bundle/contents'");
+        ({ stderr } = await server.stop());
       }
+      expect(stderr).not.toContain("readdir '/bundle/contents'");
     },
     TIMEOUT_BUILD + TIMEOUT_PREVIEW,
   );
 });
 
 describe('nextjs-mdx without a deployment', () => {
-  let tempDir: string;
   let projectDir: string;
 
   beforeAll(async () => {
-    ({ tempDir, projectDir } = await generateAndInstall('nextjs-mdx-plain', []));
+    projectDir = await generateInstalledProject('nextjs-mdx-plain', ['--app', 'nextjs-mdx-plain:nextjs:mdx']);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
-    if (tempDir) await cleanupTempDir(tempDir);
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
   });
 
   test(
-    'next build prerenders every document and next start answers 404 for an unknown slug',
+    'next build prerenders every document and next start answers 404 for any other slug',
     async () => {
       const build = await runCommand(['bun', 'run', 'build'], projectDir);
-      expect(build.exitCode).toBe(0);
+      expect(build.exitCode, build.stderr).toBe(0);
 
       const server = await startServer(['bun', 'run', 'start'], projectDir, { readyPath: '/mdx' });
       try {
         expect((await fetch(new URL('/mdx', server.url))).status).toBe(200);
         expect((await fetch(new URL('/mdx/cool', server.url))).status).toBe(200);
-        expect((await fetch(new URL('/mdx/nope', server.url))).status).toBe(404);
+        await expectNotFound(server.url);
       } finally {
         await server.stop();
       }
@@ -120,25 +134,28 @@ describe('nextjs-mdx without a deployment', () => {
 });
 
 describe('nextjs-mdx on cloudflare-static', () => {
-  let tempDir: string;
   let projectDir: string;
 
   beforeAll(async () => {
-    ({ tempDir, projectDir } = await generateAndInstall('nextjs-mdx-static', ['--deployment', 'cloudflare-static']));
+    projectDir = await generateInstalledProject('nextjs-mdx-static', [
+      '--app',
+      'nextjs-mdx-static:nextjs:mdx',
+      '--deployment',
+      'cloudflare-static',
+    ]);
   }, TIMEOUT_INSTALL + 30_000);
 
   afterAll(async () => {
-    if (tempDir) await cleanupTempDir(tempDir);
+    if (projectDir) await cleanupTempDir(join(projectDir, '..'));
   });
 
   test(
     'next build exports one HTML page per document',
     async () => {
       const build = await runCommand(['bun', 'run', 'build'], projectDir);
-      expect(build.exitCode).toBe(0);
+      expect(build.exitCode, build.stderr).toBe(0);
 
       expect(await fileExists(join(projectDir, 'out/mdx.html'))).toBe(true);
-      expect(await fileExists(join(projectDir, 'out/mdx/cool.html'))).toBe(true);
       expect(await Bun.file(join(projectDir, 'out/mdx/cool.html')).text()).toContain('<h1 class="h1-mdx">Cool</h1>');
     },
     TIMEOUT_BUILD,

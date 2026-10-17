@@ -4,9 +4,9 @@ description: Pre-configured MDX support with frontmatter parsing, custom compone
 ---
 
 <Stacks names="nextjs,tanstack-start" />
-<Dependencies packages="@mdx-js/loader,@mdx-js/react,@next/mdx,next-mdx-remote,@mdx-js/rollup,remark-frontmatter,remark-mdx-frontmatter" dev="@types/mdx" />
+<Dependencies packages="@mdx-js/loader,@mdx-js/react,@next/mdx,@mdx-js/rollup,remark-frontmatter,remark-mdx-frontmatter" dev="@types/mdx" />
 
-Next.js installs `@mdx-js/loader`, `@mdx-js/react`, `@next/mdx` and `next-mdx-remote`. TanStack Start installs `@mdx-js/rollup`. Both install `remark-frontmatter` and `remark-mdx-frontmatter`.
+Next.js installs `@mdx-js/loader`, `@mdx-js/react` and `@next/mdx`. TanStack Start installs `@mdx-js/rollup`. Both install `remark-frontmatter` and `remark-mdx-frontmatter`.
 
 [→ MDX Documentation](https://mdxjs.com)
 
@@ -37,13 +37,13 @@ contents/
 
 ## Next.js
 
-Documents in `contents/` are compiled at build time by `@next/mdx`, with `remark-frontmatter` and `remark-mdx-frontmatter` exporting the YAML frontmatter as `frontmatter`. The example route `/mdx/[[...slug]]` imports each document, so nothing reads the filesystem at request time and the route also runs on a Cloudflare Worker. It prerenders one page per document, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page. To add a document, create the file in `contents/` and add it to `documentLoaders` in `page.tsx`.
+Documents in `contents/` are compiled at build time by `@next/mdx`, with `remark-frontmatter` and `remark-mdx-frontmatter` exporting the YAML frontmatter as `frontmatter`. The example route `/mdx/[[...slug]]` imports the document of the slug, so nothing reads the filesystem while a page renders and the route also runs on a Cloudflare Worker. It prerenders one page per document, `/mdx` for `home.mdx` and `/mdx/cool` for `cool.mdx`, and returns 404 for any other slug (`dynamicParams = false`). It also builds with `cloudflare-static`, where each document is exported as an HTML page. To add a document, create the file in `contents/`: the page needs no edit.
 
 Files added:
 ```
 src/
 ├── lib/
-│   └── mdx.ts                  # parseFrontmatter() utility
+│   └── mdx.ts                  # MdxFrontmatter and MdxModule types
 ├── mdx-components.tsx          # Custom MDX component mappings
 ├── mdx.d.ts                    # Types the frontmatter export of a document
 ├── styles/
@@ -61,9 +61,11 @@ contents/
 
 ### mdx.ts
 
-Frontmatter parsing utility:
+Types shared by the page (`MdxModule` is the shape of a compiled document):
 
 ```ts title="src/lib/mdx.ts"
+import type { ComponentType } from 'react';
+
 export type MdxFrontmatter = {
   title: string;
   summary: string;
@@ -71,50 +73,23 @@ export type MdxFrontmatter = {
   imageUrl?: string;
 };
 
-export type ParsedFrontmatterReturn = {
-  metadata: Partial<MdxFrontmatter>;
-  content: string;
+export type MdxModule = {
+  default: ComponentType;
+  frontmatter: MdxFrontmatter;
 };
-
-export function parseFrontmatter(fileContent: string): ParsedFrontmatterReturn {
-  const frontmatterRegex = /---\s*([\s\S]*?)\s*---/;
-  const match = frontmatterRegex.exec(fileContent);
-  const frontMatterBlock = match![1];
-  const content = fileContent.replace(frontmatterRegex, '').trim();
-  const frontMatterLines = frontMatterBlock.trim().split('\n');
-  const metadata: Partial<MdxFrontmatter> = {};
-
-  frontMatterLines.forEach((line) => {
-    const [key, ...valueArr] = line.split(': ');
-    let value = valueArr.join(': ').trim();
-    value = value.replace(/^['"](.*)['"]$/, '$1');
-    metadata[key.trim() as keyof MdxFrontmatter] = value;
-  });
-
-  return { metadata, content };
-}
 ```
 
 ### page.tsx
 
-MDX route prerendered for every document, with metadata generation:
+MDX route prerendered for every document, with metadata generation. `generateStaticParams` lists `contents/` at build time; the page itself reads no file:
 
 ```tsx title="src/app/mdx/[[...slug]]/page.tsx"
+import fs from 'node:fs';
+import path from 'node:path';
 import { notFound } from 'next/navigation';
-import type { ComponentType } from 'react';
-import type { MdxFrontmatter } from '@/lib/mdx';
+import type { MdxModule } from '@/lib/mdx';
 
 const HOME_DOCUMENT = 'home';
-
-type MdxDocument = {
-  default: ComponentType;
-  frontmatter: MdxFrontmatter;
-};
-
-const documentLoaders: Record<string, () => Promise<MdxDocument>> = {
-  [HOME_DOCUMENT]: () => import('#/contents/home.mdx'),
-  cool: () => import('#/contents/cool.mdx'),
-};
 
 interface PageProps {
   params: Promise<{ slug?: string[] }>;
@@ -123,7 +98,11 @@ interface PageProps {
 export const dynamicParams = false;
 
 export function generateStaticParams(): { slug: string[] }[] {
-  return Object.keys(documentLoaders).map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
+  return fs
+    .readdirSync(path.join(process.cwd(), 'contents'))
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => path.basename(file, '.mdx'))
+    .map((name) => ({ slug: name === HOME_DOCUMENT ? [] : [name] }));
 }
 
 export const generateMetadata = async ({ params }: PageProps) => {
@@ -143,12 +122,15 @@ export default async function Page({ params }: PageProps) {
   );
 }
 
-function loadDocument(slug: string[] = []): Promise<MdxDocument> {
-  const isListed = generateStaticParams().some(
-    (params) => params.slug.length === slug.length && params.slug.every((segment, index) => segment === slug[index]),
-  );
-  if (!isListed) notFound();
+async function loadDocument(slug: string[] = []): Promise<MdxModule> {
+  if (slug.length > 1 || slug[0] === HOME_DOCUMENT) {
+    notFound();
+  }
 
-  return documentLoaders[slug[0] ?? HOME_DOCUMENT]();
+  try {
+    return await import(`../../../../contents/${slug[0] ?? HOME_DOCUMENT}.mdx`);
+  } catch {
+    notFound();
+  }
 }
 ```
