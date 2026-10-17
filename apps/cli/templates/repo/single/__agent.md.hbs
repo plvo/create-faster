@@ -36,7 +36,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 
 ## Scripts
 - `{{runScript "dev"}}` — start the dev server
-- `{{runScript "build"}}` — production build
+{{#each (productionSteps)}}
+- `{{command}}` — {{description}}
+{{/each}}
 {{#if (has "orm" "drizzle")~}}
 - `{{runScript "db:generate"}}` — write a SQL migration from the schema
 - `{{runScript "db:migrate"}}` — apply the migrations

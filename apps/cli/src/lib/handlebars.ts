@@ -13,6 +13,7 @@ import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
 import { getAppScriptCommand, getPackageRunner, getScriptCommand, getTypeScriptRunner } from './package-manager';
+import { collectProductionSteps } from './production-steps';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -122,6 +123,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('firstRunSteps', (options: Handlebars.HelperOptions) => {
     return collectFirstRunSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {
+    return collectProductionSteps(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('stackApps', (stack: string, options: Handlebars.HelperOptions) => {

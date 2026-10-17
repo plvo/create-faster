@@ -110,6 +110,37 @@ describe('summary note', () => {
     expect(output).toContain('git push -u origin main');
   });
 
+  test('commits before it pushes, on a branch named main', () => {
+    displaySummaryNote(ctx, undefined, []);
+    const output = written.join('');
+    const steps = ['git add .', 'git commit -m', 'git branch -M main', 'git remote add origin', 'git push -u origin main'];
+    const positions = steps.map((step) => output.indexOf(step));
+
+    expect(positions).not.toContain(-1);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  test('titles the sections without a literal #', () => {
+    displaySummaryNote(ctx, undefined, []);
+    const output = written.join('');
+
+    expect(output).toContain('🏠 Structure:');
+    expect(output).toContain('💡 Next steps:');
+    expect(output).not.toContain('#🏠');
+    expect(output).not.toContain('#💡');
+  });
+
+  test('counts one library in the singular and several in the plural', () => {
+    const withLibraries = (libraries: string[]) => ({ ...ctx, apps: [{ appName: 'demo', stackName: 'nextjs' as const, libraries }] });
+
+    displaySummaryNote(withLibraries(['shadcn']), undefined, []);
+    expect(written.join('')).toContain('+1 library');
+    written.length = 0;
+
+    displaySummaryNote(withLibraries(['shadcn', 'mdx']), undefined, []);
+    expect(written.join('')).toContain('+2 libraries');
+  });
+
   test('drops the Git line and the remote steps and hints at git init when it failed', () => {
     displaySummaryNote(ctx, { output: 'fatal: git failed' }, []);
     const output = written.join('');
@@ -154,5 +185,32 @@ describe('summary note', () => {
     expect(output.indexOf('# Format the generated files:')).toBeGreaterThan(output.indexOf('bun install'));
     expect(output.indexOf('bun run format')).toBeGreaterThan(output.indexOf('# Format the generated files:'));
     expect(output.indexOf('# Development:')).toBeGreaterThan(output.indexOf('bun run format'));
+  });
+
+  describe('production steps', () => {
+    const oneApp = (stackName: 'hono' | 'nextjs', deployment?: string): TemplateContext => ({
+      ...ctx,
+      apps: [{ appName: 'demo', stackName, libraries: [] }],
+      project: { deployment, tooling: [] },
+    });
+
+    test('a Hono app has no build script, so the summary does not run one', () => {
+      displaySummaryNote(oneApp('hono'), undefined, []);
+      const output = written.join('');
+
+      expect(output).not.toContain('bun run build');
+      expect(output).toContain('bun run start');
+    });
+
+    test('a Next.js app on Cloudflare lists the Worker build, the preview and the deploy, and no start', () => {
+      displaySummaryNote(oneApp('nextjs', 'cloudflare'), undefined, []);
+      const output = written.join('');
+      const steps = ['bun run build ', 'bun run build:cf', 'bun run preview', 'bun run deploy'];
+      const positions = steps.map((step) => output.indexOf(step));
+
+      expect(positions).not.toContain(-1);
+      expect(positions).toEqual([...positions].sort((a, b) => a - b));
+      expect(output).not.toContain('bun run start');
+    });
   });
 });

@@ -56,12 +56,14 @@ Start the development server:
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 {{/if}}
 
+{{#if (productionSteps)}}
 ## Build for Production
 
-```bash
-{{runScript "build"}}
-```
+{{#each (productionSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
 
+{{/if}}
 {{#if envGroups.length}}
 ## Environment Variables
 

@@ -6,6 +6,7 @@ import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { getPackageRunner } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
+import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
 import { shouldPromptCategory } from '@/lib/project-prompts';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
@@ -90,6 +91,10 @@ export function displaySummaryNote(
   note(texts.join('\n'), color.bold('📂 Summary'));
 }
 
+function describeLibraryCount(count: number): string {
+  return count === 0 ? '' : color.dim(` +${count} ${count === 1 ? 'library' : 'libraries'}`);
+}
+
 function describeOrmPackage(ctx: TemplateContext, packageName: string): string {
   const { orm, database } = ctx.project;
   const ormAddon = orm ? META.project.orm.options[orm] : undefined;
@@ -105,7 +110,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
 
   const packageNames = [...collectMonoPackages(ctx).keys()];
 
-  lines.push(color.white(color.bold('#🏠 Structure:')));
+  lines.push(color.white(color.bold('🏠 Structure:')));
   lines.push('');
 
   lines.push(`📦 ${color.bold(color.cyan(ctx.projectName))}/`);
@@ -114,7 +119,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     lines.push('├─ 🚀 apps/');
     ctx.apps.forEach((app, i) => {
       const stack = META.stacks[app.stackName];
-      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
+      const librariesInfo = describeLibraryCount(app.libraries.length);
       const isLast = i === ctx.apps.length - 1 && packageNames.length === 0;
       const prefix = isLast ? '│  └─' : '│  ├─';
       lines.push(`${prefix} ${app.appName}/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
@@ -123,7 +128,7 @@ function buildProjectStructure(ctx: TemplateContext, hasGitRepository: boolean):
     const app = ctx.apps[0];
     if (app) {
       const stack = META.stacks[app.stackName];
-      const librariesInfo = app.libraries.length > 0 ? color.dim(` +${app.libraries.length} libraries`) : '';
+      const librariesInfo = describeLibraryCount(app.libraries.length);
       lines.push(`├─ 📁 src/ ${color.yellow(`(${stack?.label}${librariesInfo})`)}`);
     }
   }
@@ -165,7 +170,7 @@ function buildStepsNote(
   const steps: string[] = [];
 
   steps.push('');
-  steps.push(color.white(color.bold('#💡 Next steps:')));
+  steps.push(color.white(color.bold('💡 Next steps:')));
   steps.push('');
 
   steps.push(`cd ${quoteProjectDir(getProjectDir(ctx))}`);
@@ -197,13 +202,23 @@ function buildStepsNote(
   }
   steps.push('# Development:');
   steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
-  steps.push('');
-  steps.push('# Build:');
-  steps.push(`${ctx.pm ?? 'npm'} run build      # Build for production`);
+
+  const productionSteps = collectProductionSteps(ctx);
+  if (productionSteps.length > 0) {
+    const width = Math.max(...productionSteps.map(({ command }) => command.length));
+    steps.push('');
+    steps.push('# Production:');
+    for (const { command, description } of productionSteps) {
+      steps.push(`${command.padEnd(width)}  # ${description}`);
+    }
+  }
 
   if (hasGitRepository) {
     steps.push('');
     steps.push('# Git:');
+    steps.push('git add .');
+    steps.push('git commit -m "Initial commit"');
+    steps.push('git branch -M main');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
   }
