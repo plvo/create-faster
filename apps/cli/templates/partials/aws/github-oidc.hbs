@@ -1,0 +1,52 @@
+{{!-- environments: the GitHub environments the workflow deploys to, separated by spaces --}}
+`.github/workflows/deploy.yml` signs in to AWS with OpenID Connect ([`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials)): the job assumes an IAM role, so no AWS key is stored in GitHub. Set it up once, after the manual deploy above works. It needs the [GitHub CLI](https://cli.github.com) signed in (`gh auth login`) as an administrator of the repository.
+
+1. Commit the lockfile. The workflow installs with a frozen lockfile, which the project does not have until the first install: commit `{{#if (eq pm "bun")}}bun.lock{{else if (eq pm "pnpm")}}pnpm-lock.yaml{{else}}package-lock.json{{/if}}`.
+2. Create the repository on GitHub and add it as `origin`, but do not push yet: a push to `main` starts the workflow, which fails until the role exists.
+3. Create the identity provider that lets AWS trust GitHub, once per AWS account (an `EntityAlreadyExists` error means it is there already):
+
+```bash
+aws iam create-open-id-connect-provider --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com
+```
+
+4. Create one role per GitHub environment that only that environment of this repository can assume, and give each environment the two values the workflow reads, the `AWS_ROLE_ARN` secret and the `AWS_REGION` variable:
+
+```bash
+GITHUB_REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+SUB_PREFIX=$(gh api "repos/$GITHUB_REPO/actions/oidc/customization/sub" --jq .sub_claim_prefix)
+: "${SUB_PREFIX:?GitHub returned no subject prefix: write the sub claim of your repository by hand}"
+for ENVIRONMENT in {{environments}}; do
+cat > trust-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Federated": "arn:aws:iam::$ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com" },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "$SUB_PREFIX:environment:$ENVIRONMENT"
+        }
+      }
+    }
+  ]
+}
+EOF
+  aws iam create-role --role-name "{{projectName}}-$ENVIRONMENT-deploy" --assume-role-policy-document file://trust-policy.json
+  aws iam attach-role-policy --role-name "{{projectName}}-$ENVIRONMENT-deploy" --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+  ROLE_ARN=$(aws iam get-role --role-name "{{projectName}}-$ENVIRONMENT-deploy" --query Role.Arn --output text)
+  gh api --method PUT "repos/$GITHUB_REPO/environments/$ENVIRONMENT" --silent
+  gh secret set AWS_ROLE_ARN --env "$ENVIRONMENT" --repo "$GITHUB_REPO" --body "$ROLE_ARN"
+  gh variable set AWS_REGION --env "$ENVIRONMENT" --repo "$GITHUB_REPO" --body "$AWS_REGION"
+done
+rm trust-policy.json
+```
+
+The `sub` condition is the claim GitHub puts in the token of a job that runs in that environment. `SUB_PREFIX` is the form your repository emits, as GitHub reports it: `repo:<owner>/<repository>`, or `repo:<owner>@<owner id>/<repository>@<repository id>` for a repository created after 15 July 2026 (or one that opted in to immutable subject claims). A trust policy written in the other form fails the workflow with `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
+
+`AdministratorAccess` gets the first deploy through; narrow the role once you know what the project needs. Only a job of the matching environment can assume it. On the production environment, require reviewers (Settings, Environments) so that nobody deploys it unreviewed.
+
+5. Push `main`. The workflow starts on the push, and a manual run (Actions, Deploy, Run workflow) picks the environment. Follow a run with `gh run watch`.

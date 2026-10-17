@@ -13,10 +13,16 @@ All infrastructure is defined in `sst.config.ts` (SST Ion). The `app()` callback
 - `sst.aws.Queue('queue')` with `queue.subscribe({ handler: 'apps/worker/src/index.handler', timeout: '30 seconds' })` — SQS messages drive the worker.
 - `sst.aws.Cron('cron', { function: 'apps/cron/src/index.handler', schedule: 'rate(1 hour)' })` — EventBridge invokes the cron handler.
 
-Handler paths point at `apps/*/src/index.handler` (the exported `handler` in each app's `src/index.ts`).
+Handler paths point at `apps/*/src/index.handler` (the exported `handler` in each app's `src/index.ts`). SST bundles those sources itself; the `build` script of each app (`dist/index.mjs`) only checks that the bundle builds, and its `.mjs` extension is what lets Node load the ES module without a `MODULE_TYPELESS_PACKAGE_JSON` warning.
+
+## Credentials and region
+SST reads the AWS profile from `AWS_PROFILE` and the region from `AWS_REGION`, and neither is set in `sst.config.ts`: a `profile` there is overridden by `AWS_PROFILE` anyway, and SST deploys to `us-east-1` when it finds no region. The same variables serve a laptop (a profile) and CI (the OIDC step exports credentials and `AWS_REGION`).
+
+## First deploy
+The ordered first deploy, from the credentials to the live URL and the GitHub setup, is the "Deploying to AWS (SST)" section of `README.md`: credentials and region, `{{installedBinaryRunner}} sst install`, an optional `{{installedBinaryRunner}} sst dev`, `{{installedBinaryRunner}} sst deploy --stage staging`, the URL from `.sst/outputs.json`, then the OIDC role and the GitHub environments. Run `{{installedBinaryRunner}} sst install` before any `tsc` at the root: `sst.config.ts` needs the `$config` global that `.sst/platform/config.d.ts` declares, and the check fails with `Cannot find name '$config'` without it. Keep the section and the commands here in step.
 
 ## Deploy (GitHub Actions)
-`.github/workflows/deploy.yml` runs on push to `main` (defaults to the `staging` stage) and on `workflow_dispatch` with a `stage` choice input (`staging` | `production`). AWS access uses OIDC: `permissions.id-token: write` plus `aws-actions/configure-aws-credentials@v4` assuming `secrets.AWS_ROLE_ARN` in `vars.AWS_REGION`. Steps install dependencies with the project package manager, run its `lint` script when the project has a linter, run `build`, then `npx sst deploy --stage <stage>`. A `concurrency` group per stage prevents overlapping deploys.
+`.github/workflows/deploy.yml` runs on push to `main` (defaults to the `staging` stage) and on `workflow_dispatch` with a `stage` choice input (`staging` | `production`). AWS access uses OIDC: `permissions.id-token: write` plus `aws-actions/configure-aws-credentials` assuming `secrets.AWS_ROLE_ARN` in `vars.AWS_REGION`, both set on the GitHub environment named after the stage. The role's trust policy matches the `sub` claim of that environment (`<repository subject>:environment:<stage>`). Steps install dependencies with the project package manager (frozen, so the lockfile must be committed), run its `lint` script when the project has a linter, run `build`, then `npx sst deploy --stage <stage>`. A `concurrency` group per stage prevents overlapping deploys.
 
 ## Add a resource or function
 Create the function under `apps/<name>/src/index.ts` (export `handler`), then declare it in `run()` (e.g. another `sst.aws.Cron`, `Queue`, or `api.route(...)`). To grant access, pass it through SST's `link` so credentials surface via `sst-env.d.ts`.

@@ -14,7 +14,7 @@ Files created:
 infra/
 ├── providers.tf              # AWS provider ~> 6.0, required_version >= 1.10, common tags
 ├── backend.tf                # S3 backend declaration
-├── variables.tf              # region, project_name, env (dev/staging/prod validation)
+├── variables.tf              # project_name, env (dev/staging/prod validation)
 ├── variables.auto.tfvars     # Defaults pre-filled with project name
 ├── secrets.auto.tfvars       # Placeholder for sensitive values (gitignored)
 ├── outputs.tf                # Empty placeholder for resource outputs
@@ -34,7 +34,7 @@ Configures the AWS provider with:
 
 ### backend.tf
 
-Declares an empty S3 backend. Configuration is injected at init time via `-backend-config`:
+Declares an empty S3 backend. Configuration is injected at init time via `-backend-config` (a [partial configuration](https://developer.hashicorp.com/terraform/language/backend#partial-configuration)):
 
 ```bash
 terraform init -backend-config=backend/dev.hcl
@@ -42,14 +42,13 @@ terraform init -backend-config=backend/dev.hcl
 
 ### variables.tf
 
-Three variables:
-- `region` -- AWS region
+Two variables:
 - `project_name` -- used in resource naming and tags
 - `env` -- validated to `dev`, `staging`, or `prod`
 
 ### variables.auto.tfvars
 
-Pre-filled with the project name, default region `eu-west-3`, and `env = "dev"`.
+Pre-filled with the project name and `env = "dev"`. There is no region: see [Profile and region](#profile-and-region).
 
 ### secrets.auto.tfvars
 
@@ -57,7 +56,7 @@ Empty placeholder for sensitive values. Gitignored so secrets never reach the re
 
 ### backend/ configs
 
-Per-environment S3 backend configs with `use_lockfile = true` (Terraform >= 1.10 native file locking, no DynamoDB table needed). Fill in `<BUCKET_NAME>` and `<AWS_PROFILE_*>` placeholders before first use.
+Per-environment S3 backend configs with `use_lockfile = true` (Terraform >= 1.10 native file locking, no DynamoDB table needed). Fill in the `<BUCKET_NAME>` placeholder before first use, with a bucket you created: Terraform cannot create its own state bucket.
 
 ### main.tf
 
@@ -65,7 +64,20 @@ Empty file where you add your infrastructure resources.
 
 ### .gitignore
 
-`.terraform/`, `*.tfstate*`, and `secrets.auto.tfvars` are added to `.gitignore`.
+`.terraform/`, `.build/` (where the Lambda module of the [Lambda (Terraform)](/docs/blueprints/aws/lambda-terraform-aws-hono) blueprint writes its zips), `*.tfstate*`, and `secrets.auto.tfvars` are added to `.gitignore`.
+
+## Profile and region
+
+The backend files and the provider name neither an AWS profile nor a region. Terraform reads them from the environment: the S3 backend takes `AWS_PROFILE` and `AWS_REGION` ([S3 backend configuration](https://developer.hashicorp.com/terraform/language/backend/s3)), and so does the AWS provider ([provider configuration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)). The same files therefore work on a laptop and in CI:
+
+- Locally, export `AWS_PROFILE` and `AWS_REGION` in the shell.
+- In a GitHub Actions workflow, [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) assumes an IAM role through OIDC and exports temporary credentials and `AWS_REGION` (its `aws-region` input). The workflow of the Lambda blueprint reads that region from the `AWS_REGION` GitHub variable.
+
+A `profile` in a backend file would break CI, which has no profile.
+
+## First deploy
+
+The generated `README.md` has a "Deploying to AWS (Terraform)" section, in order: the AWS credentials and region, the state bucket (`aws s3 mb`, with versioning), the `<BUCKET_NAME>` placeholder of both backend files, then `terraform -chdir=infra init -backend-config=backend/dev.hcl`. With the [Lambda (Terraform)](/docs/blueprints/aws/lambda-terraform-aws-hono) blueprint it continues with the build, `apply`, the live URL and the GitHub Actions setup.
 
 ## TanStack Start on Lambda
 
@@ -103,9 +115,10 @@ bunx create-faster myproject \
   --pm bun
 ```
 
-Initialize and plan:
+Create the state bucket and fill in `<BUCKET_NAME>` as the README says, then initialize and plan:
 
 ```bash
+export AWS_PROFILE=my-profile AWS_REGION=eu-west-3
 cd infra
 terraform init -backend-config=backend/dev.hcl
 terraform plan

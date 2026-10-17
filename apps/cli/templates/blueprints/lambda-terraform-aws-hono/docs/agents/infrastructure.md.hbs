@@ -8,23 +8,32 @@ mono:
 
 Infrastructure is modular Terraform under `infra/`. The root `infra/main.tf` wires four reusable modules in `infra/modules/`:
 
-- `lambda` — one instance per function (`api`, `cron`, `worker`); zips `apps/<fn>/dist`, creates the function + IAM role.
+- `lambda` — one instance per function (`api`, `cron`, `worker`); zips `apps/<fn>/dist` into the git-ignored `.build/`, creates the function + IAM role.
 - `api-gateway` — HTTP API (v2) `$default` route proxying to the `api` Lambda.
 - `sqs` — main queue + DLQ, consume policy, and the event source mapping to the `worker` Lambda.
 - `eventbridge` — schedule rule + target invoking the `cron` Lambda.
 
-`infra/providers.tf` defines `local.resource_name` (`${project_name}-${env}`) and `local.common_tags`, applied as provider `default_tags` and passed to every module. Root outputs (`api_url`, `queue_url`, `cron_rule_arn`) live in `infra/outputs.tf`. Vars are in `infra/variables.tf` (`region`, `project_name`, `env`); state is remote S3 (`infra/backend.tf` + per-env `infra/backend/{dev,prod}.hcl`).
+`infra/providers.tf` defines `local.resource_name` (`${project_name}-${env}`) and `local.common_tags`, applied as provider `default_tags` and passed to every module. Root outputs (`api_url`, `queue_url`, `cron_rule_arn`) live in `infra/outputs.tf`. Vars are in `infra/variables.tf` (`project_name`, `env`); state is remote S3 (`infra/backend.tf` + per-env `infra/backend/{dev,prod}.hcl`).
+
+## Profile and region
+
+`infra/backend/{dev,prod}.hcl` hold the `bucket`, the `key` and `use_lockfile` only. No file of `infra/` sets an AWS profile or a region: Terraform reads `AWS_PROFILE` and `AWS_REGION` from the environment, for the S3 backend and the AWS provider alike. That is what lets the same files work on a laptop (a profile) and in CI (the OIDC step exports short-lived credentials and `AWS_REGION`). A `profile` in a backend file would break CI, which has no profile, and a `region` there or in a tfvars would give the region a second source next to the GitHub variable `AWS_REGION`.
+
+## First deploy
+
+The ordered first deploy, from the credentials to the live URL and the GitHub setup, is the "Deploying to AWS (Terraform)" section of `README.md`: credentials and region, the state bucket (created by hand before `terraform init`), the `<BUCKET_NAME>` placeholder of both backend files, `{{runScript "build"}}` (Terraform zips `apps/*/dist`), `init`, `apply`, `output -raw api_url`, then the OIDC role and the GitHub environments. Keep the section and the commands below in step.
 
 ## Ops (justfile)
 
-Run from repo root; the `justfile` sets `working-directory := 'infra'` and takes an `env` param (default `dev`):
+Install `just` first (https://github.com/casey/just): the `justfile` is not part of the Terraform install. Run from repo root; it sets `working-directory := 'infra'` and takes an `env` param (default `dev`):
 
 - `just init <env>` — `terraform init` with the env's backend config.
 - `just plan <env>` / `just apply <env>` / `just destroy <env>` — pass `-var="env=<env>"`.
+- `just check <env>` — prints the Terraform version, `AWS_PROFILE`, `AWS_REGION` and the number of resources in the state.
 
 ## CD (`.github/workflows/deploy.yml`)
 
-Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is OIDC via `aws-actions/configure-aws-credentials` (`secrets.AWS_ROLE_ARN`, `vars.AWS_REGION`, `permissions: id-token: write`). It lints (when the project has a linter), builds, then `terraform init -backend-config=backend/<env>.hcl`, plan, apply.
+Pushes to `main` deploy `dev`; `workflow_dispatch` picks `dev`/`prod`. Auth is OIDC via `aws-actions/configure-aws-credentials` (`secrets.AWS_ROLE_ARN`, `vars.AWS_REGION`, `permissions: id-token: write`), both set on each GitHub environment (`dev`, `prod`). The role's trust policy matches the `sub` claim of that environment (`<repository subject>:environment:<env>`). The action exports `AWS_REGION`, which the backend and the provider read. It lints (when the project has a linter), builds, then `terraform init -backend-config=backend/<env>.hcl`, plan, apply. The install is frozen, so the lockfile must be committed.
 
 ## Add a Lambda function
 

@@ -1,0 +1,70 @@
+## Deploying to AWS (SST)
+
+Follow the steps in order, from the repository root. Nothing reaches AWS before step 4.
+
+### 1. Install the dependencies
+
+```bash
+{{> github-actions/package-manager}} install
+```
+
+### 2. Set the credentials and the region
+
+{{> aws/credentials}}
+
+SST deploys to `us-east-1` when no region is set. `AWS_PROFILE` takes precedence over a `profile` written in `sst.config.ts`, so leave the profile out of that file.
+
+### 3. Install the SST providers
+
+```bash
+{{installedBinaryRunner}} sst install
+```
+
+This downloads the SST platform and writes `.sst/platform/config.d.ts`; it deploys nothing. `sst.config.ts` relies on the `$config` global that file declares, so `tsc` run at the root fails with `Cannot find name '$config'` (and the editor shows the same error) until `sst install` has run. `sst dev` and `sst deploy` run it themselves.
+
+### 4. Optional: develop against AWS
+
+```bash
+{{installedBinaryRunner}} sst dev
+```
+
+This deploys your personal stage and runs the Lambda handlers from your machine against it, until you stop it. The first `sst dev` or `sst deploy` in an AWS account and region also bootstraps SST there, once (S3 buckets, an ECR repository and an SSM parameter).
+
+### 5. Deploy
+
+{{#if (projectSecrets "nextjs" "hono" "tanstack-start")}}
+Set each runtime secret for the stage first; a deploy fails until they exist:
+
+```bash
+{{#each (projectSecrets "nextjs" "hono" "tanstack-start")}}
+{{installedBinaryRunner}} sst secret set {{pascalCase this}} <value> --stage staging
+{{/each}}
+```
+
+{{/if}}
+```bash
+{{installedBinaryRunner}} sst deploy --stage staging
+```
+
+`staging` is the stage the workflow deploys on a push to `main`; use `production` for the production stage. `sst deploy` prints the URL of each app and writes the same values to `.sst/outputs.json`. Remove a stage with `{{installedBinaryRunner}} sst remove --stage staging`.
+
+### 6. Check the live URL
+
+{{#if (eq blueprint "lambda-sst-hono")}}
+```bash
+API_URL=$(node -p "require('./.sst/outputs.json').api")
+curl "${API_URL%/}/health/ping"
+```
+
+The answer is `{"ok":true,"message":"Health check","data":{"id":"ping"}}`.
+{{else}}
+Open the URL `sst deploy` printed for each app, or read them with `cat .sst/outputs.json`.
+{{/if}}
+{{#if (eq blueprint "lambda-sst-hono")}}
+
+### 7. Deploy from GitHub Actions
+
+On a push to `main` the workflow deploys the `staging` stage; a manual run deploys `staging` or `production`. The GitHub environments are named after the stages.
+
+{{> aws/github-oidc environments="staging production"}}
+{{/if}}
