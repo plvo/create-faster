@@ -71,7 +71,7 @@ describe('TanStack Start + cloudflare', () => {
       expect(agents).toContain('@cloudflare/vite-plugin');
       expect(agents).toContain('cloudflare:workers');
       expect(agents).not.toContain('c.env');
-      expect(agents).not.toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(agents).not.toContain('### Hono (Wrangler)');
     });
 
     test('agent docs keep Markdown code spans intact', async () => {
@@ -176,8 +176,8 @@ describe('TanStack Start + cloudflare', () => {
 
     test('root agent docs cover both the Start and the Hono deploy flows, one section per block', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
-      expect(agents).toContain('Cloudflare Workers deploy (TanStack Start, Vite plugin)');
-      expect(agents).toContain('\n\n## Cloudflare Workers deploy (Wrangler)');
+      expect(agents).toContain('### TanStack Start (Vite plugin)');
+      expect(agents).toContain('\n\n### Hono (Wrangler)');
       expect(agents).toContain('persisted in the `.wrangler/` directory at the monorepo root,');
     });
 
@@ -199,13 +199,13 @@ describe('TanStack Start + cloudflare', () => {
 
     test('a Next.js only Turborepo gets the OpenNext flow, not the Hono one', async () => {
       const agents = await agentsOf('docs-next-turbo', ['--app', 'web:nextjs', '--app', 'web2:nextjs']);
-      expect(agents).toContain('Cloudflare Workers deploy (OpenNext)');
-      expect(agents).not.toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(agents).toContain('### Next.js (OpenNext)');
+      expect(agents).not.toContain('### Hono (Wrangler)');
     });
 
     test('a Hono only Turborepo gets the Wrangler flow only', async () => {
       const agents = await agentsOf('docs-hono-turbo', ['--app', 'a:hono', '--app', 'b:hono']);
-      expect(agents).toContain('Cloudflare Workers deploy (Wrangler)');
+      expect(agents).toContain('### Hono (Wrangler)');
       expect(agents).not.toContain('OpenNext');
       expect(agents).not.toContain('Vite plugin');
     });

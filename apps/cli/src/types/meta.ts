@@ -124,7 +124,7 @@ export interface MetaAddon {
   installScripts?: InstallScripts;
   envs?: EnvVar[];
   runtime?: AddonRuntime;
-  /** ORM scripts that prompt on stdin. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin. */
+  /** Scripts that prompt on stdin, of an ORM or a database. The turborepo root runs them inside the package, because turbo's stream UI never forwards stdin; a database's are exposed on the root too. */
   interactiveScripts?: string[];
   /** Steps of a fresh project's first run, in order (README and CLI summary). */
   firstRun?: FirstRunStep[];

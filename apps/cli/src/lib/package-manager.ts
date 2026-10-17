@@ -60,6 +60,13 @@ const PACKAGE_MANAGER_RUNNERS: Record<PackageManagerName, string> = {
   pnpm: 'pnpm dlx',
 };
 
+/** `pnpm dlx` always downloads the latest release, so a binary the project installs runs through `pnpm exec`. */
+const PACKAGE_MANAGER_BINARY_RUNNERS: Record<PackageManagerName, string> = {
+  bun: 'bunx',
+  npm: 'npx',
+  pnpm: 'pnpm exec',
+};
+
 const COMMAND_FALLBACK_PACKAGE_MANAGER: PackageManagerName = 'npm';
 
 export function resolveCommandPackageManager(ctx: TemplateContext): PackageManagerName {
@@ -93,18 +100,32 @@ export function getTypeScriptRunner(ctx: TemplateContext): string {
 
 /** A script only the apps define: a turborepo root has none, so it runs from the app directory. */
 export function getAppScriptCommand(ctx: TemplateContext, script: string): string {
-  const command = getScriptCommand(ctx, script);
-  return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
+  return getCommandInWorkspaceDirectory(ctx, 'apps/<app>', getScriptCommand(ctx, script));
 }
 
-/** A script of one app run from the workspace root; the subshell leaves the shell at the root, so steps paste in order. */
+/** A command run from a directory of the workspace; the subshell leaves the shell where it was, so steps paste in order. */
+function getCommandInDirectory(directory: string, command: string): string {
+  return `(cd ${directory} && ${command})`;
+}
+
+/** A script of one app run from the workspace root. */
 export function getScriptCommandInApp(ctx: TemplateContext, script: string, appName: string): string {
-  return `(cd apps/${appName} && ${getScriptCommand(ctx, script)})`;
+  return getCommandInDirectory(`apps/${appName}`, getScriptCommand(ctx, script));
+}
+
+/** A single repo keeps everything at its root, so only a turborepo changes directory. */
+export function getCommandInWorkspaceDirectory(ctx: TemplateContext, directory: string, command: string): string {
+  return ctx.repo === 'turborepo' ? getCommandInDirectory(directory, command) : command;
 }
 
 /** The command that runs a package binary without installing it. */
 export function getPackageRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];
+}
+
+/** The command that runs a binary a dependency of the project installed (`wrangler`), in the version the project pins. */
+export function getInstalledBinaryRunner(ctx: TemplateContext): string {
+  return PACKAGE_MANAGER_BINARY_RUNNERS[resolveCommandPackageManager(ctx)];
 }
 
 /**

@@ -321,8 +321,11 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
 
   const ormAddon = ctx.project.orm ? META.project.orm.options[ctx.project.orm] : undefined;
   if (ormAddon?.mono?.scope === 'pkg') {
-    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio']) {
-      scripts[script] = ormAddon.interactiveScripts?.includes(script)
+    const databaseAddon = ctx.project.database ? META.project.database.options[ctx.project.database] : undefined;
+    const databaseScripts = databaseAddon?.interactiveScripts ?? [];
+    const interactiveScripts = [...(ormAddon.interactiveScripts ?? []), ...databaseScripts];
+    for (const script of ['db:push', 'db:generate', 'db:migrate', 'db:seed', 'db:studio', ...databaseScripts]) {
+      scripts[script] = interactiveScripts.includes(script)
         ? `cd packages/${ormAddon.mono.name} && ${ctx.pm ?? 'npm'} run ${script}`
         : `turbo ${script}`;
     }

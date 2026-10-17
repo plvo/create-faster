@@ -284,6 +284,34 @@ describe('Handlebars helpers', () => {
       expect(withArgs(ctx('npm'))).toBe('npm run db:seed -- --fixtures');
     });
 
+    test('installedBinaryRunner runs the binary the project installed, packageRunner downloads one', () => {
+      const runner = Handlebars.compile('{{installedBinaryRunner}} wrangler | {{packageRunner}} wrangler');
+      expect(runner(ctx('bun'))).toBe('bunx wrangler | bunx wrangler');
+      expect(runner(ctx('npm'))).toBe('npx wrangler | npx wrangler');
+      expect(runner(ctx('pnpm'))).toBe('pnpm exec wrangler | pnpm dlx wrangler');
+    });
+
+    test('inDirectory runs its content from a workspace directory of a turborepo only', () => {
+      const inDirectory = Handlebars.compile('{{#inDirectory "apps" "web"}}{{runScript "deploy"}}{{/inDirectory}}', {
+        noEscape: true,
+      });
+      expect(inDirectory(ctx('pnpm'))).toBe('pnpm run deploy');
+      expect(inDirectory(ctx('npm', 'turborepo'))).toBe('(cd apps/web && npm run deploy)');
+    });
+
+    test('deployAppDir is the app whose wrangler.jsonc the project scripts use, not the first app', () => {
+      const template = Handlebars.compile('{{deployAppDir}}');
+      const mobileFirst: TemplateContext = {
+        ...ctx('bun', 'turborepo'),
+        apps: [
+          { appName: 'mobile', stackName: 'expo', libraries: [] },
+          { appName: 'web', stackName: 'nextjs', libraries: [] },
+        ],
+        project: { deployment: 'cloudflare', tooling: [] },
+      };
+      expect(template(mobileFirst)).toBe('web');
+    });
+
     test('tsRunner is the command that runs a TypeScript file', () => {
       const runner = Handlebars.compile('{{tsRunner}} scripts/seed.ts');
       expect(runner(ctx('bun'))).toBe('bun scripts/seed.ts');
@@ -311,9 +339,9 @@ describe('Handlebars helpers', () => {
     });
 
     test('a turborepo runs the script from the app directory, whatever the package manager', () => {
-      expect(template(ctx('turborepo', 'bun'))).toBe('cd apps/<app> && bun run deploy');
-      expect(template(ctx('turborepo', 'npm'))).toBe('cd apps/<app> && npm run deploy');
-      expect(template(ctx('turborepo', 'pnpm'))).toBe('cd apps/<app> && pnpm run deploy');
+      expect(template(ctx('turborepo', 'bun'))).toBe('(cd apps/<app> && bun run deploy)');
+      expect(template(ctx('turborepo', 'npm'))).toBe('(cd apps/<app> && npm run deploy)');
+      expect(template(ctx('turborepo', 'pnpm'))).toBe('(cd apps/<app> && pnpm run deploy)');
     });
 
     test('stackApps lists the apps on a stack and nothing for an unused one', () => {

@@ -1,0 +1,41 @@
+{{!-- deploy: the name of the section that lists the build and deploy commands; when set, the last step deploys the apps --}}
+Provision the production database once, before the first deploy. Wrangler needs a Cloudflare login first (its `login` command, or `CLOUDFLARE_API_TOKEN` in CI).
+
+1. Create the database. `--no-update-config` stops Wrangler from offering to add the binding to `wrangler.jsonc` itself: accepting adds a second binding named after the database next to `DB`, and the code only reads `DB`.
+
+   ```bash
+   {{#inDirectory "apps" (deployAppDir)}}{{installedBinaryRunner}} wrangler d1 create {{projectName}}-db --no-update-config{{/inDirectory}}
+   ```
+
+2. Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID`.
+{{#if project.orm}}
+
+3. Apply the migrations to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
+
+   ```bash
+   {{runScript "db:migrate"}}
+{{#if (hasRootScript "db:seed")}}
+   {{runScript "db:seed"}}
+{{/if}}
+   ```
+
+4. Apply the migrations to the production database:
+
+   ```bash
+   {{runScript "db:migrate:remote"}}
+   ```
+{{/if}}
+{{#if deploy}}
+
+{{#if project.orm}}5{{else}}3{{/if}}. Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
+
+   - Set the runtime secrets: every name under `secrets.required` in a `wrangler.jsonc` must be set (the secrets notes of the Cloudflare Workers section of `AGENTS.md` say how).
+{{#each apps}}
+{{#if (appSecrets)}}
+     - {{#if (isMono)}}`{{appName}}`: {{/if}}{{#each (appSecrets)}}`{{this}}`{{#unless @last}}, {{/unless}}{{/each}}
+{{/if}}
+{{/each}}
+   - Create every other resource a `wrangler.jsonc` binds (an R2 bucket, a KV namespace), declining Wrangler's offer to add the binding itself as in step 1.
+
+   Then run the build and deploy commands listed under **{{deploy}}**, except `preview`, which keeps running.
+{{/if}}

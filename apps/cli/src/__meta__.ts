@@ -952,6 +952,7 @@ export const META: Meta = {
           require: { deployment: ['cloudflare'] },
           serverlessBinding: 'd1',
           serverlessConsumersWired: true,
+          interactiveScripts: ['db:migrate:remote'],
           packageJson: {
             devDependencies: {
               '@libsql/client': LIBSQL_CLIENT_VERSION,

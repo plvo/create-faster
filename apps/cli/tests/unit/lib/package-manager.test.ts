@@ -2,8 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   createCachedVersionReader,
   findMissingPackageManager,
+  getInstalledBinaryRunner,
+  getPackageRunner,
   getPackageManager,
   getScriptCommand,
+  getCommandInWorkspaceDirectory,
   getTypeScriptRunner,
   missingPackageManagerMessage,
   readPackageManagerVersion,
@@ -130,5 +133,28 @@ describe('getTypeScriptRunner', () => {
     expect(getTypeScriptRunner(contextWith({ pm: 'bun' }))).toBe('bun');
     expect(getTypeScriptRunner(contextWith({ pm: 'pnpm' }))).toBe('tsx');
     expect(getTypeScriptRunner(contextWith({ pm: undefined }))).toBe('tsx');
+  });
+});
+
+describe('getInstalledBinaryRunner', () => {
+  test('runs the binary the project installed, where the package runner of pnpm downloads the latest one', () => {
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'bun' }))).toBe('bunx');
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'npm' }))).toBe('npx');
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm exec');
+    expect(getInstalledBinaryRunner(contextWith({ pm: undefined }))).toBe('npx');
+    expect(getPackageRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm dlx');
+  });
+});
+
+describe('getCommandInWorkspaceDirectory', () => {
+  test('a single repo has everything at its root, so the command is unchanged', () => {
+    expect(getCommandInWorkspaceDirectory(contextWith({}), 'packages/db', 'npx wrangler')).toBe('npx wrangler');
+  });
+
+  test('a turborepo runs it in a subshell of the directory, so the next step starts where the last one did', () => {
+    const turborepo = contextWith({ repo: 'turborepo', apps: TURBOREPO_APPS });
+    expect(getCommandInWorkspaceDirectory(turborepo, 'packages/db', 'npx wrangler')).toBe(
+      '(cd packages/db && npx wrangler)',
+    );
   });
 });

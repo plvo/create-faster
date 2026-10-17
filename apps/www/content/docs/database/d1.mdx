@@ -24,6 +24,16 @@ D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Wo
 
 Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`. In a Turborepo every app binds the same database (`{projectName}-db`) so the apps see the same data and migrations target one database: paste the same id into each app's `wrangler.jsonc`.
 
+## Provisioning the production database
+
+The generated README and `AGENTS.md` list these steps with the exact commands of the package manager you picked (`bunx`, `npx` or `pnpm exec` run the project's own Wrangler):
+
+1. Create the database: `npx wrangler d1 create {projectName}-db --no-update-config`. In a Turborepo run it from an app directory, `(cd apps/<app> && npx wrangler d1 create ...)`: the root links no Wrangler. `--no-update-config` stops Wrangler from offering to add the binding to `wrangler.jsonc` itself; accepting would add a second binding named after the database next to `DB`, which the code never reads.
+2. Paste the printed `database_id` (keep the binding `DB`) into `wrangler.jsonc`, in every app of a Turborepo.
+3. Run `db:migrate` again (and `db:seed` if you had seeded). Miniflare keys the local D1 file by `database_id`, so the real id switches local development to a new, empty database until it is migrated.
+4. Run `db:migrate:remote` to create the tables in the production database (the Turborepo root script runs it inside `packages/db`). Without it the deployed app fails with `no such table`.
+5. Set what `wrangler.jsonc` requires, then deploy: a deploy fails until every name under `secrets.required` is set (Better Auth adds `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`) and every other bound resource, such as an R2 bucket, exists. Then run the build and deploy commands of the generated README.
+
 **`src/lib/db/index.ts` — factory, not singleton:**
 
 D1 is injected per request, not available at module load time. The generated client is a `createDb` factory that accepts the binding:

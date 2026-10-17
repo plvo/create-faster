@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import Handlebars from 'handlebars';
-import { getProjectAddon } from '@/lib/addon-utils';
+import { getProjectAddon, resolveDeployAppDir } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -12,7 +12,14 @@ import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
-import { getAppScriptCommand, getPackageRunner, getScriptCommand, getTypeScriptRunner } from './package-manager';
+import {
+  getAppScriptCommand,
+  getCommandInWorkspaceDirectory,
+  getInstalledBinaryRunner,
+  getPackageRunner,
+  getScriptCommand,
+  getTypeScriptRunner,
+} from './package-manager';
 import { collectProductionSteps } from './production-steps';
 import { resolveAppPort } from './utils';
 
@@ -35,8 +42,8 @@ function registerHelpers(): void {
   Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
   Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some((v) => Boolean(v)));
 
-  Handlebars.registerHelper('isMono', function (this: TemplateContext) {
-    return this.repo === 'turborepo';
+  Handlebars.registerHelper('isMono', (options: Handlebars.HelperOptions) => {
+    return (options.data.root as TemplateContext).repo === 'turborepo';
   });
 
   Handlebars.registerHelper('hasLibrary', function (this: EnrichedTemplateContext, name: string) {
@@ -116,6 +123,19 @@ function registerHelpers(): void {
     return getAppScriptCommand(options.data.root as TemplateContext, script);
   });
 
+  Handlebars.registerHelper('inDirectory', function (this: unknown, ...args: unknown[]) {
+    const options = args.pop() as Handlebars.HelperOptions;
+    return getCommandInWorkspaceDirectory(
+      options.data.root as TemplateContext,
+      args.join('/'),
+      options.fn(this).trim(),
+    );
+  });
+
+  Handlebars.registerHelper('deployAppDir', (options: Handlebars.HelperOptions) => {
+    return resolveDeployAppDir(options.data.root as TemplateContext) ?? '';
+  });
+
   Handlebars.registerHelper('installScripts', (options: Handlebars.HelperOptions) => {
     const scripts = collectInstallScripts(options.data.root as TemplateContext);
     return Object.keys(scripts).length > 0 ? scripts : undefined;
@@ -135,6 +155,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('packageRunner', (options: Handlebars.HelperOptions) => {
     return getPackageRunner(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('installedBinaryRunner', (options: Handlebars.HelperOptions) => {
+    return getInstalledBinaryRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

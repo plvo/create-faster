@@ -1174,6 +1174,14 @@ describe('root db workflow (turborepo, non-blueprint)', () => {
     expect(result.content.scripts?.['db:seed']).toBe('turbo db:seed');
   });
 
+  test('the root runs the interactive remote D1 migration inside the db package, and only for D1', () => {
+    const d1: TemplateContext = { ...ctx, project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] } };
+    expect(generateRootPackageJson(d1).content.scripts?.['db:migrate:remote']).toBe(
+      'cd packages/db && bun run db:migrate:remote',
+    );
+    expect(generateRootPackageJson(ctx).content.scripts?.['db:migrate:remote']).toBeUndefined();
+  });
+
   test('root package.json has no db workflow when no ORM is selected', () => {
     const noOrm: TemplateContext = { ...ctx, project: { tooling: [] } };
     const result = generateRootPackageJson(noOrm);

@@ -160,7 +160,7 @@ describe('collectAgentContextFiles (Next.js on Cloudflare)', () => {
       project: { deployment: 'cloudflare', tooling: [] },
     });
     const content = collectAgentContextFiles(ctx).find((f) => f.destination === 'AGENTS.md')?.content ?? '';
-    return section(content, '## Cloudflare Workers deploy (OpenNext)');
+    return section(content, '### Next.js (OpenNext)');
   }
 
   test('documents that wrangler.jsonc vars carry NODE_ENV=production, which dependencies read as development otherwise', () => {
@@ -213,5 +213,42 @@ describe('collectAgentContextFiles (blueprint)', () => {
     const arch = root?.content.indexOf('## Architecture') ?? -1;
     expect(about).toBeGreaterThanOrEqual(0);
     expect(about).toBeLessThan(arch);
+  });
+});
+
+describe('collectAgentContextFiles (headings)', () => {
+  const HEADING_FOLLOWED_BY_HEADING = /^#{1,6} .*\n+#{1,6} /m;
+
+  const cloudflareApps: TemplateContext['apps'] = [
+    { appName: 'web', stackName: 'nextjs', libraries: [] },
+    { appName: 'site', stackName: 'tanstack-start', libraries: [] },
+    { appName: 'api', stackName: 'hono', libraries: [] },
+  ];
+
+  const projects: [string, TemplateContext][] = [
+    ['single repo on cloudflare', makeContext({ project: { deployment: 'cloudflare', database: 'd1', orm: 'drizzle', tooling: [] } })],
+    [
+      'turborepo on cloudflare',
+      makeContext({
+        repo: 'turborepo',
+        apps: cloudflareApps,
+        project: { deployment: 'cloudflare', database: 'd1', orm: 'drizzle', tooling: [] },
+      }),
+    ],
+    ...Object.entries(META.blueprints).map(([name, blueprint]): [string, TemplateContext] => [
+      `blueprint ${name}`,
+      makeContext({
+        repo: blueprint.context.apps.length > 1 ? 'turborepo' : 'single',
+        apps: blueprint.context.apps.map((app) => ({ ...app })),
+        project: { ...blueprint.context.project, tooling: [] },
+        blueprint: name,
+      }),
+    ]),
+  ];
+
+  test.each(projects)('%s: no heading is followed directly by another heading', (_, ctx) => {
+    for (const file of collectAgentContextFiles(ctx)) {
+      expect(file.content).not.toMatch(HEADING_FOLLOWED_BY_HEADING);
+    }
   });
 });
