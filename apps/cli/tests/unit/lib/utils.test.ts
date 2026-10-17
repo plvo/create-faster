@@ -78,8 +78,18 @@ describe('processScriptPorts', () => {
   });
 
   test('removes --port {{port}} when no port provided', () => {
-    const result = processScriptPorts({ dev: 'next dev --port {{port}}' });
+    const result = processScriptPorts({ dev: 'next dev --port {{port}}' }, 3000, true);
     expect(result.dev).toBe('next dev');
+  });
+
+  test('resolves {{port}} outside the flag in a single repo, where only the flag is removed', () => {
+    const result = processScriptPorts(
+      { dev: 'next dev --port {{port}}', serve: 'sh -c "serve --port=${PORT:-{{port}}}" sh' },
+      3000,
+      true,
+    );
+    expect(result.dev).toBe('next dev');
+    expect(result.serve).toBe('sh -c "serve --port=${PORT:-3000}" sh');
   });
 
   test('handles scripts without port placeholder', () => {

@@ -37,10 +37,11 @@ async function generate(name: string, args: string[], pm: string): Promise<strin
 
 const manifestOf = (directory: string): Promise<Manifest> => readJsonFile<Manifest>(join(directory, 'package.json'));
 
-// Runs a package.json script the way a package manager does (through sh), with a `wrangler` that prints its arguments.
-async function wranglerArgumentsOf(script: string, env: Record<string, string> = {}): Promise<string> {
+// Runs a package.json script the way a package manager does (through sh, the arguments of `npm run dev -- ...` appended),
+// with a `wrangler` that prints its arguments.
+async function wranglerArgumentsOf(script: string, env: Record<string, string> = {}, extraArguments = ''): Promise<string> {
   const { PORT: _inherited, ...inherited } = process.env;
-  const proc = Bun.spawn(['sh', '-c', script], {
+  const proc = Bun.spawn(['sh', '-c', `${script} ${extraArguments}`], {
     env: { ...inherited, ...env, PATH: `${stubBin}:${process.env.PATH}` },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -57,7 +58,7 @@ describe.each([...PACKAGE_MANAGERS])('Hono app on cloudflare with %s', (pm) => {
     const project = await generate(`hono-cf-single-${pm}`, ['--app', 'api:hono', ...CLOUDFLARE_HONO], pm);
     const { scripts, dependencies } = await manifestOf(project);
 
-    expect(scripts.dev).toBe("sh -c 'wrangler dev --port=${PORT:-${2:-3000}} --persist-to ./.wrangler' sh");
+    expect(scripts.dev).toBe(`sh -c 'wrangler dev --port=\${PORT:-3000} --persist-to ./.wrangler "$@"' sh`);
     expect(scripts.preview).toBe('wrangler dev --persist-to ./.wrangler');
     expect(scripts.start).toBeUndefined();
     expect(dependencies?.['@hono/node-server']).toBeUndefined();
@@ -66,6 +67,9 @@ describe.each([...PACKAGE_MANAGERS])('Hono app on cloudflare with %s', (pm) => {
     expect(await wranglerArgumentsOf(scripts.dev as string)).toBe('dev --port=3000 --persist-to ./.wrangler');
     expect(await wranglerArgumentsOf(scripts.dev as string, { PORT: '4321' })).toBe(
       'dev --port=4321 --persist-to ./.wrangler',
+    );
+    expect(await wranglerArgumentsOf(scripts.dev as string, {}, '--ip 127.0.0.1')).toBe(
+      'dev --port=3000 --persist-to ./.wrangler --ip 127.0.0.1',
     );
   });
 
@@ -77,9 +81,7 @@ describe.each([...PACKAGE_MANAGERS])('Hono app on cloudflare with %s', (pm) => {
     );
     const { scripts, dependencies, devDependencies } = await manifestOf(join(project, 'apps/api'));
 
-    expect(scripts.dev).toBe(
-      "sh -c 'wrangler dev --port=${PORT:-${2:-3000}} --persist-to ../../.wrangler' sh --port 3001",
-    );
+    expect(scripts.dev).toBe(`sh -c 'wrangler dev --port=\${PORT:-3001} --persist-to ../../.wrangler "$@"' sh`);
     expect(scripts.start).toBeUndefined();
     expect(dependencies?.['@hono/node-server']).toBeUndefined();
     expect(devDependencies?.tsx).toBeUndefined();
@@ -88,6 +90,9 @@ describe.each([...PACKAGE_MANAGERS])('Hono app on cloudflare with %s', (pm) => {
     expect(await wranglerArgumentsOf(scripts.dev as string)).toBe('dev --port=3001 --persist-to ../../.wrangler');
     expect(await wranglerArgumentsOf(scripts.dev as string, { PORT: '4321' })).toBe(
       'dev --port=4321 --persist-to ../../.wrangler',
+    );
+    expect(await wranglerArgumentsOf(scripts.dev as string, {}, '--ip 127.0.0.1')).toBe(
+      'dev --port=3001 --persist-to ../../.wrangler --ip 127.0.0.1',
     );
   });
 });
@@ -108,7 +113,7 @@ describe('portless with a Hono Worker', () => {
     const { scripts } = await manifestOf(join(project, 'apps/api'));
 
     expect(scripts.dev).toBe(
-      "portless run sh -c 'wrangler dev --port=${PORT:-${2:-3000}} --persist-to ../../.wrangler' sh",
+      `portless run sh -c 'wrangler dev --port=\${PORT:-3001} --persist-to ../../.wrangler "$@"' sh`,
     );
     expect(await wranglerArgumentsOf((scripts.dev as string).replace('portless run ', ''), { PORT: '4321' })).toBe(
       'dev --port=4321 --persist-to ../../.wrangler',
@@ -175,9 +180,7 @@ describe('cloudflare-fullstack-nextjs', () => {
     const project = await generate('hono-cf-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs'], 'npm');
     const cron = await manifestOf(join(project, 'apps/cron'));
 
-    expect(cron.scripts.dev).toBe(
-      "sh -c 'wrangler dev --port=${PORT:-${2:-3000}} --persist-to ../../.wrangler' sh --port 3001",
-    );
+    expect(cron.scripts.dev).toBe(`sh -c 'wrangler dev --port=\${PORT:-3001} --persist-to ../../.wrangler "$@"' sh`);
     expect(cron.scripts.start).toBeUndefined();
     expect((await manifestOf(project)).scripts.start).toBeUndefined();
     const turbo = await readJsonFile<{ tasks: Record<string, unknown> }>(join(project, 'turbo.json'));
@@ -190,7 +193,7 @@ describe('cloudflare-fullstack-nextjs', () => {
 
     expect(notes).toContain('runs next to it under `wrangler dev` on port 3001');
     expect(notes).toContain(
-      `W='hono-cf-fullstack-notes-cron'; curl -X POST "http://localhost:3001/cdn-cgi/local/explorer/api/local/scheduled?worker=$W"`,
+      'curl -X POST "http://localhost:3001/cdn-cgi/local/explorer/api/local/scheduled?worker=hono-cf-fullstack-notes-cron"',
     );
     expect(notes).not.toContain('--test-scheduled');
   });

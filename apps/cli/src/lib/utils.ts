@@ -29,12 +29,16 @@ export function usesPortPlaceholder(script: string): boolean {
   return /\{\{port\}\}/.test(script);
 }
 
-export function processScriptPorts(scripts: Record<string, string>, port?: number): Record<string, string> {
+// A single repo leaves the port flag out and lets the runtime take its own default, which is the port of the first app.
+export function processScriptPorts(
+  scripts: Record<string, string>,
+  port: number,
+  stripFlag = false,
+): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(scripts)) {
-    resolved[key] = port
-      ? value.replace(/\{\{port\}\}/g, String(port))
-      : value.replace(/\s*--port\s*\{\{port\}\}/g, '');
+    const withoutFlag = stripFlag ? value.replace(/\s*--port\s*\{\{port\}\}/g, '') : value;
+    resolved[key] = withoutFlag.replace(/\{\{port\}\}/g, String(port));
   }
   return resolved;
 }

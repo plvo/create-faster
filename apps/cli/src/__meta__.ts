@@ -6,7 +6,7 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 
 // A Hono app is a Worker only under `cloudflare`. Under `cloudflare-static` it gets no `wrangler.jsonc` (the deployment serves Next.js and TanStack Start), so it keeps its Node or Bun server,
 // where `RUNS_NODE_SERVER` would drop it.
-const NOT_A_WORKER: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
+const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
 
 const NODE_TYPES_VERSION = '^22';
 
@@ -64,8 +64,8 @@ const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudfl
 const WRANGLER_PERSIST_STATE = '--persist-to {{workspaceRoot}}/.wrangler';
 
 // Wrangler reads no port variable, so the script expands `PORT` itself, in the `sh` it hands to portless (which sets `PORT` and quotes its arguments).
-// The app port rides as the `--port {{port}}` argument ($2): a turborepo keeps it, a single repo and portless strip it, and 3000 is the single repo default.
-const HONO_WORKER_DEV = `sh -c 'wrangler dev --port=\${PORT:-\${2:-3000}} ${WRANGLER_PERSIST_STATE}' sh --port {{port}}`;
+// The arguments a package manager appends to the script reach Wrangler through "$@".
+const HONO_WORKER_DEV = `sh -c 'wrangler dev --port=\${PORT:-{{port}}} ${WRANGLER_PERSIST_STATE} "$@"' sh`;
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
 
@@ -189,11 +189,11 @@ const wrapWithPortless = (cmd: string): string => {
 };
 
 const HONO_ON_NODE: PackageJsonConfig = {
-  dependencies: { '@hono/node-server': $when(NOT_A_WORKER, '^2.1.5') },
-  devDependencies: { tsx: $when(NOT_A_WORKER, TSX_VERSION) },
+  dependencies: { '@hono/node-server': $when(HONO_SERVES_FROM_NODE, '^2.1.5') },
+  devDependencies: { tsx: $when(HONO_SERVES_FROM_NODE, TSX_VERSION) },
   scripts: {
     dev: 'tsx watch src/server.ts --port {{port}}',
-    start: $when(NOT_A_WORKER, 'NODE_ENV=production tsx src/server.ts --port {{port}}'),
+    start: $when(HONO_SERVES_FROM_NODE, 'NODE_ENV=production tsx src/server.ts --port {{port}}'),
   },
 };
 
@@ -294,7 +294,7 @@ export const META: Meta = {
         },
         scripts: {
           dev: 'bun run --port {{port}} --hot src/index.ts',
-          start: $when(NOT_A_WORKER, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
+          start: $when(HONO_SERVES_FROM_NODE, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
         },
       },
       packageManagerPackageJson: {
@@ -958,11 +958,10 @@ export const META: Meta = {
             },
             scripts: {
               'db:generate': 'drizzle-kit generate',
-              'db:migrate': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
-              'db:migrate:local': 'wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+              'db:migrate': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
+              'db:migrate:local': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
               'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
-              'local-setup':
-                '{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && {{packageManager}} run db:seed',
+              'local-setup': `{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
             },
           },
           deploymentPackageJson: {
@@ -973,11 +972,11 @@ export const META: Meta = {
               scripts: {
                 'db:migrate': $when(
                   { repo: 'turborepo' },
-                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+                  `wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
                 ),
                 'db:migrate:local': $when(
                   { repo: 'turborepo' },
-                  'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler',
+                  `wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
                 ),
                 'db:migrate:remote': $when(
                   { repo: 'turborepo' },
@@ -985,7 +984,7 @@ export const META: Meta = {
                 ),
                 'local-setup': $when(
                   { repo: 'turborepo' },
-                  '{{packageManager}} run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local --persist-to {{workspaceRoot}}/.wrangler && {{packageManager}} run db:seed',
+                  `{{packageManager}} run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
                 ),
               },
             },

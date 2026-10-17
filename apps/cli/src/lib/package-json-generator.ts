@@ -231,7 +231,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
   }
 
   const listensOnPort = Object.values(merged.scripts ?? {}).some(usesPortPlaceholder);
-  let scripts = processScriptPorts(merged.scripts ?? {}, isTurborepo ? port : undefined);
+  let scripts = processScriptPorts(merged.scripts ?? {}, port, !isTurborepo);
 
   if (runtimeAddon?.runtime?.appScripts) {
     scripts = applyAppScripts(scripts, runtimeAddon.runtime.appScripts);
