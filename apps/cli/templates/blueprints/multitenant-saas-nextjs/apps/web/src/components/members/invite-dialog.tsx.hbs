@@ -20,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { Can } from '@/components/can';
 import { useTRPC } from '@/trpc/providers';
 import { InvitationLinkDialog } from './invitation-link-dialog';
 
@@ -68,39 +69,41 @@ export function InviteDialog() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button>Invite member</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invite member</DialogTitle>
-            <DialogDescription>You&apos;ll get a link to share with the invited person.</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              form.handleSubmit();
-            }}
-            className='space-y-4'
-          >
-            <form.AppField name='email'>
-              {(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
-            </form.AppField>
-            <form.AppField name='role'>
-              {(field) => <field.SelectField label='Role' options={roleOptions} />}
-            </form.AppField>
-            <div className='flex justify-end gap-2'>
-              <Button type='button' variant='outline' onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <form.AppForm>
-                <form.SubmitButton props={{ disabled: create.isPending }}>Create invitation</form.SubmitButton>
-              </form.AppForm>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <Can permissions={{ invitation: ['create'] }}>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>Invite member</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Invite member</DialogTitle>
+              <DialogDescription>You&apos;ll get a link to share with the invited person.</DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit();
+              }}
+              className='space-y-4'
+            >
+              <form.AppField name='email'>
+                {(field) => <field.InputField label='Email' props={{ type: 'email' }} />}
+              </form.AppField>
+              <form.AppField name='role'>
+                {(field) => <field.SelectField label='Role' options={roleOptions} />}
+              </form.AppField>
+              <div className='flex justify-end gap-2'>
+                <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <form.AppForm>
+                  <form.SubmitButton props={{ disabled: create.isPending }}>Create invitation</form.SubmitButton>
+                </form.AppForm>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </Can>
       <InvitationLinkDialog
         open={linkDialog.open}
         onOpenChange={(o) => setLinkDialog((s) => ({ ...s, open: o }))}

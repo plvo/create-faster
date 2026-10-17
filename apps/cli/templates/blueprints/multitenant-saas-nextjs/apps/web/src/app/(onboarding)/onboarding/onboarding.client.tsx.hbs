@@ -6,7 +6,8 @@ mono:
 ---
 'use client';
 
-import { authClient } from '@repo/auth/auth-client';
+import { authClient, useListOrganizations } from '@repo/auth/auth-client';
+import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -31,6 +32,16 @@ const onboardingSchema = z.object({
 export function OnboardingClient() {
   const router = useRouter();
   const slugTouched = useRef(false);
+  const { data: organizations } = useListOrganizations();
+
+  async function openOrganization(organizationId: string) {
+    const result = await authClient.organization.setActive({ organizationId });
+    if (result.error) {
+      toast.error(result.error.message ?? 'Failed to open organization');
+      return;
+    }
+    router.push('/');
+  }
 
   const form = useAppForm({
     defaultValues: { name: '', slug: '' },
@@ -52,10 +63,30 @@ export function OnboardingClient() {
   });
 
   return (
-    <div className='flex min-h-screen items-center justify-center p-6'>
+    <div className='flex min-h-screen flex-col items-center justify-center gap-6 p-6'>
+      {organizations?.length ? (
+        <Card className='w-full max-w-md'>
+          <CardHeader>
+            <CardTitle>Your organizations</CardTitle>
+            <CardDescription>Pick the workspace to open.</CardDescription>
+          </CardHeader>
+          <CardContent className='flex flex-col gap-2'>
+            {organizations.map((organization) => (
+              <Button
+                key={organization.id}
+                variant='outline'
+                className='justify-start'
+                onClick={() => openOrganization(organization.id)}
+              >
+                {organization.name}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
       <Card className='w-full max-w-md'>
         <CardHeader>
-          <CardTitle>Create your first organization</CardTitle>
+          <CardTitle>{organizations?.length ? 'Create an organization' : 'Create your first organization'}</CardTitle>
           <CardDescription>This is the workspace where your team will collaborate.</CardDescription>
         </CardHeader>
         <CardContent>

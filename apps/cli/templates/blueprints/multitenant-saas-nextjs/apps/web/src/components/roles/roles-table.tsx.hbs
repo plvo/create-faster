@@ -19,6 +19,8 @@ import {
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Can } from '@/components/can';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useTRPC } from '@/trpc/providers';
 import { RoleFormDialog } from './role-form-dialog';
 
@@ -32,13 +34,17 @@ type CustomRole = { roleName: string; permission: Record<string, string[]> };
 export function RolesTable() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { data: roles, isLoading } = useQuery(trpc.role.list.queryOptions());
+  const { data: roles, isLoading, error } = useQuery(trpc.role.list.queryOptions());
   const [open, setOpen] = useState(false);
   const [initial, setInitial] = useState<Initial>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const remove = useMutation(
     trpc.role.delete.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries(trpc.role.list.queryFilter()),
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.role.list.queryFilter());
+        setDeleting(null);
+      },
       onError: (err) => toast.error(err.message),
     }),
   );
@@ -49,77 +55,92 @@ export function RolesTable() {
     <>
       <div className='flex items-center justify-between'>
         <h1 className='text-2xl font-semibold'>Roles</h1>
-        <Button
-          onClick={() => {
-            setInitial(null);
-            setOpen(true);
-          }}
-        >
-          Create role
-        </Button>
+        <Can permissions={{ ac: ['create'] }}>
+          <Button
+            onClick={() => {
+              setInitial(null);
+              setOpen(true);
+            }}
+          >
+            Create role
+          </Button>
+        </Can>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Permissions</TableHead>
-            <TableHead className='w-40' />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {['owner', 'admin', 'member'].map((r) => (
-            <TableRow key={r}>
-              <TableCell className='font-medium'>{r}</TableCell>
-              <TableCell>
-                <Badge variant='secondary'>built-in</Badge>
-              </TableCell>
-              <TableCell className='text-muted-foreground'>—</TableCell>
-              <TableCell />
+      {error ? (
+        <p className='text-sm text-muted-foreground'>{error.message}</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Permissions</TableHead>
+              <TableHead className='w-40' />
             </TableRow>
-          ))}
-          {((roles as CustomRole[] | undefined) ?? []).map((role) => {
-            if (BUILT_IN.has(role.roleName)) return null;
-            return (
-              <TableRow key={role.roleName}>
-                <TableCell className='font-medium'>{role.roleName}</TableCell>
+          </TableHeader>
+          <TableBody>
+            {['owner', 'admin', 'member'].map((r) => (
+              <TableRow key={r}>
+                <TableCell className='font-medium'>{r}</TableCell>
                 <TableCell>
-                  <Badge>custom</Badge>
+                  <Badge variant='secondary'>built-in</Badge>
                 </TableCell>
-                <TableCell className='text-sm text-muted-foreground'>
-                  {Object.entries(role.permission)
-                    .map(([r, a]) => `${r}: ${a.join(', ')}`)
-                    .join(' · ')}
-                </TableCell>
-                <TableCell className='space-x-2'>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    onClick={() => {
-                      setInitial({ roleName: role.roleName, permission: role.permission });
-                      setOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='ghost'
-                    onClick={() => {
-                      if (confirm(`Delete role "${role.roleName}"? Members with this role will be reset.`)) {
-                        remove.mutate({ roleName: role.roleName });
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
+                <TableCell className='text-muted-foreground'>—</TableCell>
+                <TableCell />
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            ))}
+            {((roles as CustomRole[] | undefined) ?? []).map((role) => {
+              if (BUILT_IN.has(role.roleName)) return null;
+              return (
+                <TableRow key={role.roleName}>
+                  <TableCell className='font-medium'>{role.roleName}</TableCell>
+                  <TableCell>
+                    <Badge>custom</Badge>
+                  </TableCell>
+                  <TableCell className='text-sm text-muted-foreground'>
+                    {Object.entries(role.permission)
+                      .map(([r, a]) => `${r}: ${a.join(', ')}`)
+                      .join(' · ')}
+                  </TableCell>
+                  <TableCell className='space-x-2'>
+                    <Can permissions={{ ac: ['update'] }}>
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => {
+                          setInitial({ roleName: role.roleName, permission: role.permission });
+                          setOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </Can>
+                    <Can permissions={{ ac: ['delete'] }}>
+                      <Button size='sm' variant='ghost' onClick={() => setDeleting(role.roleName)}>
+                        Delete
+                      </Button>
+                    </Can>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
       <RoleFormDialog open={open} onOpenChange={setOpen} initial={initial} />
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleting(null);
+        }}
+        title='Delete role'
+        description={`Delete role "${deleting ?? ''}"? Members with this role will be reset.`}
+        confirmLabel='Delete'
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (deleting) remove.mutate({ roleName: deleting });
+        }}
+      />
     </>
   );
 }

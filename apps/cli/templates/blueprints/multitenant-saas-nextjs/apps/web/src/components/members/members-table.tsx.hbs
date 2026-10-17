@@ -23,7 +23,10 @@ import {
   TableRow,
 } from '@repo/ui/components/ui/table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { usePermission } from '@/hooks/use-permission';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
@@ -41,6 +44,9 @@ export function MembersTable() {
   const queryClient = useQueryClient();
   const { data: members, isLoading } = useQuery(trpc.member.list.queryOptions());
   const { data: customRoles } = useQuery(trpc.role.list.queryOptions());
+  const { allowed: canUpdate } = usePermission({ member: ['update'] });
+  const { allowed: canRemove } = usePermission({ member: ['delete'] });
+  const [removing, setRemoving] = useState<MemberRow | null>(null);
 
   const updateRole = useMutation(
     trpc.member.updateRole.mutationOptions({
@@ -50,7 +56,10 @@ export function MembersTable() {
   );
   const remove = useMutation(
     trpc.member.remove.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries(trpc.member.list.queryFilter()),
+      onSuccess: () => {
+        queryClient.invalidateQueries(trpc.member.list.queryFilter());
+        setRemoving(null);
+      },
       onError: (err) => toast.error(err.message),
     }),
   );
@@ -60,53 +69,61 @@ export function MembersTable() {
   if (isLoading) return <div>Loading...</div>;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead className='w-25' />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {(members as MemberRow[] | undefined)?.map((m) => (
-          <TableRow key={m.id}>
-            <TableCell>{m.user?.email ?? m.userId}</TableCell>
-            <TableCell>
-              <Select
-                value={m.role}
-                onValueChange={(role) => updateRole.mutate({ memberId: m.id, role })}
-                disabled={m.role === 'owner'}
-              >
-                <SelectTrigger className='w-40'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {allRoles.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </TableCell>
-            <TableCell>
-              {m.role !== 'owner' ? (
-                <Button
-                  variant='ghost'
-                  size='sm'
-                  onClick={() => {
-                    if (confirm(`Remove ${m.user?.email}?`)) remove.mutate({ memberId: m.id });
-                  }}
-                >
-                  Remove
-                </Button>
-              ) : null}
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {(members as MemberRow[] | undefined)?.map((m) => (
+            <TableRow key={m.id}>
+              <TableCell className='break-all whitespace-normal'>{m.user?.email ?? m.userId}</TableCell>
+              <TableCell>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <Select
+                    value={m.role}
+                    onValueChange={(role) => updateRole.mutate({ memberId: m.id, role })}
+                    disabled={m.role === 'owner' || !canUpdate}
+                  >
+                    <SelectTrigger className='w-40'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allRoles.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {canRemove && m.role !== 'owner' ? (
+                    <Button variant='ghost' size='sm' onClick={() => setRemoving(m)}>
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title='Remove member'
+        description={`${removing?.user?.email ?? 'This member'} loses access to this organization.`}
+        confirmLabel='Remove'
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (removing) remove.mutate({ memberId: removing.id });
+        }}
+      />
+    </>
   );
 }
 {{{{/raw}}}}

@@ -17,6 +17,7 @@ import {
 } from '@repo/ui/components/ui/table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Can } from '@/components/can';
 import { getAppUrl } from '@/lib/get-app-url';
 import { useTRPC } from '@/trpc/providers';
 
@@ -54,30 +55,34 @@ export function PendingInvitationsTable() {
         <TableRow>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
-          <TableHead>Expires</TableHead>
+          <TableHead className='hidden sm:table-cell'>Expires</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
         {pending.map((i) => (
           <TableRow key={i.id}>
-            <TableCell>{i.email}</TableCell>
+            <TableCell className='break-all whitespace-normal'>{i.email}</TableCell>
             <TableCell>{i.role}</TableCell>
-            <TableCell>{i.expiresAt ? new Date(i.expiresAt).toLocaleDateString() : '—'}</TableCell>
-            <TableCell className='space-x-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={async () => {
-                  await navigator.clipboard.writeText(buildLink(i.id));
-                  toast.success('Link copied');
-                }}
-              >
-                Copy link
-              </Button>
-              <Button variant='ghost' size='sm' onClick={() => cancel.mutate({ invitationId: i.id })}>
-                Cancel
-              </Button>
+            <TableCell className='hidden sm:table-cell'>{i.expiresAt ? new Date(i.expiresAt).toLocaleDateString() : '—'}</TableCell>
+            <TableCell>
+              <div className='flex flex-wrap gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(buildLink(i.id));
+                    toast.success('Link copied');
+                  }}
+                >
+                  Copy link
+                </Button>
+                <Can permissions={{ invitation: ['cancel'] }}>
+                  <Button variant='ghost' size='sm' onClick={() => cancel.mutate({ invitationId: i.id })}>
+                    Cancel
+                  </Button>
+                </Can>
+              </div>
             </TableCell>
           </TableRow>
         ))}

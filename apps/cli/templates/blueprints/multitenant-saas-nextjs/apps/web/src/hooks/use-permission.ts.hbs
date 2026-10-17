@@ -7,36 +7,26 @@ mono:
 'use client';
 
 import { authClient } from '@repo/auth/auth-client';
-import { useEffect, useState, useTransition } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 {{{{raw}}}}
 type Permissions = Record<string, string[]>;
 
+// Asks the endpoint the server's permissionProcedure asks, so the UI and the router agree on who may write.
+// The answer is cached per permission set and shared by every component that asks.
 export function usePermission(permissions: Permissions): {
   allowed: boolean;
   loading: boolean;
 } {
-  const [allowed, setAllowed] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const permissionsKey = JSON.stringify(permissions);
+  const { data, isLoading } = useQuery({
+    queryKey: ['permission', permissions],
+    queryFn: async () => {
+      const result = await authClient.organization.hasPermission({ permissions });
+      return result.data?.success ?? false;
+    },
+    retry: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    startTransition(async () => {
-      try {
-        const result = await authClient.organization.hasPermission({
-          permissions: JSON.parse(permissionsKey) as Permissions,
-        });
-        if (!cancelled) setAllowed(result.data?.success ?? false);
-      } catch {
-        if (!cancelled) setAllowed(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [permissionsKey]);
-
-  return { allowed, loading: pending };
+  return { allowed: data ?? false, loading: isLoading };
 }
 {{{{/raw}}}}
