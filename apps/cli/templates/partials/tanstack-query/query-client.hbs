@@ -32,11 +32,24 @@ import superjson from 'superjson';
 {{/if}}
  */
 
+const MAX_RETRIES = 3;
+
+// A 4xx answer (a 403 without the permission, a 404 for an unknown id) is the same on every attempt, so it is not
+// retried; tRPC puts the HTTP status of a failed call in `data.httpStatus`. Any other failure keeps the default of
+// three attempts. Only the browser gets this function: a `retry` option replaces TanStack's default of no retry on
+// the server, where a 5xx would otherwise be retried too.
+function retryUnlessRefused(failureCount: number, error: unknown): boolean {
+  const status = (error as { data?: { httpStatus?: number } } | null)?.data?.httpStatus;
+  if (status !== undefined && status < 500) return false;
+  return failureCount < MAX_RETRIES;
+}
+
 export function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 1000 * 30, // 30 seconds
+        ...(typeof window === 'undefined' ? {} : { retry: retryUnlessRefused }),
       },
       dehydrate: {
         shouldDehydrateQuery: (query) =>
