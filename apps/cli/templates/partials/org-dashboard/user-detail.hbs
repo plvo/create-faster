@@ -29,7 +29,7 @@ export function UserDetail({ id }: { id: string }) {
         setGeneratedPassword(password);
         toast.success('Password generated');
       },
-      onError: () => toast.error('Failed to generate password'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 
@@ -49,7 +49,7 @@ export function UserDetail({ id }: { id: string }) {
         queryClient.invalidateQueries({ queryKey: trpc.user.getById.queryKey({ id }) });
         queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
       },
-      onError: () => toast.error('Failed to update user'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 

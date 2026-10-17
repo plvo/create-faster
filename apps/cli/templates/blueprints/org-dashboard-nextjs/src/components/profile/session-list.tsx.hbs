@@ -37,7 +37,7 @@ export function SessionList() {
         toast.success('Session revoked');
         invalidate();
       },
-      onError: () => toast.error('Failed to revoke session'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 
@@ -47,7 +47,7 @@ export function SessionList() {
         toast.success('All other sessions revoked');
         invalidate();
       },
-      onError: () => toast.error('Failed to revoke sessions'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 

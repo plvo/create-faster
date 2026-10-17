@@ -58,8 +58,8 @@ export function CreateUserDialog() {
   const form = useAppForm({
     defaultValues: { name: '', email: '', role: 'user', firstName: '', lastName: '', phone: '' },
     validators: { onSubmit: schema },
-    onSubmit: async ({ value }) => {
-      await createMutation.mutateAsync({
+    onSubmit: ({ value }) => {
+      createMutation.mutate({
         name: value.name,
         email: value.email,
         role: value.role,
@@ -129,7 +129,7 @@ export function CreateUserDialog() {
                 Cancel
               </Button>
               <form.AppForm>
-                <form.SubmitButton>Create user</form.SubmitButton>
+                <form.SubmitButton props={{ disabled: createMutation.isPending }}>Create user</form.SubmitButton>
               </form.AppForm>
             </DialogFooter>
           </form>

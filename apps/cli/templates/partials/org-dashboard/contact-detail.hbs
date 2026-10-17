@@ -11,6 +11,7 @@ import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-q
 {{#if (eq stackName "tanstack-start")}}
 import { Link, notFound, useNavigate } from '@tanstack/react-router';
 {{/if}}
+import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
@@ -42,6 +43,7 @@ export function ContactDetail({ id }: { id: string }) {
         router.push('/contacts');
 {{/if}}
       },
+      onError: (error) => toast.error(error.message),
     }),
   );
 
