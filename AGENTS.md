@@ -253,6 +253,13 @@ A login or signup form never passes a query parameter (`redirectTo`, `redirect`)
 - Isolated installs (bun and pnpm workspaces) only expose declared dependencies to Babel and Metro: NativeWind's setup resolves `react-native-css-interop`, `babel-preset-expo` and `@babel/plugin-transform-react-jsx` from the app root, so `nativewind` declares them. `jest-expo` only lets the `.pnpm` store through `transformIgnorePatterns`, so `jest.config.js` adds `.bun` when `pm` is bun.
 - A turborepo may hold Expo next to a Next.js or TanStack Start app on another React patch version. Each app keeps its own React and Expo's Metro config bundles a single one. `expo-doctor` reports `expo-constants`, `expo-font` and `expo-linking` as duplicates in a bun turborepo (bun's peer-suffixed copies of one version, absent from the Metro bundle), which is expected.
 
+### Next.js fonts
+
+- The Geist Sans and Geist Mono `localFont` declarations live once in `partials/nextjs/fonts.hbs`, rendered with `{{> nextjs/fonts}}` by the stack layout and by the layout of every blueprint with a Next.js app. The call sits outside any `{{{{raw}}}}` block, or the layout would carry the literal call and `geistSans` would be undefined.
+- Each layout puts `geistSans.variable` and `geistMono.variable` on `<html>`, never on `<body>`: Tailwind v4 resolves `--font-sans` and `--font-mono` (`@theme inline`) on `html`, where a variable set on `body` is undefined.
+- The stack `globals.css` sets no `font-family` on `body`; the theme font applies.
+- `tests/integration/nextjs-fonts.test.ts` generates the stack and every blueprint with a Next.js app and checks the declarations, the `<html>` placement and that no `{{` is left in the layout.
+
 ## Template system
 
 ### Structure

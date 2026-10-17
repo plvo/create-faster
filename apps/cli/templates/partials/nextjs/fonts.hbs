@@ -1,0 +1,12 @@
+{{!-- The root layout puts geistSans.variable and geistMono.variable on <html>, where the theme's --font-sans and --font-mono resolve them. --}}
+const geistSans = localFont({
+  src: '../styles/fonts/geist-sans-vf.woff',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+});
+
+const geistMono = localFont({
+  src: '../styles/fonts/geist-mono-vf.woff',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+});
