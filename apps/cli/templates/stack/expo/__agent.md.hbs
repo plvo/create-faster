@@ -1,6 +1,6 @@
 Expo (React Native) app using expo-router. Screens live in `src/app/`, shared code in `src/`.
-Start the dev server in a terminal with `{{#inDirectory "apps" appName}}{{runScript "dev:expo"}}{{/inDirectory}}`: it prints the QR code and takes the key commands (`a` Android, `i` iOS, `w` web, `r` reload).
-`expo-dev-client` is a dependency, so the server starts in development-build mode: press `s` to switch to Expo Go, which needs no native build, or start with `{{#inDirectory "apps" appName}}{{packageRunner}} expo start --go{{/inDirectory}}`.
+Start the dev server in a terminal with `{{> expo/dev-server}}`: it prints the QR code and takes the key commands (`a` Android, `i` iOS, `w` web, `r` reload).
+`expo-dev-client` is a dependency, so the server starts in development-build mode: press `s` to switch to Expo Go, which needs no native build, or start with `{{> expo/dev-server args="--go"}}`.
 `{{#inDirectory "apps" appName}}{{runScript "android"}}{{/inDirectory}}`, `{{#inDirectory "apps" appName}}{{runScript "ios"}}{{/inDirectory}}` and `{{#inDirectory "apps" appName}}{{runScript "web"}}{{/inDirectory}}` start the server and open that platform.
 {{#if (isMono)}}
 The root `{{runScript "dev"}}` does not start this app: turbo's stream UI gives a task no terminal, so the server would print no QR code and take no key.

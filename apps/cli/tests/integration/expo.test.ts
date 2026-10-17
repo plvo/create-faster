@@ -46,6 +46,13 @@ describe('Expo app', () => {
       projectPath = await generate('expo-bare', ['--app', 'expo-bare:expo']);
     });
 
+    test('starts its dev server with dev, the only script a single repo needs, and has no start', async () => {
+      const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
+      expect(pkg.scripts?.dev).toBe('expo start');
+      expect(pkg.scripts).not.toHaveProperty(['dev:expo']);
+      expect(pkg.scripts).not.toHaveProperty(['start']);
+    });
+
     test('uses the expo-router entry as the app entry point', async () => {
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
       expect(pkg.main).toBe('expo-router/entry');
@@ -205,15 +212,18 @@ describe('Expo app', () => {
 
       for (const text of [summary, readme, agents]) {
         expect(text).toContain(MOBILE_START);
-        expect(text).toContain('root dev');
         expect(await printedScriptsMissingFrom(projectPath, text)).toEqual([]);
       }
+      expect(readme).toContain('the root `dev` leaves out');
     });
 
     test('tells the Expo app how to start, switch to Expo Go, and what NativeWind, jest-expo and expo-doctor do', async () => {
       const agents = await readTextFile(join(projectPath, 'apps/mobile/AGENTS.md'));
 
-      expect(agents).toContain('cd apps/mobile && bun run dev:expo');
+      expect(agents).toContain('(cd apps/mobile && bun run dev:expo)');
+      expect(agents).toContain('(cd apps/mobile && bun run dev:expo --go)');
+      expect(agents).toContain('(cd apps/mobile && bun run dev:expo --clear)');
+      expect(agents).toContain('(cd apps/mobile && bun run test:watch)');
       expect(agents).toContain('Expo Go');
       expect(agents).toContain("darkMode: 'class'");
       expect(agents).toContain('bun run test');

@@ -63,8 +63,8 @@ describe('collectProductionSteps', () => {
 
   test('a turborepo root runs its build and start in every app, which the description says', () => {
     expect(collectProductionSteps(turborepo(['nextjs', 'hono']))).toEqual([
-      { description: 'Build every app for production', command: 'npm run build' },
-      { description: 'Start every app', command: 'npm run start' },
+      { description: 'Build every app that has a build script', command: 'npm run build' },
+      { description: 'Start every app that has a start script', command: 'npm run start' },
     ]);
   });
 
@@ -117,15 +117,14 @@ describe('collectProductionSteps', () => {
 });
 
 describe('collectDevelopmentSteps', () => {
-  test('an Expo single repo starts its dev server from the root', () => {
-    expect(commands(singleRepo('expo'), collectDevelopmentSteps)).toEqual(['npm run dev:expo']);
+  test('an Expo single repo has no development step of its own: its dev script is the root dev', () => {
+    expect(collectDevelopmentSteps(singleRepo('expo'))).toEqual([]);
   });
 
-  test('an Expo app of a turborepo starts from its own directory, and says the root dev leaves it out', () => {
-    const steps = collectDevelopmentSteps(turborepo(['nextjs', 'expo']));
-
-    expect(steps.map(({ command }) => command)).toEqual(['(cd apps/docs && npm run dev:expo)']);
-    expect(steps[0]?.description).toContain('root dev');
+  test('an Expo app of a turborepo starts from its own directory, apart from the root dev', () => {
+    expect(collectDevelopmentSteps(turborepo(['nextjs', 'expo']))).toEqual([
+      { description: 'Start the Expo dev server (docs)', command: '(cd apps/docs && npm run dev:expo)' },
+    ]);
   });
 
   test('a stack without a declared development script has none', () => {

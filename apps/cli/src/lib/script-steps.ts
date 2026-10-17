@@ -13,16 +13,17 @@ interface ScriptStep {
   command: string;
 }
 
-type DeclaredScripts = (ctx: TemplateContext, stacks: StackName[]) => Conditional<DescribedScript>[];
+type ScriptsField = 'productionScripts' | 'developmentScripts';
 
-/** The scripts the given stacks and the selected addons declare, stacks first, each script once. */
-const declaredProductionScripts: DeclaredScripts = (ctx, stacks) => [
-  ...stacks.flatMap((stack) => META.stacks[stack].productionScripts ?? []),
-  ...getSelectedProjectAddons(ctx).flatMap((addon) => addon.productionScripts ?? []),
+/** The scripts of a field that the given stacks and the selected addons declare, stacks first. */
+const declaredScripts = (
+  ctx: TemplateContext,
+  stacks: StackName[],
+  field: ScriptsField,
+): Conditional<DescribedScript>[] => [
+  ...stacks.flatMap((stack) => META.stacks[stack][field] ?? []),
+  ...getSelectedProjectAddons(ctx).flatMap((addon) => addon[field] ?? []),
 ];
-
-const declaredDevelopmentScripts: DeclaredScripts = (_ctx, stacks) =>
-  stacks.flatMap((stack) => META.stacks[stack].developmentScripts ?? []);
 
 function uniqueScripts(ctx: TemplateContext, declared: Conditional<DescribedScript>[]): DescribedScript[] {
   const scripts = new Map<string, DescribedScript>();
@@ -41,7 +42,7 @@ function uniqueScripts(ctx: TemplateContext, declared: Conditional<DescribedScri
  * it, app by app, each app in its own declared order (its stack, then the addons), so every app's sequence runs as
  * printed.
  */
-function collectSteps(ctx: TemplateContext, declaredScripts: DeclaredScripts): ScriptStep[] {
+function collectSteps(ctx: TemplateContext, field: ScriptsField): ScriptStep[] {
   const rootScripts = getRootScripts(ctx);
   const appScripts = getAppScripts(ctx);
 
@@ -50,13 +51,14 @@ function collectSteps(ctx: TemplateContext, declaredScripts: DeclaredScripts): S
     declaredScripts(
       ctx,
       ctx.apps.map((app) => app.stackName),
+      field,
     ),
   )
     .filter(({ script }) => script in rootScripts)
     .map(({ script, description }) => ({ description, command: getScriptCommand(ctx, script) }));
 
   const appSteps = ctx.apps.flatMap((app, index) =>
-    uniqueScripts(ctx, declaredScripts(ctx, [app.stackName]))
+    uniqueScripts(ctx, declaredScripts(ctx, [app.stackName], field))
       .filter(({ script }) => !(script in rootScripts) && script in (appScripts[index]?.scripts ?? {}))
       .map(({ script, description }) => ({
         description: `${description} (${app.appName})`,
@@ -69,10 +71,10 @@ function collectSteps(ctx: TemplateContext, declaredScripts: DeclaredScripts): S
 
 /** The production commands the project defines: the README, AGENTS.md and the CLI summary print them. */
 export function collectProductionSteps(ctx: TemplateContext): ScriptStep[] {
-  return collectSteps(ctx, declaredProductionScripts);
+  return collectSteps(ctx, 'productionScripts');
 }
 
 /** The commands that start an app the root `dev` does not: the README, AGENTS.md and the CLI summary print them. */
 export function collectDevelopmentSteps(ctx: TemplateContext): ScriptStep[] {
-  return collectSteps(ctx, declaredDevelopmentScripts);
+  return collectSteps(ctx, 'developmentScripts');
 }

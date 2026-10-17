@@ -11,24 +11,26 @@ const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 
 const NODE_TYPES_VERSION = '^22';
 
 /** A production script whose sentence changes when a turborepo root runs it in every app. */
-const rootProductionScript = (script: string, description: string, everyAppDescription: string) => [
+const rootProductionScript = (script: string, description: string, turborepoDescription: string) => [
   $when({ repo: 'single' }, { script, description }),
-  $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
+  $when({ repo: 'turborepo' }, { script, description: turborepoDescription }),
 ];
 
-const BUILD_FOR_PRODUCTION = rootProductionScript('build', 'Build for production', 'Build every app for production');
-const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', 'Start every app');
+const BUILD_FOR_PRODUCTION = rootProductionScript(
+  'build',
+  'Build for production',
+  'Build every app that has a build script',
+);
+const START_PRODUCTION_SERVER = rootProductionScript(
+  'start',
+  'Start the production server',
+  'Start every app that has a start script',
+);
 
-// turbo's stream UI gives a task no terminal: Expo prints no QR code and takes no key press, so its dev server runs outside `turbo dev`.
+// turbo's stream UI gives a task no terminal: Expo prints no QR code and takes no key press, so in a turborepo its dev server is not
+// the `dev` script, which `turbo dev` runs in every app. A single repo runs no turbo, and `dev` is the root dev step.
 const START_EXPO_DEV_SERVER = [
-  $when({ repo: 'single' }, { script: 'dev:expo', description: 'Start the Expo dev server' }),
-  $when(
-    { repo: 'turborepo' },
-    {
-      script: 'dev:expo',
-      description: 'Start the Expo dev server, which the root dev leaves out (turbo has no terminal for it)',
-    },
-  ),
+  $when({ repo: 'turborepo' }, { script: 'dev:expo', description: 'Start the Expo dev server' }),
 ];
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
@@ -277,7 +279,8 @@ export const META: Meta = {
           '@types/react': '~19.2.4',
         },
         scripts: {
-          'dev:expo': 'expo start',
+          dev: $when({ repo: 'single' }, 'expo start'),
+          'dev:expo': $when({ repo: 'turborepo' }, 'expo start'),
           android: 'expo start --android',
           ios: 'expo start --ios',
           web: 'expo start --web',

@@ -1,3 +1,3 @@
 Tailwind CSS classes style React Native components through the `className` prop. The stylesheet is `src/styles/globals.css`, imported once by `src/app/_layout.tsx`; classes come from `tailwind.config.js` (Tailwind 3, with the `nativewind/preset`), and `metro.config.js` and `babel.config.js` wire NativeWind in.
 Use only classes the Tailwind config defines: the default palette and the colors added under `theme.extend` (a class with no definition is silently ignored). `darkMode: 'class'` is set because `react-native-css-interop` throws `Cannot manually set color scheme` on web with the default `media` mode; keep it.
-After a change to `tailwind.config.js`, `babel.config.js` or `metro.config.js`, restart the dev server with `{{#inDirectory "apps" appName}}{{packageRunner}} expo start --clear{{/inDirectory}}`.
+After a change to `tailwind.config.js`, `babel.config.js` or `metro.config.js`, restart the dev server with `{{> expo/dev-server args="--clear"}}`.

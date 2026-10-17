@@ -132,6 +132,8 @@ export interface MetaAddon {
   postGenerate?: PostGenerateStep[];
   /** The scripts this addon adds that build, serve or ship an app, in the order a user runs them. */
   productionScripts?: Conditional<DescribedScript>[];
+  /** The scripts this addon adds that start an app for development and that the turborepo root dev does not run. */
+  developmentScripts?: Conditional<DescribedScript>[];
 }
 
 export interface MetaProjectCategory {

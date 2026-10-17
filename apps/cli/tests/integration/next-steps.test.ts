@@ -116,13 +116,15 @@ describe('next steps printed by the summary, the README and AGENTS.md', () => {
     await expectEveryPrintedScriptToExist(generated);
   });
 
-  test('an Expo single repo has no dev script, so every document tells to start the Expo dev server instead', async () => {
+  test('an Expo single repo starts its dev server with dev and has no start, so no document tells to run one', async () => {
     const generated = await generate('expo-single', ['--app', 'mobile:expo']);
 
     for (const text of [generated.readme, generated.agents, generated.stdout]) {
-      expect(text).toContain('npm run dev:expo');
-      expect(text).not.toMatch(/npm run (dev|start)(?![:\w])/);
+      expect(text).toContain('npm run dev');
+      expect(text).not.toContain('dev:expo');
+      expect(text).not.toContain('npm run start');
     }
+    expect(generated.agents).toContain('npm run dev -- --go');
     await expectEveryPrintedScriptToExist(generated);
   });
 
