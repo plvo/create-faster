@@ -90,6 +90,17 @@ describe('an admin cannot change their own role', () => {
     expect((refusal as Error).message).toBe('You cannot change your own role');
   });
 
+  // better-auth coerces userId to a string after the hooks run, so ['admin-1'] reaches the endpoint as 'admin-1'.
+  test('an id sent as an array is the same user', async () => {
+    for (const request of [
+      { path: '/admin/set-role', body: { userId: ['admin-1'], role: 'user' } },
+      { path: '/admin/update-user', body: { userId: ['admin-1'], data: { role: 'user' } } },
+    ]) {
+      const refusal = await hook.handler({ ...request, session: self }).catch((error: Error) => error);
+      expect((refusal as Error).message, request.path).toBe('You cannot change your own role');
+    }
+  });
+
   test('setting the role of another user goes through', async () => {
     await expect(
       hook.handler({ path: '/admin/set-role', body: { userId: 'user-2', role: 'admin' }, session: self }),

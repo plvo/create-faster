@@ -13,7 +13,7 @@ export const refuseOwnRoleChange = {
           (ctx.path === '/admin/update-user' && Object.hasOwn(ctx.body?.data ?? {}, 'role')),
         handler: createAuthMiddleware(async (ctx) => {
           const session = await getSessionFromCtx(ctx);
-          if (session && ctx.body?.userId === session.user.id) {
+          if (session && String(ctx.body?.userId) === session.user.id) {
             throw new APIError('BAD_REQUEST', { message: 'You cannot change your own role' });
           }
         }),
