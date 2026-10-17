@@ -53,7 +53,7 @@ const PORTLESS_SCRIPTS = [
   {
     stack: 'expo',
     dev: undefined,
-    start: 'portless run expo start',
+    start: undefined,
   },
 ];
 

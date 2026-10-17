@@ -43,7 +43,10 @@ Generated with create-faster. Turborepo monorepo.
 - Package manager: {{pm}}
 
 ## Scripts
-- `{{runScript "dev"}}` — run all apps via Turborepo
+- `{{runScript "dev"}}` — run {{#if (developmentSteps)}}the apps that have a `dev` script{{else}}all apps{{/if}} via Turborepo
+{{#each (developmentSteps)}}
+- `{{command}}` — {{description}}
+{{/each}}
 {{#each (productionSteps)}}
 - `{{command}}` — {{description}}
 {{/each}}

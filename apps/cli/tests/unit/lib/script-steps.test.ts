@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
-import { collectProductionSteps } from '@/lib/production-steps';
+import { collectDevelopmentSteps, collectProductionSteps } from '@/lib/script-steps';
 import type { TemplateContext } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
 
@@ -23,8 +23,8 @@ function turborepo(stacks: StackName[], deployment?: string): TemplateContext {
   };
 }
 
-function commands(ctx: TemplateContext): string[] {
-  return collectProductionSteps(ctx).map(({ command }) => command);
+function commands(ctx: TemplateContext, collect = collectProductionSteps): string[] {
+  return collect(ctx).map(({ command }) => command);
 }
 
 describe('collectProductionSteps', () => {
@@ -57,10 +57,8 @@ describe('collectProductionSteps', () => {
     expect(commands({ ...singleRepo('nextjs'), pm: 'bun' })).toEqual(['bun run build', 'bun run start']);
   });
 
-  test('an Expo app starts its dev server, which its description says', () => {
-    expect(collectProductionSteps(singleRepo('expo'))).toEqual([
-      { description: 'Start the Expo dev server', command: 'npm run start' },
-    ]);
+  test('an Expo app has nothing to build or serve in production', () => {
+    expect(collectProductionSteps(singleRepo('expo'))).toEqual([]);
   });
 
   test('a turborepo root runs its build and start in every app, which the description says', () => {
@@ -110,6 +108,39 @@ describe('collectProductionSteps', () => {
       ]);
     } finally {
       Object.assign(stack, { productionScripts: declared });
+    }
+  });
+
+  test('the root start of a turborepo never lists the dev server of an Expo app', () => {
+    expect(commands(turborepo(['nextjs', 'expo']))).toEqual(['npm run build', 'npm run start']);
+  });
+});
+
+describe('collectDevelopmentSteps', () => {
+  test('an Expo single repo starts its dev server from the root', () => {
+    expect(commands(singleRepo('expo'), collectDevelopmentSteps)).toEqual(['npm run dev:expo']);
+  });
+
+  test('an Expo app of a turborepo starts from its own directory, and says the root dev leaves it out', () => {
+    const steps = collectDevelopmentSteps(turborepo(['nextjs', 'expo']));
+
+    expect(steps.map(({ command }) => command)).toEqual(['(cd apps/docs && npm run dev:expo)']);
+    expect(steps[0]?.description).toContain('root dev');
+  });
+
+  test('a stack without a declared development script has none', () => {
+    expect(collectDevelopmentSteps(turborepo(['nextjs', 'hono']))).toEqual([]);
+  });
+
+  test('prints the scripts a stack declares in META and no other', () => {
+    const stack = META.stacks.nextjs;
+    Object.assign(stack, { developmentScripts: [{ script: 'analyze', description: 'Analyze the bundle' }] });
+    try {
+      expect(collectDevelopmentSteps(singleRepo('nextjs'))).toEqual([
+        { description: 'Analyze the bundle', command: 'npm run analyze' },
+      ]);
+    } finally {
+      Object.assign(stack, { developmentScripts: undefined });
     }
   });
 });

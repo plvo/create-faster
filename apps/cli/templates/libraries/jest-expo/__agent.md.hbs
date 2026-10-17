@@ -1,0 +1,5 @@
+Tests run with Jest and the `jest-expo` preset, and render with React Native Testing Library (`render` is asynchronous: `await render(...)`). Specs live in `tests/unit/`.
+Run them with `{{#inDirectory "apps" appName}}{{runScript "test"}}{{/inDirectory}}` (`{{runScript "test:watch"}}` in watch mode).
+{{#if (eq pm "bun")}}
+`jest.config.js` lets bun's `.bun` store through `transformIgnorePatterns`, because `jest-expo` only knows pnpm's `.pnpm`; keep the entry when adding to the list.
+{{/if}}

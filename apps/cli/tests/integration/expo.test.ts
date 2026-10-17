@@ -1,12 +1,21 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import {
+  cleanupTempDir,
+  createTempDir,
+  fileExists,
+  printedScriptsMissingFrom,
+  readJsonFile,
+  readTextFile,
+  runCli,
+} from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
 interface PackageJson {
   main?: string;
+  scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 }
@@ -97,6 +106,11 @@ describe('Expo app', () => {
       expect(babel).toContain("'nativewind/babel'");
     });
 
+    test('sets the dark mode to class, which react-native-css-interop needs to set the color scheme on web', async () => {
+      const config = await readTextFile(join(projectPath, 'tailwind.config.js'));
+      expect(config).toContain("darkMode: 'class'");
+    });
+
     test('declares every package its babel and runtime setup resolves from the app root', async () => {
       const pkg = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
       expect(pkg.dependencies).toHaveProperty(['react-native-css-interop']);
@@ -143,6 +157,75 @@ describe('Expo app', () => {
       const pnpmPath = await generate('expo-jest-pnpm', ['--app', 'expo-jest-pnpm:expo:jest-expo'], 'pnpm');
       const jestConfig = await readTextFile(join(pnpmPath, 'jest.config.js'));
       expect(jestConfig).not.toContain('transformIgnorePatterns');
+    });
+  });
+
+  describe('next to a Next.js app in a turborepo', () => {
+    const MOBILE_START = '(cd apps/mobile && bun run dev:expo)';
+    let projectPath: string;
+    let summary: string;
+
+    beforeAll(async () => {
+      const result = await runCli(
+        [
+          'expo-next-turbo',
+          '--app',
+          'mobile:expo:nativewind,jest-expo',
+          '--app',
+          'web:nextjs',
+          '--no-git',
+          '--no-install',
+          '--pm',
+          'bun',
+        ],
+        tempDir,
+      );
+      expect(result.exitCode).toBe(0);
+      summary = result.stdout;
+      projectPath = join(tempDir, 'expo-next-turbo');
+    });
+
+    test('leaves the Expo app out of the root dev and start, which turbo runs without a terminal', async () => {
+      const root = await readJsonFile<PackageJson>(join(projectPath, 'package.json'));
+      const mobile = await readJsonFile<PackageJson>(join(projectPath, 'apps/mobile/package.json'));
+      const web = await readJsonFile<PackageJson>(join(projectPath, 'apps/web/package.json'));
+
+      expect(root.scripts?.dev).toBe('turbo dev');
+      expect(root.scripts?.start).toBe('turbo start');
+      expect(mobile.scripts).not.toHaveProperty(['dev']);
+      expect(mobile.scripts).not.toHaveProperty(['start']);
+      expect(mobile.scripts?.['dev:expo']).toBe('expo start');
+      expect(web.scripts).toHaveProperty(['dev']);
+      expect(web.scripts).toHaveProperty(['start']);
+    });
+
+    test('prints the command that starts the Expo app from the root, in the summary, the README and AGENTS.md', async () => {
+      const readme = await readTextFile(join(projectPath, 'README.md'));
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+
+      for (const text of [summary, readme, agents]) {
+        expect(text).toContain(MOBILE_START);
+        expect(text).toContain('root dev');
+        expect(await printedScriptsMissingFrom(projectPath, text)).toEqual([]);
+      }
+    });
+
+    test('tells the Expo app how to start, switch to Expo Go, and what NativeWind, jest-expo and expo-doctor do', async () => {
+      const agents = await readTextFile(join(projectPath, 'apps/mobile/AGENTS.md'));
+
+      expect(agents).toContain('cd apps/mobile && bun run dev:expo');
+      expect(agents).toContain('Expo Go');
+      expect(agents).toContain("darkMode: 'class'");
+      expect(agents).toContain('bun run test');
+      for (const duplicate of ['expo-doctor', 'expo-constants', 'expo-font', 'expo-linking']) {
+        expect(agents).toContain(duplicate);
+      }
+    });
+
+    test('does not tell a project that installs no duplicates to expect them', async () => {
+      const npmPath = await generate('expo-next-turbo-npm', ['--app', 'mobile:expo', '--app', 'web:nextjs'], 'npm');
+      const agents = await readTextFile(join(npmPath, 'apps/mobile/AGENTS.md'));
+      expect(agents).not.toContain('expo-doctor');
     });
   });
 
