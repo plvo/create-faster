@@ -1,0 +1,11 @@
+Sign-up is open and gives every account the `user` role, and `/admin` is for admins only, so the first admin is promoted by hand. The seed is no way to get one: it writes the local database only, and its `admin@example.com` account has a demo password. Once the Worker is deployed:
+
+1. Sign up at `/signup` on the production URL, with the email you will use.
+2. Promote that account in the production database:
+
+   ```bash
+   {{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler d1 execute DB --remote --command "UPDATE users SET role = 'admin' WHERE email = lower('<your email>')"{{/inDirectory}}
+   ```
+
+   Better Auth stores emails in lower case, hence `lower(...)`; double any `'` in the email, as SQL requires. The command prints `"changes": 1` when it found the account and `"changes": 0` when no account has that email (sign up first, and check the spelling). Wrangler asks for a confirmation in a terminal and takes the answer yes without one.
+3. Reload the app: the role is read from the database on every request, so a session that is already signed in sees `/admin` open, without signing in again. From there an admin changes the role of any other user, so this command runs once.

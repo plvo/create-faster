@@ -3,5 +3,16 @@
 ## Deploying with Cloudflare D1
 
 {{> cloudflare/d1-provisioning deploy=scripts}}
+{{> cloudflare/production-url}}
+{{#if (eq blueprint "cloudflare-fullstack-nextjs")}}
+
+### First admin
+
+{{> cloudflare/first-admin}}
+{{#if (ne agentContext false)}}
+
+The whole first deploy of this project, in order, is in [`docs/agents/cloudflare-deploy.md`](docs/agents/cloudflare-deploy.md).
+{{/if}}
+{{/if}}
 
 {{/if}}

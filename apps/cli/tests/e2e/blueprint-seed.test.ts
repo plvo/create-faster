@@ -89,6 +89,39 @@ describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
     });
   });
 
+  // The deploy notes promote the first admin of a deployed app with a remote D1 command. The same command, aimed
+  // at the local database the setup seeded, has to find the account and change its role.
+  describe('first admin promotion of the deploy notes', () => {
+    const PROMOTED_ACCOUNT = 'manager@example.com';
+
+    test('the documented command promotes an existing account to admin', async () => {
+      const notes = await readFile(join(projectDir, 'docs/agents/cloudflare-deploy.md'), 'utf8');
+      const documented = notes.match(/\(cd apps\/web && (bunx wrangler d1 execute DB --remote --command "[^"\n]*")\)/)?.[1];
+      expect(documented, 'a promote command in cloudflare-deploy.md').toBeDefined();
+
+      const webDir = join(projectDir, 'apps/web');
+      const localState = join(projectDir, '.wrangler');
+      const roleOf = async (): Promise<string> => {
+        const query = await runCommand(
+          ['bunx', 'wrangler', 'd1', 'execute', 'DB', '--local', '--persist-to', localState, '--json', '--command', `SELECT role FROM users WHERE email = '${PROMOTED_ACCOUNT}'`],
+          webDir,
+        );
+        expect(query.exitCode, describeFailure(query)).toBe(0);
+        const [statement] = JSON.parse(query.stdout) as { results: { role: string }[] }[];
+        return statement?.results[0]?.role ?? 'no such account';
+      };
+      expect(await roleOf()).toBe('manager');
+
+      const promote = documented!
+        .replace('<your email>', PROMOTED_ACCOUNT.toUpperCase())
+        .replace('--remote', `--local --persist-to ${localState}`);
+      const result = await runCommand(['sh', '-c', promote], webDir);
+      expect(result.exitCode, describeFailure(result)).toBe(0);
+
+      expect(await roleOf()).toBe('admin');
+    }, TIMEOUT_SETUP);
+  });
+
   // Client components render on the server without the request cookies, so a protected query they read has to be
   // prefetched by the page: a hard reload of an admin page answered 500 "You must be logged in" otherwise.
   describe('dashboard pages on a hard reload', () => {

@@ -10,9 +10,10 @@ Provision the production database once, before the first deploy. Wrangler needs 
 2. Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID`.
 {{#if project.orm}}
 
-3. Apply the migrations to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
+3. Generate the migrations (the template ships none; running `db:generate` again changes nothing when they exist) and apply them to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
 
    ```bash
+   {{runScript "db:generate"}}
    {{runScript "db:migrate"}}
 {{#if (hasRootScript "db:seed")}}
    {{runScript "db:seed"}}
@@ -36,6 +37,7 @@ Provision the production database once, before the first deploy. Wrangler needs 
 {{/if}}
 {{/each}}
    - Create every other resource a `wrangler.jsonc` binds (an R2 bucket, a KV namespace), declining Wrangler's offer to add the binding itself as in step 1.
+   {{> cloudflare/production-url pointer=true}}
 
    Then run the build and deploy commands listed under **{{deploy}}**, except `preview`, which keeps running.
 {{/if}}

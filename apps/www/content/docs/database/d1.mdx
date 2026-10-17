@@ -30,9 +30,9 @@ The generated README and `AGENTS.md` list these steps with the exact commands of
 
 1. Create the database: `npx wrangler d1 create {projectName}-db --no-update-config`. In a Turborepo run it from an app directory, `(cd apps/<app> && npx wrangler d1 create ...)`: the root links no Wrangler. `--no-update-config` stops Wrangler from offering to add the binding to `wrangler.jsonc` itself; accepting would add a second binding named after the database next to `DB`, which the code never reads.
 2. Paste the printed `database_id` (keep the binding `DB`) into `wrangler.jsonc`, in every app of a Turborepo.
-3. Run `db:migrate` again (and `db:seed` if you had seeded). Miniflare keys the local D1 file by `database_id`, so the real id switches local development to a new, empty database until it is migrated.
+3. Run `db:generate` (the template ships no migration; it changes nothing when they exist) and `db:migrate` again (and `db:seed` if you had seeded). Miniflare keys the local D1 file by `database_id`, so the real id switches local development to a new, empty database until it is migrated.
 4. Run `db:migrate:remote` to create the tables in the production database (the Turborepo root script runs it inside `packages/db`). Without it the deployed app fails with `no such table`.
-5. Set what `wrangler.jsonc` requires, then deploy: a deploy fails until every name under `secrets.required` is set (Better Auth adds `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`) and every other bound resource, such as an R2 bucket, exists. Then run the build and deploy commands of the generated README.
+5. Set what `wrangler.jsonc` requires, then deploy: a deploy fails until every name under `secrets.required` is set (Better Auth adds `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`, the production URL of the Worker, which [Cloudflare](/docs/deployment/cloudflare#production-url) shows how to learn before the first deploy) and every other bound resource, such as an R2 bucket, exists. Then run the build and deploy commands of the generated README.
 
 **`src/lib/db/index.ts` — factory, not singleton:**
 
