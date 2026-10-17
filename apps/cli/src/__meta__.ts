@@ -1,5 +1,5 @@
 import { $when } from '@/lib/when';
-import type { EnvVar, FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
+import type { EnvThirdParty, EnvVar, FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
@@ -79,6 +79,12 @@ const RUN_LOCAL_SETUP: FirstRunStep[] = [
   { description: 'Set up the local database and seed demo data', commands: [{ script: 'local-setup' }] },
 ];
 
+const POSTHOG_TOKEN_SOURCE: EnvThirdParty = {
+  description: 'PostHog project token',
+  url: 'https://us.posthog.com/settings/project',
+  whenBlank: 'analytics stay off and nothing is sent to PostHog',
+};
+const PRIVY_DASHBOARD_URL = 'https://dashboard.privy.io';
 const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
 
 const ORG_DASHBOARD_WEB_LIBRARIES = [
@@ -663,14 +669,16 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          value: 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=',
           monoScope: ['app'],
           stacks: ['nextjs'],
+          thirdParty: POSTHOG_TOKEN_SOURCE,
         },
         {
-          value: 'VITE_POSTHOG_PROJECT_TOKEN=phc_your-posthog-project-token',
+          value: 'VITE_POSTHOG_PROJECT_TOKEN=',
           monoScope: ['app'],
           stacks: ['tanstack-start'],
+          thirdParty: POSTHOG_TOKEN_SOURCE,
         },
       ],
     },
@@ -1310,17 +1318,32 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_PRIVY_APP_ID=replace-with-privy-app-id',
+          value: 'NEXT_PUBLIC_PRIVY_APP_ID=',
           monoScope: ['app'],
+          thirdParty: {
+            description: 'Privy app ID',
+            url: PRIVY_DASHBOARD_URL,
+            whenBlank: 'the app shows a setup message instead of the wallet UI',
+          },
         },
         {
-          value: 'NEXT_PUBLIC_PRIVY_CLIENT_ID=your-privy-client-id',
+          value: 'NEXT_PUBLIC_PRIVY_CLIENT_ID=',
           monoScope: ['app'],
+          thirdParty: {
+            description: 'Privy client ID (optional)',
+            url: PRIVY_DASHBOARD_URL,
+            whenBlank: 'Privy uses the settings of the app itself',
+          },
         },
         {
-          value: 'PRIVY_APP_SECRET=your-privy-app-secret',
+          value: 'PRIVY_APP_SECRET=',
           monoScope: ['app'],
           secret: true,
+          thirdParty: {
+            description: 'Privy app secret',
+            url: PRIVY_DASHBOARD_URL,
+            whenBlank: 'a request that carries a `privy-token` cookie fails with an error naming this variable',
+          },
         },
       ],
     },
@@ -1361,8 +1384,13 @@ export const META: Meta = {
       },
       envs: [
         {
-          value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id',
+          value: 'NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=',
           monoScope: ['app'],
+          thirdParty: {
+            description: 'WalletConnect (Reown) project ID',
+            url: 'https://dashboard.reown.com',
+            whenBlank: 'the app shows a setup message instead of the wallet UI',
+          },
         },
       ],
     },

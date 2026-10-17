@@ -64,10 +64,10 @@ src/
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_PRIVY_APP_ID` | Privy application ID (from [Privy dashboard](https://dashboard.privy.io)) |
-| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | Privy client ID |
-| `PRIVY_APP_SECRET` | Server-side Privy secret for token verification |
+| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | Privy client ID of an app client, optional (same dashboard) |
+| `PRIVY_APP_SECRET` | Server-side Privy secret for token verification (same dashboard) |
 
-The placeholder app ID in `.env.example` has the 25 characters the Privy SDK checks, so the first `build` passes. It is not a real app: replace it with your own ID before running the app.
+`.env.example` leaves all three blank, because they come from your own Privy account and a made-up value would start the SDK against an app that does not exist. While `NEXT_PUBLIC_PRIVY_APP_ID` is blank the app shows a setup message that names the variable and the dashboard instead of the wallet UI, so `build` and `dev` run with a clean console. A request that carries a `privy-token` cookie fails with an error naming `PRIVY_APP_SECRET` while that one is blank. The generated `README.md` and `AGENTS.md` list the same sources.
 
 ## CLI usage
 

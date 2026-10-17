@@ -16,7 +16,7 @@ const DAPP_ENV_FILES = [
   {
     blueprint: 'dapp-rainbowkit-nextjs',
     file: 'src/lib/wagmi.ts',
-    variables: ['NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID'],
+    variables: [],
   },
 ];
 
@@ -32,7 +32,7 @@ describe('dapp blueprint sources that read the environment', () => {
   });
 
   for (const { blueprint, file, variables } of DAPP_ENV_FILES) {
-    test(`${blueprint} names each variable in an error instead of asserting it is set`, async () => {
+    test(`${blueprint} never asserts an environment read is set, and names each variable it requires in an error`, async () => {
       const result = await runCli(
         [blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'],
         tempDir,

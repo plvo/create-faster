@@ -9,6 +9,13 @@ type AddonMono = { scope: 'app' } | { scope: 'pkg'; name: string } | { scope: 'r
 
 export type EnvScope = 'app' | 'root' | { pkg: string };
 
+/** Where the user gets the value of an id that belongs to a third-party account, and what the app does while it is blank. */
+export interface EnvThirdParty {
+  description: string;
+  url: string;
+  whenBlank: string;
+}
+
 export interface EnvVar {
   value: string;
   monoScope: EnvScope[];
@@ -20,6 +27,8 @@ export interface EnvVar {
   tasks?: string[];
   /** A command that prints a value for the variable; the first-run steps tell to run it and set the variable in the `.env` of each app that reads it. The CLI never writes the value. */
   generateCommand?: string;
+  /** The variable is an id of the user's own third-party account: committed blank, `.env.example` names the source in a comment, and the READMEs and `AGENTS.md` list it with what the app does while it is blank (`thirdPartyEnvs` helper). */
+  thirdParty?: EnvThirdParty;
 }
 
 export type FirstRunCommand = { command: string } | { script: string };
