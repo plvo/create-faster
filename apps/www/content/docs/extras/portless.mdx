@@ -18,6 +18,8 @@ Portless wraps your dev commands so each app is accessible via a named HTTPS dom
 
 For example, a Next.js app's `dev` becomes `portless run next dev`, and a Hono app's becomes `portless run bun run --hot src/index.ts`.
 
+Wrangler reads no port variable, so a Hono app on the [Cloudflare](/docs/deployment/cloudflare) deployment runs `wrangler dev` from an `sh -c` that expands `PORT` itself: its `dev` becomes `portless run sh -c 'wrangler dev --port=${PORT:-${2:-3000}} --persist-to ./.wrangler' sh`, and the Worker listens on the port portless assigns.
+
 - `dev` is wrapped in place — portless auto-detects the domain from the project context
 - `start` is left untouched (production use), a separate `start:portless` script is added for local testing
 - `--port` flags are stripped automatically since portless manages port assignment via the `PORT` environment variable

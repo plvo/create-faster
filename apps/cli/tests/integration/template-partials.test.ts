@@ -84,7 +84,7 @@ describe('Templates rendered through partials', () => {
         'cloudflare',
       ]);
       expect(await readTextFile(join(path, 'wrangler.jsonc'))).toBe(
-        d1Wrangler('cf-hono-d1', 'src/index.ts', WORKER_FLAGS, ',\n  "dev": { "port": 3000 }', 'drizzle'),
+        d1Wrangler('cf-hono-d1', 'src/index.ts', WORKER_FLAGS, '', 'drizzle'),
       );
     });
 

@@ -116,9 +116,9 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 `preview` and `deploy` are per-app scripts: run them from the app directory (`cd apps/<app>`). Hono apps: {{> cloudflare/app-list stack="hono"}}.
 
 {{/if}}
-- `{{runScript "dev"}}` — `wrangler dev` on the app port, so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
+- `{{runScript "dev"}}` — `wrangler dev` on the app port (`PORT` overrides it), so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
 - `{{runAppScript "deploy"}}` — `wrangler deploy`
-- `{{runAppScript "preview"}}` — `wrangler dev` without `--port`: the same runtime and local state as `dev`, on {{#if (isMono)}}Wrangler's default port{{else}}the `dev.port` of `wrangler.jsonc`{{/if}}
+- `{{runAppScript "preview"}}` — `wrangler dev` without `--port`: the same runtime and local state as `dev`, on Wrangler's default port
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or, for the first deploy of a new Worker, `wrangler deploy --secrets-file .prod.env`. The runtime secrets of an app are listed in `wrangler.jsonc` under `secrets.required`: a deploy fails until each is set, and a local run warns about a missing one.

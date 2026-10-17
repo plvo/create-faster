@@ -4,6 +4,10 @@ import type { StackName } from '@/types/stack-name';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
 
+// A Hono app is a Worker only under `cloudflare`. Under `cloudflare-static` it gets no `wrangler.jsonc` (the deployment serves Next.js and TanStack Start), so it keeps its Node or Bun server,
+// where `RUNS_NODE_SERVER` would drop it.
+const NOT_A_WORKER: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
+
 const NODE_TYPES_VERSION = '^22';
 
 /** A production script whose sentence changes when a turborepo root runs it in every app. */
@@ -55,6 +59,13 @@ const BUNDLE_FOR_NODE = `esbuild src/index.ts --bundle --platform=node --target=
 const INLINE_PRODUCTION_NODE_ENV = '--define:process.env.NODE_ENV=\\"production\\"';
 
 const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts';
+
+// Every Worker of a project reads and writes the local D1, KV and R2 state of the repo root.
+const WRANGLER_PERSIST_STATE = '--persist-to {{workspaceRoot}}/.wrangler';
+
+// Wrangler reads no port variable, so the script expands `PORT` itself, in the `sh` it hands to portless (which sets `PORT` and quotes its arguments).
+// The app port rides as the `--port {{port}}` argument ($2): a turborepo keeps it, a single repo and portless strip it, and 3000 is the single repo default.
+const HONO_WORKER_DEV = `sh -c 'wrangler dev --port=\${PORT:-\${2:-3000}} ${WRANGLER_PERSIST_STATE}' sh --port {{port}}`;
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
 
@@ -177,15 +188,12 @@ const wrapWithPortless = (cmd: string): string => {
   return `${envAssignments}portless run ${command}`;
 };
 
-// A Hono app on cloudflare is a Worker: Wrangler runs it in `dev` and `preview`, and no Node or Bun server exists.
-const HONO_RUNS_SERVER: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
-
 const HONO_ON_NODE: PackageJsonConfig = {
-  dependencies: { '@hono/node-server': $when(HONO_RUNS_SERVER, '^2.1.5') },
-  devDependencies: { tsx: $when(HONO_RUNS_SERVER, TSX_VERSION) },
+  dependencies: { '@hono/node-server': $when(NOT_A_WORKER, '^2.1.5') },
+  devDependencies: { tsx: $when(NOT_A_WORKER, TSX_VERSION) },
   scripts: {
-    dev: $when(HONO_RUNS_SERVER, 'tsx watch src/server.ts --port {{port}}'),
-    start: $when(HONO_RUNS_SERVER, 'NODE_ENV=production tsx src/server.ts --port {{port}}'),
+    dev: 'tsx watch src/server.ts --port {{port}}',
+    start: $when(NOT_A_WORKER, 'NODE_ENV=production tsx src/server.ts --port {{port}}'),
   },
 };
 
@@ -285,8 +293,8 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
-          dev: $when(HONO_RUNS_SERVER, 'bun run --port {{port}} --hot src/index.ts'),
-          start: $when(HONO_RUNS_SERVER, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
+          dev: 'bun run --port {{port}} --hot src/index.ts',
+          start: $when(NOT_A_WORKER, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
         },
       },
       packageManagerPackageJson: {
@@ -774,9 +782,9 @@ export const META: Meta = {
           stackPackageJson: {
             hono: {
               scripts: {
-                dev: 'wrangler dev --port {{port}} --persist-to {{workspaceRoot}}/.wrangler',
+                dev: HONO_WORKER_DEV,
                 deploy: 'wrangler deploy',
-                preview: 'wrangler dev --persist-to {{workspaceRoot}}/.wrangler',
+                preview: `wrangler dev ${WRANGLER_PERSIST_STATE}`,
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
                 postinstall: CLOUDFLARE_TYPEGEN,
               },
@@ -800,7 +808,7 @@ export const META: Meta = {
               },
               scripts: {
                 'build:cf': `${CLOUDFLARE_TYPEGEN} && opennextjs-cloudflare build`,
-                preview: 'opennextjs-cloudflare preview -- --persist-to {{workspaceRoot}}/.wrangler',
+                preview: `opennextjs-cloudflare preview -- ${WRANGLER_PERSIST_STATE}`,
                 deploy: 'opennextjs-cloudflare deploy',
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
                 postinstall: CLOUDFLARE_TYPEGEN,
