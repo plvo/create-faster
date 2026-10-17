@@ -14,6 +14,8 @@ interface LambdaProbe {
   /** `typeof` the export, `function` for a valid handler. */
   type: string;
   response?: LambdaHttpResponse;
+  /** What Node printed while loading the bundle, a module-type warning for one. */
+  stderr: string;
 }
 
 // A Lambda function URL request (API Gateway payload v2), what sst.aws.Function with `url: true` receives.
@@ -126,5 +128,5 @@ export async function probeLambdaHandler(bundle: string, exportName: string, eve
 
   const result = await runCommand(args, workDir);
   if (result.exitCode !== 0) throw new Error(`Probing ${exportName} in ${bundle} failed:\n${result.stderr}`);
-  return JSON.parse(await readFile(resultPath, 'utf-8'));
+  return { ...JSON.parse(await readFile(resultPath, 'utf-8')), stderr: result.stderr };
 }

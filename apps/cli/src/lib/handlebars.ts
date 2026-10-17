@@ -27,6 +27,7 @@ import {
   getTypeScriptRunner,
 } from './package-manager';
 import { collectProductionSteps } from './production-steps';
+import { resolveBlueprintChain } from './template-resolver';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -36,6 +37,8 @@ const COMPILE_OPTIONS: CompileOptions = {
 };
 
 const PARTIAL_EXTENSION = '.hbs';
+
+const EMPTY_PARTIAL = (): string => '';
 
 export function setupTemplateEngine(partialsDir: string = PARTIALS_DIR): void {
   registerHelpers();
@@ -175,6 +178,18 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('installedBinaryRunner', (options: Handlebars.HelperOptions) => {
     return getInstalledBinaryRunner(options.data.root as TemplateContext);
+  });
+
+  // A partial block cannot fall back for a computed name (`{{#> (name)}}` has no closing tag in Handlebars), so a missing partial resolves to an empty one.
+  Handlebars.registerHelper('blueprintPartial', (name: string, options: Handlebars.HelperOptions) => {
+    const { blueprint } = options.data.root as TemplateContext;
+    if (!blueprint) return EMPTY_PARTIAL;
+    const chain = resolveBlueprintChain(blueprint).reverse();
+    for (const link of chain) {
+      const partial = Handlebars.partials[`blueprints/${link}/${name}`];
+      if (partial) return partial;
+    }
+    return EMPTY_PARTIAL;
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

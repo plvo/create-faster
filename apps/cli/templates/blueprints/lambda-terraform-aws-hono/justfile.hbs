@@ -24,6 +24,7 @@ check env="dev":
     else
         echo "AWS_PROFILE: (not set)"
     fi
+    echo "AWS_REGION: ${AWS_REGION:-(not set)}"
 
     echo ""
     echo "=== Backend State ==="

@@ -51,6 +51,16 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   }
 }
 
+/** Every marker appears in the text, each after the previous one. */
+export function expectInOrder(text: string, markers: string[]): void {
+  let from = 0;
+  for (const marker of markers) {
+    const at = text.indexOf(marker, from);
+    expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
+    from = at + marker.length;
+  }
+}
+
 export async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path);

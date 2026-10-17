@@ -206,9 +206,12 @@ const NODE_ON_NODE: PackageJsonConfig = {
   },
 };
 
-const BUNDLE_LAMBDA_WITH_ESBUILD = (outfile: string, extraFlags = ''): PackageJsonConfig => ({
+// The bundle is an ES module in a package without `"type": "module"`: only an `.mjs` outfile loads as one without Node's MODULE_TYPELESS_PACKAGE_JSON warning.
+const LAMBDA_OUTFILE = 'dist/index.mjs';
+
+const BUNDLE_LAMBDA_WITH_ESBUILD = (extraFlags = ''): PackageJsonConfig => ({
   devDependencies: { esbuild: ESBUILD_VERSION },
-  scripts: { build: `${BUNDLE_FOR_NODE} --outfile=${outfile}${extraFlags}` },
+  scripts: { build: `${BUNDLE_FOR_NODE} --outfile=${LAMBDA_OUTFILE}${extraFlags}` },
 });
 
 export const META: Meta = {
@@ -1423,12 +1426,12 @@ export const META: Meta = {
           '@types/aws-lambda': '^8.10.0',
         },
         scripts: {
-          build: 'bun build src/index.ts --outfile dist/index.js --target node',
+          build: `bun build src/index.ts --outfile ${LAMBDA_OUTFILE} --target node`,
         },
       },
       packageManagerPackageJson: {
-        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
-        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.js'),
+        npm: BUNDLE_LAMBDA_WITH_ESBUILD(),
+        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD(),
       },
     },
     'lambda-terraform-aws-hono': {
@@ -1460,12 +1463,12 @@ export const META: Meta = {
           '@types/aws-lambda': '^8.10.0',
         },
         scripts: {
-          build: 'NODE_ENV=production bun build src/index.ts --outfile dist/index.mjs --target node',
+          build: `NODE_ENV=production bun build src/index.ts --outfile ${LAMBDA_OUTFILE} --target node`,
         },
       },
       packageManagerPackageJson: {
-        npm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs', ` ${INLINE_PRODUCTION_NODE_ENV}`),
-        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD('dist/index.mjs', ` ${INLINE_PRODUCTION_NODE_ENV}`),
+        npm: BUNDLE_LAMBDA_WITH_ESBUILD(` ${INLINE_PRODUCTION_NODE_ENV}`),
+        pnpm: BUNDLE_LAMBDA_WITH_ESBUILD(` ${INLINE_PRODUCTION_NODE_ENV}`),
       },
     },
     'org-dashboard-nextjs': {

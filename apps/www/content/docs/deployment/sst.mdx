@@ -107,5 +107,15 @@ bunx create-faster my-saas \
 Deploy with:
 
 ```bash
+export AWS_PROFILE=my-profile AWS_REGION=eu-west-3
+npx sst install
 npx sst deploy --stage production
 ```
+
+## First deploy
+
+The generated `README.md` has a "Deploying to AWS (SST)" section, in order: the AWS credentials and region, `sst install`, an optional `sst dev`, the secrets, `sst deploy --stage`, and where the URLs are printed (`.sst/outputs.json`). With the [Lambda (SST)](/docs/blueprints/aws/lambda-sst-hono) blueprint it ends with the GitHub Actions setup.
+
+- SST reads the profile from `AWS_PROFILE` (which overrides a `profile` in `sst.config.ts`) and the region from `AWS_REGION`. With no region, it deploys to `us-east-1`. See [IAM credentials](https://sst.dev/docs/iam-credentials/).
+- `sst.config.ts` uses the `$config` global that `sst install` declares in `.sst/platform/config.d.ts`, so a `tsc` run at the root of a turborepo fails with `Cannot find name '$config'` until `sst install` has run. `sst dev` and `sst deploy` run it themselves.
+- The first `sst dev` or `sst deploy` in an AWS account and region bootstraps SST there, once.
