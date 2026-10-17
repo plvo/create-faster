@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { DashboardClient } from './dashboard.client';
+
+export const metadata: Metadata = { title: 'Dashboard' };
 
 export default async function DashboardPage() {
   await requirePermission('contact', 'read');

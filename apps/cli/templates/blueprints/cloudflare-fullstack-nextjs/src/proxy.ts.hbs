@@ -1,0 +1,8 @@
+---
+mono:
+  scope: app
+  path: src/proxy.ts
+deploymentPath:
+  cloudflare: src/middleware.ts
+---
+{{> auth/request-path-proxy}}

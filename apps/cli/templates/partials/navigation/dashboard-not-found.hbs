@@ -1,0 +1,29 @@
+{{!-- The whole file of the not found page shown inside the dashboard layout, imports included.
+It renders inside the layout's main, so it has no main of its own. --}}
+{{#if (eq stackName "tanstack-start")}}
+import { Link } from '@tanstack/react-router';
+{{else}}
+import Link from 'next/link';
+{{/if}}
+
+{{#if (eq stackName "tanstack-start")}}
+export function DashboardNotFound() {
+{{else}}
+export default function DashboardNotFound() {
+{{/if}}
+  return (
+    <section className='flex min-h-[50vh] flex-col items-center justify-center gap-2 text-center'>
+      <h1 className='text-2xl font-semibold'>Page not found</h1>
+      <p className='text-muted-foreground'>The page you are looking for does not exist.</p>
+{{#if (eq stackName "tanstack-start")}}
+      <Link to='/' className='text-sm underline underline-offset-4'>
+        Back to the dashboard
+      </Link>
+{{else}}
+      <Link href='/' className='text-sm underline underline-offset-4'>
+        Back to the dashboard
+      </Link>
+{{/if}}
+    </section>
+  );
+}

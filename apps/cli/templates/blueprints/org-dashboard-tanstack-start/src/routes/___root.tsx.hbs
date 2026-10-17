@@ -49,7 +49,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Toaster richColors />
         </ThemeProvider>
         <TanStackDevtools
-          config={{ position: 'top-left' }}
+          config={{ position: 'bottom-right' }}
           plugins={[
             { name: 'TanStack Router', render: <TanStackRouterDevtoolsPanel /> },
             { name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> },

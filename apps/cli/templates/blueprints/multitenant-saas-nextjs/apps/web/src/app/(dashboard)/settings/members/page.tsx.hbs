@@ -4,10 +4,13 @@ mono:
   scope: app
   path: src/app/(dashboard)/settings/members/page.tsx
 ---
+import type { Metadata } from 'next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/ui/components/ui/tabs';
 import { InviteDialog } from '@/components/members/invite-dialog';
 import { MembersTable } from '@/components/members/members-table';
 import { PendingInvitationsTable } from '@/components/members/pending-invitations-table';
+
+export const metadata: Metadata = { title: 'Members' };
 
 {{{{raw}}}}
 export default function MembersPage() {

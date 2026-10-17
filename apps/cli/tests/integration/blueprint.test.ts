@@ -279,7 +279,8 @@ describe('Blueprint generation - org-dashboard-nextjs', () => {
     const layoutContent = await readTextFile(join(projectPath, 'apps/web/src/app/(dashboard)/layout.tsx'));
     expect(layoutContent).toContain('await requireSession()');
     const sessionContent = await readTextFile(join(projectPath, 'apps/web/src/lib/auth/session.ts'));
-    expect(sessionContent).toContain("redirect('/login')");
+    expect(sessionContent).toContain("'/login'");
+    expect(sessionContent).toContain('/login?redirectTo=');
   });
 });
 

@@ -4,7 +4,10 @@ mono:
   scope: app
   path: src/app/(auth)/reset-password/page.tsx
 ---
+import type { Metadata } from 'next';
 import { ResetPasswordForm } from './reset-password-form';
+
+export const metadata: Metadata = { title: 'Reset password' };
 
 {{{{raw}}}}
 export default async function ResetPasswordPage({

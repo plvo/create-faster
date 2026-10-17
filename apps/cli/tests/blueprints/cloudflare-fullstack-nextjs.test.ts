@@ -172,7 +172,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(sessions).toContain('authClient.listSessions()');
     expect(sessions).toContain('authClient.revokeSession({ token })');
     expect(sessions).toContain('authClient.revokeOtherSessions()');
-    expect(bpFile('src/components/profile/preferences.tsx.hbs')).toContain("useTheme");
+    expect(partial('profile/preferences')).toContain('useTheme');
   });
 
   test('avatar uploads to R2 and is served back through a binding route', () => {
@@ -332,6 +332,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   // Regression guards for bugs found by dogfood typecheck + the code-review pass.
   const bpFile = (p: string) =>
     readFileSync(join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs', p), 'utf8');
+  const partial = (name: string) => readFileSync(join(import.meta.dir, '../../templates/partials', `${name}.hbs`), 'utf8');
 
   test('ships a db types override matching its schema (no postTable)', () => {
     const types = bpFile('src/lib/db/types.ts.hbs');
@@ -476,11 +477,12 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('sidebar user menu keeps the dropdown open when confirming logout', () => {
-    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> navigation/logout-menu-item');
+    const logout = partial('navigation/logout-menu-item');
     // onSelect + preventDefault stops the menu from closing on the first Logout click.
-    expect(navUser).toContain('onSelect={(e) => {');
-    expect(navUser).toContain('e.preventDefault();');
-    expect(navUser).toContain('setShowLogout(true);');
+    expect(logout).toContain('onSelect={(event) => {');
+    expect(logout).toContain('event.preventDefault();');
+    expect(logout).toContain('setShowLogout(true);');
   });
 
   test('account display name uses an inline-edit field; documents upload uses a normal input', () => {

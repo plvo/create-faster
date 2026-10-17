@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { SignupForm } from './signup-form';
+
+export const metadata: Metadata = { title: 'Create account' };
 
 export default function SignupPage() {
   return (

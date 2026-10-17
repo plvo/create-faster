@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import { Preferences } from '@/components/profile/preferences';
+
+export const metadata: Metadata = { title: 'Preferences' };
 
 export default function PreferencesPage() {
   return <Preferences />;

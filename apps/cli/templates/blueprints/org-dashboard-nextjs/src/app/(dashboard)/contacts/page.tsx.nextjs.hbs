@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { ContactsClient } from './contacts.client';
+
+export const metadata: Metadata = { title: 'Contacts' };
 
 export default async function ContactsPage() {
   await requirePermission('contact', 'read');

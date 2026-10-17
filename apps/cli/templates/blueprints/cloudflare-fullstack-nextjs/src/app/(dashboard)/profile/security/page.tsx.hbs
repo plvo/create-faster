@@ -3,7 +3,10 @@ mono:
   scope: app
   path: src/app/(dashboard)/profile/security/page.tsx
 ---
+import type { Metadata } from 'next';
 import { SecurityForm } from '@/components/profile/security-form';
+
+export const metadata: Metadata = { title: 'Security' };
 
 export default function SecurityPage() {
   return <SecurityForm />;

@@ -80,6 +80,7 @@ export const authClient = {
   'page-parts.mjs': `export const ContactDetail = () => null;
 export const DetailPending = () => null;
 export const UserDetail = () => null;
+export const DashboardNotFound = () => null;
 export const QueryBoundary = ({ children }) => children;
 export const pageTitle = (title) => title;`,
   'icons.mjs': `export const LayoutDashboard = 'LayoutDashboard';
@@ -106,6 +107,7 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@/components/admin/user-detail': './page-parts.mjs',
   '@/components/query-boundary': './page-parts.mjs',
   '@/components/detail-pending': './page-parts.mjs',
+  '@/components/dashboard-not-found': './page-parts.mjs',
   '@/lib/page-title': './page-parts.mjs',
 };
 

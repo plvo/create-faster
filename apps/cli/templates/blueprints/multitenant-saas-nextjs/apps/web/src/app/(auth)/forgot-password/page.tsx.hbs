@@ -4,7 +4,10 @@ mono:
   scope: app
   path: src/app/(auth)/forgot-password/page.tsx
 ---
+import type { Metadata } from 'next';
 import { ForgotPasswordForm } from './forgot-password-form';
+
+export const metadata: Metadata = { title: 'Forgot password' };
 
 {{{{raw}}}}
 export default function ForgotPasswordPage() {

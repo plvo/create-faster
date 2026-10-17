@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { ContactDetail } from '@/components/contacts/contact-detail';
+import { DashboardNotFound } from '@/components/dashboard-not-found';
 import { DetailPending } from '@/components/detail-pending';
 import { QueryBoundary } from '@/components/query-boundary';
 import { pageTitle } from '@/lib/page-title';
@@ -8,8 +9,10 @@ export const Route = createFileRoute('/_dashboard/contacts/$id')({
   loader: async ({ context, params }) => {
     const contact = await context.queryClient.fetchQuery(context.trpc.contact.getById.queryOptions({ id: params.id }));
     if (!contact) throw notFound();
+    return contact;
   },
-  head: () => ({ meta: [{ title: pageTitle('Contact') }] }),
+  head: ({ loaderData }) => ({ meta: [{ title: pageTitle(loaderData ? 'Contact' : 'Page not found') }] }),
+  notFoundComponent: DashboardNotFound,
   pendingComponent: DetailPending,
   component: ContactPage,
 });

@@ -6,6 +6,7 @@ mono:
 {{{{raw}}}}
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -58,6 +59,12 @@ export function SignupForm() {
       <form.AppForm>
         <form.SubmitButton props={{ className: 'w-full' }}>Create account</form.SubmitButton>
       </form.AppForm>
+      <p className='text-center text-sm text-muted-foreground'>
+        Already have an account?{' '}
+        <Link href='/login' className='underline'>
+          Sign in
+        </Link>
+      </p>
     </form>
   );
 }

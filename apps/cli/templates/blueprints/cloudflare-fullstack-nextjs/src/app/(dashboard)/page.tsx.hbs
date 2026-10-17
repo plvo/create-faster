@@ -3,11 +3,14 @@ mono:
   scope: app
   path: src/app/(dashboard)/page.tsx
 ---
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { requireSession } from '@/lib/auth/session';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { DocumentsClient } from './documents.client';
+
+export const metadata: Metadata = { title: 'Documents' };
 
 export default async function DocumentsPage() {
   await requireSession();

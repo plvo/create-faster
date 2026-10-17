@@ -4,6 +4,7 @@ mono:
   scope: app
   path: src/app/(auth)/accept-invitation/[id]/page.tsx
 ---
+import type { Metadata } from 'next';
 import { auth } from '@/lib/auth/auth';
 import { Button } from '@repo/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
@@ -14,6 +15,8 @@ import { AcceptInvitationButton } from './accept-button';
 
 {{{{raw}}}}
 type Params = { id: string };
+
+export const metadata: Metadata = { title: 'Accept invitation' };
 
 export default async function AcceptInvitationPage({ params }: { params: Promise<Params> }) {
   const { id } = await params;

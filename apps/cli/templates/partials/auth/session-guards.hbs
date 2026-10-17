@@ -7,13 +7,20 @@ export const getSession = cache(async () => {
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 {{/if}}
 
+// The proxy puts the requested path in x-request-path, so signing in returns to the page that was asked for:
+// the login form passes redirectTo through safeRedirectPath before navigating.
+async function redirectToLogin(): Promise<never> {
+  const requestedPath = (await headers()).get('x-request-path');
+  redirect(requestedPath ? `/login?redirectTo=${encodeURIComponent(requestedPath)}` : '/login');
+}
+
 // Layouts and pages render in parallel: a layout redirect does not stop the page from running. Every
 // page that prefetches protected data awaits this first, so an anonymous visit redirects before any
 // protected query starts. A page whose prefetch needs more than a session awaits the matching guard below
 // instead (it includes requireSession), so a rejected query never starts and nothing is logged.
 export async function requireSession() {
   const session = await getSession();
-  if (!session?.user.role) redirect('/login');
+  if (!session?.user.role) return redirectToLogin();
   return session;
 }
 
