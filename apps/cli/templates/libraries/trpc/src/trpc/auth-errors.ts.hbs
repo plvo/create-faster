@@ -5,11 +5,9 @@ mono:
   path: src/auth-errors.ts
 ---
 {{#if (hasLibrary "better-auth")}}
-import { TRPCError } from '@trpc/server';
+import { TRPCError, type TRPC_ERROR_CODE_KEY } from '@trpc/server';
 
-type TRPCErrorCode = ConstructorParameters<typeof TRPCError>[0]['code'];
-
-const TRPC_CODE_BY_HTTP_STATUS: Record<number, TRPCErrorCode> = {
+const TRPC_CODE_BY_HTTP_STATUS: Record<number, TRPC_ERROR_CODE_KEY> = {
   400: 'BAD_REQUEST',
   401: 'UNAUTHORIZED',
   403: 'FORBIDDEN',

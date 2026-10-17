@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { AnyRouter } from '@trpc/server';
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { cleanupTempDir, createTempDir, evaluateGeneratedModule, fileExists, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -20,37 +22,106 @@ const API_AUTH_ERRORS = 'packages/api/src/auth-errors.ts';
 const authApiError = (statusCode: number, message: string) =>
   Object.assign(new Error(message), { name: 'APIError', statusCode, status: statusCode, body: { message } });
 
-// What the generated file needs from @trpc/server: a TRPCError that keeps its code, message and cause.
-const TRPC_SERVER_STUB = `export class TRPCError extends Error {
-  constructor({ code, message, cause }) {
-    super(message);
-    this.name = 'TRPCError';
-    this.code = code;
-    this.cause = cause;
-  }
-}`;
-
 interface AuthErrors {
   trpcErrorFromAuthError: (error: unknown) => (Error & { code: string; cause: unknown }) | undefined;
+}
+
+// What the generated trpc.ts imports from the other packages of the project. A name a blueprint does not import
+// is exported anyway, so one stand-in serves every blueprint.
+const PROJECT_STUB = `export const db = {};
+export const prisma = {};
+export const auth = { api: { getSession: async () => null } };
+export const createAuth = () => auth;
+export const getRequestSession = async () => null;`;
+
+const REAL = {
+  trpcServer: Bun.resolveSync('@trpc/server', import.meta.dir),
+  superjson: Bun.resolveSync('superjson', import.meta.dir),
+};
+
+const SESSION = { user: { id: 'u1', role: 'admin' } };
+
+interface TRPCInit {
+  router: (procedures: Record<string, unknown>) => unknown;
+  publicProcedure: Procedure;
+  protectedProcedure: Procedure;
+}
+interface Procedure {
+  input: (parser: (value: unknown) => number) => Procedure;
+  query: (resolver: (opts: { input: number }) => unknown) => unknown;
 }
 
 describe('better-auth errors reach the client as tRPC errors', () => {
   let tempDir: string;
   let authErrors: AuthErrors;
+  const calls = new Map<string, (procedure: string, input?: number) => Promise<{ status: number; error: Record<string, unknown> }>>();
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    for (const blueprint of BLUEPRINTS) {
-      const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-      expect(result.exitCode, result.stderr).toBe(0);
-    }
     const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
-    await Bun.write(join(stubs, 'trpc-server.mjs'), TRPC_SERVER_STUB);
-    const source = await readTextFile(join(tempDir, BLUEPRINTS[0] as string, API_AUTH_ERRORS));
-    authErrors = await evaluateGeneratedModule<AuthErrors>(source, join(stubs, 'auth-errors.mjs'), {
-      '@trpc/server': './trpc-server.mjs',
-    });
+    await Bun.write(join(stubs, 'project.mjs'), PROJECT_STUB);
+
+    // The generated instance reads NODE_ENV once, when it loads: production is what hides unexpected errors.
+    const nodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      for (const blueprint of BLUEPRINTS) {
+        const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+        expect(result.exitCode, result.stderr).toBe(0);
+
+        const errorsFile = join(stubs, `${blueprint}-auth-errors.mjs`);
+        const loaded = await evaluateGeneratedModule<AuthErrors>(
+          await readTextFile(join(tempDir, blueprint, API_AUTH_ERRORS)),
+          errorsFile,
+          { '@trpc/server': REAL.trpcServer },
+        );
+        authErrors ??= loaded;
+
+        const imports = {
+          '@trpc/server': REAL.trpcServer,
+          superjson: REAL.superjson,
+          './auth-errors': errorsFile,
+          './auth': './project.mjs',
+          '@repo/db': './project.mjs',
+          '@repo/auth/auth': './project.mjs',
+          '@repo/auth/session-cache': './project.mjs',
+        };
+        const { router, publicProcedure, protectedProcedure } = await evaluateGeneratedModule<TRPCInit>(
+          await readTextFile(join(tempDir, blueprint, API_INIT)),
+          join(stubs, `${blueprint}-trpc.mjs`),
+          imports,
+        );
+        const failWith = (procedure: Procedure) =>
+          procedure
+            .input((value) => value as number)
+            .query(({ input }) => {
+              throw authApiError(input, `refused with ${input}`);
+            });
+        const appRouter = router({
+          publicRefusal: failWith(publicProcedure),
+          protectedRefusal: failWith(protectedProcedure),
+          bug: publicProcedure.query(() => {
+            throw new Error('connection to db-primary.internal:5432 refused');
+          }),
+        });
+
+        calls.set(blueprint, async (procedure, input) => {
+          const query = input === undefined ? '' : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
+          const response = await fetchRequestHandler({
+            endpoint: '/api/trpc',
+            req: new Request(`http://localhost/api/trpc/${procedure}${query}`),
+            router: appRouter as AnyRouter,
+            createContext: () => ({ session: SESSION, headers: new Headers(), db: {} }),
+          });
+          const body = (await response.json()) as { error: { json: Record<string, unknown> } };
+          return { status: response.status, error: body.error.json };
+        });
+      }
+    } finally {
+      if (nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = nodeEnv;
+    }
   });
 
   afterAll(async () => {
@@ -92,17 +163,28 @@ describe('better-auth errors reach the client as tRPC errors', () => {
   });
 
   describe.each(BLUEPRINTS)('%s', (blueprint) => {
-    test('every procedure runs behind the mapping', async () => {
-      const init = await readTextFile(join(tempDir, blueprint, API_INIT));
-      expect(init).toContain("import { trpcErrorFromAuthError } from './auth-errors';");
-      expect(init).toMatch(/const mapAuthErrors = t\.middleware\(/);
-      expect(init).toMatch(/export const publicProcedure = t\.procedure\.use\(mapAuthErrors\);/);
-      expect(init).toMatch(/export const protectedProcedure = publicProcedure\.use\(/);
+    const call = (procedure: string, input?: number) => (calls.get(blueprint) as NonNullable<ReturnType<typeof calls.get>>)(procedure, input);
+
+    test.each(['publicRefusal', 'protectedRefusal'])('an APIError thrown in %s answers its status, code and message', async (procedure) => {
+      const expected: [number, string][] = [
+        [400, 'BAD_REQUEST'],
+        [401, 'UNAUTHORIZED'],
+        [403, 'FORBIDDEN'],
+        [404, 'NOT_FOUND'],
+      ];
+      for (const [statusCode, code] of expected) {
+        const { status, error } = await call(procedure, statusCode);
+        expect(status, `${procedure} ${statusCode}`).toBe(statusCode);
+        expect(error.message).toBe(`refused with ${statusCode}`);
+        expect((error.data as { code: string }).code).toBe(code);
+      }
     });
 
-    test('the mapping is the one file of the api package', async () => {
-      const source = await readTextFile(join(tempDir, blueprint, API_AUTH_ERRORS));
-      expect(source).toContain('export function trpcErrorFromAuthError');
+    test('an error that is not an APIError is still an internal error that does not leak its message', async () => {
+      const { status, error } = await call('bug');
+      expect(status).toBe(500);
+      expect((error.data as { code: string }).code).toBe('INTERNAL_SERVER_ERROR');
+      expect(error.message).toBe('Internal server error');
     });
   });
 });
