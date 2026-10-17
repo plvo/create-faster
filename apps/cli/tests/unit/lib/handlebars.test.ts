@@ -123,6 +123,15 @@ describe('Handlebars helpers', () => {
       expect(template({ project: { database: 'mysql', tooling: [] } })).toBe('no');
     });
 
+    test('answers for the project inside a loop over the apps', () => {
+      const template = Handlebars.compile(
+        '{{#each apps}}{{appName}}={{#if (has "tooling" "portless")}}portless{{else}}plain{{/if}};{{/each}}',
+      );
+      const apps = [{ appName: 'web', stackName: 'nextjs', libraries: [] }];
+      expect(template({ apps, project: { tooling: ['portless'] } })).toBe('web=portless;');
+      expect(template({ apps, project: { tooling: [] } })).toBe('web=plain;');
+    });
+
     test('checks orm value', () => {
       const template = Handlebars.compile('{{#if (has "orm" "drizzle")}}yes{{else}}no{{/if}}');
       expect(template({ project: { orm: 'drizzle', tooling: [] } })).toBe('yes');

@@ -77,6 +77,17 @@ describe('turborepo', () => {
     }
   });
 
+  test('under portless the app lines point to PORTLESS_APP_PORT, which portless honors, not to PORT', async () => {
+    const portless = await generate('port-mono-portless', [...MONO_APPS, '--tooling', 'portless']);
+    for (const file of ['README.md', 'AGENTS.md']) {
+      const text = await readTextFile(join(portless, file));
+      for (const app of ['web', 'docs', 'api']) {
+        expect(text, file).toContain(`on another port: \`(cd apps/${app} && PORTLESS_APP_PORT=4000 npm run dev)\``);
+      }
+      expect(text, file).not.toMatch(/(?<![A-Z_])PORT=4000/);
+    }
+  });
+
   test('a turborepo of apps that do not listen says nothing about PORT', async () => {
     const quiet = await generate('port-mono-quiet', ['--app', 'mobile:expo', '--app', 'jobs:node']);
     for (const file of ['README.md', 'AGENTS.md']) {
