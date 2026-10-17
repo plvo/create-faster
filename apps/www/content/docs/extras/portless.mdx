@@ -22,7 +22,7 @@ Wrangler reads no port variable, so a Hono app on the [Cloudflare](/docs/deploym
 
 - `dev` is wrapped in place — portless auto-detects the domain from the project context
 - `start` is left untouched (production use), a separate `start:portless` script is added for local testing
-- `--port` flags are stripped automatically since portless manages port assignment via the `PORT` environment variable
+- `--port` flags are stripped automatically since portless manages port assignment via the `PORT` environment variable: portless sets `PORT` itself for the app, so a `PORT` exported in your shell has no effect on `dev` and `start:portless`. Set `PORTLESS_APP_PORT` to pin the port of the app
 - Leading environment assignments stay in front of `portless`: a Hono or Node app's `start:portless` is `NODE_ENV=production portless run bun run src/index.ts`. portless quotes every argument it runs, so `portless run NODE_ENV=production bun ...` would try to execute `NODE_ENV=production` as a command; portless passes its own environment down to the app, so the assignment still applies
 
 **Environment variables:**

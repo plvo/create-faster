@@ -24,7 +24,7 @@ Beyond the official setup, we include:
 - `dev` - Hot reload development server (`bun run --hot`)
 - `start` - Production server (`NODE_ENV=production bun run src/index.ts`): Bun runs the source without a build, so the script sets `NODE_ENV` for code that reads it at runtime (the database client turns TLS on with it)
 
-In a turborepo, `dev` and `start` pass `--port` with the port of the app (3000 plus its index among the apps), so a Hono app never takes the port of a web app declared before it. A single repo uses Bun's default, 3000. The `PORT` environment variable overrides both.
+In a turborepo, `dev` and `start` pass `--port ${PORT:-<port>}` with the port of the app (3000 plus its index among the apps), so a Hono app never takes the port of a web app declared before it. A single repo uses Bun's default, 3000. The `PORT` environment variable overrides both; see [Changing the port](/docs/concepts/stacks#changing-the-port).
 
 With the [Cloudflare](/docs/deployment/cloudflare) deployment the app is a Worker: `dev` runs `wrangler dev` on the app port, and `start`, `src/server.ts` and `@hono/node-server` are not generated.
 

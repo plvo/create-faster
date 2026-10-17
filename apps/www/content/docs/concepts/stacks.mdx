@@ -36,6 +36,20 @@ In a multi-app project, each app can use a different stack. create-faster automa
 | REST/GraphQL API | [Hono](/docs/stacks/hono) |
 | Worker, cron, Lambda | [Node.js](/docs/stacks/node) |
 
+## Changing the port
+
+The port of an app is 3000 plus its index among the apps. An app that listens on a port reads `PORT` to change it, for `dev` and `start`, and the generated README and `AGENTS.md` list the commands:
+
+```bash
+# Single repo
+PORT=4000 npm run dev
+
+# Turborepo: one app, from its directory
+cd apps/web && PORT=4000 npm run dev
+```
+
+`PORT` set on the root `dev` or `start` of a Turborepo reaches every app (the generated `turbo.json` passes it through), so all of them would listen on the same port. With [portless](/docs/extras/portless), the port is assigned by portless: pin it with `PORTLESS_APP_PORT`.
+
 ## CLI Usage
 
 ```bash
