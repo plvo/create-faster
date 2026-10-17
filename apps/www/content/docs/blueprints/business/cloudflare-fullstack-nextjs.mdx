@@ -96,7 +96,7 @@ Better Auth with the **admin plugin** + access control. `packages/auth/src/permi
 
 ### User management
 
-The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` (search + sort) with a **Create user** dialog — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
+The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` (search + sort) with a **Create user** dialog — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. On your own account the role, ban and delete controls are not offered, and the server refuses them with a 400 (Better Auth for ban and delete, the `refuseOwnRoleChange` plugin for the role). A Better Auth refusal inside a router reaches the toast as its own message (see [tRPC](/docs/modules/api/trpc)). Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
 
 ### Dashboard shell
 

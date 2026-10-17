@@ -15,6 +15,7 @@ import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
 import { ac, roles } from './permissions';
+import { refuseOwnRoleChange } from './refuse-own-role-change';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
@@ -60,6 +61,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         defaultRole: 'user',
         adminRoles: ['admin'],
       }),
+      refuseOwnRoleChange,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
     emailAndPassword: {
