@@ -177,12 +177,15 @@ const wrapWithPortless = (cmd: string): string => {
   return `${envAssignments}portless run ${command}`;
 };
 
+// A Hono app on cloudflare is a Worker: Wrangler runs it in `dev` and `preview`, and no Node or Bun server exists.
+const HONO_RUNS_SERVER: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
+
 const HONO_ON_NODE: PackageJsonConfig = {
-  dependencies: { '@hono/node-server': '^2.1.5' },
-  devDependencies: { tsx: TSX_VERSION },
+  dependencies: { '@hono/node-server': $when(HONO_RUNS_SERVER, '^2.1.5') },
+  devDependencies: { tsx: $when(HONO_RUNS_SERVER, TSX_VERSION) },
   scripts: {
-    dev: 'tsx watch src/server.ts --port {{port}}',
-    start: 'NODE_ENV=production tsx src/server.ts --port {{port}}',
+    dev: $when(HONO_RUNS_SERVER, 'tsx watch src/server.ts --port {{port}}'),
+    start: $when(HONO_RUNS_SERVER, 'NODE_ENV=production tsx src/server.ts --port {{port}}'),
   },
 };
 
@@ -282,8 +285,8 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
-          dev: 'bun run --port {{port}} --hot src/index.ts',
-          start: 'NODE_ENV=production bun run --port {{port}} src/index.ts',
+          dev: $when(HONO_RUNS_SERVER, 'bun run --port {{port}} --hot src/index.ts'),
+          start: $when(HONO_RUNS_SERVER, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
         },
       },
       packageManagerPackageJson: {
@@ -771,6 +774,7 @@ export const META: Meta = {
           stackPackageJson: {
             hono: {
               scripts: {
+                dev: 'wrangler dev --port {{port}} --persist-to {{workspaceRoot}}/.wrangler',
                 deploy: 'wrangler deploy',
                 preview: 'wrangler dev --persist-to {{workspaceRoot}}/.wrangler',
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
@@ -1694,7 +1698,6 @@ export const META: Meta = {
         scripts: {
           'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 {{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
-          start: 'turbo start',
         },
       },
       envs: [

@@ -1,3 +1,7 @@
+---
+deploymentSkip:
+  - cloudflare
+---
 {{#unless (eq pm "bun")}}
 import { parseArgs } from 'node:util';
 import { serve } from '@hono/node-server';

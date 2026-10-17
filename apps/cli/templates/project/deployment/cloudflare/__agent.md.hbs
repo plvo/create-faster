@@ -90,7 +90,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 - Build a client per request inside each server function or route handler: `const db = await createDb(env.HYPERDRIVE)`. Never create a client or read `env.HYPERDRIVE` properties at module level.
 {{/if}}
 {{#if (has "stack" "hono")}}
-- Hono: build a client per request inside each route handler, `const db = await createDb(c.env.HYPERDRIVE)`, never at module level. Routes that query the db run under `{{runAppScript "preview"}}` (`wrangler dev`): `{{runScript "dev"}}` runs Bun without the Workers runtime, so there is no `c.env.HYPERDRIVE`.
+- Hono: build a client per request inside each route handler, `const db = await createDb(c.env.HYPERDRIVE)`, never at module level. `{{runScript "dev"}}` runs `wrangler dev`, so `c.env.HYPERDRIVE` is there in development.
 {{/if}}
 - **Setup**: `wrangler hyperdrive create <name> --connection-string="..."`, then paste the id into `wrangler.jsonc` `hyperdrive[].id`. `localConnectionString` is used by {{#if (and (or (has "stack" "nextjs") (has "stack" "hono")) (has "stack" "tanstack-start"))}}the local runtime of each app and matches your local `DATABASE_URL`:
 {{#if (has "stack" "nextjs")}}
@@ -116,8 +116,9 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 `preview` and `deploy` are per-app scripts: run them from the app directory (`cd apps/<app>`). Hono apps: {{> cloudflare/app-list stack="hono"}}.
 
 {{/if}}
+- `{{runScript "dev"}}` — `wrangler dev` on the app port, so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
 - `{{runAppScript "deploy"}}` — `wrangler deploy`
-- `{{runAppScript "preview"}}` — `wrangler dev` (local Wrangler), persisting local state in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
+- `{{runAppScript "preview"}}` — `wrangler dev` without `--port`: the same runtime and local state as `dev`, on {{#if (isMono)}}Wrangler's default port{{else}}the `dev.port` of `wrangler.jsonc`{{/if}}
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `wrangler secret put` or, for the first deploy of a new Worker, `wrangler deploy --secrets-file .prod.env`. The runtime secrets of an app are listed in `wrangler.jsonc` under `secrets.required`: a deploy fails until each is set, and a local run warns about a missing one.

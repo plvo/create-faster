@@ -116,7 +116,7 @@ The dashboard lists documents (own rows for users; all rows for admin/manager) a
 
 ### Cron Worker
 
-`apps/cron` is a Hono Worker whose `scheduled()` handler (daily at 03:00 UTC) deletes documents whose `expiresAt` has passed — both the R2 object and the D1 row. Fire it locally with `wrangler dev --test-scheduled`.
+`apps/cron` is a Hono Worker whose `scheduled()` handler (daily at 03:00 UTC) deletes documents whose `expiresAt` has passed — both the R2 object and the D1 row. `dev` runs it under `wrangler dev` on port 3001, with the same local D1 and R2 state as the web app. Fire it locally with `wrangler dev --test-scheduled`.
 
 ### Local seed
 

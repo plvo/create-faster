@@ -62,7 +62,7 @@ describe('Hono app port', () => {
 
   test('the cloudflare-fullstack-nextjs cron app does not take the port of the web app', async () => {
     const scripts = await appScripts('hono-port-cron', 'cron', ['--blueprint', 'cloudflare-fullstack-nextjs']);
-    expect(scripts.dev).toBe('bun run --port 3001 --hot src/index.ts');
+    expect(scripts.dev).toBe('wrangler dev --port 3001 --persist-to ../../.wrangler');
   });
 
   test('the generated agent context states the port the app listens on', async () => {

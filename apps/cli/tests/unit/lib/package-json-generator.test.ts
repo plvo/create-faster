@@ -916,8 +916,20 @@ describe('root start script (turborepo)', () => {
   });
 
   test('exists when only some of the apps have a start script', () => {
-    const cloudflare: TemplateContext = { ...ctx, project: { deployment: 'cloudflare', tooling: [] } };
+    const cloudflare: TemplateContext = {
+      ...ctx,
+      apps: [
+        { appName: 'web', stackName: 'tanstack-start', libraries: [] },
+        { appName: 'jobs', stackName: 'node', libraries: [] },
+      ],
+      project: { deployment: 'cloudflare', tooling: [] },
+    };
     expect(generateRootPackageJson(cloudflare).content.scripts?.start).toBe('turbo start');
+  });
+
+  test('does not start a Hono Worker on Node', () => {
+    const cloudflare: TemplateContext = { ...ctx, project: { deployment: 'cloudflare', tooling: [] } };
+    expect(generateRootPackageJson(cloudflare).content.scripts?.start).toBeUndefined();
   });
 
   test('is absent when no app has a start script', () => {

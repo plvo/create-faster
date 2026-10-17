@@ -6,12 +6,12 @@
 - TanStack Start: `vite build` replaces it in the server bundle the same way.
 {{/if}}
 {{#if (has "stack" "hono")}}
-- Hono: {{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production {{#if (eq pm "bun")}}bun run src/index.ts{{else}}tsx src/server.ts{{/if}}`){{#if (has "deployment" "sst")}}, and `sst.config.ts` sets it in the Lambda function `environment` (`development` under `sst dev`){{/if}}{{#if (has "deployment" "cloudflare")}}, and `wrangler deploy` replaces it in the Worker bundle{{/if}}.
+- Hono: {{#if (has "deployment" "cloudflare")}}`wrangler deploy` replaces `process.env.NODE_ENV` with `production` in the Worker bundle, while `wrangler dev` builds it with `development`.{{else}}{{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production {{#if (eq pm "bun")}}bun run src/index.ts{{else}}tsx src/server.ts{{/if}}`){{#if (has "deployment" "sst")}}, and `sst.config.ts` sets it in the Lambda function `environment` (`development` under `sst dev`){{/if}}.{{/if}}
 {{/if}}
 {{#if (has "stack" "node")}}
 - Node: {{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source too, and the `start` script sets it the same way.
 {{/if}}
-{{#if (or (has "stack" "hono") (has "stack" "node"))}}
+{{#if (or (has "stack" "node") (and (has "stack" "hono") (ne project.deployment "cloudflare")))}}
 
 Any other production entry of a {{#if (eq pm "bun")}}Bun{{else}}Node{{/if}} app ({{#if (has "deployment" "terraform-aws")}}the Lambda you create next to `infra/`, {{/if}}a container or a process manager running `{{#if (eq pm "bun")}}bun src/index.ts{{else}}tsx src/index.ts{{/if}}`) must set `NODE_ENV=production` itself, or `DATABASE_URL` must set {{urlRequestingTls}}. {{#if (eq pm "bun")}}A bundle made with `bun build` (a Lambda zip, for instance) gets `process.env.NODE_ENV` inlined at build time instead: a plain `bun build` inlines `development` and turns the TLS default off whatever the runtime environment says, so build it with `bun build --production` or `NODE_ENV=production bun build`.{{else}}A bundle made with `esbuild` (a Lambda zip, for instance) keeps reading `process.env.NODE_ENV` at runtime unless the build passes `--define:process.env.NODE_ENV=\"production\"` (the backslashes keep the quotes through the shell), which inlines the value and ignores the runtime environment.{{/if}}
 {{/if}}
