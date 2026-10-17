@@ -35,7 +35,7 @@ export const count = () => 'count';`,
 export const permissionProcedure = () => build(undefined);`,
 };
 
-describe.each(BLUEPRINTS)('%s contact email', (blueprint) => {
+describe.each(BLUEPRINTS)('%s contact optional fields', (blueprint) => {
   let tempDir: string;
   let formSchema: Schema;
   let create: ProcedureStub;
@@ -108,18 +108,27 @@ describe.each(BLUEPRINTS)('%s contact email', (blueprint) => {
     expect(create.input?.safeParse(value).success).toBe(false);
   });
 
-  test('creating a contact with an empty email saves it without an email', async () => {
+  const OPTIONAL_FIELDS = ['email', 'phone', 'company', 'notes'];
+
+  test('creating a contact with empty optional fields saves them as null', async () => {
     const input = create.input?.safeParse(emptyForm).data;
     await create.handler({ ctx: { db: database(), session: { user: { id: 'u1' } } }, input });
     expect(writes).toHaveLength(1);
-    expect(writes[0]?.values.email).toBeNull();
+    for (const field of OPTIONAL_FIELDS) expect(writes[0]?.values[field], field).toBeNull();
     expect(writes[0]?.values.firstName).toBe('Ada');
   });
 
-  test('editing a contact down to an empty email clears it', async () => {
+  test('editing a contact down to empty optional fields clears them', async () => {
     const input = update.input?.safeParse({ id: 'c1', data: emptyForm }).data;
     await update.handler({ ctx: { db: database() }, input });
-    expect(writes[0]?.values.email).toBeNull();
+    for (const field of OPTIONAL_FIELDS) expect(writes[0]?.values[field], field).toBeNull();
+  });
+
+  test('optional fields that have a value are saved as typed', async () => {
+    const filled = { ...emptyForm, email: 'ada@example.com', phone: '555', company: 'Analytical Engines', notes: 'Hi' };
+    const input = create.input?.safeParse(filled).data;
+    await create.handler({ ctx: { db: database(), session: { user: { id: 'u1' } } }, input });
+    expect(writes[0]?.values).toMatchObject({ email: 'ada@example.com', phone: '555', company: 'Analytical Engines', notes: 'Hi' });
   });
 
   test('editing a contact without touching the email keeps it', async () => {
