@@ -68,6 +68,23 @@ export async function readTextFile(path: string): Promise<string> {
   return readFile(path, 'utf-8');
 }
 
+/** Whether a package.json `exports` key (`./components/*`) covers a subpath (`./components/ui/card`). */
+export function matchesExportKey(key: string, subpath: string): boolean {
+  if (!key.includes('*')) return key === subpath;
+  const [prefix = '', suffix = ''] = key.split('*');
+  return subpath.startsWith(prefix) && subpath.endsWith(suffix) && subpath.length >= prefix.length + suffix.length;
+}
+
+/** The target a package.json `exports` map gives a subpath, with its `*` filled in; undefined when none covers it. */
+export function resolveExportTarget(exports: Record<string, string>, subpath: string): string | undefined {
+  for (const [key, target] of Object.entries(exports)) {
+    if (!matchesExportKey(key, subpath)) continue;
+    const [prefix = '', suffix = ''] = key.split('*');
+    return target.replace('*', subpath.slice(prefix.length, subpath.length - suffix.length));
+  }
+  return undefined;
+}
+
 export interface SstHandler {
   /** Handler as written in sst.config.ts, e.g. `apps/api/src/index.handler`. */
   ref: string;

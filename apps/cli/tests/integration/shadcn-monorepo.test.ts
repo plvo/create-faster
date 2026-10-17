@@ -1,6 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import {
+  cleanupTempDir,
+  createTempDir,
+  fileExists,
+  readJsonFile,
+  readTextFile,
+  resolveExportTarget,
+  runCli,
+} from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -23,20 +31,7 @@ interface UiManifest {
 const PACKAGE_NAME = '@repo/ui';
 
 function resolveExport(exports: Record<string, string>, specifier: string): string | undefined {
-  const subpath = `.${specifier.slice(PACKAGE_NAME.length)}`;
-  for (const [pattern, target] of Object.entries(exports)) {
-    const star = pattern.indexOf('*');
-    if (star === -1) {
-      if (pattern === subpath) return target;
-      continue;
-    }
-    const prefix = pattern.slice(0, star);
-    const suffix = pattern.slice(star + 1);
-    if (subpath.startsWith(prefix) && subpath.endsWith(suffix) && subpath.length >= pattern.length - 1) {
-      return target.replace('*', subpath.slice(prefix.length, subpath.length - suffix.length));
-    }
-  }
-  return undefined;
+  return resolveExportTarget(exports, `.${specifier.slice(PACKAGE_NAME.length)}`);
 }
 
 describe('shadcn components.json', () => {

@@ -1,11 +1,3 @@
----
-mono:
-  scope: pkg
-  name: ui
-  path: src/hooks/use-mobile.ts
-only: mono
----
-{{{{raw}}}}
 import * as React from 'react';
 
 const MOBILE_BREAKPOINT = 768;
@@ -27,4 +19,3 @@ function getServerSnapshot() {
 export function useIsMobile() {
   return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
-{{{{/raw}}}}

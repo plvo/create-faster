@@ -136,11 +136,15 @@ export async function expectOnlyMissingEnvNoticeOnStderr(stderr: string, appDir:
   expect(stderr.split('\n').filter(Boolean)).toEqual([`$ ${scripts.start}`, '.env not found. Continuing without it.']);
 }
 
-export async function runCommand(args: string[], cwd: string): Promise<CommandResult> {
+export async function runCommand(
+  args: string[],
+  cwd: string,
+  env: Record<string, string> = {},
+): Promise<CommandResult> {
   try {
     const result = await $`${args}`
       .cwd(cwd)
-      .env({ ...userShellEnv(), CI: '1', NEXT_TELEMETRY_DISABLED: '1' })
+      .env({ ...userShellEnv(), CI: '1', NEXT_TELEMETRY_DISABLED: '1', ...env })
       .quiet();
 
     return {

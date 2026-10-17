@@ -225,7 +225,6 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
       expect(file).toContain('mono:');
       expect(file).toContain('{{{{raw}}}}');
     }
-    expect(() => bpFile('packages/ui/src/hooks/use-mobile.ts.hbs')).not.toThrow();
   });
 
   test('ships an auth Session type derived from the createAuth factory', () => {

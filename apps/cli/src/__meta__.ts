@@ -136,9 +136,6 @@ const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
     },
   },
   ui: {
-    exports: {
-      './hooks/*': './src/hooks/*.ts',
-    },
     dependencies: {
       '@tanstack/react-form': '^1.33.5',
       'react-dom': '^19.2.8',
@@ -1540,9 +1537,6 @@ export const META: Meta = {
           },
         },
         ui: {
-          exports: {
-            './hooks/*': './src/hooks/*.ts',
-          },
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
           },
@@ -1669,9 +1663,6 @@ export const META: Meta = {
           },
         },
         ui: {
-          exports: {
-            './hooks/*': './src/hooks/*.ts',
-          },
           dependencies: {
             '@dnd-kit/core': '^6.3.1',
             '@dnd-kit/sortable': '^10.0.0',
