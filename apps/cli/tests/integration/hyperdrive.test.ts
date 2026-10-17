@@ -16,7 +16,7 @@ describe('Postgres/MySQL on Cloudflare via Hyperdrive', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('rejects better-auth + postgres + cloudflare (per-request binding, see #153)', async () => {
+  test('rejects better-auth + postgres + cloudflare (per-request binding)', async () => {
     const tempDir = await createTempDir();
     const r = await runCli(
       ['ba-pg-cf', '--app', 'web:nextjs:better-auth', '--database', 'postgres', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
@@ -24,6 +24,8 @@ describe('Postgres/MySQL on Cloudflare via Hyperdrive', () => {
     );
     expect(r.exitCode).toBe(1);
     expect(r.stderr).toContain('better-auth');
+    expect(r.stderr).toContain('per-request binding');
+    expect(r.stderr).not.toMatch(/#\d+/);
     await cleanupTempDir(tempDir);
   });
 

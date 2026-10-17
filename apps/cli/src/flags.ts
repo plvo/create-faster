@@ -361,7 +361,7 @@ export function validateRequirements(selection: Partial<TemplateContext>, ctx: P
           .find((lib) => META.libraries[lib]?.needsSingletonDb);
         printError(
           `${categoryName} '${value}' is not yet supported with library '${blocking}' on this deployment`,
-          `'${blocking}' uses a module-singleton database; '${value}' is a per-request Cloudflare binding (see #153)`,
+          `'${blocking}' needs a database shared by the whole app; on '${ctx.project?.deployment}' '${value}' is a per-request binding`,
         );
         process.exit(1);
       }

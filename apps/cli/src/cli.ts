@@ -22,6 +22,8 @@ import type { StackName } from '@/types/stack-name';
 import { validateRequirements } from './flags';
 import { S_GRAY_BAR } from './tui/symbols';
 
+const DEFAULT_PROJECT_NAME = 'my-app';
+
 export async function cli(partial?: FlagAnswers): Promise<Omit<TemplateContext, 'repo'>> {
   const progress = new Progress(['Project', 'Apps', 'Database', 'Extras', 'Install']);
 
@@ -207,8 +209,8 @@ async function promptOrUseProjectName(
   }
 
   const answer = await promptText<string>(message, {
-    placeholder: 'my-app',
-    initialValue: 'my-app',
+    placeholder: DEFAULT_PROJECT_NAME,
+    defaultValue: DEFAULT_PROJECT_NAME,
     validate: (value) => {
       const trimmed = value.trim();
       if (!trimmed) return 'Project name is required';
@@ -310,7 +312,6 @@ async function promptApp(index: number, progress: Progress, projectNameIfOneApp?
       defaultValue: `app-${index}`,
       placeholder: `app-${index}`,
       validate: (value) => {
-        if (!value.trim()) return 'App name is required';
         return validateAppName(value);
       },
     });

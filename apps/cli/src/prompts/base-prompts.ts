@@ -21,7 +21,12 @@ export async function promptText<T extends string | number = string>(
   message: string,
   options?: Partial<TextOptions>,
 ): Promise<T> {
-  const result = await text({ message, ...options });
+  const { validate, defaultValue } = options ?? {};
+  const result = await text({
+    message,
+    ...options,
+    validate: validate && ((value) => validate(value || defaultValue || '')),
+  });
 
   if (isCancel(result)) handlePromptCancel();
 
