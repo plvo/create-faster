@@ -1,13 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
-import { TEMPLATES_DIR } from '@/lib/constants';
+import { templateSources } from '../template-sources';
 import { countImportStatements, hasTripleSlashDirective, isDirectiveAtRisk } from '../triple-slash-directives';
-
-function templateSources(): Record<string, string> {
-  const files = readdirSync(TEMPLATES_DIR, { recursive: true, encoding: 'utf-8' }).filter((file) => file.endsWith('.hbs'));
-  return Object.fromEntries(files.map((file) => [file, readFileSync(join(TEMPLATES_DIR, file), 'utf-8')]));
-}
 
 describe('triple-slash directives in templates', () => {
   test('no template holds a directive next to imports a formatter could reorder', () => {

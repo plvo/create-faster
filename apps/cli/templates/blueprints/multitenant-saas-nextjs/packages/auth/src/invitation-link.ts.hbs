@@ -1,0 +1,11 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/invitation-link.ts
+---
+// The same origin as getAppUrl() of the web app, which this package cannot import.
+export function invitationLink(invitationId: string): string {
+  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:{{appPort "web"}}').replace(/\/+$/, '');
+  return `${origin}/accept-invitation/${invitationId}`;
+}

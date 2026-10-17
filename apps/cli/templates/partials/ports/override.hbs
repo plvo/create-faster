@@ -1,18 +1,15 @@
-{{!-- A single repo calls it for its only app (appName). Call it at the top level of a document: hasRootScript reads the context it is called from. --}}
+{{!-- Renders nothing when no app listens on a port. A single repo calls it for its only app (appName). Call it at the top level of a document: hasRootScript reads the context it is called from. --}}
+{{#if (listeningApps)}}
 {{#if (isMono)}}
-An app that listens on a port takes it from the `PORT` environment variable. To change the port of one app, run its script from its directory:
-
-{{#each apps}}
-{{#if (appUrl appName)}}
-- {{appName}}: `{{#inDirectory "apps" appName}}PORT=4000 {{runScript "dev"}}{{/inDirectory}}`
-{{/if}}
-{{/each}}
-
-`PORT` on the root `{{runScript "dev"}}` reaches every app, which then all listen on that port.{{#if (hasRootScript "start")}} `start` takes it the same way.{{/if}}
+An app that listens on a port takes it from the `PORT` environment variable: the commands above run one app on another port from its directory. `PORT` on the root `{{runScript "dev"}}` reaches every app, which then all listen on that port.
 {{else}}
-The app listens on port {{appPort appName}}. Set `PORT` to listen on another one: `PORT=4000 {{runScript "dev"}}`.{{#if (hasRootScript "start")}} `start` takes it the same way.{{/if}}
+The app listens on port {{appPort appName}}. Set `PORT` to listen on another one: `PORT=4000 {{runScript "dev"}}`.
+{{/if}}
+{{#if (hasRootScript "start")}}
+`start` takes `PORT` the same way.
 {{/if}}
 {{#if (has "tooling" "portless")}}
 
 `dev` and `start:portless` run through portless, which assigns the port itself and ignores `PORT`: set `PORTLESS_APP_PORT` to pin it.
+{{/if}}
 {{/if}}

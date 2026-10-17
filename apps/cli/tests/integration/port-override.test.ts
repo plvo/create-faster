@@ -58,13 +58,29 @@ describe('turborepo', () => {
     expect(await readTextFile(join(project, 'apps/docs/.env.start'))).toBe('NODE_ENV=production\nPORT=3001\n');
   });
 
-  test('the README and AGENTS.md say how to move one app', async () => {
+  test('the README and AGENTS.md put the command that moves an app on its line of the app list', async () => {
+    const readme = await readTextFile(join(project, 'README.md'));
+    const agents = await readTextFile(join(project, 'AGENTS.md'));
+
+    for (const [app, stack, port] of [
+      ['web', 'nextjs', 3000],
+      ['docs', 'tanstack-start', 3001],
+      ['api', 'hono', 3002],
+    ] as const) {
+      const command = `on another port: \`(cd apps/${app} && PORT=4000 npm run dev)\``;
+      expect(readme).toContain(`- ${app}: [http://localhost:${port}](http://localhost:${port}), ${command}`);
+      expect(agents).toContain(`- \`apps/${app}\` — ${stack} (http://localhost:${port}), ${command}`);
+    }
+    for (const text of [readme, agents]) {
+      expect(text).toContain('`PORT` on the root `npm run dev` reaches every app');
+      expect(text.match(/PORT=4000/g)).toHaveLength(3);
+    }
+  });
+
+  test('a turborepo of apps that do not listen says nothing about PORT', async () => {
+    const quiet = await generate('port-mono-quiet', ['--app', 'mobile:expo', '--app', 'jobs:node']);
     for (const file of ['README.md', 'AGENTS.md']) {
-      const text = await readTextFile(join(project, file));
-      for (const app of ['web', 'docs', 'api']) {
-        expect(text, file).toContain(`- ${app}: \`(cd apps/${app} && PORT=4000 npm run dev)\``);
-      }
-      expect(text, file).toContain('`PORT` on the root `npm run dev` reaches every app');
+      expect(await readTextFile(join(quiet, file)), file).not.toContain('PORT');
     }
   });
 });
@@ -122,18 +138,52 @@ describe('blueprints', () => {
     expect(notes).toContain('`BETTER_AUTH_URL` is already `https://web.localhost:1355`');
   });
 
-  test('the multitenant-saas-nextjs invitation links fall back to the URL of the web app', async () => {
-    const project = await generate('port-blueprint-saas', [
-      '--blueprint',
-      'multitenant-saas-nextjs',
-      '--tooling',
-      'portless',
-    ]);
-    const router = await readTextFile(join(project, 'packages/api/src/router/invitation.ts'));
-    const auth = await readTextFile(join(project, 'packages/auth/src/auth.ts'));
-
-    for (const source of [router, auth]) {
-      expect(source).toContain("process.env.NEXT_PUBLIC_APP_URL ?? 'https://web.localhost:1355'");
+  describe('multitenant-saas-nextjs invitation links', () => {
+    interface InvitationLinkModule {
+      invitationLink: (id: string) => string;
     }
+    interface AppUrlModule {
+      getAppUrl: () => string;
+    }
+
+    const original = process.env.NEXT_PUBLIC_APP_URL;
+    let invitationLink: InvitationLinkModule['invitationLink'];
+    let getAppUrl: AppUrlModule['getAppUrl'];
+    let project: string;
+
+    beforeAll(async () => {
+      project = await generate('port-blueprint-saas', ['--blueprint', 'multitenant-saas-nextjs']);
+      invitationLink = ((await import(join(project, 'packages/auth/src/invitation-link.ts'))) as InvitationLinkModule)
+        .invitationLink;
+      getAppUrl = ((await import(join(project, 'apps/web/src/lib/get-app-url.ts'))) as AppUrlModule).getAppUrl;
+    });
+
+    afterAll(() => {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = original;
+    });
+
+    test.each([undefined, 'https://example.com', 'https://example.com//', 'https://example.com/app/'])(
+      'builds the link on the origin getAppUrl gives, with NEXT_PUBLIC_APP_URL %p',
+      (value) => {
+        if (value === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+        else process.env.NEXT_PUBLIC_APP_URL = value;
+
+        expect(invitationLink('abc')).toBe(`${getAppUrl()}/accept-invitation/abc`);
+      },
+    );
+
+    test('falls back to the dev URL of the web app', () => {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+      expect(invitationLink('abc')).toBe('http://localhost:3000/accept-invitation/abc');
+    });
+
+    test('the router and the auth package both use it', async () => {
+      for (const file of ['packages/api/src/router/invitation.ts', 'packages/auth/src/auth.ts']) {
+        const source = await readTextFile(join(project, file));
+        expect(source, file).toContain('invitationLink(');
+        expect(source, file).not.toContain('NEXT_PUBLIC_APP_URL');
+      }
+    });
   });
 });

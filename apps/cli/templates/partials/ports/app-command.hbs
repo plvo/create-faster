@@ -1,0 +1,5 @@
+---
+inline: true
+---
+{{!-- Called for an app that listens on a port, in the list of the apps of a turborepo. --}}
+on another port: `{{#inDirectory "apps" appName}}PORT=4000 {{runScript "dev"}}{{/inDirectory}}`

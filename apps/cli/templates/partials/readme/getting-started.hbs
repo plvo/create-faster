@@ -16,9 +16,9 @@ Start the development server:
 {{runScript "dev"}}
 ```
 
-{{#if (appUrl appName)}}
+{{#each (listeningApps)}}
 Open [{{appUrl appName}}]({{appUrl appName}}) in your browser.
 
+{{/each}}
 {{> ports/override}}
-{{/if}}
 {{/if}}

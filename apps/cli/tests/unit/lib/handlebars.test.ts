@@ -376,6 +376,12 @@ describe('Handlebars helpers', () => {
       );
     });
 
+    test('listeningApps lists the apps that have a dev URL, in order, and nothing when none listens', () => {
+      const listening = Handlebars.compile('{{#each (listeningApps)}}{{appName}};{{/each}}');
+      expect(listening(monorepo())).toBe('web;api;');
+      expect(listening({ ...monorepo(), apps: monorepo().apps.slice(2) })).toBe('');
+    });
+
     test('lists the packages a turborepo generates', () => {
       const packages = Handlebars.compile('{{#each (monoPackages)}}{{this}},{{/each}}');
       expect(packages(monorepo())).toBe('ui,db,');

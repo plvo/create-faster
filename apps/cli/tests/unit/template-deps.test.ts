@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readdir, readFile } from 'node:fs/promises';
-import { basename, join, relative } from 'node:path';
+import { join, relative } from 'node:path';
 import { META } from '@/__meta__';
 
 const TEMPLATES_DIR = join(import.meta.dir, '../../templates');
@@ -120,6 +120,11 @@ async function getAllTemplateFiles(): Promise<string[]> {
   return files;
 }
 
+// A partial has no extension of its own, and the dashboard ones hold JSX.
+function carriesJsx(filePath: string): boolean {
+  return /\.(tsx|jsx|mdx)(\.[\w-]+)?\.hbs$/.test(filePath) || relative(TEMPLATES_DIR, filePath).startsWith('partials/');
+}
+
 describe('Template imports vs META dependencies', () => {
   test('all template imports are declared in META', async () => {
     const declaredPackages = collectAllDeclaredPackages();
@@ -154,7 +159,7 @@ describe('Template imports vs META dependencies', () => {
     const jsxBracesRegex = /=[{]{2}[^#/\\]/;
 
     for (const filePath of templateFiles) {
-      if (basename(filePath).startsWith('__env')) continue;
+      if (!carriesJsx(filePath)) continue;
       const content = await readFile(filePath, 'utf-8');
       const lines = content.split('\n');
       let inRawBlock = false;

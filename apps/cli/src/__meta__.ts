@@ -1523,6 +1523,7 @@ export const META: Meta = {
           exports: {
             './types': './src/types.ts',
             './permissions': './src/permissions.ts',
+            './invitation-link': './src/invitation-link.ts',
           },
         },
         api: {

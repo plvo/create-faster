@@ -92,6 +92,11 @@ function registerHelpers(): void {
     return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
   });
 
+  Handlebars.registerHelper('listeningApps', (options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return root.apps.filter((app) => appListensOnPort(root, app.appName));
+  });
+
   Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
   });
