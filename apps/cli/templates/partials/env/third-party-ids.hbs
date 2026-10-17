@@ -1,0 +1,11 @@
+{{!-- The ids of third-party accounts the project receives (`thirdPartyEnvs`): where each comes from and what the app does while it is blank. An empty list renders nothing, so every caller includes it unconditionally. --}}
+{{#if (thirdPartyEnvs)}}
+
+### Third-party ids
+
+`.env.example` leaves these blank because the values come from your own accounts.
+
+{{#each (thirdPartyEnvs)}}
+- `{{name}}`{{#if (isMono)}} in {{#each paths}}`{{this}}`{{#unless @last}}, {{/unless}}{{/each}}{{/if}}: {{description}}, from {{url}}. While it is blank, {{whenBlank}}.
+{{/each}}
+{{/if}}

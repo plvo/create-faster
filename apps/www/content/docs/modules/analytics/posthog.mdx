@@ -29,7 +29,7 @@ Modified files:
 - `src/proxy.ts` - Excludes `/ingest` from the matcher
 
 **Environment variables:**
-- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app).
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app), from the [project settings](https://us.posthog.com/settings/project). Blank in `.env.example`: while it is blank PostHog is not started and nothing is sent.
 
 #### instrumentation-client.ts
 
@@ -89,7 +89,7 @@ Modified files:
 - `src/routes/__root.tsx` - Wraps the page in `AnalyticsProvider` (inside the `ThemeProvider` when next-themes is selected)
 
 **Environment variables:**
-- `VITE_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app). Vite inlines it into client code at build time, hence the `VITE_` prefix.
+- `VITE_POSTHOG_PROJECT_TOKEN` - PostHog project token (scoped to app), from the [project settings](https://us.posthog.com/settings/project). Blank in `.env.example`: while it is blank PostHog is not started and nothing is sent. Vite inlines it into client code at build time, hence the `VITE_` prefix.
 
 #### analytics-provider.tsx
 

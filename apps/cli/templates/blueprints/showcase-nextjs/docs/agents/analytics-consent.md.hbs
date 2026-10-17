@@ -14,7 +14,7 @@ The `/ingest` rewrites are defined in `next.config.ts` (`rewrites()`): `/ingest/
 Consent is managed by c15t in `src/components/app-providers.tsx`: `ConsentManagerProvider` (categories `necessary` + `measurement`) wraps the app and renders `ConsentBanner` + `ConsentDialog`. The `onConsentSet` callback (in the provider `options.callbacks`) calls `posthog.opt_in_capturing()` when `measurement` is granted and `posthog.opt_out_capturing()` otherwise — so capture is off until the user accepts analytics.
 
 ## Env vars
-- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` — gates PostHog init (see `.env.example`).
+- `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` — gates PostHog init (see `.env.example`). Blank by default: it is the project token of your own PostHog project (https://us.posthog.com/settings/project), and analytics stay off until you set it.
 - `NEXT_PUBLIC_APP_URL` — site URL used by SEO, sitemap and robots.
 
 ## Tracking a custom event

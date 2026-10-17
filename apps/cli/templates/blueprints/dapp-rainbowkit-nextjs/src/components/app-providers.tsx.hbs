@@ -6,8 +6,9 @@ import {
   RainbowKitAuthenticationProvider,
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
+import { type Config, WagmiProvider } from 'wagmi';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { MissingConfig } from '@/components/missing-config';
 import { TRPCReactProvider } from '@/trpc/providers';
 import { authClient } from '@/lib/auth/auth-client';
 import { wagmiConfig } from '@/lib/wagmi';
@@ -22,6 +23,16 @@ interface AppProvidersProps {
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
+  if (!wagmiConfig) return <MissingConfig />;
+
+  return <WalletProviders config={wagmiConfig}>{children}</WalletProviders>;
+}
+
+interface WalletProvidersProps extends AppProvidersProps {
+  config: Config;
+}
+
+function WalletProviders({ config, children }: WalletProvidersProps) {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const mounted = useMounted();
@@ -64,7 +75,7 @@ export function AppProviders({ children }: AppProvidersProps) {
   }, [router]);
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={config}>
       <TRPCReactProvider>
         <RainbowKitAuthenticationProvider adapter={authAdapter} status={authStatus}>
           <RainbowKitProvider>

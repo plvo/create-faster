@@ -5,7 +5,13 @@ import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@
 import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
-import { collectAppSecrets, collectProjectSecrets, collectTaskEnv, resolveAppUrl } from './env-generator';
+import {
+  collectAppSecrets,
+  collectProjectSecrets,
+  collectTaskEnv,
+  collectThirdPartyEnvs,
+  resolveAppUrl,
+} from './env-generator';
 import { getErrorMessage } from './error-utils';
 import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
@@ -109,6 +115,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('taskEnv', (task: string, options: Handlebars.HelperOptions) => {
     return collectTaskEnv(options.data.root as TemplateContext, task);
+  });
+
+  Handlebars.registerHelper('thirdPartyEnvs', (options: Handlebars.HelperOptions) => {
+    return collectThirdPartyEnvs(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('monoPackages', (options: Handlebars.HelperOptions) => {

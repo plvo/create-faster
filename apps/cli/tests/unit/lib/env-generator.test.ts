@@ -7,6 +7,7 @@ import {
   collectEnvsToGenerate,
   collectProjectSecrets,
   collectTaskEnv,
+  collectThirdPartyEnvs,
 } from '@/lib/env-generator';
 import type { TemplateContext } from '@/types/ctx';
 import type { EnvVar, MetaAddon, MetaBlueprint } from '@/types/meta';
@@ -772,6 +773,90 @@ describe('EnvVar.generateCommand', () => {
 
     for (const [name, commands] of commandsByName) {
       expect({ name, commandCount: commands.size }).toEqual({ name, commandCount: 1 });
+    }
+  });
+});
+
+describe('EnvVar.thirdParty', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const SOURCE = { description: 'Acme token', url: 'https://acme.test/keys', whenBlank: 'Acme stays off' };
+  const THIRD_PARTY_ENVS: EnvVar[] = [
+    { value: 'NEXT_PUBLIC_ACME=', monoScope: ['app'], stacks: ['nextjs'], thirdParty: SOURCE },
+    { value: 'VITE_ACME=', monoScope: ['app'], stacks: ['tanstack-start'], thirdParty: SOURCE },
+    { value: 'ACME_FILE_KEY=', monoScope: ['app'], file: 'secrets', thirdParty: SOURCE },
+    { value: 'PLAIN=1', monoScope: ['app'] },
+  ];
+  const mixedApps = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: [] },
+      { appName: 'admin', stackName: 'tanstack-start', libraries: [] },
+    ],
+  });
+
+  function collect<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = THIRD_PARTY_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  test('lists each variable with the .env of the apps that receive it, by stack, never a dedicated file', () => {
+    expect(collect(() => collectThirdPartyEnvs(mixedApps))).toEqual([
+      { name: 'NEXT_PUBLIC_ACME', ...SOURCE, paths: ['apps/web/.env'] },
+      { name: 'VITE_ACME', ...SOURCE, paths: ['apps/admin/.env'] },
+    ]);
+  });
+
+  test('a single repo names the root .env', () => {
+    const single = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }],
+    });
+
+    expect(collect(() => collectThirdPartyEnvs(single))).toEqual([
+      { name: 'NEXT_PUBLIC_ACME', ...SOURCE, paths: ['.env'] },
+    ]);
+  });
+
+  test('a project that receives no such variable has none to list', () => {
+    expect(collectThirdPartyEnvs(makeContext({ apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }] }))).toEqual(
+      [],
+    );
+  });
+
+  test('the .env.example line names the source, and a variable without one has no comment', () => {
+    const files = collect(() => collectEnvFiles(mixedApps));
+    const lines = (destination: string) => files.find((f) => f.destination === destination)?.content.split('\n');
+
+    expect(lines('apps/web/.env.example')).toContain('NEXT_PUBLIC_ACME= # Acme token: https://acme.test/keys');
+    expect(lines('apps/admin/.env.example')).toContain('VITE_ACME= # Acme token: https://acme.test/keys');
+    expect(lines('apps/web/.env.example')).toContain('PLAIN=1');
+  });
+
+  const addons: { envs?: EnvVar[] }[] = [
+    ...Object.values(META.libraries),
+    ...Object.values(META.blueprints),
+    ...Object.values(META.project).flatMap((category) => Object.values(category.options)),
+  ];
+  const metaThirdPartyEnvs = addons.flatMap((addon) => addon.envs ?? []).filter((env) => env.thirdParty);
+
+  test('every third-party variable of META ships blank, so no placeholder can start a client', () => {
+    expect(metaThirdPartyEnvs.length).toBeGreaterThan(0);
+    for (const env of metaThirdPartyEnvs) expect(env.value).toMatch(/^[A-Z_]+=$/);
+  });
+
+  test('one variable carries the same source in every META declaration', () => {
+    const sourcesByName = new Map<string, Set<string>>();
+    for (const env of metaThirdPartyEnvs) {
+      const name = env.value.split('=')[0] ?? '';
+      sourcesByName.set(name, (sourcesByName.get(name) ?? new Set()).add(JSON.stringify(env.thirdParty)));
+    }
+
+    for (const [name, sources] of sourcesByName) {
+      expect({ name, sourceCount: sources.size }).toEqual({ name, sourceCount: 1 });
     }
   });
 });

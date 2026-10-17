@@ -4,7 +4,7 @@ import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
 import type { TemplateContext } from '@/types/ctx';
-import type { EnvScope, EnvVar, MetaAddon } from '@/types/meta';
+import type { EnvScope, EnvThirdParty, EnvVar, MetaAddon } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 interface EnvFileOutput {
@@ -27,11 +27,17 @@ interface CollectedEnv {
   secret?: boolean;
   tasks?: string[];
   generateCommand?: string;
+  thirdParty?: EnvThirdParty;
 }
 
 interface EnvToGenerate {
   name: string;
   command: string;
+  paths: string[];
+}
+
+interface ThirdPartyEnv extends EnvThirdParty {
+  name: string;
   paths: string[];
 }
 
@@ -63,7 +69,9 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
 
 function renderEnvLine(env: CollectedEnv, ctx: TemplateContext, appName?: string): string {
   const line = resolveEnvValue(env.value, ctx, appName);
-  return env.generateCommand ? `${line} # generate with: ${env.generateCommand}` : line;
+  if (env.generateCommand) return `${line} # generate with: ${env.generateCommand}`;
+  if (env.thirdParty) return `${line} # ${env.thirdParty.description}: ${env.thirdParty.url}`;
+  return line;
 }
 
 function extractEnvKey(value: string): string {
@@ -91,6 +99,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
         tasks: env.tasks,
         generateCommand: env.generateCommand,
+        thirdParty: env.thirdParty,
         ...origin,
       });
     }
@@ -266,6 +275,30 @@ export function collectEnvsToGenerate(ctx: TemplateContext): EnvToGenerate[] {
     if (!isReadFromAppEnvFile(env, ctx)) continue;
     const name = extractEnvKey(env.value);
     const entry = byName.get(name) ?? { name, command: env.generateCommand, paths: [] };
+
+    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate))) {
+      const examplePath = resolveScopeToPath(env.scope, ctx, app.appName);
+      const path = examplePath ? toEnvPath(examplePath) : undefined;
+      if (path && !entry.paths.includes(path)) entry.paths.push(path);
+    }
+    byName.set(name, entry);
+  }
+
+  return [...byName.values()].filter(({ paths }) => paths.length > 0);
+}
+
+function hasThirdParty(env: CollectedEnv): env is CollectedEnv & { thirdParty: EnvThirdParty } {
+  return env.thirdParty !== undefined;
+}
+
+/** The ids of third-party accounts the project receives, with their source and the `.env` of each app that reads them. */
+export function collectThirdPartyEnvs(ctx: TemplateContext): ThirdPartyEnv[] {
+  const byName = new Map<string, ThirdPartyEnv>();
+
+  for (const env of collectAllEnvs(ctx).filter(hasThirdParty)) {
+    if (!isReadFromAppEnvFile(env, ctx)) continue;
+    const name = extractEnvKey(env.value);
+    const entry = byName.get(name) ?? { name, ...env.thirdParty, paths: [] };
 
     for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate))) {
       const examplePath = resolveScopeToPath(env.scope, ctx, app.appName);

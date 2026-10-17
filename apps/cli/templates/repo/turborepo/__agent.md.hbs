@@ -64,6 +64,7 @@ Each `.env*.example` file lists the variables for its scope:
 {{#each envGroups~}}
 - `{{path}}`: {{#each vars}}`{{this}}` {{/each}}
 {{/each~}}
+{{> env/third-party-ids}}
 {{else~}}
 
 No environment variables required.

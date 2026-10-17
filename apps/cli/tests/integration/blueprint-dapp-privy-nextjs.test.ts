@@ -5,8 +5,6 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const PRIVY_APP_ID_LENGTH = 25;
-
 describe('dapp-privy-nextjs blueprint', () => {
   let tempDir: string;
 
@@ -18,7 +16,7 @@ describe('dapp-privy-nextjs blueprint', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('the placeholder Privy app ID passes the SDK format check, so the first build prerenders', async () => {
+  test('the Privy app ID is blank, so no made-up ID reaches the SDK and the first build prerenders the setup message', async () => {
     const result = await runCli(
       ['privy-env', '--blueprint', 'dapp-privy-nextjs', '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
@@ -26,7 +24,6 @@ describe('dapp-privy-nextjs blueprint', () => {
     expect(result.exitCode, result.stderr).toBe(0);
 
     const env = await readTextFile(join(tempDir, 'privy-env', '.env.example'));
-    const appId = env.match(/^NEXT_PUBLIC_PRIVY_APP_ID=(.+)$/m)?.[1];
-    expect(appId?.length).toBe(PRIVY_APP_ID_LENGTH);
+    expect(env).toMatch(/^NEXT_PUBLIC_PRIVY_APP_ID=\s*(#.*)?$/m);
   });
 });
