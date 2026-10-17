@@ -62,14 +62,24 @@ function LabelSkeleton() {
 // The label of a record reads the record its page puts in the cache and never creates the query. This header sits in the
 // layout, above the page's HydrationBoundary: a query created here first would make the boundary hydrate it in an effect,
 // after the page's own useSuspenseQuery has fetched the record again from the browser. Until the page has hydrated the
-// record, the label is a skeleton; a record the page found gone is null.
+// record, the label is a skeleton.
+//
+// The cache emits events while other components render (useSuspenseQuery reports its result as it renders), and React
+// refuses a store update that starts in another component's render, so the label hears the cache one microtask later.
+//
+// A page whose record is gone answers not found before it hydrates anything, so the record never reaches the cache.
+// Once the page has committed, a record still missing from the cache is one that is not coming: it reads as null,
+// like a record the page found gone.
 function useCachedRecord<T>(queryKey: QueryKey): T | null | undefined {
   const queryClient = useQueryClient();
-  return React.useSyncExternalStore(
-    (notify) => queryClient.getQueryCache().subscribe(notify),
+  const record = React.useSyncExternalStore(
+    (notify) => queryClient.getQueryCache().subscribe(() => queueMicrotask(notify)),
     () => queryClient.getQueryData<T | null>(queryKey),
     () => undefined,
   );
+  const [hasCommitted, setHasCommitted] = React.useState(false);
+  React.useEffect(() => setHasCommitted(true), []);
+  return record === undefined && hasCommitted ? null : record;
 }
 
 {{/unless}}

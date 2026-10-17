@@ -1,7 +1,12 @@
 {{#unless (eq stackName "tanstack-start")}}
+import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/session';
 {{/unless}}
 import { roleDefinitions, statement } from '@repo/auth/permissions';
+{{#unless (eq stackName "tanstack-start")}}
+
+export const metadata: Metadata = { title: 'Roles' };
+{{/unless}}
 
 const RESOURCES = Object.keys(statement) as Array<keyof typeof statement>;
 

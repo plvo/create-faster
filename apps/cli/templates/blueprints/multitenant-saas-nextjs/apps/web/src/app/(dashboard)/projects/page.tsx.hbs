@@ -4,8 +4,11 @@ mono:
   scope: app
   path: src/app/(dashboard)/projects/page.tsx
 ---
+import type { Metadata } from 'next';
 import { ProjectCreateDialog } from '@/components/projects/project-create-dialog';
 import { ProjectTable } from '@/components/projects/project-table';
+
+export const metadata: Metadata = { title: 'Projects' };
 
 {{{{raw}}}}
 export default function ProjectsPage() {

@@ -340,12 +340,25 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     { blueprint: FULLSTACK, root: 'apps/web', authImport: '@/lib/server' },
     { blueprint: ORG_DASHBOARD, root: 'apps/web', authImport: '@/lib/auth/auth' },
   ])('$blueprint session guards', ({ blueprint, root, authImport }) => {
-    const guards = async () =>
-      load<Record<string, () => Promise<unknown>>>(
+    // The guards import the header name and the redirect helper the blueprint generates: they run for real.
+    const guards = async () => {
+      const projectRoot = join(tempDir, blueprint, root);
+      const generated: Record<string, string> = {};
+      const realModules: [string, string][] = [
+        ['@/lib/auth/request-path', 'src/lib/auth/request-path.ts'],
+        ['@/lib/safe-redirect', 'src/lib/safe-redirect.ts'],
+      ];
+      for (const [specifier, file] of realModules) {
+        const name = `real-${blueprint}-${file.replace(/\W/g, '_')}.mjs`;
+        await evaluateGeneratedModule(await readTextFile(join(projectRoot, file)), join(stubs, name), {}, 'ts');
+        generated[specifier] = `./${name}`;
+      }
+      return load<Record<string, () => Promise<unknown>>>(
         'src/lib/auth/session.ts',
-        { [authImport]: './server.mjs' },
-        join(tempDir, blueprint, root),
+        { [authImport]: './server.mjs', ...generated },
+        projectRoot,
       );
+    };
 
     test('an anonymous visitor is sent to the login by both guards', async () => {
       const { requireSession, requireAdmin } = await guards();

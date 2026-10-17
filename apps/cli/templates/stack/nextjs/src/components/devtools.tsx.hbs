@@ -12,7 +12,7 @@ import { formDevtoolsPlugin } from '@tanstack/react-form-devtools';
 export function Devtools() {
   return (
     <TanStackDevtools
-      config=\{{ position: 'top-left' }}
+      config=\{{ position: 'middle-left' }}
       plugins={[
         {{#if (hasLibrary "tanstack-query")}}
         { name: 'TanStack Query', render: <ReactQueryDevtoolsPanel /> },

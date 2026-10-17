@@ -108,13 +108,14 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(signupForm).not.toContain("import { auth } from");
   });
 
-  test('ships can.tsx and use-permission.ts (verbatim from org-dashboard-nextjs)', () => {
+  test('ships can.tsx and use-permission.ts (the partial the org dashboard renders)', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src');
     const can = readFileSync(join(base, 'components/can.tsx.hbs'), 'utf8');
     expect(can).toContain("import { usePermission } from '@/hooks/use-permission'");
     expect(can).toContain('usePermission(permissions)');
     expect(can).toContain('{{{{raw}}}}');
-    const usePerm = readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8');
+    expect(readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8')).toContain('{{> hooks/use-permission}}');
+    const usePerm = partial('hooks/use-permission');
     expect(usePerm).toContain("import type { AppRole } from '@repo/auth/permissions'");
     expect(usePerm).toContain('authClient.admin.checkRolePermission');
     expect(usePerm).toContain('{{{{raw}}}}');
@@ -172,7 +173,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(sessions).toContain('authClient.listSessions()');
     expect(sessions).toContain('authClient.revokeSession({ token })');
     expect(sessions).toContain('authClient.revokeOtherSessions()');
-    expect(bpFile('src/components/profile/preferences.tsx.hbs')).toContain("useTheme");
+    expect(partial('profile/preferences')).toContain('useTheme');
   });
 
   test('avatar uploads to R2 and is served back through a binding route', () => {
@@ -332,6 +333,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   // Regression guards for bugs found by dogfood typecheck + the code-review pass.
   const bpFile = (p: string) =>
     readFileSync(join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs', p), 'utf8');
+  const partial = (name: string) => readFileSync(join(import.meta.dir, '../../templates/partials', `${name}.hbs`), 'utf8');
 
   test('ships a db types override matching its schema (no postTable)', () => {
     const types = bpFile('src/lib/db/types.ts.hbs');
@@ -370,10 +372,11 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('the sidebar user menu owns sign-out, the theme toggle, and the avatar', () => {
-    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> org-dashboard/nav-user avatar="image"');
+    const navUser = partial('org-dashboard/nav-user');
     expect(navUser).toContain('authClient.signOut()');
     expect(navUser).toContain("import { useTheme } from 'next-themes'");
-    expect(navUser).toContain('<AvatarImage src={session.user.image ?? undefined}');
+    expect(navUser).toContain('<AvatarImage src={user.image ?? undefined}');
   });
 
   test('cron purge counts actual R2 successes and batches the row delete', () => {
@@ -467,20 +470,22 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   });
 
   test('sidebar hides a permission category when none of its routes are visible', () => {
-    const links = bpFile('src/components/navigation/sidebar-links.tsx.hbs');
-    expect(links).toContain("import { useCan } from '@/hooks/use-permission'");
-    expect(links).toContain('const can = useCan();');
+    expect(bpFile('src/components/navigation/sidebar-links.tsx.hbs')).toContain('{{> org-dashboard/sidebar-links}}');
+    const links = partial('org-dashboard/sidebar-links');
+    expect(links).toContain("import { can } from '@/hooks/use-permission'");
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
-    expect(links).toContain('ROUTES.filter((item) => can(item.permissions ?? {}))');
-    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function useCan()');
+    expect(links).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
+    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('{{> hooks/use-permission}}');
+    expect(partial('hooks/use-permission')).toContain('export function can(');
   });
 
   test('sidebar user menu keeps the dropdown open when confirming logout', () => {
-    const navUser = bpFile('src/components/navigation/nav-user.tsx.hbs');
+    expect(bpFile('src/components/navigation/nav-user.tsx.hbs')).toContain('{{> org-dashboard/nav-user');
+    const navUser = partial('org-dashboard/nav-user');
     // onSelect + preventDefault stops the menu from closing on the first Logout click.
-    expect(navUser).toContain('onSelect={(e) => {');
-    expect(navUser).toContain('e.preventDefault();');
-    expect(navUser).toContain('setShowLogout(true);');
+    expect(navUser).toContain('onSelect={(event) => {');
+    expect(navUser).toContain('event.preventDefault();');
+    expect(navUser).toContain('swapLogoutItems(true);');
   });
 
   test('account display name uses an inline-edit field; documents upload uses a normal input', () => {

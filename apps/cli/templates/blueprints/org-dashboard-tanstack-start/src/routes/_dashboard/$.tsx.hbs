@@ -1,0 +1,12 @@
+import { createFileRoute, notFound } from '@tanstack/react-router';
+import { DashboardNotFound } from '@/components/dashboard-not-found';
+import { pageTitle } from '@/lib/page-title';
+
+// A URL that matches no route lands here, so its not found renders inside the dashboard layout.
+export const Route = createFileRoute('/_dashboard/$')({
+  beforeLoad: () => {
+    throw notFound();
+  },
+  head: () => ({ meta: [{ title: pageTitle('Page not found') }] }),
+  notFoundComponent: DashboardNotFound,
+});

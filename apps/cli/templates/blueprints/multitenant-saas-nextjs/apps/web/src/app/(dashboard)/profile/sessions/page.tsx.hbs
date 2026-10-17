@@ -5,10 +5,13 @@ mono:
   path: src/app/(dashboard)/profile/sessions/page.tsx
 ---
 {{{{raw}}}}
+import type { Metadata } from 'next';
 import { requireSession } from '@/lib/auth/session';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SessionList } from '@/components/profile/session-list';
+
+export const metadata: Metadata = { title: 'Sessions' };
 
 export default async function SessionsPage() {
   await requireSession();

@@ -55,6 +55,7 @@ const STUBS: Record<string, string> = {
 // useState behaves as React's does: a component reads its slots in call order, and a setter writes its slot.
 let slots = [];
 let next = 0;
+export const cache = (fn) => fn;
 export const resetState = () => { slots = []; next = 0; };
 export const startRender = () => { next = 0; };
 export const useState = (initial) => {
@@ -858,7 +859,10 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
   describe('page titles and headings', () => {
     test('the users list, a user and the roles are each titled, under the project template', async () => {
       expect((await load('usersRoute')).metadata).toEqual({ title: 'Users' });
-      expect((await load('userRoute')).metadata).toEqual({ title: 'User' });
+      const { generateMetadata } = (await load('userRoute')) as {
+        generateMetadata: (props: { params: Promise<{ id: string }> }) => Promise<unknown>;
+      };
+      expect(await generateMetadata({ params: Promise.resolve({ id: 'u1' }) })).toEqual({ title: 'User' });
       expect((await load('roles')).metadata).toEqual({ title: 'Roles' });
     });
 

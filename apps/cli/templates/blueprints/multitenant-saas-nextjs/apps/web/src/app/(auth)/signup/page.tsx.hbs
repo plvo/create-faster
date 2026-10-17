@@ -4,10 +4,13 @@ mono:
   scope: app
   path: src/app/(auth)/signup/page.tsx
 ---
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { SignupForm } from './signup-form';
+
+export const metadata: Metadata = { title: 'Create account' };
 
 {{{{raw}}}}
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {

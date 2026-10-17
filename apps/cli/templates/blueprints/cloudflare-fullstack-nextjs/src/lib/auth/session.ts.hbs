@@ -6,6 +6,8 @@ mono:
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { REQUEST_PATH_HEADER } from '@/lib/auth/request-path';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 import { getAuth } from '@/lib/server';
 
 {{> auth/session-guards}}

@@ -1,14 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  REACT_ELEMENT_STUB,
+  REACT_HOOKS_STUB,
   type RenderedChild,
   type RenderedElement,
   cleanupTempDir,
   createTempDir,
   elementsOf,
   evaluateGeneratedModule,
+  filesUnder,
   readTextFile,
   renderElementTree,
   runCli,
@@ -63,19 +64,7 @@ const WEB = 'apps/web';
 // returns the procedure and its input, and both query hooks record what they were asked, so a test can compare the
 // query the header reads with the one the page reads.
 const STUBS: Record<string, string> = {
-  'react.mjs': `${REACT_ELEMENT_STUB}
-let slots = [];
-let next = 0;
-export const resetState = () => { slots = []; next = 0; };
-// A client render reads the snapshot of the client; globalThis.__serverRender renders the page as the server does.
-export const useSyncExternalStore = (_subscribe, getSnapshot, getServerSnapshot) =>
-  globalThis.__serverRender ? getServerSnapshot() : getSnapshot();
-export const useState = (initial) => {
-  const store = slots;
-  const index = next++;
-  if (!(index in store)) store[index] = initial;
-  return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
-};`,
+  'react.mjs': REACT_HOOKS_STUB,
   'icons.mjs': `import { createElement } from './react.mjs';
 const icon = (name) => () => createElement('svg', { 'aria-hidden': 'true', 'data-icon': name });
 export const ArrowLeft = icon('ArrowLeft');
@@ -129,7 +118,12 @@ export const useSuspenseQuery = read;
 export const useMutation = () => ({ mutate() {}, isPending: false });
 export const useQueryClient = () => ({
   invalidateQueries() {},
-  getQueryCache: () => ({ subscribe: () => () => {} }),
+  getQueryCache: () => ({
+    subscribe: (listener) => {
+      globalThis.__cacheListeners?.push(listener);
+      return () => {};
+    },
+  }),
   getQueryData: (key) => {
     globalThis.__queries.push(key);
     return (globalThis.__queryStatus ?? 'success') === 'success' ? globalThis.__queryData?.[key.procedure] : undefined;
@@ -189,18 +183,18 @@ const globals = globalThis as {
   __queryData?: QueryData;
   __queryStatus?: QueryStatus;
   __serverRender?: boolean;
+  __subscriptions?: ((notify: () => void) => () => void)[];
+  __cacheListeners?: ((event: { type: string }) => void)[];
 };
-
-async function filesUnder(root: string): Promise<string[]> {
-  const entries = await readdir(root, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name));
-}
 
 const withoutGroups = (path: string): string => path.replace(/\([^/]+\)\//g, '');
 
 async function nextjsPageUrls(web: string): Promise<string[]> {
   const root = join(web, 'src/app');
-  const pages = (await filesUnder(join(root, '(dashboard)'))).filter((file) => file.endsWith('/page.tsx'));
+  // The catch-all page answers not found for every URL no page matches, so it is not a page of the app.
+  const pages = (await filesUnder(join(root, '(dashboard)'))).filter(
+    (file) => file.endsWith('/page.tsx') && !file.includes('/[...'),
+  );
   return pages
     .map((file) => withoutGroups(file.slice(root.length + 1)).replace(/\/?page\.tsx$/, ''))
     .map((route) => `/${route}`.replace(/\[(\w+)\]/g, ':$1'));
@@ -249,13 +243,18 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
   let web: string;
   let pageUrls: string[];
   let header: Component;
+  let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
   let loadComponent: (page: DetailPage) => Promise<Component>;
 
+  // A render starts from fresh hook state unless `keepState` asks for the re-render that follows a commit.
   const renderHeader = async (
     pathname: string,
     queryData: QueryData = {},
     status: QueryStatus = 'success',
+    keepState = false,
   ): Promise<Rendered> => {
+    if (keepState) react.beginRender();
+    else react.resetState();
     globals.__pathname = pathname;
     globals.__queries = [];
     globals.__observed = [];
@@ -291,6 +290,7 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
     const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
     for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
+    react = (await import(join(stubs, 'react.mjs'))) as typeof react;
     const imports = { ...IMPORTS, ...ROUTER_IMPORTS[blueprint.router] };
     await evaluateGeneratedModule(await readTextFile(join(web, 'src/lib/constants.ts')), join(stubs, 'constants.mjs'), imports);
     await evaluateGeneratedModule(
@@ -356,6 +356,43 @@ describe.each(BLUEPRINTS)('$name breadcrumb', (blueprint) => {
       } finally {
         globals.__serverRender = false;
       }
+    }
+  });
+
+  // The query cache emits events while another component renders (useSuspenseQuery reports its result as it renders).
+  // React refuses a store update that starts in a render, so the crumb hears the cache only after the render is over.
+  test.if(blueprint.router === 'next')('the record crumb hears the query cache after the render that changed it', async () => {
+    globals.__subscriptions = [];
+    globals.__cacheListeners = [];
+    try {
+      await renderHeader(`/admin/users/${SAMPLE_ID}`);
+      const subscribe = must(globals.__subscriptions.at(-1), 'the crumb subscription');
+      let notified = 0;
+      subscribe(() => {
+        notified += 1;
+      });
+      expect(globals.__cacheListeners.length).toBeGreaterThan(0);
+      for (const listener of globals.__cacheListeners) listener({ type: 'updated' });
+      expect(notified, 'a store update inside the render that emitted the event').toBe(0);
+      await Promise.resolve();
+      expect(notified).toBeGreaterThan(0);
+    } finally {
+      globals.__subscriptions = undefined;
+      globals.__cacheListeners = undefined;
+    }
+  });
+
+  // A page whose record is gone answers not found before it hydrates anything, so the cache never receives the
+  // record: a crumb still waiting after the page committed is for a record that is not coming.
+  test.if(blueprint.router === 'next')('a record the page never put in the cache stops loading once the page has committed', async () => {
+    const trails = [`/admin/users/${SAMPLE_ID}`, ...(blueprint.contact ? [`/contacts/${SAMPLE_ID}`] : [])];
+    for (const trail of trails) {
+      const loading = await renderHeader(trail, {}, 'success');
+      expect(elementsOf(loading.tree).some((element) => element.props['data-component'] === 'Skeleton'), trail).toBe(true);
+      react.flushEffects();
+      const settled = await renderHeader(trail, {}, 'success', true);
+      expect(elementsOf(settled.tree).some((element) => element.props['data-component'] === 'Skeleton'), trail).toBe(false);
+      expect(lastCrumbText(settled)).toBe(trail.startsWith('/contacts') ? 'Contact' : 'User');
     }
   });
 

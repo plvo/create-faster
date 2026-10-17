@@ -5,18 +5,26 @@ mono:
 ---
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { requireAdmin } from '@/lib/auth/session';
 import { getQueryClient, HydrateClient, trpc } from '@/trpc/server';
 import { UserClient } from './user.client';
 
-export const metadata: Metadata = { title: 'User' };
+// The metadata and the page read the same record: one fetch per request.
+const getUser = cache((id: string) => getQueryClient().fetchQuery(trpc.users.get.queryOptions({ id })));
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  await requireAdmin();
+  const user = await getUser(id);
+  return { title: user ? 'User' : 'Page not found' };
+}
 
 export default async function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requireAdmin();
-  const user = await getQueryClient().fetchQuery(trpc.users.get.queryOptions({ id }));
+  const user = await getUser(id);
   if (!user) notFound();
 
   return (

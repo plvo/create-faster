@@ -23,6 +23,7 @@ export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const destination = safeRedirectPath(params.get('redirectTo'));
+  const signupHref = destination === '/' ? '/signup' : `/signup?redirectTo=${encodeURIComponent(destination)}`;
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
@@ -55,13 +56,19 @@ export function LoginForm() {
         {(f) => <f.PasswordField label='Password' props={{ autoComplete: 'current-password' }} />}
       </form.AppField>
       <div className='-mt-1 flex justify-end'>
-        <Link href='/forgot-password' className='text-sm text-muted-foreground underline-offset-4 hover:underline'>
+        <Link href='/forgot-password' className='text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground'>
           Forgot password?
         </Link>
       </div>
       <form.AppForm>
         <form.SubmitButton props={{ className: 'w-full' }}>Sign in</form.SubmitButton>
       </form.AppForm>
+      <p className='text-center text-sm text-muted-foreground'>
+        Don&apos;t have an account?{' '}
+        <Link href={signupHref} className='underline underline-offset-4 hover:text-foreground'>
+          Sign up
+        </Link>
+      </p>
     </form>
   );
 }

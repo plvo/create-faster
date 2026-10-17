@@ -4,10 +4,13 @@ mono:
   scope: app
   path: src/app/(auth)/login/page.tsx
 ---
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { LoginForm } from './login-form';
+
+export const metadata: Metadata = { title: 'Sign in' };
 
 {{{{raw}}}}
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirect?: string }> }) {

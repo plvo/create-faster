@@ -3,9 +3,12 @@ mono:
   scope: app
   path: src/app/(dashboard)/profile/account/page.tsx
 ---
+import type { Metadata } from 'next';
 import { AccountForm } from '@/components/profile/account-form';
 import { AvatarUpload } from '@/components/profile/avatar-upload';
 import { requireSession } from '@/lib/auth/session';
+
+export const metadata: Metadata = { title: 'Account' };
 
 export default async function AccountPage() {
   const session = await requireSession();

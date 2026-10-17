@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/ui/card';
 import { ResetPasswordForm } from './reset-password-form';
+
+export const metadata: Metadata = { title: 'Reset password' };
 
 export default async function ResetPasswordPage({
   searchParams,

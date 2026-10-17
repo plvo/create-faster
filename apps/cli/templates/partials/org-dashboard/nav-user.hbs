@@ -1,3 +1,8 @@
+{{!-- The whole NavUser component file, imports included: the user menu of the dashboard sidebar.
+avatar="image": the avatar shows the user's image, with the initials as fallback (default: the initials alone).
+icons="hugeicons": the icons come from Hugeicons (default: lucide-react).
+showRole=true: the role follows the name in the menu trigger.
+It reads from the project: @repo/ui (avatar, button, dropdown-menu, sidebar) and @repo/auth. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useRouter } from '@tanstack/react-router';
@@ -5,12 +10,22 @@ import { Link, useRouter } from '@tanstack/react-router';
 'use client';
 
 {{/if}}
+{{#unless (eq icons "hugeicons")}}
 import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
+{{/unless}}
 import { useTheme } from 'next-themes';
 {{#unless (eq stackName "tanstack-start")}}
 import { useRouter } from 'next/navigation';
 {{/unless}}
 import React from 'react';
+{{#if (eq icons "hugeicons")}}
+import { ArrowUpDownIcon, Logout01Icon, Moon02Icon, Sun03Icon, UserIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+{{/if}}
+{{#if (eq avatar "image")}}
+import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui/components/ui/avatar';
+{{/if}}
+import { Button } from '@repo/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +39,31 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@re
 import type { Session } from '@repo/auth/types';
 import { authClient } from '@repo/auth/auth-client';
 
+function UserAvatar({ user, initials }: { user: Session['user']; initials: string }) {
+{{#if (eq avatar "image")}}
+  return (
+    <Avatar className='size-8 rounded-lg'>
+      <AvatarImage src={user.image ?? undefined} alt={user.name} />
+      <AvatarFallback className='rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
+{{else}}
+  return (
+    <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
+      {initials}
+    </div>
+  );
+{{/if}}
+}
+
 export function NavUser({ session }: { session: Session }) {
+  const [isOpen, setIsOpen] = React.useState(false);
   const [showLogout, setShowLogout] = React.useState(false);
+  const logoutItemRef = React.useRef<HTMLDivElement>(null);
+  const cancelLogoutRef = React.useRef<HTMLButtonElement>(null);
+  const itemToFocus = React.useRef<'logout' | 'cancel' | null>(null);
   const { isMobile } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
@@ -46,6 +84,24 @@ export function NavUser({ session }: { session: Session }) {
   };
 {{/if}}
 
+  // The confirmation and the Logout item replace each other, which would drop the keyboard focus on the page: the item
+  // that takes the other's place takes the focus.
+  const swapLogoutItems = (confirming: boolean) => {
+    itemToFocus.current = confirming ? 'cancel' : 'logout';
+    setShowLogout(confirming);
+  };
+
+  React.useEffect(() => {
+    const target = itemToFocus.current === 'cancel' ? cancelLogoutRef : logoutItemRef;
+    if (itemToFocus.current) target.current?.focus();
+    itemToFocus.current = null;
+  }, [showLogout]);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) setShowLogout(false);
+  };
+
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
@@ -60,22 +116,28 @@ export function NavUser({ session }: { session: Session }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu modal={false}>
+        <DropdownMenu modal={false} open={isOpen} onOpenChange={handleOpenChange}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
-              <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
-                {initials}
-              </div>
+              <UserAvatar user={session.user} initials={initials} />
               <div className='grid flex-1 text-left text-sm leading-tight gap-1'>
                 <span className='truncate font-medium'>
+{{#if showRole}}
                   {session.user.name} ({session.user.role})
+{{else}}
+                  {session.user.name}
+{{/if}}
                 </span>
                 <span className='truncate text-xs'>{session.user.email}</span>
               </div>
+{{#if (eq icons "hugeicons")}}
+              <HugeiconsIcon icon={ArrowUpDownIcon} className='ml-auto size-4' />
+{{else}}
               <ChevronsUpDown className='ml-auto size-4' />
+{{/if}}
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -86,9 +148,7 @@ export function NavUser({ session }: { session: Session }) {
           >
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
-                <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
-                  {initials}
-                </div>
+                <UserAvatar user={session.user} initials={initials} />
                 <div className='grid flex-1 text-left text-sm leading-tight'>
                   <span className='truncate font-medium'>{session.user.name}</span>
                   <span className='truncate text-xs'>{session.user.email}</span>
@@ -100,45 +160,65 @@ export function NavUser({ session }: { session: Session }) {
               <DropdownMenuItem asChild>
 {{#if (eq stackName "tanstack-start")}}
                 <Link to='/profile/account'>
-                  <UserIcon />
-                  Profile
-                </Link>
 {{else}}
                 <a href='/profile/account'>
+{{/if}}
+{{#if (eq icons "hugeicons")}}
+                  <HugeiconsIcon icon={UserIcon} />
+{{else}}
                   <UserIcon />
+{{/if}}
                   Profile
+{{#if (eq stackName "tanstack-start")}}
+                </Link>
+{{else}}
                 </a>
 {{/if}}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>
+{{#if (eq icons "hugeicons")}}
+                <HugeiconsIcon icon={resolvedTheme === 'dark' ? Sun03Icon : Moon02Icon} />
+{{else}}
                 {resolvedTheme === 'dark' ? <Sun /> : <Moon />}
+{{/if}}
                 {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {showLogout ? (
-              <div className='p-2 space-y-2'>
-                <p className='text-sm text-muted-foreground'>Are you sure?</p>
-                <div className='flex gap-2'>
-                  <button
-                    type='button'
-                    onClick={handleLogout}
-                    className='flex-1 rounded-md bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90'
-                  >
+              <div className='space-y-1 p-1'>
+                <p className='px-1 py-1 text-sm text-muted-foreground'>Are you sure?</p>
+                <DropdownMenuItem asChild onSelect={handleLogout}>
+                  <Button variant='destructive' size='sm' className='w-full'>
                     Logout
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => setShowLogout(false)}
-                    className='flex-1 rounded-md border px-2 py-1 text-xs hover:bg-accent'
-                  >
+                  </Button>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  asChild
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    swapLogoutItems(false);
+                  }}
+                >
+                  <Button ref={cancelLogoutRef} variant='outline' size='sm' className='w-full'>
                     Cancel
-                  </button>
-                </div>
+                  </Button>
+                </DropdownMenuItem>
               </div>
             ) : (
-              <DropdownMenuItem onClick={() => setShowLogout(true)} className='hover:bg-destructive/40'>
+              <DropdownMenuItem
+                ref={logoutItemRef}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  swapLogoutItems(true);
+                }}
+                className='hover:bg-destructive/40'
+              >
+{{#if (eq icons "hugeicons")}}
+                <HugeiconsIcon icon={Logout01Icon} />
+{{else}}
                 <LogOut />
+{{/if}}
                 Logout
               </DropdownMenuItem>
             )}
