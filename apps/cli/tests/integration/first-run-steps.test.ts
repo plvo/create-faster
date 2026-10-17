@@ -93,6 +93,6 @@ describe('first-run steps shared by the README and the CLI summary', () => {
 
     expectInOrder(readme, ['cp apps/web/.env.example apps/web/.env', 'bun run local-setup', 'bun run dev']);
     expectInOrder(stdout, ['cp apps/web/.env.example apps/web/.env', 'bun run local-setup', 'bun run dev']);
-    expect(readme).not.toContain('bun run db:generate\n');
+    expect(readme.slice(0, readme.indexOf('bun run dev'))).not.toContain('bun run db:generate\n');
   });
 });

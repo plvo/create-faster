@@ -36,7 +36,7 @@ The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.req
 
 **Key rules**
 - Build the Worker that you deploy where `.env` holds no real secret (CI, or a checkout without a `.env`). A build run next to a `.env` with production values ships them inside the Worker.
-- Set production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{#inDirectory "apps/<app>"}}{{runScript "deploy"}} -- --secrets-file .prod.env{{/inDirectory}}` (gitignored).
+- Set production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{#inDirectory "apps/<app>"}}{{runScript "deploy"}} -- --secrets-file .prod.env{{/inDirectory}}` (gitignored).{{#if (hasLibrary "better-auth")}} `BETTER_AUTH_URL` is the production URL of the Worker, which Wrangler only prints on deploy: see Production URL below to learn it first.{{/if}}
 - `{{runAppScript "preview"}}` serves the build as it is: the values of `.env` are frozen when `{{runAppScript "build:cf"}}` runs, so run it again after every `.env` change.
 - Keep local secrets in `.env`. Do NOT add `.dev.vars`: Next.js and OpenNext read `.env`, and a second file would hold a second copy of each secret.
 - `NODE_ENV=production` is set in `wrangler.jsonc` `vars`. The Next.js build only replaces the literal `process.env.NODE_ENV` in bundled code; dependencies and dynamic reads see the Worker's real variable, which reads `development` in workerd without the var. `wrangler dev`, `preview` and `deploy` run the built output and carry the var; `next dev` keeps `NODE_ENV=development`.
@@ -45,6 +45,13 @@ The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.req
 - `getEnv()` (`src/lib/env.ts`) calls `connection()` before reading the context, so `next build` never prerenders a page that reads a binding: during a build the context comes from a local workerd started per build worker, and several of them opening the same local D1 fail with `SQLITE_BUSY`. A page that must read a binding at build time cannot go through `getEnv()`.
 {{/if}}
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
+{{#if (hasLibrary "trpc")}}
+- `NEXT_PUBLIC_APP_URL` must be the production URL when the Worker you deploy is built: Next.js freezes it into the client bundle and the server code, and the server-side tRPC client calls the app at it (`getAppUrl()`), so a build that left the local value deploys a Worker that calls `localhost`. Export it in the shell of that build, then build: `export NEXT_PUBLIC_APP_URL=https://<worker name>.<subdomain>.workers.dev`, then `{{runAppScript "build:cf"}}`{{#if (hasLibrary "better-auth")}}. The Production URL notes below teach how to learn that URL before the first build{{/if}}.
+{{/if}}
+
+**Known warnings**:
+
+{{> cloudflare/opennext-warnings}}
 
 **Adding bindings (D1, R2, KV)**: declare them in `wrangler.jsonc`, then read via `getCloudflareContext({ async: true }).env.BINDING_NAME`.
 
@@ -67,7 +74,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 
 **Bindings and variables**
 - Read bindings with `import { env } from 'cloudflare:workers'`. They are never on `process.env`.
-- Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runScript "build"}}`, then `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler deploy --secrets-file <file>{{/inDirectory}}`, with a file you keep out of git.
+- Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runScript "build"}}`, then `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler deploy --secrets-file <file>{{/inDirectory}}`, with a file you keep out of git.{{#if (hasLibrary "better-auth")}} `BETTER_AUTH_URL` is the production URL of the Worker, which Wrangler only prints on deploy: see Production URL below to learn it first.{{/if}}
 - The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.required`, generated from the variables the project marks as secrets: a deploy fails until each is set, and a local run warns about a missing one.
 - `vite build` writes `dist/server/.dev.vars`, a local copy of `.env` for `vite preview` (only the `secrets.required` keys when the file lists any). `wrangler deploy` does not upload it. Never ship `dist` other than through `wrangler deploy`, and rebuild after editing `.env`.
 - Local state (D1, KV, R2) is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root{{/if}}, the same directory the `wrangler ... --persist-to` scripts use.
@@ -124,6 +131,12 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}` or, for the first deploy of a new Worker, `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler deploy --secrets-file .prod.env{{/inDirectory}}`. The runtime secrets of an app are listed in `wrangler.jsonc` under `secrets.required`: a deploy fails until each is set, and a local run warns about a missing one.
+{{/if}}
+{{#if (hasLibrary "better-auth")}}
+
+### Production URL
+
+{{> cloudflare/production-url}}
 {{/if}}
 {{#if (has "database" "d1")}}
 

@@ -10,9 +10,10 @@ Provision the production database once, before the first deploy. Wrangler needs 
 2. Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID`.
 {{#if project.orm}}
 
-3. Apply the migrations to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
+3. Generate the migrations (the template ships none; running `db:generate` again changes nothing when they exist) and apply them to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
 
    ```bash
+   {{runScript "db:generate"}}
    {{runScript "db:migrate"}}
 {{#if (hasRootScript "db:seed")}}
    {{runScript "db:seed"}}

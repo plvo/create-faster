@@ -1,0 +1,25 @@
+`BETTER_AUTH_URL` is the public URL of the Worker, and a deploy fails until it is set, yet `wrangler deploy` is the first command that prints that URL. Learn it before the first build and deploy, from the Cloudflare account:
+
+1. Find the account id (the `Account ID` column; with several accounts, take the one you deploy to):
+
+   ```bash
+   {{#inDirectory "apps" (deployAppDir)}}{{installedBinaryRunner}} wrangler whoami{{/inDirectory}}
+   ```
+
+2. Ask the Workers API for the `workers.dev` subdomain of that account, with the token of the Wrangler login (or `CLOUDFLARE_API_TOKEN`). `WRANGLER_HIDE_BANNER` keeps Wrangler's banner out of the token:
+
+   ```bash
+   curl -s -H "Authorization: Bearer $( {{#inDirectory "apps" (deployAppDir)}}WRANGLER_HIDE_BANNER=true {{installedBinaryRunner}} wrangler auth token{{/inDirectory}} )" https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain
+   ```
+
+   The answer holds `"subdomain": "<subdomain>"` under `result`. An error with code `10007` instead means the account has no `workers.dev` subdomain yet: register one at `https://dash.cloudflare.com/<account id>/workers/onboarding`, then ask again.
+
+The URL of a Worker is then `https://<worker name>.<subdomain>.workers.dev`, its name being the `name` of its `wrangler.jsonc`:
+{{#each apps}}
+{{#if (appSecrets)}}
+
+- {{#if (isMono)}}`{{appName}}`: {{/if}}`https://{{> cloudflare/worker-name projectName=@root.projectName}}.<subdomain>.workers.dev`
+{{/if}}
+{{/each}}
+
+A Worker served from a custom domain or a route uses that URL instead.

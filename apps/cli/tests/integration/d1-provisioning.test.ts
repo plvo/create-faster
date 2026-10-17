@@ -82,6 +82,7 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       single: (name, scripts) => [
         `${runner} wrangler d1 create ${name}-db --no-update-config`,
         'REPLACE_WITH_D1_DATABASE_ID',
+        `${pm} run db:generate\n`,
         `${pm} run db:migrate\n`,
         `${pm} run db:migrate:remote\n`,
         'secrets.required',
@@ -90,6 +91,7 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       turborepo: (name, scripts) => [
         `(cd apps/web && ${runner} wrangler d1 create ${name}-db --no-update-config)`,
         'REPLACE_WITH_D1_DATABASE_ID',
+        `${pm} run db:generate\n`,
         `${pm} run db:migrate\n`,
         `${pm} run db:migrate:remote\n`,
         'secrets.required',
@@ -104,7 +106,7 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       test.each([
         ['AGENTS.md', 'Scripts'],
         ['README.md', repo === 'single' ? 'Production' : 'Available Scripts'],
-      ])('%s: create, paste, migrate locally, migrate remotely, deploy, in this order', async (file, scripts) => {
+      ])('%s: create, paste, generate and migrate locally, migrate remotely, deploy, in this order', async (file, scripts) => {
         const doc = await projectFile(file);
         expectInOrder(doc, steps[repo](name, scripts));
         expect(doc).toContain(`
