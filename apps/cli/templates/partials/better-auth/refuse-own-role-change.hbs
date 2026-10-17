@@ -1,0 +1,23 @@
+import type { BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+
+// better-auth lets an admin set any role, their own included, so the only admin could demote themselves and lock
+// everyone out of user management. It already refuses banning or removing yourself.
+export const refuseOwnRoleChange = {
+  id: 'refuse-own-role-change',
+  hooks: {
+    before: [
+      {
+        matcher: (ctx) =>
+          ctx.path === '/admin/set-role' ||
+          (ctx.path === '/admin/update-user' && Object.hasOwn(ctx.body?.data ?? {}, 'role')),
+        handler: createAuthMiddleware(async (ctx) => {
+          const session = await getSessionFromCtx(ctx);
+          if (session && String(ctx.body?.userId) === session.user.id) {
+            throw new APIError('BAD_REQUEST', { message: 'You cannot change your own role' });
+          }
+        }),
+      },
+    ],
+  },
+} satisfies BetterAuthPlugin;

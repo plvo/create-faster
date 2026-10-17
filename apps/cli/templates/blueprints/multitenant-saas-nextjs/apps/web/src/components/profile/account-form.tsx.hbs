@@ -28,15 +28,15 @@ export function AccountForm() {
         queryClient.invalidateQueries(trpc.user.me.queryFilter());
         toast.success('Name updated');
       },
-      onError: () => toast.error('Failed to update name'),
+      onError: (err) => toast.error(err.message),
     }),
   );
 
   const form = useAppForm({
     defaultValues: { name: user?.name || '' },
     validators: { onChange: nameSchema },
-    onSubmit: async ({ value }) => {
-      await updateProfile.mutateAsync({ name: value.name });
+    onSubmit: ({ value }) => {
+      updateProfile.mutate({ name: value.name });
     },
   });
 
@@ -81,7 +81,7 @@ export function AccountForm() {
           {(field) => <field.InputField label='Display name' />}
         </form.AppField>
         <form.AppForm>
-          <form.SubmitButton>Save</form.SubmitButton>
+          <form.SubmitButton props={{ disabled: updateProfile.isPending }}>Save</form.SubmitButton>
         </form.AppForm>
       </form>
     </section>

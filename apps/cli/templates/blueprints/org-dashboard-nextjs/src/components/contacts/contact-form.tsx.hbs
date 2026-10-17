@@ -35,6 +35,7 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: (
         toast.success('Contact created');
         onDone?.();
       },
+      onError: (error) => toast.error(error.message),
     }),
   );
   const update = useMutation(
@@ -44,6 +45,7 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: (
         toast.success('Contact updated');
         onDone?.();
       },
+      onError: (error) => toast.error(error.message),
     }),
   );
   const mutation = contact ? update : create;
@@ -58,11 +60,11 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: (
       notes: contact?.notes ?? '',
     },
     validators: { onChange: schema },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       if (contact) {
-        await update.mutateAsync({ id: contact.id, data: value });
+        update.mutate({ id: contact.id, data: value });
       } else {
-        await create.mutateAsync(value);
+        create.mutate(value);
       }
     },
   });

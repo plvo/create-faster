@@ -58,12 +58,12 @@ export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
       status: initial?.status ?? ('active' as 'active' | 'archived'),
     },
     validators: { onChange: projectSchema },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       const description = value.description || null;
       if (mode === 'create') {
-        await create.mutateAsync({ name: value.name, description, status: value.status });
+        create.mutate({ name: value.name, description, status: value.status });
       } else if (initial) {
-        await update.mutateAsync({ id: initial.id, name: value.name, description, status: value.status });
+        update.mutate({ id: initial.id, name: value.name, description, status: value.status });
       }
     },
   });
@@ -86,7 +86,7 @@ export function ProjectForm({ mode, initial, onSuccess }: ProjectFormProps) {
         {(field) => <field.SelectField label='Status' options={{ Active: 'active', Archived: 'archived' }} />}
       </form.AppField>
       <form.AppForm>
-        <form.SubmitButton props={{ className: 'w-full' }}>
+        <form.SubmitButton props={{ className: 'w-full', disabled: create.isPending || update.isPending }}>
           {mode === 'create' ? 'Create project' : 'Save changes'}
         </form.SubmitButton>
       </form.AppForm>

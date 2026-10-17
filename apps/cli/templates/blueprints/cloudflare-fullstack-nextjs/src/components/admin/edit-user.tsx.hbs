@@ -12,6 +12,7 @@ import { KeyRound, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
 import { roleDefinitions } from '@repo/auth/permissions';
 import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
@@ -54,8 +55,16 @@ export function EditUser({ user }: { user: AdminUser }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const isOwnAccount = session?.user.id === user.id;
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const profile = {
+    name: user.name,
+    firstName: user.firstName ?? '',
+    lastName: user.lastName ?? '',
+    phone: user.phone ?? '',
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries(trpc.users.get.queryFilter({ id: user.id }));
@@ -68,7 +77,10 @@ export function EditUser({ user }: { user: AdminUser }) {
         invalidate();
         toast.success('Profile updated');
       },
-      onError: (e) => toast.error(e.message),
+      onError: (e) => {
+        toast.error(e.message);
+        form.reset(profile);
+      },
     }),
   );
   const roleMutation = useMutation(
@@ -110,15 +122,10 @@ export function EditUser({ user }: { user: AdminUser }) {
   );
 
   const form = useAppForm({
-    defaultValues: {
-      name: user.name,
-      firstName: user.firstName ?? '',
-      lastName: user.lastName ?? '',
-      phone: user.phone ?? '',
-    },
+    defaultValues: profile,
     validators: { onSubmit: profileSchema },
-    onSubmit: async ({ value }) => {
-      await updateMutation.mutateAsync({ id: user.id, ...value });
+    onSubmit: ({ value }) => {
+      updateMutation.mutate({ id: user.id, ...value });
     },
   });
 
@@ -153,24 +160,26 @@ export function EditUser({ user }: { user: AdminUser }) {
         </dl>
       </section>
 
-      <section className='space-y-3 rounded-lg border bg-card p-4 sm:p-6'>
-        <div>
-          <h2 className='text-sm font-semibold'>Role</h2>
-          <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
-        </div>
-        <Select value={user.role ?? 'user'} onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}>
-          <SelectTrigger aria-label='Role' className='w-48 capitalize'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ROLES.map((role) => (
-              <SelectItem key={role} value={role} className='capitalize'>
-                {role}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </section>
+      {!isOwnAccount && (
+        <section className='space-y-3 rounded-lg border bg-card p-4 sm:p-6'>
+          <div>
+            <h2 className='text-sm font-semibold'>Role</h2>
+            <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
+          </div>
+          <Select value={user.role ?? 'user'} onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}>
+            <SelectTrigger aria-label='Role' className='w-48 capitalize'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((role) => (
+                <SelectItem key={role} value={role} className='capitalize'>
+                  {role}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </section>
+      )}
 
       <section className='space-y-3 rounded-lg border bg-card p-4 sm:p-6'>
         <div>
@@ -189,43 +198,50 @@ export function EditUser({ user }: { user: AdminUser }) {
         </Button>
       </section>
 
-      <section className='space-y-3 rounded-lg border border-destructive/30 bg-card p-4 sm:p-6'>
-        <div>
-          <h2 className='text-sm font-semibold text-destructive'>Danger zone</h2>
-          <p className='text-sm text-muted-foreground'>Restrict or permanently remove this account.</p>
-        </div>
-        <div className='flex flex-wrap gap-2'>
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => banMutation.mutate({ id: user.id, banned: !user.banned })}
-            disabled={banMutation.isPending}
-          >
-            {user.banned ? 'Unban user' : 'Ban user'}
-          </Button>
-          {confirmDelete ? (
-            <>
-              <Button
-                type='button'
-                variant='destructive'
-                onClick={() => removeMutation.mutate({ id: user.id })}
-                disabled={removeMutation.isPending}
-              >
-                <Trash2 className='size-4' />
-                Confirm delete
-              </Button>
-              <Button type='button' variant='ghost' onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button type='button' variant='destructive' onClick={() => setConfirmDelete(true)}>
-              <Trash2 className='size-4' />
-              Delete user
+      {!isOwnAccount && (
+        <section className='space-y-3 rounded-lg border border-destructive/30 bg-card p-4 sm:p-6'>
+          <div>
+            <h2 className='text-sm font-semibold text-destructive'>Danger zone</h2>
+            <p className='text-sm text-muted-foreground'>Restrict or permanently remove this account.</p>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => banMutation.mutate({ id: user.id, banned: !user.banned })}
+              disabled={banMutation.isPending}
+            >
+              {user.banned ? 'Unban user' : 'Ban user'}
             </Button>
-          )}
-        </div>
-      </section>
+            {confirmDelete ? (
+              <>
+                <Button
+                  type='button'
+                  variant='destructive'
+                  onClick={() => removeMutation.mutate({ id: user.id })}
+                  disabled={removeMutation.isPending}
+                >
+                  <Trash2 className='size-4' />
+                  Confirm delete
+                </Button>
+                <Button type='button' variant='ghost' onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button type='button' variant='destructive' onClick={() => setConfirmDelete(true)}>
+                <Trash2 className='size-4' />
+                Delete user
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
+      {isOwnAccount && (
+        <p className='text-sm text-muted-foreground'>
+          This is your account: you cannot change your own role, ban or delete yourself.
+        </p>
+      )}
     </div>
   );
 }

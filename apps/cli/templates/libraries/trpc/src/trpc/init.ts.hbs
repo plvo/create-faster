@@ -26,6 +26,9 @@ import { getRequestSession } from {{#if (isMono)}}'@repo/auth/session-cache'{{el
 {{/if}}
 import { initTRPC{{#if (hasLibrary "better-auth")}}, TRPCError{{/if}} } from '@trpc/server';
 import superjson from 'superjson';
+{{#if (hasLibrary "better-auth")}}
+import { trpcErrorFromAuthError } from './auth-errors';
+{{/if}}
 
 export async function createTRPCContext(opts: { headers: Headers{{#if (and (has "database" "d1") project.orm)}}; db: Database{{/if}} }) {
 {{#if (hasLibrary "better-auth")}}
@@ -57,8 +60,18 @@ type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
 {{> trpc/instance}}
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
 {{#if (hasLibrary "better-auth")}}
+
+const mapAuthErrors = t.middleware(async (opts) => {
+  const result = await opts.next();
+  if (!result.ok) {
+    const mapped = trpcErrorFromAuthError(result.error.cause);
+    if (mapped) throw mapped;
+  }
+  return result;
+});
+
+export const publicProcedure = t.procedure.use(mapAuthErrors);
 
 export const protectedProcedure = publicProcedure.use(async (opts) => {
   if (!opts.ctx.session?.user) {
@@ -76,4 +89,6 @@ export const protectedProcedure = publicProcedure.use(async (opts) => {
     },
   });
 });
+{{else}}
+export const publicProcedure = t.procedure;
 {{/if}}

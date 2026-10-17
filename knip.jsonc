@@ -10,8 +10,8 @@
     "apps/cli": {
       // test files are run by directory (bun test tests/unit, tests/e2e), which knip does not expand; lambda-invoke.mjs is run as a node subprocess by tests/e2e/lambda-handler.ts, by file path; setup.ts is the bun test preload named in bunfig.toml
       "entry": ["tests/**/*.test.ts", "tests/e2e/lambda-invoke.mjs", "tests/setup.ts"],
-      // resolved at runtime: tests/integration/hono-app.test.ts imports a generated app that imports evlog through a symlink to this node_modules
-      "ignoreDependencies": ["evlog"]
+      // resolved at runtime: tests/integration/hono-app.test.ts imports a generated app that imports evlog through a symlink to this node_modules; tests/integration/trpc-auth-errors.test.ts hands the path of superjson to a generated tRPC instance that imports it
+      "ignoreDependencies": ["evlog", "superjson"]
     },
     "apps/www": {
       // loaded by the fumadocs-mdx Next.js plugin

@@ -9,13 +9,18 @@ import { contactTable, desc, eq, count as dbCount } from '@repo/db';
 import { router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';
 
+const blankAsNull = (value: string) => value || null;
+
+const emailOrBlank = z.union([z.string().email(), z.literal('')]).transform(blankAsNull);
+const textOrBlank = z.string().transform(blankAsNull);
+
 const contactInput = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  notes: z.string().optional(),
+  email: emailOrBlank.optional(),
+  phone: textOrBlank.optional(),
+  company: textOrBlank.optional(),
+  notes: textOrBlank.optional(),
 });
 
 export const contactRouter = router({

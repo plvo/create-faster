@@ -179,7 +179,8 @@ export const DropdownMenuContent = ({ children }) => createElement('div', { role
 export const DropdownMenuItem = ({ children, onClick }) => createElement('div', { role: 'menuitem', onClick }, children);
 export const DropdownMenuSeparator = () => null;`,
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
-  'auth-client.mjs': 'export const authClient = { admin: {} };',
+  'auth-client.mjs': `// The signed-in user is another one than the users the pages show, unless a test makes them the same.
+export const authClient = { admin: {}, useSession: () => ({ data: { user: { id: globalThis.__testViewerId ?? 'viewer' } } }) };`,
   'app-form.mjs': `import { createElement } from './react.mjs';
 import { InlineEditField } from './inline-edit.mjs';
 // A field is the one the generated library renders, fed the value of the form, so a test reads what a page asks of it.
@@ -369,6 +370,7 @@ interface Mounter<Name extends string> {
 }
 
 interface Globals {
+  __testViewerId?: string;
   __testQueryData?: unknown;
   __testMutationResult?: unknown;
   __toasts?: { kind: string; message: string }[];
@@ -739,6 +741,16 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       const entries = elementsOf(menu.children).filter((element) => element.props.role === 'menuitem');
       expect(entries.map(textOf)).toEqual(['Set role: user', 'Set role: manager', 'Ban User']);
     });
+
+    test('the signed-in user gets no action on their own row', async () => {
+      (globalThis as Globals).__testViewerId = 'u1';
+      try {
+        const page = await actions();
+        expect(page.tree).toEqual([]);
+      } finally {
+        (globalThis as Globals).__testViewerId = undefined;
+      }
+    });
   });
 });
 
@@ -997,6 +1009,19 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         expect(field.props.tabIndex).toBeUndefined();
       }
       expect(withTag(page.tree, 'dt').map((term) => term.props.id)).toEqual(fields.map((field) => String(field.props['aria-labelledby']).split(' ')[0]));
+    });
+
+    test('the signed-in user cannot change their own role, ban or delete themselves', async () => {
+      (globalThis as Globals).__testViewerId = USER.id;
+      try {
+        const page = await mount('editUser', { props: { user: USER } });
+        expect(withTag(page.tree, 'h2').map(textOf)).toEqual(['Profile', 'Password']);
+        expect(find(page.tree, (element) => element.props.role === 'combobox')).toBeUndefined();
+        const actions = withTag(page.tree, 'button').filter((button) => button.props['data-component'] === 'Button');
+        expect(actions.map((button) => accessibleName(button, elementsOf(page.tree)))).toEqual(['Generate new password']);
+      } finally {
+        (globalThis as Globals).__testViewerId = undefined;
+      }
     });
 
     test('the role select has a name', async () => {

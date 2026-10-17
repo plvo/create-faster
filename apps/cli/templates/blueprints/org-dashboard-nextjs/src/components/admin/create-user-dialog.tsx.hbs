@@ -41,15 +41,15 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
         });
         onOpenChange(false);
       },
-      onError: (error) => toast.error(error.message ?? 'Create failed'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 
   const form = useAppForm({
     defaultValues: { name: '', email: '', role: 'user' as 'admin' | 'user' | 'manager' },
     validators: { onChange: schema },
-    onSubmit: async ({ value }) => {
-      await createUser.mutateAsync(value);
+    onSubmit: ({ value }) => {
+      createUser.mutate(value);
     },
   });
 

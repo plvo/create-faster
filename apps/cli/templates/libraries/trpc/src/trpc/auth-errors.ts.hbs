@@ -1,0 +1,42 @@
+---
+path: src/trpc/auth-errors.ts
+mono:
+  scope: pkg
+  path: src/auth-errors.ts
+---
+{{#if (hasLibrary "better-auth")}}
+import { TRPCError, type TRPC_ERROR_CODE_KEY } from '@trpc/server';
+
+const TRPC_CODE_BY_HTTP_STATUS: Record<number, TRPC_ERROR_CODE_KEY> = {
+  400: 'BAD_REQUEST',
+  401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  405: 'METHOD_NOT_SUPPORTED',
+  408: 'TIMEOUT',
+  409: 'CONFLICT',
+  412: 'PRECONDITION_FAILED',
+  413: 'PAYLOAD_TOO_LARGE',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
+  422: 'UNPROCESSABLE_CONTENT',
+  429: 'TOO_MANY_REQUESTS',
+};
+
+interface AuthApiError extends Error {
+  statusCode: number;
+}
+
+// better-auth throws an APIError (from better-call) for a refused request, with the HTTP status as a number. The
+// name is what better-auth's own isAPIError falls back on, so the check needs no import from better-auth.
+function isAuthApiError(error: unknown): error is AuthApiError {
+  return error instanceof Error && error.name === 'APIError' && typeof (error as { statusCode?: unknown }).statusCode === 'number';
+}
+
+// A request better-auth refused (400 "You cannot ban yourself", 403, 404, 429) is the caller's mistake, so it keeps
+// its message and the tRPC code of its HTTP status instead of the INTERNAL_SERVER_ERROR tRPC gives an unknown error.
+export function trpcErrorFromAuthError(error: unknown): TRPCError | undefined {
+  if (!isAuthApiError(error) || error.statusCode < 400) return undefined;
+  const code = TRPC_CODE_BY_HTTP_STATUS[error.statusCode] ?? (error.statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+  return new TRPCError({ code, message: error.message, cause: error });
+}
+{{/if}}

@@ -31,7 +31,7 @@ export function DocumentsClient() {
         queryClient.invalidateQueries(trpc.documents.list.queryFilter());
         toast.success('Document deleted');
       },
-      onError: () => toast.error('Failed to delete document'),
+      onError: (error) => toast.error(error.message),
     }),
   );
 

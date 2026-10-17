@@ -106,6 +106,8 @@ export const protectedProcedure = publicProcedure.use(async (opts) => {
 });
 ```
 
+With Better Auth, `publicProcedure` (and so `protectedProcedure`) also runs a middleware that maps a Better Auth `APIError` thrown inside a procedure (`auth.api.banUser(...)` refusing with `YOU_CANNOT_BAN_YOURSELF`) to a `TRPCError` with the code of its HTTP status (400 `BAD_REQUEST`, 403 `FORBIDDEN`, 404 `NOT_FOUND`, ...) and its message. Without it, tRPC wraps the error as `INTERNAL_SERVER_ERROR` and, outside development, the client only sees `Internal server error`. The mapping is `trpcErrorFromAuthError` in `auth-errors.ts` next to `init.ts` (`packages/api/src/auth-errors.ts` in a turborepo); a server error status stays `INTERNAL_SERVER_ERROR`.
+
 ### routers/hello.ts
 
 Example router with Zod validation:
