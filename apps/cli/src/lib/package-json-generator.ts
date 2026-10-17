@@ -400,6 +400,12 @@ export function getRootScripts(ctx: TemplateContext): Record<string, string> {
   return root.scripts ?? {};
 }
 
+/** The names of the scripts at least one app defines: a turborepo root has only those it forwards through turbo. */
+export function getAppScripts(ctx: TemplateContext): string[] {
+  const names = ctx.apps.flatMap((app, index) => Object.keys(composeAppPackageJson(app, ctx, index).scripts ?? {}));
+  return [...new Set(names)];
+}
+
 /** The workspace packages of a turborepo, keyed by name, each with its merged package.json config. */
 export function collectMonoPackages(ctx: TemplateContext): Map<string, PackageJsonConfig> {
   const packages = new Map<string, PackageJsonConfig>();

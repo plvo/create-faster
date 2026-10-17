@@ -80,10 +80,9 @@ Start all applications in development mode:
 ## Available Scripts
 
 - `{{runScript "dev"}}` - Start all apps in development mode
-- `{{runScript "build"}}` - Build all apps for production
-{{#if (hasRootScript "start")}}
-- `{{runScript "start"}}` - Start all apps in production mode
-{{/if}}
+{{#each (productionSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
 {{#if (hasRootScript "db:generate")}}
 {{#if (has "orm" "prisma")}}
 - `{{runScript "db:generate"}}` - Generate the Prisma client

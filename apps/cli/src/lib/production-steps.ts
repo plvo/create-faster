@@ -1,5 +1,5 @@
-import { getRootScripts } from '@/lib/package-json-generator';
-import { getScriptCommand } from '@/lib/package-manager';
+import { getAppScripts, getRootScripts } from '@/lib/package-json-generator';
+import { getAppScriptCommand, getScriptCommand } from '@/lib/package-manager';
 import type { TemplateContext } from '@/types/ctx';
 
 interface ProductionStep {
@@ -16,12 +16,14 @@ const PRODUCTION_SCRIPTS = [
   { script: 'deploy', description: 'Deploy' },
 ];
 
-/** The production commands the generated root package.json defines: the README, AGENTS.md and the CLI summary print them. */
+/** The production commands the generated project defines: the README, AGENTS.md and the CLI summary print them. */
 export function collectProductionSteps(ctx: TemplateContext): ProductionStep[] {
   const rootScripts = getRootScripts(ctx);
+  const appScripts = getAppScripts(ctx);
 
-  return PRODUCTION_SCRIPTS.filter(({ script }) => script in rootScripts).map(({ script, description }) => ({
-    description,
-    command: getScriptCommand(ctx, script),
-  }));
+  return PRODUCTION_SCRIPTS.flatMap(({ script, description }) => {
+    if (script in rootScripts) return [{ description, command: getScriptCommand(ctx, script) }];
+    if (appScripts.includes(script)) return [{ description, command: getAppScriptCommand(ctx, script) }];
+    return [];
+  });
 }

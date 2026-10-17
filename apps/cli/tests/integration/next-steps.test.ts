@@ -66,6 +66,31 @@ describe('next steps printed by the summary, the README and AGENTS.md', () => {
     }
   });
 
+  test('an Expo single repo has no dev script, so no document tells to run one', async () => {
+    const { scripts, readme, agents, stdout } = await generate('expo-single', ['--app', 'mobile:expo']);
+
+    expect(scripts).not.toContain('dev');
+    for (const text of [readme, agents, stdout]) {
+      expect(text).not.toContain('npm run dev');
+    }
+  });
+
+  test('a Cloudflare turborepo runs the deploy scripts of its apps from an app directory in the README', async () => {
+    const { readme, stdout } = await generate('next-cloudflare-turbo', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'docs:nextjs',
+      '--deployment',
+      'cloudflare',
+    ]);
+
+    for (const text of [readme, stdout]) {
+      expect(text).toContain('cd apps/<app> && npm run build:cf');
+      expect(text).toContain('cd apps/<app> && npm run deploy');
+    }
+  });
+
   test('the first commit comes before the push, on a branch named main', async () => {
     const { stdout } = await generate('git-steps', ['--app', 'web:nextjs']);
     const steps = ['git add .', 'git commit -m', 'git branch -M main', 'git remote add origin', 'git push -u origin main'];

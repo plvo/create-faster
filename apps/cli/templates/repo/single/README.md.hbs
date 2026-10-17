@@ -46,6 +46,7 @@ Install dependencies:
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
+{{#if (hasRootScript "dev")}}
 Start the development server:
 
 ```bash
@@ -54,6 +55,7 @@ Start the development server:
 
 {{#if (has "stack" "nextjs")}}
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+{{/if}}
 {{/if}}
 
 {{#if (productionSteps)}}

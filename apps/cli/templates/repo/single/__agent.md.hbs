@@ -35,7 +35,9 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 - Package manager: {{pm}}
 
 ## Scripts
+{{#if (hasRootScript "dev")}}
 - `{{runScript "dev"}}` — start the dev server
+{{/if}}
 {{#each (productionSteps)}}
 - `{{command}}` — {{description}}
 {{/each}}

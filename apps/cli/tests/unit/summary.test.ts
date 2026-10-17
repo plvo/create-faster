@@ -202,6 +202,28 @@ describe('summary note', () => {
       expect(output).toContain('bun run start');
     });
 
+    test('an Expo app has no dev script, so the summary has no development step', () => {
+      displaySummaryNote({ ...ctx, apps: [{ appName: 'demo', stackName: 'expo', libraries: [] }] }, undefined, []);
+      const output = written.join('');
+
+      expect(output).not.toContain('# Development:');
+      expect(output).not.toContain('run dev');
+    });
+
+    test('a turborepo shows the app-only scripts of its deployment from the app directory', () => {
+      const apps = [
+        { appName: 'web', stackName: 'nextjs' as const, libraries: [] },
+        { appName: 'docs', stackName: 'nextjs' as const, libraries: [] },
+      ];
+      displaySummaryNote(
+        { ...ctx, repo: 'turborepo', apps, project: { deployment: 'cloudflare', tooling: [] } },
+        undefined,
+        [],
+      );
+
+      expect(written.join('')).toContain('cd apps/<app> && bun run deploy');
+    });
+
     test('a Next.js app on Cloudflare lists the Worker build, the preview and the deploy, and no start', () => {
       displaySummaryNote(oneApp('nextjs', 'cloudflare'), undefined, []);
       const output = written.join('');

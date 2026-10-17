@@ -3,8 +3,8 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getMonoPackageName } from '@/lib/addon-utils';
 import { collectFirstRunSteps } from '@/lib/first-run';
-import { collectMonoPackages } from '@/lib/package-json-generator';
-import { getPackageRunner } from '@/lib/package-manager';
+import { collectMonoPackages, getRootScripts } from '@/lib/package-json-generator';
+import { getPackageRunner, getScriptCommand } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
 import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
@@ -200,21 +200,23 @@ function buildStepsNote(
     steps.push(...commands);
     steps.push('');
   }
-  steps.push('# Development:');
-  steps.push(`${ctx.pm ?? 'npm'} run dev        # Start development server`);
+  if ('dev' in getRootScripts(ctx)) {
+    steps.push('# Development:');
+    steps.push(`${getScriptCommand(ctx, 'dev')}        # Start development server`);
+    steps.push('');
+  }
 
   const productionSteps = collectProductionSteps(ctx);
   if (productionSteps.length > 0) {
     const width = Math.max(...productionSteps.map(({ command }) => command.length));
-    steps.push('');
     steps.push('# Production:');
     for (const { command, description } of productionSteps) {
       steps.push(`${command.padEnd(width)}  # ${description}`);
     }
+    steps.push('');
   }
 
   if (hasGitRepository) {
-    steps.push('');
     steps.push('# Git:');
     steps.push('git add .');
     steps.push('git commit -m "Initial commit"');
@@ -222,6 +224,8 @@ function buildStepsNote(
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');
   }
+
+  while (steps.at(-1) === '') steps.pop();
 
   return steps;
 }
