@@ -29,16 +29,19 @@ export function usesPortPlaceholder(script: string): boolean {
   return /\{\{port\}\}/.test(script);
 }
 
+const PORT_FLAG = /(\s*)--port\s*\{\{port\}\}/g;
+
 // A single repo leaves the port flag out and lets the runtime take its own default, which is the port of the first app.
+// A turborepo keeps the flag with the app port as the default of `PORT`, so a `PORT` in the environment wins.
 export function processScriptPorts(
   scripts: Record<string, string>,
   port: number,
-  stripFlag = false,
+  omitPortFlag = false,
 ): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(scripts)) {
-    const withoutFlag = stripFlag ? value.replace(/\s*--port\s*\{\{port\}\}/g, '') : value;
-    resolved[key] = withoutFlag.replace(/\{\{port\}\}/g, String(port));
+    const flagResolved = value.replace(PORT_FLAG, omitPortFlag ? '' : '$1--port ${PORT:-{{port}}}');
+    resolved[key] = flagResolved.replace(/\{\{port\}\}/g, String(port));
   }
   return resolved;
 }

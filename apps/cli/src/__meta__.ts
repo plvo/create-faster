@@ -1551,6 +1551,7 @@ export const META: Meta = {
           exports: {
             './types': './src/types.ts',
             './permissions': './src/permissions.ts',
+            './invitation-link': './src/invitation-link.ts',
           },
         },
         api: {
@@ -1721,7 +1722,7 @@ export const META: Meta = {
           '@libsql/client': LIBSQL_CLIENT_VERSION,
         },
         scripts: {
-          'db:seed': 'BETTER_AUTH_URL=http://localhost:3000 {{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
+          'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
         },
       },

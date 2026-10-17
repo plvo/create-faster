@@ -73,9 +73,11 @@ Start all applications in development mode:
 
 {{#each apps}}
 {{#if (appUrl appName)}}
-- {{appName}}: [{{appUrl appName}}]({{appUrl appName}})
+- {{appName}}: [{{appUrl appName}}]({{appUrl appName}}), {{> ports/app-command}}
 {{/if}}
 {{/each}}
+
+{{> ports/override}}
 
 ## Available Scripts
 

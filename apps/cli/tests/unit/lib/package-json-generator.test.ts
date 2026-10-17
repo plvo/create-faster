@@ -60,7 +60,7 @@ describe('generateAppPackageJson (turborepo)', () => {
 
   test('resolves port placeholder in scripts', () => {
     const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
-    expect(result.content.scripts?.dev).toContain('--port 3000');
+    expect(result.content.scripts?.dev).toContain('--port ${PORT:-3000}');
   });
 });
 
@@ -158,7 +158,7 @@ describe('generateAppPackageJson (portless, turborepo)', () => {
 
   test('leaves original start script unchanged (including --port in turbo)', () => {
     const web = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
-    expect(web.content.scripts?.start).toBe('next start --port 3000');
+    expect(web.content.scripts?.start).toBe('next start --port ${PORT:-3000}');
   });
 
   test('strips --port flag in portless-wrapped scripts', () => {

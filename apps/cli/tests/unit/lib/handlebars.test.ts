@@ -123,6 +123,15 @@ describe('Handlebars helpers', () => {
       expect(template({ project: { database: 'mysql', tooling: [] } })).toBe('no');
     });
 
+    test('answers for the project inside a loop over the apps', () => {
+      const template = Handlebars.compile(
+        '{{#each apps}}{{appName}}={{#if (has "tooling" "portless")}}portless{{else}}plain{{/if}};{{/each}}',
+      );
+      const apps = [{ appName: 'web', stackName: 'nextjs', libraries: [] }];
+      expect(template({ apps, project: { tooling: ['portless'] } })).toBe('web=portless;');
+      expect(template({ apps, project: { tooling: [] } })).toBe('web=plain;');
+    });
+
     test('checks orm value', () => {
       const template = Handlebars.compile('{{#if (has "orm" "drizzle")}}yes{{else}}no{{/if}}');
       expect(template({ project: { orm: 'drizzle', tooling: [] } })).toBe('yes');
@@ -374,6 +383,12 @@ describe('Handlebars helpers', () => {
       expect(urls(monorepo(['portless']))).toBe(
         'web=https://web.localhost:1355;api=https://api.localhost:1355;worker=;mobile=;',
       );
+    });
+
+    test('listeningApps lists the apps that have a dev URL, in order, and nothing when none listens', () => {
+      const listening = Handlebars.compile('{{#each (listeningApps)}}{{appName}};{{/each}}');
+      expect(listening(monorepo())).toBe('web;api;');
+      expect(listening({ ...monorepo(), apps: monorepo().apps.slice(2) })).toBe('');
     });
 
     test('lists the packages a turborepo generates', () => {

@@ -15,10 +15,12 @@
       "dependsOn": ["^db:generate"],
 {{/if}}
       "inputs": ["$TURBO_DEFAULT$", ".env"],
+      "passThroughEnv": ["PORT"],
       "cache": false,
       "persistent": true
     }{{#if (hasRootScript "start")}},
     "start": {
+      "passThroughEnv": ["PORT"],
       "cache": false,
       "persistent": true
     }{{/if}}{{#if (hasRootScript "test")}},

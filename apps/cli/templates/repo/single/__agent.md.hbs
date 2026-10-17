@@ -55,6 +55,8 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 - `{{runScript "check"}}` — format and lint with Biome
 {{/if}}
 
+{{> ports/override}}
+
 ## Environment
 {{#if envGroups.length~}}
 

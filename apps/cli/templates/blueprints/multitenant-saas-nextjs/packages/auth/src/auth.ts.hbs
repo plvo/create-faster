@@ -18,6 +18,7 @@ import {
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
+import { invitationLink } from './invitation-link';
 import { deliverLink } from './link-delivery';
 import { ac, admin, member, owner } from './permissions';
 
@@ -70,8 +71,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         requireEmailVerificationOnInvitation: false,
         cancelPendingInvitationsOnReInvite: true,
         async sendInvitationEmail(data) {
-          const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/accept-invitation/${data.id}`;
-          deliverLink({ kind: 'invitation', to: data.email, link: inviteLink });
+          deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
       ...(cookiePlugin ? [cookiePlugin] : []),

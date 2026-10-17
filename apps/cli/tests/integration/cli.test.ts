@@ -747,8 +747,8 @@ describe('CLI Integration', () => {
 
       expect(result.exitCode).toBe(0);
 
-      expect(await readTextFile(join(projectPath, 'apps/web/vite.config.ts'))).toContain('port: 3000,');
-      expect(await readTextFile(join(projectPath, 'apps/admin/vite.config.ts'))).toContain('port: 3001,');
+      expect(await readTextFile(join(projectPath, 'apps/web/vite.config.ts'))).toContain('port: Number(process.env.PORT ?? 3000),');
+      expect(await readTextFile(join(projectPath, 'apps/admin/vite.config.ts'))).toContain('port: Number(process.env.PORT ?? 3001),');
       expect(await readTextFile(join(projectPath, 'apps/web/.env.start'))).toBe('NODE_ENV=production\nPORT=3000\n');
       expect(await readTextFile(join(projectPath, 'apps/admin/.env.start'))).toBe('NODE_ENV=production\nPORT=3001\n');
       const webPkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'apps/web/package.json'));

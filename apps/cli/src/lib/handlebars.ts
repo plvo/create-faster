@@ -59,16 +59,17 @@ function registerHelpers(): void {
     return Array.isArray(this.apps) && this.apps.some((app) => app.libraries.includes(name));
   });
 
-  Handlebars.registerHelper('has', function (this: EnrichedTemplateContext, category: string, value: string) {
+  Handlebars.registerHelper('has', (category: string, value: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
     if (category === 'stack') {
-      return this.apps.some((app) => app.stackName === value);
+      return root.apps.some((app) => app.stackName === value);
     }
 
-    if (!(category in this.project)) {
+    if (!(category in root.project)) {
       return false;
     }
 
-    const categoryValue = this.project[category as keyof ProjectContext];
+    const categoryValue = root.project[category as keyof ProjectContext];
     if (Array.isArray(categoryValue)) {
       return categoryValue.includes(value);
     } else {
@@ -96,6 +97,11 @@ function registerHelpers(): void {
   Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
     return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
+  });
+
+  Handlebars.registerHelper('listeningApps', (options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    return root.apps.filter((app) => appListensOnPort(root, app.appName));
   });
 
   Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {

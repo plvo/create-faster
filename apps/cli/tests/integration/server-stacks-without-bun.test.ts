@@ -51,8 +51,8 @@ describe.each([...NODE_PACKAGE_MANAGERS])('Hono app with %s', (pm) => {
     const project = await generate(`hono-mono-${pm}`, ['--app', 'web:nextjs', '--app', 'api:hono'], pm);
     const { scripts } = await manifestOf(join(project, 'apps/api'));
 
-    expect(scripts.dev).toBe('tsx watch src/server.ts --port 3001');
-    expect(scripts.start).toBe('NODE_ENV=production tsx src/server.ts --port 3001');
+    expect(scripts.dev).toBe('tsx watch src/server.ts --port ${PORT:-3001}');
+    expect(scripts.start).toBe('NODE_ENV=production tsx src/server.ts --port ${PORT:-3001}');
     expect(await readTextFile(join(project, 'apps/api/src/server.ts'))).toContain("port: { type: 'string' }");
   });
 

@@ -128,7 +128,7 @@ describe('TanStack Start + cloudflare-static', () => {
     test('the start app is prerendered and the nextjs app keeps its static export', async () => {
       const docsConfig = await readTextFile(join(projectPath, 'apps/docs/vite.config.ts'));
       expect(docsConfig).toContain('prerender: { enabled: true');
-      expect(docsConfig).toContain('port: 3001');
+      expect(docsConfig).toContain('port: Number(process.env.PORT ?? 3001),');
       const webConfig = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
       expect(webConfig).toContain("output: 'export'");
       expect(await fileExists(join(projectPath, 'apps/docs/src/routes/$.tsx'))).toBe(true);

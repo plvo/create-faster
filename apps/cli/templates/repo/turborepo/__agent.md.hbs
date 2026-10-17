@@ -3,8 +3,10 @@
 Generated with create-faster. Turborepo monorepo.
 
 ## Apps
-{{#each apps}}- `apps/{{appName}}` — {{stackName}}{{#if (appUrl appName)}} ({{appUrl appName}}){{/if}}
+{{#each apps}}- `apps/{{appName}}` — {{stackName}}{{#if (appUrl appName)}} ({{appUrl appName}}), {{> ports/app-command}}{{/if}}
 {{/each}}
+
+{{> ports/override}}
 {{#if (monoPackages)}}
 
 ## Packages

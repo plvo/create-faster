@@ -28,7 +28,7 @@ async function generate(projectName: string, args: string[]): Promise<string> {
 // Bun runs these stacks from source, so nothing replaces process.env.NODE_ENV at build time.
 describe('Bun server stacks run production with NODE_ENV=production', () => {
   test.each([
-    { stack: 'hono', app: 'api', dev: 'bun run --port 3001 --hot src/index.ts', start: 'NODE_ENV=production bun run --port 3001 src/index.ts' },
+    { stack: 'hono', app: 'api', dev: 'bun run --port ${PORT:-3001} --hot src/index.ts', start: 'NODE_ENV=production bun run --port ${PORT:-3001} src/index.ts' },
     { stack: 'node', app: 'jobs', dev: 'bun run --hot src/index.ts', start: 'NODE_ENV=production bun run src/index.ts' },
   ])('$stack: start sets NODE_ENV=production, dev leaves it to the runtime', async ({ stack, app, dev, start }) => {
     const projectDir = await generate(`node-env-${stack}`, ['--app', 'web:nextjs', '--app', `${app}:${stack}`]);

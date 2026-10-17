@@ -16,7 +16,9 @@ Start the development server:
 {{runScript "dev"}}
 ```
 
-{{#if (has "stack" "nextjs")}}
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-{{/if}}
+{{#each (listeningApps)}}
+Open [{{appUrl appName}}]({{appUrl appName}}) in your browser.
+
+{{/each}}
+{{> ports/override}}
 {{/if}}

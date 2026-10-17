@@ -148,7 +148,7 @@ describe('root start of a turborepo', () => {
     expect((await manifestOf(join(project, 'apps/jobs'))).scripts.start).toBe('NODE_ENV=production tsx src/index.ts');
     expect((await manifestOf(join(project, 'apps/api'))).scripts.start).toBeUndefined();
     const turbo = await readJsonFile<{ tasks: Record<string, unknown> }>(join(project, 'turbo.json'));
-    expect(turbo.tasks.start).toEqual({ cache: false, persistent: true });
+    expect(turbo.tasks.start).toEqual({ passThroughEnv: ['PORT'], cache: false, persistent: true });
   });
 });
 
@@ -162,12 +162,12 @@ describe('Hono app on another deployment', () => {
     const { scripts, dependencies } = await manifestOf(join(project, 'apps/api'));
 
     if (pm === 'bun') {
-      expect(scripts.dev).toBe('bun run --port 3001 --hot src/index.ts');
-      expect(scripts.start).toBe('NODE_ENV=production bun run --port 3001 src/index.ts');
+      expect(scripts.dev).toBe('bun run --port ${PORT:-3001} --hot src/index.ts');
+      expect(scripts.start).toBe('NODE_ENV=production bun run --port ${PORT:-3001} src/index.ts');
       expect(await fileExists(join(project, 'apps/api/src/server.ts'))).toBe(false);
     } else {
-      expect(scripts.dev).toBe('tsx watch src/server.ts --port 3001');
-      expect(scripts.start).toBe('NODE_ENV=production tsx src/server.ts --port 3001');
+      expect(scripts.dev).toBe('tsx watch src/server.ts --port ${PORT:-3001}');
+      expect(scripts.start).toBe('NODE_ENV=production tsx src/server.ts --port ${PORT:-3001}');
       expect(dependencies?.['@hono/node-server']).toBeDefined();
       expect(await fileExists(join(project, 'apps/api/src/server.ts'))).toBe(true);
     }

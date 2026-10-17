@@ -19,7 +19,7 @@ Beyond the official setup, we include:
 - `build` - Production build, emits the Nitro server to `.output/`
 - `preview` - Preview the production build
 - `postinstall` - Generates `src/routeTree.gen.ts` with `tsr generate` (`@tanstack/router-cli`), so `tsc` and the editor work right after install. `dev` and `build` keep the file up to date, and it is meant to be committed
-- `start` - Production server (`node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs`): loads the app's `.env` when it exists (otherwise Node prints `.env not found. Continuing without it.` on stderr), then `.env.start` (`NODE_ENV=production` and the app's `PORT`), and listens on the app's port. When `start` runs from the app directory, a `PORT` or `NITRO_PORT` exported in the shell overrides it; in Turborepo, `turbo start` from the root runs in strict env mode and drops shell variables, so only the two files apply
+- `start` - Production server (`node --env-file-if-exists=.env --env-file=.env.start .output/server/index.mjs`): loads the app's `.env` when it exists (otherwise Node prints `.env not found. Continuing without it.` on stderr), then `.env.start` (`NODE_ENV=production` and the app's `PORT`), and listens on the app's port. When `start` runs from the app directory, a `PORT` or `NITRO_PORT` exported in the shell overrides it; in Turborepo, `turbo start` from the root runs in strict env mode and drops shell variables other than `PORT`, so only the two files apply to the others
 
 **Vite Configuration:**
 - TanStack Router DevTools enabled (a panel of the [TanStack Devtools](/docs/modules/data-fetching/tanstack-devtools) shell when that module is selected)
