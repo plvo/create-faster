@@ -1,0 +1,44 @@
+{{!-- deploy: also renders the last step, the deploy of the apps --}}
+Provision the production database once, before the first deploy. Wrangler needs a Cloudflare login first (its `login` command, or `CLOUDFLARE_API_TOKEN` in CI).
+
+1. Create the database. `--no-update-config` stops Wrangler from offering to add the binding to `wrangler.jsonc` itself: accepting adds a second binding named after the database next to `DB`, and the code only reads `DB`.
+
+   ```bash
+   {{#if (isMono)}}(cd {{#if (hasPackage "db")}}packages/db{{else}}apps/{{apps.0.appName}}{{/if}} && {{/if}}{{binaryRunner}} wrangler d1 create {{projectName}}-db --no-update-config{{#if (isMono)}}){{/if}}
+   ```
+
+2. Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID`.
+{{#if project.orm}}
+
+3. Apply the migrations to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
+
+   ```bash
+   {{runScript "db:migrate"}}
+{{#if (hasRootScript "db:seed")}}
+   {{runScript "db:seed"}}
+{{/if}}
+   ```
+
+4. Apply the migrations to the production database:
+
+   ```bash
+   {{#if (isMono)}}(cd packages/db && {{/if}}{{runScript "db:migrate:remote"}}{{#if (isMono)}}){{/if}}
+   ```
+{{/if}}
+{{#if deploy}}
+
+{{#if project.orm}}5{{else}}3{{/if}}. Deploy{{#if (isMono)}} each app{{/if}}{{#if (has "stack" "nextjs")}}, building the Worker first for a Next.js app{{/if}}:
+
+   ```bash
+{{#each (stackApps "nextjs")}}
+   {{runScriptOfApp "build:cf"}}
+   {{runScriptOfApp "deploy"}}
+{{/each}}
+{{#each (stackApps "tanstack-start")}}
+   {{runScriptOfApp "deploy"}}
+{{/each}}
+{{#each (stackApps "hono")}}
+   {{runScriptOfApp "deploy"}}
+{{/each}}
+   ```
+{{/if}}

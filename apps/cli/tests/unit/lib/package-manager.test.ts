@@ -2,8 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   createCachedVersionReader,
   findMissingPackageManager,
+  getBinaryRunner,
+  getPackageRunner,
   getPackageManager,
   getScriptCommand,
+  getScriptCommandOfApp,
   getTypeScriptRunner,
   missingPackageManagerMessage,
   readPackageManagerVersion,
@@ -130,5 +133,26 @@ describe('getTypeScriptRunner', () => {
     expect(getTypeScriptRunner(contextWith({ pm: 'bun' }))).toBe('bun');
     expect(getTypeScriptRunner(contextWith({ pm: 'pnpm' }))).toBe('tsx');
     expect(getTypeScriptRunner(contextWith({ pm: undefined }))).toBe('tsx');
+  });
+});
+
+describe('getBinaryRunner', () => {
+  test('runs the binary the project installed, where the package runner of pnpm downloads the latest one', () => {
+    expect(getBinaryRunner(contextWith({ pm: 'bun' }))).toBe('bunx');
+    expect(getBinaryRunner(contextWith({ pm: 'npm' }))).toBe('npx');
+    expect(getBinaryRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm exec');
+    expect(getBinaryRunner(contextWith({ pm: undefined }))).toBe('npx');
+    expect(getPackageRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm dlx');
+  });
+});
+
+describe('getScriptCommandOfApp', () => {
+  test('a single repo runs the script from the root', () => {
+    expect(getScriptCommandOfApp(contextWith({ pm: 'pnpm' }), 'deploy', 'web')).toBe('pnpm run deploy');
+  });
+
+  test('a turborepo runs it in a subshell of the app directory, so the next step starts at the root', () => {
+    const turborepo = contextWith({ repo: 'turborepo', apps: TURBOREPO_APPS, pm: 'npm' });
+    expect(getScriptCommandOfApp(turborepo, 'deploy', 'api')).toBe('(cd apps/api && npm run deploy)');
   });
 });

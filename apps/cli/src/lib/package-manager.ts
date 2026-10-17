@@ -60,6 +60,13 @@ const PACKAGE_MANAGER_RUNNERS: Record<PackageManagerName, string> = {
   pnpm: 'pnpm dlx',
 };
 
+/** `pnpm dlx` always downloads the latest release, so a binary the project installs runs through `pnpm exec`. */
+const PACKAGE_MANAGER_BINARY_RUNNERS: Record<PackageManagerName, string> = {
+  bun: 'bunx',
+  npm: 'npx',
+  pnpm: 'pnpm exec',
+};
+
 const COMMAND_FALLBACK_PACKAGE_MANAGER: PackageManagerName = 'npm';
 
 export function resolveCommandPackageManager(ctx: TemplateContext): PackageManagerName {
@@ -102,9 +109,19 @@ export function getScriptCommandInApp(ctx: TemplateContext, script: string, appN
   return `(cd apps/${appName} && ${getScriptCommand(ctx, script)})`;
 }
 
+/** A script of one app as a user runs it: from the root in a single repo, in a subshell of the app directory in a turborepo. */
+export function getScriptCommandOfApp(ctx: TemplateContext, script: string, appName: string): string {
+  return ctx.repo === 'turborepo' ? getScriptCommandInApp(ctx, script, appName) : getScriptCommand(ctx, script);
+}
+
 /** The command that runs a package binary without installing it. */
 export function getPackageRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_RUNNERS[resolveCommandPackageManager(ctx)];
+}
+
+/** The command that runs a binary a dependency of the project installed (`wrangler`), in the version the project pins. */
+export function getBinaryRunner(ctx: TemplateContext): string {
+  return PACKAGE_MANAGER_BINARY_RUNNERS[resolveCommandPackageManager(ctx)];
 }
 
 /**

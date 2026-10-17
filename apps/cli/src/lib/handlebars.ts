@@ -12,7 +12,14 @@ import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
-import { getAppScriptCommand, getPackageRunner, getScriptCommand, getTypeScriptRunner } from './package-manager';
+import {
+  getAppScriptCommand,
+  getBinaryRunner,
+  getPackageRunner,
+  getScriptCommand,
+  getScriptCommandOfApp,
+  getTypeScriptRunner,
+} from './package-manager';
 import { collectProductionSteps } from './production-steps';
 import { resolveAppPort } from './utils';
 
@@ -116,6 +123,13 @@ function registerHelpers(): void {
     return getAppScriptCommand(options.data.root as TemplateContext, script);
   });
 
+  Handlebars.registerHelper(
+    'runScriptOfApp',
+    function (this: EnrichedTemplateContext, script: string, options: Handlebars.HelperOptions) {
+      return getScriptCommandOfApp(options.data.root as TemplateContext, script, this.appName ?? '');
+    },
+  );
+
   Handlebars.registerHelper('installScripts', (options: Handlebars.HelperOptions) => {
     const scripts = collectInstallScripts(options.data.root as TemplateContext);
     return Object.keys(scripts).length > 0 ? scripts : undefined;
@@ -135,6 +149,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('packageRunner', (options: Handlebars.HelperOptions) => {
     return getPackageRunner(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('binaryRunner', (options: Handlebars.HelperOptions) => {
+    return getBinaryRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

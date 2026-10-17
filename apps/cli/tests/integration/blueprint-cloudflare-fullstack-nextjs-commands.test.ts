@@ -48,6 +48,16 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
     }
   });
 
+  test('the provisioning notes create D1 and R2 with the project Wrangler, declining the duplicate binding', async () => {
+    const runner = { bun: 'bunx', npm: 'npx', pnpm: 'pnpm exec' }[pm];
+    const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+
+    expect(notes).toContain(`(cd packages/db && ${runner} wrangler d1 create ${projectName}-db --no-update-config)`);
+    expect(notes).toContain(`(cd apps/web && ${runner} wrangler r2 bucket create ${projectName}-storage --no-update-config)`);
+    expect(notes).not.toMatch(/(?<!bunx |npx |pnpm exec )wrangler (d1 create|r2 bucket create)/);
+    expect(notes).not.toContain('pnpm dlx');
+  });
+
   test('no note prints a package manager filter form', async () => {
     for (const file of NOTE_FILES) {
       expect(await readTextFile(join(projectPath, file))).not.toContain('--filter');

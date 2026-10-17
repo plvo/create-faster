@@ -284,6 +284,19 @@ describe('Handlebars helpers', () => {
       expect(withArgs(ctx('npm'))).toBe('npm run db:seed -- --fixtures');
     });
 
+    test('binaryRunner runs the binary the project installed, packageRunner downloads one', () => {
+      const runner = Handlebars.compile('{{binaryRunner}} wrangler | {{packageRunner}} wrangler');
+      expect(runner(ctx('bun'))).toBe('bunx wrangler | bunx wrangler');
+      expect(runner(ctx('npm'))).toBe('npx wrangler | npx wrangler');
+      expect(runner(ctx('pnpm'))).toBe('pnpm exec wrangler | pnpm dlx wrangler');
+    });
+
+    test('runScriptOfApp runs the script of the app it is called for, from the root of a single repo', () => {
+      const perApp = Handlebars.compile('{{#each (stackApps "nextjs")}}{{runScriptOfApp "deploy"}}{{/each}}', { noEscape: true });
+      expect(perApp(ctx('pnpm'))).toBe('pnpm run deploy');
+      expect(perApp(ctx('npm', 'turborepo'))).toBe('(cd apps/web && npm run deploy)');
+    });
+
     test('tsRunner is the command that runs a TypeScript file', () => {
       const runner = Handlebars.compile('{{tsRunner}} scripts/seed.ts');
       expect(runner(ctx('bun'))).toBe('bun scripts/seed.ts');
