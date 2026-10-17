@@ -18,6 +18,12 @@ const openingTag = (source: string, tag: 'html' | 'body'): string => {
   return match[0];
 };
 
+const ruleBody = (css: string, selector: string): string => {
+  const match = css.match(new RegExp(`(?:^|\\n)${selector}\\s*\\{([^}]*)\\}`));
+  if (!match) throw new Error(`no ${selector} rule in the stylesheet`);
+  return match[1] as string;
+};
+
 describe('Next.js font variables', () => {
   let tempDir: string;
 
@@ -45,7 +51,14 @@ describe('Next.js font variables', () => {
     return layouts;
   }
 
+  function expectFontsDeclaredAndRendered(layout: string): void {
+    expect(layout).toContain('const geistSans = localFont(');
+    expect(layout).toContain('const geistMono = localFont(');
+    expect(layout).not.toContain('{{');
+  }
+
   function expectVariablesOnHtml(layout: string): void {
+    expectFontsDeclaredAndRendered(layout);
     const html = openingTag(layout, 'html');
     for (const variable of FONT_VARIABLES) {
       expect(html).toContain(variable);
@@ -71,7 +84,7 @@ describe('Next.js font variables', () => {
     const projectDir = await generate(['fonts-theme', '--app', 'fonts-theme:nextjs']);
     const css = await readTextFile(join(projectDir, 'src/styles/globals.css'));
     expect(css).toContain('--font-sans: var(--font-geist-sans)');
-    expect(css).not.toMatch(/font-family:\s*Arial/);
+    expect(ruleBody(css, 'body')).not.toContain('font-family');
   });
 
   test('a Next.js app of a turborepo sets the font variables on <html>', async () => {
