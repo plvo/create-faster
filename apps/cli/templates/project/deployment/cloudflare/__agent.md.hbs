@@ -29,7 +29,7 @@ The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.req
 
 | Kind | Local | Production | Read via |
 |------|-------|------------|----------|
-| `NEXT_PUBLIC_*` | `.env` | `.env` at build / CI env | baked into client bundle |
+| `NEXT_PUBLIC_*` | `.env` | shell or CI env of the build | baked into client bundle |
 | Server config | `.env` or `wrangler.jsonc vars` | `wrangler.jsonc vars` | `process.env.X` |
 | Secret | `.env` (gitignored, development values only) | `wrangler secret put X`, or `--secrets-file .prod.env` on the first deploy | `process.env.X` |
 | Binding (D1/R2/KV) | `wrangler.jsonc` + local persistence | `wrangler.jsonc` | `getCloudflareContext().env.X` **only** |
@@ -46,7 +46,7 @@ The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.req
 {{/if}}
 - Do NOT name the prod-secrets file `.env.production` — Next.js inlines it at build and would leak secrets.
 {{#if (hasLibrary "trpc")}}
-- `NEXT_PUBLIC_APP_URL` must be the production URL when the Worker you deploy is built: Next.js freezes it into the client bundle and the server code, and the server-side tRPC client calls the app at it (`getAppUrl()`), so a build that left the local value deploys a Worker that calls `localhost`. Export it in the shell of that build, then build: `export NEXT_PUBLIC_APP_URL=https://<worker name>.<subdomain>.workers.dev`, then `{{runAppScript "build:cf"}}`{{#if (hasLibrary "better-auth")}}. The Production URL notes below teach how to learn that URL before the first build{{/if}}.
+- `NEXT_PUBLIC_APP_URL` must be the production URL when the Worker you deploy is built: Next.js freezes it into the client bundle and the server code, and the server-side tRPC client calls the app at it (`getAppUrl()`), so a build that left the local value deploys a Worker that calls `localhost`. Export it in the shell of that build, then build: `export NEXT_PUBLIC_APP_URL=https://<worker name>.<subdomain>.workers.dev`, then `{{runAppScript "build:cf"}}`. The Production URL notes below teach how to learn that URL before the first build.
 {{/if}}
 
 **Known warnings**:
@@ -132,12 +132,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 
 Bindings and `vars` declared in `wrangler.jsonc` are available, typed, on `c.env` (`c.env.MY_VAR`, `c.env.DB`) in route handlers. Local secrets in `.env`; prod via `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}` or, for the first deploy of a new Worker, `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler deploy --secrets-file .prod.env{{/inDirectory}}`. The runtime secrets of an app are listed in `wrangler.jsonc` under `secrets.required`: a deploy fails until each is set, and a local run warns about a missing one.
 {{/if}}
-{{#if (hasLibrary "better-auth")}}
-
-### Production URL
-
 {{> cloudflare/production-url}}
-{{/if}}
 {{#if (has "database" "d1")}}
 
 ### Database: D1

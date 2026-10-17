@@ -37,6 +37,7 @@ Provision the production database once, before the first deploy. Wrangler needs 
 {{/if}}
 {{/each}}
    - Create every other resource a `wrangler.jsonc` binds (an R2 bucket, a KV namespace), declining Wrangler's offer to add the binding itself as in step 1.
+   {{> cloudflare/production-url pointer=true}}
 
    Then run the build and deploy commands listed under **{{deploy}}**, except `preview`, which keeps running.
 {{/if}}

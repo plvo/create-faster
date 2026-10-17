@@ -113,7 +113,7 @@ describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
       expect(await roleOf()).toBe('manager');
 
       const promote = documented!
-        .replace('<your email>', PROMOTED_ACCOUNT)
+        .replace('<your email>', PROMOTED_ACCOUNT.toUpperCase())
         .replace('--remote', `--local --persist-to ${localState}`);
       const result = await runCommand(['sh', '-c', promote], webDir);
       expect(result.exitCode, describeFailure(result)).toBe(0);
