@@ -37,8 +37,9 @@ describe('the progress of the blueprint flow', () => {
 describe('the progress of the app flow', () => {
   const categoryCount = Object.keys(META.project).length;
   const ORM_PROMPT_DROPPED_WITHOUT_DATABASE = 1;
+  const CREATION_MODE_PROMPT = 1;
   const promptsAnswered =
-    PROJECT_NAME_PROMPT + 1 /* app count */ + 2 /* stack, libraries */ + categoryCount - ORM_PROMPT_DROPPED_WITHOUT_DATABASE + GIT_PROMPT + PACKAGE_MANAGER_PROMPT;
+    CREATION_MODE_PROMPT + PROJECT_NAME_PROMPT + 1 /* app count */ + 2 /* stack, libraries */ + categoryCount - ORM_PROMPT_DROPPED_WITHOUT_DATABASE + GIT_PROMPT + PACKAGE_MANAGER_PROMPT;
 
   test('drops the orm prompt from the total once no database is chosen, and never skips a number', async () => {
     const answerEveryPrompt: Keystroke[] = Array.from({ length: promptsAnswered }, (_, i) => ({
@@ -48,8 +49,8 @@ describe('the progress of the app flow', () => {
 
     const output = await runOnPseudoTerminal(
       `
-      import { cli } from '@/cli';
-      const ctx = await cli();
+      import { promptForContext } from '@/cli';
+      const ctx = await promptForContext({});
       console.log('ANSWER=' + JSON.stringify(ctx.project));
       `,
       answerEveryPrompt,

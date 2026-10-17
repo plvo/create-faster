@@ -1,5 +1,4 @@
 import { intro, log, outro } from '@clack/prompts';
-import { META } from '@/__meta__';
 import { ASCII, INTRO_MESSAGE } from '@/lib/constants';
 import { getErrorMessage } from '@/lib/error-utils';
 import { displayGenerationErrors, generateProjectFiles } from '@/lib/file-generator';
@@ -11,10 +10,8 @@ import { displayInstallFailure } from '@/tui/install-failure';
 import { printError } from '@/tui/print-error';
 import { displayOutroCliCommand, displaySummaryNote } from '@/tui/summary';
 import type { TemplateContext } from '@/types/ctx';
-import { blueprintCli, cli } from './cli';
+import { promptForContext } from './cli';
 import { parseFlags } from './flags';
-import { promptSelect } from './prompts/base-prompts';
-import { selectBlueprintPrompt } from './prompts/stack-prompts';
 
 async function main() {
   const partial = parseFlags();
@@ -24,39 +21,7 @@ async function main() {
   intro(INTRO_MESSAGE);
 
   try {
-    let config: Omit<TemplateContext, 'repo'>;
-
-    if (partial.blueprint) {
-      config = await blueprintCli(partial.blueprint, partial);
-    } else {
-      const hasCompositionFlags =
-        'apps' in partial ||
-        'project' in partial ||
-        'git' in partial ||
-        'pm' in partial ||
-        'skipInstall' in partial ||
-        'skipPrompts' in partial;
-      const hasBlueprints = Object.keys(META.blueprints).length > 0;
-
-      if (!hasCompositionFlags && hasBlueprints) {
-        const mode = await promptSelect<string>('What would you like to create?', {
-          options: [
-            { value: 'custom', label: 'Start from scratch', hint: 'Choose your own stack and libraries' },
-            { value: 'blueprint', label: 'Use a template', hint: 'Pre-configured project with application code' },
-          ],
-        });
-
-        if (mode === 'blueprint') {
-          const blueprintName = await selectBlueprintPrompt('Choose a template:');
-
-          config = await blueprintCli(blueprintName, partial);
-        } else {
-          config = await cli(partial);
-        }
-      } else {
-        config = await cli(partial);
-      }
-    }
+    const config = await promptForContext(partial);
 
     const isTurborepo = config.apps.length > 1;
 
