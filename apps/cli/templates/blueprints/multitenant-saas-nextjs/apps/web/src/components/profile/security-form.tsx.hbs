@@ -22,20 +22,22 @@ export function SecurityForm() {
   const trpc = useTRPC();
   const changePassword = useMutation(
     trpc.user.changePassword.mutationOptions({
-      onSuccess: () => toast.success('Password changed'),
-      onError: () => toast.error('Failed to change password'),
+      onSuccess: () => {
+        toast.success('Password changed');
+        form.reset();
+      },
+      onError: (err) => toast.error(err.message),
     }),
   );
 
   const form = useAppForm({
     defaultValues: { currentPassword: '', newPassword: '' },
     validators: { onChange: passwordSchema },
-    onSubmit: async ({ value }) => {
-      await changePassword.mutateAsync({
+    onSubmit: ({ value }) => {
+      changePassword.mutate({
         currentPassword: value.currentPassword,
         newPassword: value.newPassword,
       });
-      form.reset();
     },
   });
 
@@ -61,7 +63,7 @@ export function SecurityForm() {
           {(field) => <field.PasswordField label='New password' />}
         </form.AppField>
         <form.AppForm>
-          <form.SubmitButton>Change password</form.SubmitButton>
+          <form.SubmitButton props={{ disabled: changePassword.isPending }}>Change password</form.SubmitButton>
         </form.AppForm>
       </form>
     </section>

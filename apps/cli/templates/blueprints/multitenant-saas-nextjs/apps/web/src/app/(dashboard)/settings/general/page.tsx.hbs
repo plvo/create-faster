@@ -37,7 +37,7 @@ export default function GeneralSettingsPage() {
         toast.success('Saved');
         refetch();
       },
-      onError: (err) => toast.error(err.message ?? 'Failed to update'),
+      onError: (err) => toast.error(err.message),
     }),
   );
 
@@ -47,15 +47,15 @@ export default function GeneralSettingsPage() {
         toast.success('Organization deleted');
         router.push('/onboarding');
       },
-      onError: (err) => toast.error(err.message ?? 'Failed to delete'),
+      onError: (err) => toast.error(err.message),
     }),
   );
 
   const form = useAppForm({
     defaultValues: { name: active?.name ?? '', slug: active?.slug ?? '' },
     validators: { onChange: generalSchema },
-    onSubmit: async ({ value }) => {
-      await updateOrg.mutateAsync({ name: value.name, slug: value.slug });
+    onSubmit: ({ value }) => {
+      updateOrg.mutate({ name: value.name, slug: value.slug });
     },
   });
 
@@ -92,7 +92,7 @@ export default function GeneralSettingsPage() {
               {(field) => <field.InputField label='Slug' />}
             </form.AppField>
             <form.AppForm>
-              <form.SubmitButton>Save</form.SubmitButton>
+              <form.SubmitButton props={{ disabled: updateOrg.isPending }}>Save</form.SubmitButton>
             </form.AppForm>
           </form>
         </CardContent>

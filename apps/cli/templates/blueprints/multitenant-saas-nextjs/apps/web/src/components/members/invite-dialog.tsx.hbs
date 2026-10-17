@@ -61,8 +61,8 @@ export function InviteDialog() {
   const form = useAppForm({
     defaultValues: { email: '', role: 'member' },
     validators: { onChange: inviteSchema },
-    onSubmit: async ({ value }) => {
-      await create.mutateAsync({ email: value.email, role: value.role });
+    onSubmit: ({ value }) => {
+      create.mutate({ email: value.email, role: value.role });
     },
   });
 
@@ -95,7 +95,7 @@ export function InviteDialog() {
                 Cancel
               </Button>
               <form.AppForm>
-                <form.SubmitButton>Create invitation</form.SubmitButton>
+                <form.SubmitButton props={{ disabled: create.isPending }}>Create invitation</form.SubmitButton>
               </form.AppForm>
             </div>
           </form>

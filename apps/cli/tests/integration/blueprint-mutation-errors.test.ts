@@ -6,7 +6,12 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const BLUEPRINTS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start', 'cloudflare-fullstack-nextjs'];
+const BLUEPRINTS = [
+  'org-dashboard-nextjs',
+  'org-dashboard-tanstack-start',
+  'cloudflare-fullstack-nextjs',
+  'multitenant-saas-nextjs',
+];
 
 /** The text of the call whose opening parenthesis is at `open`. */
 function callAt(source: string, open: number): string {
