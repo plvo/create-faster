@@ -8,7 +8,7 @@ import {
   elementsOf,
   evaluateGeneratedModule,
   REACT_ELEMENT_STUB,
-  REACT_STATE_STUB,
+  REACT_HOOKS_STUB,
   type RenderedChild,
   type RenderedElement,
   readTextFile,
@@ -291,7 +291,7 @@ async function createRendering(name: string, sourceFiles: string[]): Promise<Ren
   const stubs = join(tempDir, `${name}-stubs`);
   await mkdir(stubs, { recursive: true });
   const reactPath = join(stubs, 'react.mjs');
-  await Bun.write(reactPath, REACT_STATE_STUB);
+  await Bun.write(reactPath, REACT_HOOKS_STUB);
   const imports: Record<string, string> = { react: reactPath };
   let index = 0;
   const write = async (specifier: string, body: string) => {
@@ -380,7 +380,7 @@ describe(`${BLUEPRINT} write actions`, () => {
     invite: { file: 'components/members/invite-dialog.tsx', name: 'InviteDialog' },
     invitations: { file: 'components/members/pending-invitations-table.tsx', name: 'PendingInvitationsTable' },
     roles: { file: 'components/roles/roles-table.tsx', name: 'RolesTable' },
-    general: { file: 'app/(dashboard)/settings/general/page.tsx', name: 'default' },
+    general: { file: 'app/(dashboard)/settings/general/general-settings.client.tsx', name: 'GeneralSettingsClient' },
   } as const;
   type ComponentKey = keyof typeof COMPONENTS;
   type RoleName = 'owner' | 'admin' | 'member';
@@ -534,8 +534,9 @@ export const HydrateClient = ({ children }) => children;`,
   });
 
   test('a user without an active organization can reach the organizations they belong to', async () => {
-    const rendering = await createRendering('onboarding', ['app/(onboarding)/onboarding/page.tsx']);
-    const page = await rendering.load('app/(onboarding)/onboarding/page.tsx');
+    const file = 'app/(onboarding)/onboarding/onboarding.client.tsx';
+    const rendering = await createRendering('onboarding', [file]);
+    const page = await rendering.load(file, 'OnboardingClient');
     signIn(permissions.member);
 
     globals.__organizations = [
