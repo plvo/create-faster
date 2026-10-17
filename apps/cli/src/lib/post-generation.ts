@@ -1,7 +1,7 @@
-import { spinner } from '@clack/prompts';
 import color from 'picocolors';
 import { collectPostGenerateSteps, type ResolvedPostGenerateStep } from '@/lib/post-generate';
 import { runCommand } from '@/lib/run-command';
+import { taskSpinner } from '@/tui/task-spinner';
 import type { TemplateContext } from '@/types/ctx';
 
 export interface InstallFailure {
@@ -26,7 +26,7 @@ interface PostGenerationResult {
 
 async function installDependencies(ctx: TemplateContext, projectPath: string): Promise<InstallFailure | undefined> {
   const command = `${ctx.pm} install`;
-  const s = spinner();
+  const s = taskSpinner();
   s.start(`Installing dependencies with ${ctx.pm}...`);
   const result = await runCommand(command, projectPath);
   if (result.success) {
@@ -43,7 +43,7 @@ async function runPostGenerateSteps(
 ): Promise<PendingPostGenerateStep[]> {
   const pending: PendingPostGenerateStep[] = [];
   for (const step of steps) {
-    const s = spinner();
+    const s = taskSpinner();
     s.start(`${step.description}...`);
     const result = await runCommand(step.command, projectPath);
     if (result.success) {
@@ -61,7 +61,7 @@ async function runPostGenerateSteps(
 }
 
 async function initializeGit(projectPath: string): Promise<GitFailure | undefined> {
-  const s = spinner();
+  const s = taskSpinner();
   s.start('Initializing git repository...');
   const result = await runCommand('git init', projectPath);
   if (result.success) {
