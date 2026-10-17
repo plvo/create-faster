@@ -1,0 +1,10 @@
+interface RequireContext {
+  keys(): string[];
+  <Module>(key: string): Module;
+}
+
+declare namespace NodeJS {
+  interface Require {
+    context(directory: string, includeSubdirectories: boolean, filter: RegExp): RequireContext;
+  }
+}

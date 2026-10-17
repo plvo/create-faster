@@ -1,6 +1,4 @@
 import { notFound } from 'next/navigation';
-import { MDXRemote } from 'next-mdx-remote/rsc';
-import { mdxComponents } from '@/mdx-components';
 import { getAllPosts, getPost } from '@/lib/blog';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { ArticleJsonLd } from '@/components/seo/json-ld';
@@ -10,7 +8,9 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams() {
+export const dynamicParams = false;
+
+export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
@@ -73,7 +73,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <p className="mt-4 text-lg text-muted-foreground">{post.metadata.summary}</p>
       </header>
 
-      <MDXRemote source={post.content} components={mdxComponents} />
+      <post.Content />
     </article>
   );
 }

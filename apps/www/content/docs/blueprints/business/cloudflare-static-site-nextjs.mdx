@@ -50,7 +50,7 @@ src/
 ├── hooks/
 │   └── use-active-section.ts          # IntersectionObserver scroll spy for anchor links
 └── lib/
-    ├── blog.ts                        # MDX blog post reading utilities
+    ├── blog.ts                        # Lists and loads the compiled MDX posts
     └── data/
         ├── site-config.ts             # Site name, URLs, nav links, social links
         └── personas.ts                # Persona data for /for/[persona] pages
@@ -77,7 +77,7 @@ Five composable sections with `scroll-mt-20` for smooth anchor navigation: hero,
 
 ### Blog (MDX)
 
-File-based blog using the MDX library. Articles live in `contents/blog/` with YAML frontmatter (`title`, `summary`, `author`, `publishedAt`). The `[slug]` route uses `generateStaticParams` so every post is pre-rendered into the static export. Each post renders with Article JSON-LD and breadcrumbs.
+File-based blog using the MDX library. Articles live in `contents/blog/` with YAML frontmatter (`title`, `summary`, `author`, `publishedAt`), compiled at build time by `@next/mdx` and listed from the bundle, so the blog never reads the filesystem and works on a Cloudflare Worker. The `[slug]` route uses `generateStaticParams` so every post is pre-rendered into the static export. Each post renders with Article JSON-LD and breadcrumbs.
 
 ### Programmatic persona pages
 
