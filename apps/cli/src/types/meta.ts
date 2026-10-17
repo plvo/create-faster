@@ -147,7 +147,7 @@ export type PackageManagerPackageJson = Partial<Record<PackageManagerName, Packa
 interface MetaStack {
   type: 'app' | 'server';
   label: string;
-  hint?: string;
+  hint: string;
   moduleType?: 'module';
   packageJson: PackageJsonConfig;
   packageManagerPackageJson?: PackageManagerPackageJson;

@@ -307,14 +307,15 @@ describe('getCategoryOptionUnavailability', () => {
     expect(getCategoryOptionUnavailability('database', 'd1', META.project.database.options.d1, ctx)).toBeUndefined();
   });
 
-  test('postgres on cloudflare is disabled with a singleton-db consumer, naming it and #153', () => {
+  test('postgres on cloudflare is disabled with a singleton-db consumer, naming it and saying why', () => {
     const ctx: Partial<TemplateContext> = {
       apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] }],
       project: { tooling: [], deployment: 'cloudflare' },
     };
     const reason = getCategoryOptionUnavailability('database', 'postgres', META.project.database.options.postgres, ctx);
     expect(reason).toContain('better-auth');
-    expect(reason).toContain('153');
+    expect(reason).toContain('per-request binding');
+    expect(reason).not.toMatch(/#\d+|issue/);
   });
 
   test('mysql on cloudflare is disabled when trpc is selected', () => {

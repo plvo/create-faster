@@ -10,6 +10,12 @@ export function isLibraryCompatible(library: MetaAddon, stackName: StackName): b
   return library.support.stacks.includes(stackName);
 }
 
+export function getCompatibleLibraryNames(stackName: StackName): string[] {
+  return Object.entries(META.libraries)
+    .filter(([, library]) => isLibraryCompatible(library, stackName))
+    .map(([name]) => name);
+}
+
 /** The libraries of an app that its stack supports, in the order they were selected. */
 export function getAppLibraries(app: AppContext): { name: string; library: MetaLibrary }[] {
   return app.libraries.flatMap((name) => {
@@ -262,7 +268,7 @@ export function getCategoryOptionUnavailability(
       .flatMap((app) => app.libraries)
       .find((lib) => META.libraries[lib]?.needsSingletonDb);
     return blocking
-      ? `not yet supported with ${blocking} on ${deploymentLabel} (per-request binding — see #153)`
+      ? `not yet supported with ${blocking}: it needs a database shared by the whole app, and on ${deploymentLabel} the database is a per-request binding`
       : `not yet supported with the selected library on ${deploymentLabel}`;
   }
 

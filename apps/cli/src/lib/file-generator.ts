@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { note, spinner } from '@clack/prompts';
+import { note } from '@clack/prompts';
+import { taskSpinner } from '@/tui/task-spinner';
 import type { ProcessResult, TemplateContext, TemplateFile } from '@/types/ctx';
 import { collectAgentContextFiles } from './agent-context-generator';
 import { collectEnvFiles, collectEnvGroups } from './env-generator';
@@ -88,7 +89,7 @@ export async function generateProjectFiles(
   const activeTemplates =
     context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
 
-  const s = spinner();
+  const s = taskSpinner();
   const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
   s.start(`Generating ${totalFiles} files...`);
 

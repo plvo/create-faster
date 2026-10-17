@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { type AddHelpTextContext, Command } from 'commander';
 import color from 'picocolors';
 import { META } from '@/__meta__';
 import {
@@ -69,6 +69,35 @@ function applyProjectFlags(flags: ParsedFlags, project: ProjectContext, noSelect
   }
 }
 
+const PROMPTS_HELP =
+  "In an interactive terminal, every database, ORM, deployment, linter, tooling, git and package manager choice that no flag answers is prompted. Pass 'none' to a category flag to leave it empty, or --yes to skip every such prompt. Without a terminal (CI, scripts) nothing is prompted: project choices stay empty, there is no git and no install unless a flag says otherwise.";
+
+const DEFAULT_HELP_WIDTH = 80;
+const HELP_INDENT = '  ';
+
+/** Wraps a paragraph to the width commander wraps the options at, so the two read as one text. */
+function indentedParagraph(text: string, { command, error }: AddHelpTextContext): string {
+  const output = command.configureOutput();
+  const width = (error ? output.getErrHelpWidth : output.getOutHelpWidth)?.() ?? DEFAULT_HELP_WIDTH;
+  return command
+    .createHelp()
+    .boxWrap(text, width - HELP_INDENT.length)
+    .split('\n')
+    .map((line) => `${HELP_INDENT}${line}`)
+    .join('\n');
+}
+
+function libraryStacksHelp(): string {
+  const stackNames = Object.keys(META.stacks) as StackName[];
+  const nameWidth = Math.max(...Object.keys(META.libraries).map((name) => name.length));
+  return Object.entries(META.libraries)
+    .map(([name, library]) => {
+      const supported = stackNames.filter((stackName) => isLibraryCompatible(library, stackName));
+      return `${HELP_INDENT}${HELP_INDENT}${name.padEnd(nameWidth)}  ${supported.join(', ')}`;
+    })
+    .join('\n');
+}
+
 export function parseFlags(): FlagAnswers {
   const program = new Command();
 
@@ -77,15 +106,17 @@ export function parseFlags(): FlagAnswers {
   const deploymentNames = namesWithNoSelection('deployment');
   const linterNames = namesWithNoSelection('linter');
   const toolingNames = namesWithNoSelection('tooling');
-  const libraryNames = Object.keys(META.libraries).join(', ');
   const [exampleBlueprint = '<name>'] = Object.keys(META.blueprints);
 
   program
     .addHelpText('before', ASCII)
     .name(color.blue('npx create-faster'))
-    .usage(color.blue('<project-name> [options]'))
+    .usage(color.blue('[project-dir] [options]'))
     .description(color.cyan('Modern CLI scaffolding tool for production-ready projects'))
-    .argument('[project-name]', 'Name of the project to create')
+    .argument(
+      '[project-dir]',
+      'Name of the project, or a path to the directory to create (../out/my-app); the last segment is the project name',
+    )
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
     .version(CLI_VERSION, '-V, --version', 'Display the version')
@@ -107,12 +138,9 @@ export function parseFlags(): FlagAnswers {
     .option('--yes', 'Skip every prompt no flag answers (project choices stay empty, no git, no install)')
     .addHelpText(
       'after',
-      `
+      (context) => `
 ${color.bold('Prompts:')}
-  In an interactive terminal, every database, ORM, deployment, linter, tooling, git and package
-  manager choice that no flag answers is prompted. Pass 'none' to a category flag to leave it empty,
-  or --yes to skip every such prompt. Without a terminal (CI, scripts) nothing is prompted: project
-  choices stay empty, there is no git and no install unless a flag says otherwise.
+${indentedParagraph(PROMPTS_HELP, context)}
 
 ${color.bold('Examples:')}
   ${color.gray('Single app:')}
@@ -127,7 +155,8 @@ ${color.bold('Examples:')}
     $ ${color.blue('npx create-faster myapp')} --blueprint ${exampleBlueprint}
 
   ${color.gray('Available stacks:')} ${Object.keys(META.stacks).join(', ')}
-  ${color.gray('Available libraries:')} ${libraryNames}
+  ${color.gray('Available libraries and the stacks they support:')}
+${libraryStacksHelp()}
   ${color.gray('Available ORMs:')} ${ormNames}
   ${color.gray('Available databases:')} ${dbNames}
   ${color.gray('Available deployments:')} ${deploymentNames}
@@ -361,7 +390,7 @@ export function validateRequirements(selection: Partial<TemplateContext>, ctx: P
           .find((lib) => META.libraries[lib]?.needsSingletonDb);
         printError(
           `${categoryName} '${value}' is not yet supported with library '${blocking}' on this deployment`,
-          `'${blocking}' uses a module-singleton database; '${value}' is a per-request Cloudflare binding (see #153)`,
+          `'${blocking}' needs a database shared by the whole app; on '${ctx.project?.deployment}' '${value}' is a per-request binding`,
         );
         process.exit(1);
       }
