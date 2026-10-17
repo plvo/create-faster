@@ -2,11 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   createCachedVersionReader,
   findMissingPackageManager,
-  getBinaryRunner,
+  getInstalledBinaryRunner,
   getPackageRunner,
   getPackageManager,
   getScriptCommand,
-  getScriptCommandOfApp,
+  getCommandInWorkspaceDirectory,
   getTypeScriptRunner,
   missingPackageManagerMessage,
   readPackageManagerVersion,
@@ -136,23 +136,25 @@ describe('getTypeScriptRunner', () => {
   });
 });
 
-describe('getBinaryRunner', () => {
+describe('getInstalledBinaryRunner', () => {
   test('runs the binary the project installed, where the package runner of pnpm downloads the latest one', () => {
-    expect(getBinaryRunner(contextWith({ pm: 'bun' }))).toBe('bunx');
-    expect(getBinaryRunner(contextWith({ pm: 'npm' }))).toBe('npx');
-    expect(getBinaryRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm exec');
-    expect(getBinaryRunner(contextWith({ pm: undefined }))).toBe('npx');
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'bun' }))).toBe('bunx');
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'npm' }))).toBe('npx');
+    expect(getInstalledBinaryRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm exec');
+    expect(getInstalledBinaryRunner(contextWith({ pm: undefined }))).toBe('npx');
     expect(getPackageRunner(contextWith({ pm: 'pnpm' }))).toBe('pnpm dlx');
   });
 });
 
-describe('getScriptCommandOfApp', () => {
-  test('a single repo runs the script from the root', () => {
-    expect(getScriptCommandOfApp(contextWith({ pm: 'pnpm' }), 'deploy', 'web')).toBe('pnpm run deploy');
+describe('getCommandInWorkspaceDirectory', () => {
+  test('a single repo has everything at its root, so the command is unchanged', () => {
+    expect(getCommandInWorkspaceDirectory(contextWith({}), 'packages/db', 'npx wrangler')).toBe('npx wrangler');
   });
 
-  test('a turborepo runs it in a subshell of the app directory, so the next step starts at the root', () => {
-    const turborepo = contextWith({ repo: 'turborepo', apps: TURBOREPO_APPS, pm: 'npm' });
-    expect(getScriptCommandOfApp(turborepo, 'deploy', 'api')).toBe('(cd apps/api && npm run deploy)');
+  test('a turborepo runs it in a subshell of the directory, so the next step starts where the last one did', () => {
+    const turborepo = contextWith({ repo: 'turborepo', apps: TURBOREPO_APPS });
+    expect(getCommandInWorkspaceDirectory(turborepo, 'packages/db', 'npx wrangler')).toBe(
+      '(cd packages/db && npx wrangler)',
+    );
   });
 });

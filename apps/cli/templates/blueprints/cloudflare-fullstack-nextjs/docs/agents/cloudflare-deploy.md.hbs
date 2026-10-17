@@ -21,23 +21,23 @@ Both Workers bind the same database (`apps/web` and `apps/cron`).
 Create the bucket (and `{{projectName}}-storage-preview` if you use `wrangler dev` preview on the web app), declining Wrangler's offer to add the binding itself, as for D1:
 
 ```bash
-(cd apps/web && {{binaryRunner}} wrangler r2 bucket create {{projectName}}-storage --no-update-config)
+{{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler r2 bucket create {{projectName}}-storage --no-update-config{{/inDirectory}}
 ```
 
 ### Secrets
 
-The web app lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` (the public URL of the web app) under `secrets.required` in `apps/web/wrangler.jsonc`, so a deploy fails until both are set; the cron Worker has none. Once the Worker exists, set each with `(cd apps/web && {{binaryRunner}} wrangler secret put BETTER_AUTH_SECRET)` and the same for `BETTER_AUTH_URL`; the first deploy of a new Worker takes them from a file instead, see below. Public values (e.g. `NEXT_PUBLIC_APP_URL`) stay in `.env` at build time, not secrets.
+The web app lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` (the public URL of the web app) under `secrets.required` in `apps/web/wrangler.jsonc`, so a deploy fails until both are set; the cron Worker has none. Once the Worker exists, set each with `{{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler secret put BETTER_AUTH_SECRET{{/inDirectory}}` and the same for `BETTER_AUTH_URL`; the first deploy of a new Worker takes them from a file instead, see below. Public values (e.g. `NEXT_PUBLIC_APP_URL`) stay in `.env` at build time, not secrets.
 
 ## Build & deploy
-- **Web:** `cd apps/web && {{runScript "build:cf"}}` (wrangler types → `opennextjs-cloudflare build`, which runs `next build` once through the `build` script) then `cd apps/web && {{runScript "deploy"}}` (`opennextjs-cloudflare deploy`). The first deploy of a new Worker takes the secrets from a file: `cd apps/web && {{runScript "deploy"}} -- --secrets-file .prod.env` (`.prod.env` is gitignored).
+- **Web:** `{{#inDirectory "apps" "web"}}{{runScript "build:cf"}}{{/inDirectory}}` (wrangler types → `opennextjs-cloudflare build`, which runs `next build` once through the `build` script) then `{{#inDirectory "apps" "web"}}{{runScript "deploy"}}{{/inDirectory}}` (`opennextjs-cloudflare deploy`). The first deploy of a new Worker takes the secrets from a file: `{{#inDirectory "apps" "web"}}{{runScript "deploy"}} -- --secrets-file .prod.env{{/inDirectory}}` (`.prod.env` is gitignored).
 - **Build where `.env` holds no real secret.** `build:cf` bundles every `.env*` value, server secrets included, into the Worker (`.open-next/cloudflare/next-env.mjs`) as a `process.env` fallback, with no opt-out. A secret set with `wrangler secret put` wins at runtime, but the bundled value is used silently when the secret was never set. Build the Worker you deploy in CI, or from a checkout without `apps/web/.env`.
-- **Cron:** `cd apps/cron && {{runScript "deploy"}}` (`wrangler deploy`). The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
+- **Cron:** `{{#inDirectory "apps" "cron"}}{{runScript "deploy"}}{{/inDirectory}}` (`wrangler deploy`). The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
 
 ## Local development
 - `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` to a value generated for local use only (the README first-run step gives the command): `build:cf` bundles it into the Worker (see Build & deploy). `BETTER_AUTH_URL` is already `http://localhost:3000`. Next.js reads `.env`; in dev mode Better Auth trusts `localhost`.
 - `{{runScript "local-setup"}}` once (applies local migrations + seeds the local D1).
 - `{{runScript "dev"}}` — `next dev` with the Cloudflare bindings wired via `initOpenNextCloudflareForDev` (D1/R2 from `.wrangler`, the same local state `local-setup` seeds). The cron Worker runs next to it under `wrangler dev` on port {{appPort "cron"}} (`apps/cron`, same local state). This is the primary local loop (hot reload, dev-mode auth).
-- `cd apps/web && {{runScript "preview"}}` runs the OpenNext **production** build locally to smoke-test the deployed shape. The build freezes the values of `.env` into the Worker, so run `build:cf` again after every `.env` change. Wrangler does not load `.env` for this preview (OpenNext handles it), so it warns about a missing required secret even when `.env` holds it; the warning is safe to ignore then.
+- `{{#inDirectory "apps" "web"}}{{runScript "preview"}}{{/inDirectory}}` runs the OpenNext **production** build locally to smoke-test the deployed shape. The build freezes the values of `.env` into the Worker, so run `build:cf` again after every `.env` change. Wrangler does not load `.env` for this preview (OpenNext handles it), so it warns about a missing required secret even when `.env` holds it; the warning is safe to ignore then.
 - Fire the cron handler locally without waiting for the schedule, while `{{runScript "dev"}}` runs: `curl -X POST "http://localhost:{{appPort "cron"}}/cdn-cgi/local/explorer/api/local/scheduled?worker={{#with projectName}}{{this}}{{/with}}-cron" -H 'Content-Type: application/json' -d '{"cron":"0 3 * * *"}'` runs `scheduled()` against the local D1 + R2 the web app uses (purges expired documents).
 
 ## Build-time vs runtime env

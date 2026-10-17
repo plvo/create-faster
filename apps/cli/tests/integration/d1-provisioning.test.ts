@@ -78,23 +78,22 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       await cleanupTempDir(tempDir);
     });
 
-    const steps: Record<Repo, (name: string) => string[]> = {
-      single: (name) => [
+    const steps: Record<Repo, (name: string, scripts: string) => string[]> = {
+      single: (name, scripts) => [
         `${runner} wrangler d1 create ${name}-db --no-update-config`,
         'REPLACE_WITH_D1_DATABASE_ID',
         `${pm} run db:migrate\n`,
         `${pm} run db:migrate:remote\n`,
-        `${pm} run build:cf`,
-        `${pm} run deploy`,
+        'secrets.required',
+        `listed under **${scripts}**`,
       ],
-      turborepo: (name) => [
-        `(cd packages/db && ${runner} wrangler d1 create ${name}-db --no-update-config)`,
+      turborepo: (name, scripts) => [
+        `(cd apps/web && ${runner} wrangler d1 create ${name}-db --no-update-config)`,
         'REPLACE_WITH_D1_DATABASE_ID',
         `${pm} run db:migrate\n`,
-        `(cd packages/db && ${pm} run db:migrate:remote)`,
-        `(cd apps/web && ${pm} run build:cf)`,
-        `(cd apps/web && ${pm} run deploy)`,
-        `(cd apps/api && ${pm} run deploy)`,
+        `${pm} run db:migrate:remote\n`,
+        'secrets.required',
+        `listed under **${scripts}**`,
       ],
     };
 
@@ -102,8 +101,15 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       const name = `d1-docs-${repo}`;
       const projectFile = (file: string) => readTextFile(join(tempDir, name, file));
 
-      test.each(['AGENTS.md', 'README.md'])('%s: create, paste, migrate locally, migrate remotely, deploy, in this order', async (file) => {
-        expectInOrder(await projectFile(file), steps[repo](name));
+      test.each([
+        ['AGENTS.md', 'Scripts'],
+        ['README.md', repo === 'single' ? 'Production' : 'Available Scripts'],
+      ])('%s: create, paste, migrate locally, migrate remotely, deploy, in this order', async (file, scripts) => {
+        const doc = await projectFile(file);
+        expectInOrder(doc, steps[repo](name, scripts));
+        expect(doc).toContain(`
+## ${scripts}
+`);
       });
 
       test.each(['AGENTS.md', 'README.md'])('%s: declines the offer that adds a second binding and warns about the local reset', async (file) => {
@@ -122,5 +128,65 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
         expect(await printedScriptsMissingFrom(join(tempDir, name), await projectFile(file))).toEqual([]);
       });
     });
+  });
+});
+
+describe('D1 provisioning docs list the secrets a deploy needs', () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  async function generate(name: string, args: string[]): Promise<void> {
+    const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode).toBe(0);
+  }
+
+  const projectFile = (name: string, file: string) => readTextFile(join(tempDir, name, file));
+
+  test.each([
+    ['single repo', 'secrets-single', ['--app', 'web:nextjs:better-auth']],
+    ['turborepo', 'secrets-mono', ['--app', 'web:nextjs:better-auth', '--app', 'api:hono']],
+  ])('%s with better-auth: the secrets come before the deploy step, in README and AGENTS.md', async (_, name, apps) => {
+    await generate(name, [...apps, '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare']);
+
+    for (const file of ['README.md', 'AGENTS.md']) {
+      expectInOrder(await projectFile(name, file), [
+        'bun run db:migrate:remote',
+        'every name under `secrets.required`',
+        '`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`',
+        'Create every other resource',
+        'except `preview`',
+      ]);
+    }
+  });
+
+  test('a project without a secret lists none', async () => {
+    await generate('secrets-none', ['--app', 'web:nextjs', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare']);
+
+    expect(await projectFile('secrets-none', 'README.md')).not.toContain('BETTER_AUTH');
+  });
+
+  test('cloudflare-fullstack-nextjs: AGENTS.md lists the web secrets before the deploy step, and the deploy notes the R2 bucket and secrets', async () => {
+    await generate('secrets-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs']);
+
+    expectInOrder(await projectFile('secrets-fullstack', 'AGENTS.md'), [
+      'bun run db:migrate:remote',
+      '`web`: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`',
+      'Create every other resource',
+      'except `preview`',
+    ]);
+    expectInOrder(await projectFile('secrets-fullstack', 'docs/agents/cloudflare-deploy.md'), [
+      'wrangler d1 create',
+      'bun run db:migrate:remote',
+      'wrangler r2 bucket create',
+      '`secrets.required`',
+      '## Build & deploy',
+    ]);
   });
 });

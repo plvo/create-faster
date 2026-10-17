@@ -104,14 +104,19 @@ export function getAppScriptCommand(ctx: TemplateContext, script: string): strin
   return ctx.repo === 'turborepo' ? `cd apps/<app> && ${command}` : command;
 }
 
-/** A script of one app run from the workspace root; the subshell leaves the shell at the root, so steps paste in order. */
-export function getScriptCommandInApp(ctx: TemplateContext, script: string, appName: string): string {
-  return `(cd apps/${appName} && ${getScriptCommand(ctx, script)})`;
+/** A command run from a directory of the workspace; the subshell leaves the shell where it was, so steps paste in order. */
+function getCommandInDirectory(directory: string, command: string): string {
+  return `(cd ${directory} && ${command})`;
 }
 
-/** A script of one app as a user runs it: from the root in a single repo, in a subshell of the app directory in a turborepo. */
-export function getScriptCommandOfApp(ctx: TemplateContext, script: string, appName: string): string {
-  return ctx.repo === 'turborepo' ? getScriptCommandInApp(ctx, script, appName) : getScriptCommand(ctx, script);
+/** A script of one app run from the workspace root. */
+export function getScriptCommandInApp(ctx: TemplateContext, script: string, appName: string): string {
+  return getCommandInDirectory(`apps/${appName}`, getScriptCommand(ctx, script));
+}
+
+/** A single repo keeps everything at its root, so only a turborepo changes directory. */
+export function getCommandInWorkspaceDirectory(ctx: TemplateContext, directory: string, command: string): string {
+  return ctx.repo === 'turborepo' ? getCommandInDirectory(directory, command) : command;
 }
 
 /** The command that runs a package binary without installing it. */
@@ -120,7 +125,7 @@ export function getPackageRunner(ctx: TemplateContext): string {
 }
 
 /** The command that runs a binary a dependency of the project installed (`wrangler`), in the version the project pins. */
-export function getBinaryRunner(ctx: TemplateContext): string {
+export function getInstalledBinaryRunner(ctx: TemplateContext): string {
   return PACKAGE_MANAGER_BINARY_RUNNERS[resolveCommandPackageManager(ctx)];
 }
 

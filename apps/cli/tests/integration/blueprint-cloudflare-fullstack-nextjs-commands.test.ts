@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, printedScriptsMissingFrom, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -42,17 +42,20 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
   });
 
   test('remote migrations run from packages/db, in the deploy and data layer notes', async () => {
-    for (const file of ['docs/agents/cloudflare-deploy.md', 'docs/agents/data-layer.md']) {
-      const notes = await readTextFile(join(projectPath, file));
-      expect(notes).toContain(`cd packages/db && ${pm} run db:migrate:remote`);
-    }
+    const deployNotes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+    expect(deployNotes).toContain(`${pm} run db:migrate:remote`);
+    expect(await readTextFile(join(projectPath, 'docs/agents/data-layer.md'))).toContain(
+      `cd packages/db && ${pm} run db:migrate:remote`,
+    );
+    const root = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
+    expect(root.scripts['db:migrate:remote']).toBe(`cd packages/db && ${pm} run db:migrate:remote`);
   });
 
   test('the provisioning notes create D1 and R2 with the project Wrangler, declining the duplicate binding', async () => {
     const runner = { bun: 'bunx', npm: 'npx', pnpm: 'pnpm exec' }[pm];
     const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
 
-    expect(notes).toContain(`(cd packages/db && ${runner} wrangler d1 create ${projectName}-db --no-update-config)`);
+    expect(notes).toContain(`(cd apps/web && ${runner} wrangler d1 create ${projectName}-db --no-update-config)`);
     expect(notes).toContain(`(cd apps/web && ${runner} wrangler r2 bucket create ${projectName}-storage --no-update-config)`);
     expect(notes).not.toMatch(/(?<!bunx |npx |pnpm exec )wrangler (d1 create|r2 bucket create)/);
     expect(notes).not.toContain('pnpm dlx');

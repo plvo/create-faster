@@ -1,6 +1,7 @@
+{{!-- scripts: the name of the README section that lists the build and deploy commands --}}
 {{#if (has "database" "d1")}}
 ## Deploying with Cloudflare D1
 
-{{> cloudflare/d1-provisioning deploy=true}}
+{{> cloudflare/d1-provisioning deploy=scripts}}
 
 {{/if}}

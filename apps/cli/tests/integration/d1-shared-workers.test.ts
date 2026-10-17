@@ -69,7 +69,7 @@ describe('D1 turborepo: every Worker shares one database and one local state', (
 
   test('agent context tells where to paste the single database id', async () => {
     const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
-    expect(agents).toContain(`(cd packages/db && bunx wrangler d1 create ${projectName}-db --no-update-config)`);
+    expect(agents).toContain(`(cd apps/web && bunx wrangler d1 create ${projectName}-db --no-update-config)`);
     expect(agents).toContain('into the `d1_databases` entry of every `apps/*/wrangler.jsonc`');
   });
 });

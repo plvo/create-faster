@@ -14,10 +14,10 @@ import { collectInstallScripts } from './install-scripts';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
 import {
   getAppScriptCommand,
-  getBinaryRunner,
+  getCommandInWorkspaceDirectory,
+  getInstalledBinaryRunner,
   getPackageRunner,
   getScriptCommand,
-  getScriptCommandOfApp,
   getTypeScriptRunner,
 } from './package-manager';
 import { collectProductionSteps } from './production-steps';
@@ -42,8 +42,8 @@ function registerHelpers(): void {
   Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
   Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some((v) => Boolean(v)));
 
-  Handlebars.registerHelper('isMono', function (this: TemplateContext) {
-    return this.repo === 'turborepo';
+  Handlebars.registerHelper('isMono', (options: Handlebars.HelperOptions) => {
+    return (options.data.root as TemplateContext).repo === 'turborepo';
   });
 
   Handlebars.registerHelper('hasLibrary', function (this: EnrichedTemplateContext, name: string) {
@@ -123,12 +123,14 @@ function registerHelpers(): void {
     return getAppScriptCommand(options.data.root as TemplateContext, script);
   });
 
-  Handlebars.registerHelper(
-    'runScriptOfApp',
-    function (this: EnrichedTemplateContext, script: string, options: Handlebars.HelperOptions) {
-      return getScriptCommandOfApp(options.data.root as TemplateContext, script, this.appName ?? '');
-    },
-  );
+  Handlebars.registerHelper('inDirectory', function (this: unknown, ...args: unknown[]) {
+    const options = args.pop() as Handlebars.HelperOptions;
+    return getCommandInWorkspaceDirectory(
+      options.data.root as TemplateContext,
+      args.join('/'),
+      options.fn(this).trim(),
+    );
+  });
 
   Handlebars.registerHelper('installScripts', (options: Handlebars.HelperOptions) => {
     const scripts = collectInstallScripts(options.data.root as TemplateContext);
@@ -151,8 +153,8 @@ function registerHelpers(): void {
     return getPackageRunner(options.data.root as TemplateContext);
   });
 
-  Handlebars.registerHelper('binaryRunner', (options: Handlebars.HelperOptions) => {
-    return getBinaryRunner(options.data.root as TemplateContext);
+  Handlebars.registerHelper('installedBinaryRunner', (options: Handlebars.HelperOptions) => {
+    return getInstalledBinaryRunner(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('camelCase', (str: string) => {

@@ -96,6 +96,9 @@ Start all applications in development mode:
 {{#if (hasRootScript "db:push")}}
 - `{{runScript "db:push"}}` - Push schema changes to database
 {{/if}}
+{{#if (hasRootScript "db:migrate:remote")}}
+- `{{runScript "db:migrate:remote"}}` - Run database migrations on the production database
+{{/if}}
 {{#if (hasRootScript "db:seed")}}
 - `{{runScript "db:seed"}}` - Seed the database
 {{/if}}
@@ -130,7 +133,7 @@ Start all applications in development mode:
 - `{{runScript "versions:fix"}}` - Align dependency versions across workspaces
 {{/if}}
 
-{{> readme/d1-provisioning}}
+{{> readme/d1-provisioning scripts="Available Scripts"}}
 {{#if envGroups.length}}
 ## Environment Variables
 
