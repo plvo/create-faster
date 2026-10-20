@@ -4,6 +4,7 @@ import type { AppContext, TemplateContext } from '@/types/ctx';
 import type {
   AddonRequire,
   AppScriptTransform,
+  BlueprintSeed,
   MetaAddon,
   MetaBlueprint,
   MetaBlueprintApp,
@@ -41,6 +42,12 @@ export function getBlueprintAppContexts(blueprint: MetaBlueprint): AppContext[] 
 export function getBlueprintApp(ctx: TemplateContext, appName: string): MetaBlueprintApp | undefined {
   const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
   return blueprint?.context.apps.find((app) => app.appName === appName);
+}
+
+/** What the seed script of the selected blueprint does; undefined when the blueprint ships none and the ORM seed runs. */
+export function getBlueprintSeed(ctx: TemplateContext): BlueprintSeed | undefined {
+  const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
+  return blueprint?.seed;
 }
 
 export function getProjectAddon(category: string, name: string): MetaAddon | undefined {

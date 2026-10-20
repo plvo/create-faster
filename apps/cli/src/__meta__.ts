@@ -1,5 +1,13 @@
 import { $when } from '@/lib/when';
-import type { EnvThirdParty, EnvVar, FirstRunStep, Meta, PackageJsonConfig, PostGenerateStep } from '@/types/meta';
+import type {
+  BlueprintSeed,
+  EnvThirdParty,
+  EnvVar,
+  FirstRunStep,
+  Meta,
+  PackageJsonConfig,
+  PostGenerateStep,
+} from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['cloudflare', 'cloudflare-static'] } };
@@ -230,6 +238,12 @@ const ORG_DASHBOARD_WEB_PACKAGE_JSON: PackageJsonConfig = {
     sonner: '^2.0.7',
     zod: '^4.5.4',
   },
+};
+
+const ORG_DASHBOARD_SEED: BlueprintSeed = {
+  rows: ['contacts', 'posts', 'users'],
+  deletes: 'with-reset',
+  target: 'refuses-remote-without-force',
 };
 
 const orgDashboardContext = (webStack: StackName) => ({
@@ -1492,6 +1506,7 @@ export const META: Meta = {
         '- [Wallet auth](docs/agents/wallet-auth.md)',
         '- [Data layer](docs/agents/data-layer.md)',
       ].join('\n'),
+      seed: { rows: ['users'], deletes: 'always' },
       context: {
         apps: [
           {
@@ -1676,6 +1691,7 @@ export const META: Meta = {
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('Next.js'),
       context: orgDashboardContext('nextjs'),
+      seed: ORG_DASHBOARD_SEED,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
     },
@@ -1688,6 +1704,7 @@ export const META: Meta = {
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('TanStack Start'),
       context: orgDashboardContext('tanstack-start'),
+      seed: ORG_DASHBOARD_SEED,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
     },
@@ -1697,6 +1714,11 @@ export const META: Meta = {
       category: 'Business',
       scriptDescriptions: SEEDING_SCRIPTS,
       firstRun: RUN_LOCAL_SETUP,
+      seed: {
+        rows: ['invitations', 'projects', 'members', 'organizations', 'users'],
+        deletes: 'with-reset',
+        target: 'refuses-remote-without-force',
+      },
       agentArchitecture: [
         'Multi-tenant SaaS starter: Next.js web app + Node.js batch app (Turborepo) with shared',
         '`packages/auth`, `packages/db`, `packages/api`, and `packages/ui`. Better Auth',
@@ -1832,6 +1854,7 @@ export const META: Meta = {
           commands: [{ script: 'local-setup' }],
         },
       ],
+      seed: { rows: ['documents', 'users'], deletes: 'with-reset', target: 'local-only' },
       agentArchitecture: [
         'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
         'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',

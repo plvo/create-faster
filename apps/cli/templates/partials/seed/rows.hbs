@@ -1,0 +1,5 @@
+---
+inline: true
+---
+{{!-- Hash parameter: rows, the names of what the seed empties, listed as "a, b and c". --}}
+{{#each rows}}{{#if @first}}{{else if @last}} and {{else}}, {{/if}}{{this}}{{/each}}

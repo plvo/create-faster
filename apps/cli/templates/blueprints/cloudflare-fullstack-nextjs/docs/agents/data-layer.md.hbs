@@ -28,5 +28,5 @@ The database is **Cloudflare D1** (SQLite) everywhere — local dev and producti
 `drizzle.config.ts` resolves the newest local sqlite under `.wrangler/v3/d1/miniflare-D1DatabaseObject` for local introspection, and switches to the `d1-http` driver (account id / database id / API token) when `NODE_ENV=production`.
 
 ## Seeding
-{{> seed/reset-flag localOnly=true}}
+{{> seed/blueprint}}
 The script opens the local miniflare sqlite directly via `@libsql/client` + `drizzle-orm/libsql` (no Bun API: it runs under Node and Bun), creates `admin@example.com` / `manager@example.com` / `user@example.com` through `createAuth(db).api.signUpEmail` (assigning roles afterwards) and, with `--fixtures`, inserts demo documents, a third of them already expired to exercise the cron purge.

@@ -3,15 +3,13 @@
 ## Seeding
 
 {{#if (hasRootScript "db:seed")}}
-{{#unless blueprint}}
+{{#if (blueprintSeed)}}
+{{> seed/blueprint}}
+{{else}}
 {{> seed/deletes-users}}
-{{else}}
-`{{runScript "db:seed"}}` runs `scripts/seed.ts`, which deletes users: always, or only with `--reset` when the script has that flag. Read it before you run it on a database whose accounts you want to keep.
-{{/unless}}
-{{#if (hasRootScript "local-setup")}}
-`{{runScript "local-setup"}}` runs the seed, so the same applies to it.
 {{/if}}
-{{else}}
-`{{runScript "local-setup"}}` seeds the local database, which can delete its data.
+{{/if}}
+{{#if (hasRootScript "local-setup")}}
+`{{runScript "local-setup"}}`: {{scriptDescription "local-setup"}}.
 {{/if}}
 {{/if}}

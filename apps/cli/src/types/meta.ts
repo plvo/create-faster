@@ -218,6 +218,17 @@ export interface MetaBlueprintApp extends AppContext {
   envs?: EnvVar[];
 }
 
+/**
+ * What the `scripts/seed.ts` of a blueprint does to existing data, read by the Seeding docs. `rows` names what it
+ * empties as the docs say it (`contacts`, `users`). `always` empties it before every run, against whatever
+ * `DATABASE_URL` points to. `with-reset` empties it only with `--reset` (the seed then has `--fixtures` and `--help`
+ * too) and says where: `local-only` opens the local database and nothing else, `refuses-remote-without-force` refuses
+ * a database that does not look local unless `--force` is passed.
+ */
+export type BlueprintSeed =
+  | { rows: string[]; deletes: 'always' }
+  | { rows: string[]; deletes: 'with-reset'; target: 'local-only' | 'refuses-remote-without-force' };
+
 export interface MetaBlueprint {
   label: string;
   hint: string;
@@ -242,6 +253,8 @@ export interface MetaBlueprint {
   scriptDescriptions?: Conditional<ScriptDescription>[];
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
   firstRun?: FirstRunStep[];
+  /** Declared by a blueprint that ships its own seed script (a template at a seed destination in its chain); not inherited through `extends`. */
+  seed?: BlueprintSeed;
 }
 
 export interface MetaLibrary extends MetaAddon {
