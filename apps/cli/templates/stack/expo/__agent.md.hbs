@@ -1,2 +1,11 @@
 Expo (React Native) app using expo-router. Screens live in `src/app/`, shared code in `src/`.
-Run on a device/simulator with `{{runScript "start"}}`.
+Start the dev server in a terminal with `{{> expo/dev-server}}`: it prints the QR code and takes the key commands (`a` Android, `i` iOS, `w` web, `r` reload).
+`expo-dev-client` is a dependency, so the server starts in development-build mode: press `s` to switch to Expo Go, which needs no native build, or start with `{{> expo/dev-server args="--go"}}`.
+`{{#inDirectory "apps" appName}}{{runScript "android"}}{{/inDirectory}}`, `{{#inDirectory "apps" appName}}{{runScript "ios"}}{{/inDirectory}}` and `{{#inDirectory "apps" appName}}{{runScript "web"}}{{/inDirectory}}` start the server and open that platform.
+{{#if (isMono)}}
+The root `{{runScript "dev"}}` does not start this app: turbo's stream UI gives a task no terminal, so the server would print no QR code and take no key.
+{{/if}}
+{{#if (and (isMono) (eq pm "bun"))}}
+
+`expo-doctor` reports `expo-constants`, `expo-font` and `expo-linking` as duplicate native modules in a bun turborepo. Expected: bun's isolated install links one version of each into this app and a second copy of the same version under `expo` and `expo-router`, and Metro bundles a single one. Do not add overrides or reinstall to silence it.
+{{/if}}

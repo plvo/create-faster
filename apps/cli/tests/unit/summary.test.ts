@@ -204,12 +204,25 @@ describe('summary note', () => {
       expect(output).toContain('bun run start');
     });
 
-    test('an Expo app has no dev script, so the summary has no development step', () => {
+    test('an Expo single repo starts its dev server with the root dev', () => {
       displaySummaryNote({ ...ctx, apps: [{ appName: 'demo', stackName: 'expo', libraries: [] }] }, undefined, []);
       const output = written.join('');
 
-      expect(output).not.toContain('# Development:');
-      expect(output).not.toContain('run dev');
+      expect(output).toMatch(/bun run dev +# Start development server/);
+      expect(output).not.toContain('dev:expo');
+    });
+
+    test('a turborepo with an Expo app starts the other apps from the root and the Expo app from its directory', () => {
+      const apps = [
+        { appName: 'web', stackName: 'nextjs' as const, libraries: [] },
+        { appName: 'mobile', stackName: 'expo' as const, libraries: [] },
+      ];
+      displaySummaryNote({ ...ctx, repo: 'turborepo', apps }, undefined, []);
+      const output = written.join('');
+
+      expect(output).toMatch(/bun run dev +# Start development server/);
+      expect(output).toContain('(cd apps/mobile && bun run dev:expo)');
+      expect(output).toContain('# Run dev:expo in a terminal of its own (mobile)');
     });
 
     test('a turborepo shows the app-only scripts of its deployment from the app directory', () => {

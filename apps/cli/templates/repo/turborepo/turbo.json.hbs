@@ -9,7 +9,7 @@
       "dependsOn": ["^build"{{#if (has "orm" "prisma")}}, "^db:generate"{{/if}}],
       "inputs": ["$TURBO_DEFAULT$", ".env"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**"]
-    },
+    }{{#if (hasRootScript "dev")}},
     "dev": {
 {{#if (has "orm" "prisma")}}
       "dependsOn": ["^db:generate"],
@@ -18,7 +18,7 @@
       "passThroughEnv": ["PORT"],
       "cache": false,
       "persistent": true
-    }{{#if (hasRootScript "start")}},
+    }{{/if}}{{#if (hasRootScript "start")}},
     "start": {
       "passThroughEnv": ["PORT"],
       "cache": false,

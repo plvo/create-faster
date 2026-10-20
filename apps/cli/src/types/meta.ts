@@ -164,6 +164,8 @@ interface MetaStack {
   installScripts?: InstallScripts;
   /** The scripts of this stack that build, serve or ship an app, in the order a user runs them. */
   productionScripts?: Conditional<ProductionScript>[];
+  /** Scripts of an app that need a terminal (a QR code, key presses). A turborepo root never forwards them through turbo, whose stream UI gives a task none, so a user runs them from the app directory. */
+  interactiveScripts?: string[];
 }
 
 interface MetaRepoStack {
