@@ -44,6 +44,9 @@ const PARTIAL_EXTENSION = '.hbs';
 
 const EMPTY_PARTIAL = (): string => '';
 
+/** Truthiness as `{{#if}}` reads it: a helper that returns a list (`appSecrets`) is false when the list is empty. */
+const isPresent = (value: unknown): boolean => Boolean(value) && !(Array.isArray(value) && value.length === 0);
+
 export function setupTemplateEngine(partialsDir: string = PARTIALS_DIR): void {
   registerHelpers();
   registerPartials(partialsDir);
@@ -52,8 +55,8 @@ export function setupTemplateEngine(partialsDir: string = PARTIALS_DIR): void {
 function registerHelpers(): void {
   Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
   Handlebars.registerHelper('ne', (a: unknown, b: unknown) => a !== b);
-  Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every((v) => Boolean(v)));
-  Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some((v) => Boolean(v)));
+  Handlebars.registerHelper('and', (...args: unknown[]) => args.slice(0, -1).every(isPresent));
+  Handlebars.registerHelper('or', (...args: unknown[]) => args.slice(0, -1).some(isPresent));
 
   Handlebars.registerHelper('isMono', (options: Handlebars.HelperOptions) => {
     return (options.data.root as TemplateContext).repo === 'turborepo';

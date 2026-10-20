@@ -19,7 +19,11 @@ A Worker's public URL is read by {{#if (hasLibrary "better-auth")}}`BETTER_AUTH_
    {{#inDirectory "apps" (deployAppDir)}}WRANGLER_HIDE_BANNER=true {{installedBinaryRunner}} wrangler auth token{{/inDirectory}} | sed 's/^/Authorization: Bearer /' | curl -s -H @- https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain
    ```
 
-   The answer holds `"subdomain": "<subdomain>"` under `result`. An error with code `10007` instead means the account has no `workers.dev` subdomain yet: register one at `https://dash.cloudflare.com/<account id>/workers/onboarding`, then ask again.
+   The answer holds `"subdomain": "<subdomain>"` under `result`. An error with code `10007` instead means the account has no `workers.dev` subdomain yet. Register one at `https://dash.cloudflare.com/<account id>/workers/onboarding`, or with the same pipe and a `PUT`, which answers with the subdomain once it is registered (the name is unique across Cloudflare and becomes part of the URL of every Worker of the account):
+
+   ```bash
+   {{#inDirectory "apps" (deployAppDir)}}WRANGLER_HIDE_BANNER=true {{installedBinaryRunner}} wrangler auth token{{/inDirectory}} | sed 's/^/Authorization: Bearer /' | curl -s -X PUT -H @- -H 'Content-Type: application/json' -d '{"subdomain":"<subdomain>"}' https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain
+   ```
 
 The URL of a Worker is then `https://<worker name>.<subdomain>.workers.dev`, its name being the `name` of its `wrangler.jsonc`:
 {{#each apps}}

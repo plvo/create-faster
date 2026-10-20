@@ -23,6 +23,8 @@ Create the bucket (and `{{projectName}}-storage-preview` if you use `wrangler de
 ```bash
 {{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler r2 bucket create {{projectName}}-storage --no-update-config{{/inDirectory}}
 ```
+
+An account that never used R2 refuses it with error `10042` (`Please enable R2 through the Cloudflare Dashboard`). Enable R2 at `https://dash.cloudflare.com/<account id>/r2/overview` (the account id is the one `wrangler whoami` prints, see Production URL), then run the command again. Create the bucket before the first deploy: the web Worker binds `STORAGE`, and a deploy with no bucket behind it fails with error `10085`.
 {{> cloudflare/production-url}}
 
 ### Secrets

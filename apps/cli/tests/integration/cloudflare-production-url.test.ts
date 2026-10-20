@@ -59,6 +59,30 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('cloudflare-fullst
     expect(notes).toContain('https://dash.cloudflare.com/<account id>/workers/onboarding');
   });
 
+  test('an account without a workers.dev subdomain registers one through the same token pipe', () => {
+    expectInOrder(notes, [
+      '10007',
+      `(cd apps/web && WRANGLER_HIDE_BANNER=true ${runner} wrangler auth token) | sed 's/^/Authorization: Bearer /' | curl -s -X PUT -H @- -H 'Content-Type: application/json' -d '{"subdomain":"<subdomain>"}' ${SUBDOMAIN_URL}`,
+      productionUrl,
+    ]);
+  });
+
+  test('an account that never used R2 enables it before the bucket and the first deploy', () => {
+    expectInOrder(notes, [
+      `${runner} wrangler r2 bucket create ${projectName}-storage --no-update-config`,
+      '`10042`',
+      'https://dash.cloudflare.com/<account id>/r2/overview',
+      '`10085`',
+      '## Build & deploy',
+    ]);
+  });
+
+  test('the Production URL lists the Worker that reads the URL and not the cron Worker that nothing calls', () => {
+    const section = notes.slice(notes.indexOf('### Production URL'), notes.indexOf('### Secrets'));
+    expect(section).toContain(`\`web\`: \`${productionUrl}\``);
+    expect(section).not.toContain(`${projectName}-cron`);
+  });
+
   test('the build sets the production URL itself and the secrets file reuses it, so .env needs no real value', () => {
     expect(notes).toContain(`export NEXT_PUBLIC_APP_URL=${productionUrl}`);
     expect(notes).toContain(
