@@ -1,0 +1,2 @@
+{{!-- Hash parameter: rows, what the seed deletes (users and posts when omitted). --}}
+`{{runScript "db:seed"}}` runs `{{#if (hasPackage "db")}}packages/db/scripts/seed.ts{{else}}scripts/seed.ts{{/if}}`, which deletes all {{#if rows}}{{rows}}{{else}}users and posts{{/if}} before it inserts its sample rows: an account you created yourself is lost, so run it on a development database only.

@@ -3,5 +3,5 @@ Drizzle schema lives in `{{#if (hasPackage "db")}}packages/db/src/schema.ts{{els
 `{{runScript "db:push"}}` syncs the schema without a migration file. drizzle-kit asks for confirmation, so run it from a terminal; `{{#inDirectory "packages" "db"}}{{installedBinaryRunner}} drizzle-kit push --force{{/inDirectory}}` skips the prompt for scripts (a package manager only forwards script flags after `--`, and not the same way everywhere).
 {{#unless blueprint}}
 
-`{{runScript "db:seed"}}` runs `{{#if (hasPackage "db")}}packages/db/scripts/seed.ts{{else}}scripts/seed.ts{{/if}}`, which deletes all users and posts before it inserts its sample rows: an account created by sign-up is lost, so run it on a development database only.
+{{> seed/deletes-users}}
 {{/unless}}

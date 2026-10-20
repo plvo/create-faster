@@ -18,7 +18,7 @@ On SIWE verify, Better Auth persists a row in `userTable` and a session in `user
 `src/lib/db/types.ts` infers `User`, `WalletAddress`, `UserSession`, etc. via `InferSelectModel`, plus composed types like `UserWithRelations`.
 
 ## Seed
-`scripts/seed.ts` (`{{runScript "db:seed"}}`) deletes all users and posts before it inserts sample ones: an account created by signing in is lost, so run it on a development database only.
+{{> seed/deletes-users}}
 
 ## Extend the schema
 Add a `pgTable` (and `relations`) in `src/lib/db/schema.ts`, infer its types in `src/lib/db/types.ts`, then run `drizzle-kit` per `drizzle.config.ts`. Adding fields Better Auth manages also requires registering them in `src/lib/auth/auth.ts`.

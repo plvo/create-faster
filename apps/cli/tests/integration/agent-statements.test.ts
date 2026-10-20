@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import {
   cleanupTempDir,
@@ -92,12 +92,19 @@ function resolveDocumented(project: string, appDirectory: string, documented: st
   return [join(appDirectory, documented), join(project, documented)].find(existsSync);
 }
 
+/** The repo paths a document writes in backticks, a directory with its trailing slash. */
+function documentedPaths(text: string): { path: string; isAfterNo: boolean }[] {
+  return [...text.matchAll(/`((?:src|packages|apps|docs|scripts)\/[\w@./()-]*[\w)/])`/g)].map((match) => ({
+    path: match[1] as string,
+    isAfterNo: /\bnot? $/.test(text.slice(Math.max(0, (match.index ?? 0) - 4), match.index)),
+  }));
+}
+
 describe('every path an agent document writes exists in the generated project', () => {
-  const DOCUMENTED_PATH = /`((?:src|packages|apps|docs|scripts)\/[\w@./()-]*[\w)])`/g;
-  const NOT_GENERATED: RegExp[] = [
-    /(?:^|\/)\.[\w.]*env[\w.]*$/, // env files the user copies from .env.example
-    /^packages\/db\/drizzle$/, // written by db:generate
-    /^src\/start\.ts$/, // the TanStack Start fiche says it exists once a library adds middleware
+  const NOT_GENERATED: { pattern: RegExp; reason: string; only?: RegExp }[] = [
+    { pattern: /(?:^|\/)\.[\w.]*env[\w.]*$/, reason: 'env files the user copies from .env.example' },
+    { pattern: /^packages\/db\/drizzle\/?$/, reason: 'written by db:generate' },
+    { pattern: /^src\/start\.ts$/, reason: 'a TanStack Start file the fiche says a library adds', only: /start/ },
   ];
 
   async function agentDocuments(name: string): Promise<string[]> {
@@ -112,33 +119,59 @@ describe('every path an agent document writes exists in the generated project', 
     return documents.filter((document) => existsSync(join(project, document)));
   }
 
-  const SCRIPT_LIST_ONLY: ProjectName[] = ['dapp-privy-eslint-prettier', 'single-tests-biome', 'single-eslint-prettier', 'mono-tests-oxc', 'mono-prettier'];
+  /**
+   * An app document resolves against its own app and the root. A root document resolves against the root, and its
+   * `src/` paths, which the sections of the stacks write relative to the app they describe, against any app too.
+   */
+  const startsFrom = (project: string, document: string, path: string, apps: string[]): string[] => {
+    if (document.startsWith('apps/')) return [join(project, dirname(document)), project];
+    return path.startsWith('src/') ? [project, ...apps.map((app) => join(project, 'apps', app))] : [project];
+  };
+
+  const SCRIPT_LIST_ONLY: ProjectName[] = [
+    'dapp-privy-eslint-prettier',
+    'single-tests-biome',
+    'single-eslint-prettier',
+    'mono-tests-oxc',
+    'mono-prettier',
+  ];
   const SWEPT = (Object.keys(PROJECTS) as ProjectName[]).filter((name) => !SCRIPT_LIST_ONLY.includes(name));
+
+  test('the sweep reads directory paths with their trailing slash', () => {
+    expect(documentedPaths('in `packages/ui/src/components/ui/`, `src/trpc/` but no `src/server.ts`, not `src/proxy.ts`')).toEqual([
+      { path: 'packages/ui/src/components/ui/', isAfterNo: false },
+      { path: 'src/trpc/', isAfterNo: false },
+      { path: 'src/server.ts', isAfterNo: true },
+      { path: 'src/proxy.ts', isAfterNo: true },
+    ]);
+  });
+
+  test('the sweep reaches the directories the fiches document', async () => {
+    const mono = await readTextFile(join(projectPath('mono'), 'apps/web/AGENTS.md'));
+    const paths = documentedPaths(mono).map(({ path }) => path);
+
+    expect(paths).toContain('packages/ui/src/components/ui/');
+    expect(paths).toContain('packages/api/src/router/');
+  });
 
   test.each(SWEPT)('%s', async (name) => {
     const project = projectPath(name);
-    const apps = (await fileExists(join(project, 'apps'))) ? await readdir(join(project, 'apps')) : [];
     const missing: string[] = [];
-    let documentedPaths = 0;
+    const apps = (await fileExists(join(project, 'apps'))) ? await readdir(join(project, 'apps')) : [];
+    let checked = 0;
 
     for (const document of await agentDocuments(name)) {
       const text = await readTextFile(join(project, document));
-      const startsFrom = document.startsWith('apps/')
-        ? [join(project, document, '..'), project]
-        : [project, ...apps.map((app) => join(project, 'apps', app))];
 
-      for (const [, path] of text.matchAll(DOCUMENTED_PATH)) {
-        const documented = path as string;
-        documentedPaths++;
-        const isDocumentedAsAbsent = text.includes(`no \`${documented}\``);
-        const exists = startsFrom.some((start) => existsSync(join(start, documented)));
-        if (!exists && !isDocumentedAsAbsent && !NOT_GENERATED.some((pattern) => pattern.test(documented))) {
-          missing.push(`${document}: ${documented}`);
-        }
+      for (const { path, isAfterNo } of documentedPaths(text)) {
+        checked++;
+        const exists = startsFrom(project, document, path, apps).some((start) => existsSync(join(start, path)));
+        const isGeneratedLater = NOT_GENERATED.some(({ pattern, only }) => pattern.test(path) && (!only || only.test(name)));
+        if (!exists && !isAfterNo && !isGeneratedLater) missing.push(`${document}: ${path}`);
       }
     }
 
-    expect(documentedPaths).toBeGreaterThan(0);
+    expect(checked).toBeGreaterThan(0);
     expect([...new Set(missing)]).toEqual([]);
   });
 });
@@ -253,6 +286,15 @@ describe('cloudflare-fullstack-nextjs data-layer.md describes local-setup', () =
     const inOrder = ran.filter((script) => described.includes(script));
     expect(described.filter((script) => ran.includes(script))).toEqual(inOrder);
     expect(described).toEqual(expect.arrayContaining(['db:generate', 'db:migrate', 'db:seed']));
+    expect(line).toContain('deletes the local D1 state');
+  });
+
+  test('the seed section says the seed only touches the local database, and has no --force', async () => {
+    const dataLayer = await readTextFile(join(projectPath('cloudflare-fullstack-nextjs'), 'docs/agents/data-layer.md'));
+    const seeding = dataLayer.split('## Seeding')[1] ?? '';
+
+    expect(seeding).toContain('only touches the local database');
+    expect(seeding).not.toContain('--force');
   });
 });
 
@@ -298,7 +340,11 @@ describe('docs say the seed deletes the users', () => {
       readTextFile(join(project, 'AGENTS.md')),
       ...guides.map((guide) => readTextFile(join(docs, guide))),
     ]);
-    return texts.join('\n');
+    return texts
+      .join('\n')
+      .split('\n')
+      .filter((line) => !line.startsWith('- `'))
+      .join('\n');
   }
 
   test.each(SEEDS)('%s: the seed deletes users, and AGENTS.md or its guides say so', async (name, seed) => {
@@ -307,6 +353,38 @@ describe('docs say the seed deletes the users', () => {
 
     expect(await documents(name)).toMatch(SAYS_USERS_ARE_DELETED);
   });
+
+  test.each(SEEDS)('%s: the README has a Seeding section that says so', async (name) => {
+    const readme = await readTextFile(join(projectPath(name), 'README.md'));
+    const seeding = readme.split('\n## Seeding')[1]?.split('\n## ')[0] ?? '';
+
+    expect(seeding).toMatch(SAYS_USERS_ARE_DELETED);
+  });
+
+  test.each(['single', 'cloudflare-fullstack-nextjs'] as const)(
+    '%s: without agent context the README still has the Seeding section',
+    async (name) => {
+      const args = [...PROJECTS[name], '--no-git', '--no-install', '--pm', 'bun', '--no-agent-context'];
+      const projectName = `${name}-no-agent-context`;
+      const result = await runCli([projectName, ...args], dir);
+      expect(result.exitCode, result.stderr).toBe(0);
+
+      const project = projectPath(projectName);
+      expect(await fileExists(join(project, 'AGENTS.md'))).toBe(false);
+      const readme = await readTextFile(join(project, 'README.md'));
+      expect(readme.split('\n## Seeding')[1] ?? '').toMatch(SAYS_USERS_ARE_DELETED);
+    },
+  );
+
+  test.each(['dapp-rainbowkit-nextjs', 'dapp-privy-nextjs', 'org-dashboard-nextjs', 'multitenant-saas-nextjs'] as const)(
+    '%s: the guide of the blueprint renders the seed paragraph, and a script-list line does not stand in for it',
+    async (name) => {
+      const guide = await readTextFile(join(projectPath(name), 'docs/agents/data-layer.md'));
+      const seed = guide.split('## Seed')[1] ?? '';
+
+      expect(seed).toMatch(SAYS_USERS_ARE_DELETED);
+    },
+  );
 
   test.each(['single', 'mono', 'prisma-single', 'd1-mono', 'dapp-privy-nextjs'] as const)(
     '%s: the seed prints that it deletes the users before it does',
@@ -369,5 +447,63 @@ describe('AGENTS.md lists the scripts the root package.json defines', () => {
       if (!/\b(?:every|all) apps?\b/i.test(description as string) || /\bthat (?:has|define)/.test(description as string)) continue;
       expect(scriptsOfApps.every((scripts) => (script as string) in scripts), `${script}: ${description}`).toBe(true);
     }
+  });
+});
+
+describe('shadcn fiche names the directory of the components', () => {
+  const CASES: ProjectName[] = ['single', 'mono', 'org-dashboard-nextjs'];
+
+  test.each(CASES)('%s: the documented directory holds the generated button', async (name) => {
+    const project = projectPath(name);
+    const webApp = join(project, (await fileExists(join(project, 'apps'))) ? 'apps/web' : '.');
+    const agents = await readTextFile(join(webApp, 'AGENTS.md'));
+
+    const line = lineStartingWith(agents, 'shadcn/ui components live in') as string;
+    expect(line, 'a line "shadcn/ui components live in ..." in the app AGENTS.md').toBeDefined();
+    const directories = pathsIn(line).map((path) => resolveDocumented(project, webApp, path));
+
+    expect(directories.some((directory) => directory !== undefined && existsSync(join(directory, 'button.tsx')))).toBe(true);
+  });
+});
+
+describe('PORT overrides the port under the root scripts', () => {
+  const CASES: ProjectName[] = ['mono', 'start-mono', 'd1-mono', 'cloudflare-fullstack-nextjs'];
+
+  test.each(CASES)('%s: a Hono fiche that says PORT overrides the port has PORT in the pass-through env of the root tasks', async (name) => {
+    const project = projectPath(name);
+    const fiches = await Promise.all((await appDirectories(name)).map((app) => readTextFile(join(app, 'AGENTS.md'))));
+    expect(fiches.some((fiche) => /Hono server\.[\s\S]*`PORT` environment variable overrides/.test(fiche))).toBe(true);
+
+    const { tasks } = await readJsonFile<{ tasks: Record<string, { passThroughEnv?: string[] }> }>(join(project, 'turbo.json'));
+    const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(join(project, 'package.json'));
+    const rootTasks = ['dev', 'start'].filter((script) => script in scripts);
+    expect(rootTasks).toContain('dev');
+    for (const task of rootTasks) expect(tasks[task]?.passThroughEnv, task).toContain('PORT');
+  });
+});
+
+describe('a root script the project does not define is not documented', () => {
+  test.each(Object.keys(PROJECTS) as ProjectName[])('%s: no start line in the README or AGENTS.md without a root start script', async (name) => {
+    const project = projectPath(name);
+    const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(join(project, 'package.json'));
+    if ('start' in scripts) return;
+
+    for (const document of ['README.md', 'AGENTS.md']) {
+      expect(await readTextFile(join(project, document)), document).not.toMatch(/^- `(?:bun|npm|pnpm) run start`/m);
+    }
+  });
+
+  test('the cloudflare-fullstack-nextjs root has no start script, so the check above looks at something', async () => {
+    const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(
+      join(projectPath('cloudflare-fullstack-nextjs'), 'package.json'),
+    );
+
+    expect(scripts.start).toBeUndefined();
+  });
+
+  test('a turborepo with a root dev script words the dev step the same in Getting Started and in the script list', async () => {
+    const readme = await readTextFile(join(projectPath('mono'), 'README.md'));
+
+    expect(readme.match(/Start the dev server of every app that has a `dev` script/g)).toHaveLength(2);
   });
 });

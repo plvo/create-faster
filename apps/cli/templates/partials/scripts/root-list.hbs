@@ -1,9 +1,5 @@
 {{#if (hasRootScript "dev")}}
-{{#if (isMono)}}
-- `{{runScript "dev"}}` - Start the dev server of every app that has a `dev` script
-{{else}}
-- `{{runScript "dev"}}` - Start the development server
-{{/if}}
+- `{{runScript "dev"}}` - {{> scripts/dev-description}}
 {{/if}}
 {{#each (productionSteps)}}
 - `{{command}}` - {{description}}
@@ -31,20 +27,16 @@
 - `{{runScript "db:migrate:remote"}}` - Run database migrations on the production database
 {{/if}}
 {{#if (hasRootScript "db:seed")}}
-{{#if blueprint}}
-- `{{runScript "db:seed"}}` - Seed the database
-{{else}}
-- `{{runScript "db:seed"}}` - Seed the database (the seed deletes the existing users and posts first)
-{{/if}}
+- `{{runScript "db:seed"}}` - Seed the database; it can delete users (see Seeding in the README)
 {{/if}}
 {{#if (hasRootScript "db:studio")}}
 - `{{runScript "db:studio"}}` - Open database management UI
 {{/if}}
 {{#if (hasRootScript "local-setup")}}
-- `{{runScript "local-setup"}}` - Set up the local database and seed it
+- `{{runScript "local-setup"}}` - Set up the local database and seed it; it can delete the local data (see Seeding in the README)
 {{/if}}
 {{#if (hasRootScript "cf-typegen")}}
-- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of {{#if (isMono)}}every app{{else}}the app{{/if}}
+- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app that has a `cf-typegen` script
 {{/if}}
 {{#if (hasRootScript "test")}}
 - `{{runScript "test"}}` - Run the tests

@@ -5,5 +5,5 @@ The client is generated into `generated/prisma`, which is not committed. `{{runS
 `{{runScript "db:migrate"}}` (`prisma migrate dev`) asks for a migration name, so run it from a terminal.
 {{#unless blueprint}}
 
-`{{runScript "db:seed"}}` runs `{{#if (hasPackage "db")}}packages/db/scripts/seed.ts{{else}}scripts/seed.ts{{/if}}`, which deletes all users and posts before it inserts its sample rows: an account created by sign-up is lost, so run it on a development database only.
+{{> seed/deletes-users}}
 {{/unless}}

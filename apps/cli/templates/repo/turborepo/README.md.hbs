@@ -65,14 +65,12 @@ Install dependencies:
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
-{{#if (hasRootScript "dev")}}
-Start the dev server of every app that has a `dev` script:
+{{> scripts/dev-description}}:
 
 ```bash
 {{runScript "dev"}}
 ```
 
-{{/if}}
 {{#each apps}}
 {{#if (appUrl appName)}}
 - {{appName}}: [{{appUrl appName}}]({{appUrl appName}}), {{> ports/app-command}}
@@ -85,6 +83,7 @@ Start the dev server of every app that has a `dev` script:
 
 {{> scripts/root-list}}
 
+{{> readme/seeding}}
 {{> readme/d1-provisioning scripts="Available Scripts"}}
 {{> readme/aws-deploy}}
 {{#if envGroups.length}}

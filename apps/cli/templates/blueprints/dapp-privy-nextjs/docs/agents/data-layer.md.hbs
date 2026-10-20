@@ -22,4 +22,4 @@ Routers are mounted in `src/trpc/routers/_app.ts`. DB access stays inside proced
 Add a procedure to a router (or create one and mount it in `_app.ts`). Use `protectedProcedure` when it needs `ctx.privyUserId`, `publicProcedure` otherwise. Consume it with the generated `trpc` hook.
 
 ## Seed
-`scripts/seed.ts` (`{{runScript "db:seed"}}`) deletes all users and inserts a sample user: an account created by sign-in is lost, so run it on a development database only.
+{{> seed/deletes-users rows="users"}}
