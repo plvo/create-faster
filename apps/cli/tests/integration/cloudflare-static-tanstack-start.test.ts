@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, evaluateNextConfig, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -130,7 +130,7 @@ describe('TanStack Start + cloudflare-static', () => {
       expect(docsConfig).toContain('prerender: { enabled: true');
       expect(docsConfig).toContain('port: Number(process.env.PORT ?? 3001),');
       const webConfig = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
-      expect(webConfig).toContain("output: 'export'");
+      expect((await evaluateNextConfig(webConfig, tempDir, 'production')).output).toBe('export');
       expect(await fileExists(join(projectPath, 'apps/docs/src/routes/$.tsx'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/web/src/routes/$.tsx'))).toBe(false);
     });

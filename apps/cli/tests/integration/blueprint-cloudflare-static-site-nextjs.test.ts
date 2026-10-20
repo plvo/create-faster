@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, evaluateNextConfig, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -22,9 +22,9 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
   });
 
   test('next.config emits a static export with unoptimized images', async () => {
-    const config = await readTextFile(join(projectPath, 'next.config.ts'));
-    expect(config).toContain("output: 'export'");
-    expect(config).toContain('unoptimized: true');
+    const config = await evaluateNextConfig(await readTextFile(join(projectPath, 'next.config.ts')), tempDir, 'production');
+    expect(config.output).toBe('export');
+    expect(config.images?.unoptimized).toBe(true);
   });
 
   test('wrangler.jsonc serves the static export from out/ as Workers assets', async () => {
@@ -89,6 +89,41 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
   test('ships a cloudflare deploy note in docs/agents', async () => {
     expect(await fileExists(join(projectPath, 'docs/agents/cloudflare-deploy.md'))).toBe(true);
     expect(await fileExists(join(projectPath, 'docs/agents/analytics-consent.md'))).toBe(false);
+  });
+
+  test('the first deploy learns the production URL, then builds and deploys with it', async () => {
+    const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+    const productionUrl = `https://${projectName}.<subdomain>.workers.dev`;
+    let from = 0;
+    for (const marker of [
+      '### Production URL',
+      'npx wrangler whoami',
+      'WRANGLER_HIDE_BANNER=true npx wrangler auth token',
+      'https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain',
+      productionUrl,
+      'export NEXT_PUBLIC_APP_URL=<the URL>',
+      'npm run deploy',
+    ]) {
+      const at = notes.indexOf(marker, from);
+      expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
+      from = at + marker.length;
+    }
+    expect(notes).toContain('sitemap');
+    expect(notes).toContain('canonical');
+  });
+
+  test('every note that names the static export says that next build is its check', async () => {
+    for (const file of ['AGENTS.md', 'README.md', 'docs/agents/cloudflare-deploy.md']) {
+      expect(await readTextFile(join(projectPath, file)), file).toContain(
+        '`next build` is the check that the site still exports',
+      );
+    }
+  });
+
+  test('the README points to the deploy notes for the production URL', async () => {
+    const readme = await readTextFile(join(projectPath, 'README.md'));
+    expect(readme).toContain('Give the build your production URL');
+    expect(readme).toContain('docs/agents/cloudflare-deploy.md');
   });
 
   test('recreate command shows the blueprint flag', async () => {

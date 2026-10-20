@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { TEMPLATES_DIR } from '@/lib/constants';
 import { removeFrontmatter } from '@/lib/frontmatter';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import type { TemplateContext } from '@/types/ctx';
+import { evaluateNextConfig } from '../../integration/helpers';
 
 beforeAll(() => {
   setupTemplateEngine();
@@ -87,10 +90,34 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
     expect(rendered).not.toContain('@opennextjs/cloudflare');
   });
 
-  test('emits static export config when deploying to cloudflare-static', () => {
-    const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
-    expect(rendered).toContain("output: 'export'");
-    expect(rendered).toContain('unoptimized: true');
+  describe('static export', () => {
+    let directory: string;
+
+    beforeAll(async () => {
+      directory = await mkdtemp(join(tmpdir(), 'next-config-unit-'));
+    });
+
+    afterAll(async () => {
+      await rm(directory, { recursive: true, force: true });
+    });
+
+    test('exports statically for the build and not under next dev, which would answer an unknown param with a 500', async () => {
+      const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
+      expect((await evaluateNextConfig(rendered, directory, 'production')).output).toBe('export');
+      expect((await evaluateNextConfig(rendered, directory, 'development')).output).toBeUndefined();
+    });
+
+    test('keeps unoptimized images in both modes', async () => {
+      const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
+      for (const mode of ['production', 'development'] as const) {
+        expect((await evaluateNextConfig(rendered, directory, mode)).images?.unoptimized).toBe(true);
+      }
+    });
+
+    test('tells that next dev does not run the export', () => {
+      const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
+      expect(rendered).toContain('`next build` is the check that the site still exports');
+    });
   });
 
   test('does NOT pull in OpenNext when deploying to cloudflare-static', () => {
@@ -101,7 +128,7 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
 
   test('does NOT emit static export config for the OpenNext cloudflare deployment', () => {
     const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare'));
-    expect(rendered).not.toContain("output: 'export'");
+    expect(rendered).not.toMatch(/output:/);
   });
 });
 

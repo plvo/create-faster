@@ -1,0 +1,21 @@
+export type ContactOutcome = 'sent' | 'failed' | 'unconfigured';
+
+export const CONTACT_FORM_URL = process.env.NEXT_PUBLIC_CONTACT_FORM_URL;
+
+export async function sendContactMessage(
+  endpoint: string | undefined,
+  message: FormData,
+): Promise<ContactOutcome> {
+  if (!endpoint) return 'unconfigured';
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: message,
+    });
+    return response.ok ? 'sent' : 'failed';
+  } catch {
+    return 'failed';
+  }
+}

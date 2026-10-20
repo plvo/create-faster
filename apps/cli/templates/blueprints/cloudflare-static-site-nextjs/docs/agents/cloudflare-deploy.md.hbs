@@ -6,7 +6,7 @@ mono:
 ---
 # Deploying to Cloudflare Workers (static assets)
 
-This site is a Next.js static export (`output: 'export'` in `next.config.ts`) served as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — never Pages (maintenance mode). There is no server runtime: `next build` writes the whole site to `out/`, and `wrangler.jsonc` points the Worker's `assets.directory` at it.
+This site is a Next.js static export (`output: 'export'` in `next.config.ts`) served as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — never Pages (maintenance mode). There is no server runtime: `next build` writes the whole site to `out/`, and `wrangler.jsonc` points the Worker's `assets.directory` at it. {{> nextjs/export-dev-note}}
 
 ```jsonc
 "assets": {
@@ -19,16 +19,23 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 
 ## First deploy
 
+The first deploy needs the public URL of the Worker before the build, because the build writes it into the site.
+{{> cloudflare/production-url appUrlUse="the app writes into the sitemap, `robots.txt`, canonical URLs and JSON-LD"}}
+
+### Build and deploy
+
+From the repository root, with `NEXT_PUBLIC_APP_URL` exported as above:
+
 ```bash
 {{runScript "deploy"}}   # next build && wrangler deploy
 ```
 
-`wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at `https://<name>.<your-subdomain>.workers.dev`.
+`wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at the URL above. Check that `/sitemap.xml` and the `<link rel="canonical">` of a page start with it.
 
 Dry-run the upload without publishing:
 
 ```bash
-wrangler deploy --dry-run
+{{installedBinaryRunner}} wrangler deploy --dry-run
 ```
 
 ## Custom domain
