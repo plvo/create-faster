@@ -343,6 +343,12 @@ Same design as Next.js: Geist Sans and Geist Mono, applied through the theme var
 - `styles.css` sets no `font-family` on `body` or `code`; Tailwind's preflight applies the theme fonts. The root route of `org-dashboard-tanstack-start` imports the stack `styles.css`, so it inherits this.
 - `tests/integration/tanstack-start-fonts.test.ts` generates a Start app with and without `shadcn`, in a turborepo, and every blueprint with a Start app.
 
+### Next.js root 404, scroll behavior and titles
+
+- The root `not-found.tsx` of every Next.js app is the `nextjs/not-found` partial (the stack file and the three dashboard blueprints), and a 404 has exactly one `main`. A root layout that wraps `{children}` in `<main>` (the stack, `showcase-nextjs`, `cloudflare-static-site-nextjs`, both dApps) gets a `section` from the partial; the dashboards' root layouts have none (their pages bring `SidebarInset`), so their `not-found.tsx` calls the partial with `main=true`. A new root layout decides the same way, and the 404 inside a group layout that already has a `main` (`(dashboard)/not-found.tsx`) never carries one. The title is `Page not found` from the `metadata` of the file. `tests/integration/nextjs-404-landmark.test.ts` generates the stack and every Next.js blueprint and counts the `main` of layout plus 404.
+- A root layout that smooths scrolling with the `scroll-smooth` class also sets `data-scroll-behavior='smooth'` on `<html>`, or Next.js warns on every client navigation. `tests/unit/templates/nextjs-scroll-behavior.test.ts` scans every root layout template.
+- A `'use client'` page cannot export `metadata`: the dApps' `/protected` is a server `page.tsx` titled `Dashboard` that renders `protected.client.tsx`, as the dashboards do.
+
 ## Template system
 
 ### Structure

@@ -36,7 +36,7 @@ export default {{#if (hasLibrary "tanstack-devtools")}}async {{/if}}function Roo
 
   {{/if}}
   return (
-    <html lang='en' className={`scroll-smooth ${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang='en' data-scroll-behavior='smooth' className={`scroll-smooth ${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body className='antialiased' suppressHydrationWarning>
         <AppProviders>
           <OrganizationJsonLd />
