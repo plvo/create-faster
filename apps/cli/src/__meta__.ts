@@ -10,22 +10,75 @@ const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 
 
 const NODE_TYPES_VERSION = '^22';
 
-/** A production script whose sentence changes when a turborepo root runs it in every app. */
-const rootProductionScript = (script: string, description: string, everyAppDescription: string) => [
+/** A script whose sentence changes when a turborepo root runs it in every app. */
+const rootScript = (script: string, description: string, everyAppDescription: string) => [
   $when({ repo: 'single' }, { script, description }),
   $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
 ];
 
 const EVERY_APP_WITH_START = 'Start every app that has a `start` script';
-const BUILD_FOR_PRODUCTION = rootProductionScript(
+const BUILD_FOR_PRODUCTION = rootScript(
   'build',
   'Build for production',
   'Build every app that has a `build` script for production',
 );
-const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', EVERY_APP_WITH_START);
+const START_PRODUCTION_SERVER = rootScript('start', 'Start the production server', EVERY_APP_WITH_START);
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
 const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };
+
+const START_DEV_SERVER = rootScript(
+  'dev',
+  'Start the development server',
+  'Start the dev server of every app that has a `dev` script',
+);
+const ANALYZE_BUNDLE = { script: 'analyze', description: 'Analyze the bundle size' };
+const OPEN_EXPO_APP = [
+  { script: 'android', description: 'Start the Expo dev server and open the app on Android' },
+  { script: 'ios', description: 'Start the Expo dev server and open the app on iOS' },
+  { script: 'web', description: 'Start the Expo dev server and open the app in the browser' },
+];
+
+const RUN_TESTS = { script: 'test', description: 'Run the tests' };
+const RUN_TESTS_IN_WATCH_MODE = { script: 'test:watch', description: 'Run the tests in watch mode' };
+const RUN_TESTS_WITH_COVERAGE = { script: 'test:coverage', description: 'Run the tests with coverage' };
+const VITEST_SCRIPTS = [RUN_TESTS, RUN_TESTS_IN_WATCH_MODE, RUN_TESTS_WITH_COVERAGE];
+
+const WRITE_SQL_MIGRATION = { script: 'db:generate', description: 'Write a SQL migration from the schema' };
+const GENERATE_PRISMA_CLIENT = { script: 'db:generate', description: 'Generate the Prisma client' };
+const RUN_MIGRATIONS = { script: 'db:migrate', description: 'Run database migrations' };
+const RUN_LOCAL_MIGRATIONS = {
+  script: 'db:migrate:local',
+  description: 'Run database migrations on the local database',
+};
+const RUN_REMOTE_MIGRATIONS = {
+  script: 'db:migrate:remote',
+  description: 'Run database migrations on the production database',
+};
+const PUSH_SCHEMA = { script: 'db:push', description: 'Push schema changes to database' };
+const OPEN_DATABASE_STUDIO = { script: 'db:studio', description: 'Open database management UI' };
+const SEEDING_SECTION = 'Seeding';
+const SEED_DATABASE = {
+  script: 'db:seed',
+  description: 'Seed the database; it can delete users',
+  readmeSection: SEEDING_SECTION,
+};
+const SET_UP_LOCAL_DATABASE = {
+  script: 'local-setup',
+  description: 'Set up the local database and seed it; it can delete the local data',
+  readmeSection: SEEDING_SECTION,
+};
+
+const REGENERATE_CLOUDFLARE_TYPES = {
+  script: 'cf-typegen',
+  description: 'Regenerate the Cloudflare binding types of every app that has a `cf-typegen` script',
+};
+
+const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
+
+const LINT_CODE = { script: 'lint', description: 'Lint code' };
+const FORMAT_CODE = { script: 'format', description: 'Format code' };
+const FIX_AND_FORMAT_CODE = { script: 'check', description: 'Fix lint issues and format code' };
 
 const NITRO_VERSION = '^3.0.260903-beta';
 
@@ -298,6 +351,7 @@ export const META: Meta = {
       type: 'app',
       label: 'Next.js',
       hint: 'React framework with SSR',
+      scriptDescriptions: [...START_DEV_SERVER, ANALYZE_BUNDLE],
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       packageJson: {
         dependencies: {
@@ -326,6 +380,8 @@ export const META: Meta = {
       type: 'app',
       label: 'Expo',
       hint: 'React Native framework',
+      scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP],
+      productionScripts: BUILD_FOR_PRODUCTION,
       // turbo gives a task no terminal, and Expo prints no QR code and takes no key press without one: in a turborepo its dev server is not `dev`, which `turbo dev` runs in every app. A single repo runs no turbo.
       interactiveScripts: ['dev:expo'],
       packageJson: {
@@ -366,6 +422,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
+      scriptDescriptions: START_DEV_SERVER,
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
@@ -390,6 +447,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
+      scriptDescriptions: START_DEV_SERVER,
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
@@ -412,6 +470,7 @@ export const META: Meta = {
       type: 'app',
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
+      scriptDescriptions: START_DEV_SERVER,
       productionScripts: [...BUILD_FOR_PRODUCTION, PREVIEW_PRODUCTION_BUILD, ...START_PRODUCTION_SERVER],
       installScripts: { fsevents: false },
       moduleType: 'module',
@@ -774,6 +833,7 @@ export const META: Meta = {
       installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['nextjs', 'tanstack-start'] },
+      scriptDescriptions: VITEST_SCRIPTS,
       packageJson: {
         devDependencies: {
           vitest: '^4.1.11',
@@ -798,6 +858,7 @@ export const META: Meta = {
       hint: 'A Vite-native testing framework',
       category: 'Testing',
       support: { stacks: ['hono', 'node'] },
+      scriptDescriptions: VITEST_SCRIPTS,
       packageJson: {
         devDependencies: {
           vitest: '^4.1.11',
@@ -816,6 +877,10 @@ export const META: Meta = {
       hint: 'Reliable end-to-end testing for modern web apps',
       category: 'Testing',
       support: { stacks: ['nextjs', 'tanstack-start'] },
+      scriptDescriptions: [
+        { script: 'test:e2e', description: 'Run the end-to-end tests' },
+        { script: 'test:e2e:ui', description: 'Open the end-to-end tests in the Playwright UI' },
+      ],
       packageJson: {
         devDependencies: {
           '@playwright/test': '^1.62.1',
@@ -833,6 +898,7 @@ export const META: Meta = {
       installScripts: { fsevents: false },
       category: 'Testing',
       support: { stacks: ['expo'] },
+      scriptDescriptions: [RUN_TESTS, RUN_TESTS_IN_WATCH_MODE],
       packageJson: {
         devDependencies: {
           'jest-expo': '~57.0.6',
@@ -862,6 +928,7 @@ export const META: Meta = {
           hint: 'Deploy to Cloudflare Workers with Wrangler',
           installScripts: WRANGLER_INSTALL_SCRIPTS,
           productionScripts: [BUILD_WORKER_BUNDLE, PREVIEW_PRODUCTION_BUILD, DEPLOY_TO_WORKERS],
+          scriptDescriptions: [REGENERATE_CLOUDFLARE_TYPES],
           providesDbBindings: true,
           providesLocalFilesystem: false,
           packageJson: {
@@ -911,6 +978,7 @@ export const META: Meta = {
           hint: 'Deploy a static build (Next.js export, TanStack Start prerender) to Cloudflare Workers assets',
           installScripts: WRANGLER_INSTALL_SCRIPTS,
           productionScripts: [PREVIEW_PRODUCTION_BUILD, DEPLOY_TO_WORKERS],
+          scriptDescriptions: [REGENERATE_CLOUDFLARE_TYPES],
           require: { stacks: ['nextjs', 'tanstack-start'] },
           providesServerRuntime: false,
           packageJson: {
@@ -1043,6 +1111,13 @@ export const META: Meta = {
           serverlessBinding: 'd1',
           serverlessConsumersWired: true,
           interactiveScripts: ['db:migrate:remote'],
+          scriptDescriptions: [
+            WRITE_SQL_MIGRATION,
+            RUN_MIGRATIONS,
+            RUN_LOCAL_MIGRATIONS,
+            RUN_REMOTE_MIGRATIONS,
+            SET_UP_LOCAL_DATABASE,
+          ],
           packageJson: {
             devDependencies: {
               '@libsql/client': LIBSQL_CLIENT_VERSION,
@@ -1114,6 +1189,7 @@ export const META: Meta = {
           installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
+          scriptDescriptions: [WRITE_SQL_MIGRATION, RUN_MIGRATIONS, PUSH_SCHEMA, SEED_DATABASE, OPEN_DATABASE_STUDIO],
           firstRun: [
             {
               description: 'Create the migrations from the schema and apply them',
@@ -1160,6 +1236,13 @@ export const META: Meta = {
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:migrate'],
+          scriptDescriptions: [
+            GENERATE_PRISMA_CLIENT,
+            RUN_MIGRATIONS,
+            PUSH_SCHEMA,
+            SEED_DATABASE,
+            OPEN_DATABASE_STUDIO,
+          ],
           firstRun: [
             {
               description: 'Generate the client and create the tables from the schema',
@@ -1212,6 +1295,7 @@ export const META: Meta = {
           mono: { scope: 'root' },
           // `biome format` leaves the import order alone, which `biome check` enforces: its `check` script (`--fix`) runs both.
           postGenerate: [{ description: 'Format the generated files', script: 'check' }],
+          scriptDescriptions: [LINT_CODE, FORMAT_CODE, FIX_AND_FORMAT_CODE],
           packageJson: {
             devDependencies: {
               '@biomejs/biome': '^2.5.11',
@@ -1228,6 +1312,7 @@ export const META: Meta = {
           hint: 'Fast Rust linter & formatter with ESLint-compatible plugins',
           mono: { scope: 'root' },
           postGenerate: FORMAT_GENERATED_FILES,
+          scriptDescriptions: [LINT_CODE, FORMAT_CODE, FIX_AND_FORMAT_CODE],
           packageJson: {
             devDependencies: {
               oxlint: '^1.86.0',
@@ -1256,6 +1341,7 @@ export const META: Meta = {
           label: 'ESLint',
           hint: 'Most popular JavaScript linter',
           mono: { scope: 'pkg', name: 'eslint-config' },
+          scriptDescriptions: [LINT_CODE],
           packageJson: {
             devDependencies: {
               eslint: ESLINT_VERSION,
@@ -1293,6 +1379,10 @@ export const META: Meta = {
           hint: 'Opinionated code formatter (no linter)',
           mono: { scope: 'root' },
           postGenerate: FORMAT_GENERATED_FILES,
+          scriptDescriptions: [
+            FORMAT_CODE,
+            { script: 'format:check', description: 'Check the formatting without changing files' },
+          ],
           packageJson: {
             devDependencies: {
               prettier: '^3.9.6',
@@ -1338,6 +1428,9 @@ export const META: Meta = {
           label: 'Portless',
           hint: 'Named .localhost URLs for local dev',
           mono: { scope: 'root' },
+          scriptDescriptions: [
+            { script: 'start:portless', description: 'Start the production server through portless' },
+          ],
           packageJson: {
             devDependencies: {
               portless: '^0.15.6',
@@ -1365,6 +1458,11 @@ export const META: Meta = {
       turborepo: {
         label: 'Turborepo',
         hint: 'Monorepo repository',
+        scriptDescriptions: [
+          { script: 'clean', description: 'Remove build outputs and installed dependencies' },
+          { script: 'versions:list', description: 'List dependency versions that differ between workspaces' },
+          { script: 'versions:fix', description: 'Align dependency versions across workspaces' },
+        ],
       },
     },
   },
@@ -1565,6 +1663,7 @@ export const META: Meta = {
       label: 'Org Dashboard',
       hint: ORG_DASHBOARD_HINT,
       category: 'Business',
+      scriptDescriptions: SEEDING_SCRIPTS,
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('Next.js'),
       context: orgDashboardContext('nextjs'),
@@ -1576,6 +1675,7 @@ export const META: Meta = {
       hint: ORG_DASHBOARD_HINT,
       category: 'Business',
       extends: 'org-dashboard-nextjs',
+      scriptDescriptions: SEEDING_SCRIPTS,
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('TanStack Start'),
       context: orgDashboardContext('tanstack-start'),
@@ -1586,6 +1686,7 @@ export const META: Meta = {
       label: 'Multitenant SaaS',
       hint: 'B2B SaaS dashboard with orgs, custom RBAC, and link-based invitations',
       category: 'Business',
+      scriptDescriptions: SEEDING_SCRIPTS,
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: [
         'Multi-tenant SaaS starter: Next.js web app + Node.js batch app (Turborepo) with shared',
@@ -1714,6 +1815,7 @@ export const META: Meta = {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
+      scriptDescriptions: SEEDING_SCRIPTS,
       firstRun: [
         {
           description:

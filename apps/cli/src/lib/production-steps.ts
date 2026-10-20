@@ -4,7 +4,7 @@ import { getAppScripts, getRootScripts } from '@/lib/package-json-generator';
 import { getScriptCommand, getScriptCommandInApp } from '@/lib/package-manager';
 import { resolveConditionals } from '@/lib/when';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { ProductionScript } from '@/types/meta';
+import type { ScriptDescription } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 export interface ScriptStep {
@@ -13,12 +13,12 @@ export interface ScriptStep {
 }
 
 /** The production scripts the given stacks and the selected addons declare, stacks first, each script once. */
-function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): ProductionScript[] {
+function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): ScriptDescription[] {
   const declared = [
     ...stacks.flatMap((stack) => META.stacks[stack].productionScripts ?? []),
     ...getSelectedProjectAddons(ctx).flatMap((addon) => addon.productionScripts ?? []),
   ];
-  const scripts = new Map<string, ProductionScript>();
+  const scripts = new Map<string, ScriptDescription>();
   for (const productionScript of resolveConditionals(declared, ctx)) {
     const { script, description } = productionScript;
     if (script !== undefined && description !== undefined && !scripts.has(script)) {
@@ -35,7 +35,7 @@ function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): P
  */
 export function appOnlyScriptSteps(
   ctx: TemplateContext,
-  scriptsOf: (app: AppContext) => ProductionScript[],
+  scriptsOf: (app: AppContext) => ScriptDescription[],
 ): ScriptStep[] {
   const rootScripts = getRootScripts(ctx);
   const appScripts = getAppScripts(ctx);

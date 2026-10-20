@@ -39,10 +39,12 @@ export interface FirstRunStep {
   commands: FirstRunCommand[];
 }
 
-/** A package.json script that builds, serves or ships a project, with the sentence the READMEs and the CLI summary give it. */
-export interface ProductionScript {
+/** A package.json script with the sentence the READMEs, `AGENTS.md` and the CLI summary give it. */
+export interface ScriptDescription {
   script: string;
   description: string;
+  /** The README section that explains the script further: the Scripts list points to it. */
+  readmeSection?: string;
 }
 
 /** A package.json script the CLI runs through the selected package manager once the dependencies are installed. */
@@ -140,7 +142,9 @@ export interface MetaAddon {
   /** Scripts run once the dependencies are installed. A failing step only warns. */
   postGenerate?: PostGenerateStep[];
   /** The scripts this addon adds that build, serve or ship an app, in the order a user runs them. */
-  productionScripts?: Conditional<ProductionScript>[];
+  productionScripts?: Conditional<ScriptDescription>[];
+  /** The sentence of every other script this addon adds to the root `package.json`, which the Scripts lists print; a production script is described by `productionScripts` only. */
+  scriptDescriptions?: Conditional<ScriptDescription>[];
 }
 
 export interface MetaProjectCategory {
@@ -163,7 +167,9 @@ interface MetaStack {
   /** Install scripts of the dependencies this stack brings, direct or transitive. */
   installScripts?: InstallScripts;
   /** The scripts of this stack that build, serve or ship an app, in the order a user runs them. */
-  productionScripts?: Conditional<ProductionScript>[];
+  productionScripts?: Conditional<ScriptDescription>[];
+  /** The sentence of every other script of this stack, which the Scripts lists print; a production script is described by `productionScripts` only. */
+  scriptDescriptions?: Conditional<ScriptDescription>[];
   /** Scripts of an app that need a terminal (a QR code, key presses). A turborepo root never forwards them through turbo, whose stream UI gives a task none, so a user runs them from the app directory. */
   interactiveScripts?: string[];
 }
@@ -171,6 +177,8 @@ interface MetaStack {
 interface MetaRepoStack {
   label: string;
   hint?: string;
+  /** The sentence of every script the generated root `package.json` of this repo type defines on its own, which the Scripts lists print. */
+  scriptDescriptions?: Conditional<ScriptDescription>[];
 }
 
 type MetaProject = {
@@ -228,6 +236,8 @@ export interface MetaBlueprint {
   /** Variables of every app and of the project; what only some apps read goes on the app in `context.apps`. */
   envs?: EnvVar[];
   agentArchitecture?: string;
+  /** The sentence of every script this blueprint adds to the root `package.json`, which the Scripts lists print. */
+  scriptDescriptions?: Conditional<ScriptDescription>[];
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
   firstRun?: FirstRunStep[];
 }

@@ -30,6 +30,7 @@ import {
   getTypeScriptRunner,
 } from './package-manager';
 import { collectProductionSteps } from './production-steps';
+import { collectScriptList, describeScript } from './script-list';
 import { resolveBlueprintChain } from './template-resolver';
 import { resolveAppPort } from './utils';
 
@@ -211,6 +212,14 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {
     return collectProductionSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('scriptList', (options: Handlebars.HelperOptions) => {
+    return collectScriptList(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('scriptDescription', (script: string, options: Handlebars.HelperOptions) => {
+    return describeScript(options.data.root as TemplateContext, script) ?? '';
   });
 
   Handlebars.registerHelper('stackApps', (stack: string, options: Handlebars.HelperOptions) => {
