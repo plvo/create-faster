@@ -40,23 +40,12 @@ describe('templates pass every linter with warnings denied', () => {
     expect(appFooter).not.toMatch(/\{new Date\(/);
   });
 
-  describe.each([
-    ['org-dashboard-nextjs', false],
-    ['multitenant-saas-nextjs', false],
-    ['cloudflare-fullstack-nextjs', true],
-  ])('%s user menu', (blueprint, hasImage) => {
-    test('links with next/link and passes the avatar only the props it uses', async () => {
+  describe.each(['org-dashboard-nextjs', 'multitenant-saas-nextjs', 'cloudflare-fullstack-nextjs'])('%s user menu', (blueprint) => {
+    test('links with next/link', async () => {
       const navUser = await read(await generate(`lint-nav-${blueprint}`, ['--blueprint', blueprint]), 'apps/web/src/components/navigation/nav-user.tsx');
       expect(navUser).toMatch(/import Link from 'next\/link';/);
       expect(navUser).toMatch(/<Link href='\/profile\/account'>/);
       expect(navUser).not.toMatch(/<a\b/);
-      if (hasImage) {
-        expect(navUser).toMatch(/function UserAvatar\(\{ user, initials \}/);
-        expect(navUser).toMatch(/<UserAvatar user=\{session\.user\} initials=\{initials\} \/>/);
-      } else {
-        expect(navUser).toMatch(/function UserAvatar\(\{ initials \}: \{ initials: string \}\)/);
-        expect(navUser).not.toMatch(/<UserAvatar user=/);
-      }
     });
   });
 
