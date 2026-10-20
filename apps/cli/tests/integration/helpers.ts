@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 import { format } from 'node:util';
 import { expect, test } from 'bun:test';
-import { $ } from 'bun';
+import { $, Glob } from 'bun';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 import { CTRL_C, DOWN, ENTER, runOnPseudoTerminal } from '../pseudo-terminal';
 
@@ -59,6 +59,11 @@ export function expectInOrder(text: string, markers: string[]): void {
     expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
     from = at + marker.length;
   }
+}
+
+/** Whether any of the glob patterns matches the file path. */
+export function matchesAny(patterns: string[], file: string): boolean {
+  return patterns.some((pattern) => new Glob(pattern).match(file));
 }
 
 export async function fileExists(path: string): Promise<boolean> {

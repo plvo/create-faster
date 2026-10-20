@@ -1,0 +1,10 @@
+---
+only: mono
+mono:
+  scope: pkg
+  name: ui
+  path: eslint.config.mjs
+---
+{{#if (hasPackage "ui")}}
+{{> eslint/workspace-config config="reactConfig" from="@repo/eslint-config/react"}}
+{{/if}}

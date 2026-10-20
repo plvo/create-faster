@@ -1,0 +1,10 @@
+---
+only: mono
+mono:
+  scope: pkg
+  name: eslint-config
+  path: eslint.config.mjs
+---
+{{#if (hasPackage "eslint-config")}}
+{{> eslint/workspace-config config="serverConfig" from="./server.js"}}
+{{/if}}

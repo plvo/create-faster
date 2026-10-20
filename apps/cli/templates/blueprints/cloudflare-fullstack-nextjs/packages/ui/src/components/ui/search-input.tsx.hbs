@@ -45,9 +45,11 @@ export function SearchInput({
   const [focused, setFocused] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
 
-  useEffect(() => {
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
     if (value !== undefined) setText(value);
-  }, [value]);
+  }
 
   useEffect(
     () => () => {

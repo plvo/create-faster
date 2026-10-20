@@ -1,0 +1,5 @@
+{{!-- The eslint.config.mjs of a turborepo workspace, an app or a package: re-exports a preset of @repo/eslint-config.
+config: the exported name of the preset. from: the module it is imported from. --}}
+import { {{config}} } from "{{from}}";
+
+export default {{config}};

@@ -60,3 +60,11 @@ import { nextConfig } from "@repo/eslint-config/next";
 
 export default nextConfig;
 ```
+
+Each workspace package that holds source code (`packages/api`, `packages/auth`, `packages/db`, `packages/ui`, `packages/eslint-config` itself) has its own `lint` script and `eslint.config.mjs`, so the root `lint` (`turbo lint`) lints the packages with the apps. The config re-exports the `server` preset, or `react` for `packages/ui`:
+
+```js title="packages/api/eslint.config.mjs"
+import { serverConfig } from "@repo/eslint-config/server";
+
+export default serverConfig;
+```

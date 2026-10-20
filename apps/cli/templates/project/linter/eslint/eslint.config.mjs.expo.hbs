@@ -1,7 +1,5 @@
 {{#if (isMono)}}
-import { reactNativeConfig } from "@repo/eslint-config/react-native";
-
-export default reactNativeConfig;
+{{> eslint/workspace-config config="reactNativeConfig" from="@repo/eslint-config/react-native"}}
 {{else}}
 import { defineConfig, globalIgnores } from "eslint/config";
 import js from "@eslint/js";
