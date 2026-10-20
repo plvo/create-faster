@@ -86,12 +86,14 @@ export async function generateProjectFiles(
   const envGroups = collectEnvGroups(context);
   const enrichedContext = { ...context, envGroups };
 
-  const activeTemplates =
-    context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
+  const [activeTemplates, agentFiles] =
+    context.agentContext === false
+      ? [templates.filter((t) => !t.destination.startsWith('docs/agents/')), []]
+      : [templates, collectAgentContextFiles(context)];
 
   const s = taskSpinner();
   const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
-  s.start(`Generating ${totalFiles} files...`);
+  s.start('Generating files...');
 
   let processed = packageJsons.length + envFiles.length;
   for (const template of activeTemplates) {
@@ -104,23 +106,20 @@ export async function generateProjectFiles(
   }
 
   // 5. Generate agent context files (programmatic)
-  if (context.agentContext !== false) {
-    const agentFiles = collectAgentContextFiles(context);
-    for (const { destination, content } of agentFiles) {
-      const fullPath = join(projectPath, destination);
-      try {
-        await writeFileContent(fullPath, content);
-        allResults.push({ success: true, destination });
-      } catch (error) {
-        allResults.push({ success: false, destination, error: getErrorMessage(error) });
-      }
+  for (const { destination, content } of agentFiles) {
+    const fullPath = join(projectPath, destination);
+    try {
+      await writeFileContent(fullPath, content);
+      allResults.push({ success: true, destination });
+    } catch (error) {
+      allResults.push({ success: false, destination, error: getErrorMessage(error) });
     }
   }
 
   // 4. Compile results
   for (const r of allResults) {
     if (r.success) {
-      result.generated.push(r.destination);
+      if (!r.skipped) result.generated.push(r.destination);
     } else {
       result.failed.push({
         file: r.destination,

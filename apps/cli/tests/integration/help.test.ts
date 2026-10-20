@@ -31,6 +31,12 @@ describe('--help output', () => {
     }
   });
 
+  test('prints no empty-array default for a repeatable option', () => {
+    expect(help).toContain('--app <name:stack:libraries>');
+    expect(help).toContain('--tooling <name>');
+    expect(help).not.toContain('(default: [])');
+  });
+
   test('shows the project directory as optional and says it can be a path', () => {
     const usage = help.split('\n').find((line) => line.startsWith('Usage:')) ?? '';
 

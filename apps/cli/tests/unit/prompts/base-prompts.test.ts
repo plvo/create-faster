@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { PassThrough } from 'node:stream';
-import { promptSelectWithDisabled } from '@/prompts/base-prompts';
+import { type DisableableChoice, promptSelectWithDisabled } from '@/prompts/base-prompts';
 
 const DOWN = '\x1b[B';
 const ENTER = '\r';
@@ -11,7 +11,7 @@ const CHOICES = [
   { value: 'b', label: 'Bravo', hint: 'the second one' },
 ];
 
-async function answer(keys: string[]) {
+async function answer(keys: string[], choices: DisableableChoice[] = CHOICES) {
   const input = new PassThrough();
   const output = new PassThrough();
   let frames = '';
@@ -19,7 +19,7 @@ async function answer(keys: string[]) {
     frames += chunk.toString();
   });
 
-  const result = promptSelectWithDisabled('Pick one', CHOICES, { input, output });
+  const result = promptSelectWithDisabled('Pick one', choices, { input, output });
   for (const key of keys) {
     await Bun.sleep(5);
     input.write(key);
@@ -30,6 +30,17 @@ async function answer(keys: string[]) {
 describe('promptSelectWithDisabled', () => {
   test('submits the first selectable choice on enter', async () => {
     expect((await answer([ENTER])).selected).toBeUndefined();
+  });
+
+  test('starts on the first selectable choice when the undefined choice comes last', async () => {
+    const installChoices: DisableableChoice[] = [
+      { value: 'bun', label: 'Install with bun', disabledReason: 'not installed' },
+      { value: 'npm', label: 'Install with npm' },
+      { value: 'pnpm', label: 'Install with pnpm' },
+      { value: undefined, label: 'Skip installation' },
+    ];
+
+    expect((await answer([ENTER], installChoices)).selected).toBe('npm');
   });
 
   test('skips a disabled choice when moving the cursor', async () => {

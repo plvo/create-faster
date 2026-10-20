@@ -377,9 +377,10 @@ export function runCliOnTerminal(
   args: string[],
   cwd: string,
   expectedPrompts: PromptAnswer[],
+  env?: Record<string, string>,
 ): ReturnType<typeof runOnPseudoTerminal> {
   const cliPath = join(import.meta.dir, '../../src/index.ts');
-  return runOnPseudoTerminal([process.execPath, 'run', cliPath, ...args], cwd, expectedPrompts);
+  return runOnPseudoTerminal([process.execPath, 'run', cliPath, ...args], cwd, expectedPrompts, { env });
 }
 
 /**

@@ -74,6 +74,7 @@ export async function promptSelectWithDisabled<R extends string | undefined>(
   const Prompt = new SelectPrompt({
     ...streams,
     options: selectable,
+    initialValue: selectable[0]?.value,
 
     render() {
       let output = `${S_GRAY_BAR}\n${symbol(this.state)} ${message}`;
