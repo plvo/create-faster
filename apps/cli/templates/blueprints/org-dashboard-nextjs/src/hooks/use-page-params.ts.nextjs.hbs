@@ -1,0 +1,20 @@
+'use client';
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { pageControls, parsePageParams } from '@repo/api/pagination';
+
+export function usePageParams() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const params = parsePageParams({ page: searchParams.getAll('page'), pageSize: searchParams.getAll('pageSize') });
+
+  return pageControls(params, (search) => {
+    const query = new URLSearchParams(searchParams);
+    query.delete('page');
+    query.delete('pageSize');
+    for (const [name, value] of Object.entries(search)) query.set(name, String(value));
+    const queryString = query.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  });
+}

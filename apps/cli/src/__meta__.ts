@@ -191,6 +191,11 @@ const ORG_DASHBOARD_PACKAGE_JSON: PackageJsonConfig = {
 };
 
 const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
+  api: {
+    exports: {
+      './pagination': './src/pagination.ts',
+    },
+  },
   auth: {
     exports: {
       './types': './src/types.ts',

@@ -50,13 +50,13 @@ src/
 │       ├── page.tsx                      # Dashboard home (contact count)
 │       ├── admin/
 │       │   ├── users/
-│       │   │   ├── page.tsx              # User list (admin only)
+│       │   │   ├── page.tsx              # User list, one page per URL (admin only)
 │       │   │   └── [id]/
 │       │   │       ├── page.tsx          # User detail
 │       │   │       └── user-detail.tsx   # Edit user + generate password
 │       │   └── roles/page.tsx            # Read-only roles + permission matrix (admin only)
 │       ├── contacts/
-│       │   ├── page.tsx                  # Contact list
+│       │   ├── page.tsx                  # Contact list, one page per URL
 │       │   └── [id]/page.tsx             # Contact detail + edit
 │       └── profile/
 │           ├── layout.tsx                # Tab navigation + ViewTransition
@@ -69,10 +69,12 @@ src/
 │   ├── admin/                            # Create user dialog, user actions, user table
 │   ├── contacts/                         # Contact dialog, form, table
 │   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
+│   ├── table-pagination.tsx              # PagedList: empty state, page past the end, or rows with range, page size and previous/next
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
 │   ├── can.tsx                           # Permission gate component
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── hooks/
+│   ├── use-page-params.ts                # Reads and writes the page and page size in the URL
 │   └── use-permission.ts                 # Synchronous role permission check
 ├── lib/
 │   └── constants.ts                      # Route definitions with required permissions
@@ -86,11 +88,13 @@ src/
 src/
 ├── root.ts                   # App router (user, contact, session)
 ├── trpc.ts                   # tRPC init with auth context + headers
+├── pagination.ts             # Page and page size validation shared by the routers and the web app
+├── page-query.ts             # One page of a table, newest first (server only)
 ├── middleware/
 │   └── rbac.ts               # adminProcedure + permissionProcedure(resource, action)
 └── router/
-    ├── user.ts               # me, create, list, getById, edit, generatePassword
-    ├── contact.ts            # list, getById, create, update, delete, count
+    ├── user.ts               # me, create, list (paginated), count, getById, edit, generatePassword
+    ├── contact.ts            # list (paginated), getById, create, update, delete, count
     └── session.ts            # list, revoke, revokeOthers
 ```
 
@@ -123,11 +127,21 @@ Enforcement is on both sides: the server gates data routes with `permissionProce
 
 ### Admin panel
 
-User list with clickable rows linking to detail pages. Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing name, first name, last name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban, on every account but your own: the signed-in admin gets no actions on their row, and the server refuses banning, removing or changing the role of yourself (Better Auth refuses the first two; the `refuseOwnRoleChange` plugin in `packages/auth/src/refuse-own-role-change.ts` the third) with a 400 and a message.
+User list with clickable rows linking to detail pages, one page at a time (see [Paginated lists](#paginated-lists)). Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing name, first name, last name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban, on every account but your own: the signed-in admin gets no actions on their row, and the server refuses banning, removing or changing the role of yourself (Better Auth refuses the first two; the `refuseOwnRoleChange` plugin in `packages/auth/src/refuse-own-role-change.ts` the third) with a 400 and a message.
 
 ### CRUD example (Contacts)
 
-Full create, read, update, delete for contacts. Contact form with validation (TanStack Form + Zod). The email, phone, company and notes are optional: the form and the `contact` router accept an empty one and the router stores it as `null`. Contact list with link to detail/edit page. A failed mutation shows the server's message in a toast.
+Full create, read, update, delete for contacts. Contact form with validation (TanStack Form + Zod). The email, phone, company and notes are optional: the form and the `contact` router accept an empty one and the router stores it as `null`. Contact list with link to detail/edit page, one page at a time (see [Paginated lists](#paginated-lists)). A failed mutation shows the server's message in a toast.
+
+### Paginated lists
+
+`contact.list` and `user.list` return the rows of one page, never the whole table, and `contact.count` and `user.count` return the total. The page is in the URL (`/contacts?page=2&pageSize=25`), so a page can be bookmarked and the back and forward buttons walk through the pages.
+
+- `packages/api/src/pagination.ts` is the one place that validates `page` (a whole number from 1 to 10,000) and `pageSize` (10, 25, 50 or 100). A missing or invalid value is the first page, or 10 rows, instead of an error or an unbounded read. The router input, the server prefetch and the web app all parse with it, so they ask for the same page. Offset pagination slows down with depth, so a table that needs to reach deeper rows should page by a cursor.
+- `packages/api/src/page-query.ts` orders rows newest first, with the id as a tie-break, so a row never appears on two pages or on none while you page. Both tables have an index on `(created_at, id)` for that order.
+- The total is its own `count` query, so changing page does not count again; a mutation that adds or removes a row invalidates it.
+- The page prefetches the page the URL names and dehydrates that one page. A page past the end shows an empty state with a button to the last page.
+- `PagedList` (`src/components/table-pagination.tsx`) renders the empty state, the page past the end, or the rows with a pager: range and total, a page size select and previous/next buttons. A new list calls `usePageParams()` for the page, asks for its rows with `{ page, pageSize }` and for its `count`, and renders its table inside `PagedList`.
 
 ### Profile with View Transitions
 

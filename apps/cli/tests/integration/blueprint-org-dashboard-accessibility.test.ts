@@ -22,6 +22,10 @@ setIntegrationTimeout();
 const GENERATED_PASSWORD = { file: 'src/components/admin/generated-password.tsx', exportName: 'GeneratedPassword' };
 const GENERATED_PASSWORD_MODULE = { '@/components/admin/generated-password': { ...GENERATED_PASSWORD, stub: 'generated-password.mjs' } };
 
+const TABLE_PAGINATION_MODULE = {
+  '@/components/table-pagination': { file: 'src/components/table-pagination.tsx', exportName: 'TablePagination', stub: 'table-pagination.mjs' },
+};
+
 const USER_ACTIONS = { file: 'src/components/admin/user-actions.tsx', exportName: 'UserActions' };
 
 interface Blueprint {
@@ -65,6 +69,8 @@ export const useState = (initial) => {
   return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
 };
 export const useId = () => useState('id-' + next)[0];
+export const useRef = (initial) => ({ current: initial });
+export const useEffect = () => {};
 export const Suspense = ({ children }) => children;`,
   'icons.mjs': `import { createElement } from './react.mjs';
 // lucide-react passes the props of the caller to the svg and marks it aria-hidden unless the caller names it.
@@ -73,6 +79,8 @@ const icon = (name) => (props) =>
   createElement('svg', { ...(hasAccessibleName(props) ? {} : { 'aria-hidden': 'true' }), 'data-icon': name, ...props });
 export const ArrowLeft = icon('ArrowLeft');
 export const Check = icon('Check');
+export const ChevronLeft = icon('ChevronLeft');
+export const ChevronRight = icon('ChevronRight');
 export const Copy = icon('Copy');
 export const InfoIcon = icon('InfoIcon');
 export const KeyRound = icon('KeyRound');
@@ -103,6 +111,8 @@ export const notFound = () => ({ kind: 'notFound' });`,
 const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
+// A list page asks for its rows and its total together: the rows are __testQueryData.items, the total .total.
+export const useSuspenseQueries = () => [{ data: globalThis.__testQueryData.items }, { data: globalThis.__testQueryData.total }];
 export const useMutation = (options) => ({
   mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables),
   mutateAsync: async (variables) => { options.onSuccess?.(globalThis.__testMutationResult, variables); return globalThis.__testMutationResult; },
@@ -160,11 +170,21 @@ export const Badge = ({ children, ...props }) => createElement('span', props, ch
   'input.mjs': `import { createElement } from './react.mjs';
 export const Input = (props) => createElement('input', props);`,
   'select.mjs': `import { createElement } from './react.mjs';
-export const Select = ({ children }) => children;
+// Select keeps its props on a wrapper so a test reads the value and calls onValueChange as a pick would.
+export const Select = ({ children, ...props }) => createElement('div', { 'data-component': 'Select', ...props }, children);
 export const SelectTrigger = ({ children, ...props }) => createElement('button', { role: 'combobox', ...props }, children);
-export const SelectContent = () => null;
-export const SelectItem = () => null;
+export const SelectContent = ({ children }) => createElement('div', { role: 'listbox' }, children);
+export const SelectItem = ({ children, value }) => createElement('div', { role: 'option', 'data-value': value }, children);
 export const SelectValue = () => null;`,
+  'page-params.mjs': `// The page the URL names, and what the table asks the URL for.
+export const usePageParams = () => ({
+  ...globalThis.__testPage,
+  setPage: (page) => (globalThis.__pageCalls ??= []).push(['page', page]),
+  setPageSize: (pageSize) => (globalThis.__pageCalls ??= []).push(['pageSize', pageSize]),
+});`,
+  'pagination.mjs': `export const PAGE_SIZES = [10, 25, 50, 100];
+export const pageOffset = ({ page, pageSize }) => (page - 1) * pageSize;
+export const pageCountOf = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize));`,
   'dialog.mjs': `import { createElement } from './react.mjs';
 export const Dialog = ({ children }) => children;
 export const DialogTrigger = ({ children }) => children;
@@ -260,6 +280,8 @@ const COMMON_IMPORTS: Record<string, string> = {
   './form-context': './form-context.mjs',
   'next/headers': './next-headers.mjs',
   '@/lib/server': './server.mjs',
+  '@/hooks/use-page-params': './page-params.mjs',
+  '@repo/api/pagination': './pagination.mjs',
 };
 
 type Handler = () => unknown;
@@ -373,6 +395,8 @@ interface Mounter<Name extends string> {
 interface Globals {
   __testViewerId?: string;
   __testQueryData?: unknown;
+  __testPage?: { page: number; pageSize: number };
+  __pageCalls?: [string, number][];
   __testMutationResult?: unknown;
   __toasts?: { kind: string; message: string }[];
 }
@@ -454,7 +478,7 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       join(tempDir, blueprint.name, 'apps/web'),
       { ...blueprint.pages, userActions: USER_ACTIONS },
       { ...COMMON_IMPORTS, ...blueprint.routerStubs },
-      GENERATED_PASSWORD_MODULE,
+      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE },
     ));
   });
 
@@ -671,13 +695,13 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       const client = await mount('contactsClient');
       expect(namesOf(client.tree, 'button')).toEqual(['New Contact']);
       expect(withTag(client.tree, 'button')[0]?.props['data-component']).toBe('Button');
-      const table = await mount('contactTable', { data: [CONTACT] });
+      const table = await mount('contactTable', { data: { items: [CONTACT], total: 1 } });
       expect(namesOf(table.tree, 'a')).toEqual(['Grace Hopper']);
       expect(unnamedControls(table.tree)).toEqual([]);
     });
 
     test('the contact table scrolls inside its frame and drops Phone and Company on small screens', async () => {
-      const table = await mount('contactTable', { data: [CONTACT] });
+      const table = await mount('contactTable', { data: { items: [CONTACT], total: 1 } });
       const frame = must(find(table.tree, (element) => element.tag === 'div' && withTag(element, 'table').length === 1), 'the table frame');
       expectClasses(frame, 'overflow-x-auto');
       expectClasses(heading(table.tree, 'th', 'Phone'), 'hidden', 'sm:table-cell');
@@ -693,13 +717,13 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
     });
 
     test('the users table links each user by name and labels its columns', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       expect(namesOf(table.tree, 'a')).toEqual(['Ada Lovelace']);
       expect(withTag(table.tree, 'th').map(textOf)).toEqual(['Name', 'Email', 'Role', 'Status', 'Actions']);
     });
 
     test('the users table scrolls inside its frame and drops Email below sm and Role below md', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       const frame = must(find(table.tree, (element) => element.tag === 'div' && withTag(element, 'table').length === 1), 'the table frame');
       expectClasses(frame, 'overflow-x-auto');
       expectClasses(heading(table.tree, 'th', 'Email'), 'hidden', 'sm:table-cell');
@@ -709,7 +733,7 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
     });
 
     test('the email and the role show under the name where their columns are hidden', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(USER.name)), 'the name cell');
       const subline = must(find(nameCell, (element) => element.tag === 'div'), 'the line under the name');
       expectClasses(subline, 'md:hidden');
@@ -719,6 +743,110 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expect(classesOf(role)).not.toContain('sm:hidden');
     });
   });
+  describe('pagination', () => {
+    const TABLES: { name: string; table: 'contactTable' | 'userTable'; row: object; noun: string; empty: string }[] = [
+      { name: 'contact table', table: 'contactTable', row: CONTACT, noun: 'contacts', empty: 'No contacts yet' },
+      { name: 'user table', table: 'userTable', row: USER, noun: 'users', empty: 'No users found' },
+    ];
+
+    describe.each(TABLES)('$name', ({ table, row, noun, empty }) => {
+      const showing = async (page: number, data: { items: unknown[]; total: number }, pageSize = 10): Promise<Mounted> => {
+        const globals = globalThis as Globals;
+        globals.__testPage = { page, pageSize };
+        globals.__pageCalls = [];
+        return mount(table, { data });
+      };
+      const calls = (): [string, number][] => (globalThis as Globals).__pageCalls ?? [];
+      const button = (tree: RenderedChild[], name: string) => {
+        const all = elementsOf(tree);
+        return must(all.find((element) => element.tag === 'button' && accessibleName(element, all) === name), `a button named ${name}`);
+      };
+
+      test('says which rows it shows out of how many, in a live region', async () => {
+        const page = await showing(2, { items: [row], total: 25 });
+        const status = must(find(page.tree, (element) => element.props['aria-live'] === 'polite'), 'the status line');
+        expect(textOf(status)).toBe(`Showing 11\u201320 of 25 ${noun}`);
+        expect(textOf(must(find(page.tree, (element) => textOf(element).startsWith('Page 2')), 'the page indicator'))).toBe('Page 2 of 3');
+      });
+
+      test('the last page shows the remainder', async () => {
+        const page = await showing(3, { items: [row], total: 25 });
+        const status = must(find(page.tree, (element) => element.props['aria-live'] === 'polite'), 'the status line');
+        expect(textOf(status)).toBe(`Showing 21\u201325 of 25 ${noun}`);
+      });
+
+      test('moves between pages with named buttons', async () => {
+        const page = await showing(2, { items: [row], total: 25 });
+        await page.click('Next page');
+        await page.click('Previous page');
+        expect(calls()).toEqual([
+          ['page', 3],
+          ['page', 1],
+        ]);
+      });
+
+      test('cannot go before the first page or past the last', async () => {
+        const first = await showing(1, { items: [row], total: 25 });
+        expect(button(first.tree, 'Previous page').props.disabled).toBe(true);
+        expect(button(first.tree, 'Next page').props.disabled).toBeFalsy();
+
+        const last = await showing(3, { items: [row], total: 25 });
+        expect(button(last.tree, 'Next page').props.disabled).toBe(true);
+        expect(button(last.tree, 'Previous page').props.disabled).toBeFalsy();
+
+        const only = await showing(1, { items: [row], total: 1 });
+        expect(button(only.tree, 'Previous page').props.disabled).toBe(true);
+        expect(button(only.tree, 'Next page').props.disabled).toBe(true);
+      });
+
+      test('offers the allowed page sizes in a labelled select and asks for the one picked', async () => {
+        const page = await showing(2, { items: [row], total: 25 });
+        const select = must(find(page.tree, (element) => element.props['data-component'] === 'Select'), 'the page size select');
+        expect(select.props.value).toBe('10');
+        expect(withTag(select, 'div').filter((element) => element.props.role === 'option').map((element) => element.props['data-value'])).toEqual([
+          '10',
+          '25',
+          '50',
+          '100',
+        ]);
+        expect(namesOf(page.tree, 'button')).toContain('Rows per page');
+        (select.props.onValueChange as (value: string) => void)('25');
+        expect(calls()).toEqual([['pageSize', 25]]);
+      });
+
+      test('a page past the end says so, with a way back to the last page', async () => {
+        const page = await showing(9, { items: [], total: 25 });
+        expect(withTag(page.tree, 'table')).toHaveLength(0);
+        const message = must(find(page.tree, (element) => textOf(element).includes('page 9') && element.props.role === 'status'), 'the message');
+        expect(textOf(message)).toBe(`There are no ${noun} on page 9.`);
+        expect(find(page.tree, (element) => textOf(element) === 'Page 9')).toBeDefined();
+        expect(textOf(must(find(page.tree, (element) => element.props['aria-live'] === 'polite'), 'the status line'))).toBe(
+          `25 ${noun} in total`,
+        );
+        await page.click('Go to the last page');
+        await page.click('Previous page');
+        expect(calls()).toEqual([
+          ['page', 3],
+          ['page', 3],
+        ]);
+      });
+
+      test('a table with no rows at all says so and has no pager', async () => {
+        const page = await showing(1, { items: [], total: 0 });
+        expect(page.tree.map(textOf).join('')).toContain(empty);
+        expect(namesOf(page.tree, 'button')).toEqual([]);
+      });
+
+      test('every control is a named button, so the keyboard reaches all of them', async () => {
+        const page = await showing(2, { items: [row], total: 25 });
+        expect(unnamedControls(page.tree)).toEqual([]);
+        for (const name of ['Previous page', 'Next page']) {
+          expect(button(page.tree, name).props['data-component']).toBe('Button');
+        }
+      });
+    });
+  });
+
   describe('user actions', () => {
     const actions = (): Promise<Mounted> =>
       mount('userActions', { props: { user: { id: 'u1', name: 'Ada Lovelace', role: 'admin', banned: false } } });
