@@ -230,8 +230,9 @@ describe('Handlebars helpers', () => {
 
     test('finds scripts that do not come from the linter', () => {
       const build = Handlebars.compile('{{#if (hasRootScript "build")}}yes{{else}}no{{/if}}');
-      expect(build(monorepo())).toBe('yes');
       expect(build(singleApp())).toBe('yes');
+      expect(build({ ...monorepo(), apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }] })).toBe('yes');
+      expect(build(monorepo())).toBe('no');
       const unknown = Handlebars.compile('{{#if (hasRootScript "nope")}}yes{{else}}no{{/if}}');
       expect(unknown(monorepo('biome'))).toBe('no');
     });

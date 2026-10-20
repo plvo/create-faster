@@ -300,11 +300,10 @@ export function getAppScripts(ctx: TemplateContext): { appName: string; scripts:
   }));
 }
 
-const APP_SCRIPTS_RUN_BY_TURBO = ['dev', 'start', 'test', 'test:e2e', 'cf-typegen'];
+const APP_SCRIPTS_RUN_BY_TURBO = ['build', 'dev', 'start', 'test', 'test:e2e', 'cf-typegen'];
 
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {
-    build: 'turbo build',
     clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
     'versions:list': 'syncpack list-mismatches',
     'versions:fix': 'syncpack fix',
