@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cleanupTempDir, createTempDir, runCli } from './helpers';
+import { join } from 'node:path';
+import { cleanupTempDir, createTempDir, filesUnder, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -21,7 +22,7 @@ describe('progress of a run whose stdout is not a terminal', () => {
     const result = await runCli(['plain', '--app', 'web:nextjs', '--git', '--no-install'], tempDir);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(/Generating \d+ files\.\.\./);
+    expect(result.stdout).toContain('Generating files...');
     expect(result.stdout).toMatch(/Generated \d+ files successfully!/);
     expect(result.stdout).toContain('Initializing git repository...');
     expect(result.stdout).toContain('Git repository initialized successfully!');
@@ -29,27 +30,22 @@ describe('progress of a run whose stdout is not a terminal', () => {
     expect(result.stdout).not.toMatch(/[◒◐◓◑]/);
   });
 
-  const announcedAndGenerated = (stdout: string) => ({
-    announced: stdout.match(/Generating (\d+) files\.\.\./)?.[1],
-    generated: stdout.match(/Generated (\d+) files successfully!/)?.[1],
-  });
+  const filesWritten = async (projectPath: string) =>
+    (await filesUnder(projectPath)).filter((file) => !/\/(\.git|node_modules)\//.test(file)).length;
 
-  test('announces as many files as it generates, agent context included', async () => {
+  test('prints the number of files written, agent context included', async () => {
     const result = await runCli(['counted', '--app', 'web:nextjs', '--no-git', '--no-install'], tempDir);
 
-    const { announced, generated } = announcedAndGenerated(result.stdout);
-    expect(announced).toBeDefined();
-    expect(generated).toBe(announced);
+    expect(result.stdout).toContain('Generating files...');
+    expect(result.stdout).toContain(`Generated ${await filesWritten(join(tempDir, 'counted'))} files successfully!`);
   });
 
-  test('announces as many files as it generates without the agent context', async () => {
+  test('prints the number of files written without the agent context', async () => {
     const result = await runCli(
       ['counted-bare', '--app', 'web:nextjs', '--no-git', '--no-install', '--no-agent-context'],
       tempDir,
     );
 
-    const { announced, generated } = announcedAndGenerated(result.stdout);
-    expect(announced).toBeDefined();
-    expect(generated).toBe(announced);
+    expect(result.stdout).toContain(`Generated ${await filesWritten(join(tempDir, 'counted-bare'))} files successfully!`);
   });
 });

@@ -189,7 +189,7 @@ ${libraryStacksHelp()}
     partial.projectDir = projectDir;
   }
 
-  if (flags.app && flags.app.length > 0) {
+  if (flags.app) {
     partial.apps = flags.app.map((appFlag) => parseAppFlag(appFlag));
   }
 
@@ -203,10 +203,7 @@ ${libraryStacksHelp()}
       process.exit(1);
     }
 
-    const conflicting = ['app', 'database', 'orm'].filter((f) => {
-      const val = flags[f as keyof ParsedFlags];
-      return val !== undefined && (!Array.isArray(val) || val.length > 0);
-    });
+    const conflicting = ['app', 'database', 'orm'].filter((f) => flags[f as keyof ParsedFlags] !== undefined);
     if (conflicting.length > 0) {
       printError(
         `--blueprint cannot be combined with --${conflicting[0]}`,

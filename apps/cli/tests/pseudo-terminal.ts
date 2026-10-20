@@ -17,6 +17,11 @@ export interface Keystroke {
   keys: string;
 }
 
+interface TerminalOptions {
+  timeoutMs?: number;
+  env?: Record<string, string>;
+}
+
 interface TerminalRun {
   exitCode: number;
   output: string;
@@ -27,8 +32,7 @@ export async function runOnPseudoTerminal(
   command: string[],
   cwd: string,
   keystrokes: Keystroke[],
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  env: Record<string, string> = {},
+  { timeoutMs = DEFAULT_TIMEOUT_MS, env = {} }: TerminalOptions = {},
 ): Promise<TerminalRun> {
   let output = '';
 

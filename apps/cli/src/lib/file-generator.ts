@@ -86,14 +86,14 @@ export async function generateProjectFiles(
   const envGroups = collectEnvGroups(context);
   const enrichedContext = { ...context, envGroups };
 
-  const activeTemplates =
-    context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
-
-  const agentFiles = context.agentContext === false ? [] : collectAgentContextFiles(context);
+  const [activeTemplates, agentFiles] =
+    context.agentContext === false
+      ? [templates.filter((t) => !t.destination.startsWith('docs/agents/')), []]
+      : [templates, collectAgentContextFiles(context)];
 
   const s = taskSpinner();
-  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length + agentFiles.length;
-  s.start(`Generating ${totalFiles} files...`);
+  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
+  s.start('Generating files...');
 
   let processed = packageJsons.length + envFiles.length;
   for (const template of activeTemplates) {
@@ -119,7 +119,7 @@ export async function generateProjectFiles(
   // 4. Compile results
   for (const r of allResults) {
     if (r.success) {
-      result.generated.push(r.destination);
+      if (!r.skipped) result.generated.push(r.destination);
     } else {
       result.failed.push({
         file: r.destination,

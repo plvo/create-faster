@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { META } from '@/__meta__';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { accept, cleanupTempDir, createTempDir, fileExists, runCliOnTerminal } from './helpers';
 import { createStubbedCli } from './stubbed-cli';
@@ -8,19 +9,7 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const NO_CATEGORY_PROMPTS = [
-  '--database',
-  'none',
-  '--orm',
-  'none',
-  '--deployment',
-  'none',
-  '--linter',
-  'none',
-  '--tooling',
-  'none',
-  '--no-git',
-];
+const NO_CATEGORY_PROMPTS = [...Object.keys(META.project).flatMap((category) => [`--${category}`, 'none']), '--no-git'];
 
 const installMarker = (pm: string) => `installed-with-${pm}`;
 
