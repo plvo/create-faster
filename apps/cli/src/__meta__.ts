@@ -371,6 +371,8 @@ export const META: Meta = {
       moduleType: 'module',
       packageJson: {
         dependencies: {
+          '@fontsource-variable/geist': '^5.3.0',
+          '@fontsource-variable/geist-mono': '^5.3.0',
           '@tanstack/react-router': '^1.170.41',
           '@tanstack/react-start': '^1.168.60',
           '@tanstack/router-cli': '^1.167.43',

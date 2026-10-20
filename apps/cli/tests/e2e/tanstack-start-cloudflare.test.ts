@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { expectServerFnsRejectCrossSiteRequests, writeCsrfProbeRoute } from './csrf-probe';
 import {
@@ -411,6 +411,22 @@ describe.each(SCENARIOS)('$name', ({ name, deployment, args, startAppDirs, worke
     },
     TIMEOUT_BUILD,
   );
+
+  test('the client output carries the Geist fonts and their @font-face rules', async () => {
+    for (const dir of startAppDirs) {
+      const files = (await readdir(join(projectDir, dir, 'dist/client'), { recursive: true })).map(String);
+      expect(files.some((file) => /geist-latin-wght-normal.*\.woff2$/.test(file))).toBe(true);
+      expect(files.some((file) => /geist-mono-latin-wght-normal.*\.woff2$/.test(file))).toBe(true);
+
+      const css = (
+        await Promise.all(
+          files.filter((file) => file.endsWith('.css')).map((file) => readFile(join(projectDir, dir, 'dist/client', file), 'utf8')),
+        )
+      ).join('\n');
+      expect(css).toMatch(/@font-face\s*\{[^}]*font-family:\s*["']?Geist Variable"?/);
+      expect(css).toMatch(/@font-face\s*\{[^}]*font-family:\s*["']?Geist Mono Variable"?/);
+    }
+  });
 
   if (authProbe && !isStatic) {
     test('the built Worker requires the better-auth secret and URL and keeps both in its local .dev.vars copy', async () => {
