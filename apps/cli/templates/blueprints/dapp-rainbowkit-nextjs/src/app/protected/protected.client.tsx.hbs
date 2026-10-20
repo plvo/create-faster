@@ -1,0 +1,26 @@
+'use client';
+
+import { useAccount, useBalance } from 'wagmi';
+import { formatEther } from 'viem';
+import { authClient } from '@/lib/auth/auth-client';
+
+export function ProtectedClient() {
+  const { address, chain } = useAccount();
+  const { data: balance } = useBalance({ address });
+  const { data: session } = authClient.useSession();
+
+  return (
+    <div className='container mx-auto space-y-6 p-6'>
+      <h1 className='text-3xl font-bold'>Dashboard</h1>
+
+      {{> dapp/wallet-cards}}
+
+      {session?.user && (
+        <div className='rounded-lg border bg-card p-6'>
+          <p className='text-sm text-muted-foreground'>Session</p>
+          <p className='mt-2 font-mono text-sm'>{session.user.name ?? 'Authenticated'}</p>
+        </div>
+      )}
+    </div>
+  );
+}

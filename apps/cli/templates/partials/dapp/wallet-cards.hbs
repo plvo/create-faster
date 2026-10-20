@@ -1,0 +1,19 @@
+{{!-- The wallet, network and balance cards of the dApps' protected page. They read address, chain and balance of the caller. --}}
+<div className='grid gap-4 md:grid-cols-3'>
+  <div className='rounded-lg border bg-card p-6'>
+    <p className='text-sm text-muted-foreground'>Wallet</p>
+    <p className='mt-2 font-mono text-lg'>
+      {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
+    </p>
+  </div>
+  <div className='rounded-lg border bg-card p-6'>
+    <p className='text-sm text-muted-foreground'>Network</p>
+    <p className='mt-2 text-lg'>{chain?.name ?? 'Unknown'}</p>
+  </div>
+  <div className='rounded-lg border bg-card p-6'>
+    <p className='text-sm text-muted-foreground'>Balance</p>
+    <p className='mt-2 text-lg'>
+      {balance ? `${formatEther(balance.value)} ${balance.symbol}` : '\u2014'}
+    </p>
+  </div>
+</div>

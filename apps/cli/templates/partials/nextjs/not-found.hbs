@@ -1,0 +1,13 @@
+{{!-- The whole file of the root not found page, imports included. It renders inside the root layout's main. --}}
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Page not found',
+};
+
+export default function NotFoundPage() {
+  return (
+    {{> navigation/not-found-body heading="404 - Page not found" linkLabel="Go back to the home page"}}
+  );
+}
