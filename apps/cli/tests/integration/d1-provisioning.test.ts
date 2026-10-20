@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import {
   cleanupTempDir,
   createTempDir,
+  expectInOrder,
   PNPM_AVAILABLE,
   printedScriptsMissingFrom,
   readJsonFile,
@@ -23,15 +24,6 @@ const REPO_APPS: Record<Repo, string[]> = {
   single: ['--app', 'web:nextjs'],
   turborepo: ['--app', 'web:nextjs', '--app', 'api:hono'],
 };
-
-function expectInOrder(text: string, markers: string[]): void {
-  let from = 0;
-  for (const marker of markers) {
-    const at = text.indexOf(marker, from);
-    expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
-    from = at + marker.length;
-  }
-}
 
 async function wranglerCommandsRunFromADirectoryThatInstallsIt(projectPath: string, document: string): Promise<string[]> {
   const lacking: string[] = [];

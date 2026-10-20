@@ -1,0 +1,7 @@
+{{!-- urlCommand: the shell command that prints the base URL of the deployed Hono api --}}
+```bash
+API_URL=$({{urlCommand}})
+curl "${API_URL%/}/health/ping"
+```
+
+The answer is `{"ok":true,"message":"Health check","data":{"id":"ping"}}`.

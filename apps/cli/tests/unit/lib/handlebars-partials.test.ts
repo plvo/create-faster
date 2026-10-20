@@ -18,6 +18,9 @@ const FIXTURE_PARTIALS: Record<string, string> = {
   'fixture-context.hbs': `${INLINE}{{#if (isMono)}}mono{{else}}single{{/if}} {{#if (has "database" "d1")}}d1{{/if}} {{#if (hasLibrary "posthog")}}posthog{{/if}} {{appName}}\n`,
   'fixture-hash.hbs': `${INLINE}debug: {{debug}},\n`,
   'fixture-notes.md': 'not a partial',
+  'blueprints/fixture-blueprint/fixture-section.hbs': 'Section of {{projectName}}\n',
+  'blueprints/org-dashboard-nextjs/fixture-inherited.hbs': 'Inherited section\n',
+  'blueprints/org-dashboard-tanstack-start/fixture-inherited.hbs': 'Own section\n',
 };
 
 const FIXTURE_PARTIAL_NAMES = Object.keys(FIXTURE_PARTIALS)
@@ -95,5 +98,28 @@ describe('setupTemplateEngine: partials', () => {
     for (const file of shipped) {
       expect(Handlebars.partials[file.slice(0, -'.hbs'.length)]).toBeDefined();
     }
+  });
+});
+
+describe('blueprintPartial', () => {
+  const TEMPLATE = 'before\n{{> (blueprintPartial "fixture-section")}}\nafter\n';
+  const asBlueprint = (blueprint?: string): TemplateContext => ({ ...ctx, blueprint }) as TemplateContext;
+
+  test('renders the partial of the selected blueprint with the current context', () => {
+    expect(renderTemplate(TEMPLATE, asBlueprint('fixture-blueprint'))).toBe('before\nSection of my-project\nafter\n');
+  });
+
+  test('renders nothing, not even the line, when the blueprint has no such partial', () => {
+    expect(renderTemplate(TEMPLATE, asBlueprint('another-blueprint'))).toBe('before\nafter\n');
+  });
+
+  test('renders nothing without a blueprint', () => {
+    expect(renderTemplate(TEMPLATE, asBlueprint())).toBe('before\nafter\n');
+  });
+
+  test('a blueprint that extends another inherits its partial, and its own wins', () => {
+    const inherited = '{{> (blueprintPartial "fixture-inherited")}}';
+    expect(renderTemplate(inherited, asBlueprint('org-dashboard-nextjs'))).toBe('Inherited section\n');
+    expect(renderTemplate(inherited, asBlueprint('org-dashboard-tanstack-start'))).toBe('Own section\n');
   });
 });

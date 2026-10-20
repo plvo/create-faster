@@ -56,6 +56,7 @@ packages/
 - OIDC-based AWS credentials (no long-lived keys)
 - Runs lint and build before `sst deploy`
 - Concurrency control per stage
+- `aws-actions/configure-aws-credentials` reads the role from the `AWS_ROLE_ARN` secret and the region from the `AWS_REGION` variable of the GitHub environment named after the stage
 
 ## Extra dependencies
 
@@ -63,7 +64,11 @@ From blueprint `packageJson`:
 - `@repo/shared` — shared types package (workspace dependency)
 - `@types/aws-lambda` — Lambda event type definitions (dev)
 
-Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.js --target node`
+Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.mjs --target node`. SST bundles the handlers from `src/` itself; this build only checks that the bundle builds, and its `.mjs` extension lets Node load the ES module without a `MODULE_TYPELESS_PACKAGE_JSON` warning, since no `package.json` declares `"type": "module"`.
+
+## First deploy
+
+The generated `README.md` walks through it in order: AWS credentials and region, `sst install` (the root `tsc` fails with `Cannot find name '$config'` until it has run), `sst deploy --stage staging`, a request to the live `api` URL, then the GitHub Actions setup: the OIDC identity provider, one IAM role per environment (`staging`, `production`) and the `AWS_ROLE_ARN` secret and `AWS_REGION` variable of each GitHub environment.
 
 ## CLI usage
 

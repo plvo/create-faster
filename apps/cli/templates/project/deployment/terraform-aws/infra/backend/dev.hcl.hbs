@@ -1,5 +1,5 @@
+# The credentials profile and the region are not set here: Terraform reads them from AWS_PROFILE and AWS_REGION,
+# so the same file serves a laptop (a profile) and CI (OIDC credentials).
 bucket       = "<BUCKET_NAME>"
 key          = "{{projectName}}/dev/state.tfstate"
-region       = "eu-west-3"
 use_lockfile = true
-profile      = "<AWS_PROFILE_DEV>"

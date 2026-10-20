@@ -83,10 +83,11 @@ All resources are tagged with project name, environment, and `ManagedBy = "terra
 - Triggers on push to `main` or manual dispatch with environment selection (dev/prod)
 - OIDC-based AWS credentials (no long-lived keys)
 - Runs lint, build, then `terraform init`, `plan`, and `apply`
-- Backend config per environment via `-backend-config=backend/{env}.hcl`
+- Backend config per environment via `-backend-config=backend/{env}.hcl`, which holds a bucket, a key and the lock setting only: the profile and the region come from `AWS_PROFILE` and `AWS_REGION`, so the same files serve a laptop and CI
+- `aws-actions/configure-aws-credentials` reads the role from the `AWS_ROLE_ARN` secret and the region from the `AWS_REGION` variable of the GitHub environment (`dev`, `prod`)
 - Concurrency control per environment
 
-**Terraform-specific `.gitignore`** entries for `.terraform/`, state files, and build artifacts.
+**Terraform-specific `.gitignore`** entries for `.terraform/`, state files, and `.build/` (the zips of the Lambda module).
 
 ## Extra dependencies
 
@@ -95,6 +96,10 @@ From blueprint `packageJson`:
 - `@types/aws-lambda` — Lambda event type definitions (dev)
 
 Each app includes a `build` script: `bun build src/index.ts --outfile dist/index.mjs --target node`. Bun bundles the handler as an ES module, and Terraform zips only `dist/`, with no `package.json` declaring `"type": "module"`: the `.mjs` extension is what makes Lambda load it as ESM. The default `index.handler` resolves to `index.mjs`.
+
+## First deploy
+
+The generated `README.md` walks through it in order: AWS credentials and region, the state bucket (created by hand, with versioning), the `<BUCKET_NAME>` placeholder of both backend files, the build, `terraform -chdir=infra init` and `apply`, a request to the live `api_url`, then the GitHub Actions setup (OIDC identity provider, one IAM role per environment, the `AWS_ROLE_ARN` secret and `AWS_REGION` variable of each GitHub environment). The `justfile` wraps the same Terraform commands and needs [`just`](https://github.com/casey/just) installed.
 
 ## CLI usage
 

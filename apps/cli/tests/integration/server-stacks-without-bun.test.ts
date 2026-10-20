@@ -110,7 +110,7 @@ describe('Node app with bun', () => {
 });
 
 const LAMBDA_BLUEPRINTS: { blueprint: string; output: string; production: boolean }[] = [
-  { blueprint: 'lambda-sst-hono', output: 'dist/index.js', production: false },
+  { blueprint: 'lambda-sst-hono', output: 'dist/index.mjs', production: false },
   { blueprint: 'lambda-terraform-aws-hono', output: 'dist/index.mjs', production: true },
 ];
 
