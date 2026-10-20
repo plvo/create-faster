@@ -11,10 +11,14 @@ const OUTPUT_TAIL_LINES = 60;
 const ESLINT_LINTERS = ['eslint', 'eslint-prettier'];
 const LINTERS = ['biome', 'oxc', ...ESLINT_LINTERS];
 
-// Only Biome is held to zero warnings. The `lint` script of an ESLint turborepo is `turbo lint`, which does not
-// forward a flag to eslint, and oxlint still warns on files unrelated to this check.
+// Every linter that can fail on a warning is held to zero warnings. The `lint` script of an ESLint turborepo is
+// `turbo lint`, which does not forward a flag to eslint, so the flag goes to the `lint` script of each workspace
+// that runs the linter itself.
 const FAIL_ON_WARNINGS_FLAGS: Record<string, string[]> = {
   biome: ['--error-on-warnings'],
+  oxc: ['--deny-warnings'],
+  eslint: ['--max-warnings', '0'],
+  'eslint-prettier': ['--max-warnings', '0'],
 };
 
 const BLUEPRINTS = [
@@ -165,12 +169,26 @@ async function buildProject(projectDir: string): Promise<string[]> {
   return outcomes;
 }
 
+async function lintDirs(projectDir: string): Promise<string[]> {
+  const dirs = workspaceDirs(projectDir);
+  const manifests = await Promise.all(dirs.map(readManifest));
+  return dirs.filter((_, index) => {
+    const lint = manifests[index]?.scripts?.lint;
+    return lint && !lint.startsWith('turbo');
+  });
+}
+
 async function expectLintPasses(projectDir: string, linter: string, moment: string): Promise<void> {
   const command = ['bun', 'run', 'lint', ...(FAIL_ON_WARNINGS_FLAGS[linter] ?? [])];
-  const result = await runCommand(command, projectDir);
-  if (result.exitCode === 0) return;
-  const tail = `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
-  throw new Error(`\`${command.join(' ')}\` exited ${result.exitCode} ${moment}:\n${tail}`);
+  const dirs = await lintDirs(projectDir);
+  if (dirs.length === 0) throw new Error(`no workspace defines a lint script in ${projectDir}`);
+
+  for (const dir of dirs) {
+    const result = await runCommand(command, dir);
+    if (result.exitCode === 0) continue;
+    const tail = `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
+    throw new Error(`\`${command.join(' ')}\` exited ${result.exitCode} in ${dir} ${moment}:\n${tail}`);
+  }
 }
 
 const PLANTED_LINT_ERROR_FILE = 'planted-lint-error.ts';
@@ -205,7 +223,7 @@ async function expectPackagesAreLinted(projectDir: string): Promise<void> {
 
 // The build outcome is logged, not asserted: the other e2e files own it. What matters here is that
 // whatever the build writes (or leaves half written) is never linted.
-describe('generated projects pass their own lint script (Biome also without warnings)', () => {
+describe('generated projects pass their own lint script (without warnings)', () => {
   let tempDir: string;
 
   beforeAll(async () => {

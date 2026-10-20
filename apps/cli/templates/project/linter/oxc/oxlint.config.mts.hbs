@@ -47,5 +47,13 @@ export default defineConfig({
 {{/if}}
 {{/if}}
 {{/each}}
+{{#if (has "deployment" "sst")}}
+    {
+      files: ['sst.config.ts'],
+      rules: {
+        'typescript/triple-slash-reference': 'off',
+      },
+    },
+{{/if}}
   ],
 });

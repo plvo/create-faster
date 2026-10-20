@@ -74,7 +74,7 @@ export function createAuth({{#if (has "database" "d1")}}db: Database, {{/if}}coo
       {{/if}}
     },
 
-    plugins: [...(cookiePlugin ? [cookiePlugin] : [])],
+    plugins: cookiePlugin ? [cookiePlugin] : [],
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 6,
