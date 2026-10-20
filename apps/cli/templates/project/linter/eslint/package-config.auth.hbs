@@ -1,0 +1,10 @@
+---
+only: mono
+mono:
+  scope: pkg
+  name: auth
+  path: eslint.config.mjs
+---
+{{#if (hasPackage "auth")}}
+{{> eslint/package-config preset="server" from="@repo/eslint-config/server"}}
+{{/if}}

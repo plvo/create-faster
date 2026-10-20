@@ -181,22 +181,26 @@ async function expectPackagesAreLinted(projectDir: string): Promise<void> {
   const packagesDir = join(projectDir, 'packages');
   if (!existsSync(packagesDir)) return;
 
+  let planted = 0;
   for (const name of readdirSync(packagesDir)) {
     const packageDir = join(packagesDir, name);
     if (!(await readManifest(packageDir))?.scripts?.lint) continue;
 
-    const planted = join(packageDir, 'src', PLANTED_LINT_ERROR_FILE);
+    const plantedFile = join(packageDir, 'src', PLANTED_LINT_ERROR_FILE);
     await mkdir(join(packageDir, 'src'), { recursive: true });
-    await writeFile(planted, 'const plantedLintError = 1;\n');
+    await writeFile(plantedFile, 'const plantedLintError = 1;\n');
     try {
       const result = await runCommand(['bun', 'run', 'lint'], projectDir);
       if (result.exitCode === 0 || !`${result.stdout}\n${result.stderr}`.includes(PLANTED_LINT_ERROR_FILE)) {
         throw new Error(`an error planted in packages/${name} did not fail the root lint (exit ${result.exitCode})`);
       }
     } finally {
-      await rm(planted, { force: true });
+      await rm(plantedFile, { force: true });
     }
+    planted++;
   }
+
+  if (planted === 0) throw new Error('a turborepo with packages/ has no workspace package with a lint script');
 }
 
 // The build outcome is logged, not asserted: the other e2e files own it. What matters here is that

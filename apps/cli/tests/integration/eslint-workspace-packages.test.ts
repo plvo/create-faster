@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Glob } from 'bun';
-import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 import { COMBINATIONS } from './workspace-combinations';
 
@@ -10,10 +10,11 @@ setIntegrationTimeout();
 
 const ESLINT_LINTERS = ['eslint', 'eslint-prettier'];
 const LINTABLE_SOURCES = '**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}';
-const NOT_LINTED_DIRECTORIES = ['node_modules/**', 'dist/**', 'generated/**'];
+const NOT_LINTED_SOURCES = ['node_modules/**', 'dist/**', 'generated/**', 'eslint.config.mjs'];
 
 interface Manifest {
   scripts?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
 
 async function packagesWithSources(projectPath: string): Promise<string[]> {
@@ -24,7 +25,7 @@ async function packagesWithSources(projectPath: string): Promise<string[]> {
   for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
     const sources = await Array.fromAsync(new Glob(LINTABLE_SOURCES).scan({ cwd: join(packagesDir, entry.name) }));
     const linted = sources.filter(
-      (source) => !NOT_LINTED_DIRECTORIES.some((directory) => new Glob(directory).match(source)),
+      (source) => !NOT_LINTED_SOURCES.some((glob) => new Glob(glob).match(source)),
     );
     if (linted.length > 0) withSources.push(entry.name);
   }
@@ -57,19 +58,18 @@ describe.each(ESLINT_LINTERS.flatMap((linter) => COMBINATIONS.map((combination) 
       expect(root.scripts?.lint).toBe('turbo lint');
     });
 
-    test('a lint script passes a preset that exports its config as default', async () => {
+    test('a package that lints itself has an eslint config and the eslint dependency', async () => {
       const packagesDir = join(projectPath, 'packages');
-      const missingPreset: string[] = [];
+      const incomplete: string[] = [];
 
       for (const name of await readdir(packagesDir)) {
         const manifest = await readJsonFile<Manifest>(join(packagesDir, name, 'package.json'));
-        const preset = manifest.scripts?.lint?.match(/--config (\S+)/)?.[1];
-        if (!preset) continue;
-        const source = await readTextFile(join(packagesDir, name, preset)).catch(() => '');
-        if (!/^export default /m.test(source)) missingPreset.push(`${name}: ${preset}`);
+        if (!manifest.scripts?.lint?.startsWith('eslint ')) continue;
+        const hasConfig = await fileExists(join(packagesDir, name, 'eslint.config.mjs'));
+        if (!hasConfig || !manifest.devDependencies?.eslint) incomplete.push(name);
       }
 
-      expect(missingPreset).toEqual([]);
+      expect(incomplete).toEqual([]);
     });
 
     test('every workspace package with sources has an eslint lint script', async () => {
@@ -84,3 +84,43 @@ describe.each(ESLINT_LINTERS.flatMap((linter) => COMBINATIONS.map((combination) 
     });
   },
 );
+
+const PACKAGE_SOURCE = 'packages/api/src/index.ts';
+
+function matchesAny(patterns: string[], file: string): boolean {
+  return patterns.some((pattern) => new Bun.Glob(pattern).match(file));
+}
+
+async function excludedPatterns(linter: string, projectPath: string): Promise<string[]> {
+  if (linter === 'biome') {
+    const { files } = JSON.parse(await readTextFile(join(projectPath, 'biome.json')));
+    return (files.includes as string[]).filter((glob) => glob.startsWith('!')).map((glob) => glob.slice(1));
+  }
+  const config = await readTextFile(join(projectPath, 'oxlint.config.mts'));
+  const list = /ignorePatterns: \[(.*)\]/.exec(config)?.[1] ?? '';
+  return [...list.matchAll(/'([^']+)'/g)].map((match) => match[1] as string);
+}
+
+describe.each(['biome', 'oxc'])('root %s config covers the workspace packages', (linter) => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test.each(COMBINATIONS)('$name', async ({ args }) => {
+    const result = await runCli(
+      ['lint-root', ...args, '--linter', linter, '--no-install', '--no-git', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode).toBe(0);
+    const projectPath = join(tempDir, 'lint-root');
+
+    expect(matchesAny(await excludedPatterns(linter, projectPath), PACKAGE_SOURCE)).toBe(false);
+    await cleanupTempDir(projectPath);
+  });
+});

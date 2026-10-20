@@ -1,0 +1,5 @@
+{{!-- The eslint.config.mjs of a workspace package: re-exports a preset of @repo/eslint-config.
+preset: "server" or "react". from: where the preset module is imported from. --}}
+import { {{preset}}Config } from "{{from}}";
+
+export default {{preset}}Config;

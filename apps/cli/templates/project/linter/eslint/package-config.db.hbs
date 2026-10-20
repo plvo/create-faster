@@ -1,0 +1,10 @@
+---
+only: mono
+mono:
+  scope: pkg
+  name: db
+  path: eslint.config.mjs
+---
+{{#if (hasPackage "db")}}
+{{> eslint/package-config preset="server" from="@repo/eslint-config/server"}}
+{{/if}}

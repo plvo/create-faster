@@ -40,8 +40,15 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@re
 import type { Session } from '@repo/auth/types';
 import { authClient } from '@repo/auth/auth-client';
 
+function UserAvatar({ user }: { user: Session['user'] }) {
+  const initials = user.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
 {{#if (eq avatar "image")}}
-function UserAvatar({ user, initials }: { user: Session['user']; initials: string }) {
   return (
     <Avatar className='size-8 rounded-lg'>
       <AvatarImage src={user.image ?? undefined} alt={user.name} />
@@ -51,7 +58,6 @@ function UserAvatar({ user, initials }: { user: Session['user']; initials: strin
     </Avatar>
   );
 {{else}}
-function UserAvatar({ initials }: { initials: string }) {
   return (
     <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
       {initials}
@@ -108,13 +114,6 @@ export function NavUser({ session }: { session: Session }) {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
-  const initials = session.user.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -124,7 +123,7 @@ export function NavUser({ session }: { session: Session }) {
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
-              <UserAvatar {{#if (eq avatar "image")}}user={session.user} {{/if}}initials={initials} />
+              <UserAvatar user={session.user} />
               <div className='grid flex-1 text-left text-sm leading-tight gap-1'>
                 <span className='truncate font-medium'>
 {{#if showRole}}
@@ -150,7 +149,7 @@ export function NavUser({ session }: { session: Session }) {
           >
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
-                <UserAvatar {{#if (eq avatar "image")}}user={session.user} {{/if}}initials={initials} />
+                <UserAvatar user={session.user} />
                 <div className='grid flex-1 text-left text-sm leading-tight'>
                   <span className='truncate font-medium'>{session.user.name}</span>
                   <span className='truncate text-xs'>{session.user.email}</span>

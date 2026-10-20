@@ -47,6 +47,7 @@ export const reactConfig = [
   {
     files: ["**/shuip/**"],
     rules: {
+      "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/incompatible-library": "off",
       "react-hooks/refs": "off",
       "react-hooks/set-state-in-effect": "off",
@@ -54,5 +55,3 @@ export const reactConfig = [
   },
 {{/if}}
 ];
-
-export default reactConfig;

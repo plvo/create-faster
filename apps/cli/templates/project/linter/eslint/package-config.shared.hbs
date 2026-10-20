@@ -1,0 +1,10 @@
+---
+only: mono
+mono:
+  scope: pkg
+  name: shared
+  path: eslint.config.mjs
+---
+{{#if (hasPackage "shared")}}
+{{> eslint/package-config preset="server" from="@repo/eslint-config/server"}}
+{{/if}}

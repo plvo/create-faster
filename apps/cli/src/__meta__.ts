@@ -33,11 +33,26 @@ const WRANGLER_VERSION = '^4.148.0';
 const ESLINT_VERSION = '^9.22.0';
 
 // A turborepo workspace package lints itself with the shared config of `@repo/eslint-config`, so the root `lint`
-// (`turbo lint`) reaches it like an app. The config is passed by path: the package has no `eslint.config` of its own.
+// (`turbo lint`) reaches it like an app. Its `eslint.config.mjs` comes from the `eslint` addon templates.
 const ESLINT_LINTS_PACKAGE: Parameters<typeof $when>[0] = { repo: 'turborepo', linter: ['eslint', 'eslint-prettier'] };
 const ESLINT_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, ESLINT_VERSION);
-const LINT_SERVER_PACKAGE = $when(ESLINT_LINTS_PACKAGE, 'eslint --config ../eslint-config/server.js .');
-const LINT_REACT_PACKAGE = $when(ESLINT_LINTS_PACKAGE, 'eslint --config ../eslint-config/react.js .');
+const ESLINT_CONFIG_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, '*');
+const LINT_PACKAGE = $when(ESLINT_LINTS_PACKAGE, 'eslint .');
+
+const AWS_LAMBDA_TYPES_VERSION = '^8.10.0';
+
+const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
+  shared: {
+    exports: { './types': './src/types.ts' },
+    devDependencies: {
+      '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
+      '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
+      eslint: ESLINT_IN_PACKAGE,
+      typescript: '^5.9.3',
+    },
+    scripts: { lint: LINT_PACKAGE },
+  },
+};
 
 // Privy pins viem exactly: each @privy-io/react-auth release depends on one viem version and each
 // @privy-io/wagmi release peers on one, so npm rejects ranges that resolve to releases of different pairs.
@@ -412,10 +427,11 @@ export const META: Meta = {
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
           '@types/react': '^19.2.18',
+          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
           eslint: ESLINT_IN_PACKAGE,
         },
         scripts: {
-          lint: LINT_REACT_PACKAGE,
+          lint: LINT_PACKAGE,
         },
         exports: {
           './': './src/components/',
@@ -494,10 +510,11 @@ export const META: Meta = {
           typescript: '^5',
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
+          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
           eslint: ESLINT_IN_PACKAGE,
         },
         scripts: {
-          lint: LINT_SERVER_PACKAGE,
+          lint: LINT_PACKAGE,
         },
         exports: {
           './auth': './src/auth.ts',
@@ -546,10 +563,11 @@ export const META: Meta = {
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
+          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
           eslint: ESLINT_IN_PACKAGE,
         },
         scripts: {
-          lint: LINT_SERVER_PACKAGE,
+          lint: LINT_PACKAGE,
         },
         exports: {
           '.': './src/index.ts',
@@ -1086,11 +1104,12 @@ export const META: Meta = {
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
               dotenv: '^17.4.2',
+              '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
               eslint: ESLINT_IN_PACKAGE,
               tsx: TSX_RUNNER,
             },
             scripts: {
-              lint: LINT_SERVER_PACKAGE,
+              lint: LINT_PACKAGE,
               'db:generate': 'drizzle-kit generate',
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
@@ -1132,12 +1151,13 @@ export const META: Meta = {
               '@types/node': NODE_TYPES_VERSION,
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
+              '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
               eslint: ESLINT_IN_PACKAGE,
               prisma: '^7.10.0',
               tsx: TSX_RUNNER,
             },
             scripts: {
-              lint: LINT_SERVER_PACKAGE,
+              lint: LINT_PACKAGE,
               'db:generate': 'prisma generate',
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',
@@ -1219,7 +1239,7 @@ export const META: Meta = {
               '@next/eslint-plugin-next': $when({ stack: 'nextjs' }, '^16.3.3'),
             },
             scripts: {
-              lint: 'eslint --config ./server.js .',
+              lint: 'eslint .',
             },
             exports: {
               './base': './base.js',
@@ -1456,12 +1476,13 @@ export const META: Meta = {
         ],
         project: { deployment: 'sst' },
       },
+      pkgPackageJson: LAMBDA_PKG_PACKAGE_JSON,
       packageJson: {
         dependencies: {
           '@repo/shared': '*',
         },
         devDependencies: {
-          '@types/aws-lambda': '^8.10.0',
+          '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
         },
         scripts: {
           build: `bun build src/index.ts --outfile ${LAMBDA_OUTFILE} --target node`,
@@ -1493,12 +1514,13 @@ export const META: Meta = {
         ],
         project: { deployment: 'terraform-aws' },
       },
+      pkgPackageJson: LAMBDA_PKG_PACKAGE_JSON,
       packageJson: {
         dependencies: {
           '@repo/shared': '*',
         },
         devDependencies: {
-          '@types/aws-lambda': '^8.10.0',
+          '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
         },
         scripts: {
           build: `NODE_ENV=production bun build src/index.ts --outfile ${LAMBDA_OUTFILE} --target node`,
