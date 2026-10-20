@@ -256,7 +256,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('user table renders through the shuip DataTableShell over trpc.users.list', () => {
     const table = bpFile('src/components/admin/user-table.tsx.hbs');
     expect(table).toContain("import { DataTableShell, type DataTableShellColumn } from '@/components/shared/data-table-shell'");
-    expect(table).toContain('trpc.users.list.queryOptions()');
+    expect(table).toContain('trpc.users.list.queryOptions(');
     expect(table).toContain('href={`/admin/users/${row.original.id}`}');
   });
 

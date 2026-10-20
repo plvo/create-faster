@@ -49,6 +49,7 @@ export function CreateUserDialog() {
     trpc.users.create.mutationOptions({
       onSuccess: ({ password }) => {
         queryClient.invalidateQueries(trpc.users.list.queryFilter());
+        queryClient.invalidateQueries(trpc.users.count.queryFilter());
         setCreatedPassword(password);
       },
       onError: (error) => toast.error(error.message),

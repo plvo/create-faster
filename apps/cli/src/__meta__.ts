@@ -1923,6 +1923,10 @@ export const META: Meta = {
           dependencies: {
             '@opennextjs/cloudflare': '^1.20.12',
           },
+          exports: {
+            './pagination': './src/pagination.ts',
+            './user-list': './src/user-list.ts',
+          },
         },
       },
       rootPackageJson: {

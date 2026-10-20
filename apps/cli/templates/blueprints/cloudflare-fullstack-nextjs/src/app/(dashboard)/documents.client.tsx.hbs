@@ -7,13 +7,17 @@ mono:
 'use client';
 
 import { useRef } from 'react';
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useSuspenseQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Trash2, Upload } from 'lucide-react';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
+import { PagedList } from '@/components/table-pagination';
+import { usePageParams } from '@/hooks/use-page-params';
+
+const COUNT_STALE_TIME = 60_000;
 
 const schema = z.object({
   title: z.string().max(200),
@@ -22,13 +26,24 @@ const schema = z.object({
 export function DocumentsClient() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { data: documents } = useSuspenseQuery(trpc.documents.list.queryOptions());
+  const pagination = usePageParams();
+  const [{ data: documents }, { data: total }] = useSuspenseQueries({
+    queries: [
+      trpc.documents.list.queryOptions({ page: pagination.page, pageSize: pagination.pageSize }),
+      trpc.documents.count.queryOptions(undefined, { staleTime: COUNT_STALE_TIME }),
+    ],
+  });
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const invalidateDocuments = () => {
+    queryClient.invalidateQueries(trpc.documents.list.queryFilter());
+    queryClient.invalidateQueries(trpc.documents.count.queryFilter());
+  };
 
   const deleteMutation = useMutation(
     trpc.documents.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.documents.list.queryFilter());
+        invalidateDocuments();
         toast.success('Document deleted');
       },
       onError: (error) => toast.error(error.message),
@@ -52,7 +67,7 @@ export function DocumentsClient() {
       try {
         const res = await fetch('/api/documents/upload', { method: 'POST', body });
         if (!res.ok) throw new Error(await res.text());
-        queryClient.invalidateQueries(trpc.documents.list.queryFilter());
+        invalidateDocuments();
         toast.success('Document uploaded');
         formApi.reset();
         if (fileRef.current) fileRef.current.value = '';
@@ -92,11 +107,13 @@ export function DocumentsClient() {
         </form>
       </Can>
 
-      {documents.length === 0 ? (
-        <div className='rounded-lg border bg-card p-8 text-center'>
-          <p className='text-muted-foreground'>No documents yet. Upload your first document to get started.</p>
-        </div>
-      ) : (
+      <PagedList
+        {...pagination}
+        total={total}
+        rowCount={documents.length}
+        itemName='documents'
+        emptyMessage='No documents yet. Upload your first document to get started.'
+      >
         <div className='rounded-lg border'>
           <table className='w-full text-sm'>
             <thead>
@@ -135,7 +152,7 @@ export function DocumentsClient() {
             </tbody>
           </table>
         </div>
-      )}
+      </PagedList>
     </div>
   );
 }

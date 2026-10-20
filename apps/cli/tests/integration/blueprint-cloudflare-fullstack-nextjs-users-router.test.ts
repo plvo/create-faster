@@ -13,9 +13,15 @@ type Procedure = (args: { ctx: { db: unknown }; input: { id: string } }) => Prom
 // Stand-ins for what the generated router imports. A procedure builder returns the handler it is given, so the
 // router's `get` is the function the generated file wrote; the database answers with the rows a test sets.
 const STUBS: Record<string, string> = {
-  'db.mjs': `export const desc = (column) => column;
+  'db.mjs': `export const asc = (column) => column;
+export const desc = (column) => column;
 export const eq = (column, value) => [column, value];
+export const or = (...conditions) => conditions;
+export const count = () => 'count';
+export const sql = () => 'sql';
 export const userTable = new Proxy({}, { get: (_, column) => String(column) });`,
+  'page-query.mjs': 'export const orderedPage = (query) => query;',
+  'user-list.mjs': 'export const userListInput = {}; export const userCountInput = {};',
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
   'trpc.mjs': 'export const router = (procedures) => procedures;',
   'rbac.mjs': `const procedure = { input: () => procedure, query: (handler) => handler, mutation: (handler) => handler };
@@ -29,6 +35,8 @@ const IMPORTS: Record<string, string> = {
   zod: './zod.mjs',
   '../trpc': './trpc.mjs',
   '../middleware/rbac': './rbac.mjs',
+  '../page-query': './page-query.mjs',
+  '../user-list': './user-list.mjs',
 };
 
 describe(`${BLUEPRINT} users router`, () => {

@@ -98,13 +98,13 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     const page = await readTextFile(join(dashboard, 'page.tsx'));
     expect(page).not.toContain("'use client'");
     expect(page).toContain("import { HydrateClient, prefetch, trpc } from '@/trpc/server'");
-    expect(page).toContain('prefetch(trpc.documents.list.queryOptions())');
+    expect(page).toContain('prefetch(trpc.documents.list.queryOptions(');
     expect(page).toContain('<HydrateClient>');
     expect(page).toContain('<DocumentsClient />');
 
     const client = await readTextFile(join(dashboard, 'documents.client.tsx'));
     expect(client).toContain("'use client'");
-    expect(client).toContain('useSuspenseQuery(trpc.documents.list.queryOptions())');
+    expect(client).toContain('trpc.documents.list.queryOptions(');
   });
 
   test('getEnv leaves prerendering before it reads the Cloudflare context', async () => {

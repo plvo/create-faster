@@ -16,7 +16,7 @@ const redirectTo = (path: string): RegExp => new RegExp(`^redirect:${path}$`);
 // what they are called with, in `calls`, so a test asserts on behaviour and not on how the source is written.
 const STUBS: Record<string, string> = {
   'recorder.mjs': `export const calls = [];
-export const state = { denied: false, session: null, data: [] };`,
+export const state = { denied: false, session: null, data: [], total: 0, sort: '-createdAt', search: '' };`,
   'react.mjs': `${REACT_ELEMENT_STUB}
 export const Suspense = ({ children }) => children;
 export const cache = (fn) => fn;
@@ -58,9 +58,21 @@ export const prefetch = (options) => { calls.push(['prefetch', options]); };
 export const getQueryClient = () => ({ fetchQuery: async (options) => { calls.push(['fetch', options]); return state.data; } });`,
   'react-query.mjs': `import { calls, state } from './recorder.mjs';
 export const useSuspenseQuery = (options) => { calls.push(['read', options]); return { data: state.data }; };
+export const useSuspenseQueries = ({ queries }) => queries.map((options) => {
+  calls.push(['read', options]);
+  return { data: options.path.endsWith('count') ? state.total : state.data };
+});
 export const useMutation = () => ({ mutate() {}, isPending: false });
 export const useQueryClient = () => ({ invalidateQueries() {} });`,
   'form.mjs': 'export const useAppForm = () => ({ handleSubmit() {} });',
+  // The hooks that read the page from the URL: the first page of the default size, and a record of what they write.
+  'url-hooks.mjs': `import { calls, state } from './recorder.mjs';
+const write = (name) => (...args) => { calls.push([name, ...args]); };
+export const useUserListParams = () => ({
+  page: 1, pageSize: 10, search: state.search, sort: state.sort,
+  setPage: write('setPage'), setPageSize: write('setPageSize'), setSearch: write('setSearch'), setSort: write('setSort'),
+});
+export const usePageParams = () => ({ page: 1, pageSize: 10, setPage: write('setPage'), setPageSize: write('setPageSize') });`,
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
   'permissions.mjs': `export const statement = { user: ['list'] };
 export const roleDefinitions = { admin: { user: ['list'] }, user: {} };`,
@@ -82,11 +94,15 @@ const SHARED_IMPORTS: Record<string, string> = {
   './users.client': './clients.mjs',
   './user.client': './clients.mjs',
   './documents.client': './clients.mjs',
+  '@/hooks/use-user-list-params': './url-hooks.mjs',
+  '@/hooks/use-page-params': './url-hooks.mjs',
+  '@repo/api/pagination': './pagination.mjs',
+  '@repo/api/user-list': './user-list.mjs',
 };
 
 interface Recorder {
   calls: unknown[];
-  state: { denied: boolean; session: unknown; data: unknown };
+  state: { denied: boolean; session: unknown; data: unknown; total: number; sort: string; search: string };
 }
 
 type Component = (props?: unknown) => unknown;
@@ -106,13 +122,18 @@ function* descendants(node: unknown): Generator<Element> {
 
 // Every page of the dashboard whose client tree reads a protected query through useSuspenseQuery. The page
 // prefetches the key its client reads, behind the guard that matches the procedure.
+const FIRST_PAGE = { page: 1, pageSize: 10 };
+
 const PROTECTED_PAGES = [
   {
     title: 'the users list',
     page: `${APP}/admin/users/page.tsx`,
-    props: {},
+    props: { searchParams: Promise.resolve({}) },
     guard: 'requireAdmin',
-    key: { path: 'users.list' },
+    keys: [
+      { path: 'users.list', input: { ...FIRST_PAGE, search: '', sort: '-createdAt' } },
+      { path: 'users.count', input: { search: '' } },
+    ],
     loads: 'prefetch',
     reader: { file: 'src/components/admin/user-table.tsx', exportName: 'UserTable' },
     client: 'UsersClient',
@@ -122,7 +143,7 @@ const PROTECTED_PAGES = [
     page: `${APP}/admin/users/[id]/page.tsx`,
     props: { params: Promise.resolve({ id: 'u1' }) },
     guard: 'requireAdmin',
-    key: { path: 'users.get', input: { id: 'u1' } },
+    keys: [{ path: 'users.get', input: { id: 'u1' } }],
     loads: 'fetch',
     reader: { file: `${APP}/admin/users/[id]/user.client.tsx`, exportName: 'UserClient' },
     client: 'UserClient',
@@ -130,9 +151,9 @@ const PROTECTED_PAGES = [
   {
     title: 'the documents',
     page: `${APP}/page.tsx`,
-    props: {},
+    props: { searchParams: Promise.resolve({}) },
     guard: 'requireSession',
-    key: { path: 'documents.list' },
+    keys: [{ path: 'documents.list', input: FIRST_PAGE }, { path: 'documents.count' }],
     loads: 'prefetch',
     reader: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient' },
     client: 'DocumentsClient',
@@ -192,6 +213,15 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     recorder = await import(join(stubs, 'recorder.mjs'));
     clients = await import(join(stubs, 'clients.mjs'));
     trpcStub = await import(join(stubs, 'trpc.mjs'));
+
+    // The page rules the pages and tables apply to the URL run for real, on the real zod.
+    const real = { zod: Bun.resolveSync('zod', import.meta.dir) };
+    const api = join(tempDir, FULLSTACK, 'packages/api/src');
+    await evaluateGeneratedModule(await readTextFile(join(api, 'pagination.ts')), join(stubs, 'pagination.mjs'), real);
+    await evaluateGeneratedModule(await readTextFile(join(api, 'user-list.ts')), join(stubs, 'user-list.mjs'), {
+      ...real,
+      './pagination': './pagination.mjs',
+    });
   });
 
   afterAll(async () => {
@@ -203,18 +233,21 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     recorder.state.denied = false;
     recorder.state.session = null;
     recorder.state.data = [];
+    recorder.state.total = 0;
+    recorder.state.sort = '-createdAt';
+    recorder.state.search = '';
   });
 
-  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, key, loads, reader, client }) => {
-    test(`loads the key its client reads, after ${guard}`, async () => {
+  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, keys, loads, reader, client }) => {
+    test(`loads the keys its client reads, after ${guard}`, async () => {
       const route = await load(page);
       await route.default?.(props);
-      expect(recorder.calls).toEqual([guard, [loads, key]]);
+      expect(recorder.calls).toEqual([guard, ...keys.map((key) => [loads, key])]);
 
       recorder.calls.length = 0;
       const readerModule = await load(reader.file);
       await readerModule[reader.exportName]?.();
-      expect(recorder.calls).toEqual([['read', key]]);
+      expect(recorder.calls).toEqual(keys.map((key) => ['read', key]));
     });
 
     test(`never starts the query when ${guard} refuses`, async () => {
@@ -237,6 +270,129 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     const route = await load(`${APP}/admin/users/[id]/page.tsx`);
     await route.default?.({ params: Promise.resolve({ id: 'someone-else' }) });
     expect(recorder.calls).toEqual(['requireAdmin', ['fetch', { path: 'users.get', input: { id: 'someone-else' } }]]);
+  });
+
+  test('the users page prefetches the list and the count the URL names', async () => {
+    const route = await load(`${APP}/admin/users/page.tsx`);
+    const searchParams = Promise.resolve({ page: '2', pageSize: '25', search: 'ada', sort: '-name' });
+    await route.default?.({ searchParams });
+    expect(recorder.calls).toEqual([
+      'requireAdmin',
+      ['prefetch', { path: 'users.list', input: { page: 2, pageSize: 25, search: 'ada', sort: '-name' } }],
+      ['prefetch', { path: 'users.count', input: { search: 'ada' } }],
+    ]);
+  });
+
+  test('the documents page prefetches the page the URL names', async () => {
+    const route = await load(`${APP}/page.tsx`);
+    await route.default?.({ searchParams: Promise.resolve({ page: '3', pageSize: '50' }) });
+    expect(recorder.calls).toEqual([
+      'requireSession',
+      ['prefetch', { path: 'documents.list', input: { page: 3, pageSize: 50 } }],
+      ['prefetch', { path: 'documents.count' }],
+    ]);
+  });
+
+  test('a hostile URL prefetches the first page, in the default order, with no search', async () => {
+    const users = await load(`${APP}/admin/users/page.tsx`);
+    await users.default?.({
+      searchParams: Promise.resolve({ page: '-1', pageSize: '100000', sort: 'password', search: ['x'.repeat(500), 'y'] }),
+    });
+    expect(recorder.calls[1]).toEqual([
+      'prefetch',
+      { path: 'users.list', input: { ...FIRST_PAGE, search: 'x'.repeat(100), sort: '-createdAt' } },
+    ]);
+    recorder.calls.length = 0;
+    const documents = await load(`${APP}/page.tsx`);
+    await documents.default?.({ searchParams: Promise.resolve({ page: 'abc', pageSize: '1e9' }) });
+    expect(recorder.calls[1]).toEqual(['prefetch', { path: 'documents.list', input: FIRST_PAGE }]);
+  });
+
+  describe('the users table', () => {
+    interface TableProps {
+      onSortingChange: (updater: unknown) => void;
+      state: { sorting: unknown; pagination: unknown };
+      toolbarStart: Element;
+      wrapTable: (table: string) => Element;
+    }
+
+    const render = async (): Promise<TableProps> => {
+      const reader = await load('src/components/admin/user-table.tsx');
+      const element = reader.UserTable?.() as unknown as { props: TableProps };
+      recorder.calls.length = 0;
+      return element.props;
+    };
+    const propsOf = (element: Element | undefined) => (element?.props ?? {}) as Record<string, unknown>;
+    const elementsOf = (node: unknown) => [...descendants(node)];
+    const textOf = (node: unknown): string =>
+      Array.isArray(node)
+        ? node.map(textOf).join('')
+        : typeof node === 'string'
+          ? node
+          : node && typeof node === 'object' && 'props' in node
+            ? textOf((node as Element).props.children)
+            : '';
+
+    test('hands the table the sorting the URL names and the page on screen', async () => {
+      recorder.state.sort = '-email';
+      const { state } = await render();
+      expect(state).toEqual({ sorting: [{ id: 'email', desc: true }], pagination: { pageIndex: 0, pageSize: 10 } });
+      recorder.state.sort = '-createdAt';
+      expect((await render()).state.sorting).toEqual([]);
+    });
+
+    test('a sort picked in a column header is written into the URL, and no sort is the default order', async () => {
+      const { onSortingChange } = await render();
+      onSortingChange([{ id: 'name', desc: true }]);
+      onSortingChange((current: unknown[]) => [...current, { id: 'email', desc: false }]);
+      onSortingChange([{ id: 'role', desc: false }]);
+      onSortingChange([]);
+      expect(recorder.calls).toEqual([
+        ['setSort', '-name'],
+        ['setSort', 'email'],
+        ['setSort', '-createdAt'],
+        ['setSort', '-createdAt'],
+      ]);
+    });
+
+    test('the search box shows the search of the URL and writes what is typed', async () => {
+      recorder.state.search = 'ada';
+      const { toolbarStart } = await render();
+      const [search] = elementsOf(toolbarStart).filter((element) => String(propsOf(element).placeholder).startsWith('Search'));
+      expect(propsOf(search)).toMatchObject({ value: 'ada' });
+      (propsOf(search).onChange as (text: string) => void)('grace');
+      expect(recorder.calls).toEqual([['setSearch', 'grace']]);
+    });
+
+    test('a sorted list offers a way back to the default order, and the default order does not', async () => {
+      const clear = (props: TableProps) =>
+        elementsOf(props.toolbarStart).filter((element) => 'onClick' in propsOf(element) && textOf(element) === 'Clear sort');
+      expect(clear(await render())).toHaveLength(0);
+
+      recorder.state.sort = 'name';
+      const [button] = clear(await render());
+      (propsOf(button).onClick as () => void)();
+      expect(recorder.calls).toEqual([['setSort', '-createdAt']]);
+    });
+
+    test.each([
+      ['', 'No users yet.'],
+      ['  ', 'No users yet.'],
+      ['zzz', 'No users match your search.'],
+    ])('with the search %p an empty list says %p', async (search, message) => {
+      recorder.state.search = search;
+      const { wrapTable } = await render();
+      const list = wrapTable('the table');
+      expect(propsOf(list)).toMatchObject({ itemName: 'users', emptyMessage: message, page: 1, pageSize: 10 });
+      expect(list.props.children).toEqual(['the table']);
+    });
+
+    test('counts the page against the total of the search, not against the rows it loaded', async () => {
+      recorder.state.total = 27;
+      recorder.state.data = Array.from({ length: 10 }, (_, index) => ({ id: `u${index}` }));
+      const { wrapTable } = await render();
+      expect(propsOf(wrapTable('the table'))).toMatchObject({ total: 27, rowCount: 10 });
+    });
   });
 
   // An id that matches no row answers 404 from the server, before anything is hydrated: a rejected prefetch

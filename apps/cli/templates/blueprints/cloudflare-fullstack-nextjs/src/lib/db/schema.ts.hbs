@@ -6,7 +6,7 @@ mono:
   path: src/schema.ts
 ---
 import { relations, sql } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 const timeColumns = {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -29,7 +29,12 @@ export const userTable = sqliteTable('users', {
   firstName: text('first_name'),
   lastName: text('last_name'),
   ...timeColumns,
-});
+}, (table) => [
+  // The orders of the users table: newest first, and by name. The email is unique, so its own index serves the
+  // order by email. Each order ends with the id so that two rows never tie.
+  index('users_created_at_id_idx').on(table.createdAt, table.id),
+  index('users_name_id_idx').on(table.name, table.id),
+]);
 
 export const userTableRelations = relations(userTable, ({ many }) => ({
   accounts: many(userAccountTable),
@@ -91,7 +96,11 @@ export const documentTable = sqliteTable('documents', {
   mimeType: text('mime_type').notNull().default('application/octet-stream'),
   expiresAt: integer('expires_at', { mode: 'timestamp' }),
   ...timeColumns,
-});
+}, (table) => [
+  // Newest first for an admin or a manager, who list every document, and for the owner of the documents a user lists.
+  index('documents_created_at_id_idx').on(table.createdAt, table.id),
+  index('documents_user_id_created_at_id_idx').on(table.userId, table.createdAt, table.id),
+]);
 
 export const documentTableRelations = relations(documentTable, ({ one }) => ({
   owner: one(userTable, { fields: [documentTable.userId], references: [userTable.id] }),
