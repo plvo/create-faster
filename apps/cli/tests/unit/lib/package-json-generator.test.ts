@@ -783,15 +783,14 @@ describe('syncpack (turborepo)', () => {
 
   test('includes versions:list and versions:fix scripts', () => {
     const result = generateRootPackageJson(ctx);
-    expect(result.content.scripts?.['versions:list']).toBe('syncpack list-mismatches');
+    expect(result.content.scripts?.['versions:list']).toBe('syncpack lint');
     expect(result.content.scripts?.['versions:fix']).toBe('syncpack fix');
   });
 
-  test('includes syncpack config with local packages excluded', () => {
+  test('includes a syncpack config that ignores the workspace packages', () => {
     const result = generateRootPackageJson(ctx);
     expect(result.content.syncpack).toEqual({
-      dependencyTypes: ['!local'],
-      lintFormatting: false,
+      versionGroups: [{ label: 'Workspace packages', dependencies: ['$LOCAL'], isIgnored: true }],
     });
   });
 });

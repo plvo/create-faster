@@ -172,6 +172,8 @@ interface MetaStack {
   packageManagerPackageJson?: PackageManagerPackageJson;
   /** Install scripts of the dependencies this stack brings, direct or transitive. */
   installScripts?: InstallScripts;
+  /** Packages this stack needs at the version it declares, whatever the other apps of a turborepo use: the generated syncpack config leaves them out of the comparison between workspaces. */
+  pinnedPackages?: string[];
   /** The scripts of this stack that build, serve or ship an app, in the order a user runs them. */
   productionScripts?: Conditional<ScriptDescription>[];
   /** The sentence of every other script of this stack, which the Scripts lists print; a production script is described by `productionScripts` only. */
@@ -266,6 +268,8 @@ export interface MetaBlueprint {
 export interface MetaLibrary extends MetaAddon {
   /** Package.json keys only the repo root reads (npm `overrides`): the app's package.json in a single repo, the root one of a turborepo. */
   rootPackageJson?: PackageJsonConfig;
+  /** Packages this library needs at the version it declares, whatever the other apps of a turborepo use: the generated syncpack config leaves them out of the comparison between workspaces. */
+  pinnedPackages?: string[];
 }
 
 export interface Meta {

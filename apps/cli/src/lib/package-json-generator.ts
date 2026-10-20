@@ -11,6 +11,7 @@ import {
 } from '@/lib/addon-utils';
 import { installScriptsPackageJson } from '@/lib/install-scripts';
 import { getPackageManagerField, resolveCommandPackageManager } from '@/lib/package-manager';
+import { collectSyncpackConfig, type SyncpackConfig } from '@/lib/syncpack-config';
 import {
   cleanUndefined,
   MERGE_KEYS,
@@ -35,7 +36,7 @@ interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   exports?: Record<string, string>;
-  syncpack?: Record<string, unknown>;
+  syncpack?: SyncpackConfig;
   [key: string]: unknown;
 }
 
@@ -310,7 +311,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
 
   let devDependencies: Record<string, string> = {
     rimraf: '^6.0.1',
-    syncpack: '^13.0.0',
+    syncpack: '^15.3.3',
     turbo: '^2.4.0',
   };
 
@@ -384,10 +385,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
     scripts: sortObjectKeys(resolvedScripts),
     dependencies: Object.keys(dependencies).length > 0 ? sortObjectKeys(dependencies) : undefined,
     devDependencies: sortObjectKeys(devDependencies),
-    syncpack: {
-      dependencyTypes: ['!local'],
-      lintFormatting: false,
-    },
+    syncpack: collectSyncpackConfig(ctx),
   };
 
   spreadExtraKeys(pkg, merged);
