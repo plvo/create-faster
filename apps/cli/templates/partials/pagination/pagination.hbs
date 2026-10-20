@@ -1,0 +1,75 @@
+import { z } from 'zod';
+
+export const PAGE_SIZES = [10, 25, 50, 100] as const;
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 10;
+// Offset pagination slows down with depth; a page past this one reads as the first, and a table that needs to reach
+// deeper rows pages by a cursor instead.
+export const MAX_PAGE = 10_000;
+// How long a table keeps the total of a list: changing the page does not count again, and a mutation that adds or
+// removes a row invalidates it.
+export const COUNT_STALE_TIME = 60_000;
+
+// A query string repeats a parameter as a list; the first value is the one the server and the browser both read.
+export const firstValue = (value: unknown): unknown => (Array.isArray(value) ? value[0] : value);
+
+const page = z.preprocess(firstValue, z.coerce.number().int().min(1).max(MAX_PAGE)).catch(DEFAULT_PAGE);
+const pageSize = z.preprocess(firstValue, z.coerce.number().pipe(z.literal(PAGE_SIZES))).catch(DEFAULT_PAGE_SIZE);
+
+export const pageParams = z.object({ page, pageSize });
+
+// The URL parameters of a page, for a list that writes them back with `queryStringWith`.
+export const PAGE_KEYS = ['page', 'pageSize'] as const;
+
+export type PageParams = z.infer<typeof pageParams>;
+
+// The input of a paginated list: an absent or invalid value is the first page, or the default size.
+export const pageInput = pageParams.default({ page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE });
+
+// A query string gives text and a router gives numbers; both read the same parameters. Anything that is not an object
+// reads as no parameter at all.
+export function parseParams<Schema extends z.ZodType>(schema: Schema, search: unknown): z.infer<Schema> {
+  return schema.parse(typeof search === 'object' && search !== null ? search : {});
+}
+
+export function parsePageParams(search: unknown): PageParams {
+  return parseParams(pageParams, search);
+}
+
+// The page as a URL carries it: only what differs from the defaults is written.
+export function pageSearch(search: Record<string, unknown>): Partial<PageParams> {
+  const { page, pageSize } = parsePageParams(search);
+  return {
+    ...(page !== DEFAULT_PAGE && { page }),
+    ...(pageSize !== DEFAULT_PAGE_SIZE && { pageSize }),
+  };
+}
+
+export function pageOffset({ page, pageSize }: { page: number; pageSize: number }): number {
+  return (page - 1) * pageSize;
+}
+
+export function pageCountOf(total: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+// What a list hands its table: the page, and how to write another one into the URL. `write` is the router's part.
+export function pageControls(params: PageParams, write: (search: Partial<PageParams>) => void) {
+  return {
+    ...params,
+    setPage: (page: number) => write(pageSearch({ ...params, page })),
+    setPageSize: (pageSize: number) => write(pageSearch({ page: DEFAULT_PAGE, pageSize })),
+  };
+}
+
+// The query string a list writes: the parameters it owns are replaced by `search`, every other one stays.
+export function queryStringWith(
+  current: string | URLSearchParams,
+  owned: readonly string[],
+  search: Record<string, unknown>,
+): string {
+  const query = new URLSearchParams(current);
+  for (const key of owned) query.delete(key);
+  for (const [key, value] of Object.entries(search)) query.set(key, String(value));
+  return query.toString();
+}

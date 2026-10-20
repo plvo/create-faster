@@ -56,6 +56,8 @@ export interface DataTableShellProps<TData> {
   isLoading?: boolean;
   loadingVariant?: 'skeleton' | 'overlay' | 'shimmer';
   paginationVariant?: 'simple' | 'numbered';
+  // Replaces the table and its pager: the caller renders both, so a list can page the table with its own controls.
+  renderBody?: (table: ReactElement) => ReactNode;
   pageCount?: number;
   totalCount?: number;
   state?: {
@@ -96,6 +98,7 @@ export function DataTableShell<TData>({
   isLoading,
   loadingVariant = 'skeleton',
   paginationVariant = 'simple',
+  renderBody,
   pageCount,
   totalCount,
   state,
@@ -169,6 +172,18 @@ export function DataTableShell<TData>({
 
   const showSearch = !hideToolbarSearch && !controlledSearch;
   const showPagination = isServer ? (pageCount ?? 0) > 1 : table.getPageCount() > 1;
+  const dataTable = (
+    <DataTable
+      table={table}
+      layout='auto'
+      isLoading={isLoading}
+      loadingVariant={loadingVariant}
+      emptyState={bodyEmpty}
+      onRowClick={onRowClick}
+      rowClassName={rowClassName}
+      rowWrapper={rowWrapper}
+    />
+  );
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -192,18 +207,14 @@ export function DataTableShell<TData>({
         </div>
       )}
 
-      <DataTable
-        table={table}
-        layout='auto'
-        isLoading={isLoading}
-        loadingVariant={loadingVariant}
-        emptyState={bodyEmpty}
-        onRowClick={onRowClick}
-        rowClassName={rowClassName}
-        rowWrapper={rowWrapper}
-      />
-
-      {showPagination && <DataTablePagination table={table} variant={paginationVariant} totalCount={totalCount} />}
+      {renderBody ? (
+        renderBody(dataTable)
+      ) : (
+        <>
+          {dataTable}
+          {showPagination && <DataTablePagination table={table} variant={paginationVariant} totalCount={totalCount} />}
+        </>
+      )}
     </div>
   );
 }

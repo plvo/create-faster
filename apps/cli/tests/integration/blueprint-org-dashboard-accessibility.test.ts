@@ -87,7 +87,9 @@ export const KeyRound = icon('KeyRound');
 export const Minus = icon('Minus');
 export const MoreHorizontal = icon('MoreHorizontal');
 export const Plus = icon('Plus');
-export const Trash2 = icon('Trash2');`,
+export const Trash2 = icon('Trash2');
+export const Upload = icon('Upload');
+export const X = icon('X');`,
   'button.mjs': `export const Button = ({ asChild, children, ...props }) =>
   asChild
     ? { ...children[0], props: { ...children[0].props, 'data-component': 'Button', variant: props.variant, size: props.size } }
@@ -108,7 +110,11 @@ export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ que
 export const useNavigate = () => () => {};
 export const notFound = () => ({ kind: 'notFound' });`,
   'query.mjs': `// trpc.a.b.queryOptions(x) and mutationOptions(x) hand their argument back, as the real helpers do.
-const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
+// __path names the router a procedure belongs to (trpc.user), for a test that asks which list was refreshed.
+const deep = (path = []) => new Proxy(function () {}, {
+  get: (_, key) => (key === 'then' ? undefined : key === '__path' ? path.join('.') : deep([...path, String(key)])),
+  apply: (_, __, args) => args[0] ?? {},
+});
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
 // A list page asks for its rows and its total together: the rows are __testQueryData.items, the total .total.
@@ -184,7 +190,29 @@ export const usePageParams = () => ({
 });`,
   'pagination.mjs': `export const PAGE_SIZES = [10, 25, 50, 100];
 export const pageOffset = ({ page, pageSize }) => (page - 1) * pageSize;
-export const pageCountOf = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize));`,
+export const pageCountOf = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize));
+export const COUNT_STALE_TIME = 60000;`,
+  // Records the router of each list a mutation refreshes: its list and its count are fetched again together.
+  'invalidate-paged-list.mjs': `export const invalidatePagedList = (_client, procedures) => { (globalThis.__invalidated ??= []).push(procedures.__path); };`,
+  'responsive-dialog.mjs': `const part = ({ children }) => children;
+export const ResponsiveDialog = part;
+export const ResponsiveDialogBody = part;
+export const ResponsiveDialogContent = part;
+export const ResponsiveDialogDescription = part;
+export const ResponsiveDialogFooter = part;
+export const ResponsiveDialogHeader = part;
+export const ResponsiveDialogTitle = part;`,
+  // The users table of the fullstack blueprint reads its list from the URL: the first page, newest first.
+  'user-list.mjs': `export const DEFAULT_USER_SORT = '-createdAt';
+export const USER_SORTS = ['-createdAt', 'name', '-name', 'email', '-email'];
+export const parseUserListParams = () => ({ page: 1, pageSize: 10, search: '', sort: DEFAULT_USER_SORT });`,
+  // The app form of the org dashboards has no inline edit field; the fullstack blueprint replaces this stand-in.
+  'inline-edit.mjs': 'export const InlineEditField = () => null;',
+  'user-list-params.mjs': `export const useUserListParams = () => ({
+  page: 1, pageSize: 10, search: '', sort: '-createdAt', setPage() {}, setPageSize() {}, setSearch() {}, setSort() {},
+});`,
+  'search-input.mjs': 'export const SearchInput = () => null;',
+  'paged-list.mjs': 'export const PagedList = ({ children }) => children;',
   'dialog.mjs': `import { createElement } from './react.mjs';
 export const Dialog = ({ children }) => children;
 export const DialogTrigger = ({ children }) => children;
@@ -214,9 +242,12 @@ const fieldOf = (name, options) => ({
 const field = {
   InlineEditField,
   InputField: (props) => createElement('input', { 'aria-label': props.label }),
+  TextareaField: (props) => createElement('textarea', { 'aria-label': props.label }),
   SelectField: (props) => createElement('button', { role: 'combobox', 'aria-label': props.label }),
 };
-export const useAppForm = (options) => ({
+export const useAppForm = (options) => {
+  globalThis.__testFormOptions = options;
+  return {
   AppField: ({ name, children }) => {
     globalThis.__testField = fieldOf(name, options);
     return children[0](field);
@@ -225,7 +256,8 @@ export const useAppForm = (options) => ({
   SubmitButton: ({ children }) => createElement('button', { type: 'submit' }, children),
   handleSubmit: () => options.onSubmit({ value: options.defaultValues }),
   reset() {},
-});`,
+  };
+};`,
   'data-table-shell.mjs': `import { createElement } from './react.mjs';
 // Renders the column definitions of a page as a table: the header of a column, and its cell for each row.
 export const DataTableShell = ({ columns, data }) =>
@@ -282,6 +314,8 @@ const COMMON_IMPORTS: Record<string, string> = {
   '@/lib/server': './server.mjs',
   '@/hooks/use-page-params': './page-params.mjs',
   '@repo/api/pagination': './pagination.mjs',
+  '@/lib/invalidate-paged-list': './invalidate-paged-list.mjs',
+  '@repo/ui/components/block/shuip/responsive-dialog': './responsive-dialog.mjs',
 };
 
 type Handler = () => unknown;
@@ -399,6 +433,8 @@ interface Globals {
   __pageCalls?: [string, number][];
   __testMutationResult?: unknown;
   __toasts?: { kind: string; message: string }[];
+  __invalidated?: string[];
+  __testFormOptions?: { onSubmit: (submission: { value: Record<string, unknown> }) => unknown; defaultValues: Record<string, unknown> };
 }
 
 // Writes the stand-ins, then returns functions that render a generated page of the project with them. `modules`
@@ -436,6 +472,7 @@ async function createMounter<Name extends string>(
     globals.__testQueryData = options.data;
     globals.__testMutationResult = options.mutationResult;
     globals.__toasts = [];
+    globals.__invalidated = [];
     resetState();
     const draw = async () => {
       startRender();
@@ -467,7 +504,7 @@ const toasts = (): { kind: string; message: string }[] => (globalThis as Globals
 
 describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
   let tempDir: string;
-  let mount: Mount<OrgDashboardPageName | 'userActions'>;
+  let mount: Mount<OrgDashboardPageName | 'userActions' | 'contactForm' | 'createUserDialog'>;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -476,7 +513,12 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
     ({ mount } = await createMounter(
       tempDir,
       join(tempDir, blueprint.name, 'apps/web'),
-      { ...blueprint.pages, userActions: USER_ACTIONS },
+      {
+        ...blueprint.pages,
+        userActions: USER_ACTIONS,
+        contactForm: { file: 'src/components/contacts/contact-form.tsx', exportName: 'ContactForm' },
+        createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
+      },
       { ...COMMON_IMPORTS, ...blueprint.routerStubs },
       { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE },
     ));
@@ -484,6 +526,31 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);
+  });
+
+  describe('a mutation that adds or removes a row refreshes its list and its count', () => {
+    const invalidated = () => (globalThis as Globals).__invalidated;
+    const submit = async (dialog: Mounted) => {
+      const form = must(find(dialog.tree, (element) => element.tag === 'form'), 'the form');
+      await dialog.act(async () => (form.props.onSubmit as (event: { preventDefault(): void }) => unknown)({ preventDefault() {} }));
+    };
+
+    test('deleting a contact', async () => {
+      const page = await mount('contactDetail', { data: CONTACT });
+      await page.click('Delete');
+      await page.click('Confirm');
+      expect(invalidated()).toEqual(['contact']);
+    });
+
+    test('creating a contact', async () => {
+      await submit(await mount('contactForm', { props: {} }));
+      expect(invalidated()).toEqual(['contact']);
+    });
+
+    test('creating a user', async () => {
+      await submit(await mount('createUserDialog', { props: { open: true, onOpenChange() {} }, mutationResult: { password: 'x' } }));
+      expect(invalidated()).toEqual(['user']);
+    });
   });
 
   describe('user detail', () => {
@@ -896,6 +963,7 @@ const FULLSTACK_PAGES = {
   createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
   generatedPassword: GENERATED_PASSWORD,
   roles: { file: `${APP}/admin/roles/page.tsx`, exportName: 'default' },
+  documents: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient' },
 };
 
 const INLINE_EDIT_MODULE = {
@@ -964,6 +1032,10 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/lib/auth/session': './session.mjs',
         '@/trpc/server': './trpc-server.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
+        '@repo/ui/components/ui/search-input': './search-input.mjs',
+        '@repo/api/user-list': './user-list.mjs',
+        '@/hooks/use-user-list-params': './user-list-params.mjs',
+        '@/components/table-pagination': './paged-list.mjs',
       },
       { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE },
     ));
@@ -1033,14 +1105,14 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     const BANNED_USER = { ...USER, id: 'u2', name: 'Grace Hopper', email: 'grace@example.com', role: null, banned: true };
 
     test('links each user by name and labels its columns', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       expect(namesOf(table.tree, 'a')).toEqual(['Ada Lovelace']);
       expect(withTag(table.tree, 'th').map(textOf)).toEqual(['Name', 'Email', 'Role']);
       expect(unnamedControls(table.tree)).toEqual([]);
     });
 
     test('drops Email below sm and Role below md, in the header and in every row', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       expectClasses(heading(table.tree, 'th', 'Email'), 'hidden', 'sm:table-cell');
       expectClasses(heading(table.tree, 'th', 'Role'), 'hidden', 'md:table-cell');
       expectClasses(find(table.tree, (element) => element.tag === 'td' && textOf(element) === USER.email), 'hidden', 'sm:table-cell');
@@ -1048,7 +1120,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     });
 
     test('the email and the role show under the name where their columns are hidden', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(USER.name)), 'the name cell');
       const subline = must(find(nameCell, (element) => classesOf(element).includes('md:hidden')), 'the line under the name');
       const email = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.email), 'the email line');
@@ -1057,13 +1129,79 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     });
 
     test('a banned user is marked with text that wraps beside a long name, and a user with no role reads as user', async () => {
-      const table = await mount('userTable', { data: [BANNED_USER] });
+      const table = await mount('userTable', { data: { items: [BANNED_USER], total: 1 } });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(BANNED_USER.name)), 'the name cell');
       expect(textOf(nameCell)).toContain('Banned');
       const lines = elementsOf(nameCell.children).filter((element) => withTag(element, 'a').length === 1 && textOf(element).includes('Banned'));
       const line = must(lines.at(-1), 'the name line');
       expectClasses(line, 'flex', 'flex-wrap');
       expect(find(table.tree, (element) => element.tag === 'td' && textOf(element) === 'user')).toBeDefined();
+    });
+  });
+
+  // Every mutation that adds, removes or edits a row stales a page of its list, and the total of a search.
+  describe('a mutation that changes a row refreshes its list and its count', () => {
+    const invalidated = () => (globalThis as Globals).__invalidated;
+    const submit = async (dialog: Mounted) => {
+      const form = must(find(dialog.tree, (element) => element.tag === 'form'), 'the form');
+      await dialog.act(async () => (form.props.onSubmit as (event: { preventDefault(): void }) => unknown)({ preventDefault() {} }));
+    };
+
+    test('creating a user', async () => {
+      await submit(await mount('createUserDialog', { mutationResult: { password: PASSWORD } }));
+      expect(invalidated()).toEqual(['users']);
+    });
+
+    test.each([
+      ['editing the profile', async (page: Mounted) => page.act(() => (globalThis as Globals).__testFormOptions?.onSubmit({ value: { name: 'Ada' } }))],
+      [
+        'changing the role',
+        async (page: Mounted) => {
+          const select = must(find(page.tree, (element) => element.props['data-component'] === 'Select'), 'the role select');
+          await page.act(() => (select.props.onValueChange as (role: string) => void)('manager'));
+        },
+      ],
+      ['banning', async (page: Mounted) => page.click('Ban user')],
+      [
+        'deleting',
+        async (page: Mounted) => {
+          await page.click('Delete user');
+          await page.click('Confirm delete');
+        },
+      ],
+    ])('%s a user', async (_, act) => {
+      const page = await mount('editUser', { props: { user: USER } });
+      await act(page);
+      expect(invalidated()).toEqual(['users']);
+    });
+
+    test('resetting a password changes no row of the list', async () => {
+      const page = await mount('editUser', { props: { user: USER }, mutationResult: { password: PASSWORD } });
+      await page.click('Generate new password');
+      expect(invalidated()).toEqual([]);
+    });
+
+    test('deleting a document', async () => {
+      const documents = { items: [{ id: 'd1', title: 'Plan', size: 2048, createdAt: new Date(0) }], total: 1 };
+      const page = await mount('documents', { data: documents });
+      await page.click('Delete document');
+      expect(invalidated()).toEqual(['documents']);
+    });
+
+    test('uploading a document', async () => {
+      const page = await mount('documents', { data: { items: [], total: 0 } });
+      const picker = must(find(page.tree, (element) => element.tag === 'input' && element.props.type === 'file'), 'the file picker');
+      (picker.props.ref as { current: unknown }).current = { files: [{ name: 'plan.pdf' }], value: 'plan.pdf' };
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async () => ({ ok: true })) as unknown as typeof fetch;
+      try {
+        await page.act(() =>
+          (globalThis as Globals).__testFormOptions?.onSubmit({ value: { title: 'Plan' }, formApi: { reset() {} } } as never),
+        );
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+      expect(invalidated()).toEqual(['documents']);
     });
   });
 

@@ -37,7 +37,7 @@ apps/
 │       │   │   └── reset-password/{page,reset-password-form}.tsx
 │       │   ├── (dashboard)/
 │       │   │   ├── layout.tsx          # Session gate (getAuth) + sidebar shell
-│       │   │   ├── page.tsx            # Documents list + upload (permission-gated)
+│       │   │   ├── page.tsx            # Documents list (paged) + upload (permission-gated)
 │       │   │   ├── profile/            # Tabbed (vertical): account, security, sessions, preferences
 │       │   │   │   ├── layout.tsx      # Vertical tab nav
 │       │   │   │   ├── account/page.tsx    # Avatar (R2) + inline-edit display name
@@ -46,7 +46,7 @@ apps/
 │       │   │   │   └── preferences/page.tsx # Theme
 │       │   │   └── admin/
 │       │   │       ├── layout.tsx      # Admin-only server gate
-│       │   │       ├── users/page.tsx       # Server page (title), renders users.client.tsx: datatable + create dialog
+│       │   │       ├── users/page.tsx       # Server page (title), renders users.client.tsx: paged datatable + create dialog
 │       │   │       ├── users/[id]/page.tsx  # Server page (title), renders user.client.tsx: per-user editor (inline edit, role, password, ban)
 │       │   │       └── roles/page.tsx       # Roles: role × permission matrix (read-only)
 │       │   └── api/
@@ -56,9 +56,10 @@ apps/
 │       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links
 │       │   ├── admin/                  # user-table, create-user-dialog, edit-user, generated-password
 │       │   ├── profile/                # avatar-upload, account/security forms, session-list, tab-nav
-│       │   ├── shared/data-table-shell.tsx  # shuip datatable wrapper (search + sort)
+│       │   ├── shared/data-table-shell.tsx  # shuip datatable wrapper (search + sort, client or server mode)
+│       │   ├── table-pagination.tsx    # PagedList: empty state, page past the end, or rows with the pager
 │       │   └── can.tsx                 # <Can> permission gate
-│       ├── hooks/use-permission.ts     # usePermission + useCan hooks
+│       ├── hooks/                      # use-permission, use-page-params, use-user-list-params (the URL as the page)
 │       └── lib/{constants,env}.ts      # ROUTES (sidebar) + getEnv() bindings
 └── cron/                               # Hono scheduled Worker
     ├── wrangler.jsonc                  # crons trigger + DB + STORAGE bindings
@@ -74,11 +75,14 @@ packages/
 │   └── auth-client.ts                  # authClient with adminClient
 └── api/src/
     ├── root.ts                         # tRPC root router
-    ├── router/documents.ts             # documents list/delete
-    ├── router/users.ts                 # admin user CRUD (create/update/role/password/ban)
+    ├── pagination.ts                   # page and page size rules, shared by the routers and the web app
+    ├── user-list.ts                    # search and sort of the users table
+    ├── page-query.ts                   # ordered page of a query (server only)
+    ├── router/documents.ts             # documents list/count/delete
+    ├── router/users.ts                 # admin user list/count + CRUD (create/update/role/password/ban)
     └── middleware/rbac.ts              # permissionProcedure / adminProcedure
 
-scripts/seed.ts                         # Local-D1 seed (users + demo documents)
+scripts/seed.ts                         # Local-D1 seed (users + demo documents, three pages of each)
 docs/agents/{auth-rbac,data-layer,storage,cloudflare-deploy}.md
 ```
 
@@ -96,7 +100,7 @@ Better Auth with the **admin plugin** + access control. `packages/auth/src/permi
 
 ### User management
 
-The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` (search + sort) with a **Create user** dialog — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. On your own account the role, ban and delete controls are not offered, and the server refuses them with a 400 (Better Auth for ban and delete, the `refuseOwnRoleChange` plugin for the role). A Better Auth refusal inside a router reaches the toast as its own message (see [tRPC](/docs/modules/api/trpc)). Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
+The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` with a **Create user** dialog (see [Paginated lists](#paginated-lists)) — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. On your own account the role, ban and delete controls are not offered, and the server refuses them with a 400 (Better Auth for ban and delete, the `refuseOwnRoleChange` plugin for the role). A Better Auth refusal inside a router reaches the toast as its own message (see [tRPC](/docs/modules/api/trpc)). Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
 
 ### Dashboard shell
 
@@ -110,9 +114,18 @@ Every form is built on the shuip TanStack-Form field kit (`useAppForm` in `packa
 
 A tabbed area (`/profile`) with a **vertical** tab rail, over `authClient` — no extra tRPC routers: **account** (avatar + inline-edit display name), **security** (change password), **sessions** (list + revoke), **preferences** (theme). The avatar uploads to R2 via `POST /api/avatar` (`avatars/<userId>`), is served back through `GET /api/avatar/[userId]` (session-gated), and the returned URL is saved to `user.image` with `authClient.updateUser`.
 
+### Paginated lists
+
+`users.list` and `documents.list` return one page, never the whole table, and `users.count` and `documents.count` return the total. The users table searches and sorts on the server too. Everything is in the URL, so a view can be bookmarked and the back and forward buttons walk through it: `/admin/users?page=2&pageSize=25&search=ada&sort=-name` (a value at its default is left out).
+
+- `packages/api/src/pagination.ts` validates `page` (a whole number from 1 to 10,000) and `pageSize` (10, 25, 50 or 100); a missing or invalid value is the first page, or 10 rows, instead of an error or an unbounded read. `packages/api/src/user-list.ts` adds the search (a substring of the name, the email or the role, in any case) and the sort (newest first, or by name or email in either direction). A sort the table does not offer is the default order, so a URL never picks a column.
+- Each sort is served by an index of the `users` table (`(created_at, id)`, `(name, id)` and the unique email), and every order ends with a unique column so a user never appears on two pages or on none. A new sort needs its own index. The search scans the table.
+- The total is its own `count` query, keyed by the search alone: changing the page, the page size or the sort does not count again, and a mutation that adds or removes a row invalidates it.
+- `PagedList` (`src/components/table-pagination.tsx`) renders the empty state, a page past the end with a button to the last page, or the rows with a pager. The users table and the documents list use it. `local-setup` seeds 30 users and 24 documents, three pages of each.
+
 ### Documents CRUD + R2 uploads
 
-The dashboard lists documents (own rows for users; all rows for admin/manager) and uploads files. Upload is a Route Handler (`api/documents/upload`) that authenticates, caps the file at 25 MB (Worker memory), `STORAGE.put`s it under `documents/<userId>/<id>`, and inserts the row. Deletion (tRPC `documents.delete`) removes the R2 object and the row together. See `docs/agents/storage.md`.
+The dashboard lists documents one page at a time (own rows for users; all rows for admin/manager) and uploads files. Upload is a Route Handler (`api/documents/upload`) that authenticates, caps the file at 25 MB (Worker memory), `STORAGE.put`s it under `documents/<userId>/<id>`, and inserts the row. Deletion (tRPC `documents.delete`) removes the R2 object and the row together. See `docs/agents/storage.md`.
 
 ### Cron Worker
 
@@ -120,7 +133,7 @@ The dashboard lists documents (own rows for users; all rows for admin/manager) a
 
 ### Local seed
 
-`scripts/seed.ts` opens the local miniflare D1 sqlite directly (`@libsql/client`, so it runs under Node and Bun) and creates `admin@example.com`, `manager@example.com`, and `user@example.com` (password `password`), plus demo documents — a third pre-expired to exercise the cron purge. It runs automatically as part of `local-setup`.
+`scripts/seed.ts` opens the local miniflare D1 sqlite directly (`@libsql/client`, so it runs under Node and Bun) and creates `admin@example.com`, `manager@example.com`, and `user@example.com` (password `password`), plus, with `--fixtures`, 27 more demo users and 24 demo documents — a third pre-expired to exercise the cron purge. It runs automatically as part of `local-setup`.
 
 ## Local setup & deploy
 

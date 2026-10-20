@@ -4,12 +4,15 @@ mono:
   name: api
   path: src/router/users.ts
 ---
-import { desc, eq, userTable } from '@repo/db';
+import type { SQL } from 'drizzle-orm';
+import { asc, count, desc, eq, or, sql, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
 import type { AppRole } from '@repo/auth/permissions';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
+import { type Column, orderedPage } from '../page-query';
+import { type UserSort, userCountInput, userListInput } from '../user-list';
 
 const userColumns = {
   id: userTable.id,
@@ -23,6 +26,25 @@ const userColumns = {
   createdAt: userTable.createdAt,
 };
 
+// Every order ends with a unique column, so a page boundary never repeats or skips a user. The indexes of the users
+// table (`schema.ts`) serve these orders; a new sort needs its own.
+const ORDER_BY_SORT: Record<UserSort, SQL[]> = {
+  '-createdAt': [desc(userTable.createdAt), desc(userTable.id)],
+  name: [asc(userTable.name), asc(userTable.id)],
+  '-name': [desc(userTable.name), desc(userTable.id)],
+  email: [asc(userTable.email)],
+  '-email': [desc(userTable.email)],
+};
+
+// The users whose name, email or role contains the text, whatever the case. `instr` reads the text as plain text:
+// LIKE would read a `%` or `_` of it as a wildcard.
+function matchingSearch(search: string): SQL | undefined {
+  const text = search.trim();
+  if (text === '') return undefined;
+  const contains = (column: Column) => sql`instr(lower(${column}), lower(${text})) > 0`;
+  return or(contains(userTable.name), contains(userTable.email), contains(userTable.role));
+}
+
 // Cryptographically-random password for admin-created accounts (shown once).
 function generatePassword(length = 14): string {
   const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
@@ -32,8 +54,19 @@ function generatePassword(length = 14): string {
 }
 
 export const usersRouter = router({
-  list: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.select(userColumns).from(userTable).orderBy(desc(userTable.createdAt));
+  list: adminProcedure
+    .input(userListInput)
+    .query(({ ctx, input }) =>
+      orderedPage(
+        ctx.db.select(userColumns).from(userTable).where(matchingSearch(input.search)),
+        ORDER_BY_SORT[input.sort],
+        input,
+      ),
+    ),
+
+  count: adminProcedure.input(userCountInput).query(async ({ ctx, input }) => {
+    const [result] = await ctx.db.select({ count: count() }).from(userTable).where(matchingSearch(input.search));
+    return result?.count ?? 0;
   }),
 
   get: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {

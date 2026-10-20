@@ -1,0 +1,67 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/user-list.ts
+---
+import { z } from 'zod';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, PAGE_KEYS, firstValue, pageParams, pageSearch, parseParams } from './pagination';
+
+// The orders the users table offers; a leading `-` is descending. Each one is served by an index of the users table
+// (`users_created_at_id_idx`, `users_name_id_idx`, and the unique email), and is the only way a URL picks a column.
+export const USER_SORTS = ['-createdAt', 'name', '-name', 'email', '-email'] as const;
+export const DEFAULT_USER_SORT = '-createdAt';
+// A longer text matches no name or email, and the search is capped before it reaches the database.
+export const MAX_SEARCH_LENGTH = 100;
+
+export type UserSort = (typeof USER_SORTS)[number];
+
+const userSearch = z.preprocess(firstValue, z.string().transform((text) => text.slice(0, MAX_SEARCH_LENGTH))).catch('');
+const userSort = z.preprocess(firstValue, z.enum(USER_SORTS)).catch(DEFAULT_USER_SORT);
+
+const userListParams = pageParams.extend({ search: userSearch, sort: userSort });
+
+export type UserListParams = z.infer<typeof userListParams>;
+
+export const USER_LIST_KEYS = [...PAGE_KEYS, 'search', 'sort'] as const;
+
+// The input of the users list: an absent or invalid value is the first page, newest first, with no search.
+export const userListInput = userListParams.default({
+  page: DEFAULT_PAGE,
+  pageSize: DEFAULT_PAGE_SIZE,
+  search: '',
+  sort: DEFAULT_USER_SORT,
+});
+
+// The total depends on the search alone, so a page, a page size or a sort never counts again.
+export const userCountInput = userListParams.pick({ search: true }).default({ search: '' });
+
+export function parseUserListParams(search: unknown): UserListParams {
+  return parseParams(userListParams, search);
+}
+
+// The list as a URL carries it: only what differs from the defaults is written. The search keeps the text as typed,
+// so the box that shows it never loses a trailing space; a blank search is no search.
+export function userListSearch(search: Record<string, unknown>): Partial<UserListParams> {
+  const params = parseUserListParams(search);
+  return {
+    ...pageSearch(params),
+    ...(params.search.trim() !== '' && { search: params.search }),
+    ...(params.sort !== DEFAULT_USER_SORT && { sort: params.sort }),
+  };
+}
+
+type Write = (search: Partial<UserListParams>, mode: 'push' | 'replace') => void;
+
+// What the users table is handed: the list, and how to write another one into the URL. A new page size, search or
+// sort goes back to page 1. A search replaces the history entry, so typing never fills the back button.
+export function userListControls(params: UserListParams, write: Write) {
+  const to = (change: Record<string, unknown>) => userListSearch({ ...params, page: DEFAULT_PAGE, ...change });
+  return {
+    ...params,
+    setPage: (page: number) => write(to({ page }), 'push'),
+    setPageSize: (pageSize: number) => write(to({ pageSize }), 'push'),
+    setSearch: (search: string) => write(to({ search }), 'replace'),
+    setSort: (sort: UserSort) => write(to({ sort }), 'push'),
+  };
+}

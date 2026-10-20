@@ -4,19 +4,29 @@ mono:
   name: api
   path: src/router/documents.ts
 ---
-import { and, desc, documentTable, eq } from '@repo/db';
+import { and, count, documentTable, eq } from '@repo/db';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';
+import { newestFirstPage } from '../page-query';
+import { pageInput } from '../pagination';
+
+// An admin or a manager sees every document, anyone else their own.
+function visibleTo(user: { id: string; role?: string | null }) {
+  const isPrivileged = user.role === 'admin' || user.role === 'manager';
+  return isPrivileged ? undefined : eq(documentTable.userId, user.id);
+}
 
 export const documentsRouter = router({
-  list: permissionProcedure('document', 'read').query(async ({ ctx }) => {
-    const isPrivileged = ctx.session.user.role === 'admin' || ctx.session.user.role === 'manager';
-    return ctx.db
-      .select()
-      .from(documentTable)
-      .where(isPrivileged ? undefined : eq(documentTable.userId, ctx.session.user.id))
-      .orderBy(desc(documentTable.createdAt));
+  list: permissionProcedure('document', 'read')
+    .input(pageInput)
+    .query(({ ctx, input }) =>
+      newestFirstPage(ctx.db.select().from(documentTable).where(visibleTo(ctx.session.user)), documentTable, input),
+    ),
+
+  count: permissionProcedure('document', 'read').query(async ({ ctx }) => {
+    const [result] = await ctx.db.select({ count: count() }).from(documentTable).where(visibleTo(ctx.session.user));
+    return result?.count ?? 0;
   }),
 
   delete: permissionProcedure('document', 'delete')

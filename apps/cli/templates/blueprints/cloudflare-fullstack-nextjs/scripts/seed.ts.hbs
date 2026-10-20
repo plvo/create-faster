@@ -15,6 +15,9 @@ import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '@repo/db';
 
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
+// Enough rows for the users table and the documents list to fill three pages of the default size.
+const DEMO_USER_COUNT = 27;
+const DEMO_DOCUMENT_COUNT = 24;
 
 const { values: flags } = parseArgs({
   options: {
@@ -33,7 +36,7 @@ Usage: {{{{/raw}}}}{{runScript "db:seed"}}{{{{raw}}}} [options]
 
 Options:
   --reset      Wipe existing rows before seeding
-  --fixtures   Add demo documents (including expired ones for the cron purge)
+  --fixtures   Add demo users and documents (including expired ones for the cron purge)
   -h, --help   Show this help`);
 }
 
@@ -100,11 +103,21 @@ async function seedFixtures(core: CoreRefs): Promise<void> {
   }
 
   faker.seed(42);
+  for (let i = 0; i < DEMO_USER_COUNT; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    await findOrCreateUser({
+      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+      name: `${firstName} ${lastName}`,
+      role: 'user',
+    });
+  }
+
   const ownerIds = [core.adminId, core.managerId, core.userId];
   const now = Date.now();
 
   await db.insert(documentTable).values(
-    Array.from({ length: 9 }, (_, i) => {
+    Array.from({ length: DEMO_DOCUMENT_COUNT }, (_, i) => {
       const userId = faker.helpers.arrayElement(ownerIds);
       const id = crypto.randomUUID();
       return {
@@ -120,7 +133,7 @@ async function seedFixtures(core: CoreRefs): Promise<void> {
     }),
   );
 
-  console.log('Added 9 documents (3 expired for the cron purge demo).');
+  console.log(`Added ${DEMO_USER_COUNT} users and ${DEMO_DOCUMENT_COUNT} documents (a third of them expired for the cron purge demo).`);
 }
 
 async function reset(): Promise<void> {
@@ -147,7 +160,7 @@ async function main(): Promise<void> {
   const core = await seedCore();
 
   if (flags.fixtures) {
-    console.log('Seeding demo documents...');
+    console.log('Seeding demo users and documents...');
     await seedFixtures(core);
   }
 

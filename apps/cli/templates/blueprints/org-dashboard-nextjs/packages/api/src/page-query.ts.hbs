@@ -4,22 +4,4 @@ mono:
   name: api
   path: src/page-query.ts
 ---
-import type { SQL } from 'drizzle-orm';
-import { desc } from '@repo/db';
-import { type PageParams, pageOffset } from './pagination';
-
-type Column = Parameters<typeof desc>[0];
-
-interface PageableQuery<Rows> {
-  orderBy: (...order: SQL[]) => { limit: (limit: number) => { offset: (offset: number) => Rows } };
-}
-
-// One page of a table, newest first. The id breaks ties between rows created together, so a page boundary never
-// repeats or skips a row. This module reads the database: only routers import it, never a client component.
-export function newestFirstPage<Rows>(
-  query: PageableQuery<Rows>,
-  table: { createdAt: Column; id: Column },
-  params: PageParams,
-): Rows {
-  return query.orderBy(desc(table.createdAt), desc(table.id)).limit(params.pageSize).offset(pageOffset(params));
-}
+{{> pagination/page-query}}

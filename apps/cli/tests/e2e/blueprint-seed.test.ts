@@ -43,6 +43,15 @@ const signIn = async (server: RunningServer, email: string, password: string, cl
     .join('; ');
 };
 
+// The tRPC endpoint speaks superjson: a query is a GET with its input in the URL, wrapped as superjson wraps it.
+async function queryTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<T> {
+  const query = input === undefined ? '' : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
+  const response = await fetch(new URL(`/api/trpc/${procedure}${query}`, server.url), { headers: { cookie } });
+  expect([procedure, response.status]).toEqual([procedure, 200]);
+  const body = (await response.json()) as { result: { data: { json: T } } };
+  return body.result.data.json;
+}
+
 async function redirectPathOf(server: RunningServer, path: string, cookie?: string): Promise<string | null> {
   const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: cookie ? { cookie } : {} });
   const location = response.headers.get('location');
@@ -171,6 +180,40 @@ describe('cloudflare-fullstack-nextjs blueprint e2e', () => {
         for (const path of ['/admin/users', userPage, `/admin/users/${UNKNOWN_ID}`, '/admin/roles']) {
           expect([path, await redirectPathOf(server, path, memberCookie)]).toEqual([path, '/']);
         }
+
+        // The seed gives the admin 30 users and 24 documents to see: three pages of ten of each, on the server.
+        const pagesOf = async <T extends { id: string }>(list: string, input: Record<string, unknown> = {}): Promise<T[][]> => {
+          const pages: T[][] = [];
+          for (let page = 1; page <= 4; page++) pages.push(await queryTrpc<T[]>(server, list, cookie, { ...input, page, pageSize: 10 }));
+          return pages;
+        };
+        const idsOf = (pages: { id: string }[][]) => pages.flat().map((row) => row.id);
+
+        expect(await queryTrpc<number>(server, 'users.count', cookie)).toBe(30);
+        const userPages = await pagesOf<{ id: string; name: string }>('users.list');
+        expect(userPages.map((page) => page.length)).toEqual([10, 10, 10, 0]);
+        expect(new Set(idsOf(userPages)).size).toBe(30);
+
+        const byName = await pagesOf<{ id: string; name: string }>('users.list', { sort: 'name' });
+        const names = byName.flat().map((row) => row.name);
+        expect(names).toEqual([...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+        expect(idsOf(byName).sort()).toEqual(idsOf(userPages).sort());
+
+        const matches = await queryTrpc<{ email: string }[]>(server, 'users.list', cookie, { search: 'MANAGER', pageSize: 100 });
+        expect(await queryTrpc<number>(server, 'users.count', cookie, { search: 'MANAGER' })).toBe(matches.length);
+        expect(matches.map((row) => row.email)).toContain('manager@example.com');
+        expect(matches.length).toBeLessThan(30);
+
+        // The table is drawn in the browser, once the session says the viewer may list users: the page itself answers.
+        const listed = await fetch(new URL('/admin/users?page=3&pageSize=25&sort=-name&search=a', server.url), { headers: { cookie } });
+        expect(listed.status).toBe(200);
+
+        expect(await queryTrpc<number>(server, 'documents.count', cookie)).toBe(24);
+        const documentPages = await pagesOf<{ id: string }>('documents.list');
+        expect(documentPages.map((page) => page.length)).toEqual([10, 10, 4, 0]);
+        expect(new Set(idsOf(documentPages)).size).toBe(24);
+        const documentsPage = await (await fetch(new URL('/?page=3', server.url), { headers: { cookie } })).text();
+        expect(documentsPage).toContain('Showing 21–24 of 24 documents');
 
         // A rejected query logs after the response is sent: wait for a late line before the server is stopped.
         await Bun.sleep(1_000);

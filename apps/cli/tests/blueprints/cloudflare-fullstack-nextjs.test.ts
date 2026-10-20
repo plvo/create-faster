@@ -26,7 +26,8 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
 
   test('only adds blueprint-specific extras to packageJson', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated in prior test
-    expect(bp!.packageJson?.dependencies).toMatchObject({ 'lucide-react': '^1.37.0', sonner: '^2.0.7', zod: '^4.5.4' });
+    const web = bp!.context.apps.find((app) => app.appName === 'web');
+    expect(web?.packageJson?.dependencies).toMatchObject({ 'lucide-react': '^1.37.0', sonner: '^2.0.7', zod: '^4.5.4' });
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated in prior test
     expect(bp!.rootPackageJson?.devDependencies).toMatchObject({ '@faker-js/faker': '^10.4.0' });
   });
@@ -256,7 +257,6 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('user table renders through the shuip DataTableShell over trpc.users.list', () => {
     const table = bpFile('src/components/admin/user-table.tsx.hbs');
     expect(table).toContain("import { DataTableShell, type DataTableShellColumn } from '@/components/shared/data-table-shell'");
-    expect(table).toContain('trpc.users.list.queryOptions()');
     expect(table).toContain('href={`/admin/users/${row.original.id}`}');
   });
 
@@ -401,12 +401,12 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(bpFile('scripts/seed.ts.hbs')).toContain("PRAGMA foreign_keys = ON");
   });
 
-  test('seed wiring: drizzle-orm at root, local-setup, and a resolvable better-auth baseURL', () => {
+  test('seed wiring: drizzle-orm at root, local-setup, and the env files the seed reads', () => {
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
     expect(bp!.rootPackageJson?.devDependencies).toHaveProperty('drizzle-orm');
     // biome-ignore lint/style/noNonNullAssertion: bp presence validated earlier
     const scripts = bp!.rootPackageJson?.scripts ?? {};
-    expect(scripts['db:seed']).toContain('BETTER_AUTH_URL=');
+    expect(scripts['db:seed']).toBe('{{tsRunner}} --env-file=apps/web/.env --env-file=.env.seed scripts/seed.ts');
     expect(scripts['local-setup']).toBe('{{tsRunner}} scripts/local-setup.ts');
   });
 

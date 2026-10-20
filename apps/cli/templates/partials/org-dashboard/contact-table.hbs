@@ -7,11 +7,10 @@ import { useSuspenseQueries } from '@tanstack/react-query';
 {{#if (eq stackName "tanstack-start")}}
 import { Link } from '@tanstack/react-router';
 {{/if}}
+import { COUNT_STALE_TIME } from '@repo/api/pagination';
 import { PagedList } from '@/components/table-pagination';
 import { usePageParams } from '@/hooks/use-page-params';
 import { useTRPC } from '@/trpc/providers';
-
-const COUNT_STALE_TIME = 60_000;
 
 export function ContactTable() {
   const trpc = useTRPC();

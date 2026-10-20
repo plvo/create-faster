@@ -5,6 +5,7 @@ mono:
 ---
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { parseUserListParams } from '@repo/api/user-list';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { requireAdmin } from '@/lib/auth/session';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
@@ -12,9 +13,15 @@ import { UsersClient } from './users.client';
 
 export const metadata: Metadata = { title: 'Users' };
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireAdmin();
-  prefetch(trpc.users.list.queryOptions());
+  const params = parseUserListParams(await searchParams);
+  prefetch(trpc.users.list.queryOptions(params));
+  prefetch(trpc.users.count.queryOptions({ search: params.search }));
 
   return (
     <HydrateClient>

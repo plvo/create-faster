@@ -1,0 +1,13 @@
+---
+mono:
+  scope: app
+  path: src/hooks/use-user-list-params.ts
+---
+'use client';
+
+import { USER_LIST_KEYS, parseUserListParams, userListControls } from '@repo/api/user-list';
+import { useListParams } from '@/hooks/use-page-params';
+
+export function useUserListParams() {
+  return useListParams(USER_LIST_KEYS, parseUserListParams, userListControls);
+}

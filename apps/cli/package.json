@@ -67,6 +67,7 @@
     "@repo/config": "*",
     "@trpc/server": "^11.18.0",
     "better-auth": "^1.7.7",
+    "drizzle-orm": "^0.45.2",
     "evlog": "^2.28.0",
     "hono": "^4.7.4",
     "superjson": "^2.2.6"

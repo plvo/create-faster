@@ -6,11 +6,32 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQueries } from '@tanstack/react-query';
+import { X } from 'lucide-react';
 import Link from 'next/link';
+import { COUNT_STALE_TIME, pageCountOf } from '@repo/api/pagination';
+import { DEFAULT_USER_SORT, USER_SORTS, type UserSort } from '@repo/api/user-list';
+import type { SortingState } from '@repo/ui/components/block/shuip/data-table';
 import { Badge } from '@repo/ui/components/ui/badge';
+import { Button } from '@repo/ui/components/ui/button';
+import { SearchInput } from '@repo/ui/components/ui/search-input';
 import { DataTableShell, type DataTableShellColumn } from '@/components/shared/data-table-shell';
+import { PagedList } from '@/components/table-pagination';
+import { useUserListParams } from '@/hooks/use-user-list-params';
 import { useTRPC } from '@/trpc/providers';
+
+// The sort of the URL as the table states it: the default order is no column sorted.
+function sortingOf(sort: UserSort): SortingState {
+  if (sort === DEFAULT_USER_SORT) return [];
+  return [{ id: sort.replace(/^-/, ''), desc: sort.startsWith('-') }];
+}
+
+// The reverse: a column the list cannot order by, or no column at all, is the default order.
+function sortOf(sorting: SortingState): UserSort {
+  const [first] = sorting;
+  const requested = first ? `${first.desc ? '-' : ''}${first.id}` : DEFAULT_USER_SORT;
+  return USER_SORTS.find((sort) => sort === requested) ?? DEFAULT_USER_SORT;
+}
 
 type UserRow = {
   id: string;
@@ -69,16 +90,53 @@ const columns: DataTableShellColumn<UserRow>[] = [
 
 export function UserTable() {
   const trpc = useTRPC();
-  const { data: users } = useSuspenseQuery(trpc.users.list.queryOptions());
+  const { page, pageSize, search, sort, setPage, setPageSize, setSearch, setSort } = useUserListParams();
+  const [{ data: users }, { data: total }] = useSuspenseQueries({
+    queries: [
+      trpc.users.list.queryOptions({ page, pageSize, search, sort }),
+      trpc.users.count.queryOptions({ search }, { staleTime: COUNT_STALE_TIME }),
+    ],
+  });
+  const sorting = sortingOf(sort);
 
   return (
     <DataTableShell
       columns={columns}
       data={users as UserRow[]}
-      filtering='search'
-      searchPlaceholder='Search by name, email or role…'
-      searchableAccessor={(user) => `${user.name} ${user.email} ${user.role ?? ''}`}
-      emptyFiltered='No users match your search.'
+      pageCount={pageCountOf(total, pageSize)}
+      state={{ pagination: { pageIndex: page - 1, pageSize }, sorting }}
+      onSortingChange={(updater) => setSort(sortOf(typeof updater === 'function' ? updater(sorting) : updater))}
+      hideToolbarSearch
+      toolbarStart={
+        <>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder='Search by name, email or role…'
+            className='max-w-sm flex-1'
+          />
+          {sort !== DEFAULT_USER_SORT && (
+            <Button variant='ghost' size='sm' onClick={() => setSort(DEFAULT_USER_SORT)}>
+              <X className='size-4' />
+              <span className='sr-only sm:not-sr-only'>Clear sort</span>
+            </Button>
+          )}
+        </>
+      }
+      renderBody={(table) => (
+        <PagedList
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          rowCount={users.length}
+          itemName='users'
+          emptyMessage={search.trim() ? 'No users match your search.' : 'No users yet.'}
+          setPage={setPage}
+          setPageSize={setPageSize}
+        >
+          {table}
+        </PagedList>
+      )}
     />
   );
 }

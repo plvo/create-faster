@@ -5,6 +5,7 @@ mono:
 ---
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { parsePageParams } from '@repo/api/pagination';
 import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { requireSession } from '@/lib/auth/session';
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
@@ -12,9 +13,14 @@ import { DocumentsClient } from './documents.client';
 
 export const metadata: Metadata = { title: 'Documents' };
 
-export default async function DocumentsPage() {
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireSession();
-  prefetch(trpc.documents.list.queryOptions());
+  prefetch(trpc.documents.list.queryOptions(parsePageParams(await searchParams)));
+  prefetch(trpc.documents.count.queryOptions());
 
   return (
     <HydrateClient>
