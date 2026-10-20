@@ -1,0 +1,16 @@
+'use client';
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { PAGE_KEYS, pageControls, parsePageParams, queryStringWith } from '@repo/api/pagination';
+
+export function usePageParams() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const params = parsePageParams(Object.fromEntries(PAGE_KEYS.map((key) => [key, searchParams.getAll(key)])));
+
+  return pageControls(params, (search) => {
+    const queryString = queryStringWith(searchParams, PAGE_KEYS, search);
+    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  });
+}
