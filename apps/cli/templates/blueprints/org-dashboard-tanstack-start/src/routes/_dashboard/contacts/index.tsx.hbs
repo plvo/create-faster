@@ -5,10 +5,11 @@ import { QueryBoundary } from '@/components/query-boundary';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/contacts/')({
-  validateSearch: (search: Record<string, unknown>) => pageSearch(search),
+  validateSearch: pageSearch,
   loaderDeps: ({ search }) => parsePageParams(search),
   loader: ({ context, deps }) => {
     void context.queryClient.prefetchQuery(context.trpc.contact.list.queryOptions(deps));
+    void context.queryClient.prefetchQuery(context.trpc.contact.count.queryOptions());
   },
   head: () => ({ meta: [{ title: pageTitle('Contacts') }] }),
   component: ContactsPage,

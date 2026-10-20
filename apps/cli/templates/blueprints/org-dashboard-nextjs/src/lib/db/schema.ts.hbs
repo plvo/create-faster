@@ -6,10 +6,10 @@ mono:
   path: src/schema.ts
 ---
 {{#if (has "database" "postgres")}}
-import { pgTable, boolean, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, boolean, index, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
 {{#if (has "database" "mysql")}}
-import { mysqlTable, boolean, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
+import { mysqlTable, boolean, index, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
 {{/if}}
 import { relations } from 'drizzle-orm';
 
@@ -39,7 +39,9 @@ export const userTable = mysqlTable('users', {
   firstName: varchar('first_name', { length: 255 }),
   lastName: varchar('last_name', { length: 255 }),
   ...timeColumns,
-});
+}, (table) => [
+  index('users_created_at_id_idx').on(table.createdAt, table.id),
+]);
 
 export const userTableRelations = relations(userTable, ({ many }) => ({
 {{#if (hasLibrary "better-auth")}}
@@ -158,7 +160,9 @@ export const contactTable = mysqlTable('contacts', {
   notes: text('notes'),
   createdById: varchar('created_by_id', { length: 36 }).references(() => userTable.id, { onDelete: 'set null' }),
   ...timeColumns,
-});
+}, (table) => [
+  index('contacts_created_at_id_idx').on(table.createdAt, table.id),
+]);
 
 export const contactTableRelations = relations(contactTable, ({ one }) => ({
   createdBy: one(userTable, {

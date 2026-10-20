@@ -7,10 +7,11 @@ mono:
 import { z } from 'zod';
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
+export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
-
-const DEFAULT_PAGE = 1;
-const MAX_PAGE = 1_000_000;
+// Offset pagination slows down with depth; a page past this one reads as the first, and a table that needs to reach
+// deeper rows pages by a cursor instead.
+export const MAX_PAGE = 10_000;
 
 // A query string repeats a parameter as a list; the first value is the one the server and the browser both read.
 const firstValue = (value: unknown): unknown => (Array.isArray(value) ? value[0] : value);
@@ -31,7 +32,7 @@ export function parsePageParams(search: unknown): PageParams {
 }
 
 // The page as a URL carries it: only what differs from the defaults is written.
-export function pageSearch(search: unknown): Partial<PageParams> {
+export function pageSearch(search: Record<string, unknown>): Partial<PageParams> {
   const { page, pageSize } = parsePageParams(search);
   return {
     ...(page !== DEFAULT_PAGE && { page }),
@@ -39,6 +40,19 @@ export function pageSearch(search: unknown): Partial<PageParams> {
   };
 }
 
-export function pageOffset({ page, pageSize }: PageParams): number {
+export function pageOffset({ page, pageSize }: { page: number; pageSize: number }): number {
   return (page - 1) * pageSize;
+}
+
+export function pageCountOf(total: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+// What a list hands its table: the page, and how to write another one into the URL. `write` is the router's part.
+export function pageControls(params: PageParams, write: (search: Partial<PageParams>) => void) {
+  return {
+    ...params,
+    setPage: (page: number) => write(pageSearch({ ...params, page })),
+    setPageSize: (pageSize: number) => write(pageSearch({ page: DEFAULT_PAGE, pageSize })),
+  };
 }
