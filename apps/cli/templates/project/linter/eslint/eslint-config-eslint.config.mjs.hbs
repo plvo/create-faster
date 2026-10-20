@@ -6,5 +6,5 @@ mono:
   path: eslint.config.mjs
 ---
 {{#if (hasPackage "eslint-config")}}
-{{> eslint/package-config preset="server" from="./server.js"}}
+{{> eslint/workspace-config config="serverConfig" from="./server.js"}}
 {{/if}}

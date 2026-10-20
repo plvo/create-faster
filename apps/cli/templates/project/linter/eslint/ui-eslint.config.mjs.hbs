@@ -6,5 +6,5 @@ mono:
   path: eslint.config.mjs
 ---
 {{#if (hasPackage "ui")}}
-{{> eslint/package-config preset="react" from="@repo/eslint-config/react"}}
+{{> eslint/workspace-config config="reactConfig" from="@repo/eslint-config/react"}}
 {{/if}}
