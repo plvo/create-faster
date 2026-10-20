@@ -13,8 +13,6 @@ export default async function proxy(request: NextRequest) {
   const isOAuthCallback = request.nextUrl.searchParams.has('privy_oauth_code');
   const isAuthenticated = Boolean(token);
 
-  console.log(`PROXY "${pathname}" | "${isAuthenticated ? 'authenticated' : 'X'}"`);
-
   if (!isAuthenticated && !isPublicRoute(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
