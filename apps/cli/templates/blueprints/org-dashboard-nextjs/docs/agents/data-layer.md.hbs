@@ -18,7 +18,7 @@ Drizzle schema lives in the db package. tRPC procedures read and write through t
 Add a procedure to the relevant tRPC router, then consume it with the generated hook. Keep DB access inside procedures.
 
 ## Seed
-{{> seed/reset-flag}}
+{{> seed/blueprint}}
 
 ## Paginated lists
 `contact.list` and `user.list` return the rows of one page, never the whole table, and `contact.count` and `user.count` return the total. The page is in the URL (`?page=2&pageSize=25`), which is the source of truth: the back and forward buttons and a bookmark show the same page.
