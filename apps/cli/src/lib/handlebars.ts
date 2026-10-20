@@ -8,6 +8,7 @@ import { PARTIALS_DIR } from './constants';
 import {
   collectAppReceivesEnv,
   collectAppSecrets,
+  collectAppUrlEnvs,
   collectEnvFileNames,
   collectProjectSecrets,
   collectTaskEnv,
@@ -116,6 +117,11 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
+  });
+
+  Handlebars.registerHelper('appUrlEnvs', (...args: unknown[]) => {
+    const options = args.pop() as Handlebars.HelperOptions;
+    return collectAppUrlEnvs(options.data.root as TemplateContext, args as StackName[]);
   });
 
   Handlebars.registerHelper(

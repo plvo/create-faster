@@ -1,0 +1,7 @@
+{{!-- Renders nothing when no Next.js app receives a variable that holds its own URL. Call it at the top level of a document, as a list item. --}}
+{{#if (appUrlEnvs "nextjs")}}
+- The preview listens on Wrangler's port (8787 by default), not on the one `.env` names, and the Worker checks the requests it gets against the URL variables below. To sign in on it, set them to its origin (`http://localhost:8787`) in the `.env` of the app, run `build:cf` again (the build freezes the values of `.env`), then `preview`; set them back for `dev` afterwards:
+{{#each (appUrlEnvs "nextjs")}}
+  {{> ports/app-url-variables}}
+{{/each}}
+{{/if}}

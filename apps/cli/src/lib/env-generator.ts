@@ -58,6 +58,8 @@ export function resolveAppUrl(ctx: TemplateContext, appName: string): string {
     : `http://localhost:${port}`;
 }
 
+const APP_URL_PLACEHOLDER = '{{appUrl}}';
+
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
   let resolved = value.replace(/\{\{projectName\}\}/g, ctx.projectName);
   if (ctx.dbPort !== undefined) {
@@ -65,7 +67,7 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
   }
   if (appName) {
     resolved = resolved.replace(/\{\{appPort\}\}/g, String(resolveAppPort(ctx.apps, appName)));
-    resolved = resolved.replace(/\{\{appUrl\}\}/g, resolveAppUrl(ctx, appName));
+    resolved = resolved.replaceAll(APP_URL_PLACEHOLDER, resolveAppUrl(ctx, appName));
   }
   return resolved;
 }
@@ -251,6 +253,24 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
+}
+
+/** The variables of the `.env` of each app (those on one of the stacks, all apps when none is given) whose value is the URL the app is served from. */
+export function collectAppUrlEnvs(
+  ctx: TemplateContext,
+  stacks: readonly StackName[] = [],
+): { appName: string; names: string[] }[] {
+  const envs = collectAllEnvs(ctx).filter(
+    (env) => env.value.includes(APP_URL_PLACEHOLDER) && isReadFromAppEnvFile(env, ctx),
+  );
+
+  return ctx.apps
+    .filter((app) => stacks.length === 0 || stacks.includes(app.stackName))
+    .map((app) => ({
+      appName: app.appName,
+      names: [...new Set(envs.filter((env) => appAcceptsEnv(env, app)).map((env) => extractEnvKey(env.value)))],
+    }))
+    .filter(({ names }) => names.length > 0);
 }
 
 /** The names of the dedicated env files (`EnvVar.file`) the project receives, each once: files only a CLI loads, so they are never committed. */

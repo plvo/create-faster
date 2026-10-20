@@ -77,6 +77,7 @@ A build and a deploy print warnings that change nothing:
 - `{{runScript "local-setup"}}` once (applies local migrations + seeds the local D1).
 - `{{runScript "dev"}}` — `next dev` with the Cloudflare bindings wired via `initOpenNextCloudflareForDev` (D1/R2 from `.wrangler`, the same local state `local-setup` seeds). The cron Worker runs next to it under `wrangler dev` on port {{appPort "cron"}} (`apps/cron`, same local state). This is the primary local loop (hot reload, dev-mode auth).
 - `{{#inDirectory "apps" "web"}}{{runScript "preview"}}{{/inDirectory}}` runs the OpenNext **production** build locally to smoke-test the deployed shape. The build freezes the values of `.env` into the Worker, so run `build:cf` again after every `.env` change. Wrangler does not load `.env` for this preview (OpenNext handles it), so it warns about a missing required secret even when `.env` holds it; the warning is safe to ignore then.
+{{> cloudflare/preview-origin}}
 - Fire the cron handler locally without waiting for the schedule, while `{{runScript "dev"}}` runs: `curl -X POST "http://localhost:{{appPort "cron"}}/cdn-cgi/local/explorer/api/local/scheduled?worker={{#with projectName}}{{this}}{{/with}}-cron" -H 'Content-Type: application/json' -d '{"cron":"0 3 * * *"}'` runs `scheduled()` against the local D1 + R2 the web app uses (purges expired documents).
 
 ## Build-time vs runtime env

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
   collectAppSecrets,
+  collectAppUrlEnvs,
   collectEnvFiles,
   collectEnvGroups,
   collectEnvsToGenerate,
@@ -858,5 +859,69 @@ describe('EnvVar.thirdParty', () => {
     for (const [name, sources] of sourcesByName) {
       expect({ name, sourceCount: sources.size }).toEqual({ name, sourceCount: 1 });
     }
+  });
+});
+
+describe('collectAppUrlEnvs', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const URL_ENVS: EnvVar[] = [
+    { value: 'ALL_APPS_URL={{appUrl}}', monoScope: ['app'] },
+    { value: 'NEXT_ONLY_URL={{appUrl}}', monoScope: ['app'], stacks: ['nextjs'] },
+    { value: 'PKG_URL={{appUrl}}', monoScope: [{ pkg: 'db' }] },
+    { value: 'FILE_URL={{appUrl}}', monoScope: ['app'], file: 'cli' },
+    { value: 'PLAIN_PORT={{appPort}}', monoScope: ['app'] },
+  ];
+
+  function collectWith<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = URL_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  const turborepo = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['better-auth', 'trpc'] },
+      { appName: 'site', stackName: 'tanstack-start', libraries: ['better-auth'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+  });
+
+  test('an app receives the variables of its libraries whose value is its own URL, and none of another app', () => {
+    expect(collectAppUrlEnvs(turborepo)).toEqual([
+      { appName: 'web', names: ['BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL'] },
+      { appName: 'site', names: ['BETTER_AUTH_URL'] },
+    ]);
+  });
+
+  test('a project addon variable goes to every app, narrowed by stacks, and never a package or file variable', () => {
+    const [web, site, api] = collectWith(() => collectAppUrlEnvs(turborepo));
+
+    expect(web?.names).toEqual(['ALL_APPS_URL', 'NEXT_ONLY_URL', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL']);
+    expect(site?.names).toEqual(['ALL_APPS_URL', 'BETTER_AUTH_URL']);
+    expect(api).toEqual({ appName: 'api', names: ['ALL_APPS_URL'] });
+  });
+
+  test('the stacks narrow the apps', () => {
+    expect(collectAppUrlEnvs(turborepo, ['tanstack-start'])).toEqual([
+      { appName: 'site', names: ['BETTER_AUTH_URL'] },
+    ]);
+    expect(collectAppUrlEnvs(turborepo, ['hono'])).toEqual([]);
+  });
+
+  test('a single repo app receives them in its root .env', () => {
+    const ctx = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: ['better-auth'] }],
+    });
+    expect(collectAppUrlEnvs(ctx)).toEqual([{ appName: 'my-project', names: ['BETTER_AUTH_URL'] }]);
+  });
+
+  test('a project without such a variable has none', () => {
+    const ctx = makeContext({ apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['shadcn'] }] });
+    expect(collectAppUrlEnvs(ctx)).toEqual([]);
   });
 });
