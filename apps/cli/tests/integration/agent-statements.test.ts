@@ -507,3 +507,26 @@ describe('a root script the project does not define is not documented', () => {
     expect(readme.match(/Start the dev server of every app that has a `dev` script/g)).toHaveLength(2);
   });
 });
+
+/** The headings of a Markdown document that follow a line of text directly, outside code fences. */
+function gluedHeadings(markdown: string): string[] {
+  const lines = markdown.split('\n');
+  let inFence = false;
+  const glued: string[] = [];
+
+  for (const [index, line] of lines.entries()) {
+    if (line.startsWith('```')) inFence = !inFence;
+    if (!inFence && /^#{1,6} /.test(line) && index > 0 && lines[index - 1] !== '') glued.push(line);
+  }
+  return glued;
+}
+
+describe('generated READMEs keep a blank line before every heading', () => {
+  test('the check sees a heading glued to the line above and ignores a comment in a code fence', () => {
+    expect(gluedHeadings('## One\ntext\n## Two\n\n```bash\n# not a heading\n```\n')).toEqual(['## Two']);
+  });
+
+  test.each(Object.keys(PROJECTS) as ProjectName[])('%s', async (name) => {
+    expect(gluedHeadings(await readTextFile(join(projectPath(name), 'README.md')))).toEqual([]);
+  });
+});

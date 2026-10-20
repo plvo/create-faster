@@ -27,13 +27,13 @@
 - `{{runScript "db:migrate:remote"}}` - Run database migrations on the production database
 {{/if}}
 {{#if (hasRootScript "db:seed")}}
-- `{{runScript "db:seed"}}` - Seed the database; it can delete users (see Seeding in the README)
+- `{{runScript "db:seed"}}` - Seed the database; it can delete users (see Seeding {{#if readme}}below{{else}}in the README{{/if}})
 {{/if}}
 {{#if (hasRootScript "db:studio")}}
 - `{{runScript "db:studio"}}` - Open database management UI
 {{/if}}
 {{#if (hasRootScript "local-setup")}}
-- `{{runScript "local-setup"}}` - Set up the local database and seed it; it can delete the local data (see Seeding in the README)
+- `{{runScript "local-setup"}}` - Set up the local database and seed it; it can delete the local data (see Seeding {{#if readme}}below{{else}}in the README{{/if}})
 {{/if}}
 {{#if (hasRootScript "cf-typegen")}}
 - `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app that has a `cf-typegen` script
