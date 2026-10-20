@@ -18,14 +18,15 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 `not_found_handling: "404-page"` makes unmatched paths serve the export's pre-rendered `out/404.html` (the branded not-found page) instead of a blank 404 body.
 
 ## First deploy
+
+The first deploy needs the public URL of the Worker before the build, because the build writes it into the site.
 {{> cloudflare/production-url appUrlUse="the app writes into the sitemap, `robots.txt`, canonical URLs and JSON-LD"}}
 
 ### Build and deploy
 
-From the repository root, with the URL learned above:
+From the repository root, with `NEXT_PUBLIC_APP_URL` exported as above:
 
 ```bash
-export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name}}.<subdomain>.workers.dev
 {{runScript "deploy"}}   # next build && wrangler deploy
 ```
 

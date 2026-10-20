@@ -7,7 +7,7 @@ import { TEMPLATES_DIR } from '@/lib/constants';
 import { removeFrontmatter } from '@/lib/frontmatter';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import type { TemplateContext } from '@/types/ctx';
-import { evaluateNextConfig } from '../../next-config';
+import { evaluateNextConfig } from '../../integration/helpers';
 
 beforeAll(() => {
   setupTemplateEngine();

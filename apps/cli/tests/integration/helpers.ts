@@ -385,16 +385,18 @@ export function runCliOnTerminal(
 /**
  * Writes a generated TypeScript file as an ES module and imports it. `imports` rewrites module specifiers to
  * paths relative to `target` (stand-ins for packages the test environment does not install). JSX of a `tsx`
- * file compiles to `createElement` and `Fragment` calls on the stand-in registered for `react`.
+ * file compiles to `createElement` and `Fragment` calls on the stand-in registered for `react`. `define` replaces
+ * expressions at transpile time (`process.env.NODE_ENV`, which Bun otherwise inlines with the value of the test run).
  */
 export async function evaluateGeneratedModule<T>(
   source: string,
   target: string,
   imports: Record<string, string> = {},
   loader: 'ts' | 'tsx' = 'ts',
+  define: Record<string, string> = {},
 ): Promise<T> {
   const jsx = { compilerOptions: { jsx: 'react', jsxFactory: '__jsx', jsxFragmentFactory: '__fragment' } } as const;
-  const compiled = new Bun.Transpiler({ loader, tsconfig: jsx }).transformSync(source);
+  const compiled = new Bun.Transpiler({ loader, tsconfig: jsx, define }).transformSync(source);
   const js =
     loader === 'tsx'
       ? `import { createElement as __jsx, Fragment as __fragment } from "react";\n${compiled}`
@@ -404,6 +406,34 @@ export async function evaluateGeneratedModule<T>(
   );
   await Bun.write(target, rewritten);
   return import(target);
+}
+
+interface EvaluatedNextConfig {
+  output?: string;
+  images?: { unoptimized?: boolean };
+}
+
+/**
+ * Evaluates a generated `next.config.ts` the way `next dev` (`development`) and `next build` (`production`) load it,
+ * with the MDX plugin as a pass-through. Each call writes the module to its own directory under `directory`, so each
+ * load is fresh.
+ */
+export async function evaluateNextConfig(
+  source: string,
+  directory: string,
+  nodeEnv: 'development' | 'production',
+): Promise<EvaluatedNextConfig> {
+  const workDirectory = await mkdtemp(join(directory, 'next-config-'));
+  const mdxPlugin = join(workDirectory, 'mdx-plugin.mjs');
+  await Bun.write(mdxPlugin, 'export default () => (config) => config;');
+  const module = await evaluateGeneratedModule<{ default: EvaluatedNextConfig }>(
+    source,
+    join(workDirectory, 'next.config.mjs'),
+    { '@next/mdx': mdxPlugin },
+    'ts',
+    { 'process.env.NODE_ENV': JSON.stringify(nodeEnv) },
+  );
+  return module.default;
 }
 
 /**

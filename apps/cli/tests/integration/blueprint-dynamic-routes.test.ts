@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { evaluateNextConfig } from '../next-config';
-import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, evaluateNextConfig, createTempDir, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
