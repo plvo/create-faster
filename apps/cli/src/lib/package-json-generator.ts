@@ -305,11 +305,7 @@ export function getAppScripts(ctx: TemplateContext): { appName: string; scripts:
 const APP_SCRIPTS_RUN_BY_TURBO = ['build', 'dev', 'start', 'test', 'test:e2e', 'cf-typegen'];
 
 function composeRootPackageJson(ctx: TemplateContext): PackageJson {
-  const scripts: Record<string, string> = {
-    clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
-    'versions:list': 'syncpack list-mismatches',
-    'versions:fix': 'syncpack fix',
-  };
+  const scripts: Record<string, string> = {};
 
   let devDependencies: Record<string, string> = {
     rimraf: '^6.0.1',
@@ -336,7 +332,7 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
     if (appScripts.some((app) => script in app.scripts)) scripts[script] = `turbo ${script}`;
   }
 
-  const rootConfigs: PackageJsonConfig[] = [];
+  const rootConfigs: PackageJsonConfig[] = [META.repo.stacks.turborepo.packageJson ?? {}];
 
   for (const toolingName of ctx.project.tooling) {
     const toolingAddon = META.project.tooling.options[toolingName];
