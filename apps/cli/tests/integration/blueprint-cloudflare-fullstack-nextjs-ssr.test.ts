@@ -313,7 +313,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
       onSortingChange: (updater: unknown) => void;
       state: { sorting: unknown; pagination: unknown };
       toolbarStart: Element;
-      wrapTable: (table: string) => Element;
+      renderBody: (table: string) => Element;
     }
 
     const render = async (): Promise<TableProps> => {
@@ -381,8 +381,8 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
       ['zzz', 'No users match your search.'],
     ])('with the search %p an empty list says %p', async (search, message) => {
       recorder.state.search = search;
-      const { wrapTable } = await render();
-      const list = wrapTable('the table');
+      const { renderBody } = await render();
+      const list = renderBody('the table');
       expect(propsOf(list)).toMatchObject({ itemName: 'users', emptyMessage: message, page: 1, pageSize: 10 });
       expect(list.props.children).toEqual(['the table']);
     });
@@ -390,8 +390,8 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     test('counts the page against the total of the search, not against the rows it loaded', async () => {
       recorder.state.total = 27;
       recorder.state.data = Array.from({ length: 10 }, (_, index) => ({ id: `u${index}` }));
-      const { wrapTable } = await render();
-      expect(propsOf(wrapTable('the table'))).toMatchObject({ total: 27, rowCount: 10 });
+      const { renderBody } = await render();
+      expect(propsOf(renderBody('the table'))).toMatchObject({ total: 27, rowCount: 10 });
     });
   });
 

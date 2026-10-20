@@ -25,6 +25,7 @@ interface UserListParams extends PageParams {
 interface Pagination {
   PAGE_KEYS: readonly string[];
   DEFAULT_PAGE_SIZE: number;
+  COUNT_STALE_TIME: number;
   parsePageParams: (search: unknown) => PageParams;
   queryStringWith: (current: string | URLSearchParams, owned: readonly string[], search: Record<string, unknown>) => string;
 }
@@ -44,8 +45,6 @@ interface UserList {
   parseUserListParams: (search: unknown) => UserListParams;
   userListSearch: (search: Record<string, unknown>) => Partial<UserListParams>;
   userListControls: (params: UserListParams, write: (search: Partial<UserListParams>, mode: 'push' | 'replace') => void) => UserListControls;
-  userSortingState: (sort: string) => { id: string; desc: boolean }[];
-  userSortFromSorting: (sorting: { id: string; desc: boolean }[]) => string;
 }
 
 interface UserRow {
@@ -66,6 +65,7 @@ interface Caller {
   users: {
     list: (input?: unknown) => Promise<UserRow[]>;
     count: (input?: unknown) => Promise<number>;
+    get: (input: { id: string }) => Promise<Record<string, unknown> | null>;
   };
   documents: {
     list: (input?: unknown) => Promise<DocumentRow[]>;
@@ -140,13 +140,30 @@ const SORTED: Record<string, (rows: UserRow[]) => UserRow[]> = {
   '-email': (rows) => [...rows].sort((a, b) => (a.email < b.email ? 1 : -1)),
 };
 
+// The index each order of the users list reads: the newest first order, the two name orders and the two email orders.
+const USER_SORT_INDEX: Record<string, string> = {
+  '-createdAt': 'users_created_at_id_idx',
+  name: 'users_name_id_idx',
+  '-name': 'users_name_id_idx',
+  email: 'users_email_unique',
+  '-email': 'users_email_unique',
+};
+
+function expectServedBy(plan: string, index: string): void {
+  expect(plan, plan).toMatch(new RegExp(`USING INDEX ${index}\\b`));
+  expect(plan, plan).not.toContain('TEMP B-TREE');
+}
+
 function createTable(sqlite: Database, table: SQLiteTable): void {
   const config = getTableConfig(table);
   const columns = config.columns.map(
     (column) =>
-      `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}${column.isUnique ? ' UNIQUE' : ''}`,
+      `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}`,
   );
   sqlite.run(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
+  for (const column of config.columns.filter((each) => each.isUnique)) {
+    sqlite.run(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);
+  }
   // The indexes of the generated schema, created as drizzle-kit would: the query plans below rely on these only.
   for (const index of config.indexes) {
     const { name, columns: indexed, unique } = index.config;
@@ -341,18 +358,6 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       ]);
     });
 
-    test('the sort of the URL and the sorting of the table map to each other', () => {
-      expect(userList.userSortingState('-createdAt')).toEqual([]);
-      expect(userList.userSortingState('name')).toEqual([{ id: 'name', desc: false }]);
-      expect(userList.userSortingState('-email')).toEqual([{ id: 'email', desc: true }]);
-      expect(userList.userSortFromSorting([])).toBe('-createdAt');
-      for (const sort of userList.USER_SORTS) {
-        expect(userList.userSortFromSorting(userList.userSortingState(sort))).toBe(sort);
-      }
-      // A column the list cannot order by is not a sort.
-      expect(userList.userSortFromSorting([{ id: 'role', desc: false }])).toBe('-createdAt');
-    });
-
     test('the query string keeps the parameters a list does not own', () => {
       expect(pagination.queryStringWith('other=x&page=3&search=ada', userList.USER_LIST_KEYS, { page: 4, sort: 'name' })).toBe(
         'other=x&page=4&sort=name',
@@ -392,12 +397,10 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
         expect(ids(seen)).toEqual(ids(SORTED[sort]?.(USERS) ?? []));
       });
 
-      test.each([undefined, 'a'])('is served by an index, with no sort of its own, for the search %p', async (search) => {
+      test.each([undefined, 'a'])('is served by its index, with no sort of its own, for the search %p', async (search) => {
         const { caller, queries, plan } = databaseWith(USERS);
         await caller('admin').users.list({ page: 2, pageSize: 10, sort, ...(search && { search }) });
-        const detail = plan(orderedQuery(queries));
-        expect(detail, detail).toMatch(/USING (COVERING )?INDEX/);
-        expect(detail, detail).not.toContain('TEMP B-TREE');
+        expectServedBy(plan(orderedQuery(queries)), USER_SORT_INDEX[sort] ?? 'no index for this sort');
       });
     });
 
@@ -486,6 +489,22 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       expect(await caller('admin').users.list({ search: 'x'.repeat(5000) })).toEqual([]);
     });
 
+    test('get answers null for an id that matches no user, without throwing', async () => {
+      expect(await databaseWith(USERS).caller('admin').users.get({ id: 'nobody' })).toBeNull();
+    });
+
+    test('get answers the user it finds, with the columns of the list and no credential', async () => {
+      const user = await databaseWith(USERS).caller('admin').users.get({ id: 'u04' });
+      expect(user).toMatchObject({ id: 'u04', name: USERS[4]?.name, email: USERS[4]?.email, role: USERS[4]?.role });
+      expect(Object.keys(user ?? {}).sort()).toEqual(
+        ['banned', 'createdAt', 'email', 'firstName', 'id', 'lastName', 'name', 'phone', 'role'].sort(),
+      );
+    });
+
+    test('only an admin gets a user', async () => {
+      await expect(databaseWith(USERS).caller('user').users.get({ id: 'u04' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
     test('an input that is not an object is refused', async () => {
       await expect(databaseWith(USERS).caller('admin').users.list('everything')).rejects.toMatchObject({ code: 'BAD_REQUEST' });
       await expect(databaseWith(USERS).caller('admin').users.count('everything')).rejects.toMatchObject({ code: 'BAD_REQUEST' });
@@ -540,12 +559,13 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
     test.each([
       ['admin', 'u00'],
       ['user', 'u01'],
-    ])('the page of %s is served by an index, with no sort of its own', async (role, userId) => {
+    ])('the page of %s is served by its index, with no sort of its own', async (role, userId) => {
       const { caller, queries, plan } = databaseWith(USERS, DOCUMENTS);
       await caller(role, userId).documents.list({ page: 2, pageSize: 10 });
-      const detail = plan(orderedQuery(queries));
-      expect(detail, detail).toMatch(/USING (COVERING )?INDEX/);
-      expect(detail, detail).not.toContain('TEMP B-TREE');
+      expectServedBy(
+        plan(orderedQuery(queries)),
+        role === 'admin' ? 'documents_created_at_id_idx' : 'documents_user_id_created_at_id_idx',
+      );
     });
   });
 
@@ -576,15 +596,16 @@ export const useSearchParams = () => new URLSearchParams(navigation.query);`;
     beforeAll(async () => {
       await Bun.write(join(stubs, 'next-navigation.mjs'), NAVIGATION);
       ({ navigation } = (await import(join(stubs, 'next-navigation.mjs'))) as { navigation: Navigation });
-      const imports = {
+      const imports: Record<string, string> = {
         'next/navigation': './next-navigation.mjs',
         '@repo/api/pagination': './pagination.mjs',
         '@repo/api/user-list': './user-list.mjs',
+        '@/hooks/use-page-params': './use-page-params.mjs',
       };
       const load = async <T>(file: string, name: string): Promise<T> =>
         evaluateGeneratedModule<T>(await readTextFile(join(project, 'apps/web/src/hooks', file)), join(stubs, name), imports);
-      ({ useUserListParams } = await load<{ useUserListParams: typeof useUserListParams }>('use-user-list-params.ts', 'use-user-list-params.mjs'));
       ({ usePageParams } = await load<{ usePageParams: typeof usePageParams }>('use-page-params.ts', 'use-page-params.mjs'));
+      ({ useUserListParams } = await load<{ useUserListParams: typeof useUserListParams }>('use-user-list-params.ts', 'use-user-list-params.mjs'));
     });
 
     test('the list reads its parameters from the URL, and the defaults for a bad one', () => {
@@ -646,6 +667,22 @@ export const useSearchParams = () => new URLSearchParams(navigation.query);`;
       controls.setPage(3);
       controls.setPageSize(50);
       expect(navigation.pushed).toEqual(['/?search=kept&page=3&pageSize=25', '/?search=kept&pageSize=50']);
+    });
+  });
+  describe('invalidatePagedList', () => {
+    test('invalidates the list and the count of the router it is given, and nothing else', async () => {
+      const { invalidatePagedList } = await evaluateGeneratedModule<{
+        invalidatePagedList: (client: unknown, procedures: unknown) => Promise<void>;
+      }>(await readTextFile(join(project, 'apps/web/src/lib/invalidate-paged-list.ts')), join(stubs, 'invalidate-paged-list.mjs'));
+      const invalidated: unknown[] = [];
+      const queryClient = { invalidateQueries: async (filter: unknown) => void invalidated.push(filter) };
+      const procedure = (name: string) => ({ queryFilter: () => ({ name }) });
+      await invalidatePagedList(queryClient, { list: procedure('list'), count: procedure('count'), get: procedure('get') });
+      expect(invalidated).toEqual([{ name: 'list' }, { name: 'count' }]);
+    });
+
+    test('the tables keep the total for one shared time', () => {
+      expect(pagination.COUNT_STALE_TIME).toBe(60_000);
     });
   });
 });
