@@ -57,11 +57,16 @@ interface TrpcResult<T> {
 }
 
 // The tRPC endpoint speaks superjson: an input travels as { json }, a result comes back under result.data.json.
-async function callTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<TrpcResult<T>> {
-  const response =
-    input === undefined
-      ? await fetch(new URL(`/api/trpc/${procedure}`, server.url), { headers: { cookie } })
-      : await post(server, `/api/trpc/${procedure}`, { json: input }, { cookie });
+async function callTrpc<T>(server: RunningServer, procedure: string, cookie: string, input: unknown): Promise<TrpcResult<T>> {
+  const response = await post(server, `/api/trpc/${procedure}`, { json: input }, { cookie });
+  const body = (await response.json()) as { result?: { data: { json: T } } };
+  return { status: response.status, data: body.result?.data.json as T };
+}
+
+// A mutation is a POST; a query is a GET with its input in the URL, wrapped as superjson wraps it.
+async function queryTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<TrpcResult<T>> {
+  const query = input === undefined ? '' : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
+  const response = await fetch(new URL(`/api/trpc/${procedure}${query}`, server.url), { headers: { cookie } });
   const body = (await response.json()) as { result?: { data: { json: T } } };
   return { status: response.status, data: body.result?.data.json as T };
 }
@@ -73,13 +78,28 @@ interface Contact {
   email: string | null;
 }
 
+interface User {
+  id: string;
+  email: string;
+}
+
+interface Page<T> {
+  items: T[];
+  total: number;
+}
+
 async function firstContact(server: RunningServer, cookie: string): Promise<Contact> {
-  const { status, data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
+  const { status, data } = await queryTrpc<Page<Contact>>(server, 'contact.list', cookie);
   expect(status).toBe(200);
-  const [contact] = contacts;
+  const [contact] = data.items;
   if (!contact) throw new Error('the seed created no contact');
   return contact;
 }
+
+const idsOf = (rows: { id: string }[]): string[] => rows.map((row) => row.id);
+
+const linksIn = (html: string, prefix: string): string[] =>
+  [...new Set([...html.matchAll(new RegExp(`href="${prefix}/([^"/]+)"`, 'g'))].map((match) => match[1] ?? ''))];
 
 async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
   const webDir = join(projectDir, 'apps/web');
@@ -326,6 +346,122 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     } finally {
       await setRole('user');
     }
+  });
+
+  describe('pagination', () => {
+    // Enough rows for three pages of ten, created in groups that share a creation time so the order has to be stable.
+    const EXTRA_ROWS = 25;
+    const sql = async (statement: string): Promise<void> => {
+      const result = await runCommand(
+        ['docker', 'compose', 'exec', '-T', 'postgres', 'sh', '-c', `psql -U postgres -d "$POSTGRES_DB" -c "${statement}"`],
+        projectDir,
+      );
+      expect(result.exitCode, describeFailure(result)).toBe(0);
+    };
+
+    beforeAll(async () => {
+      const created = `timestamp '2030-01-01 00:00:00' + ((i / 5) || ' minutes')::interval`;
+      await sql(
+        `insert into contacts (id, first_name, last_name, email, created_at) select 'page-contact-' || i, 'Paged', 'Contact ' || i, 'paged' || i || '@example.com', ${created} from generate_series(1, ${EXTRA_ROWS}) as i`,
+      );
+      await sql(
+        `insert into users (id, name, email, role, created_at) select 'page-user-' || i, 'Paged User ' || i, 'paged-user' || i || '@example.com', 'user', ${created} from generate_series(1, ${EXTRA_ROWS}) as i`,
+      );
+    });
+
+    const readPages = async <T extends { id: string }>(procedure: string, cookie: string, pageSize: number): Promise<{ pages: T[][]; total: number }> => {
+      const first = await queryTrpc<Page<T>>(server, procedure, cookie, { page: 1, pageSize });
+      expect(first.status).toBe(200);
+      const pages = [first.data.items];
+      for (let page = 2; page <= Math.ceil(first.data.total / pageSize); page++) {
+        const next = await queryTrpc<Page<T>>(server, procedure, cookie, { page, pageSize });
+        expect([procedure, page, next.status]).toEqual([procedure, page, 200]);
+        expect(next.data.total).toBe(first.data.total);
+        pages.push(next.data.items);
+      }
+      return { pages, total: first.data.total };
+    };
+
+    test('the contact and user lists return one page and the total, covering every row once in a stable order', async () => {
+      const admin = await signIn(server, SEEDED_ADMIN, '10.2.1.1');
+      for (const [procedure, extra] of [
+        ['contact.list', EXTRA_ROWS],
+        ['user.list', EXTRA_ROWS],
+      ] as const) {
+        const { pages, total } = await readPages<{ id: string }>(procedure, admin, 10);
+        expect(total, procedure).toBeGreaterThanOrEqual(extra);
+        expect(pages.length, procedure).toBeGreaterThanOrEqual(3);
+        for (const page of pages.slice(0, -1)) expect(page, procedure).toHaveLength(10);
+        const ids = pages.flatMap(idsOf);
+        expect(ids, procedure).toHaveLength(total);
+        expect(new Set(ids).size, procedure).toBe(total);
+
+        const again = await readPages<{ id: string }>(procedure, admin, 10);
+        expect(again.pages.flatMap(idsOf), procedure).toEqual(ids);
+
+        const everything = await readPages<{ id: string }>(procedure, admin, 100);
+        expect(everything.pages.flatMap(idsOf), procedure).toEqual(ids);
+      }
+    });
+
+    test('an invalid page or page size reads the default page and a page past the end is empty', async () => {
+      const admin = await signIn(server, SEEDED_ADMIN, '10.2.1.2');
+      for (const procedure of ['contact.list', 'user.list']) {
+        const first = await queryTrpc<Page<{ id: string }>>(server, procedure, admin, { page: 1, pageSize: 10 });
+        for (const input of [{ page: 0, pageSize: 10 }, { page: -1, pageSize: 10 }, { page: 1, pageSize: 5000 }, { page: 'x', pageSize: 10 }, {}]) {
+          const result = await queryTrpc<Page<{ id: string }>>(server, procedure, admin, input);
+          expect([procedure, JSON.stringify(input), result.status]).toEqual([procedure, JSON.stringify(input), 200]);
+          expect(idsOf(result.data.items), JSON.stringify(input)).toEqual(idsOf(first.data.items));
+        }
+        const past = await queryTrpc<Page<{ id: string }>>(server, procedure, admin, { page: 99, pageSize: 10 });
+        expect(past.data).toEqual({ items: [], total: first.data.total });
+      }
+    });
+
+    test('the contacts page shows the page the URL names, with its range and total', async () => {
+      const cookie = await signIn(server, SEEDED_MEMBER, '10.2.1.3');
+      const { pages, total } = await readPages<Contact>('contact.list', cookie, 10);
+      expect(pages.length).toBeGreaterThanOrEqual(3);
+
+      for (const [index, rows] of pages.entries()) {
+        const html = await (await fetch(new URL(`/contacts?page=${index + 1}`, server.url), { headers: { cookie } })).text();
+        expect(linksIn(html, '/contacts').sort(), `page ${index + 1}`).toEqual(idsOf(rows).sort());
+        const first = index * 10 + 1;
+        expect(html, `page ${index + 1}`).toContain(`Showing ${first}\u2013${first + rows.length - 1} of ${total} contacts`);
+      }
+
+      const sized = await (await fetch(new URL('/contacts?pageSize=50', server.url), { headers: { cookie } })).text();
+      expect(linksIn(sized, '/contacts')).toHaveLength(Math.min(50, total));
+    });
+
+    test('a contacts page past the end says so and offers the way back', async () => {
+      const cookie = await signIn(server, SEEDED_MEMBER, '10.2.1.4');
+      const html = await (await fetch(new URL('/contacts?page=99', server.url), { headers: { cookie } })).text();
+      expect(html).toContain('Go to the last page');
+      expect(linksIn(html, '/contacts')).toEqual([]);
+
+      const invalid = await (await fetch(new URL('/contacts?page=abc&pageSize=7', server.url), { headers: { cookie } })).text();
+      expect(linksIn(invalid, '/contacts')).toHaveLength(10);
+    });
+
+    test('the users page pages the same way and stays admin only', async () => {
+      const admin = await signIn(server, SEEDED_ADMIN, '10.2.1.5');
+      const { pages, total } = await readPages<User>('user.list', admin, 10);
+      for (const [index, rows] of pages.entries()) {
+        const html = await (await fetch(new URL(`/admin/users?page=${index + 1}`, server.url), { headers: { cookie: admin } })).text();
+        expect(linksIn(html, '/admin/users').sort(), `page ${index + 1}`).toEqual(idsOf(rows).sort());
+        const first = index * 10 + 1;
+        expect(html, `page ${index + 1}`).toContain(`Showing ${first}\u2013${first + rows.length - 1} of ${total} users`);
+      }
+
+      const past = await (await fetch(new URL('/admin/users?page=99', server.url), { headers: { cookie: admin } })).text();
+      expect(past).toContain('Go to the last page');
+
+      const member = await signIn(server, SEEDED_MEMBER, '10.2.1.6');
+      expect((await queryTrpc(server, 'user.list', member, { page: 1, pageSize: 10 })).status).toBe(403);
+      const redirect = await redirectOf(server, '/admin/users?page=2', member);
+      expect([redirect.status, redirect.location?.pathname]).toEqual([307, '/']);
+    });
   });
 
   test('an unknown page answers not found and the server logs no error', async () => {
