@@ -2,7 +2,7 @@ import { META } from '@/__meta__';
 import { getSelectedProjectAddons } from '@/lib/addon-utils';
 import { getAppScripts, getRootScripts } from '@/lib/package-json-generator';
 import { getScriptCommand, getScriptCommandInApp } from '@/lib/package-manager';
-import { resolveConditionals } from '@/lib/when';
+import { resolveScriptDescriptions } from '@/lib/script-description';
 import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { ScriptDescription } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -19,11 +19,8 @@ function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): S
     ...getSelectedProjectAddons(ctx).flatMap((addon) => addon.productionScripts ?? []),
   ];
   const scripts = new Map<string, ScriptDescription>();
-  for (const productionScript of resolveConditionals(declared, ctx)) {
-    const { script, description } = productionScript;
-    if (script !== undefined && description !== undefined && !scripts.has(script)) {
-      scripts.set(script, { script, description });
-    }
+  for (const productionScript of resolveScriptDescriptions(declared, ctx)) {
+    if (!scripts.has(productionScript.script)) scripts.set(productionScript.script, productionScript);
   }
   return [...scripts.values()];
 }

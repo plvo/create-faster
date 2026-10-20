@@ -11,23 +11,23 @@ const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 
 const NODE_TYPES_VERSION = '^22';
 
 /** A script whose sentence changes when a turborepo root runs it in every app. */
-const rootScript = (script: string, description: string, everyAppDescription: string) => [
+const describedPerRepo = (script: string, description: string, everyAppDescription: string) => [
   $when({ repo: 'single' }, { script, description }),
   $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
 ];
 
 const EVERY_APP_WITH_START = 'Start every app that has a `start` script';
-const BUILD_FOR_PRODUCTION = rootScript(
+const BUILD_FOR_PRODUCTION = describedPerRepo(
   'build',
   'Build for production',
   'Build every app that has a `build` script for production',
 );
-const START_PRODUCTION_SERVER = rootScript('start', 'Start the production server', EVERY_APP_WITH_START);
+const START_PRODUCTION_SERVER = describedPerRepo('start', 'Start the production server', EVERY_APP_WITH_START);
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
 const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };
 
-const START_DEV_SERVER = rootScript(
+const START_DEV_SERVER = describedPerRepo(
   'dev',
   'Start the development server',
   'Start the dev server of every app that has a `dev` script',
@@ -79,6 +79,9 @@ const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
 const LINT_CODE = { script: 'lint', description: 'Lint code' };
 const FORMAT_CODE = { script: 'format', description: 'Format code' };
 const FIX_AND_FORMAT_CODE = { script: 'check', description: 'Fix lint issues and format code' };
+
+// The stacks whose app defines a `build` script: a `prebuild` hook on any other stack would never run.
+const STACKS_WITH_BUILD_SCRIPT: StackName[] = ['nextjs', 'tanstack-start'];
 
 const NITRO_VERSION = '^3.0.260903-beta';
 
@@ -1274,7 +1277,7 @@ export const META: Meta = {
               'db:studio': 'prisma studio',
               'db:seed': 'prisma db seed',
               predev: $when({ repo: 'single' }, 'prisma generate'),
-              prebuild: $when({ repo: 'single' }, 'prisma generate'),
+              prebuild: $when({ repo: 'single', stack: STACKS_WITH_BUILD_SCRIPT }, 'prisma generate'),
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
@@ -1457,6 +1460,13 @@ export const META: Meta = {
       turborepo: {
         label: 'Turborepo',
         hint: 'Monorepo repository',
+        packageJson: {
+          scripts: {
+            clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
+            'versions:list': 'syncpack list-mismatches',
+            'versions:fix': 'syncpack fix',
+          },
+        },
         scriptDescriptions: [
           { script: 'clean', description: 'Remove build outputs and installed dependencies' },
           { script: 'versions:list', description: 'List dependency versions that differ between workspaces' },

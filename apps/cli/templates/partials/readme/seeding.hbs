@@ -1,7 +1,8 @@
-{{#if (hasRootScript "db:seed")}}
+{{#if (or (hasRootScript "db:seed") (hasRootScript "local-setup"))}}
 
 ## Seeding
 
+{{#if (hasRootScript "db:seed")}}
 {{#unless blueprint}}
 {{> seed/deletes-users}}
 {{else}}
@@ -9,5 +10,8 @@
 {{/unless}}
 {{#if (hasRootScript "local-setup")}}
 `{{runScript "local-setup"}}` runs the seed, so the same applies to it.
+{{/if}}
+{{else}}
+`{{runScript "local-setup"}}` seeds the local database, which can delete its data.
 {{/if}}
 {{/if}}

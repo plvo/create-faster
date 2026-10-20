@@ -208,7 +208,7 @@ describe('summary note', () => {
       displaySummaryNote({ ...ctx, apps: [{ appName: 'demo', stackName: 'expo', libraries: [] }] }, undefined, []);
       const output = written.join('');
 
-      expect(output).toMatch(/bun run dev +# Start development server/);
+      expect(output).toMatch(/bun run dev +# Start the development server/);
       expect(output).not.toContain('dev:expo');
     });
 
@@ -220,7 +220,7 @@ describe('summary note', () => {
       displaySummaryNote({ ...ctx, repo: 'turborepo', apps }, undefined, []);
       const output = written.join('');
 
-      expect(output).toMatch(/bun run dev +# Start development server/);
+      expect(output).toMatch(/bun run dev +# Start the dev server of every app that has a `dev` script/);
       expect(output).toContain('(cd apps/mobile && bun run dev:expo)');
       expect(output).toContain('# Run dev:expo in a terminal of its own (mobile)');
     });

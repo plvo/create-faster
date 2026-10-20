@@ -8,6 +8,7 @@ import {
   collectScriptList,
   describeScript,
   isLifecycleScript,
+  listScriptSources,
 } from '@/lib/script-list';
 import { isWhenItem } from '@/lib/when';
 import type { TemplateContext } from '@/types/ctx';
@@ -70,6 +71,16 @@ function combinations(): [string, TemplateContext][] {
       project(repo, 'nextjs', { project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] } }),
     ]);
     found.push([
+      `${repo} Vitest on Next.js and Jest on Expo`,
+      {
+        ...project(repo, 'nextjs'),
+        apps: [
+          { appName: 'web', stackName: 'nextjs', libraries: ['vitest'] },
+          { appName: 'mobile', stackName: 'expo', libraries: ['jest-expo'] },
+        ],
+      },
+    ]);
+    found.push([
       `${repo} Prisma, Biome and Husky`,
       project(repo, 'nextjs', {
         project: { database: 'postgres', orm: 'prisma', linter: 'biome', tooling: ['husky', 'portless'] },
@@ -96,7 +107,7 @@ describe('every root script of a project has a description in META', () => {
   test('in each combination of choices', () => {
     const undescribed = combinations().flatMap(([label, ctx]) =>
       Object.keys(getRootScripts(ctx))
-        .filter((script) => !isLifecycleScript(script) && describeScript(ctx, script) === undefined)
+        .filter((script) => !isLifecycleScript(script, getRootScripts(ctx)) && describeScript(ctx, script) === undefined)
         .map((script) => `${label}: ${script}`),
     );
 
@@ -105,28 +116,15 @@ describe('every root script of a project has a description in META', () => {
 });
 
 describe('one source per script sentence', () => {
-  type Declarations = { scriptDescriptions?: unknown[]; productionScripts?: unknown[] };
-
   const unwrap = (items: unknown[] = []): ScriptDescription[] =>
     items.map((item) => (isWhenItem(item) ? item.value : item)) as ScriptDescription[];
 
-  const entries = (): [string, Declarations][] => [
-    ...Object.entries(META.stacks).map(([name, stack]): [string, Declarations] => [`stack ${name}`, stack]),
-    ...Object.entries(META.libraries).map(([name, library]): [string, Declarations] => [`library ${name}`, library]),
-    ...Object.entries(META.project).flatMap(([category, { options }]) =>
-      Object.entries(options).map(([name, addon]): [string, Declarations] => [`${category} ${name}`, addon]),
-    ),
-    ...Object.entries(META.blueprints).map(([name, blueprint]): [string, Declarations] => [
-      `blueprint ${name}`,
-      blueprint,
-    ]),
-    ...Object.entries(META.repo.stacks).map(([name, repo]): [string, Declarations] => [`repo ${name}`, repo]),
-  ];
+  const entries = listScriptSources;
 
   test('a script is described by scriptDescriptions or by productionScripts, never both', () => {
-    const production = new Set(entries().flatMap(([, entry]) => unwrap(entry.productionScripts).map((d) => d.script)));
-    const twice = entries().flatMap(([label, entry]) =>
-      unwrap(entry.scriptDescriptions)
+    const production = new Set(entries().flatMap(({ source }) => unwrap(source.productionScripts).map((d) => d.script)));
+    const twice = entries().flatMap(({ label, source }) =>
+      unwrap(source.scriptDescriptions)
         .filter(({ script }) => production.has(script))
         .map(({ script }) => `${label}: ${script}`),
     );
@@ -149,14 +147,18 @@ describe('one source per script sentence', () => {
 
 describe('isLifecycleScript', () => {
   test('the scripts the package manager runs itself are not commands', () => {
-    const scripts = ['dev', 'build', 'predev', 'prebuild', 'postinstall', 'prepare', 'preview'];
+    const rootScripts = { dev: 'x', build: 'x', predev: 'x', prebuild: 'x', postinstall: 'x', prepare: 'x', preview: 'x' };
 
-    expect(scripts.filter(isLifecycleScript)).toEqual([
+    expect(Object.keys(rootScripts).filter((script) => isLifecycleScript(script, rootScripts))).toEqual([
       'predev',
       'prebuild',
       'postinstall',
       'prepare',
     ]);
+  });
+
+  test('a hook of a script the project does not define is not hidden', () => {
+    expect(isLifecycleScript('prebuild', { dev: 'x' })).toBe(false);
   });
 });
 
@@ -235,6 +237,24 @@ describe('collectScriptList', () => {
       description: 'Seed the database; it can delete users',
       readmeSection: 'Seeding',
     });
+  });
+
+  test('the database scripts stay together: local-setup does not split them', () => {
+    const ctx = project('single', 'nextjs', {
+      project: { database: 'd1', orm: 'drizzle', deployment: 'cloudflare', tooling: [] },
+    });
+    const database = lines(ctx).filter((command) => /db:|local-setup/.test(command));
+
+    expect(database.at(-1)).toBe('npm run local-setup');
+    expect(database.slice(0, -1).every((command) => command.includes('db:'))).toBe(true);
+  });
+
+  test('a single repo gets the Prisma prebuild only on a stack that defines build', () => {
+    const prisma = { database: 'postgres', orm: 'prisma', tooling: [] };
+
+    expect(getRootScripts(project('single', 'nextjs', { project: prisma }))).toHaveProperty('prebuild');
+    expect(getRootScripts(project('single', 'hono', { project: prisma }))).not.toHaveProperty('prebuild');
+    expect(getRootScripts(project('single', 'hono', { project: prisma }))).toHaveProperty('predev');
   });
 
   test('the commands follow the package manager', () => {

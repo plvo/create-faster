@@ -10,6 +10,7 @@ import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation'
 import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
 import { shouldPromptCategory } from '@/lib/project-prompts';
+import { describeScript } from '@/lib/script-list';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 import type { ProjectCategoryName } from '@/types/meta';
 
@@ -206,9 +207,10 @@ function buildStepsNote(
     steps.push(...commands);
     steps.push('');
   }
+  const devDescription = describeScript(ctx, 'dev');
   const developmentSteps = [
-    ...('dev' in getRootScripts(ctx)
-      ? [{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]
+    ...('dev' in getRootScripts(ctx) && devDescription !== undefined
+      ? [{ command: getScriptCommand(ctx, 'dev'), description: devDescription }]
       : []),
     ...collectInteractiveSteps(ctx),
   ];

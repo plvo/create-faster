@@ -177,6 +177,8 @@ interface MetaStack {
 interface MetaRepoStack {
   label: string;
   hint?: string;
+  /** Package.json keys the generated root of this repo type defines on its own (its scripts, which `scriptDescriptions` describes). */
+  packageJson?: PackageJsonConfig;
   /** The sentence of every script the generated root `package.json` of this repo type defines on its own, which the Scripts lists print. */
   scriptDescriptions?: Conditional<ScriptDescription>[];
 }
