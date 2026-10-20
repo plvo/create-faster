@@ -1,0 +1,15 @@
+import type { InvalidateQueryFilters, QueryClient } from '@tanstack/react-query';
+
+interface PagedProcedures {
+  list: { queryFilter: () => InvalidateQueryFilters };
+  count: { queryFilter: () => InvalidateQueryFilters };
+}
+
+// A row that is added, removed or edited changes the pages of its list and may change the total: both are fetched
+// again. `procedures` is the tRPC router of the list (`trpc.user`), which has a `list` and a `count`.
+export async function invalidatePagedList(queryClient: QueryClient, procedures: PagedProcedures): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries(procedures.list.queryFilter()),
+    queryClient.invalidateQueries(procedures.count.queryFilter()),
+  ]);
+}

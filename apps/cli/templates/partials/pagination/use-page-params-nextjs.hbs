@@ -3,14 +3,27 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PAGE_KEYS, pageControls, parsePageParams, queryStringWith } from '@repo/api/pagination';
 
-export function usePageParams() {
+type Write<Params> = (search: Partial<Params>, mode?: 'push' | 'replace') => void;
+
+// The list the URL names, and the controls that write another one into it. `keys` are the parameters of the list,
+// `parse` reads them and `controls` builds the setters over `write`, which pushes a history entry unless it is told to
+// replace the current one. A parameter the list does not own stays in the URL.
+export function useListParams<Params, Controls>(
+  keys: readonly string[],
+  parse: (search: unknown) => Params,
+  controls: (params: Params, write: Write<Params>) => Controls,
+) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const params = parsePageParams(Object.fromEntries(PAGE_KEYS.map((key) => [key, searchParams.getAll(key)])));
+  const params = parse(Object.fromEntries(keys.map((key) => [key, searchParams.getAll(key)])));
 
-  return pageControls(params, (search) => {
-    const queryString = queryStringWith(searchParams, PAGE_KEYS, search);
-    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  return controls(params, (search, mode = 'push') => {
+    const queryString = queryStringWith(searchParams, keys, search);
+    router[mode](queryString ? `${pathname}?${queryString}` : pathname);
   });
+}
+
+export function usePageParams() {
+  return useListParams(PAGE_KEYS, parsePageParams, pageControls);
 }

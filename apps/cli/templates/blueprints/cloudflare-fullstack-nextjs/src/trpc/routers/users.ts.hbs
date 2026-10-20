@@ -11,7 +11,7 @@ import type { AppRole } from '@repo/auth/permissions';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
-import { orderedPage } from '../page-query';
+import { type Column, orderedPage } from '../page-query';
 import { type UserSort, userCountInput, userListInput } from '../user-list';
 
 const userColumns = {
@@ -35,8 +35,6 @@ const ORDER_BY_SORT: Record<UserSort, SQL[]> = {
   email: [asc(userTable.email)],
   '-email': [desc(userTable.email)],
 };
-
-type Column = Parameters<typeof asc>[0];
 
 // The users whose name, email or role contains the text, whatever the case. `instr` reads the text as plain text:
 // LIKE would read a `%` or `_` of it as a wildcard.

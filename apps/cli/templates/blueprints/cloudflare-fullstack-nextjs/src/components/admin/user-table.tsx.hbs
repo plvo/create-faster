@@ -9,8 +9,9 @@ mono:
 import { useSuspenseQueries } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import Link from 'next/link';
-import { pageCountOf } from '@repo/api/pagination';
-import { DEFAULT_USER_SORT, userSortFromSorting, userSortingState } from '@repo/api/user-list';
+import { COUNT_STALE_TIME, pageCountOf } from '@repo/api/pagination';
+import { DEFAULT_USER_SORT, USER_SORTS, type UserSort } from '@repo/api/user-list';
+import type { SortingState } from '@repo/ui/components/block/shuip/data-table';
 import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
 import { SearchInput } from '@repo/ui/components/ui/search-input';
@@ -19,7 +20,18 @@ import { PagedList } from '@/components/table-pagination';
 import { useUserListParams } from '@/hooks/use-user-list-params';
 import { useTRPC } from '@/trpc/providers';
 
-const COUNT_STALE_TIME = 60_000;
+// The sort of the URL as the table states it: the default order is no column sorted.
+function sortingOf(sort: UserSort): SortingState {
+  if (sort === DEFAULT_USER_SORT) return [];
+  return [{ id: sort.replace(/^-/, ''), desc: sort.startsWith('-') }];
+}
+
+// The reverse: a column the list cannot order by, or no column at all, is the default order.
+function sortOf(sorting: SortingState): UserSort {
+  const [first] = sorting;
+  const requested = first ? `${first.desc ? '-' : ''}${first.id}` : DEFAULT_USER_SORT;
+  return USER_SORTS.find((sort) => sort === requested) ?? DEFAULT_USER_SORT;
+}
 
 type UserRow = {
   id: string;
@@ -85,17 +97,16 @@ export function UserTable() {
       trpc.users.count.queryOptions({ search }, { staleTime: COUNT_STALE_TIME }),
     ],
   });
-  const sorting = userSortingState(sort);
+  const sorting = sortingOf(sort);
 
   return (
     <DataTableShell
       columns={columns}
       data={users as UserRow[]}
       pageCount={pageCountOf(total, pageSize)}
-      totalCount={total}
       state={{ pagination: { pageIndex: page - 1, pageSize }, sorting }}
-      onSortingChange={(updater) => setSort(userSortFromSorting(typeof updater === 'function' ? updater(sorting) : updater))}
-      searchValue={search}
+      onSortingChange={(updater) => setSort(sortOf(typeof updater === 'function' ? updater(sorting) : updater))}
+      hideToolbarSearch
       toolbarStart={
         <>
           <SearchInput
@@ -112,8 +123,7 @@ export function UserTable() {
           )}
         </>
       }
-      hidePagination
-      wrapTable={(table) => (
+      renderBody={(table) => (
         <PagedList
           page={page}
           pageSize={pageSize}

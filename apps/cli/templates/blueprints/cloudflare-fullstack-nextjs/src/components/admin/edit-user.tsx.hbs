@@ -19,6 +19,7 @@ import { Button } from '@repo/ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
 import { useAppForm } from '@repo/ui/lib/form';
 import { GeneratedPassword } from '@/components/admin/generated-password';
+import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { useTRPC } from '@/trpc/providers';
 
 export type AdminUser = {
@@ -68,8 +69,7 @@ export function EditUser({ user }: { user: AdminUser }) {
 
   const invalidate = () => {
     queryClient.invalidateQueries(trpc.users.get.queryFilter({ id: user.id }));
-    queryClient.invalidateQueries(trpc.users.list.queryFilter());
-    queryClient.invalidateQueries(trpc.users.count.queryFilter());
+    invalidatePagedList(queryClient, trpc.users);
   };
 
   const updateMutation = useMutation(
@@ -114,8 +114,7 @@ export function EditUser({ user }: { user: AdminUser }) {
   const removeMutation = useMutation(
     trpc.users.remove.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.users.list.queryFilter());
-        queryClient.invalidateQueries(trpc.users.count.queryFilter());
+        invalidatePagedList(queryClient, trpc.users);
         toast.success('User deleted');
         router.push('/admin/users');
       },

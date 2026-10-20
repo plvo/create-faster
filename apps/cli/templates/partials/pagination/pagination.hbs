@@ -6,6 +6,9 @@ export const DEFAULT_PAGE_SIZE = 10;
 // Offset pagination slows down with depth; a page past this one reads as the first, and a table that needs to reach
 // deeper rows pages by a cursor instead.
 export const MAX_PAGE = 10_000;
+// How long a table keeps the total of a list: changing the page does not count again, and a mutation that adds or
+// removes a row invalidates it.
+export const COUNT_STALE_TIME = 60_000;
 
 // A query string repeats a parameter as a list; the first value is the one the server and the browser both read.
 export const firstValue = (value: unknown): unknown => (Array.isArray(value) ? value[0] : value);
@@ -23,9 +26,14 @@ export type PageParams = z.infer<typeof pageParams>;
 // The input of a paginated list: an absent or invalid value is the first page, or the default size.
 export const pageInput = pageParams.default({ page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE });
 
-// A query string gives text and a router gives numbers; both read the same page.
+// A query string gives text and a router gives numbers; both read the same parameters. Anything that is not an object
+// reads as no parameter at all.
+export function parseParams<Schema extends z.ZodType>(schema: Schema, search: unknown): z.infer<Schema> {
+  return schema.parse(typeof search === 'object' && search !== null ? search : {});
+}
+
 export function parsePageParams(search: unknown): PageParams {
-  return pageParams.parse(typeof search === 'object' && search !== null ? search : {});
+  return parseParams(pageParams, search);
 }
 
 // The page as a URL carries it: only what differs from the defaults is written.

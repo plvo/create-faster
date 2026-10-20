@@ -5,18 +5,9 @@ mono:
 ---
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { queryStringWith } from '@repo/api/pagination';
 import { USER_LIST_KEYS, parseUserListParams, userListControls } from '@repo/api/user-list';
+import { useListParams } from '@/hooks/use-page-params';
 
 export function useUserListParams() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const params = parseUserListParams(Object.fromEntries(USER_LIST_KEYS.map((key) => [key, searchParams.getAll(key)])));
-
-  return userListControls(params, (search, mode) => {
-    const queryString = queryStringWith(searchParams, USER_LIST_KEYS, search);
-    router[mode](queryString ? `${pathname}?${queryString}` : pathname);
-  });
+  return useListParams(USER_LIST_KEYS, parseUserListParams, userListControls);
 }

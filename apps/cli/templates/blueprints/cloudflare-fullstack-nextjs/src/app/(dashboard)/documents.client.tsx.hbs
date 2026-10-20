@@ -14,10 +14,10 @@ import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
+import { COUNT_STALE_TIME } from '@repo/api/pagination';
+import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { PagedList } from '@/components/table-pagination';
 import { usePageParams } from '@/hooks/use-page-params';
-
-const COUNT_STALE_TIME = 60_000;
 
 const schema = z.object({
   title: z.string().max(200),
@@ -35,15 +35,11 @@ export function DocumentsClient() {
   });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const invalidateDocuments = () => {
-    queryClient.invalidateQueries(trpc.documents.list.queryFilter());
-    queryClient.invalidateQueries(trpc.documents.count.queryFilter());
-  };
 
   const deleteMutation = useMutation(
     trpc.documents.delete.mutationOptions({
       onSuccess: () => {
-        invalidateDocuments();
+        invalidatePagedList(queryClient, trpc.documents);
         toast.success('Document deleted');
       },
       onError: (error) => toast.error(error.message),
@@ -67,7 +63,7 @@ export function DocumentsClient() {
       try {
         const res = await fetch('/api/documents/upload', { method: 'POST', body });
         if (!res.ok) throw new Error(await res.text());
-        invalidateDocuments();
+        invalidatePagedList(queryClient, trpc.documents);
         toast.success('Document uploaded');
         formApi.reset();
         if (fileRef.current) fileRef.current.value = '';

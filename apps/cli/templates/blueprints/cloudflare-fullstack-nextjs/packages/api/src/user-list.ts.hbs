@@ -5,7 +5,7 @@ mono:
   path: src/user-list.ts
 ---
 import { z } from 'zod';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, PAGE_KEYS, firstValue, pageParams, pageSearch } from './pagination';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, PAGE_KEYS, firstValue, pageParams, pageSearch, parseParams } from './pagination';
 
 // The orders the users table offers; a leading `-` is descending. Each one is served by an index of the users table
 // (`users_created_at_id_idx`, `users_name_id_idx`, and the unique email), and is the only way a URL picks a column.
@@ -36,9 +36,8 @@ export const userListInput = userListParams.default({
 // The total depends on the search alone, so a page, a page size or a sort never counts again.
 export const userCountInput = userListParams.pick({ search: true }).default({ search: '' });
 
-// A query string gives text and a router gives numbers; both read the same list.
 export function parseUserListParams(search: unknown): UserListParams {
-  return userListParams.parse(typeof search === 'object' && search !== null ? search : {});
+  return parseParams(userListParams, search);
 }
 
 // The list as a URL carries it: only what differs from the defaults is written. The search keeps the text as typed,
@@ -65,23 +64,4 @@ export function userListControls(params: UserListParams, write: Write) {
     setSearch: (search: string) => write(to({ search }), 'replace'),
     setSort: (sort: UserSort) => write(to({ sort }), 'push'),
   };
-}
-
-interface ColumnSort {
-  id: string;
-  desc: boolean;
-}
-
-// The sort of the URL as the table states it: the default order is no column sorted.
-export function userSortingState(sort: UserSort): ColumnSort[] {
-  if (sort === DEFAULT_USER_SORT) return [];
-  return [{ id: sort.replace(/^-/, ''), desc: sort.startsWith('-') }];
-}
-
-// The reverse: a column the list cannot order by, or no column at all, is the default order.
-export function userSortFromSorting(sorting: readonly ColumnSort[]): UserSort {
-  const [first] = sorting;
-  if (!first) return DEFAULT_USER_SORT;
-  const requested = `${first.desc ? '-' : ''}${first.id}`;
-  return USER_SORTS.find((sort) => sort === requested) ?? DEFAULT_USER_SORT;
 }

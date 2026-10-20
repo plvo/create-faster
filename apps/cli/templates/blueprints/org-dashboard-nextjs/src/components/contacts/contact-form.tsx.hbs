@@ -9,6 +9,7 @@ mono:
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { useTRPC } from '@/trpc/providers';
 import { useAppForm } from '@repo/ui/lib/form';
 import type { RouterOutput } from '@repo/api';
@@ -30,8 +31,7 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone?: (
   const create = useMutation(
     trpc.contact.create.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.contact.list.queryFilter());
-        queryClient.invalidateQueries(trpc.contact.count.queryFilter());
+        invalidatePagedList(queryClient, trpc.contact);
         toast.success('Contact created');
         onDone?.();
       },

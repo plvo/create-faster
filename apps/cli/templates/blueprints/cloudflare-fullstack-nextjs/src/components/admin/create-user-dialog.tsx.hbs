@@ -24,6 +24,7 @@ import {
 } from '@repo/ui/components/ui/dialog';
 import { useAppForm } from '@repo/ui/lib/form';
 import { GeneratedPassword } from '@/components/admin/generated-password';
+import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { useTRPC } from '@/trpc/providers';
 
 const schema = z.object({
@@ -48,8 +49,7 @@ export function CreateUserDialog() {
   const createMutation = useMutation(
     trpc.users.create.mutationOptions({
       onSuccess: ({ password }) => {
-        queryClient.invalidateQueries(trpc.users.list.queryFilter());
-        queryClient.invalidateQueries(trpc.users.count.queryFilter());
+        invalidatePagedList(queryClient, trpc.users);
         setCreatedPassword(password);
       },
       onError: (error) => toast.error(error.message),

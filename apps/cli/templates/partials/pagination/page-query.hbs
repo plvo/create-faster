@@ -2,7 +2,7 @@ import type { SQL } from 'drizzle-orm';
 import { desc } from '@repo/db';
 import { type PageParams, pageOffset } from './pagination';
 
-type Column = Parameters<typeof desc>[0];
+export type Column = Parameters<typeof desc>[0];
 
 interface PageableQuery<Rows> {
   orderBy: (...order: SQL[]) => { limit: (limit: number) => { offset: (offset: number) => Rows } };

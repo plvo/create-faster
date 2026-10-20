@@ -13,6 +13,7 @@ import { Link, notFound, useNavigate } from '@tanstack/react-router';
 {{/if}}
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
+import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
 import { ContactForm } from '@/components/contacts/contact-form';
@@ -36,8 +37,7 @@ export function ContactDetail({ id }: { id: string }) {
   const deleteContact = useMutation(
     trpc.contact.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
-        queryClient.invalidateQueries({ queryKey: trpc.contact.count.queryKey() });
+        invalidatePagedList(queryClient, trpc.contact);
 {{#if (eq stackName "tanstack-start")}}
         navigate({ to: '/contacts' });
 {{else}}
