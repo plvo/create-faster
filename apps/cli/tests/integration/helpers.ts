@@ -1,6 +1,6 @@
 import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, normalize } from 'node:path';
+import { join, normalize, relative, sep } from 'node:path';
 import { format } from 'node:util';
 import { expect, test } from 'bun:test';
 import { $, Glob } from 'bun';
@@ -499,9 +499,13 @@ export const Suspense = ({ children }) => children[0];
 export default { useState, useRef, useEffect, useSyncExternalStore, createElement, Fragment };`;
 
 /** Every file under a directory, recursively, as absolute paths. */
-export async function filesUnder(root: string): Promise<string[]> {
+export async function filesUnder(root: string, skippedDirectories: readonly string[] = []): Promise<string[]> {
   const entries = await readdir(root, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name));
+  const isSkipped = (entry: { parentPath: string }) =>
+    relative(root, entry.parentPath)
+      .split(sep)
+      .some((segment) => skippedDirectories.includes(segment));
+  return entries.filter((entry) => entry.isFile() && !isSkipped(entry)).map((entry) => join(entry.parentPath, entry.name));
 }
 
 export interface RenderedElement {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
+import type { EnvVar, PackageJsonConfig } from '@/types/meta';
 
 describe('META.libraries validation', () => {
   test('all libraries have label', () => {
@@ -216,8 +217,7 @@ describe('META env vars', () => {
 
     const secret = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_SECRET'));
     expect(secret).toBeDefined();
-    expect(secret!.monoScope).toContainEqual({ pkg: 'auth' });
-    expect(secret!.monoScope).toContain('app');
+    expect(secret!.monoScope).toEqual(['app']);
 
     const url = auth.envs!.find((e) => e.value.includes('BETTER_AUTH_URL'));
     expect(url).toBeDefined();
@@ -322,11 +322,17 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
     expect(tanstackStart.pkgPackageJson).toEqual(nextjs.pkgPackageJson);
     expect(tanstackStart.rootPackageJson).toEqual(nextjs.rootPackageJson);
     expect(tanstackStart.envs).toEqual(nextjs.envs);
+    const scopedData = ({ context }: typeof nextjs) =>
+      (context.apps as { packageJson?: unknown; envs?: unknown }[]).map(({ packageJson, envs }) => ({ packageJson, envs }));
+    expect(scopedData(tanstackStart)).toEqual(scopedData(nextjs));
     expect(tanstackStart.firstRun).toEqual(nextjs.firstRun);
   });
 
   test('carries the dependencies, workspace packages, scripts, env and first-run step the dashboard needs', () => {
-    expect(Object.keys(tanstackStart.packageJson?.dependencies ?? {}).sort()).toEqual([
+    const [web, batch] = tanstackStart.context.apps as { packageJson?: PackageJsonConfig; envs?: EnvVar[] }[];
+    expect(tanstackStart.packageJson).toBeUndefined();
+    expect(batch?.packageJson).toBeUndefined();
+    expect(Object.keys(web?.packageJson?.dependencies ?? {}).sort()).toEqual([
       'lucide-react',
       'react-error-boundary',
       'sonner',
@@ -334,7 +340,9 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
     ]);
     expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['api', 'auth', 'db', 'ui']);
     expect(Object.keys(tanstackStart.rootPackageJson?.scripts ?? {}).sort()).toEqual(['db:seed', 'local-setup', 'start']);
-    expect(tanstackStart.envs?.map(({ value }) => value)).toEqual(['SEED_PASSWORD=password']);
+    expect(tanstackStart.envs).toBeUndefined();
+    expect(web?.envs?.map(({ value }) => value)).toEqual(['SEED_PASSWORD=password']);
+    expect(batch?.envs).toBeUndefined();
     expect(tanstackStart.firstRun?.flatMap(({ commands }) => commands)).toEqual([{ script: 'local-setup' }]);
   });
 

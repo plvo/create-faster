@@ -3,6 +3,7 @@ import {
   applyAppScripts,
   findRuntimeAddon,
   getAppLibraries,
+  getBlueprintApp,
   getMonoPackageName,
   resolveCompositeAddons,
   resolveScriptPlaceholders,
@@ -215,6 +216,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
     if (!isTurborepo && blueprint?.rootPackageJson) {
       merged = mergeResolved(ctx, merged, blueprint.rootPackageJson);
     }
+    merged = mergeResolved(ctx, merged, getBlueprintApp(ctx, app.appName)?.packageJson);
   }
 
   const runtimeAddon = findRuntimeAddon(ctx);

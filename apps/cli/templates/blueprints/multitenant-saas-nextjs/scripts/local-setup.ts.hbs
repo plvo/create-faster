@@ -12,7 +12,7 @@ import { join } from 'node:path';
 {{> local-setup/steps}}
 
 const steps: Step[] = [
-  { label: 'Creating .env files from .env.example', run: createEnvFiles },
+  { label: 'Creating .env files from the .env.example files', run: createEnvFiles },
   { label: 'Starting the database (docker compose)', run: () => sh('docker compose up -d --wait') },
   { label: 'Applying the schema to the database', run: () => sh('{{runScript "db:push" "--force"}}', 'packages/db') },
   { label: 'Seeding demo data', run: () => sh('{{runScript "db:seed" "--fixtures"}}') },

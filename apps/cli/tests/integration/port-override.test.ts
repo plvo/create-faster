@@ -134,7 +134,7 @@ describe('blueprints', () => {
     const project = await generate('port-blueprint-cf', ['--blueprint', 'cloudflare-fullstack-nextjs']);
     const { scripts } = await readJsonFile<PackageJson>(join(project, 'package.json'));
 
-    expect(scripts['db:seed']).toBe('tsx --env-file=apps/web/.env scripts/seed.ts');
+    expect(scripts['db:seed']).toBe('tsx --env-file=apps/web/.env --env-file=.env.seed scripts/seed.ts');
   });
 
   test('the cloudflare-fullstack-nextjs agent notes give the URL of the web app', async () => {

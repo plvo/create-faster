@@ -3,6 +3,7 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import {
   describeRequire,
+  getBlueprintAppContexts,
   isLibraryCompatible,
   isLocalFilesystemSatisfied,
   isRequirementMet,
@@ -213,7 +214,7 @@ ${libraryStacksHelp()}
     }
 
     partial.blueprint = flags.blueprint;
-    partial.apps = blueprint.context.apps.map((app) => ({ ...app }));
+    partial.apps = getBlueprintAppContexts(blueprint);
     partial.project = { ...blueprint.context.project, tooling: [] } as ProjectContext;
   }
 

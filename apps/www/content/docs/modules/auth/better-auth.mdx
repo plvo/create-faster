@@ -35,7 +35,7 @@ packages/auth/
 ```
 
 **Environment variables:**
-- `BETTER_AUTH_SECRET` - Auth secret key (scoped to auth package + app). It ships blank: Better Auth refuses the default secret in production, so `build` prints a `BetterAuthError` and `start` answers 500 until you set one. The first-run steps in the README and the CLI summary say where, and give the command: `openssl rand -base64 32`.
+- `BETTER_AUTH_SECRET` - Auth secret key (scope: app, read by Better Auth in the app). It ships blank: Better Auth refuses the default secret in production, so `build` prints a `BetterAuthError` and `start` answers 500 until you set one. The first-run steps in the README and the CLI summary say where, and give the command: `openssl rand -base64 32`.
 - `BETTER_AUTH_URL` - Auth URL (scoped to app)
 
 ### create-auth.ts (`packages/auth/src/auth.ts` in a turborepo)

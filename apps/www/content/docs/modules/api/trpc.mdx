@@ -40,6 +40,9 @@ packages/api/
 └── tsconfig.json
 ```
 
+**Environment variables (Next.js):**
+- `NEXT_PUBLIC_APP_URL` - Public URL of the app, read by `getAppUrl()` (`src/lib/get-app-url.ts`) for the server-side tRPC client and the provider. It ships as the local URL of the app (`http://localhost:<port>`); set it to the production URL for a production build.
+
 ### init.ts
 
 Context creation and procedure definitions. The context carries the request `headers`, `db` if an ORM is selected, and `session` + `protectedProcedure` if Better Auth is installed. `createTRPCContext` takes the request headers explicitly on both stacks and in both repo types, plus the `db` on Cloudflare D1 (`{ headers, db }`): the API route passes the request's headers, and server-side callers pass the current request's headers (`headers()` on Next.js, `getRequest().headers` on TanStack Start):
