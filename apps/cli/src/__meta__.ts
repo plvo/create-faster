@@ -16,9 +16,14 @@ const rootProductionScript = (script: string, description: string, everyAppDescr
   $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
 ];
 
-const BUILD_FOR_PRODUCTION = rootProductionScript('build', 'Build for production', 'Build every app for production');
-const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', 'Start every app');
-const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', 'Start every app');
+const EVERY_APP_WITH_START = 'Start every app that has a `start` script';
+const BUILD_FOR_PRODUCTION = rootProductionScript(
+  'build',
+  'Build for production',
+  'Build every app that has a `build` script for production',
+);
+const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', EVERY_APP_WITH_START);
+const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', EVERY_APP_WITH_START);
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
 const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };

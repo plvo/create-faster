@@ -1,0 +1,84 @@
+{{#if (hasRootScript "dev")}}
+{{#if (isMono)}}
+- `{{runScript "dev"}}` - Start the dev server of every app that has a `dev` script
+{{else}}
+- `{{runScript "dev"}}` - Start the development server
+{{/if}}
+{{/if}}
+{{#each (productionSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
+{{#if (hasRootScript "analyze")}}
+- `{{runScript "analyze"}}` - Analyze the bundle size
+{{/if}}
+{{#if (hasRootScript "db:generate")}}
+{{#if (has "orm" "prisma")}}
+- `{{runScript "db:generate"}}` - Generate the Prisma client
+{{else}}
+- `{{runScript "db:generate"}}` - Write a SQL migration from the schema
+{{/if}}
+{{/if}}
+{{#if (hasRootScript "db:migrate")}}
+- `{{runScript "db:migrate"}}` - Run database migrations
+{{/if}}
+{{#if (hasRootScript "db:migrate:local")}}
+- `{{runScript "db:migrate:local"}}` - Run database migrations on the local database
+{{/if}}
+{{#if (hasRootScript "db:push")}}
+- `{{runScript "db:push"}}` - Push schema changes to database
+{{/if}}
+{{#if (hasRootScript "db:migrate:remote")}}
+- `{{runScript "db:migrate:remote"}}` - Run database migrations on the production database
+{{/if}}
+{{#if (hasRootScript "db:seed")}}
+{{#if blueprint}}
+- `{{runScript "db:seed"}}` - Seed the database
+{{else}}
+- `{{runScript "db:seed"}}` - Seed the database (the seed deletes the existing users and posts first)
+{{/if}}
+{{/if}}
+{{#if (hasRootScript "db:studio")}}
+- `{{runScript "db:studio"}}` - Open database management UI
+{{/if}}
+{{#if (hasRootScript "local-setup")}}
+- `{{runScript "local-setup"}}` - Set up the local database and seed it
+{{/if}}
+{{#if (hasRootScript "cf-typegen")}}
+- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of {{#if (isMono)}}every app{{else}}the app{{/if}}
+{{/if}}
+{{#if (hasRootScript "test")}}
+- `{{runScript "test"}}` - Run the tests
+{{/if}}
+{{#if (hasRootScript "test:watch")}}
+- `{{runScript "test:watch"}}` - Run the tests in watch mode
+{{/if}}
+{{#if (hasRootScript "test:coverage")}}
+- `{{runScript "test:coverage"}}` - Run the tests with coverage
+{{/if}}
+{{#if (hasRootScript "test:e2e")}}
+- `{{runScript "test:e2e"}}` - Run the end-to-end tests
+{{/if}}
+{{#if (hasRootScript "test:e2e:ui")}}
+- `{{runScript "test:e2e:ui"}}` - Open the end-to-end tests in the Playwright UI
+{{/if}}
+{{#if (hasRootScript "lint")}}
+- `{{runScript "lint"}}` - Lint code
+{{/if}}
+{{#if (hasRootScript "format")}}
+- `{{runScript "format"}}` - Format code
+{{/if}}
+{{#if (hasRootScript "format:check")}}
+- `{{runScript "format:check"}}` - Check the formatting without changing files
+{{/if}}
+{{#if (hasRootScript "check")}}
+- `{{runScript "check"}}` - Fix lint issues and format code
+{{/if}}
+{{#if (hasRootScript "clean")}}
+- `{{runScript "clean"}}` - Remove build outputs and installed dependencies
+{{/if}}
+{{#if (hasRootScript "versions:list")}}
+- `{{runScript "versions:list"}}` - List dependency versions that differ between workspaces
+{{/if}}
+{{#if (hasRootScript "versions:fix")}}
+- `{{runScript "versions:fix"}}` - Align dependency versions across workspaces
+{{/if}}

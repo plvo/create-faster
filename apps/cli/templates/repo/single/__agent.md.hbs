@@ -35,25 +35,7 @@ Generated with create-faster. {{#each apps}}{{stackName}}{{/each}} project{{#if 
 - Package manager: {{pm}}
 
 ## Scripts
-{{#if (hasRootScript "dev")}}
-- `{{runScript "dev"}}` — start the dev server
-{{/if}}
-{{#each (productionSteps)}}
-- `{{command}}` — {{description}}
-{{/each}}
-{{#if (has "orm" "drizzle")~}}
-- `{{runScript "db:generate"}}` — write a SQL migration from the schema
-- `{{runScript "db:migrate"}}` — apply the migrations
-{{/if~}}
-{{#if (has "orm" "prisma")~}}
-- `{{runScript "db:push"}}` — sync the Prisma schema
-{{/if~}}
-{{#if (has "linter" "oxc")~}}
-- `{{runScript "check"}}` — lint and format with Oxlint + Oxfmt
-{{/if~}}
-{{#if (has "linter" "biome")~}}
-- `{{runScript "check"}}` — format and lint with Biome
-{{/if}}
+{{> scripts/root-list}}
 
 {{> ports/override}}
 
