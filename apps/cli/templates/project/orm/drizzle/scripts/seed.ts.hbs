@@ -30,7 +30,7 @@ function getLocalD1DB(): string | undefined {
 
 const localPath = getLocalD1DB();
 if (!localPath) {
-  console.error('❌ No local D1 database found. Run `{{runScript "db:migrate:local"}}` first.');
+  console.error('❌ No local D1 database found. Run `{{runScript "db:generate"}}` then `{{runScript "db:migrate"}}` first.');
   process.exit(1);
 }
 
@@ -65,6 +65,7 @@ async function seed() {
   console.log('🌱 Seeding database...');
 
   // Clear existing data
+  console.log('🗑️  Deleting the existing users and posts...');
   await db.delete(postTable);
   await db.delete(userTable);
 

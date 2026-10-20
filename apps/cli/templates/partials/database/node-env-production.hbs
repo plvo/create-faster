@@ -3,13 +3,13 @@
 - Next.js: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle, so every deployment of the build uses TLS.
 {{/if}}
 {{#if (has "stack" "tanstack-start")}}
-- TanStack Start: `vite build` replaces it in the server bundle the same way.
+- TanStack Start: `vite build` replaces `process.env.NODE_ENV` with `production` in the server bundle.
 {{/if}}
 {{#if (has "stack" "hono")}}
 - Hono: {{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production {{#if (eq pm "bun")}}bun run src/index.ts{{else}}tsx src/server.ts{{/if}}`){{#if (has "deployment" "sst")}}, and `sst.config.ts` sets it in the Lambda function `environment` (`development` under `sst dev`){{/if}}{{#if (has "deployment" "cloudflare")}}, and `wrangler deploy` replaces it in the Worker bundle{{/if}}.
 {{/if}}
 {{#if (has "stack" "node")}}
-- Node: {{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source too, and the `start` script sets it the same way.
+- Node: {{#if (eq pm "bun")}}Bun{{else}}tsx{{/if}} runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production {{#if (eq pm "bun")}}bun run src/index.ts{{else}}tsx src/index.ts{{/if}}`).
 {{/if}}
 {{#if (or (has "stack" "hono") (has "stack" "node"))}}
 

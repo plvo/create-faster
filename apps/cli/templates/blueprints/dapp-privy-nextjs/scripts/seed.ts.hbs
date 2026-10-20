@@ -7,6 +7,7 @@ import { db, userTable } from '../src/lib/db';
 async function seed() {
   console.log('🌱 Seeding database...');
 
+  console.log('🗑️  Deleting the existing users...');
   await db.delete(userTable);
 
   const [user] = await db

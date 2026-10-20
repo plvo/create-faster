@@ -13,7 +13,7 @@ const DRIZZLE_CLIENT_CALL = 'connection: withProductionTls(databaseUrl),';
 const PRISMA_CLIENT_CALL = "new PrismaMariaDb(withProductionTls(process.env.DATABASE_URL ?? 'mysql://localhost:3306/db'));";
 const NODE_ENV_SOURCES = {
   nextjs: '- Next.js: `next build` replaces `process.env.NODE_ENV` with `production` in the server bundle',
-  'tanstack-start': '- TanStack Start: `vite build` replaces it in the server bundle the same way',
+  'tanstack-start': '- TanStack Start: `vite build` replaces `process.env.NODE_ENV` with `production` in the server bundle',
   hono: '- Hono: Bun runs the source, so the client reads the variable at runtime. The `start` script sets it (`NODE_ENV=production bun run src/index.ts`)',
 };
 type ProbedStack = keyof typeof NODE_ENV_SOURCES;

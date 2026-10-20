@@ -63,10 +63,10 @@ describe('collectProductionSteps', () => {
     ]);
   });
 
-  test('a turborepo root runs its build and start in every app, which the description says', () => {
+  test('a turborepo root runs its build and start in the apps that define them, which the description says', () => {
     expect(collectProductionSteps(turborepo(['nextjs', 'hono']))).toEqual([
-      { description: 'Build every app for production', command: 'npm run build' },
-      { description: 'Start every app', command: 'npm run start' },
+      { description: 'Build every app that has a `build` script for production', command: 'npm run build' },
+      { description: 'Start every app that has a `start` script', command: 'npm run start' },
     ]);
   });
 

@@ -209,7 +209,7 @@ describe.each([...PACKAGE_MANAGERS])('d1 with %s', (pm) => {
     const tsconfig = await readTextFile(join(project, 'packages/db/tsconfig.json'));
 
     expect(seed).toContain("from '@libsql/client'");
-    expect(seed).toContain(`Run \`${pm} run db:migrate:local\` first.`);
+    expect(seed).toContain(`Run \`${pm} run db:generate\` then \`${pm} run db:migrate\` first.`);
     expect(seed.match(BUN_API)).toBeNull();
     expect(devDependencies?.['@types/bun']).toBeUndefined();
     expect(tsconfig).not.toContain('"bun"');

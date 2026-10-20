@@ -29,6 +29,7 @@ async function seed() {
   console.log('🌱 Seeding database...');
 
   // Clear existing data
+  console.log('🗑️  Deleting the existing users and posts...');
   await prisma.post.deleteMany();
   await prisma.user.deleteMany();
 

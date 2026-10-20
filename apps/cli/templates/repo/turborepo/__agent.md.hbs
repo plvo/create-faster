@@ -45,17 +45,7 @@ Generated with create-faster. Turborepo monorepo.
 - Package manager: {{pm}}
 
 ## Scripts
-- `{{runScript "dev"}}` — run all apps via Turborepo
-{{#each (productionSteps)}}
-- `{{command}}` — {{description}}
-{{/each}}
-{{#if (has "orm" "drizzle")~}}
-- `{{runScript "db:generate"}}` — write a SQL migration from the schema (from `packages/db`)
-- `{{runScript "db:migrate"}}` — apply the migrations (from `packages/db`)
-{{/if~}}
-{{#if (has "orm" "prisma")~}}
-- `{{runScript "db:push"}}` — sync the Prisma schema (from `packages/db`)
-{{/if}}
+{{> scripts/root-list}}
 
 ## Environment
 {{#if envGroups.length~}}

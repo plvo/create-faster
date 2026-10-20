@@ -65,7 +65,7 @@ Install dependencies:
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
-Start all applications in development mode:
+{{> scripts/dev-description}}:
 
 ```bash
 {{runScript "dev"}}
@@ -81,59 +81,8 @@ Start all applications in development mode:
 
 ## Available Scripts
 
-- `{{runScript "dev"}}` - Start all apps in development mode
-{{#each (productionSteps)}}
-- `{{command}}` - {{description}}
-{{/each}}
-{{#if (hasRootScript "db:generate")}}
-{{#if (has "orm" "prisma")}}
-- `{{runScript "db:generate"}}` - Generate the Prisma client
-{{else}}
-- `{{runScript "db:generate"}}` - Write a SQL migration from the schema
-{{/if}}
-{{/if}}
-{{#if (hasRootScript "db:migrate")}}
-- `{{runScript "db:migrate"}}` - Run database migrations
-{{/if}}
-{{#if (hasRootScript "db:push")}}
-- `{{runScript "db:push"}}` - Push schema changes to database
-{{/if}}
-{{#if (hasRootScript "db:migrate:remote")}}
-- `{{runScript "db:migrate:remote"}}` - Run database migrations on the production database
-{{/if}}
-{{#if (hasRootScript "db:seed")}}
-- `{{runScript "db:seed"}}` - Seed the database
-{{/if}}
-{{#if (hasRootScript "db:studio")}}
-- `{{runScript "db:studio"}}` - Open database management UI
-{{/if}}
-{{#if (hasRootScript "local-setup")}}
-- `{{runScript "local-setup"}}` - Set up the local database and seed it
-{{/if}}
-{{#if (hasRootScript "cf-typegen")}}
-- `{{runScript "cf-typegen"}}` - Regenerate the Cloudflare binding types of every app
-{{/if}}
-{{#if (hasRootScript "lint")}}
-- `{{runScript "lint"}}` - Lint code
-{{/if}}
-{{#if (hasRootScript "format")}}
-- `{{runScript "format"}}` - Format code
-{{/if}}
-{{#if (hasRootScript "format:check")}}
-- `{{runScript "format:check"}}` - Check the formatting without changing files
-{{/if}}
-{{#if (hasRootScript "check")}}
-- `{{runScript "check"}}` - Fix lint issues and format code
-{{/if}}
-{{#if (hasRootScript "clean")}}
-- `{{runScript "clean"}}` - Remove build outputs and installed dependencies
-{{/if}}
-{{#if (hasRootScript "versions:list")}}
-- `{{runScript "versions:list"}}` - List dependency versions that differ between workspaces
-{{/if}}
-{{#if (hasRootScript "versions:fix")}}
-- `{{runScript "versions:fix"}}` - Align dependency versions across workspaces
-{{/if}}
+{{> scripts/root-list readme=true}}
+{{> readme/seeding}}
 
 {{> readme/d1-provisioning scripts="Available Scripts"}}
 {{> readme/aws-deploy}}

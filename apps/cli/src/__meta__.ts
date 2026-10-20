@@ -16,9 +16,14 @@ const rootProductionScript = (script: string, description: string, everyAppDescr
   $when({ repo: 'turborepo' }, { script, description: everyAppDescription }),
 ];
 
-const BUILD_FOR_PRODUCTION = rootProductionScript('build', 'Build for production', 'Build every app for production');
-const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', 'Start every app');
-const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', 'Start every app');
+const EVERY_APP_WITH_START = 'Start every app that has a `start` script';
+const BUILD_FOR_PRODUCTION = rootProductionScript(
+  'build',
+  'Build for production',
+  'Build every app that has a `build` script for production',
+);
+const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', EVERY_APP_WITH_START);
+const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', EVERY_APP_WITH_START);
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
 const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };
@@ -1709,7 +1714,13 @@ export const META: Meta = {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
-      firstRun: RUN_LOCAL_SETUP,
+      firstRun: [
+        {
+          description:
+            'Set up the local database and seed demo data (this deletes the local D1 state, sign-ups included)',
+          commands: [{ script: 'local-setup' }],
+        },
+      ],
       agentArchitecture: [
         'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
         'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',

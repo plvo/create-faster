@@ -1,3 +1,7 @@
 Drizzle schema lives in `{{#if (hasPackage "db")}}packages/db/src/schema.ts{{else}}src/lib/db/schema.ts{{/if}}`. After editing it, run `{{runScript "db:generate"}}` to write a SQL migration and `{{runScript "db:migrate"}}` to apply it. Inspect data with `{{runScript "db:studio"}}`.
 
 `{{runScript "db:push"}}` syncs the schema without a migration file. drizzle-kit asks for confirmation, so run it from a terminal; `{{#inDirectory "packages" "db"}}{{installedBinaryRunner}} drizzle-kit push --force{{/inDirectory}}` skips the prompt for scripts (a package manager only forwards script flags after `--`, and not the same way everywhere).
+{{#unless blueprint}}
+
+{{> seed/deletes-users}}
+{{/unless}}
