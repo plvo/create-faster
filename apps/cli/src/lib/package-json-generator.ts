@@ -1,6 +1,7 @@
 import { META } from '@/__meta__';
 import {
   applyAppScripts,
+  appReceivesAddon,
   findRuntimeAddon,
   getAppLibraries,
   getBlueprintApp,
@@ -147,7 +148,7 @@ function composeApp(app: AppContext, ctx: TemplateContext, appIndex: number): Co
 
   if (ctx.project.orm) {
     const ormAddon = META.project.orm.options[ctx.project.orm];
-    if (ormAddon) {
+    if (ormAddon && appReceivesAddon(ormAddon, app, ctx)) {
       if (!(isTurborepo && addRepoRef(merged, ormAddon))) {
         merged = mergeResolved(ctx, merged, ormAddon.packageJson);
       }

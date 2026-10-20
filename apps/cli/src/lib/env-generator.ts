@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
+import { appReceivesAddon, findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
@@ -25,6 +25,7 @@ interface CollectedEnv {
   /** The only app that receives the variable, for one a blueprint declares on an app. */
   appName?: string;
   stacks?: StackName[];
+  serverOnly?: boolean;
   file?: string;
   secret?: boolean;
   tasks?: string[];
@@ -90,7 +91,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const envs: CollectedEnv[] = [];
   const packages = collectMonoPackages(ctx);
 
-  const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName' | 'appName'>) => {
+  const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName' | 'appName' | 'serverOnly'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
       envs.push({
@@ -116,7 +117,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         ctx.project.tooling.includes(optionName);
 
       if (isSelected && addon.envs) {
-        for (const env of addon.envs) addEnv(env, { source: 'project' });
+        for (const env of addon.envs) addEnv(env, { source: 'project', serverOnly: addon.serverOnly });
       }
     }
   }
@@ -177,14 +178,15 @@ function addToGroup(grouped: Map<string, string[]>, path: string, value: string)
   grouped.get(path)?.push(value);
 }
 
-function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number]): boolean {
+function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number], ctx: TemplateContext): boolean {
   if (env.appName && env.appName !== app.appName) return false;
+  if (!appReceivesAddon(env, app, ctx)) return false;
   if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) return false;
   return !env.stacks || env.stacks.includes(app.stackName);
 }
 
 function isReceivedByProject(env: CollectedEnv, ctx: TemplateContext): boolean {
-  return ctx.apps.some((app) => appAcceptsEnv(env, app));
+  return ctx.apps.some((app) => appAcceptsEnv(env, app, ctx));
 }
 
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
@@ -193,7 +195,7 @@ function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map
   for (const env of envs) {
     if (env.scope === 'app') {
       for (const app of ctx.apps) {
-        if (!appAcceptsEnv(env, app)) continue;
+        if (!appAcceptsEnv(env, app, ctx)) continue;
         const path = resolveScopeToPath('app', ctx, app.appName, env.file);
         if (!path) continue;
         addToGroup(grouped, path, renderEnvLine(env, ctx, app.appName));
@@ -245,7 +247,7 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
   if (!app) return [];
 
   const names = collectAllEnvs(ctx)
-    .filter((env) => env.secret && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app))
+    .filter((env) => env.secret && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
@@ -266,7 +268,7 @@ export function collectAppReceivesEnv(ctx: TemplateContext, appName: string, nam
   if (!app) return false;
 
   return collectAllEnvs(ctx).some(
-    (env) => extractEnvKey(env.value) === name && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app),
+    (env) => extractEnvKey(env.value) === name && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx),
   );
 }
 
@@ -301,7 +303,7 @@ export function collectEnvsToGenerate(ctx: TemplateContext): EnvToGenerate[] {
     const name = extractEnvKey(env.value);
     const entry = byName.get(name) ?? { name, command: env.generateCommand, paths: [] };
 
-    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate))) {
+    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate, ctx))) {
       const examplePath = resolveScopeToPath(env.scope, ctx, app.appName);
       const path = examplePath ? toEnvPath(examplePath) : undefined;
       if (path && !entry.paths.includes(path)) entry.paths.push(path);
@@ -325,7 +327,7 @@ export function collectThirdPartyEnvs(ctx: TemplateContext): ThirdPartyEnv[] {
     const name = extractEnvKey(env.value);
     const entry = byName.get(name) ?? { name, ...env.thirdParty, paths: [] };
 
-    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate))) {
+    for (const app of ctx.apps.filter((candidate) => appAcceptsEnv(env, candidate, ctx))) {
       const examplePath = resolveScopeToPath(env.scope, ctx, app.appName);
       const path = examplePath ? toEnvPath(examplePath) : undefined;
       if (path && !entry.paths.includes(path)) entry.paths.push(path);

@@ -25,6 +25,18 @@ export function getCompatibleLibraryNames(stackName: StackName): string[] {
     .map(([name]) => name);
 }
 
+/**
+ * Whether the app receives what the addon brings: a turborepo app on a `clientOnly` stack receives nothing a `serverOnly` addon brings.
+ * A single repo has one app, which owns the project tooling, so it receives it whatever its stack.
+ */
+export function appReceivesAddon(
+  addon: Pick<MetaAddon, 'serverOnly'>,
+  app: Pick<AppContext, 'stackName'>,
+  ctx: Pick<TemplateContext, 'repo'>,
+): boolean {
+  return !(ctx.repo === 'turborepo' && addon.serverOnly && META.stacks[app.stackName].clientOnly);
+}
+
 /** The libraries of an app that its stack supports, in the order they were selected. */
 export function getAppLibraries(app: AppContext): { name: string; library: MetaLibrary }[] {
   return app.libraries.flatMap((name) => {
