@@ -61,6 +61,16 @@ describe.each(D1_PROJECTS)('$name: db:seed reads the database that db:migrate wr
   });
 
   test(
+    'db:seed without a local database tells to run the scripts that create it',
+    async () => {
+      const seed = await runCommand([pm, 'run', 'db:seed'], join(projectDir, seedDirs[seedDirs.length - 1] ?? '.'));
+      expect(seed.exitCode).toBe(1);
+      expect(`${seed.stdout}${seed.stderr}`).toContain(`Run \`${pm} run db:generate\` then \`${pm} run db:migrate\` first.`);
+    },
+    TIMEOUT_DB,
+  );
+
+  test(
     'db:seed fills the migrated local database',
     async () => {
       const generate = await runCommand([pm, 'run', 'db:generate'], projectDir);
@@ -71,6 +81,7 @@ describe.each(D1_PROJECTS)('$name: db:seed reads the database that db:migrate wr
       for (const dir of seedDirs) {
         const seed = await runCommand([pm, 'run', 'db:seed'], join(projectDir, dir));
         expect(seed.exitCode, `${dir}\n${seed.stdout}\n${seed.stderr}`).toBe(0);
+        expect(seed.stdout).toContain('Deleting the existing users and posts');
         expect(countRows(projectDir, 'users')).toBe(2);
         expect(countRows(projectDir, 'posts')).toBe(3);
       }

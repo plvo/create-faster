@@ -23,3 +23,6 @@ The web app wires tRPC + React Query in `apps/web/src/trpc/providers.tsx` (`useT
 1. Add the procedure to the relevant router in `packages/api/src/router/`, validating input with Zod and gating with `permissionProcedure`.
 2. (New router) register it in `packages/api/src/root.ts`.
 3. In the UI, call it through `useTRPC()` with `queryOptions`/`mutationOptions`; invalidate affected queries on success.
+
+## Seed
+{{> seed/reset-flag}}

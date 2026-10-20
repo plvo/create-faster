@@ -108,6 +108,13 @@ const RUN_LOCAL_SETUP: FirstRunStep[] = [
   { description: 'Set up the local database and seed demo data', commands: [{ script: 'local-setup' }] },
 ];
 
+const RUN_LOCAL_SETUP_ON_D1: FirstRunStep[] = [
+  {
+    description: 'Set up the local database and seed demo data (this deletes the local D1 state, sign-ups included)',
+    commands: [{ script: 'local-setup' }],
+  },
+];
+
 const POSTHOG_TOKEN_SOURCE: EnvThirdParty = {
   description: 'PostHog project token',
   url: 'https://us.posthog.com/settings/project',
@@ -1709,7 +1716,7 @@ export const META: Meta = {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
-      firstRun: RUN_LOCAL_SETUP,
+      firstRun: RUN_LOCAL_SETUP_ON_D1,
       agentArchitecture: [
         'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
         'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',

@@ -1,0 +1,1 @@
+`{{runScript "db:seed"}}` runs `scripts/seed.ts`, which creates the demo accounts that are missing and keeps the ones that exist. `--reset` makes it delete all users (sign-ups of your own included) and the other data it seeds first; it refuses a database that does not look local unless `--force` is passed. `--fixtures` adds demo data.
