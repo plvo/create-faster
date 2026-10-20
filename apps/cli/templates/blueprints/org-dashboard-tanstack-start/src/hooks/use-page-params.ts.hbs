@@ -1,19 +1,11 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { pageSearch, parsePageParams } from '@repo/api/pagination';
+import { pageControls, parsePageParams } from '@repo/api/pagination';
 
 export function usePageParams() {
   const navigate = useNavigate();
   const params = parsePageParams(useSearch({ strict: false }));
 
-  const goTo = (next: { page: number; pageSize: number }) =>
-    navigate({
-      to: '.',
-      search: (previous) => ({ ...previous, page: undefined, pageSize: undefined, ...pageSearch(next) }),
-    });
-
-  return {
-    ...params,
-    setPage: (page: number) => goTo({ ...params, page }),
-    setPageSize: (pageSize: number) => goTo({ page: 1, pageSize }),
-  };
+  return pageControls(params, (search) =>
+    navigate({ to: '.', search: (previous) => ({ ...previous, page: undefined, pageSize: undefined, ...search }) }),
+  );
 }

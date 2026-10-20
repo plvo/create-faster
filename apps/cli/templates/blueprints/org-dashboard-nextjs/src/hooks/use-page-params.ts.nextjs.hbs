@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { pageSearch, parsePageParams } from '@repo/api/pagination';
+import { pageControls, parsePageParams } from '@repo/api/pagination';
 
 export function usePageParams() {
   const router = useRouter();
@@ -9,18 +9,12 @@ export function usePageParams() {
   const searchParams = useSearchParams();
   const params = parsePageParams({ page: searchParams.getAll('page'), pageSize: searchParams.getAll('pageSize') });
 
-  const goTo = (next: { page: number; pageSize: number }) => {
+  return pageControls(params, (search) => {
     const query = new URLSearchParams(searchParams);
     query.delete('page');
     query.delete('pageSize');
-    for (const [name, value] of Object.entries(pageSearch(next))) query.set(name, String(value));
-    const search = query.toString();
-    router.push(search ? `${pathname}?${search}` : pathname);
-  };
-
-  return {
-    ...params,
-    setPage: (page: number) => goTo({ ...params, page }),
-    setPageSize: (pageSize: number) => goTo({ page: 1, pageSize }),
-  };
+    for (const [name, value] of Object.entries(search)) query.set(name, String(value));
+    const queryString = query.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  });
 }

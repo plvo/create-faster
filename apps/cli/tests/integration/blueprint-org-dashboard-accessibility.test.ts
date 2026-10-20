@@ -69,6 +69,8 @@ export const useState = (initial) => {
   return [store[index], (value) => { store[index] = typeof value === 'function' ? value(store[index]) : value; }];
 };
 export const useId = () => useState('id-' + next)[0];
+export const useRef = (initial) => ({ current: initial });
+export const useEffect = () => {};
 export const Suspense = ({ children }) => children;`,
   'icons.mjs': `import { createElement } from './react.mjs';
 // lucide-react passes the props of the caller to the svg and marks it aria-hidden unless the caller names it.
@@ -109,6 +111,8 @@ export const notFound = () => ({ kind: 'notFound' });`,
 const deep = () => new Proxy(function () {}, { get: (_, key) => (key === 'then' ? undefined : deep()), apply: (_, __, args) => args[0] ?? {} });
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
+// A list page asks for its rows and its total together: the rows are __testQueryData.items, the total .total.
+export const useSuspenseQueries = () => [{ data: globalThis.__testQueryData.items }, { data: globalThis.__testQueryData.total }];
 export const useMutation = (options) => ({
   mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables),
   mutateAsync: async (variables) => { options.onSuccess?.(globalThis.__testMutationResult, variables); return globalThis.__testMutationResult; },
@@ -178,7 +182,9 @@ export const usePageParams = () => ({
   setPage: (page) => (globalThis.__pageCalls ??= []).push(['page', page]),
   setPageSize: (pageSize) => (globalThis.__pageCalls ??= []).push(['pageSize', pageSize]),
 });`,
-  'pagination.mjs': 'export const PAGE_SIZES = [10, 25, 50, 100];',
+  'pagination.mjs': `export const PAGE_SIZES = [10, 25, 50, 100];
+export const pageOffset = ({ page, pageSize }) => (page - 1) * pageSize;
+export const pageCountOf = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize));`,
   'dialog.mjs': `import { createElement } from './react.mjs';
 export const Dialog = ({ children }) => children;
 export const DialogTrigger = ({ children }) => children;
@@ -811,8 +817,11 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       test('a page past the end says so, with a way back to the last page', async () => {
         const page = await showing(9, { items: [], total: 25 });
         expect(withTag(page.tree, 'table')).toHaveLength(0);
-        expect(textOf(must(find(page.tree, (element) => element.tag === 'p' && textOf(element).includes('page 9')), 'the message'))).toBe(
-          `There are no ${noun} on page 9.`,
+        const message = must(find(page.tree, (element) => textOf(element).includes('page 9') && element.props.role === 'status'), 'the message');
+        expect(textOf(message)).toBe(`There are no ${noun} on page 9.`);
+        expect(find(page.tree, (element) => textOf(element) === 'Page 9')).toBeDefined();
+        expect(textOf(must(find(page.tree, (element) => element.props['aria-live'] === 'polite'), 'the status line'))).toBe(
+          `25 ${noun} in total`,
         );
         await page.click('Go to the last page');
         await page.click('Previous page');
