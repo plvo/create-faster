@@ -69,7 +69,7 @@ src/
 │   ├── admin/                            # Create user dialog, user actions, user table
 │   ├── contacts/                         # Contact dialog, form, table
 │   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
-│   ├── table-pagination.tsx              # Range, page size select and previous/next buttons under a table
+│   ├── table-pagination.tsx              # PagedList: empty state, page past the end, or rows with range, page size and previous/next
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
 │   ├── can.tsx                           # Permission gate component
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
@@ -89,10 +89,11 @@ src/
 ├── root.ts                   # App router (user, contact, session)
 ├── trpc.ts                   # tRPC init with auth context + headers
 ├── pagination.ts             # Page and page size validation shared by the routers and the web app
+├── page-query.ts             # One page of a table, newest first (server only)
 ├── middleware/
 │   └── rbac.ts               # adminProcedure + permissionProcedure(resource, action)
 └── router/
-    ├── user.ts               # me, create, list (paginated), getById, edit, generatePassword
+    ├── user.ts               # me, create, list (paginated), count, getById, edit, generatePassword
     ├── contact.ts            # list (paginated), getById, create, update, delete, count
     └── session.ts            # list, revoke, revokeOthers
 ```
@@ -134,12 +135,13 @@ Full create, read, update, delete for contacts. Contact form with validation (Ta
 
 ### Paginated lists
 
-`contact.list` and `user.list` return one page and the total, `{ items, total }`, never the whole table. The page is in the URL (`/contacts?page=2&pageSize=25`), so a page can be bookmarked and the back and forward buttons walk through the pages.
+`contact.list` and `user.list` return the rows of one page, never the whole table, and `contact.count` and `user.count` return the total. The page is in the URL (`/contacts?page=2&pageSize=25`), so a page can be bookmarked and the back and forward buttons walk through the pages.
 
-- `packages/api/src/pagination.ts` is the one place that validates `page` (a whole number from 1) and `pageSize` (10, 25, 50 or 100). A missing or invalid value is the first page, or 10 rows, instead of an error or an unbounded read. The router input, the server prefetch and the web app all parse with it, so they ask for the same page.
-- Rows are ordered newest first, with the id as a tie-break, so a row never appears on two pages or on none while you page.
+- `packages/api/src/pagination.ts` is the one place that validates `page` (a whole number from 1 to 10,000) and `pageSize` (10, 25, 50 or 100). A missing or invalid value is the first page, or 10 rows, instead of an error or an unbounded read. The router input, the server prefetch and the web app all parse with it, so they ask for the same page. Offset pagination slows down with depth, so a table that needs to reach deeper rows should page by a cursor.
+- `packages/api/src/page-query.ts` orders rows newest first, with the id as a tie-break, so a row never appears on two pages or on none while you page. Both tables have an index on `(created_at, id)` for that order.
+- The total is its own `count` query, so changing page does not count again; a mutation that adds or removes a row invalidates it.
 - The page prefetches the page the URL names and dehydrates that one page. A page past the end shows an empty state with a button to the last page.
-- `TablePagination` (`src/components/table-pagination.tsx`) renders the range and total, a page size select and previous/next buttons. A new list calls `usePageParams()` for the page, passes `{ page, pageSize }` to its query, and renders the component under its table.
+- `PagedList` (`src/components/table-pagination.tsx`) renders the empty state, the page past the end, or the rows with a pager: range and total, a page size select and previous/next buttons. A new list calls `usePageParams()` for the page, asks for its rows with `{ page, pageSize }` and for its `count`, and renders its table inside `PagedList`.
 
 ### Profile with View Transitions
 
