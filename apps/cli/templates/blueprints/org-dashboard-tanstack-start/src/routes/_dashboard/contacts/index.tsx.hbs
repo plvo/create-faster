@@ -1,11 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { pageSearch, parsePageParams } from '@repo/api/pagination';
 import { ContactsClient } from '@/components/contacts/contacts-client';
 import { QueryBoundary } from '@/components/query-boundary';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/contacts/')({
-  loader: ({ context }) => {
-    void context.queryClient.prefetchQuery(context.trpc.contact.list.queryOptions());
+  validateSearch: pageSearch,
+  loaderDeps: ({ search }) => parsePageParams(search),
+  loader: ({ context, deps }) => {
+    void context.queryClient.prefetchQuery(context.trpc.contact.list.queryOptions(deps));
+    void context.queryClient.prefetchQuery(context.trpc.contact.count.queryOptions());
   },
   head: () => ({ meta: [{ title: pageTitle('Contacts') }] }),
   component: ContactsPage,

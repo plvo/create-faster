@@ -202,6 +202,11 @@ const orgDashboardAgentArchitecture = (webFramework: string) =>
   ].join('\n');
 
 const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
+  api: {
+    exports: {
+      './pagination': './src/pagination.ts',
+    },
+  },
   auth: {
     exports: {
       './types': './src/types.ts',

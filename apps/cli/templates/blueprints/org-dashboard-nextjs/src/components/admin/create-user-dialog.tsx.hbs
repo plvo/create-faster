@@ -34,7 +34,10 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
   const createUser = useMutation(
     trpc.user.create.mutationOptions({
       onSuccess: async ({ password }) => {
-        await queryClient.invalidateQueries(trpc.user.list.queryFilter());
+        await Promise.all([
+          queryClient.invalidateQueries(trpc.user.list.queryFilter()),
+          queryClient.invalidateQueries(trpc.user.count.queryFilter()),
+        ]);
         toast.success('User created', {
           description: `Temporary password: ${password} — copy it now, it won't be shown again.`,
           duration: 30000,

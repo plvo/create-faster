@@ -1,17 +1,27 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describeWithDocker } from './docker-database';
 import {
   type CommandResult,
   cleanupTempDir,
   createTempDir,
-  getFreePort,
   type RunningServer,
   runCli,
   runCommand,
-  startServer,
 } from './helpers';
+import {
+  buildAndStartWeb,
+  callTrpc,
+  describeFailure,
+  describePaging,
+  firstContact,
+  post,
+  redirectOf,
+  SEEDED_ADMIN,
+  SEEDED_MEMBER,
+  SEEDED_READER,
+  signIn,
+} from './org-dashboard';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_SETUP = 240_000;
@@ -19,83 +29,6 @@ const TIMEOUT_BUILD = 300_000;
 const TIMEOUT_SERVER = 120_000;
 
 const BLUEPRINT = 'org-dashboard-tanstack-start';
-const SEED_PASSWORD = 'password';
-const SEEDED_ADMIN = 'admin@example.com';
-const SEEDED_MEMBER = 'user@example.com';
-const SEEDED_READER = 'manager@example.com';
-const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
-
-function describeFailure(result: CommandResult): string {
-  return `${result.stdout}\n${result.stderr}`;
-}
-
-const post = (server: RunningServer, path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> =>
-  fetch(new URL(path, server.url), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin: server.url, ...headers },
-    body: JSON.stringify(body),
-  });
-
-const signIn = async (server: RunningServer, email: string, clientIp: string, password = SEED_PASSWORD): Promise<string> => {
-  const response = await post(server, '/api/auth/sign-in/email', { email, password }, { 'x-forwarded-for': clientIp });
-  expect(response.status, await response.clone().text()).toBe(200);
-  return response.headers
-    .getSetCookie()
-    .map((entry) => entry.split(';')[0])
-    .join('; ');
-};
-
-const redirectOf = async (server: RunningServer, path: string, cookie?: string): Promise<{ status: number; location: URL | null }> => {
-  const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: cookie ? { cookie } : {} });
-  const location = response.headers.get('location');
-  return { status: response.status, location: location ? new URL(location, server.url) : null };
-};
-
-interface TrpcResult<T> {
-  status: number;
-  data: T;
-}
-
-// The tRPC endpoint speaks superjson: an input travels as { json }, a result comes back under result.data.json.
-async function callTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<TrpcResult<T>> {
-  const response =
-    input === undefined
-      ? await fetch(new URL(`/api/trpc/${procedure}`, server.url), { headers: { cookie } })
-      : await post(server, `/api/trpc/${procedure}`, { json: input }, { cookie });
-  const body = (await response.json()) as { result?: { data: { json: T } } };
-  return { status: response.status, data: body.result?.data.json as T };
-}
-
-interface Contact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-}
-
-async function firstContact(server: RunningServer, cookie: string): Promise<Contact> {
-  const { status, data: contacts } = await callTrpc<Contact[]>(server, 'contact.list', cookie);
-  expect(status).toBe(200);
-  const [contact] = contacts;
-  if (!contact) throw new Error('the seed created no contact');
-  return contact;
-}
-
-async function buildAndStartWeb(projectDir: string): Promise<RunningServer> {
-  const webDir = join(projectDir, 'apps/web');
-  const port = await getFreePort();
-  const envPath = join(webDir, '.env');
-  const kept = (await readFile(envPath, 'utf8')).split('\n').filter((line) => line && !line.startsWith('BETTER_AUTH_'));
-  await writeFile(
-    envPath,
-    `${[...kept, `BETTER_AUTH_SECRET=${AUTH_SECRET}`, `BETTER_AUTH_URL=http://127.0.0.1:${port}`].join('\n')}\n`,
-  );
-
-  const build = await runCommand(['bun', 'run', 'build'], projectDir);
-  expect(build.exitCode, describeFailure(build)).toBe(0);
-
-  return startServer(['bun', 'run', 'start'], webDir, { port, env: { PORT: String(port) }, readyTimeout: TIMEOUT_SERVER });
-}
 
 describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, production build and sign-in`, () => {
   let projectDir: string;
@@ -327,6 +260,8 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
       await setRole('user');
     }
   });
+
+  describePaging({ server: () => server, projectDir: () => projectDir });
 
   test('an unknown page answers not found and the server logs no error', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.5');

@@ -37,6 +37,7 @@ export function ContactDetail({ id }: { id: string }) {
     trpc.contact.delete.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: trpc.contact.list.queryKey() });
+        queryClient.invalidateQueries({ queryKey: trpc.contact.count.queryKey() });
 {{#if (eq stackName "tanstack-start")}}
         navigate({ to: '/contacts' });
 {{else}}

@@ -1,9 +1,9 @@
 ---
 inline: true
 ---
-{{!-- Steps that run the root lint script when the project defines one, then the build script, through the project package manager. Called after `      - ` in a workflow `steps:` list: it continues the step it is called in. --}}
+{{!-- Steps that run the root lint script and the root build script when the project defines them, through the project package manager. Called after `      - ` in a workflow `steps:` list: it continues the step it is called in. --}}
 {{#if (hasRootScript "lint")}}name: Lint
-        run: {{> github-actions/package-manager}} run lint
+        run: {{> github-actions/package-manager}} run lint{{#if (hasRootScript "build")}}
 
-      - {{/if}}name: Build
-        run: {{> github-actions/package-manager}} run build
+      - {{/if}}{{/if}}{{#if (hasRootScript "build")}}name: Build
+        run: {{> github-actions/package-manager}} run build{{/if}}

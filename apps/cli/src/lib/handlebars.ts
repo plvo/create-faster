@@ -165,6 +165,26 @@ function registerHelpers(): void {
     );
   });
 
+  Handlebars.registerHelper('joinEntries', function (this: unknown, options: Handlebars.HelperOptions) {
+    const entries: string[] = [];
+    options.fn(this, { data: { ...Handlebars.createFrame(options.data), joinedEntries: entries } });
+    const { open = '', close = '', closeIndent = '' } = options.hash as Record<string, string | undefined>;
+    if (entries.length === 0) return `${open}${close}`;
+    const body = entries.join(',\n');
+    return open || close ? `${open}\n${body}\n${closeIndent}${close}` : body;
+  });
+
+  Handlebars.registerHelper('entry', function (this: unknown, options: Handlebars.HelperOptions) {
+    const entries = options.data.joinedEntries as string[] | undefined;
+    if (!entries) throw new Error('{{#entry}} must be inside {{#joinEntries}}');
+    const content = options
+      .fn(this)
+      .replace(/^\s*\n/, '')
+      .trimEnd();
+    if (content.trim() !== '') entries.push(content);
+    return '';
+  });
+
   Handlebars.registerHelper('deployAppDir', (options: Handlebars.HelperOptions) => {
     return resolveDeployAppDir(options.data.root as TemplateContext) ?? '';
   });
