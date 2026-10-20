@@ -148,6 +148,11 @@ const CONTACT_FORM_URL: EnvVar = {
 };
 const PRIVY_DASHBOARD_URL = 'https://dashboard.privy.io';
 const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
+const NEXT_PUBLIC_APP_URL: EnvVar = {
+  value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+  stacks: ['nextjs'],
+  monoScope: ['app'],
+};
 
 const ORG_DASHBOARD_WEB_LIBRARIES = [
   'shadcn',
@@ -164,7 +169,13 @@ const ORG_DASHBOARD_HINT =
 
 const orgDashboardContext = (webStack: StackName) => ({
   apps: [
-    { appName: 'web', stackName: webStack, libraries: ORG_DASHBOARD_WEB_LIBRARIES },
+    {
+      appName: 'web',
+      stackName: webStack,
+      libraries: ORG_DASHBOARD_WEB_LIBRARIES,
+      packageJson: ORG_DASHBOARD_WEB_PACKAGE_JSON,
+      envs: [SEED_PASSWORD],
+    },
     { appName: 'batch', stackName: 'node' as const, libraries: [] },
   ],
   project: { database: 'postgres', orm: 'drizzle' },
@@ -181,7 +192,7 @@ const orgDashboardAgentArchitecture = (webFramework: string) =>
     '- [Data layer](docs/agents/data-layer.md)',
   ].join('\n');
 
-const ORG_DASHBOARD_PACKAGE_JSON: PackageJsonConfig = {
+const ORG_DASHBOARD_WEB_PACKAGE_JSON: PackageJsonConfig = {
   dependencies: {
     'lucide-react': '^1.37.0',
     'react-error-boundary': '^5.0.0',
@@ -552,7 +563,7 @@ export const META: Meta = {
       envs: [
         {
           value: 'BETTER_AUTH_SECRET=',
-          monoScope: [{ pkg: 'auth' }, 'app'],
+          monoScope: ['app'],
           secret: true,
           generateCommand: GENERATE_SECRET,
         },
@@ -605,6 +616,7 @@ export const META: Meta = {
           },
         },
       },
+      envs: [NEXT_PUBLIC_APP_URL],
     },
     'tanstack-query': {
       label: 'TanStack Query',
@@ -1551,10 +1563,8 @@ export const META: Meta = {
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('Next.js'),
       context: orgDashboardContext('nextjs'),
-      packageJson: ORG_DASHBOARD_PACKAGE_JSON,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
-      envs: [SEED_PASSWORD],
     },
     'org-dashboard-tanstack-start': {
       label: 'Org Dashboard (TanStack Start)',
@@ -1564,10 +1574,8 @@ export const META: Meta = {
       firstRun: RUN_LOCAL_SETUP,
       agentArchitecture: orgDashboardAgentArchitecture('TanStack Start'),
       context: orgDashboardContext('tanstack-start'),
-      packageJson: ORG_DASHBOARD_PACKAGE_JSON,
       pkgPackageJson: ORG_DASHBOARD_PKG_PACKAGE_JSON,
       rootPackageJson: ORG_DASHBOARD_ROOT_PACKAGE_JSON,
-      envs: [SEED_PASSWORD],
     },
     'multitenant-saas-nextjs': {
       label: 'Multitenant SaaS',
@@ -1600,6 +1608,17 @@ export const META: Meta = {
               'tanstack-form',
               'next-themes',
             ],
+            packageJson: {
+              dependencies: {
+                '@hugeicons/react': '^1.1.6',
+                '@hugeicons/core-free-icons': '^4.1.1',
+                'lucide-react': '^1.37.0',
+                'react-error-boundary': '^5.0.0',
+                sonner: '^2.0.7',
+                zod: '^4.5.4',
+              },
+            },
+            envs: [SEED_PASSWORD],
           },
           {
             appName: 'batch',
@@ -1610,16 +1629,6 @@ export const META: Meta = {
         project: {
           database: 'postgres',
           orm: 'drizzle',
-        },
-      },
-      packageJson: {
-        dependencies: {
-          '@hugeicons/react': '^1.1.6',
-          '@hugeicons/core-free-icons': '^4.1.1',
-          'lucide-react': '^1.37.0',
-          'react-error-boundary': '^5.0.0',
-          sonner: '^2.0.7',
-          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
@@ -1661,14 +1670,6 @@ export const META: Meta = {
           start: 'turbo start',
         },
       },
-      envs: [
-        {
-          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
-          stacks: ['nextjs'],
-          monoScope: ['app'],
-        },
-        SEED_PASSWORD,
-      ],
     },
     'cloudflare-static-site-nextjs': {
       label: 'Cloudflare Static Site',
@@ -1702,14 +1703,7 @@ export const META: Meta = {
           motion: '^12.26.0',
         },
       },
-      envs: [
-        {
-          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
-          stacks: ['nextjs'],
-          monoScope: ['app'],
-        },
-        CONTACT_FORM_URL,
-      ],
+      envs: [NEXT_PUBLIC_APP_URL, CONTACT_FORM_URL],
     },
     'cloudflare-fullstack-nextjs': {
       label: 'Cloudflare Fullstack',
@@ -1740,6 +1734,13 @@ export const META: Meta = {
             appName: 'web',
             stackName: 'nextjs',
             libraries: ['shadcn', 'next-themes', 'better-auth', 'trpc', 'tanstack-query', 'tanstack-form'],
+            packageJson: {
+              dependencies: {
+                'lucide-react': '^1.37.0',
+                sonner: '^2.0.7',
+                zod: '^4.5.4',
+              },
+            },
           },
           {
             appName: 'cron',
@@ -1751,13 +1752,6 @@ export const META: Meta = {
           database: 'd1',
           orm: 'drizzle',
           deployment: 'cloudflare',
-        },
-      },
-      packageJson: {
-        dependencies: {
-          'lucide-react': '^1.37.0',
-          sonner: '^2.0.7',
-          zod: '^4.5.4',
         },
       },
       pkgPackageJson: {
@@ -1805,18 +1799,11 @@ export const META: Meta = {
           '@libsql/client': LIBSQL_CLIENT_VERSION,
         },
         scripts: {
-          'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
+          'db:seed': '{{tsRunner}} --env-file=apps/web/.env --env-file=.env scripts/seed.ts',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
         },
       },
-      envs: [
-        {
-          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
-          stacks: ['nextjs'],
-          monoScope: ['app'],
-        },
-        SEED_PASSWORD,
-      ],
+      envs: [{ ...SEED_PASSWORD, monoScope: ['root'] }],
     },
     'showcase-nextjs': {
       label: 'Showcase',
@@ -1848,14 +1835,7 @@ export const META: Meta = {
           motion: '^12.26.0',
         },
       },
-      envs: [
-        {
-          value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
-          stacks: ['nextjs'],
-          monoScope: ['app'],
-        },
-        CONTACT_FORM_URL,
-      ],
+      envs: [NEXT_PUBLIC_APP_URL, CONTACT_FORM_URL],
     },
   },
 } as const satisfies Meta;

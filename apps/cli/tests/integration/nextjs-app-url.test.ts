@@ -16,7 +16,7 @@ describe('Next.js getAppUrl', () => {
 
   beforeAll(async () => {
     tempDir = await createTempDir();
-    const result = await runCli(['app-url', '--app', 'web:nextjs', '--no-git', '--no-install'], tempDir);
+    const result = await runCli(['app-url', '--app', 'web:nextjs:trpc', '--no-git', '--no-install'], tempDir);
     expect(result.exitCode).toBe(0);
     getAppUrl = ((await import(join(tempDir, 'app-url/src/lib/get-app-url.ts'))) as AppUrlModule).getAppUrl;
   });

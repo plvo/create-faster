@@ -138,6 +138,8 @@ The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.r
 
 ## Extra dependencies
 
+`lucide-react`, `sonner` and `zod` are declared on the `web` app only; the cron Worker receives none of them.
+
 | Package | Purpose |
 |---------|---------|
 | `lucide-react` | Icons (upload, delete, nav) |
@@ -155,6 +157,7 @@ The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.r
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_APP_URL` | Public web app URL (scope: app) |
+| `SEED_PASSWORD` | Password of the seeded accounts, `password` by default (scope: root, the `.env` at the repo root, read by `db:seed` next to `apps/web/.env`). It is not in `apps/web/.env`, which `build:cf` bundles into the web Worker |
 
 There is no database connection string — D1 is the `DB` binding only.
 

@@ -13,11 +13,11 @@ beforeAll(() => {
   setupTemplateEngine();
 });
 
-function makeContext(tooling: string[]): TemplateContext {
+function makeContext(tooling: string[], libraries: string[] = []): TemplateContext {
   return {
     projectName: 'my-project',
     repo: 'single',
-    apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }],
+    apps: [{ appName: 'my-project', stackName: 'nextjs', libraries }],
     project: { database: 'postgres', orm: 'drizzle', linter: 'biome', tooling },
     git: false,
   };
@@ -34,9 +34,14 @@ function renderHbs(relativePath: string, ctx: TemplateContext): string {
 const NEXT_CONFIG_TEMPLATE = 'stack/nextjs/next.config.ts.hbs';
 
 describe('next.config.ts.hbs: portless integration', () => {
-  test('exposes NEXT_PUBLIC_APP_URL from PORTLESS_URL when portless selected', () => {
-    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeContext(['portless']));
+  test('exposes NEXT_PUBLIC_APP_URL from PORTLESS_URL when portless is selected and the app reads it', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeContext(['portless'], ['trpc']));
     expect(rendered).toContain('NEXT_PUBLIC_APP_URL: process.env.PORTLESS_URL ?? process.env.NEXT_PUBLIC_APP_URL');
+  });
+
+  test('reads no NEXT_PUBLIC_APP_URL when nothing in the app uses getAppUrl', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeContext(['portless']));
+    expect(rendered).not.toContain('NEXT_PUBLIC_APP_URL');
   });
 
   test('omits the env block when portless is not selected', () => {
