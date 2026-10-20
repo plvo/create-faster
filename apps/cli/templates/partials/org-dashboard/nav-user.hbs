@@ -15,6 +15,7 @@ import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
 {{/unless}}
 import { useTheme } from 'next-themes';
 {{#unless (eq stackName "tanstack-start")}}
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 {{/unless}}
 import React from 'react';
@@ -39,8 +40,8 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@re
 import type { Session } from '@repo/auth/types';
 import { authClient } from '@repo/auth/auth-client';
 
-function UserAvatar({ user, initials }: { user: Session['user']; initials: string }) {
 {{#if (eq avatar "image")}}
+function UserAvatar({ user, initials }: { user: Session['user']; initials: string }) {
   return (
     <Avatar className='size-8 rounded-lg'>
       <AvatarImage src={user.image ?? undefined} alt={user.name} />
@@ -50,6 +51,7 @@ function UserAvatar({ user, initials }: { user: Session['user']; initials: strin
     </Avatar>
   );
 {{else}}
+function UserAvatar({ initials }: { initials: string }) {
   return (
     <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium'>
       {initials}
@@ -122,7 +124,7 @@ export function NavUser({ session }: { session: Session }) {
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
-              <UserAvatar user={session.user} initials={initials} />
+              <UserAvatar {{#if (eq avatar "image")}}user={session.user} {{/if}}initials={initials} />
               <div className='grid flex-1 text-left text-sm leading-tight gap-1'>
                 <span className='truncate font-medium'>
 {{#if showRole}}
@@ -148,7 +150,7 @@ export function NavUser({ session }: { session: Session }) {
           >
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
-                <UserAvatar user={session.user} initials={initials} />
+                <UserAvatar {{#if (eq avatar "image")}}user={session.user} {{/if}}initials={initials} />
                 <div className='grid flex-1 text-left text-sm leading-tight'>
                   <span className='truncate font-medium'>{session.user.name}</span>
                   <span className='truncate text-xs'>{session.user.email}</span>
@@ -161,7 +163,7 @@ export function NavUser({ session }: { session: Session }) {
 {{#if (eq stackName "tanstack-start")}}
                 <Link to='/profile/account'>
 {{else}}
-                <a href='/profile/account'>
+                <Link href='/profile/account'>
 {{/if}}
 {{#if (eq icons "hugeicons")}}
                   <HugeiconsIcon icon={UserIcon} />
@@ -169,11 +171,7 @@ export function NavUser({ session }: { session: Session }) {
                   <UserIcon />
 {{/if}}
                   Profile
-{{#if (eq stackName "tanstack-start")}}
                 </Link>
-{{else}}
-                </a>
-{{/if}}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>
 {{#if (eq icons "hugeicons")}}

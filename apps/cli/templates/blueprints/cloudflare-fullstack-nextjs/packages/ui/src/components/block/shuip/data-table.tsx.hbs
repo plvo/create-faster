@@ -120,6 +120,7 @@ export type DataTableFilterOption = {
 };
 
 declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the augmentation repeats the type parameters of the interface
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     placeholder?: string;

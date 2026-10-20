@@ -37,4 +37,22 @@ export const reactConfig = [
   {
     ignores: [".vinxi/**", ".output/**", ".tanstack/**", "src/routeTree.gen.ts"],
   },
+{{#if (hasLibrary "shadcn")}}
+  {
+    files: ["**/components/ui/sidebar.tsx"],
+    rules: {
+      "react-hooks/purity": "off",
+    },
+  },
+  {
+    files: ["**/shuip/**"],
+    rules: {
+      "react-hooks/incompatible-library": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+{{/if}}
 ];
+
+export default reactConfig;

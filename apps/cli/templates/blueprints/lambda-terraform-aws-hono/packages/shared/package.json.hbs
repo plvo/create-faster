@@ -7,12 +7,20 @@ mono:
   "version": "0.0.0",
   "private": true,
   "type": "module",
+{{#if (or (has "linter" "eslint") (has "linter" "eslint-prettier"))}}
+  "scripts": {
+    "lint": "eslint --config ../eslint-config/server.js ."
+  },
+{{/if}}
   "exports": {
     "./types": "./src/types.ts"
   },
   "devDependencies": {
     "@repo/config": "*",
     "@types/aws-lambda": "^8.10.0",
+{{#if (or (has "linter" "eslint") (has "linter" "eslint-prettier"))}}
+    "eslint": "^9.22.0",
+{{/if}}
     "typescript": "^5.9.3"
   }
 }

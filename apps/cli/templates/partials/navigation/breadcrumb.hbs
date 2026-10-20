@@ -78,6 +78,7 @@ function useCachedRecord<T>(queryKey: QueryKey): T | null | undefined {
     () => undefined,
   );
   const [hasCommitted, setHasCommitted] = React.useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- the flag reads false until the page has committed
   React.useEffect(() => setHasCommitted(true), []);
   return record === undefined && hasCommitted ? null : record;
 }
