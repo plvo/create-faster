@@ -35,9 +35,6 @@ const ESLINT_VERSION = '^9.22.0';
 // A turborepo workspace package lints itself with the shared config of `@repo/eslint-config`, so the root `lint`
 // (`turbo lint`) reaches it like an app. Its `eslint.config.mjs` comes from the `eslint` addon templates.
 const ESLINT_LINTS_PACKAGE: Parameters<typeof $when>[0] = { repo: 'turborepo', linter: ['eslint', 'eslint-prettier'] };
-const ESLINT_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, ESLINT_VERSION);
-const ESLINT_CONFIG_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, '*');
-const LINT_PACKAGE = $when(ESLINT_LINTS_PACKAGE, 'eslint .');
 
 const LINT_STAGED_FILES = '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}';
 const ESLINT_STAGED_COMMAND = 'eslint --fix';
@@ -54,18 +51,31 @@ const ESLINT_STAGED_IN_WORKSPACE = $when(
 
 const AWS_LAMBDA_TYPES_VERSION = '^8.10.0';
 
+// The fields of a turborepo workspace package that lints itself with ESLint, added to its `packageJson` or
+// `pkgPackageJson`: the lint script, the ESLint devDependencies and the lint-staged entry. A single repo and the
+// other linters get none. A new package that lints itself passes its config through here and adds its
+// `<package>-eslint.config.mjs.hbs` template.
+function lintsWithEslint(config: PackageJsonConfig): PackageJsonConfig {
+  return {
+    ...config,
+    devDependencies: {
+      ...config.devDependencies,
+      '@repo/eslint-config': $when(ESLINT_LINTS_PACKAGE, '*'),
+      eslint: $when(ESLINT_LINTS_PACKAGE, ESLINT_VERSION),
+    },
+    scripts: { lint: $when(ESLINT_LINTS_PACKAGE, 'eslint .'), ...config.scripts },
+    'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
+  };
+}
+
 const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
-  shared: {
+  shared: lintsWithEslint({
     exports: { './types': './src/types.ts' },
     devDependencies: {
-      '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
       '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
-      eslint: ESLINT_IN_PACKAGE,
       typescript: '^5.9.3',
     },
-    scripts: { lint: LINT_PACKAGE },
-    'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
-  },
+  }),
 };
 
 // Privy pins viem exactly: each @privy-io/react-auth release depends on one viem version and each
@@ -426,7 +436,7 @@ export const META: Meta = {
       category: 'UI',
       support: { stacks: ['nextjs', 'tanstack-start'] },
       mono: { scope: 'pkg', name: 'ui' },
-      packageJson: {
+      packageJson: lintsWithEslint({
         dependencies: {
           '@radix-ui/react-slot': '^1.3.3',
           'radix-ui': '^1.6.7',
@@ -443,13 +453,7 @@ export const META: Meta = {
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
           '@types/react': '^19.2.18',
-          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
-          eslint: ESLINT_IN_PACKAGE,
         },
-        scripts: {
-          lint: LINT_PACKAGE,
-        },
-        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           './': './src/components/',
           './base.css': './src/base.css',
@@ -458,7 +462,7 @@ export const META: Meta = {
           './lib/*': './src/lib/*.ts',
           './postcss.config.mjs': './postcss.config.mjs',
         },
-      },
+      }),
     },
     'next-themes': {
       label: 'Next Themes',
@@ -516,7 +520,7 @@ export const META: Meta = {
       needsServerRuntime: true,
       needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'auth' },
-      packageJson: {
+      packageJson: lintsWithEslint({
         dependencies: {
           'better-auth': BETTER_AUTH_VERSION,
           '@better-auth/drizzle-adapter': $when({ orm: 'drizzle' }, BETTER_AUTH_VERSION),
@@ -527,19 +531,13 @@ export const META: Meta = {
           typescript: '^5',
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
-          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
-          eslint: ESLINT_IN_PACKAGE,
         },
-        scripts: {
-          lint: LINT_PACKAGE,
-        },
-        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
           './session-cache': $when({ stack: 'tanstack-start' }, './src/session-cache.ts'),
         },
-      },
+      }),
       appPackageJson: {
         dependencies: {
           'better-auth': BETTER_AUTH_VERSION,
@@ -567,7 +565,7 @@ export const META: Meta = {
       needsServerRuntime: true,
       needsSingletonDb: true,
       mono: { scope: 'pkg', name: 'api' },
-      packageJson: {
+      packageJson: lintsWithEslint({
         dependencies: {
           '@repo/auth': $when({ repo: 'turborepo', library: 'better-auth' }, '*'),
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
@@ -581,17 +579,11 @@ export const META: Meta = {
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
-          '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
-          eslint: ESLINT_IN_PACKAGE,
         },
-        scripts: {
-          lint: LINT_PACKAGE,
-        },
-        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           '.': './src/index.ts',
         },
-      },
+      }),
       appPackageJson: {
         dependencies: {
           '@trpc/client': '^11.18.0',
@@ -1105,7 +1097,7 @@ export const META: Meta = {
               commands: [{ script: 'db:generate' }, { script: 'db:migrate' }],
             },
           ],
-          packageJson: {
+          packageJson: lintsWithEslint({
             main: $when({ repo: 'turborepo' }, './dist/index.js'),
             module: $when({ repo: 'turborepo' }, './dist/index.mjs'),
             types: $when({ repo: 'turborepo' }, './dist/index.d.ts'),
@@ -1123,13 +1115,9 @@ export const META: Meta = {
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
               dotenv: '^17.4.2',
-              '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
-              eslint: ESLINT_IN_PACKAGE,
               tsx: TSX_RUNNER,
             },
-            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
             scripts: {
-              lint: LINT_PACKAGE,
               'db:generate': 'drizzle-kit generate',
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
@@ -1140,7 +1128,7 @@ export const META: Meta = {
               '.': './src/index.ts',
               './schema': './src/schema.ts',
             },
-          },
+          }),
         },
         prisma: {
           label: 'Prisma',
@@ -1155,7 +1143,7 @@ export const META: Meta = {
               commands: [{ script: 'db:generate' }, { script: 'db:push' }],
             },
           ],
-          packageJson: {
+          packageJson: lintsWithEslint({
             dependencies: {
               '@prisma/client': '^7.10.0',
               '@prisma/adapter-pg': $when({ database: 'postgres' }, '^7.10.0'),
@@ -1171,14 +1159,10 @@ export const META: Meta = {
               '@types/node': NODE_TYPES_VERSION,
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
-              '@repo/eslint-config': ESLINT_CONFIG_IN_PACKAGE,
-              eslint: ESLINT_IN_PACKAGE,
               prisma: '^7.10.0',
               tsx: TSX_RUNNER,
             },
-            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
             scripts: {
-              lint: LINT_PACKAGE,
               'db:generate': 'prisma generate',
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',
@@ -1191,7 +1175,7 @@ export const META: Meta = {
             exports: {
               '.': './src/index.ts',
             },
-          },
+          }),
         },
       },
     },

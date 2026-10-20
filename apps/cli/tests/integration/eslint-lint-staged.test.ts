@@ -9,7 +9,12 @@ import { COMBINATIONS } from './workspace-combinations';
 setIntegrationTimeout();
 
 const ESLINT_LINTERS = ['eslint', 'eslint-prettier'];
-const ESLINT_CONFIGS = ['eslint.config.js', 'eslint.config.mjs', 'eslint.config.cjs'];
+const ESLINT_CONFIGS = ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts'].map((extension) => `eslint.config.${extension}`);
+const LINT_STAGED_CONFIG_FILES = [
+  '.lintstagedrc',
+  ...['json', 'yaml', 'yml', 'mjs', 'mts', 'js', 'ts', 'cjs', 'cts'].map((extension) => `.lintstagedrc.${extension}`),
+  ...['mjs', 'mts', 'js', 'ts', 'cjs', 'cts'].map((extension) => `lint-staged.config.${extension}`),
+];
 
 type LintStagedConfig = Record<string, string[]>;
 
@@ -18,11 +23,17 @@ interface Manifest {
   'lint-staged'?: LintStagedConfig;
 }
 
-/** The directory whose package.json holds the `lint-staged` config used for a staged file: the closest one. */
+async function hasLintStagedConfig(projectPath: string, dir: string): Promise<boolean> {
+  const manifest = await readJsonFile<Manifest>(join(projectPath, dir, 'package.json')).catch(() => undefined);
+  if (manifest?.['lint-staged']) return true;
+  for (const name of LINT_STAGED_CONFIG_FILES) if (await fileExists(join(projectPath, dir, name))) return true;
+  return false;
+}
+
+/** The directory of the `lint-staged` config used for a staged file: the closest one, in a package.json or a file. */
 async function lintStagedDirOf(projectPath: string, stagedFile: string): Promise<string | undefined> {
   for (let dir = dirname(stagedFile); ; dir = dirname(dir)) {
-    const manifest = await readJsonFile<Manifest>(join(projectPath, dir, 'package.json')).catch(() => undefined);
-    if (manifest?.['lint-staged']) return dir;
+    if (await hasLintStagedConfig(projectPath, dir)) return dir;
     if (dir === '.') return undefined;
   }
 }
@@ -85,7 +96,14 @@ describe.each(ESLINT_LINTERS.flatMap((linter) => COMBINATIONS.map((combination) 
       expect(unresolved).toEqual([]);
     });
 
-    test('lint-staged tasks run in the directory of the config, so the root config does not run eslint', async () => {
+    test('lint-staged finds several configs, so it runs the tasks in the directory of each', async () => {
+      const dirs = ['.', ...(await workspaceDirs(projectPath))];
+      const withConfig = (await Promise.all(dirs.map((dir) => hasLintStagedConfig(projectPath, dir)))).filter(Boolean);
+
+      expect(withConfig.length).toBeGreaterThanOrEqual(2);
+    });
+
+    test('the root config does not run eslint', async () => {
       const root = await readJsonFile<Manifest>(join(projectPath, 'package.json'));
       const rootCommands = Object.values(root['lint-staged'] ?? {}).flat();
 
