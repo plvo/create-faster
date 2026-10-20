@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import { evaluateNextConfig } from '../next-config';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -22,9 +23,9 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
   });
 
   test('next.config emits a static export with unoptimized images', async () => {
-    const config = await readTextFile(join(projectPath, 'next.config.ts'));
-    expect(config).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
-    expect(config).toContain('unoptimized: true');
+    const config = await evaluateNextConfig(await readTextFile(join(projectPath, 'next.config.ts')), tempDir, 'production');
+    expect(config.output).toBe('export');
+    expect(config.images?.unoptimized).toBe(true);
   });
 
   test('wrangler.jsonc serves the static export from out/ as Workers assets', async () => {
@@ -112,9 +113,17 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
     expect(notes).toContain('canonical');
   });
 
-  test('the README no longer tells to put the production URL in .env', async () => {
+  test('every note that names the static export says that next build is its check', async () => {
+    for (const file of ['AGENTS.md', 'README.md', 'docs/agents/cloudflare-deploy.md']) {
+      expect(await readTextFile(join(projectPath, file)), file).toContain(
+        '`next build` is the check that the site still exports',
+      );
+    }
+  });
+
+  test('the README points to the deploy notes for the production URL', async () => {
     const readme = await readTextFile(join(projectPath, 'README.md'));
-    expect(readme).not.toContain('in `.env` to your production URL');
+    expect(readme).toContain('Give the build your production URL');
     expect(readme).toContain('docs/agents/cloudflare-deploy.md');
   });
 

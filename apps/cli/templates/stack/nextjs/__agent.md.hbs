@@ -1,3 +1,6 @@
 Next.js App Router project. Routes in `src/app/`, shared code in `src/lib/`.
 Import alias `@/*` maps to `src/*`.
 Next.js documentation matching the installed version is in `node_modules/next/dist/docs/`, resolved from this app's directory.
+{{#if (has "deployment" "cloudflare-static")}}
+This app is a static export (`output: 'export'`). {{> nextjs/export-dev-note}}
+{{/if}}

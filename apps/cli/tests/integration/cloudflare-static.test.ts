@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import { evaluateNextConfig } from '../next-config';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -60,10 +61,12 @@ describe('Cloudflare static deployment platform', () => {
       expect(await fileExists(join(projectPath, 'open-next.config.ts'))).toBe(false);
     });
 
-    test('next.config.ts has static export and unoptimized images', async () => {
+    test('next.config.ts exports statically for the build, not under next dev, with unoptimized images', async () => {
       const content = await readTextFile(join(projectPath, 'next.config.ts'));
-      expect(content).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
-      expect(content).toContain('unoptimized: true');
+      const production = await evaluateNextConfig(content, tempDir, 'production');
+      expect(production.output).toBe('export');
+      expect(production.images?.unoptimized).toBe(true);
+      expect((await evaluateNextConfig(content, tempDir, 'development')).output).toBeUndefined();
       expect(content).not.toContain('initOpenNextCloudflareForDev');
     });
 
@@ -122,9 +125,10 @@ describe('Cloudflare static deployment platform', () => {
       expect(content).not.toContain('"main"');
     });
 
-    test('web app next.config.ts uses static export', async () => {
+    test('web app next.config.ts exports statically for the build, not under next dev', async () => {
       const content = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
-      expect(content).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
+      expect((await evaluateNextConfig(content, tempDir, 'production')).output).toBe('export');
+      expect((await evaluateNextConfig(content, tempDir, 'development')).output).toBeUndefined();
     });
 
     test('web app omits proxy.ts', async () => {

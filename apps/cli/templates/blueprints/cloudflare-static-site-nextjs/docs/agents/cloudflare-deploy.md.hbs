@@ -6,7 +6,7 @@ mono:
 ---
 # Deploying to Cloudflare Workers (static assets)
 
-This site is a Next.js static export (`output: 'export'` in `next.config.ts`) served as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — never Pages (maintenance mode). There is no server runtime: `next build` writes the whole site to `out/`, and `wrangler.jsonc` points the Worker's `assets.directory` at it.
+This site is a Next.js static export (`output: 'export'` in `next.config.ts`) served as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/) — never Pages (maintenance mode). There is no server runtime: `next build` writes the whole site to `out/`, and `wrangler.jsonc` points the Worker's `assets.directory` at it. {{> nextjs/export-dev-note}}
 
 ```jsonc
 "assets": {
@@ -18,13 +18,11 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 `not_found_handling: "404-page"` makes unmatched paths serve the export's pre-rendered `out/404.html` (the branded not-found page) instead of a blank 404 body.
 
 ## First deploy
-
-`.env` holds the local site URL, so a build that does not override it writes `localhost` into the sitemap, `robots.txt`, the canonical URLs and the JSON-LD, which search engines then read. Learn the production URL first, then build with it.
-{{> cloudflare/production-url appUrlReader="the app writes into the sitemap, `robots.txt`, canonical URLs and JSON-LD"}}
+{{> cloudflare/production-url appUrlUse="the app writes into the sitemap, `robots.txt`, canonical URLs and JSON-LD"}}
 
 ### Build and deploy
 
-Run these from the repository root, with the URL learned above:
+From the repository root, with the URL learned above:
 
 ```bash
 export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name}}.<subdomain>.workers.dev
@@ -32,8 +30,6 @@ export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name}}.<subdomain>.work
 ```
 
 `wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at the URL above. Check that `/sitemap.xml` and the `<link rel="canonical">` of a page start with it.
-
-Every later deploy needs the same `export` in the shell of the build, or in the CI environment. A process variable wins over `.env`, which keeps the local value for development.
 
 Dry-run the upload without publishing:
 

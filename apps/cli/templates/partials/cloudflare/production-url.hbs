@@ -1,13 +1,13 @@
 {{!-- pointer: when set, renders the one-line deploy step that points to the section instead of the section --}}
-{{!-- appUrlReader: what bakes `NEXT_PUBLIC_APP_URL` into the app when neither better-auth nor tRPC does (a phrase that follows "and "); it makes the partial render for that app --}}
-{{#if (or (hasLibrary "better-auth") (and (hasLibrary "trpc") (has "stack" "nextjs")) appUrlReader)}}
+{{!-- appUrlUse: what the app does with `NEXT_PUBLIC_APP_URL` when neither better-auth nor tRPC reads it (a phrase that follows "which Next.js freezes into the build and"); a non-empty value opens the gate --}}
+{{#if (or (hasLibrary "better-auth") (and (hasLibrary "trpc") (has "stack" "nextjs")) appUrlUse)}}
 {{#if pointer}}
 - Learn the production URL and give it to the build, as the **Production URL** notes say.
 {{else}}
 
 ### Production URL
 
-A Worker's public URL is read by {{#if (hasLibrary "better-auth")}}`BETTER_AUTH_URL`, a secret a deploy fails without{{/if}}{{#if (and (hasLibrary "better-auth") (and (hasLibrary "trpc") (has "stack" "nextjs")))}} and by {{/if}}{{#if appUrlReader}}`NEXT_PUBLIC_APP_URL`, which Next.js freezes into the build and {{appUrlReader}}{{else if (and (hasLibrary "trpc") (has "stack" "nextjs"))}}`NEXT_PUBLIC_APP_URL`, which Next.js freezes into the build and the server-side tRPC client calls{{/if}}, yet `wrangler deploy` is the first command that prints it. Learn it before the first build and deploy, from the Cloudflare account:
+A Worker's public URL is read by {{#if (hasLibrary "better-auth")}}`BETTER_AUTH_URL`, a secret a deploy fails without{{/if}}{{#if (and (hasLibrary "better-auth") (or appUrlUse (and (hasLibrary "trpc") (has "stack" "nextjs"))))}} and by {{/if}}{{#if appUrlUse}}`NEXT_PUBLIC_APP_URL`, which Next.js freezes into the build and {{appUrlUse}}{{else if (and (hasLibrary "trpc") (has "stack" "nextjs"))}}`NEXT_PUBLIC_APP_URL`, which Next.js freezes into the build and the server-side tRPC client calls{{/if}}, yet `wrangler deploy` is the first command that prints it. Learn it before the first build and deploy, from the Cloudflare account:
 
 1. Find the account id (the `Account ID` column; with several accounts, take the one you deploy to):
 
@@ -32,7 +32,7 @@ The URL of a Worker is then `https://<worker name>.<subdomain>.workers.dev`, its
 {{/each}}
 
 A Worker served from a custom domain or a route uses that URL instead.
-{{#if (or appUrlReader (and (hasLibrary "trpc") (has "stack" "nextjs")))}}
+{{#if (or appUrlUse (and (hasLibrary "trpc") (has "stack" "nextjs")))}}
 
 Build with it: `export NEXT_PUBLIC_APP_URL=<the URL>` in the shell of the build, before the build command, so `.env` needs no production value.{{#if (hasLibrary "better-auth")}} `BETTER_AUTH_URL` is the same URL, set with the other secrets.{{/if}}
 {{/if}}

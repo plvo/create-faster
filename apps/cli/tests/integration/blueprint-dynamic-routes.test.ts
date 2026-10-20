@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { evaluateNextConfig } from '../next-config';
 import { cleanupTempDir, createTempDir, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -61,10 +62,11 @@ describe.each(APPS)('$title dynamic routes', ({ args, routes, staticExport }) =>
 
   test.if(staticExport)('next dev does not run under the static export, which answers an unknown param with a 500', async () => {
     const config = await readTextFile(join(tempDir, 'routes', 'next.config.ts'));
-    expect(config).toContain("process.env.NODE_ENV === 'development' ? undefined : 'export'");
+    expect((await evaluateNextConfig(config, tempDir, 'production')).output).toBe('export');
+    expect((await evaluateNextConfig(config, tempDir, 'development')).output).toBeUndefined();
   });
 
-  test('every dynamic route turns an unlisted param into a 404, in dev as well as in production', async () => {
+  test('every dynamic route sets dynamicParams = false', async () => {
     for (const page of pages) {
       const source = await readTextFile(page);
       const route = relative(appDirectory, page);

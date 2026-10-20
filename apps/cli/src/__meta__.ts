@@ -84,7 +84,7 @@ const POSTHOG_TOKEN_SOURCE: EnvThirdParty = {
   url: 'https://us.posthog.com/settings/project',
   whenBlank: 'analytics stay off and nothing is sent to PostHog',
 };
-const CONTACT_FORM_ENDPOINT: EnvVar = {
+const CONTACT_FORM_URL: EnvVar = {
   value: 'NEXT_PUBLIC_CONTACT_FORM_URL=',
   stacks: ['nextjs'],
   monoScope: ['app'],
@@ -1645,7 +1645,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
-        CONTACT_FORM_ENDPOINT,
+        CONTACT_FORM_URL,
       ],
     },
     'cloudflare-fullstack-nextjs': {
@@ -1785,7 +1785,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
-        CONTACT_FORM_ENDPOINT,
+        CONTACT_FORM_URL,
       ],
     },
   },
