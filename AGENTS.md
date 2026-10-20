@@ -330,8 +330,8 @@ The shadcn CLI needs a `components.json` in every workspace it touches. A turbor
 ### TanStack Start fonts
 
 Same design as Next.js: Geist Sans and Geist Mono, applied through the theme variables.
-- The `tanstack-start` stack declares `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` as dependencies of each Start app (a turborepo app too: the CSS is resolved from the app, not from `@repo/ui`). `src/styles.css` imports both and defines `--font-geist-sans` and `--font-geist-mono` on `:root` (the `html` element), with a system fallback inside the value because the theme mapping is `@theme inline`.
-- With `shadcn`, `base.css` maps `--font-sans` and `--font-mono` to those variables, as for Next.js. Without it, `styles.css` carries the same `@theme inline` mapping (the Next.js `globals.css` does too).
+- The `tanstack-start` stack declares `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` as dependencies of each Start app (a turborepo app too: the CSS is resolved from the app, not from `@repo/ui`). `src/styles.css` imports both and defines `--font-geist-sans` and `--font-geist-mono` on `:root` (the `html` element), with a system fallback inside the value, because the `--font-sans` mapping replaces Tailwind's default font stack and the variable is then the only list the browser has.
+- The mapping of `--font-sans` and `--font-mono` to those variables is the `theme/geist-fonts` partial, called inside the `@theme inline` of the shadcn `base.css`, of the Next.js `globals.css` without shadcn, and of the Start `styles.css` without shadcn. A new stack that loads Geist calls it, never rewrites the two lines.
 - `styles.css` sets no `font-family` on `body` or `code`; Tailwind's preflight applies the theme fonts. The root route of `org-dashboard-tanstack-start` imports the stack `styles.css`, so it inherits this.
 - `tests/integration/tanstack-start-fonts.test.ts` generates a Start app with and without `shadcn`, in a turborepo, and every blueprint with a Start app.
 

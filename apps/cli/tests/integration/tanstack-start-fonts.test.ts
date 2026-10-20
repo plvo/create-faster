@@ -10,10 +10,7 @@ const startBlueprints = Object.entries(META.blueprints).filter(([, blueprint]) =
   blueprint.context.apps.some((app) => app.stackName === 'tanstack-start'),
 );
 
-const ruleBody = (css: string, selector: string): string | undefined => {
-  const match = css.match(new RegExp(`(?:^|\\n)${selector}\\s*\\{([^}]*)\\}`));
-  return match?.[1];
-};
+const DEPLOYMENTS = ['cloudflare', 'cloudflare-static'];
 
 describe('TanStack Start font variables', () => {
   let tempDir: string;
@@ -37,11 +34,9 @@ describe('TanStack Start font variables', () => {
     const css = await readTextFile(join(appDir, 'src/styles.css'));
     expect(css).toContain("@import '@fontsource-variable/geist';");
     expect(css).toContain("@import '@fontsource-variable/geist-mono';");
-    const root = ruleBody(css, ':root') ?? '';
-    expect(root).toMatch(/--font-geist-sans:\s*'Geist Variable'/);
-    expect(root).toMatch(/--font-geist-mono:\s*'Geist Mono Variable'/);
-    expect(ruleBody(css, 'body') ?? '').not.toContain('font-family');
-    expect(css).not.toMatch(/(^|\n)code\s*\{/);
+    expect(css).toMatch(/:root\s*\{[^}]*--font-geist-sans:\s*'Geist Variable'/);
+    expect(css).toMatch(/:root\s*\{[^}]*--font-geist-mono:\s*'Geist Mono Variable'/);
+    expect(css).not.toContain('font-family');
 
     const manifest = JSON.parse(await readTextFile(join(appDir, 'package.json')));
     expect(manifest.dependencies['@fontsource-variable/geist']).toBeDefined();
@@ -55,6 +50,14 @@ describe('TanStack Start font variables', () => {
     const theme = await readTextFile(join(projectDir, 'src/styles/shadcn.css'));
     expect(theme).toContain('--font-sans: var(--font-geist-sans)');
     expect(theme).toContain('--font-mono: var(--font-geist-mono)');
+  });
+
+  test.each(DEPLOYMENTS)('a Start app with shadcn on %s loads Geist the same way', async (deployment) => {
+    const name = `start-fonts-${deployment}`;
+    const projectDir = await generate([name, '--app', `${name}:tanstack-start:shadcn`, '--deployment', deployment]);
+    await expectGeistThroughVariables(projectDir);
+    const theme = await readTextFile(join(projectDir, 'src/styles/shadcn.css'));
+    expect(theme).toContain('--font-sans: var(--font-geist-sans)');
   });
 
   test('a Start app without shadcn maps the theme fonts to the Geist variables', async () => {
