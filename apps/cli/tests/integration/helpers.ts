@@ -51,6 +51,21 @@ export async function runCli(args: string[], cwd: string, env?: Record<string, s
   }
 }
 
+export interface TurboTask {
+  dependsOn?: string[];
+  cache?: boolean;
+}
+
+/** Generates a turborepo without git or install and reads its root scripts and `turbo.json` tasks. */
+export async function generateTurborepo(tempDir: string, name: string, args: string[], pm = 'bun') {
+  const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', pm], tempDir);
+  expect(result.exitCode).toBe(0);
+  const projectPath = join(tempDir, name);
+  const pkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
+  const turbo = await readJsonFile<{ tasks: Record<string, TurboTask> }>(join(projectPath, 'turbo.json'));
+  return { projectPath, scripts: pkg.scripts, tasks: turbo.tasks };
+}
+
 /** Every marker appears in the text, each after the previous one. */
 export function expectInOrder(text: string, markers: string[]): void {
   let from = 0;

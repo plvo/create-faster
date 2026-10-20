@@ -1,23 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, readJsonFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, generateTurborepo } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
-
-interface TurboTask {
-  dependsOn?: string[];
-  cache?: boolean;
-}
-
-async function generateTurborepo(tempDir: string, name: string, args: string[]) {
-  const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-  expect(result.exitCode).toBe(0);
-  const projectPath = join(tempDir, name);
-  const pkg = await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath, 'package.json'));
-  const turbo = await readJsonFile<{ tasks: Record<string, TurboTask> }>(join(projectPath, 'turbo.json'));
-  return { scripts: pkg.scripts, tasks: turbo.tasks };
-}
 
 describe('Turborepo root test scripts', () => {
   let tempDir: string;

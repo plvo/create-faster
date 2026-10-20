@@ -238,6 +238,36 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('joinEntries', () => {
+    const render = (source: string, context: object = {}) => Handlebars.compile(source)(context);
+
+    test('joins the entries that render something with a comma and a line break', () => {
+      const result = render(
+        '{{#joinEntries}}{{#entry}}{{#if a}}"a"{{/if}}{{/entry}}{{#entry}}\n  "b"\n{{/entry}}{{#entry}}{{#if c}}"c"{{/if}}{{/entry}}{{/joinEntries}}',
+        { a: true, c: true },
+      );
+      expect(result).toBe('"a",\n  "b",\n"c"');
+    });
+
+    test('wraps the entries in the container, and renders it empty when no entry remains', () => {
+      const source =
+        '{{#joinEntries open="{" close="}" closeIndent="  "}}{{#entry}}{{#if a}}"a": 1{{/if}}{{/entry}}{{/joinEntries}}';
+      expect(render(source, { a: true })).toBe('{\n"a": 1\n  }');
+      expect(render(source, { a: false })).toBe('{}');
+    });
+
+    test('collects entries opened inside loops', () => {
+      const result = render('{{#joinEntries}}{{#each items}}{{#entry}}{{this}}{{/entry}}{{/each}}{{/joinEntries}}', {
+        items: ['x', 'y'],
+      });
+      expect(result).toBe('x,\ny');
+    });
+
+    test('refuses an entry outside joinEntries', () => {
+      expect(() => render('{{#entry}}x{{/entry}}')).toThrow('{{#entry}} must be inside {{#joinEntries}}');
+    });
+  });
+
   describe('hasPackage', () => {
     const template = Handlebars.compile('{{#each apps}}{{#if (hasPackage "db")}}yes{{else}}no{{/if}}{{/each}}');
     const monorepo = (orm?: string): TemplateContext => ({
