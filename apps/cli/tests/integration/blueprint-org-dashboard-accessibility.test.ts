@@ -87,7 +87,8 @@ export const KeyRound = icon('KeyRound');
 export const Minus = icon('Minus');
 export const MoreHorizontal = icon('MoreHorizontal');
 export const Plus = icon('Plus');
-export const Trash2 = icon('Trash2');`,
+export const Trash2 = icon('Trash2');
+export const X = icon('X');`,
   'button.mjs': `export const Button = ({ asChild, children, ...props }) =>
   asChild
     ? { ...children[0], props: { ...children[0].props, 'data-component': 'Button', variant: props.variant, size: props.size } }
@@ -185,6 +186,16 @@ export const usePageParams = () => ({
   'pagination.mjs': `export const PAGE_SIZES = [10, 25, 50, 100];
 export const pageOffset = ({ page, pageSize }) => (page - 1) * pageSize;
 export const pageCountOf = (total, pageSize) => Math.max(1, Math.ceil(total / pageSize));`,
+  // The users table of the fullstack blueprint reads its list from the URL: the first page, newest first.
+  'user-list.mjs': `export const DEFAULT_USER_SORT = '-createdAt';
+export const parseUserListParams = () => ({ page: 1, pageSize: 10, search: '', sort: DEFAULT_USER_SORT });
+export const userSortingState = () => [];
+export const userSortFromSorting = () => DEFAULT_USER_SORT;`,
+  'user-list-params.mjs': `export const useUserListParams = () => ({
+  page: 1, pageSize: 10, search: '', sort: '-createdAt', setPage() {}, setPageSize() {}, setSearch() {}, setSort() {},
+});`,
+  'search-input.mjs': 'export const SearchInput = () => null;',
+  'paged-list.mjs': 'export const PagedList = ({ children }) => children;',
   'dialog.mjs': `import { createElement } from './react.mjs';
 export const Dialog = ({ children }) => children;
 export const DialogTrigger = ({ children }) => children;
@@ -964,6 +975,10 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/lib/auth/session': './session.mjs',
         '@/trpc/server': './trpc-server.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
+        '@repo/ui/components/ui/search-input': './search-input.mjs',
+        '@repo/api/user-list': './user-list.mjs',
+        '@/hooks/use-user-list-params': './user-list-params.mjs',
+        '@/components/table-pagination': './paged-list.mjs',
       },
       { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE },
     ));
@@ -1033,14 +1048,14 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     const BANNED_USER = { ...USER, id: 'u2', name: 'Grace Hopper', email: 'grace@example.com', role: null, banned: true };
 
     test('links each user by name and labels its columns', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       expect(namesOf(table.tree, 'a')).toEqual(['Ada Lovelace']);
       expect(withTag(table.tree, 'th').map(textOf)).toEqual(['Name', 'Email', 'Role']);
       expect(unnamedControls(table.tree)).toEqual([]);
     });
 
     test('drops Email below sm and Role below md, in the header and in every row', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       expectClasses(heading(table.tree, 'th', 'Email'), 'hidden', 'sm:table-cell');
       expectClasses(heading(table.tree, 'th', 'Role'), 'hidden', 'md:table-cell');
       expectClasses(find(table.tree, (element) => element.tag === 'td' && textOf(element) === USER.email), 'hidden', 'sm:table-cell');
@@ -1048,7 +1063,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     });
 
     test('the email and the role show under the name where their columns are hidden', async () => {
-      const table = await mount('userTable', { data: [USER] });
+      const table = await mount('userTable', { data: { items: [USER], total: 1 } });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(USER.name)), 'the name cell');
       const subline = must(find(nameCell, (element) => classesOf(element).includes('md:hidden')), 'the line under the name');
       const email = must(find(subline, (element) => element.tag === 'span' && textOf(element) === USER.email), 'the email line');
@@ -1057,7 +1072,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     });
 
     test('a banned user is marked with text that wraps beside a long name, and a user with no role reads as user', async () => {
-      const table = await mount('userTable', { data: [BANNED_USER] });
+      const table = await mount('userTable', { data: { items: [BANNED_USER], total: 1 } });
       const nameCell = must(find(table.tree, (element) => element.tag === 'td' && textOf(element).startsWith(BANNED_USER.name)), 'the name cell');
       expect(textOf(nameCell)).toContain('Banned');
       const lines = elementsOf(nameCell.children).filter((element) => withTag(element, 'a').length === 1 && textOf(element).includes('Banned'));
