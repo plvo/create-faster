@@ -1104,13 +1104,35 @@ describe('Husky lint-staged (turborepo)', () => {
     expect(commands).toEqual(['biome check --write --unsafe --no-errors-on-unmatched']);
   });
 
-  test('eslint-prettier: root has both commands', () => {
-    const ctx = makeTurboCtx('eslint-prettier');
-    const result = generateRootPackageJson(ctx);
+  test('eslint: the root runs nothing, ESLint has no config there', () => {
+    const result = generateRootPackageJson(makeTurboCtx('eslint'));
+    expect(result.content['lint-staged']).toBeUndefined();
+  });
+
+  test('eslint-prettier: the root runs prettier only', () => {
+    const result = generateRootPackageJson(makeTurboCtx('eslint-prettier'));
     const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
-    expect(lintStaged).toBeDefined();
-    const commands = Object.values(lintStaged)[0];
-    expect(commands).toEqual(['eslint --fix', 'prettier --write']);
+    expect(Object.values(lintStaged)[0]).toEqual(['prettier --write']);
+  });
+
+  test('eslint: an app runs eslint where its own config is', () => {
+    const ctx = makeTurboCtx('eslint');
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(Object.values(lintStaged)[0]).toEqual(['eslint --fix']);
+  });
+
+  test('eslint-prettier: an app runs eslint then prettier', () => {
+    const ctx = makeTurboCtx('eslint-prettier');
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    const lintStaged = result.content['lint-staged'] as Record<string, string[]>;
+    expect(Object.values(lintStaged)[0]).toEqual(['eslint --fix', 'prettier --write']);
+  });
+
+  test('eslint without husky: an app has no lint-staged key', () => {
+    const ctx: TemplateContext = { ...makeTurboCtx('eslint'), project: { linter: 'eslint', tooling: [] } };
+    const result = generateAppPackageJson(ctx.apps[0]!, ctx, 0);
+    expect(result.content['lint-staged']).toBeUndefined();
   });
 
   test('no linter: no lint-staged key in root output', () => {

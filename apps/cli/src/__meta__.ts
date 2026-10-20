@@ -39,6 +39,19 @@ const ESLINT_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, ESLINT_VERSION);
 const ESLINT_CONFIG_IN_PACKAGE = $when(ESLINT_LINTS_PACKAGE, '*');
 const LINT_PACKAGE = $when(ESLINT_LINTS_PACKAGE, 'eslint .');
 
+const LINT_STAGED_FILES = '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}';
+const ESLINT_STAGED_COMMAND = 'eslint --fix';
+const PRETTIER_STAGED_COMMAND = 'prettier --write';
+// ESLint looks its config up from the directory it runs in, and lint-staged runs the tasks of a staged file in the
+// directory of the closest config. A turborepo root has no ESLint config, so each workspace that lints itself carries
+// the entry (lint-staged does not merge configs: the Prettier command of `eslint-prettier` is repeated here).
+const ESLINT_STAGED_IN_WORKSPACE = $when(
+  { ...ESLINT_LINTS_PACKAGE, tooling: 'husky' },
+  {
+    [LINT_STAGED_FILES]: [ESLINT_STAGED_COMMAND, $when({ linter: 'eslint-prettier' }, PRETTIER_STAGED_COMMAND)],
+  },
+);
+
 const AWS_LAMBDA_TYPES_VERSION = '^8.10.0';
 
 const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
@@ -51,6 +64,7 @@ const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
       typescript: '^5.9.3',
     },
     scripts: { lint: LINT_PACKAGE },
+    'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
   },
 };
 
@@ -435,6 +449,7 @@ export const META: Meta = {
         scripts: {
           lint: LINT_PACKAGE,
         },
+        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           './': './src/components/',
           './base.css': './src/base.css',
@@ -518,6 +533,7 @@ export const META: Meta = {
         scripts: {
           lint: LINT_PACKAGE,
         },
+        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
@@ -571,6 +587,7 @@ export const META: Meta = {
         scripts: {
           lint: LINT_PACKAGE,
         },
+        'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
         exports: {
           '.': './src/index.ts',
         },
@@ -1110,6 +1127,7 @@ export const META: Meta = {
               eslint: ESLINT_IN_PACKAGE,
               tsx: TSX_RUNNER,
             },
+            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
             scripts: {
               lint: LINT_PACKAGE,
               'db:generate': 'drizzle-kit generate',
@@ -1158,6 +1176,7 @@ export const META: Meta = {
               prisma: '^7.10.0',
               tsx: TSX_RUNNER,
             },
+            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
             scripts: {
               lint: LINT_PACKAGE,
               'db:generate': 'prisma generate',
@@ -1243,6 +1262,7 @@ export const META: Meta = {
             scripts: {
               lint: 'eslint .',
             },
+            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
             exports: {
               './base': './base.js',
               './next': './next.js',
@@ -1258,6 +1278,7 @@ export const META: Meta = {
             scripts: {
               lint: 'eslint .',
             },
+            'lint-staged': ESLINT_STAGED_IN_WORKSPACE,
           },
         },
         prettier: {
@@ -1296,10 +1317,10 @@ export const META: Meta = {
               prepare: 'husky',
             },
             'lint-staged': {
-              '*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}': [
+              [LINT_STAGED_FILES]: [
                 $when({ linter: 'biome' }, 'biome check --write --unsafe --no-errors-on-unmatched'),
-                $when({ linter: ['eslint', 'eslint-prettier'] }, 'eslint --fix'),
-                $when({ linter: ['prettier', 'eslint-prettier'] }, 'prettier --write'),
+                $when({ linter: ['eslint', 'eslint-prettier'], repo: 'single' }, ESLINT_STAGED_COMMAND),
+                $when({ linter: ['prettier', 'eslint-prettier'] }, PRETTIER_STAGED_COMMAND),
                 $when({ linter: 'oxc' }, 'oxlint --fix --no-error-on-unmatched-pattern'),
                 $when({ linter: 'oxc' }, 'oxfmt --no-error-on-unmatched-pattern'),
               ],

@@ -43,3 +43,88 @@ describe.each(['bun', 'npm', 'pnpm'])('husky hooks after a generation with %s', 
     TIMEOUT_PROJECT,
   );
 });
+
+const API_SOURCE = join('apps', 'api', 'src', 'app.ts');
+const DB_SOURCE = join('packages', 'db', 'src', 'index.ts');
+const UNUSED_VARIABLE = 'const unused = 1;\n';
+const UNFORMATTED_DB_SOURCE = UNFORMATTED_SOURCE.replace('answer', 'dbAnswer');
+const FORMATTED_DB_SOURCE = FORMATTED_SOURCE.replace('answer', 'dbAnswer');
+
+async function commitAll(projectDir: string, message: string): Promise<{ exitCode: number; output: string }> {
+  await runCommand(['git', 'add', '-A'], projectDir);
+  const commit = await runCommand(
+    ['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', message],
+    projectDir,
+  );
+  return { exitCode: commit.exitCode, output: commit.stdout + commit.stderr };
+}
+
+describe.each(['bun', 'npm', 'pnpm'])('lint-staged of an ESLint turborepo with %s', (pm) => {
+  const unavailable = pm === 'pnpm' && !PNPM_AVAILABLE;
+
+  describe.each(['eslint', 'eslint-prettier'])('%s', (linter) => {
+    const title = 'lints the staged files of an app and of a package with their own config';
+
+    test.skipIf(unavailable)(
+      unavailable ? `${title} (skipped: pnpm is not installed)` : title,
+      async () => {
+        const tempDir = await createTempDir();
+        try {
+          const generated = await runCli(
+            [
+              'staged',
+              '--app',
+              'api:hono',
+              '--app',
+              'worker:node',
+              '--database',
+              'sqlite',
+              '--orm',
+              'drizzle',
+              '--linter',
+              linter,
+              '--tooling',
+              'husky',
+              '--git',
+              '--pm',
+              pm,
+            ],
+            tempDir,
+          );
+          expect(generated.exitCode).toBe(0);
+          const projectDir = join(tempDir, 'staged');
+
+          const first = await commitAll(projectDir, 'feat: first commit');
+          expect(first.output).not.toContain('Task failed to spawn');
+          expect(first.exitCode).toBe(0);
+
+          const apiSource = join(projectDir, API_SOURCE);
+          const dbSource = join(projectDir, DB_SOURCE);
+          await writeFile(apiSource, `${await readFile(apiSource, 'utf8')}\n${UNFORMATTED_SOURCE}`);
+          await writeFile(dbSource, `${await readFile(dbSource, 'utf8')}\n${UNFORMATTED_DB_SOURCE}`);
+          const clean = await commitAll(projectDir, 'feat: clean app and package');
+          expect(clean.output).toContain('eslint --fix');
+          expect(clean.exitCode).toBe(0);
+          if (linter === 'eslint-prettier') {
+            expect(await readFile(apiSource, 'utf8')).toEndWith(FORMATTED_SOURCE);
+            expect(await readFile(dbSource, 'utf8')).toEndWith(FORMATTED_DB_SOURCE);
+          }
+
+          await writeFile(apiSource, `${await readFile(apiSource, 'utf8')}${UNUSED_VARIABLE}`);
+          const appError = await commitAll(projectDir, 'feat: lint error in the app');
+          expect(appError.exitCode).not.toBe(0);
+          expect(appError.output).toContain('@typescript-eslint/no-unused-vars');
+          await runCommand(['git', 'restore', '--source=HEAD', '--staged', '--worktree', '--', API_SOURCE], projectDir);
+
+          await writeFile(dbSource, `${await readFile(dbSource, 'utf8')}${UNUSED_VARIABLE}`);
+          const packageError = await commitAll(projectDir, 'feat: lint error in the package');
+          expect(packageError.exitCode).not.toBe(0);
+          expect(packageError.output).toContain('@typescript-eslint/no-unused-vars');
+        } finally {
+          await cleanupTempDir(tempDir);
+        }
+      },
+      TIMEOUT_PROJECT,
+    );
+  });
+});
