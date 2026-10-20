@@ -381,7 +381,6 @@ export const META: Meta = {
       label: 'Expo',
       hint: 'React Native framework',
       scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP],
-      productionScripts: BUILD_FOR_PRODUCTION,
       // turbo gives a task no terminal, and Expo prints no QR code and takes no key press without one: in a turborepo its dev server is not `dev`, which `turbo dev` runs in every app. A single repo runs no turbo.
       interactiveScripts: ['dev:expo'],
       packageJson: {
