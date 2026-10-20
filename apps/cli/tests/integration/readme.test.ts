@@ -128,7 +128,7 @@ describe('README of a turborepo', () => {
   });
 
   test('describes the shared database package', () => {
-    expect(readme).toContain('Uses shared database package (`packages/db`) with drizzle ORM.');
+    expect(readme).toContain('### `packages/db`');
     expect(readme).toContain('- **Database**: postgres');
     expect(readme).toContain('- **ORM**: drizzle');
   });
