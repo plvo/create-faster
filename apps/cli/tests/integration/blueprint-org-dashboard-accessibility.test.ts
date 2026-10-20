@@ -974,6 +974,10 @@ const INLINE_EDIT_MODULE = {
   },
 };
 
+const RESPONSE_ERROR_MODULE = {
+  '@/lib/response-error': { file: 'src/lib/response-error.ts', exportName: 'responseErrorMessage', stub: 'response-error.mjs' },
+};
+
 const DATA_TABLE = { file: '../../packages/ui/src/components/block/shuip/data-table.tsx', exportName: 'DataTable' };
 
 // A stand-in for each module a generated file imports that `explicit` does not cover: every name it imports
@@ -1037,7 +1041,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/hooks/use-user-list-params': './user-list-params.mjs',
         '@/components/table-pagination': './paged-list.mjs',
       },
-      { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE },
+      { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE, ...RESPONSE_ERROR_MODULE },
     ));
 
     // The data table block runs for real against a hand-made table instance, so the stand-ins around it are its own.
@@ -1161,7 +1165,13 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
           await page.act(() => (select.props.onValueChange as (role: string) => void)('manager'));
         },
       ],
-      ['banning', async (page: Mounted) => page.click('Ban user')],
+      [
+        'banning',
+        async (page: Mounted) => {
+          await page.click('Ban user');
+          await page.click('Confirm ban');
+        },
+      ],
       [
         'deleting',
         async (page: Mounted) => {
@@ -1188,6 +1198,12 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       expect(invalidated()).toEqual(['documents']);
     });
 
+    test('unbanning a user', async () => {
+      const page = await mount('editUser', { props: { user: { ...USER, banned: true } } });
+      await page.click('Unban user');
+      expect(invalidated()).toEqual(['users']);
+    });
+
     test('uploading a document', async () => {
       const page = await mount('documents', { data: { items: [], total: 0 } });
       const picker = must(find(page.tree, (element) => element.tag === 'input' && element.props.type === 'file'), 'the file picker');
@@ -1202,6 +1218,54 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         globalThis.fetch = realFetch;
       }
       expect(invalidated()).toEqual(['documents']);
+    });
+  });
+
+  describe('a failed document upload', () => {
+    const uploadAnswering = async (response: Response) => {
+      const page = await mount('documents', { data: { items: [], total: 0 } });
+      const picker = must(find(page.tree, (element) => element.tag === 'input' && element.props.type === 'file'), 'the file picker');
+      (picker.props.ref as { current: unknown }).current = { files: [{ name: 'plan.pdf' }], value: 'plan.pdf' };
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async () => response) as unknown as typeof fetch;
+      try {
+        await page.act(() =>
+          (globalThis as Globals).__testFormOptions?.onSubmit({ value: { title: 'Plan' }, formApi: { reset() {} } } as never),
+        );
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+    };
+
+    test('tells the user so when the server answers with an empty body', async () => {
+      await uploadAnswering(new Response('', { status: 500 }));
+      expect(toasts()).toEqual([{ kind: 'error', message: 'Upload failed' }]);
+    });
+
+    test('shows the reason the server gave', async () => {
+      await uploadAnswering(new Response('File too large (25 MB max)', { status: 413 }));
+      expect(toasts()).toEqual([{ kind: 'error', message: 'File too large (25 MB max)' }]);
+    });
+  });
+
+  describe('banning a user', () => {
+    const invalidated = () => (globalThis as Globals).__invalidated;
+
+    test('asks for a confirmation before it acts, and cancelling leaves the user as is', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      await page.click('Ban user');
+
+      expect(invalidated()).toEqual([]);
+      expect(toasts()).toEqual([]);
+      const names = withTag(page.tree, 'button').map((button) => accessibleName(button, elementsOf(page.tree)));
+      expect(names).toContain('Confirm ban');
+      expect(names).not.toContain('Ban user');
+
+      await page.click('Cancel');
+      expect(invalidated()).toEqual([]);
+      const afterCancel = withTag(page.tree, 'button').map((button) => accessibleName(button, elementsOf(page.tree)));
+      expect(afterCancel).toContain('Ban user');
+      expect(afterCancel).not.toContain('Confirm ban');
     });
   });
 

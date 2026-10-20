@@ -59,7 +59,7 @@ export function EditUser({ user }: { user: AdminUser }) {
   const { data: session } = authClient.useSession();
   const isOwnAccount = session?.user.id === user.id;
   const [newPassword, setNewPassword] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirming, setConfirming] = useState<'ban' | 'delete' | null>(null);
   const profile = {
     name: user.name,
     firstName: user.firstName ?? '',
@@ -106,6 +106,7 @@ export function EditUser({ user }: { user: AdminUser }) {
     trpc.users.setBanned.mutationOptions({
       onSuccess: () => {
         invalidate();
+        setConfirming(null);
         toast.success('Status updated');
       },
       onError: (e) => toast.error(e.message),
@@ -206,15 +207,31 @@ export function EditUser({ user }: { user: AdminUser }) {
             <p className='text-sm text-muted-foreground'>Restrict or permanently remove this account.</p>
           </div>
           <div className='flex flex-wrap gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => banMutation.mutate({ id: user.id, banned: !user.banned })}
-              disabled={banMutation.isPending}
-            >
-              {user.banned ? 'Unban user' : 'Ban user'}
-            </Button>
-            {confirmDelete ? (
+            {confirming === 'ban' ? (
+              <>
+                <Button
+                  type='button'
+                  variant='destructive'
+                  onClick={() => banMutation.mutate({ id: user.id, banned: true })}
+                  disabled={banMutation.isPending}
+                >
+                  Confirm ban
+                </Button>
+                <Button type='button' variant='ghost' onClick={() => setConfirming(null)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => (user.banned ? banMutation.mutate({ id: user.id, banned: false }) : setConfirming('ban'))}
+                disabled={banMutation.isPending}
+              >
+                {user.banned ? 'Unban user' : 'Ban user'}
+              </Button>
+            )}
+            {confirming === 'delete' ? (
               <>
                 <Button
                   type='button'
@@ -225,12 +242,12 @@ export function EditUser({ user }: { user: AdminUser }) {
                   <Trash2 className='size-4' />
                   Confirm delete
                 </Button>
-                <Button type='button' variant='ghost' onClick={() => setConfirmDelete(false)}>
+                <Button type='button' variant='ghost' onClick={() => setConfirming(null)}>
                   Cancel
                 </Button>
               </>
             ) : (
-              <Button type='button' variant='destructive' onClick={() => setConfirmDelete(true)}>
+              <Button type='button' variant='destructive' onClick={() => setConfirming('delete')}>
                 <Trash2 className='size-4' />
                 Delete user
               </Button>
