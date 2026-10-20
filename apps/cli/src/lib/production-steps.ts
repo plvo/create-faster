@@ -3,11 +3,11 @@ import { getSelectedProjectAddons } from '@/lib/addon-utils';
 import { getAppScripts, getRootScripts } from '@/lib/package-json-generator';
 import { getScriptCommand, getScriptCommandInApp } from '@/lib/package-manager';
 import { resolveConditionals } from '@/lib/when';
-import type { TemplateContext } from '@/types/ctx';
+import type { AppContext, TemplateContext } from '@/types/ctx';
 import type { ProductionScript } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
-interface ProductionStep {
+export interface ScriptStep {
   description: string;
   command: string;
 }
@@ -29,14 +29,35 @@ function declaredProductionScripts(ctx: TemplateContext, stacks: StackName[]): P
 }
 
 /**
- * The production commands the project defines: the README, AGENTS.md and the CLI summary print them. A script the
- * root defines runs from the root, in the order the stacks of the apps and the addons declare. A script only the
- * apps define gets a line per app that has it, app by app, each app in its own declared order (its stack, then the
- * addons), so every app's sequence runs as printed.
+ * The steps of the scripts only the apps define, which a turborepo root does not forward: one line per app that has
+ * the script, app by app, each app in the order `scriptsOf` gives, so every app's sequence runs as printed. The
+ * sentence of each line ends with the app name.
  */
-export function collectProductionSteps(ctx: TemplateContext): ProductionStep[] {
+export function appOnlyScriptSteps(
+  ctx: TemplateContext,
+  scriptsOf: (app: AppContext) => ProductionScript[],
+): ScriptStep[] {
   const rootScripts = getRootScripts(ctx);
   const appScripts = getAppScripts(ctx);
+
+  return ctx.apps.flatMap((app, index) =>
+    scriptsOf(app)
+      .filter(({ script }) => !(script in rootScripts) && script in (appScripts[index]?.scripts ?? {}))
+      .map(({ script, description }) => ({
+        description: `${description} (${app.appName})`,
+        command: getScriptCommandInApp(ctx, script, app.appName),
+      })),
+  );
+}
+
+/**
+ * The production commands the project defines: the README, AGENTS.md and the CLI summary print them. A script the
+ * root defines runs from the root, in the order the stacks of the apps and the addons declare. A script only the
+ * apps define gets a line per app that has it (`appOnlyScriptSteps`), each app in its own declared order (its stack,
+ * then the addons).
+ */
+export function collectProductionSteps(ctx: TemplateContext): ScriptStep[] {
+  const rootScripts = getRootScripts(ctx);
 
   const rootSteps = declaredProductionScripts(
     ctx,
@@ -45,14 +66,7 @@ export function collectProductionSteps(ctx: TemplateContext): ProductionStep[] {
     .filter(({ script }) => script in rootScripts)
     .map(({ script, description }) => ({ description, command: getScriptCommand(ctx, script) }));
 
-  const appSteps = ctx.apps.flatMap((app, index) =>
-    declaredProductionScripts(ctx, [app.stackName])
-      .filter(({ script }) => !(script in rootScripts) && script in (appScripts[index]?.scripts ?? {}))
-      .map(({ script, description }) => ({
-        description: `${description} (${app.appName})`,
-        command: getScriptCommandInApp(ctx, script, app.appName),
-      })),
-  );
+  const appSteps = appOnlyScriptSteps(ctx, (app) => declaredProductionScripts(ctx, [app.stackName]));
 
   return [...rootSteps, ...appSteps];
 }

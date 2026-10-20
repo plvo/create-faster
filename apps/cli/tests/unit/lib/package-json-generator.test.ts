@@ -1303,3 +1303,22 @@ describe('getAppScripts', () => {
     expect(getAppScripts(ctx)).toEqual([{ appName: 'web', scripts: getRootScripts(ctx) }]);
   });
 });
+
+describe('the dev script of a turborepo root', () => {
+  const turborepoOf = (...stacks: StackName[]): TemplateContext => ({
+    projectName: 'demo',
+    repo: 'turborepo',
+    apps: stacks.map((stackName, index) => ({ appName: `app${index}`, stackName, libraries: [] })),
+    project: { tooling: [] },
+    git: false,
+    pm: 'npm',
+  });
+
+  test('forwards dev through turbo when an app defines it', () => {
+    expect(getRootScripts(turborepoOf('nextjs', 'expo')).dev).toBe('turbo dev');
+  });
+
+  test('does not exist when no app defines dev, so turbo has no task to run', () => {
+    expect(getRootScripts(turborepoOf('expo', 'expo'))).not.toHaveProperty(['dev']);
+  });
+});

@@ -3,6 +3,7 @@ import color from 'picocolors';
 import { META } from '@/__meta__';
 import { getMonoPackageName } from '@/lib/addon-utils';
 import { collectFirstRunSteps } from '@/lib/first-run';
+import { collectInteractiveSteps } from '@/lib/interactive-steps';
 import { collectMonoPackages, getRootScripts } from '@/lib/package-json-generator';
 import { getPackageRunner, getScriptCommand } from '@/lib/package-manager';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
@@ -205,11 +206,15 @@ function buildStepsNote(
     steps.push(...commands);
     steps.push('');
   }
-  if ('dev' in getRootScripts(ctx)) {
+  const developmentSteps = [
+    ...('dev' in getRootScripts(ctx)
+      ? [{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]
+      : []),
+    ...collectInteractiveSteps(ctx),
+  ];
+  if (developmentSteps.length > 0) {
     steps.push('# Development:');
-    steps.push(
-      ...describeCommands([{ command: getScriptCommand(ctx, 'dev'), description: 'Start development server' }]),
-    );
+    steps.push(...describeCommands(developmentSteps));
     steps.push('');
   }
 

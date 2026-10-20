@@ -1,0 +1,4 @@
+---
+inline: true
+---
+{{!-- args: flags forwarded to the dev server script (optional) --}}{{#inDirectory "apps" appName}}{{#if (interactiveScript)}}{{runScript (interactiveScript) args}}{{else}}{{runScript "dev" args}}{{/if}}{{/inDirectory}}

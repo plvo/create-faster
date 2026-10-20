@@ -29,7 +29,15 @@ async function generate(projectName: string, args: string[]): Promise<string> {
 }
 
 // portless single-quotes every argument it runs, so a leading `VAR=value` would be run as a command name.
-const PORTLESS_SCRIPTS = [
+interface PortlessScripts {
+  stack: string;
+  dev?: string;
+  /** The `dev` of a single repo, when it differs from the one of a turborepo app. */
+  singleDev?: string;
+  start?: string;
+}
+
+const PORTLESS_SCRIPTS: PortlessScripts[] = [
   {
     stack: 'nextjs',
     dev: 'portless run next dev',
@@ -53,17 +61,21 @@ const PORTLESS_SCRIPTS = [
   {
     stack: 'expo',
     dev: undefined,
-    start: 'portless run expo start',
+    singleDev: 'portless run expo start',
+    start: undefined,
   },
 ];
 
 describe('portless scripts', () => {
-  test.each(PORTLESS_SCRIPTS)('single repo, $stack: wraps dev and start:portless', async ({ stack, dev, start }) => {
-    const projectDir = await generate(`portless-single-${stack}`, ['--app', `app:${stack}`]);
-    const pkg = await readJsonFile<PackageJson>(join(projectDir, 'package.json'));
-    expect(pkg.scripts.dev).toBe(dev as string);
-    expect(pkg.scripts['start:portless']).toBe(start);
-  });
+  test.each(PORTLESS_SCRIPTS)(
+    'single repo, $stack: wraps dev and start:portless',
+    async ({ stack, dev, singleDev = dev, start }) => {
+      const projectDir = await generate(`portless-single-${stack}`, ['--app', `app:${stack}`]);
+      const pkg = await readJsonFile<PackageJson>(join(projectDir, 'package.json'));
+      expect(pkg.scripts.dev).toBe(singleDev as string);
+      expect(pkg.scripts['start:portless']).toBe(start);
+    },
+  );
 
   test.each(PORTLESS_SCRIPTS)('turborepo, $stack: wraps dev and start:portless', async ({ stack, dev, start }) => {
     const projectDir = await generate(`portless-mono-${stack}`, ['--app', 'web:nextjs', '--app', `app:${stack}`]);

@@ -17,6 +17,7 @@ import { scanDirectory } from './file-writer';
 import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
+import { collectInteractiveSteps, getInteractiveScript } from './interactive-steps';
 import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
 import {
   getAppScriptCommand,
@@ -162,6 +163,17 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('firstRunSteps', (options: Handlebars.HelperOptions) => {
     return collectFirstRunSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper(
+    'interactiveScript',
+    function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
+      return this.appName ? getInteractiveScript(options.data.root as TemplateContext, this.appName) : undefined;
+    },
+  );
+
+  Handlebars.registerHelper('interactiveSteps', (options: Handlebars.HelperOptions) => {
+    return collectInteractiveSteps(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {

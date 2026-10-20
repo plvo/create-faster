@@ -23,7 +23,6 @@ const BUILD_FOR_PRODUCTION = rootProductionScript(
   'Build every app that has a `build` script for production',
 );
 const START_PRODUCTION_SERVER = rootProductionScript('start', 'Start the production server', EVERY_APP_WITH_START);
-const START_EXPO_DEV_SERVER = rootProductionScript('start', 'Start the Expo dev server', EVERY_APP_WITH_START);
 const PREVIEW_PRODUCTION_BUILD = { script: 'preview', description: 'Preview the production build locally' };
 const BUILD_WORKER_BUNDLE = { script: 'build:cf', description: 'Build the Worker bundle' };
 const DEPLOY_TO_WORKERS = { script: 'deploy', description: 'Deploy to Cloudflare Workers' };
@@ -311,7 +310,8 @@ export const META: Meta = {
       type: 'app',
       label: 'Expo',
       hint: 'React Native framework',
-      productionScripts: [...BUILD_FOR_PRODUCTION, ...START_EXPO_DEV_SERVER],
+      // turbo gives a task no terminal, and Expo prints no QR code and takes no key press without one: in a turborepo its dev server is not `dev`, which `turbo dev` runs in every app. A single repo runs no turbo.
+      interactiveScripts: ['dev:expo'],
       packageJson: {
         main: 'expo-router/entry',
         dependencies: {
@@ -338,7 +338,8 @@ export const META: Meta = {
           '@types/react': '~19.2.4',
         },
         scripts: {
-          start: 'expo start',
+          dev: $when({ repo: 'single' }, 'expo start'),
+          'dev:expo': $when({ repo: 'turborepo' }, 'expo start'),
           android: 'expo start --android',
           ios: 'expo start --ios',
           web: 'expo start --web',

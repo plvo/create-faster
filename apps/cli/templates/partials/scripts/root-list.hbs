@@ -1,6 +1,9 @@
 {{#if (hasRootScript "dev")}}
 - `{{runScript "dev"}}` - {{> scripts/dev-description}}
 {{/if}}
+{{#each (interactiveSteps)}}
+- `{{command}}` - {{description}}
+{{/each}}
 {{#each (productionSteps)}}
 - `{{command}}` - {{description}}
 {{/each}}

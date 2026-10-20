@@ -65,12 +65,25 @@ Install dependencies:
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
+{{#if (hasRootScript "dev")}}
 {{> scripts/dev-description}}:
 
 ```bash
 {{runScript "dev"}}
 ```
 
+{{/if}}
+{{#with (interactiveSteps) as |interactive|}}
+Start each application the root `dev` does not start, in a terminal of its own:
+
+```bash
+{{#each interactive}}
+# {{description}}
+{{command}}
+{{/each}}
+```
+
+{{/with}}
 {{#each apps}}
 {{#if (appUrl appName)}}
 - {{appName}}: [{{appUrl appName}}]({{appUrl appName}}), {{> ports/app-command}}
