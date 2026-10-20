@@ -120,7 +120,7 @@ export function parseFlags(): FlagAnswers {
     .optionsGroup(color.bold('Options:'))
     .helpOption('--help', 'Display help for command')
     .version(CLI_VERSION, '-V, --version', 'Display the version')
-    .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect, [])
+    .option('--app <name:stack:libraries>', 'Add app (repeatable)', collect)
     .option(
       '--blueprint <name>',
       `Use a blueprint template (${Object.keys(META.blueprints).join(', ') || 'none available'})`,
@@ -129,7 +129,7 @@ export function parseFlags(): FlagAnswers {
     .option('--orm <name>', `ORM provider (${ormNames})`)
     .option('--deployment <name>', `Deployment platform (${deploymentNames})`)
     .option('--linter <name>', `Linter (${linterNames})`)
-    .option('--tooling <name>', `Add tooling (repeatable) (${toolingNames})`, collect, [])
+    .option('--tooling <name>', `Add tooling (repeatable) (${toolingNames})`, collect)
     .option('--git', 'Initialize git repository')
     .option('--no-git', 'Skip git initialization')
     .option('--pm <manager>', `Package manager (${PACKAGE_MANAGERS.join(', ')})`)
@@ -278,7 +278,7 @@ function exitWhenAnswersMissing(partial: FlagAnswers): void {
   process.exit(1);
 }
 
-function collect(value: string, previous: string[]): string[] {
+function collect(value: string, previous: string[] = []): string[] {
   return previous.concat([value]);
 }
 

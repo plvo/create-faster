@@ -28,4 +28,28 @@ describe('progress of a run whose stdout is not a terminal', () => {
     expect(result.stdout).not.toContain(ESCAPE);
     expect(result.stdout).not.toMatch(/[◒◐◓◑]/);
   });
+
+  const announcedAndGenerated = (stdout: string) => ({
+    announced: stdout.match(/Generating (\d+) files\.\.\./)?.[1],
+    generated: stdout.match(/Generated (\d+) files successfully!/)?.[1],
+  });
+
+  test('announces as many files as it generates, agent context included', async () => {
+    const result = await runCli(['counted', '--app', 'web:nextjs', '--no-git', '--no-install'], tempDir);
+
+    const { announced, generated } = announcedAndGenerated(result.stdout);
+    expect(announced).toBeDefined();
+    expect(generated).toBe(announced);
+  });
+
+  test('announces as many files as it generates without the agent context', async () => {
+    const result = await runCli(
+      ['counted-bare', '--app', 'web:nextjs', '--no-git', '--no-install', '--no-agent-context'],
+      tempDir,
+    );
+
+    const { announced, generated } = announcedAndGenerated(result.stdout);
+    expect(announced).toBeDefined();
+    expect(generated).toBe(announced);
+  });
 });

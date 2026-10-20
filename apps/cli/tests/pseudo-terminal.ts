@@ -28,12 +28,13 @@ export async function runOnPseudoTerminal(
   cwd: string,
   keystrokes: Keystroke[],
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  env: Record<string, string> = {},
 ): Promise<TerminalRun> {
   let output = '';
 
   const proc = Bun.spawn(command, {
     cwd,
-    env: { ...process.env, ...PLAIN_OUTPUT_ENV },
+    env: { ...process.env, ...PLAIN_OUTPUT_ENV, ...env },
     terminal: {
       cols: 120,
       rows: 40,

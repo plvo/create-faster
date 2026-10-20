@@ -89,8 +89,10 @@ export async function generateProjectFiles(
   const activeTemplates =
     context.agentContext === false ? templates.filter((t) => !t.destination.startsWith('docs/agents/')) : templates;
 
+  const agentFiles = context.agentContext === false ? [] : collectAgentContextFiles(context);
+
   const s = taskSpinner();
-  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length;
+  const totalFiles = packageJsons.length + envFiles.length + activeTemplates.length + agentFiles.length;
   s.start(`Generating ${totalFiles} files...`);
 
   let processed = packageJsons.length + envFiles.length;
@@ -104,16 +106,13 @@ export async function generateProjectFiles(
   }
 
   // 5. Generate agent context files (programmatic)
-  if (context.agentContext !== false) {
-    const agentFiles = collectAgentContextFiles(context);
-    for (const { destination, content } of agentFiles) {
-      const fullPath = join(projectPath, destination);
-      try {
-        await writeFileContent(fullPath, content);
-        allResults.push({ success: true, destination });
-      } catch (error) {
-        allResults.push({ success: false, destination, error: getErrorMessage(error) });
-      }
+  for (const { destination, content } of agentFiles) {
+    const fullPath = join(projectPath, destination);
+    try {
+      await writeFileContent(fullPath, content);
+      allResults.push({ success: true, destination });
+    } catch (error) {
+      allResults.push({ success: false, destination, error: getErrorMessage(error) });
     }
   }
 
