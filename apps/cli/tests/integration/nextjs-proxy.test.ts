@@ -48,10 +48,11 @@ describe('Next.js proxy', () => {
       expect(proxy).toContain('api|ingest|_next/static');
     });
 
-    test('the request log only runs in development', async () => {
+    test('a project without libraries has a proxy that logs nothing and declares no request', async () => {
       const projectPath = await generate('proxy-log', ['--app', 'web:nextjs']);
       const proxy = await readTextFile(join(projectPath, 'src/proxy.ts'));
-      expect(proxy).toMatch(/if \(process\.env\.NODE_ENV === 'development'\) \{\s+console\.log/);
+      expect(proxy).not.toContain('console.');
+      expect(proxy).toContain('export default async function proxy() {\n  return NextResponse.next();\n}\n');
     });
 
     test('better-auth with evlog: the proxy only wraps the request with evlog', async () => {

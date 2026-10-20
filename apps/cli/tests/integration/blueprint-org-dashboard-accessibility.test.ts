@@ -1098,7 +1098,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
   describe('create user dialog', () => {
     test('the form scrolls inside the dialog instead of running off a short phone screen', async () => {
       const dialog = await mount('createUserDialog');
-      expectClasses(find(dialog.tree, (element) => element.props.role === 'dialog'), 'max-h-[calc(100dvh-2rem)]', 'overflow-y-auto');
+      expectClasses(find(dialog.tree, (element) => element.props.role === 'dialog'), 'max-h-11/12', 'overflow-y-auto');
     });
 
     test('the first and last name stack on a phone', async () => {

@@ -300,8 +300,7 @@ describe('Cloudflare deployment platform', () => {
       expect(content).toContain('export default async function middleware');
       expect(content).not.toContain('auth.api.getSession');
       expect(content).toContain('evlogMiddleware');
-      expect(content).toContain('MIDDLEWARE');
-      expect(content).not.toContain('PROXY');
+      expect(content).not.toContain('console.');
     });
   });
 

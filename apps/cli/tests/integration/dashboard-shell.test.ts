@@ -388,14 +388,14 @@ describe('dashboard shell', () => {
       });
     });
 
-    test('the theme buttons are a labelled group', async () => {
+    test('the theme buttons are a fieldset named by its legend', async () => {
       const tree = await rendered(false);
       const group = must(
-        elementsOf(tree).find((element) => element.props.role === 'group'),
-        'the theme group',
+        elementsOf(tree).find((element) => element.tag === 'fieldset'),
+        'the theme fieldset',
       );
-      const label = elementsOf(tree).find((element) => element.props.id === group.props['aria-labelledby']);
-      expect(label && textOf(label)).toBe('Theme');
+      const legend = elementsOf(group.children).find((element) => element.tag === 'legend');
+      expect(legend && textOf(legend)).toBe('Theme');
       expect(elementsOf(group.children).filter((element) => element.tag === 'button')).toHaveLength(3);
     });
   });

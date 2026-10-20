@@ -103,7 +103,7 @@ export function NavUser({ session }: { session: Session }) {
     const target = itemToFocus.current === 'cancel' ? cancelLogoutRef : logoutItemRef;
     if (itemToFocus.current) target.current?.focus();
     itemToFocus.current = null;
-  }, [showLogout]);
+  });
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);

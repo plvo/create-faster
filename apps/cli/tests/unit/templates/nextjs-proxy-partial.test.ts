@@ -12,11 +12,11 @@ beforeAll(() => {
 
 // A blueprint cannot add evlog or posthog, so the combination is rendered here: the proxy of the stack and the
 // proxies of the two blueprints that forward the requested path all come from the one partial.
-function render(relativePath: string, deployment?: string): string {
+function render(relativePath: string, deployment?: string, libraries = ['better-auth', 'evlog', 'posthog']): string {
   const ctx: TemplateContext = {
     projectName: 'my-project',
     repo: 'single',
-    apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['better-auth', 'evlog', 'posthog'] }],
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries }],
     project: { deployment, tooling: [] },
     git: false,
   };
@@ -24,6 +24,7 @@ function render(relativePath: string, deployment?: string): string {
   return renderTemplate(content, { ...ctx, ...ctx.apps[0] });
 }
 
+const PRIVY_PROXY = 'blueprints/dapp-privy-nextjs/src/proxy.ts.hbs';
 const STACK_PROXY = 'stack/nextjs/src/proxy.ts.hbs';
 const FORWARDING_PROXIES = [
   'blueprints/org-dashboard-nextjs/src/proxy.ts.nextjs.hbs',
@@ -50,5 +51,17 @@ describe('the Next.js proxy partial', () => {
   test.each([STACK_PROXY, ...FORWARDING_PROXIES])('%s is a middleware under cloudflare and a proxy elsewhere', (file) => {
     expect(render(file, 'cloudflare')).toContain('export default async function middleware(request: NextRequest)');
     expect(render(file)).toContain('export default async function proxy(request: NextRequest)');
+  });
+
+  test.each([STACK_PROXY, ...FORWARDING_PROXIES, PRIVY_PROXY])('%s logs nothing per request', (file) => {
+    expect(render(file)).not.toContain('console.');
+    expect(render(file, 'cloudflare')).not.toContain('console.');
+  });
+
+  test('a stack proxy with nothing to forward or log declares no unused request', () => {
+    const proxy = render(STACK_PROXY, undefined, []);
+    expect(proxy).toContain("import { NextResponse } from 'next/server';");
+    expect(proxy).toContain('export default async function proxy() {');
+    expect(proxy).not.toContain('NextRequest');
   });
 });
