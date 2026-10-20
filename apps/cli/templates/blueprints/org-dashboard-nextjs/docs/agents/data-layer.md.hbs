@@ -19,3 +19,11 @@ Add a procedure to the relevant tRPC router, then consume it with the generated 
 
 ## Seed
 {{> seed/reset-flag}}
+
+## Paginated lists
+`contact.list` and `user.list` return `{ items, total }` for one page, never the whole table. The page is in the URL (`?page=2&pageSize=25`), which is the source of truth: the back and forward buttons and a bookmark show the same page.
+- `packages/api/src/pagination.ts` validates the page: `page` is a whole number from 1, `pageSize` one of `PAGE_SIZES` (10, 25, 50, 100). A missing or invalid value is the first page or `DEFAULT_PAGE_SIZE`, never an error or an unbounded read. The procedures take it as `.input(pageInput)`, and `parsePageParams` reads the same shape from a URL, so the server prefetch and the client query ask for the same page.
+- Order by `createdAt` and then `id` (`desc` on both), so a page boundary never repeats or skips a row; a list that orders on a column that can tie adds a unique tie-break.
+- The query runs with `limit(pageSize)` and `offset(pageOffset(input))`, next to a `count()` for the total.
+- {{#if (has "stack" "tanstack-start")}}A route validates its search with `validateSearch: (search) => pageSearch(search)`, passes `parsePageParams(search)` as `loaderDeps`, and prefetches `queryOptions(deps)` in its loader.{{else}}A page reads `searchParams`, prefetches `queryOptions(parsePageParams(await searchParams))` and the client table reads the same page with `usePageParams()`.{{/if}}
+- A table calls `usePageParams()` (`src/hooks/use-page-params.ts`) for `page`, `pageSize`, `setPage` and `setPageSize`, passes `{ page, pageSize }` to `queryOptions`, and renders `TablePagination` (`src/components/table-pagination.tsx`) under the rows. A page past the end renders `PageOutOfRange`, which leads back to the last page.
