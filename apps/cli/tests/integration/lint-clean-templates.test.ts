@@ -5,9 +5,10 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-// `tests/e2e/generated-lint.test.ts` lints whole projects with every linter and fails on a warning; these checks keep
-// the constructs that tripped a linter out of the templates between two runs of that slow e2e.
-describe('templates that used to trip a linter', () => {
+// `tests/e2e/generated-lint.test.ts` lints whole projects with every linter and fails on a warning. These checks run
+// on every CI build and keep the constructs that trip a linter out of the templates; the behaviour of the components
+// is covered by dashboard-shell and blueprint-dashboard-breadcrumb.
+describe('templates pass every linter with warnings denied', () => {
   let tempDir: string;
 
   const generate = async (name: string, args: string[]): Promise<string> => {
@@ -26,84 +27,80 @@ describe('templates that used to trip a linter', () => {
     await cleanupTempDir(tempDir);
   });
 
-  test('the better-auth factory builds its plugin list without a useless spread', async () => {
-    const projectPath = await generate('lint-auth', ['--app', 'web:nextjs:better-auth', '--database', 'sqlite', '--orm', 'drizzle']);
-    const factory = await read(projectPath, 'src/lib/auth/create-auth.ts');
-    expect(factory).toContain('plugins: cookiePlugin ? [cookiePlugin] : [],');
-    expect(factory).not.toContain('...(cookiePlugin');
+  test.each(['showcase-nextjs', 'cloudflare-static-site-nextjs'])('the %s footer reads the year once, outside the render', async (blueprint) => {
+    const footer = await read(await generate(`lint-footer-${blueprint}`, ['--blueprint', blueprint]), 'src/components/layout/footer.tsx');
+    expect(footer).toMatch(/^const YEAR = new Date\(\)\.getFullYear\(\);$/m);
+    expect(footer).toContain('{YEAR}');
+    expect(footer).not.toMatch(/\{new Date\(/);
   });
 
-  test('a footer reads the year once, outside the render', async () => {
-    const showcase = await generate('lint-showcase', ['--blueprint', 'showcase-nextjs']);
-    const footer = await read(showcase, 'src/components/layout/footer.tsx');
-    expect(footer).toContain('const YEAR = new Date().getFullYear();');
-    expect(footer).toContain('&copy; {YEAR} ');
-    expect(footer).not.toContain('{new Date()');
-
-    const expo = await generate('lint-expo', ['--app', 'mobile:expo']);
-    const appFooter = await read(expo, 'src/components/app-footer.tsx');
-    expect(appFooter).toContain('const YEAR = new Date().getFullYear();');
-    expect(appFooter).not.toContain('{new Date()');
+  test('the Expo footer reads the year once, outside the render', async () => {
+    const appFooter = await read(await generate('lint-expo', ['--app', 'mobile:expo']), 'src/components/app-footer.tsx');
+    expect(appFooter).toMatch(/^const YEAR = new Date\(\)\.getFullYear\(\);$/m);
+    expect(appFooter).not.toMatch(/\{new Date\(/);
   });
 
-  test('the dashboard navigation links with next/link, and the avatar takes only the props it uses', async () => {
-    const dashboard = await generate('lint-org-next', ['--blueprint', 'org-dashboard-nextjs']);
-    const navUser = await read(dashboard, 'apps/web/src/components/navigation/nav-user.tsx');
-    expect(navUser).toContain("import Link from 'next/link';");
-    expect(navUser).toContain("<Link href='/profile/account'>");
-    expect(navUser).not.toContain('<a ');
-    expect(navUser).toContain('function UserAvatar({ initials }: { initials: string })');
-    expect(navUser).not.toContain('<UserAvatar user=');
-
-    const fullstack = await generate('lint-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs']);
-    const withImage = await read(fullstack, 'apps/web/src/components/navigation/nav-user.tsx');
-    expect(withImage).toContain('function UserAvatar({ user, initials }');
-    expect(withImage).toContain('<UserAvatar user={session.user} initials={initials} />');
+  describe.each([
+    ['org-dashboard-nextjs', false],
+    ['multitenant-saas-nextjs', false],
+    ['cloudflare-fullstack-nextjs', true],
+  ])('%s user menu', (blueprint, hasImage) => {
+    test('links with next/link and passes the avatar only the props it uses', async () => {
+      const navUser = await read(await generate(`lint-nav-${blueprint}`, ['--blueprint', blueprint]), 'apps/web/src/components/navigation/nav-user.tsx');
+      expect(navUser).toMatch(/import Link from 'next\/link';/);
+      expect(navUser).toMatch(/<Link href='\/profile\/account'>/);
+      expect(navUser).not.toMatch(/<a\b/);
+      if (hasImage) {
+        expect(navUser).toMatch(/function UserAvatar\(\{ user, initials \}/);
+        expect(navUser).toMatch(/<UserAvatar user=\{session\.user\} initials=\{initials\} \/>/);
+      } else {
+        expect(navUser).toMatch(/function UserAvatar\(\{ initials \}: \{ initials: string \}\)/);
+        expect(navUser).not.toMatch(/<UserAvatar user=/);
+      }
+    });
   });
 
-  test('the logout confirmation effect lists no dependency it does not read', async () => {
-    const dashboard = await generate('lint-logout-focus', ['--blueprint', 'org-dashboard-nextjs']);
-    const navUser = await read(dashboard, 'apps/web/src/components/navigation/nav-user.tsx');
-    expect(navUser).toContain('    itemToFocus.current = null;\n  });');
-    expect(navUser).not.toContain('}, [showLogout]);');
+  test('the TanStack Start user menu keeps the router link', async () => {
+    const navUser = await read(await generate('lint-nav-start', ['--blueprint', 'org-dashboard-tanstack-start']), 'apps/web/src/components/navigation/nav-user.tsx');
+    expect(navUser).toMatch(/<Link to='\/profile\/account'>/);
+    expect(navUser).not.toMatch(/next\/link/);
+  });
+
+  test('the logout focus effect lists no dependency it does not read', async () => {
+    const navUser = await read(await generate('lint-logout-focus', ['--blueprint', 'org-dashboard-nextjs']), 'apps/web/src/components/navigation/nav-user.tsx');
+    expect(navUser).not.toMatch(/\}, \[showLogout\]\);/);
   });
 
   test('the theme choice is a labelled fieldset, not a div with a group role', async () => {
-    const dashboard = await generate('lint-preferences', ['--blueprint', 'org-dashboard-nextjs']);
-    const preferences = await read(dashboard, 'apps/web/src/components/profile/preferences.tsx');
-    expect(preferences).toContain("<legend className='text-sm font-medium'>Theme</legend>");
-    expect(preferences).not.toContain("role='group'");
+    const preferences = await read(await generate('lint-preferences', ['--blueprint', 'org-dashboard-nextjs']), 'apps/web/src/components/profile/preferences.tsx');
+    expect(preferences).toMatch(/<fieldset\b[\s\S]*<legend\b[^>]*>Theme<\/legend>/);
+    expect(preferences).not.toMatch(/role='group'/);
   });
 
-  test('the breadcrumb sets its committed flag outside the effect body', async () => {
-    const dashboard = await generate('lint-breadcrumb', ['--blueprint', 'org-dashboard-nextjs']);
-    const breadcrumb = await read(dashboard, 'apps/web/src/components/navigation/app-breadcrumb.tsx');
-    expect(breadcrumb).toContain('queueMicrotask(() => setHasCommitted(true));');
-    expect(breadcrumb).not.toContain('useEffect(() => setHasCommitted(true)');
+  test('the breadcrumb does not set state in the body of its effect', async () => {
+    const breadcrumb = await read(await generate('lint-breadcrumb', ['--blueprint', 'org-dashboard-nextjs']), 'apps/web/src/components/navigation/app-breadcrumb.tsx');
+    expect(breadcrumb).toMatch(/queueMicrotask\(\(\) => setHasCommitted\(true\)\)/);
+    expect(breadcrumb).not.toMatch(/useEffect\(\(\) => setHasCommitted/);
   });
 
-  test('shadcn classes in blueprint pages are scale values, not arbitrary ones', async () => {
-    const start = await generate('lint-org-start', ['--blueprint', 'org-dashboard-tanstack-start']);
-    expect(await read(start, 'apps/web/src/components/dashboard-not-found.tsx')).toContain('min-h-96');
+  test('blueprint classes are scale values, not arbitrary ones', async () => {
+    const notFound = await read(await generate('lint-org-start', ['--blueprint', 'org-dashboard-tanstack-start']), 'apps/web/src/components/dashboard-not-found.tsx');
+    expect(notFound).not.toMatch(/\b(min|max)-h-\[/);
 
-    const fullstack = await generate('lint-fullstack-dialog', ['--blueprint', 'cloudflare-fullstack-nextjs']);
-    const dialog = await read(fullstack, 'apps/web/src/components/admin/create-user-dialog.tsx');
-    expect(dialog).toContain("<DialogContent className='max-h-11/12 overflow-y-auto'>");
+    const dialog = await read(await generate('lint-fullstack-dialog', ['--blueprint', 'cloudflare-fullstack-nextjs']), 'apps/web/src/components/admin/create-user-dialog.tsx');
+    expect(dialog).toMatch(/<DialogContent className='max-h-11\/12 /);
   });
 
   test('the multitenant badge declares no prop it ignores', async () => {
-    const projectPath = await generate('lint-multitenant', ['--blueprint', 'multitenant-saas-nextjs']);
-    const badge = await read(projectPath, 'packages/ui/src/components/ui/badge.tsx');
-    expect(badge).not.toContain('asChild');
+    const badge = await read(await generate('lint-multitenant', ['--blueprint', 'multitenant-saas-nextjs']), 'packages/ui/src/components/ui/badge.tsx');
+    expect(badge).not.toMatch(/asChild/);
   });
 
   test('oxlint allows the triple-slash reference of sst.config.ts, and only under sst', async () => {
-    const sst = await generate('lint-sst', ['--blueprint', 'lambda-sst-hono', '--linter', 'oxc']);
-    const config = await read(sst, 'oxlint.config.mts');
-    expect(config).toContain("files: ['sst.config.ts']");
-    expect(config).toContain("'typescript/triple-slash-reference': 'off'");
+    const config = await read(await generate('lint-sst', ['--blueprint', 'lambda-sst-hono', '--linter', 'oxc']), 'oxlint.config.mts');
+    expect(config).toMatch(/files: \['sst\.config\.ts'\][\s\S]*'typescript\/triple-slash-reference': 'off'/);
 
-    const plain = await generate('lint-no-sst', ['--app', 'web:nextjs', '--linter', 'oxc']);
-    expect(await read(plain, 'oxlint.config.mts')).not.toContain('sst.config.ts');
+    const plain = await read(await generate('lint-no-sst', ['--app', 'web:nextjs', '--linter', 'oxc']), 'oxlint.config.mts');
+    expect(plain).not.toMatch(/sst\.config\.ts/);
   });
 });

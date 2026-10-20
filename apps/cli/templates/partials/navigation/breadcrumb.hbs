@@ -79,6 +79,8 @@ function useCachedRecord<T>(queryKey: QueryKey): T | null | undefined {
   );
   const [hasCommitted, setHasCommitted] = React.useState(false);
   React.useEffect(() => {
+    // A state update made synchronously in the effect body starts a cascading render (the react/set-state-in-effect rule);
+    // the microtask sets it once this commit's effects have run.
     queueMicrotask(() => setHasCommitted(true));
   }, []);
   return record === undefined && hasCommitted ? null : record;

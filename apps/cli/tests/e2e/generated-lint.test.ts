@@ -183,12 +183,14 @@ async function expectLintPasses(projectDir: string, linter: string, moment: stri
   const dirs = await lintDirs(projectDir);
   if (dirs.length === 0) throw new Error(`no workspace defines a lint script in ${projectDir}`);
 
+  const failures: string[] = [];
   for (const dir of dirs) {
     const result = await runCommand(command, dir);
     if (result.exitCode === 0) continue;
     const tail = `${result.stdout}\n${result.stderr}`.split('\n').slice(-OUTPUT_TAIL_LINES).join('\n');
-    throw new Error(`\`${command.join(' ')}\` exited ${result.exitCode} in ${dir} ${moment}:\n${tail}`);
+    failures.push(`\`${command.join(' ')}\` exited ${result.exitCode} in ${dir} ${moment}:\n${tail}`);
   }
+  if (failures.length > 0) throw new Error(failures.join('\n\n'));
 }
 
 const PLANTED_LINT_ERROR_FILE = 'planted-lint-error.ts';

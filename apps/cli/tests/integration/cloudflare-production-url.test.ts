@@ -141,6 +141,20 @@ describe('Production URL notes of the Cloudflare agent context', () => {
     expect(agents).toContain('no Next.js option silences it');
   });
 
+  test('a turborepo with a Next.js app carries the same middleware.ts explanation', async () => {
+    const agents = await generate('url-middleware-mono', [
+      '--app',
+      'web:nextjs',
+      '--app',
+      'api:hono',
+      '--deployment',
+      'cloudflare',
+    ]);
+
+    expect(agents).toContain('`src/middleware.ts`, not `src/proxy.ts`');
+    expect(agents).toContain('Do not migrate it to `proxy.ts`');
+  });
+
   test('a turborepo runs Wrangler from the app that holds the Worker config and names each Worker URL', async () => {
     const agents = await generate('url-mono', [
       '--app',
