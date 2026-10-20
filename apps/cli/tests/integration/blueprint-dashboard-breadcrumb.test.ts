@@ -140,6 +140,7 @@ export const useQueryClient = () => ({
 export const ContactForm = () => null;
 export const EditUser = () => null;
 export const GeneratedPassword = () => null;`,
+  'invalidate-paged-list.mjs': 'export const invalidatePagedList = async () => {};',
 };
 
 const IMPORTS: Record<string, string> = {
@@ -160,6 +161,7 @@ const IMPORTS: Record<string, string> = {
   '@/components/admin/edit-user': './leaf.mjs',
   '@/components/admin/generated-password': './leaf.mjs',
   '@/lib/constants': './constants.mjs',
+  '@/lib/invalidate-paged-list': './invalidate-paged-list.mjs',
 };
 
 const ROUTER_IMPORTS = {
