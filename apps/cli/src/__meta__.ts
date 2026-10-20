@@ -84,6 +84,16 @@ const POSTHOG_TOKEN_SOURCE: EnvThirdParty = {
   url: 'https://us.posthog.com/settings/project',
   whenBlank: 'analytics stay off and nothing is sent to PostHog',
 };
+const CONTACT_FORM_ENDPOINT: EnvVar = {
+  value: 'NEXT_PUBLIC_CONTACT_FORM_URL=',
+  stacks: ['nextjs'],
+  monoScope: ['app'],
+  thirdParty: {
+    description: 'contact form endpoint',
+    url: 'https://formspree.io',
+    whenBlank: 'the contact form says it is not connected and sends nothing',
+  },
+};
 const PRIVY_DASHBOARD_URL = 'https://dashboard.privy.io';
 const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
 
@@ -1635,6 +1645,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
+        CONTACT_FORM_ENDPOINT,
       ],
     },
     'cloudflare-fullstack-nextjs': {
@@ -1774,6 +1785,7 @@ export const META: Meta = {
           stacks: ['nextjs'],
           monoScope: ['app'],
         },
+        CONTACT_FORM_ENDPOINT,
       ],
     },
   },

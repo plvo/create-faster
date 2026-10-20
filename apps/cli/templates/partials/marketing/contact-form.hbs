@@ -1,0 +1,90 @@
+'use client';
+
+import { type FormEvent, useState } from 'react';
+{{#if (isMono)}}
+import { Button } from '@repo/ui/components/button';
+{{else}}
+import { Button } from '@/components/ui/button';
+{{/if}}
+import { CONTACT_FORM_URL, type ContactOutcome, sendContactMessage } from '@/lib/contact';
+
+type Status = ContactOutcome | 'idle' | 'sending';
+
+const FIELD_CLASS =
+  'w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring';
+
+export function ContactForm() {
+  const [status, setStatus] = useState<Status>(CONTACT_FORM_URL ? 'idle' : 'unconfigured');
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+
+    setStatus('sending');
+    const outcome = await sendContactMessage(CONTACT_FORM_URL, new FormData(form));
+    if (outcome === 'sent') form.reset();
+    setStatus(outcome);
+  }
+
+  return (
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium mb-2">Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          className={FIELD_CLASS}
+          placeholder="Your name"
+        />
+      </div>
+      <div>
+        <label htmlFor="email" className="block text-sm font-medium mb-2">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          className={FIELD_CLASS}
+          placeholder="you@company.com"
+        />
+      </div>
+      <div>
+        <label htmlFor="message" className="block text-sm font-medium mb-2">Message</label>
+        <textarea
+          id="message"
+          name="message"
+          required
+          rows={5}
+          className={`${FIELD_CLASS} resize-none`}
+          placeholder="Tell us about your messaging needs..."
+        />
+      </div>
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={status === 'sending' || status === 'unconfigured'}
+      >
+        {status === 'sending' ? 'Sending...' : 'Send Message'}
+      </Button>
+      {status === 'sent' && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Thank you, your message was sent. We will reply soon.
+        </p>
+      )}
+      {status === 'failed' && (
+        <p role="alert" className="text-sm text-destructive">
+          Your message could not be sent. Please try again in a moment.
+        </p>
+      )}
+      {status === 'unconfigured' && (
+        <p role="status" className="text-sm text-muted-foreground">
+          This form is not connected to a form service yet, so it cannot send messages. Set
+          NEXT_PUBLIC_CONTACT_FORM_URL to the endpoint of your form service and build again.
+        </p>
+      )}
+    </form>
+  );
+}

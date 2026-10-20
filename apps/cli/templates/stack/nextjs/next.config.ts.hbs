@@ -36,7 +36,8 @@ const nextConfig: NextConfig = {
 
   {{/if}}
   {{#if (has "deployment" "cloudflare-static")}}
-  output: 'export',
+  // `next dev` answers an unknown param of a dynamic route with a 500 under `output: 'export'`, whatever `dynamicParams` says; without it the route answers its 404 page, as the export does.
+  output: process.env.NODE_ENV === 'development' ? undefined : 'export',
   images: {
     unoptimized: true,
   },

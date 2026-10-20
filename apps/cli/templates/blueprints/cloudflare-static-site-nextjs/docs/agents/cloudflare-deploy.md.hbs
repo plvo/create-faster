@@ -19,16 +19,26 @@ This site is a Next.js static export (`output: 'export'` in `next.config.ts`) se
 
 ## First deploy
 
+`.env` holds the local site URL, so a build that does not override it writes `localhost` into the sitemap, `robots.txt`, the canonical URLs and the JSON-LD, which search engines then read. Learn the production URL first, then build with it.
+{{> cloudflare/production-url appUrlReader="the app writes into the sitemap, `robots.txt`, canonical URLs and JSON-LD"}}
+
+### Build and deploy
+
+Run these from the repository root, with the URL learned above:
+
 ```bash
+export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name}}.<subdomain>.workers.dev
 {{runScript "deploy"}}   # next build && wrangler deploy
 ```
 
-`wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at `https://<name>.<your-subdomain>.workers.dev`.
+`wrangler deploy` prompts a browser login the first time (`wrangler login`) and provisions the Worker under the `name` in `wrangler.jsonc`. The site is then live at the URL above. Check that `/sitemap.xml` and the `<link rel="canonical">` of a page start with it.
+
+Every later deploy needs the same `export` in the shell of the build, or in the CI environment. A process variable wins over `.env`, which keeps the local value for development.
 
 Dry-run the upload without publishing:
 
 ```bash
-wrangler deploy --dry-run
+{{installedBinaryRunner}} wrangler deploy --dry-run
 ```
 
 ## Custom domain

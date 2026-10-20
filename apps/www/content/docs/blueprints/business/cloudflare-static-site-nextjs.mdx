@@ -29,7 +29,7 @@ src/
 │   ├── blog/
 │   │   ├── page.tsx                   # Blog index listing MDX articles
 │   │   └── [slug]/page.tsx            # Blog post (generateStaticParams) with Article JSON-LD
-│   ├── contact/page.tsx               # Contact form (static markup)
+│   ├── contact/page.tsx               # Contact page (ContactForm posts to a form service)
 │   ├── for/[persona]/page.tsx         # Programmatic persona pages with FAQ
 │   ├── sitemap.ts                     # Dynamic sitemap (static + blog + persona pages)
 │   └── robots.ts                      # Robots.txt with AI bot rules
@@ -99,7 +99,7 @@ bun run preview    # serve the built assets locally with wrangler
 bun run deploy     # next build && wrangler deploy
 ```
 
-The export is uploaded as Workers static assets. Pointing a custom domain (Wrangler route or dashboard, no Terraform) is documented in the generated `docs/agents/cloudflare-deploy.md`. See [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) for the deployment details.
+The export is uploaded as Workers static assets. The build writes `NEXT_PUBLIC_APP_URL` into the sitemap, `robots.txt`, canonical URLs and JSON-LD, so the first deploy learns the production URL (from the Cloudflare account, before `wrangler deploy` prints it) and exports it in the shell of the build: `export NEXT_PUBLIC_APP_URL=https://<name>.<subdomain>.workers.dev`. `.env` keeps the local value. Pointing a custom domain (Wrangler route or dashboard, no Terraform) is documented in the generated `docs/agents/cloudflare-deploy.md`. See [Cloudflare Workers (static)](/docs/deployment/cloudflare-static) for the deployment details.
 
 ## Extra dependencies
 
@@ -111,7 +111,8 @@ The export is uploaded as Workers static assets. Pointing a custom domain (Wrang
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_APP_URL` | Production site URL (used in sitemap, JSON-LD, OG tags) |
+| `NEXT_PUBLIC_APP_URL` | Production site URL (used in sitemap, JSON-LD, OG tags). Give it to the build in the shell for a deploy |
+| `NEXT_PUBLIC_CONTACT_FORM_URL` | Endpoint of a form service (Formspree, for example) that the contact form posts to. Blank in `.env.example`: the form is disabled and says it is not connected until you set it |
 
 ## CLI usage
 

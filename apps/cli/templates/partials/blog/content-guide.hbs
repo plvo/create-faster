@@ -7,7 +7,7 @@ Reading utilities live in `src/lib/blog.ts`: `getAllPosts()` returns posts sorte
 The post route `src/app/blog/[slug]/page.tsx` calls `generateStaticParams()` from `getAllPosts()`, sets `dynamicParams = false` (any other slug is a 404), renders `<post.Content />` (components from `src/mdx-components.tsx`), and emits `ArticleJsonLd` plus `Breadcrumbs`.
 
 ## Persona pages
-Persona data lives in `src/lib/data/personas.ts` (`slug`, `title`, `headline`, `description`, `benefits[]`, `faq[]`). `src/app/for/[persona]/page.tsx` statically generates one page per `getAllPersonaSlugs()` and emits `FaqJsonLd` from the persona's `faq`.
+Persona data lives in `src/lib/data/personas.ts` (`slug`, `title`, `headline`, `description`, `benefits[]`, `faq[]`). `src/app/for/[persona]/page.tsx` statically generates one page per `getAllPersonaSlugs()`, sets `dynamicParams = false` (any other slug is a 404, in `dev` too) and emits `FaqJsonLd` from the persona's `faq`.
 
 ## Adding a blog post
 1. Create `contents/blog/my-post.mdx` with `title`, `summary`, `publishedAt` (and optional `author`/`imageUrl`) frontmatter.

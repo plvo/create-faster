@@ -6,6 +6,7 @@ path: README.md
 Generated with [create-faster](https://github.com/plvo/create-faster) using the **Cloudflare Static Site** blueprint — a static Next.js (`output: 'export'`) marketing site with an MDX blog, served as Cloudflare Workers static assets.
 
 {{> readme/getting-started}}
+{{> env/third-party-ids}}
 
 ## Production
 
@@ -23,4 +24,5 @@ Deploying and pointing a custom domain is documented in [`docs/agents/cloudflare
 - [ ] Update `src/lib/data/personas.ts` — Replace PigeonPost personas with your own
 - [ ] Update section content in `src/components/sections/` — Hero copy, features, testimonials, FAQ
 - [ ] Add your blog articles in `contents/blog/` (MDX with title, summary, publishedAt frontmatter)
-- [ ] Set `NEXT_PUBLIC_APP_URL` in `.env` to your production URL
+- [ ] Set `NEXT_PUBLIC_CONTACT_FORM_URL` in `.env` to your form service endpoint, so the contact form sends messages
+- [ ] Give the build your production URL before the first deploy, as [`docs/agents/cloudflare-deploy.md`](docs/agents/cloudflare-deploy.md) describes (it is baked into the sitemap and canonical URLs)

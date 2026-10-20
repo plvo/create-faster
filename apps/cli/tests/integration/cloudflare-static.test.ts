@@ -62,7 +62,7 @@ describe('Cloudflare static deployment platform', () => {
 
     test('next.config.ts has static export and unoptimized images', async () => {
       const content = await readTextFile(join(projectPath, 'next.config.ts'));
-      expect(content).toContain("output: 'export'");
+      expect(content).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
       expect(content).toContain('unoptimized: true');
       expect(content).not.toContain('initOpenNextCloudflareForDev');
     });
@@ -124,7 +124,7 @@ describe('Cloudflare static deployment platform', () => {
 
     test('web app next.config.ts uses static export', async () => {
       const content = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
-      expect(content).toContain("output: 'export'");
+      expect(content).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
     });
 
     test('web app omits proxy.ts', async () => {

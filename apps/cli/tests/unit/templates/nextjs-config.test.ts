@@ -89,7 +89,7 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
 
   test('emits static export config when deploying to cloudflare-static', () => {
     const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare-static'));
-    expect(rendered).toContain("output: 'export'");
+    expect(rendered).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
     expect(rendered).toContain('unoptimized: true');
   });
 
@@ -101,7 +101,7 @@ describe('next.config.ts.hbs: cloudflare integration', () => {
 
   test('does NOT emit static export config for the OpenNext cloudflare deployment', () => {
     const rendered = renderHbs('stack/nextjs/next.config.ts.hbs', makeCloudflareContext('cloudflare'));
-    expect(rendered).not.toContain("output: 'export'");
+    expect(rendered).not.toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
   });
 });
 

@@ -23,7 +23,7 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
 
   test('next.config emits a static export with unoptimized images', async () => {
     const config = await readTextFile(join(projectPath, 'next.config.ts'));
-    expect(config).toContain("output: 'export'");
+    expect(config).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
     expect(config).toContain('unoptimized: true');
   });
 
@@ -89,6 +89,33 @@ describe('Blueprint generation - cloudflare-static-site-nextjs', () => {
   test('ships a cloudflare deploy note in docs/agents', async () => {
     expect(await fileExists(join(projectPath, 'docs/agents/cloudflare-deploy.md'))).toBe(true);
     expect(await fileExists(join(projectPath, 'docs/agents/analytics-consent.md'))).toBe(false);
+  });
+
+  test('the first deploy learns the production URL, then builds and deploys with it', async () => {
+    const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+    const productionUrl = `https://${projectName}.<subdomain>.workers.dev`;
+    let from = 0;
+    for (const marker of [
+      '### Production URL',
+      'npx wrangler whoami',
+      'WRANGLER_HIDE_BANNER=true npx wrangler auth token',
+      'https://api.cloudflare.com/client/v4/accounts/<account id>/workers/subdomain',
+      productionUrl,
+      `export NEXT_PUBLIC_APP_URL=${productionUrl}`,
+      'npm run deploy',
+    ]) {
+      const at = notes.indexOf(marker, from);
+      expect(at, `"${marker}" after offset ${from}`).toBeGreaterThanOrEqual(0);
+      from = at + marker.length;
+    }
+    expect(notes).toContain('sitemap');
+    expect(notes).toContain('canonical');
+  });
+
+  test('the README no longer tells to put the production URL in .env', async () => {
+    const readme = await readTextFile(join(projectPath, 'README.md'));
+    expect(readme).not.toContain('in `.env` to your production URL');
+    expect(readme).toContain('docs/agents/cloudflare-deploy.md');
   });
 
   test('recreate command shows the blueprint flag', async () => {

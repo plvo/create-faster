@@ -130,7 +130,7 @@ describe('TanStack Start + cloudflare-static', () => {
       expect(docsConfig).toContain('prerender: { enabled: true');
       expect(docsConfig).toContain('port: Number(process.env.PORT ?? 3001),');
       const webConfig = await readTextFile(join(projectPath, 'apps/web/next.config.ts'));
-      expect(webConfig).toContain("output: 'export'");
+      expect(webConfig).toContain("output: process.env.NODE_ENV === 'development' ? undefined : 'export'");
       expect(await fileExists(join(projectPath, 'apps/docs/src/routes/$.tsx'))).toBe(true);
       expect(await fileExists(join(projectPath, 'apps/web/src/routes/$.tsx'))).toBe(false);
     });
