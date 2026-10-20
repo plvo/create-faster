@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { getAppLibraries, getBlueprintApp, getSelectedProjectAddons } from '@/lib/addon-utils';
+import { getAppLibraries, getSelectedProjectAddons } from '@/lib/addon-utils';
 import { getInstallScriptsField } from '@/lib/package-manager';
 import { sortObjectKeys } from '@/lib/utils';
 import type { TemplateContext } from '@/types/ctx';
@@ -9,7 +9,6 @@ function selectedInstallScripts(ctx: TemplateContext): (InstallScripts | undefin
   const fromApps = ctx.apps.flatMap((app) => [
     META.stacks[app.stackName].installScripts,
     ...getAppLibraries(app).map(({ library }) => library.installScripts),
-    getBlueprintApp(ctx, app.appName)?.installScripts,
   ]);
   const fromAddons = getSelectedProjectAddons(ctx).map((addon) => addon.installScripts);
   const fromBlueprint = ctx.blueprint ? META.blueprints[ctx.blueprint]?.installScripts : undefined;

@@ -1,4 +1,4 @@
-import type { PackageManagerName } from '@/types/ctx';
+import type { AppContext, PackageManagerName } from '@/types/ctx';
 import type { StackName } from '@/types/stack-name';
 import type { Conditional, WhenMatch } from '@/types/when';
 
@@ -201,14 +201,9 @@ export interface PartialFrontmatter {
 }
 
 /** An app of a blueprint: its stack and libraries, plus what only this app receives, on top of what the blueprint gives every app. */
-export interface MetaBlueprintApp {
-  appName: string;
-  stackName: StackName;
-  libraries: string[];
+export interface MetaBlueprintApp extends AppContext {
   /** Dependencies and scripts of this app only, merged after the blueprint `packageJson`. */
   packageJson?: PackageJsonConfig;
-  /** Install scripts of the dependencies this app brings beyond the blueprint ones. */
-  installScripts?: InstallScripts;
   /** Variables this app alone receives, in addition to the blueprint `envs`. */
   envs?: EnvVar[];
 }

@@ -167,6 +167,15 @@ const ORG_DASHBOARD_WEB_LIBRARIES = [
 const ORG_DASHBOARD_HINT =
   'Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD';
 
+const ORG_DASHBOARD_WEB_PACKAGE_JSON: PackageJsonConfig = {
+  dependencies: {
+    'lucide-react': '^1.37.0',
+    'react-error-boundary': '^5.0.0',
+    sonner: '^2.0.7',
+    zod: '^4.5.4',
+  },
+};
+
 const orgDashboardContext = (webStack: StackName) => ({
   apps: [
     {
@@ -191,15 +200,6 @@ const orgDashboardAgentArchitecture = (webFramework: string) =>
     '- [Auth & permissions](docs/agents/auth.md)',
     '- [Data layer](docs/agents/data-layer.md)',
   ].join('\n');
-
-const ORG_DASHBOARD_WEB_PACKAGE_JSON: PackageJsonConfig = {
-  dependencies: {
-    'lucide-react': '^1.37.0',
-    'react-error-boundary': '^5.0.0',
-    sonner: '^2.0.7',
-    zod: '^4.5.4',
-  },
-};
 
 const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
   auth: {
@@ -1799,11 +1799,11 @@ export const META: Meta = {
           '@libsql/client': LIBSQL_CLIENT_VERSION,
         },
         scripts: {
-          'db:seed': '{{tsRunner}} --env-file=apps/web/.env --env-file=.env scripts/seed.ts',
+          'db:seed': '{{tsRunner}} --env-file=apps/web/.env --env-file=.env.seed scripts/seed.ts',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
         },
       },
-      envs: [{ ...SEED_PASSWORD, monoScope: ['root'] }],
+      envs: [{ ...SEED_PASSWORD, monoScope: ['root'], file: 'seed' }],
     },
     'showcase-nextjs': {
       label: 'Showcase',

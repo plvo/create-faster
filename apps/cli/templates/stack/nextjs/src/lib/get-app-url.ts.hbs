@@ -1,4 +1,4 @@
-{{#if (or (hasLibrary "trpc") (hasContext "blueprint"))}}
+{{#if (receivesEnv "NEXT_PUBLIC_APP_URL")}}
 export function getAppUrl(): string {
   if (typeof window !== 'undefined') return window.location.origin;
   return (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:{{appPort appName}}').replace(/\/+$/, '');

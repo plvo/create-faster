@@ -14,6 +14,8 @@ function sh(command: string, cwd?: string, env?: Record<string, string>): Promis
   });
 }
 
+const ENV_EXAMPLE = /^\.env(\.[\w-]+)?\.example$/;
+
 function isSearchedDirectory(name: string): boolean {
   return name !== 'node_modules' && !name.startsWith('.');
 }
@@ -24,7 +26,7 @@ async function findEnvExamples(directory: string): Promise<string[]> {
     entries.map(async (entry) => {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) return isSearchedDirectory(entry.name) ? findEnvExamples(path) : [];
-      return entry.name === '.env.example' ? [path] : [];
+      return ENV_EXAMPLE.test(entry.name) ? [path] : [];
     }),
   );
   return found.flat();

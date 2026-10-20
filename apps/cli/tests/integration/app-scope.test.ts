@@ -18,17 +18,15 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
+type DatabaseName = keyof typeof META.project.database.options;
+
+const WORKSPACE_SCOPE = '@repo/';
+
 /** Read from the shell or by the tool that starts the app, never from a `.env` file the project ships. */
-const PROVIDED_BY_THE_ENVIRONMENT = new Set([
-  'NODE_ENV',
-  'PORT',
-  'PORTLESS_URL',
-  'BASE_URL',
-  'DEV',
-  'PROD',
-  'MODE',
-  'SSR',
-]);
+const PROVIDED_BY_THE_ENVIRONMENT = new Set(['NODE_ENV', 'PORT', 'PORTLESS_URL']);
+
+/** Filled by the bundler: `import.meta.env.DEV` and the like. */
+const VITE_BUILT_INS = new Set(['DEV', 'PROD', 'MODE', 'SSR', 'BASE_URL']);
 
 /** Variables a dependency reads itself, so no source of the app names them: the variable and the package that reads it. */
 const READ_BY_DEPENDENCY: Record<string, string> = {
@@ -36,38 +34,45 @@ const READ_BY_DEPENDENCY: Record<string, string> = {
   BETTER_AUTH_URL: 'better-auth',
 };
 
-type DatabaseName = keyof typeof META.project.database.options;
-
-const WORKSPACE_SCOPE = '@repo/';
 const ENV_EXAMPLE = /(?:^|\/)\.env(?:\.[\w-]+)?\.example$/;
 const ENV_FILE_FLAG = /--env-file(?:-if-exists)?[= ]([^\s'"]+)/g;
-const NOT_READ_BY_RUNNING_CODE = /\.mdx?$|(?:^|\/)(?:\.env[^/]*|turbo\.json|\.gitignore|[\w-]+\.lock|[\w-]+-lock\.yaml)$/;
+/** `wrangler.jsonc` is not read by the app: its `secrets.required` is generated from the declarations. */
+const NOT_READ_BY_RUNNING_CODE =
+  /\.mdx?$|(?:^|\/)(?:\.env[^/]*|turbo\.json|wrangler\.jsonc|\.gitignore|[\w-]+\.lock|[\w-]+-lock\.yaml)$/;
 
-interface GeneratedApp {
+interface ProjectApp {
   appName: string;
   stackName: StackName;
-  directory: string;
+  libraries: string[];
 }
 
 interface Project {
   name: string;
   args: string[];
-  apps: { appName: string; stackName: StackName }[];
+  apps: ProjectApp[];
   database?: string;
   orm?: string;
+}
+
+interface Manifest {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
 }
 
 interface Generated extends Project {
   root: string;
   files: string[];
   isTurborepo: boolean;
-  generatedApps: GeneratedApp[];
+  /** The directory of each app relative to the project root, and of each package: `''` is the root. */
+  appDirectories: Map<string, string>;
+  manifests: Map<string, Manifest>;
 }
 
 const BLUEPRINT_PROJECTS: Project[] = Object.entries(META.blueprints).map(([name, blueprint]) => ({
   name: `blueprint ${name}`,
   args: ['--blueprint', name],
-  apps: blueprint.context.apps.map(({ appName, stackName }) => ({ appName, stackName })),
+  apps: blueprint.context.apps.map(({ appName, stackName, libraries }) => ({ appName, stackName, libraries })),
   database: (blueprint.context.project as { database?: string }).database,
   orm: (blueprint.context.project as { orm?: string }).orm,
 }));
@@ -76,19 +81,13 @@ const BLUEPRINT_PROJECTS: Project[] = Object.entries(META.blueprints).map(([name
 const CHOICE_PROJECTS: Project[] = groupChoices().map((project, index) => ({
   name: `choices ${index + 1}`,
   args: toCliArgs(project),
-  apps: [...project.apps.keys()].map((stackName) => ({ appName: stackName, stackName })),
+  apps: [...project.apps].map(([stackName, libraries]) => ({ appName: stackName, stackName, libraries })),
   database: project.database,
   orm: project.orm,
 }));
 
 const PROJECTS = [...BLUEPRINT_PROJECTS, ...CHOICE_PROJECTS];
-
-/** Without an ORM, the connection variables of the database are for the client the user brings. */
-function databaseVariables(project: Project): Set<string> {
-  const database = project.database ? META.project.database.options[project.database as DatabaseName] : undefined;
-  const envs: EnvVar[] = (database as MetaAddon | undefined)?.envs ?? [];
-  return new Set(envs.flatMap(({ value }) => declaredVariables(value)));
-}
+const PROJECT_NAMES = PROJECTS.map(({ name }) => name);
 
 function dependencyNames(config: PackageJsonConfig | undefined): string[] {
   return Object.keys(config?.dependencies ?? {});
@@ -121,6 +120,13 @@ function uiDependenciesOfMeta(): Set<string> {
   return new Set(ui.filter((name) => !server.has(name) && !name.startsWith(WORKSPACE_SCOPE)));
 }
 
+/** Without an ORM, the connection variables of the database are for the client the user brings. */
+function databaseVariables(project: Project): Set<string> {
+  const database = project.database ? META.project.database.options[project.database as DatabaseName] : undefined;
+  const envs: EnvVar[] = (database as MetaAddon | undefined)?.envs ?? [];
+  return new Set(envs.flatMap(({ value }) => declaredVariables(value)));
+}
+
 async function generate(project: Project, directory: string): Promise<Generated> {
   const name = project.name.replace(/\W+/g, '-');
   const gitFlag = project.args.includes('--git') ? [] : ['--no-git'];
@@ -128,18 +134,61 @@ async function generate(project: Project, directory: string): Promise<Generated>
   expect(result.exitCode, `${project.name}: ${result.stderr}`).toBe(0);
 
   const root = join(directory, name);
+  const files = await listFiles(root);
   const isTurborepo = project.apps.length > 1;
+
+  const manifestDirectories = files
+    .filter((file) => file === 'package.json' || /^(?:apps|packages)\/[^/]+\/package\.json$/.test(file))
+    .map((file) => (dirname(file) === '.' ? '' : dirname(file)));
+  const manifests = new Map(
+    await Promise.all(
+      manifestDirectories.map(
+        async (directoryOfManifest) =>
+          [directoryOfManifest, await readJsonFile<Manifest>(join(root, directoryOfManifest, 'package.json'))] as const,
+      ),
+    ),
+  );
+
   return {
     ...project,
     root,
-    files: await listFiles(root, new Set(['.git'])),
+    files,
     isTurborepo,
-    generatedApps: project.apps.map((app) => ({ ...app, directory: isTurborepo ? join('apps', app.appName) : '' })),
+    manifests,
+    appDirectories: new Map(project.apps.map((app) => [app.appName, isTurborepo ? join('apps', app.appName) : ''])),
   };
 }
 
-function readDependencies(project: Generated, directory: string): Promise<{ dependencies?: Record<string, string>; devDependencies?: Record<string, string> }> {
-  return readJsonFile(join(project.root, directory, 'package.json'));
+const isInside = (file: string, directory: string): boolean => directory === '' || file.startsWith(`${directory}/`);
+
+/** The workspace packages a directory depends on, directly or not. */
+function workspaceClosure(project: Generated, directory: string): string[] {
+  const reached = new Set<string>();
+  const pending = [directory];
+  while (pending.length > 0) {
+    const dependencies = Object.keys(project.manifests.get(pending.pop() ?? '')?.dependencies ?? {});
+    for (const dependency of dependencies.filter((name) => name.startsWith(WORKSPACE_SCOPE))) {
+      const owner = `packages/${dependency.slice(WORKSPACE_SCOPE.length)}`;
+      if (project.manifests.has(owner) && !reached.has(owner)) {
+        reached.add(owner);
+        pending.push(owner);
+      }
+    }
+  }
+  return [...reached];
+}
+
+/** The package that owns a file: the deepest directory with a manifest above it. */
+function ownerOf(project: Generated, file: string): string {
+  return [...project.manifests.keys()]
+    .filter((directory) => directory !== '' && isInside(file, directory))
+    .sort((a, b) => b.length - a.length)[0] ?? '';
+}
+
+/** The directories whose `.env` a script of the directory loads through `--env-file`. */
+function loadedEnvDirectories(project: Generated, directory: string): string[] {
+  const scripts = Object.values(project.manifests.get(directory)?.scripts ?? {}).join('\n');
+  return [...scripts.matchAll(ENV_FILE_FLAG)].map(([, path = '']) => dirname(normalize(join(directory, path))).replace(/^\.$/, ''));
 }
 
 describe('apps receive what they use', () => {
@@ -160,6 +209,16 @@ describe('apps receive what they use', () => {
     if (!project) throw new Error(`${name} was not generated`);
     return project;
   };
+
+  /** The first project that satisfies the predicate: found by what it holds, not by its place in the list. */
+  const findProject = (describeIt: string, predicate: (project: Project) => boolean): Generated => {
+    const found = PROJECTS.find(predicate);
+    if (!found) throw new Error(`no project ${describeIt}`);
+    return generatedProject(found.name);
+  };
+
+  const serverAppsOf = (project: Generated) =>
+    project.apps.filter(({ stackName }) => META.stacks[stackName].type === 'server');
 
   /** The packages imported by JSX files only: a component library, whatever it is called. */
   async function jsxOnlyPackages(project: Generated): Promise<Set<string>> {
@@ -188,20 +247,45 @@ describe('apps receive what they use', () => {
       expect(uiFromMeta.has('hono')).toBe(false);
     });
 
-    test.each(PROJECTS.map(({ name }) => name))('%s', async (name) => {
+    test.each(PROJECT_NAMES)('%s', async (name) => {
       const project = generatedProject(name);
       const uiDependencies = new Set([...uiFromMeta, ...(await jsxOnlyPackages(project))]);
-      const serverApps = project.generatedApps.filter(({ stackName }) => META.stacks[stackName].type === 'server');
 
-      const found = await Promise.all(
-        serverApps.map(async ({ appName, directory }) => {
-          const manifest = await readDependencies(project, directory);
-          const declared = [...Object.keys(manifest.dependencies ?? {}), ...Object.keys(manifest.devDependencies ?? {})];
-          return { appName, uiDependencies: declared.filter((dependency) => uiDependencies.has(dependency)) };
-        }),
-      );
+      const found = serverAppsOf(project).map(({ appName }) => {
+        const manifest = project.manifests.get(project.appDirectories.get(appName) ?? '');
+        const declared = [...Object.keys(manifest?.dependencies ?? {}), ...Object.keys(manifest?.devDependencies ?? {})];
+        return { appName, uiDependencies: declared.filter((dependency) => uiDependencies.has(dependency)) };
+      });
 
       expect(found.filter(({ uiDependencies: ui }) => ui.length > 0)).toEqual([]);
+    });
+  });
+
+  // Blueprints only: a custom project can still pick a library for an app on a stack it supports without a template
+  // for it (`tanstack-query` is supported on every stack, and Hono and Node import nothing of it).
+  describe('a server-only app of a blueprint declares only the dependencies something imports', () => {
+    test.each(BLUEPRINT_PROJECTS.map(({ name }) => name))('%s', async (name) => {
+      const project = generatedProject(name);
+      const sources = await readScriptFiles(project.root, project.files);
+
+      const unused = serverAppsOf(project).flatMap(({ appName }) => {
+        const directory = project.appDirectories.get(appName) ?? '';
+        const manifest = project.manifests.get(directory);
+        const scopes = [directory, ...workspaceClosure(project, directory)];
+        const imported = new Set(
+          sources
+            .filter(({ file }) => scopes.some((scope) => ownerOf(project, file) === scope))
+            .flatMap(({ source }) => importedPackages(source)),
+        );
+        const scripts = Object.values(manifest?.scripts ?? {}).join('\n');
+
+        return Object.keys(manifest?.dependencies ?? {})
+          .filter((dependency) => !dependency.startsWith(WORKSPACE_SCOPE))
+          .filter((dependency) => !imported.has(dependency) && !scripts.includes(dependency))
+          .map((dependency) => `${appName}: ${dependency}`);
+      });
+
+      expect(unused).toEqual([]);
     });
   });
 
@@ -211,18 +295,11 @@ describe('apps receive what they use', () => {
 
     test('the cron Worker of cloudflare-fullstack-nextjs has no .env.example and no UI dependency', async () => {
       const project = generatedProject('blueprint cloudflare-fullstack-nextjs');
-      const cron = await readDependencies(project, 'apps/cron');
+      const cron = project.manifests.get('apps/cron');
 
       expect(project.files).not.toContain('apps/cron/.env.example');
-      expect(Object.keys(cron.dependencies ?? {})).not.toContain('lucide-react');
-      expect(Object.keys(cron.dependencies ?? {})).not.toContain('sonner');
-    });
-
-    test('the seed password of cloudflare-fullstack-nextjs stays out of the .env that build:cf bundles into the web Worker', async () => {
-      const project = generatedProject('blueprint cloudflare-fullstack-nextjs');
-
-      expect(await exampleOf(project, '.env.example')).toContain('SEED_PASSWORD=');
-      expect(await exampleOf(project, 'apps/web/.env.example')).not.toContain('SEED_PASSWORD');
+      expect(Object.keys(cron?.dependencies ?? {})).not.toContain('lucide-react');
+      expect(Object.keys(cron?.dependencies ?? {})).not.toContain('sonner');
     });
 
     test.each(['blueprint org-dashboard-nextjs', 'blueprint multitenant-saas-nextjs'])(
@@ -236,18 +313,58 @@ describe('apps receive what they use', () => {
     );
 
     test('a Next.js app with tRPC declares the URL getAppUrl reads, a plain one reads none', async () => {
-      const withTrpc = generatedProject('choices 3');
-      const plain = generatedProject('choices 5');
+      const withTrpc = findProject('with a Next.js app that has tRPC', (project) =>
+        project.apps.some((app) => app.stackName === 'nextjs' && app.libraries.includes('trpc')),
+      );
+      const plain = findProject('with a Next.js app that has no tRPC and no blueprint', (project) =>
+        !project.name.startsWith('blueprint') &&
+        project.apps.some((app) => app.stackName === 'nextjs' && !app.libraries.includes('trpc')),
+      );
+      const trpcApp = withTrpc.apps.find((app) => app.stackName === 'nextjs' && app.libraries.includes('trpc'));
+      const plainApp = plain.apps.find((app) => app.stackName === 'nextjs' && !app.libraries.includes('trpc'));
+      const directory = (project: Generated, app: ProjectApp | undefined) =>
+        join(project.appDirectories.get(app?.appName ?? '') ?? '');
 
-      expect(await exampleOf(withTrpc, 'apps/nextjs/.env.example')).toContain('NEXT_PUBLIC_APP_URL=');
-      expect(plain.files).not.toContain('src/lib/get-app-url.ts');
+      expect(await exampleOf(withTrpc, join(directory(withTrpc, trpcApp), '.env.example'))).toContain(
+        'NEXT_PUBLIC_APP_URL=',
+      );
+      expect(withTrpc.files).toContain(join(directory(withTrpc, trpcApp), 'src/lib/get-app-url.ts'));
+      expect(plain.files).not.toContain(join(directory(plain, plainApp), 'src/lib/get-app-url.ts'));
+    });
+  });
+
+  describe('no variable only a seed or a CLI loads sits in a .env that a Worker build bundles', () => {
+    /** OpenNext bundles `.env`, `.env.local` and their mode variants of the app and of the monorepo root. */
+    const BUNDLED_ENV_FILE = /(?:^|\/)\.env(?:\.(?:local|development|production|test)(?:\.local)?)?\.example$/;
+    const cloudflareProjects = () =>
+      PROJECTS.filter((project) => project.args.includes('cloudflare') || project.name.includes('cloudflare'));
+
+    test('some project deploys to Cloudflare', () => {
+      expect(cloudflareProjects().length).toBeGreaterThan(0);
+    });
+
+    test('SEED_PASSWORD is in no .env.example OpenNext reads, in the app or at the root', async () => {
+      for (const { name } of cloudflareProjects()) {
+        const project = generatedProject(name);
+        for (const example of project.files.filter((file) => BUNDLED_ENV_FILE.test(file))) {
+          expect(await readTextFile(join(project.root, example)), `${name}: ${example}`).not.toContain('SEED_PASSWORD');
+        }
+      }
+    });
+
+    test('the seed password sits in a dedicated file the seed loads and git ignores', async () => {
+      const project = generatedProject('blueprint cloudflare-fullstack-nextjs');
+      const { scripts } = project.manifests.get('') ?? {};
+
+      expect(await readTextFile(join(project.root, '.env.seed.example'))).toContain('SEED_PASSWORD=');
+      expect(scripts?.['db:seed']).toContain('--env-file=.env.seed');
+      expect((await readTextFile(join(project.root, '.gitignore'))).split('\n')).toContain('.env.seed');
     });
   });
 
   describe('every .env.example declares only what its package reads', () => {
-    test.each(PROJECTS.map(({ name }) => name))('%s', async (name) => {
+    test.each(PROJECT_NAMES)('%s', async (name) => {
       const project = generatedProject(name);
-      const manifests = await manifestsOf(project);
       const sources = new Map<string, string>();
       const sourceOf = async (file: string) => {
         if (!sources.has(file)) sources.set(file, await readTextFile(join(project.root, file)));
@@ -257,9 +374,9 @@ describe('apps receive what they use', () => {
       const unread: string[] = [];
       for (const example of project.files.filter((file) => ENV_EXAMPLE.test(file))) {
         const directory = dirname(example) === '.' ? '' : dirname(example);
-        const readers = readerFiles(project, directory, manifests, example);
-        const runsCode = project.generatedApps.some((app) => app.directory === directory);
-        const dependencies = Object.keys(manifests.get(directory)?.dependencies ?? {});
+        const readers = readerFiles(project, directory, example);
+        const runsCode = [...project.appDirectories.values()].includes(directory);
+        const dependencies = Object.keys(project.manifests.get(directory)?.dependencies ?? {});
 
         for (const variable of declaredVariables(await sourceOf(example))) {
           if (!project.orm && databaseVariables(project).has(variable)) continue;
@@ -274,12 +391,15 @@ describe('apps receive what they use', () => {
     });
   });
 
-  describe('every variable a source reads is declared', () => {
-    test.each(PROJECTS.map(({ name }) => name))('%s', async (name) => {
+  describe('every variable a source reads is declared for the package that reads it', () => {
+    test.each(PROJECT_NAMES)('%s', async (name) => {
       const project = generatedProject(name);
-      const declared = new Set<string>();
-      for (const example of project.files.filter((file) => ENV_EXAMPLE.test(file))) {
-        for (const variable of declaredVariables(await readTextFile(join(project.root, example)))) declared.add(variable);
+      const examples = project.files.filter((file) => ENV_EXAMPLE.test(file));
+      const declaredIn = new Map<string, Set<string>>();
+      for (const example of examples) {
+        const directory = dirname(example) === '.' ? '' : dirname(example);
+        const names = declaredVariables(await readTextFile(join(project.root, example)));
+        declaredIn.set(directory, new Set([...(declaredIn.get(directory) ?? []), ...names]));
       }
       const bindings = new Set<string>();
       for (const file of project.files.filter((candidate) => candidate.endsWith('wrangler.jsonc'))) {
@@ -288,12 +408,24 @@ describe('apps receive what they use', () => {
         }
       }
 
+      /** What the code of a package sees: its own examples, those of the workspace packages it uses, those of the apps that run it. */
+      const visibleFrom = (owner: string): Set<string> => {
+        const directories = new Set([
+          owner,
+          ...workspaceClosure(project, owner),
+          ...[...project.manifests.keys()].filter((other) => workspaceClosure(project, other).includes(owner)),
+          ...loadedEnvDirectories(project, owner),
+        ]);
+        return new Set([...directories].flatMap((directory) => [...(declaredIn.get(directory) ?? [])]));
+      };
+
       const undeclared: string[] = [];
       for (const { file, source } of await readScriptFiles(project.root, project.files)) {
-        for (const variable of envReads(source)) {
-          if (!declared.has(variable) && !PROVIDED_BY_THE_ENVIRONMENT.has(variable) && !bindings.has(variable)) {
-            undeclared.push(`${file}: ${variable}`);
-          }
+        const visible = visibleFrom(ownerOf(project, file));
+        for (const { name: variable, source: via } of envReads(source)) {
+          const provided =
+            via === 'import.meta.env' ? VITE_BUILT_INS.has(variable) : PROVIDED_BY_THE_ENVIRONMENT.has(variable);
+          if (!visible.has(variable) && !provided && !bindings.has(variable)) undeclared.push(`${file}: ${variable}`);
         }
       }
 
@@ -302,51 +434,19 @@ describe('apps receive what they use', () => {
   });
 });
 
-type Manifest = { dependencies?: Record<string, string>; scripts?: Record<string, string> };
-
-async function manifestsOf(project: Generated): Promise<Map<string, Manifest>> {
-  const directories = project.files
-    .filter((file) => file === 'package.json' || /^(?:apps|packages)\/[^/]+\/package\.json$/.test(file))
-    .map((file) => (dirname(file) === '.' ? '' : dirname(file)));
-  const entries = await Promise.all(
-    directories.map(async (directory) => [directory, await readJsonFile<Manifest>(join(project.root, directory, 'package.json'))] as const),
-  );
-  return new Map(entries);
-}
-
-const isInside = (file: string, directory: string): boolean => directory === '' || file.startsWith(`${directory}/`);
-
 /** The files whose code runs with the `.env` of a directory: its package, the workspace packages an app uses, the scripts that load it. */
-function readerFiles(project: Generated, directory: string, manifests: Map<string, Manifest>, example: string): string[] {
-  const workspaceDirectories = [...manifests.keys()].filter((candidate) => candidate !== '');
-  const ownsFile = (file: string, owner: string): boolean =>
-    isInside(file, owner) && (owner !== '' || !workspaceDirectories.some((workspace) => isInside(file, workspace)));
-
+function readerFiles(project: Generated, directory: string, example: string): string[] {
   const owners = new Set([directory]);
-  const isApp = project.generatedApps.some((app) => app.directory === directory);
-  if (isApp) {
-    const pending = [directory];
-    while (pending.length > 0) {
-      const dependencies = Object.keys(manifests.get(pending.pop() ?? '')?.dependencies ?? {});
-      for (const dependency of dependencies.filter((name) => name.startsWith(WORKSPACE_SCOPE))) {
-        const owner = `packages/${dependency.slice(WORKSPACE_SCOPE.length)}`;
-        if (manifests.has(owner) && !owners.has(owner)) {
-          owners.add(owner);
-          pending.push(owner);
-        }
-      }
-    }
+  if ([...project.appDirectories.values()].includes(directory)) {
+    for (const owner of workspaceClosure(project, directory)) owners.add(owner);
   }
 
   const loaded = example.replace(/\.example$/, '');
-  for (const [owner, manifest] of manifests) {
-    const scripts = Object.values(manifest.scripts ?? {}).join('\n');
+  for (const owner of project.manifests.keys()) {
+    const scripts = Object.values(project.manifests.get(owner)?.scripts ?? {}).join('\n');
     const flags = [...scripts.matchAll(ENV_FILE_FLAG)].map(([, path = '']) => normalize(join(owner, path)));
     if (flags.includes(loaded)) owners.add(owner);
   }
 
-  return project.files.filter(
-    (file) => !NOT_READ_BY_RUNNING_CODE.test(file) && [...owners].some((owner) => ownsFile(file, owner)),
-  );
+  return project.files.filter((file) => !NOT_READ_BY_RUNNING_CODE.test(file) && owners.has(ownerOf(project, file)));
 }
-

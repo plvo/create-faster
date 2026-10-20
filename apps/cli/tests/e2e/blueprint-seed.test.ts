@@ -280,7 +280,8 @@ describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: 
   test('anonymous visits redirect to login, a signed-in visit to login redirects home, and the server logs no error', async () => {
     for (const path of ['/', '/contacts', '/admin/users', '/profile/account']) {
       const response = await fetch(new URL(path, server.url), { redirect: 'manual' });
-      expect([path, response.status, response.headers.get('location')]).toEqual([path, 307, '/login']);
+      const loginUrl = path === '/' ? '/login' : `/login?redirectTo=${encodeURIComponent(path)}`;
+      expect([path, response.status, response.headers.get('location')]).toEqual([path, 307, loginUrl]);
     }
 
     const login = await fetch(new URL('/login', server.url), {

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 {{> local-setup/steps}}
 
 const steps: Step[] = [
-  { label: 'Creating .env files from .env.example', run: createEnvFiles },
+  { label: 'Creating .env files from the .env.example files', run: createEnvFiles },
   { label: 'Resetting local D1 state', run: () => rm('.wrangler/v3/d1', { recursive: true, force: true }) },
   { label: 'Generating Drizzle migrations from schema', run: () => sh('{{runScript "db:generate"}}') },
   { label: 'Applying migrations to local D1', run: () => sh('{{runScript "db:migrate"}}', undefined, { CI: 'true' }) },

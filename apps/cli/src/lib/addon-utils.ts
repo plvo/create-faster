@@ -37,7 +37,7 @@ export function getBlueprintAppContexts(blueprint: MetaBlueprint): AppContext[] 
   return blueprint.context.apps.map(({ appName, stackName, libraries }) => ({ appName, stackName, libraries }));
 }
 
-/** What the selected blueprint gives one app alone: its dependencies, install scripts and variables. */
+/** What the selected blueprint gives one app alone: its dependencies and variables. */
 export function getBlueprintApp(ctx: TemplateContext, appName: string): MetaBlueprintApp | undefined {
   const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
   return blueprint?.context.apps.find((app) => app.appName === appName);

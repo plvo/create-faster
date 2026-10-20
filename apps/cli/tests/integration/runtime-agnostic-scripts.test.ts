@@ -183,7 +183,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs scripts with %
     const { scripts } = await readJsonFile<Manifest>(join(project, 'package.json'));
 
     expect(scripts['local-setup']).toBe(`${runnerOf(pm)} scripts/local-setup.ts`);
-    expect(scripts['db:seed']).toBe(`${runnerOf(pm)} --env-file=apps/web/.env --env-file=.env scripts/seed.ts`);
+    expect(scripts['db:seed']).toBe(`${runnerOf(pm)} --env-file=apps/web/.env --env-file=.env.seed scripts/seed.ts`);
   });
 });
 

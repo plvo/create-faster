@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { findRuntimeAddon, getAppLibraries, getBlueprintApp } from '@/lib/addon-utils';
+import { findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
@@ -132,8 +132,8 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
     if (blueprint?.envs) {
       for (const env of blueprint.envs) addEnv(env, { source: 'project' });
     }
-    for (const { appName } of ctx.apps) {
-      for (const env of getBlueprintApp(ctx, appName)?.envs ?? []) addEnv(env, { source: 'project', appName });
+    for (const { appName, envs = [] } of blueprint?.context.apps ?? []) {
+      for (const env of envs) addEnv(env, { source: 'project', appName });
     }
   }
 
@@ -184,7 +184,7 @@ function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number]):
 }
 
 function isReceivedByProject(env: CollectedEnv, ctx: TemplateContext): boolean {
-  return (!env.stacks && !env.appName) || ctx.apps.some((app) => appAcceptsEnv(env, app));
+  return ctx.apps.some((app) => appAcceptsEnv(env, app));
 }
 
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
@@ -251,6 +251,25 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
   return [...new Set(names)];
 }
 
+/** The names of the dedicated env files (`EnvVar.file`) the project receives, each once: files only a CLI loads, so they are never committed. */
+export function collectEnvFileNames(ctx: TemplateContext): string[] {
+  const names = collectAllEnvs(ctx)
+    .filter((env) => isReceivedByProject(env, ctx))
+    .flatMap((env) => (env.file ? [env.file] : []));
+
+  return [...new Set(names)];
+}
+
+/** Whether the `.env` of the app receives the variable: a selected choice declares it and it reaches that app. */
+export function collectAppReceivesEnv(ctx: TemplateContext, appName: string, name: string): boolean {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  if (!app) return false;
+
+  return collectAllEnvs(ctx).some(
+    (env) => extractEnvKey(env.value) === name && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app),
+  );
+}
+
 /** The secret variables received by at least one app on one of the stacks, each listed once. */
 export function collectProjectSecrets(ctx: TemplateContext, stacks: readonly StackName[]): string[] {
   const names = ctx.apps
@@ -263,7 +282,7 @@ export function collectProjectSecrets(ctx: TemplateContext, stacks: readonly Sta
 /** The names of the variables the project declares for a Turborepo task, each listed once, for the `env` of that task. */
 export function collectTaskEnv(ctx: TemplateContext, task: string): string[] {
   const names = collectAllEnvs(ctx)
-    .filter((env) => env.tasks?.includes(task) && !env.file && isReceivedByProject(env, ctx))
+    .filter((env) => env.tasks?.includes(task) && isReceivedByProject(env, ctx))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];

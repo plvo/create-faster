@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
   },
 
   {{/if}}
-  {{#if (and (has "tooling" "portless") (or (hasLibrary "trpc") (hasContext "blueprint")))}}
+  {{#if (and (has "tooling" "portless") (receivesEnv "NEXT_PUBLIC_APP_URL"))}}
   env: {
     NEXT_PUBLIC_APP_URL: process.env.PORTLESS_URL ?? process.env.NEXT_PUBLIC_APP_URL,
   },
