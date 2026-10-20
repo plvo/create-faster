@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { contactTable, desc, eq, count as dbCount } from '@repo/db';
 import { router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';
+import { pageInput, pageOffset } from '../pagination';
 
 const blankAsNull = (value: string) => value || null;
 
@@ -24,12 +25,20 @@ const contactInput = z.object({
 });
 
 export const contactRouter = router({
-  list: permissionProcedure('contact', 'read').query(async ({ ctx }) => {
-    return ctx.db
-      .select()
-      .from(contactTable)
-      .orderBy(desc(contactTable.createdAt));
-  }),
+  list: permissionProcedure('contact', 'read')
+    .input(pageInput)
+    .query(async ({ ctx, input }) => {
+      const [items, [totals]] = await Promise.all([
+        ctx.db
+          .select()
+          .from(contactTable)
+          .orderBy(desc(contactTable.createdAt), desc(contactTable.id))
+          .limit(input.pageSize)
+          .offset(pageOffset(input)),
+        ctx.db.select({ count: dbCount() }).from(contactTable),
+      ]);
+      return { items, total: totals?.count ?? 0 };
+    }),
 
   getById: permissionProcedure('contact', 'read')
     .input(z.object({ id: z.string() }))

@@ -332,7 +332,7 @@ describe('META.blueprints.org-dashboard-tanstack-start', () => {
       'sonner',
       'zod',
     ]);
-    expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['auth', 'db', 'ui']);
+    expect(Object.keys(tanstackStart.pkgPackageJson ?? {}).sort()).toEqual(['api', 'auth', 'db', 'ui']);
     expect(Object.keys(tanstackStart.rootPackageJson?.scripts ?? {}).sort()).toEqual(['db:seed', 'local-setup', 'start']);
     expect(tanstackStart.envs?.map(({ value }) => value)).toEqual(['SEED_PASSWORD=password']);
     expect(tanstackStart.firstRun?.flatMap(({ commands }) => commands)).toEqual([{ script: 'local-setup' }]);

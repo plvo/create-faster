@@ -27,6 +27,7 @@ export const desc = (column) => column;
 export const eq = (column, value) => [column, value];
 export const count = () => 'count';`,
   'trpc.mjs': 'export const router = (procedures) => procedures;',
+  'pagination.mjs': 'export const pageInput = undefined;\nexport const pageOffset = () => 0;',
   'rbac.mjs': `const build = (input) => ({
   input: (schema) => build(schema),
   query: (handler) => ({ input, handler }),
@@ -76,7 +77,7 @@ describe.each(BLUEPRINTS)('%s contact optional fields', (blueprint) => {
     const router = await evaluateGeneratedModule<{ contactRouter: { create: ProcedureStub; update: ProcedureStub } }>(
       await readTextFile(join(project, ROUTER)),
       join(stubs, 'generated-contact.mjs'),
-      { zod, '../trpc': './trpc.mjs', '../middleware/rbac': './rbac.mjs', '@repo/db': './db.mjs' },
+      { zod, '../trpc': './trpc.mjs', '../middleware/rbac': './rbac.mjs', '../pagination': './pagination.mjs', '@repo/db': './db.mjs' },
     );
     create = router.contactRouter.create;
     update = router.contactRouter.update;

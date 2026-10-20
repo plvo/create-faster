@@ -5,11 +5,12 @@ mono:
   path: src/router/user.ts
 ---
 import { z } from 'zod';
-import { eq, userTable } from '@repo/db';
+import { count as dbCount, desc, eq, userTable } from '@repo/db';
 import { auth } from '../auth';
 import { generatePassword } from '@repo/auth/password';
 import { protectedProcedure, router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
+import { pageInput, pageOffset } from '../pagination';
 
 const editUserInput = z.object({
   id: z.string(),
@@ -42,8 +43,17 @@ export const userRouter = router({
       return { user, password };
     }),
 
-  list: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(userTable);
+  list: adminProcedure.input(pageInput).query(async ({ ctx, input }) => {
+    const [items, [totals]] = await Promise.all([
+      ctx.db
+        .select()
+        .from(userTable)
+        .orderBy(desc(userTable.createdAt), desc(userTable.id))
+        .limit(input.pageSize)
+        .offset(pageOffset(input)),
+      ctx.db.select({ count: dbCount() }).from(userTable),
+    ]);
+    return { items, total: totals?.count ?? 0 };
   }),
 
   getById: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
