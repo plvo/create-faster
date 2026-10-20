@@ -1,4 +1,4 @@
-Hono server. Routes are registered in `src/index.ts`. Handlers stay thin; shared logic goes in `src/lib/`.
+Hono server. Routes are registered in `src/app.ts`; `src/index.ts` is the entry point. Handlers stay thin; shared logic goes in `src/lib/`.
 
 {{#if (has "deployment" "cloudflare")}}
 The app is a Worker: `dev` runs `wrangler dev` in the Workers runtime, so the bindings declared in `wrangler.jsonc` are on `c.env`. It listens on port {{appPort appName}}. The `PORT` environment variable overrides it, which is how portless reaches it. There is no `start` script and no `src/server.ts`: nothing serves the app from Node or Bun.

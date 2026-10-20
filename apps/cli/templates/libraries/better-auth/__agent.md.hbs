@@ -1,9 +1,9 @@
 {{#if (isMono)}}
 Auth lives in `packages/auth`: `auth.ts` exports the `createAuth({{#if (has "database" "d1")}}db, {{/if}}cookiePlugin?)` factory and `type Auth`, `auth-client.ts` is the client. The factory contains no framework cookie plugin: it appends the one it receives after its own plugins, and the cookie plugin must stay last. `@repo/auth/auth` only exports the factory.
-Add a social provider by editing `socialProviders` in `packages/auth/src/auth.ts`.
+Add a social provider with the `socialProviders` option of the `betterAuth(...)` call in `packages/auth/src/auth.ts`.
 {{else}}
 Auth config in `src/lib/auth/`. `create-auth.ts` exports the `createAuth({{#if (has "database" "d1")}}db, {{/if}}cookiePlugin?)` factory and `type Auth`, `auth-client.ts` is the client. The factory appends the cookie plugin it receives after its own plugins, and the cookie plugin must stay last.
-Add a social provider by editing `socialProviders` in `create-auth.ts`.
+Add a social provider with the `socialProviders` option of the `betterAuth(...)` call in `src/lib/auth/create-auth.ts`.
 {{/if}}
 {{#if (has "database" "d1")}}
 {{#if (eq stackName "nextjs")}}
