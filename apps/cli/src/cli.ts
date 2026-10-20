@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { getCompatibleLibraryNames, isRequirementMet } from '@/lib/addon-utils';
+import { getBlueprintAppContexts, getCompatibleLibraryNames, isRequirementMet } from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
@@ -120,7 +120,7 @@ function startBlueprintFlow(partial: FlagAnswers, blueprintName: string, already
 
   const ctx: Omit<TemplateContext, 'repo'> = {
     projectName: '',
-    apps: blueprint.context.apps.map((app) => ({ ...app })),
+    apps: getBlueprintAppContexts(blueprint),
     project: {
       ...blueprint.context.project,
       ...(partial.project?.deployment && { deployment: partial.project.deployment }),

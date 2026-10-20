@@ -200,6 +200,19 @@ export interface PartialFrontmatter {
   inline?: boolean;
 }
 
+/** An app of a blueprint: its stack and libraries, plus what only this app receives, on top of what the blueprint gives every app. */
+export interface MetaBlueprintApp {
+  appName: string;
+  stackName: StackName;
+  libraries: string[];
+  /** Dependencies and scripts of this app only, merged after the blueprint `packageJson`. */
+  packageJson?: PackageJsonConfig;
+  /** Install scripts of the dependencies this app brings beyond the blueprint ones. */
+  installScripts?: InstallScripts;
+  /** Variables this app alone receives, in addition to the blueprint `envs`. */
+  envs?: EnvVar[];
+}
+
 export interface MetaBlueprint {
   label: string;
   hint: string;
@@ -207,15 +220,17 @@ export interface MetaBlueprint {
   /** Blueprint whose templates this one inherits, its own files winning per destination. Templates only: context, envs, package.json and `firstRun` are declared on each blueprint. */
   extends?: string;
   context: {
-    apps: { appName: string; stackName: StackName; libraries: string[] }[];
+    apps: MetaBlueprintApp[];
     project: { database?: string; orm?: string; deployment?: string };
   };
+  /** Dependencies and scripts of every app; what only some apps need goes on the app in `context.apps`. */
   packageJson?: PackageJsonConfig;
   packageManagerPackageJson?: PackageManagerPackageJson;
   pkgPackageJson?: Record<string, PackageJsonConfig>;
   rootPackageJson?: PackageJsonConfig;
   /** Install scripts of the dependencies this blueprint brings beyond its apps and addons. */
   installScripts?: InstallScripts;
+  /** Variables of every app and of the project; what only some apps read goes on the app in `context.apps`. */
   envs?: EnvVar[];
   agentArchitecture?: string;
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */

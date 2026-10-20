@@ -1,7 +1,15 @@
 import { META } from '@/__meta__';
 import { getTypeScriptRunner, resolveCommandPackageManager } from '@/lib/package-manager';
 import type { AppContext, TemplateContext } from '@/types/ctx';
-import type { AddonRequire, AppScriptTransform, MetaAddon, MetaLibrary, ProjectCategoryName } from '@/types/meta';
+import type {
+  AddonRequire,
+  AppScriptTransform,
+  MetaAddon,
+  MetaBlueprint,
+  MetaBlueprintApp,
+  MetaLibrary,
+  ProjectCategoryName,
+} from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 
 export function isLibraryCompatible(library: MetaAddon, stackName: StackName): boolean {
@@ -22,6 +30,17 @@ export function getAppLibraries(app: AppContext): { name: string; library: MetaL
     const library = META.libraries[name];
     return library && isLibraryCompatible(library, app.stackName) ? [{ name, library }] : [];
   });
+}
+
+/** The apps of a blueprint as the generation context holds them: stack and libraries, without what only the blueprint reads. */
+export function getBlueprintAppContexts(blueprint: MetaBlueprint): AppContext[] {
+  return blueprint.context.apps.map(({ appName, stackName, libraries }) => ({ appName, stackName, libraries }));
+}
+
+/** What the selected blueprint gives one app alone: its dependencies, install scripts and variables. */
+export function getBlueprintApp(ctx: TemplateContext, appName: string): MetaBlueprintApp | undefined {
+  const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
+  return blueprint?.context.apps.find((app) => app.appName === appName);
 }
 
 export function getProjectAddon(category: string, name: string): MetaAddon | undefined {

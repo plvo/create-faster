@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
+import { findRuntimeAddon, getAppLibraries, getBlueprintApp } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
@@ -22,6 +22,8 @@ interface CollectedEnv {
   scope: EnvScope;
   source: 'project' | 'library';
   libraryName?: string;
+  /** The only app that receives the variable, for one a blueprint declares on an app. */
+  appName?: string;
   stacks?: StackName[];
   file?: string;
   secret?: boolean;
@@ -88,7 +90,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
   const envs: CollectedEnv[] = [];
   const packages = collectMonoPackages(ctx);
 
-  const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName'>) => {
+  const addEnv = (env: EnvVar, origin: Pick<CollectedEnv, 'source' | 'libraryName' | 'appName'>) => {
     if (env.when && !matches(env.when, ctx)) return;
     for (const scope of resolveEnvScopes(env, packages)) {
       envs.push({
@@ -129,6 +131,9 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
     const blueprint = META.blueprints[ctx.blueprint];
     if (blueprint?.envs) {
       for (const env of blueprint.envs) addEnv(env, { source: 'project' });
+    }
+    for (const { appName } of ctx.apps) {
+      for (const env of getBlueprintApp(ctx, appName)?.envs ?? []) addEnv(env, { source: 'project', appName });
     }
   }
 
@@ -173,12 +178,13 @@ function addToGroup(grouped: Map<string, string[]>, path: string, value: string)
 }
 
 function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number]): boolean {
+  if (env.appName && env.appName !== app.appName) return false;
   if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) return false;
   return !env.stacks || env.stacks.includes(app.stackName);
 }
 
 function isReceivedByProject(env: CollectedEnv, ctx: TemplateContext): boolean {
-  return !env.stacks || ctx.apps.some((app) => appAcceptsEnv(env, app));
+  return (!env.stacks && !env.appName) || ctx.apps.some((app) => appAcceptsEnv(env, app));
 }
 
 function groupEnvsByDestination(envs: CollectedEnv[], ctx: TemplateContext): Map<string, string[]> {
