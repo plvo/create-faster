@@ -68,3 +68,13 @@ import { serverConfig } from "@repo/eslint-config/server";
 
 export default serverConfig;
 ```
+
+**Lint-staged integration:** With Husky, a single repo runs `eslint --fix` on the staged files from its root. In a turborepo the root has no ESLint config, so each app and package that lints itself has a `lint-staged` entry in its own `package.json`. lint-staged then runs `eslint --fix` in the directory of the closest entry, where ESLint finds that app's or package's `eslint.config.mjs`:
+
+```json title="apps/web/package.json"
+{
+  "lint-staged": {
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": ["eslint --fix"]
+  }
+}
+```

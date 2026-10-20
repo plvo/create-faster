@@ -25,3 +25,5 @@ You get everything from both:
 **Lint-staged integration:** When combined with Husky, both tools run on staged files:
 - `eslint --fix` for linting
 - `prettier --write` for formatting
+
+In a turborepo, `eslint --fix` runs from each app and package that has an ESLint config (a `lint-staged` entry in its `package.json`, which also carries `prettier --write`), and the root entry runs `prettier --write` for the other files (see [ESLint](/docs/linter/eslint)).
