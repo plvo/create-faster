@@ -1,14 +1,19 @@
 import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/session';
+import { parsePageParams } from '@repo/api/pagination';
 import { prefetch, trpc, HydrateClient } from '@/trpc/server';
 import { QueryBoundary } from '@/components/query-boundary';
 import { ContactsClient } from './contacts.client';
 
 export const metadata: Metadata = { title: 'Contacts' };
 
-export default async function ContactsPage() {
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requirePermission('contact', 'read');
-  void prefetch(trpc.contact.list.queryOptions());
+  void prefetch(trpc.contact.list.queryOptions(parsePageParams(await searchParams)));
 
   return (
     <HydrateClient>

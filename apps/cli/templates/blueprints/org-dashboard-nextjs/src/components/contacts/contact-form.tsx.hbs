@@ -13,7 +13,7 @@ import { useTRPC } from '@/trpc/providers';
 import { useAppForm } from '@repo/ui/lib/form';
 import type { RouterOutput } from '@repo/api';
 
-type Contact = RouterOutput['contact']['list'][number];
+type Contact = RouterOutput['contact']['list']['items'][number];
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
