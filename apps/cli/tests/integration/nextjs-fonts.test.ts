@@ -18,7 +18,13 @@ const openingTag = (source: string, tag: 'html' | 'body'): string => {
   return match[0];
 };
 
-const ruleBody = (css: string, selector: string): string => {
+const localFontOptions = (source: string, font: 'geistSans' | 'geistMono'): string => {
+  const match = source.match(new RegExp(`const ${font} = localFont\\(\\{([^}]*)\\}\\)`));
+  if (!match) throw new Error(`no ${font} declaration in the layout`);
+  return match[1] as string;
+};
+
+const ruleBody =(css: string, selector: string): string => {
   const match = css.match(new RegExp(`(?:^|\\n)${selector}\\s*\\{([^}]*)\\}`));
   if (!match) throw new Error(`no ${selector} rule in the stylesheet`);
   return match[1] as string;
@@ -55,6 +61,8 @@ describe('Next.js font variables', () => {
     expect(layout).toContain('const geistSans = localFont(');
     expect(layout).toContain('const geistMono = localFont(');
     expect(layout).not.toContain('{{');
+    expect(localFontOptions(layout, 'geistSans')).not.toContain('preload: false');
+    expect(localFontOptions(layout, 'geistMono')).toContain('preload: false');
   }
 
   function expectVariablesOnHtml(layout: string): void {
