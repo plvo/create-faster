@@ -16,6 +16,8 @@ const RUNS_NODE_SERVER: Parameters<typeof $when>[0] = { deployment: { not: ['clo
 // where `RUNS_NODE_SERVER` would drop it.
 const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 'cloudflare' } };
 
+const WITH_ORM: Parameters<typeof $when>[0] = { orm: true };
+
 const NODE_TYPES_VERSION = '^22';
 
 // The range `expo-doctor` expects of the Expo SDK, so every workspace shares it and no app sits on another major.
@@ -1176,14 +1178,17 @@ export const META: Meta = {
           ],
           packageJson: {
             devDependencies: {
-              '@libsql/client': LIBSQL_CLIENT_VERSION,
+              '@libsql/client': $when(WITH_ORM, LIBSQL_CLIENT_VERSION),
             },
             scripts: {
-              'db:generate': 'drizzle-kit generate',
-              'db:migrate': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
-              'db:migrate:local': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
-              'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
-              'local-setup': `{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
+              'db:generate': $when(WITH_ORM, 'drizzle-kit generate'),
+              'db:migrate': $when(WITH_ORM, `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`),
+              'db:migrate:local': $when(WITH_ORM, `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`),
+              'db:migrate:remote': $when(WITH_ORM, 'wrangler d1 migrations apply DB --remote'),
+              'local-setup': $when(
+                WITH_ORM,
+                `{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
+              ),
             },
           },
           deploymentPackageJson: {
@@ -1215,19 +1220,19 @@ export const META: Meta = {
             {
               value: 'CLOUDFLARE_ACCOUNT_ID="" # Cloudflare account id (drizzle-kit d1-http)',
               monoScope: [{ pkg: 'db' }],
-              when: { orm: true },
+              when: WITH_ORM,
               file: 'd1',
             },
             {
               value: 'CLOUDFLARE_D1_DATABASE_ID="" # D1 database id from `wrangler d1 create`',
               monoScope: [{ pkg: 'db' }],
-              when: { orm: true },
+              when: WITH_ORM,
               file: 'd1',
             },
             {
               value: 'CLOUDFLARE_API_TOKEN="" # Cloudflare API token with D1 edit permission',
               monoScope: [{ pkg: 'db' }],
-              when: { orm: true },
+              when: WITH_ORM,
               file: 'd1',
             },
           ],

@@ -9,6 +9,8 @@ description: Cloudflare D1 is a managed SQLite database running at the edge, acc
 
 D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Workers runtime, so there is no connection string. create-faster wires this binding end-to-end across every generated file.
 
+D1 works with or without an ORM. Without one, create-faster declares the `DB` binding, the provisioning steps and (on Next.js) the `getEnv` seam, and generates no migration script and no database client: bring your own client, or a framework that owns the schema and its migrations. With Drizzle (`--orm drizzle`) it also generates everything below that names a schema, a `db` factory, `drizzle.config.ts`, the `.env.d1.example` credentials or a `db:*` script.
+
 **`wrangler.jsonc` — D1 binding declaration:**
 
 ```jsonc
@@ -22,16 +24,18 @@ D1 requires `--deployment cloudflare` — the `DB` binding is injected by the Wo
 ]
 ```
 
+`migrations_dir` is written with Drizzle only.
+
 Replace `REPLACE_WITH_D1_DATABASE_ID` with the id returned by `wrangler d1 create`. In a Turborepo every app binds the same database (`{projectName}-db`) so the apps see the same data and migrations target one database: paste the same id into each app's `wrangler.jsonc`.
 
 ## Provisioning the production database
 
-The generated README and `AGENTS.md` list these steps with the exact commands of the package manager you picked (`bunx`, `npx` or `pnpm exec` run the project's own Wrangler):
+The generated README and `AGENTS.md` list these steps with the exact commands of the package manager you picked (`bunx`, `npx` or `pnpm exec` run the project's own Wrangler). Steps 3 and 4 print migration scripts, which come with Drizzle: without an ORM they are left out and the deploy is step 3.
 
 1. Create the database: `npx wrangler d1 create {projectName}-db --no-update-config`. In a Turborepo run it from an app directory, `(cd apps/<app> && npx wrangler d1 create ...)`: the root links no Wrangler. `--no-update-config` stops Wrangler from offering to add the binding to `wrangler.jsonc` itself; accepting would add a second binding named after the database next to `DB`, which the code never reads.
 2. Paste the printed `database_id` (keep the binding `DB`) into `wrangler.jsonc`, in every app of a Turborepo.
-3. Run `db:generate` (the template ships no migration; it changes nothing when they exist) and `db:migrate` again (and `db:seed` if you had seeded). Miniflare keys the local D1 file by `database_id`, so the real id switches local development to a new, empty database until it is migrated.
-4. Run `db:migrate:remote` to create the tables in the production database (the Turborepo root script runs it inside `packages/db`). Without it the deployed app fails with `no such table`.
+3. With Drizzle, run `db:generate` (the template ships no migration; it changes nothing when they exist) and `db:migrate` again (and `db:seed` if you had seeded). Miniflare keys the local D1 file by `database_id`, so the real id switches local development to a new, empty database until it is migrated.
+4. With Drizzle, run `db:migrate:remote` to create the tables in the production database (the Turborepo root script runs it inside `packages/db`). Without it the deployed app fails with `no such table`.
 5. Set what `wrangler.jsonc` requires, then deploy: a deploy fails until every name under `secrets.required` is set (Better Auth adds `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`, the production URL of the Worker, which [Cloudflare](/docs/deployment/cloudflare#production-url) shows how to learn before the first deploy) and every other bound resource, such as an R2 bucket, exists. Then run the build and deploy commands of the generated README.
 
 **`src/lib/db/index.ts` — factory, not singleton:**
@@ -169,6 +173,8 @@ These are account credentials that only `drizzle-kit` needs, when it runs with `
 
 ## Workflow Scripts
 
+These scripts are generated with Drizzle. Without an ORM the project has none of them, and no `local-setup`.
+
 | Script | Purpose |
 |---|---|
 | `db:generate` | Generate migration SQL from schema changes (`drizzle-kit generate`) |
@@ -197,14 +203,23 @@ bun run db:migrate    # apply migrations to the local D1
 bun run preview       # build + start the Worker with the local D1 binding
 ```
 
-## ORM constraint
+## ORM
 
-D1 only works with **Drizzle**. `--database d1 --orm prisma` is rejected at validation time, and the interactive ORM prompt only offers compatible options.
+D1 works without an ORM, with Drizzle, or with a framework that owns its schema. **Prisma** is not supported on D1: `--database d1 --orm prisma` is rejected at validation time, and the interactive ORM prompt only offers compatible options. Better Auth needs an ORM, so it requires `--orm drizzle` here.
 
 ```bash
 bunx create-faster myapp \
   --app myapp:nextjs \
   --database d1 \
   --orm drizzle \
+  --deployment cloudflare
+```
+
+Without an ORM, drop `--orm drizzle`:
+
+```bash
+bunx create-faster myapp \
+  --app myapp:nextjs \
+  --database d1 \
   --deployment cloudflare
 ```

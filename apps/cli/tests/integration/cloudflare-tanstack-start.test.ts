@@ -74,9 +74,10 @@ describe('TanStack Start + cloudflare', () => {
       expect(agents).not.toContain('### Hono (Wrangler)');
     });
 
-    test('agent docs keep Markdown code spans intact', async () => {
+    test('agent docs keep Markdown code spans intact and name no migration script the project lacks', async () => {
       const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
-      expect(agents).toContain('persisted in the `.wrangler/` directory,');
+      expect(agents).toContain('persisted in the `.wrangler/` directory.');
+      expect(agents).not.toContain('--persist-to');
     });
   });
 
@@ -110,6 +111,11 @@ describe('TanStack Start + cloudflare', () => {
       const index = await readTextFile(join(projectPath, 'src/lib/db/index.ts'));
       expect(index).toContain('export function createDb(d1: D1Database)');
       expect(index).not.toContain('cloudflare:workers');
+    });
+
+    test('agent docs keep Markdown code spans intact and name the migration scripts that persist local state', async () => {
+      const agents = await readTextFile(join(projectPath, 'AGENTS.md'));
+      expect(agents).toContain('persisted in the `.wrangler/` directory, the same directory the `wrangler ... --persist-to` scripts use.');
     });
 
     test('vite config persists local state where the d1 migration scripts write', async () => {

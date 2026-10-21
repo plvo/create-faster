@@ -200,6 +200,23 @@ function registerHelpers(): void {
     return '';
   });
 
+  Handlebars.registerHelper('orderedSteps', function (this: unknown, options: Handlebars.HelperOptions) {
+    const steps: string[] = [];
+    options.fn(this, { data: { ...Handlebars.createFrame(options.data), orderedSteps: steps } });
+    return steps.map((content, index) => `${index + 1}. ${content}\n`).join('\n');
+  });
+
+  Handlebars.registerHelper('step', function (this: unknown, options: Handlebars.HelperOptions) {
+    const steps = options.data.orderedSteps as string[] | undefined;
+    if (!steps) throw new Error('{{#step}} must be inside {{#orderedSteps}}');
+    const content = options
+      .fn(this)
+      .replace(/^\s*\n/, '')
+      .trimEnd();
+    if (content.trim() !== '') steps.push(content);
+    return '';
+  });
+
   Handlebars.registerHelper('deployAppDir', (options: Handlebars.HelperOptions) => {
     return resolveDeployAppDir(options.data.root as TemplateContext) ?? '';
   });

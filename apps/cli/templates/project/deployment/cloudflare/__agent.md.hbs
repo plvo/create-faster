@@ -77,10 +77,10 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 - Declare bindings and non-secret `vars` in `wrangler.jsonc`. Local secrets go in `.env` (gitignored; do not add a `.dev.vars`, it shadows `.env`); production secrets with `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler secret put X{{/inDirectory}}`. A new Worker does not exist yet, so its first deploy takes them from a file: `{{runScript "build"}}`, then `{{#inDirectory "apps/<app>"}}{{installedBinaryRunner}} wrangler deploy --secrets-file <file>{{/inDirectory}}`, with a file you keep out of git.{{#if (hasLibrary "better-auth")}} `BETTER_AUTH_URL` is the production URL of the Worker, which Wrangler only prints on deploy: see Production URL below to learn it first.{{/if}}
 - The runtime secrets of the app are listed in `wrangler.jsonc` under `secrets.required`, generated from the variables the project marks as secrets: a deploy fails until each is set, and a local run warns about a missing one.
 - `vite build` writes `dist/server/.dev.vars`, a local copy of `.env` for `vite preview` (only the `secrets.required` keys when the file lists any). `wrangler deploy` does not upload it. Never ship `dist` other than through `wrangler deploy`, and rebuild after editing `.env`.
-- Local state (D1, KV, R2) is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root{{/if}}, the same directory the `wrangler ... --persist-to` scripts use.
+- Local state (D1, KV, R2) is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root{{/if}}{{#if (hasRootScript "db:migrate")}}, the same directory the `wrangler ... --persist-to` scripts use{{/if}}.
 
 **Global scope rule**: in a production build the app's modules are evaluated in the Worker's global scope. At module level there is no I/O, no timers and no randomness (`crypto.randomUUID()`, `crypto.getRandomValues()`). Code that does passes in `vite dev` and fails in `vite preview` and after deploy.
-{{#if (has "database" "d1")}}
+{{#if (and (has "database" "d1") project.orm)}}
 
 **Database — D1**: the app's `src/lib/server.ts` exports a `db` built once at module scope with `createDb(env.DB)`. The D1 binding is safe to hold across requests, so import `db` directly in server functions and route handlers. The `createDb(d1)` factory in the db {{#if (isMono)}}package{{else}}module{{/if}} stays a plain factory with no `cloudflare:workers` import.
 {{/if}}
@@ -125,7 +125,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 `preview` and `deploy` are per-app scripts: run them from the app directory (`cd apps/<app>`). Hono apps: {{> cloudflare/app-list stack="hono"}}.
 
 {{/if}}
-- `{{runScript "dev"}}` — `wrangler dev` on the app port (`PORT` overrides it), so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
+- `{{runScript "dev"}}` — `wrangler dev` on the app port (`PORT` overrides it), so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps{{#if (hasRootScript "db:migrate")}} and the `db:migrate` script{{/if}}{{/if}}
 - `{{runAppScript "deploy"}}` — `wrangler deploy`
 - `{{runAppScript "preview"}}` — `wrangler dev` without `--port`: the same runtime and local state as `dev`, on Wrangler's default port
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types
