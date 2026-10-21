@@ -100,7 +100,7 @@ const REGENERATE_CLOUDFLARE_TYPES = {
 const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
 
 // Payload publishes `payload` and every `@payloadcms/*` package in lockstep, and each adapter peers on the exact core version, so one constant pins them all.
-// 3.90.0 and later hash passwords with 600,000 PBKDF2 iterations while workerd refuses more than 100,000, so nobody can sign in on Workers (payloadcms/payload#18274). The cloudflare-payload-nextjs blueprint is released once a Payload version that fixes it is published, and pins that version here.
+// 3.90.0 and later hash passwords with 600,000 PBKDF2 iterations while the runtime of Cloudflare refuses more than 100,000, so nobody can sign in on Workers (payloadcms/payload#18274). The cloudflare-payload-nextjs blueprint is released once a Payload version that fixes it is published, and pins that version here.
 const PAYLOAD_VERSION = '3.91.0';
 const PAYLOAD_PACKAGES = [
   'payload',
@@ -114,7 +114,9 @@ const PAYLOAD_PACKAGES = [
 ];
 // Payload prints Node deprecation warnings from its dependencies on every command. The option is added to those of the
 // environment, which `--import` of a preload or `--max-old-space-size` may already hold.
-const PAYLOAD_CLI = 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation" payload';
+// biome-ignore lint/suspicious/noTemplateCurlyInString: the shell expands ${NODE_OPTIONS:-} when the script runs
+const PAYLOAD_NODE_OPTIONS = 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation"';
+const PAYLOAD_CLI = `${PAYLOAD_NODE_OPTIONS} payload`;
 const REMOTE_BINDINGS_RUNNER = '{{tsRunner}} scripts/remote.ts';
 const ADD_MISSING_SAMPLE_CONTENT = {
   script: 'db:seed',
@@ -2122,7 +2124,7 @@ export const META: Meta = {
               },
               scripts: {
                 // Turbopack fails on the server bundle of Payload (payloadcms/payload#16470).
-                build: 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation" next build --webpack',
+                build: `${PAYLOAD_NODE_OPTIONS} next build --webpack`,
                 payload: PAYLOAD_CLI,
                 'generate:types': `${CLOUDFLARE_TYPEGEN} && ${PAYLOAD_CLI} generate:types`,
                 'generate:importmap': `${PAYLOAD_CLI} generate:importmap`,
