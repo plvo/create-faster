@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
 import { cleanupTempDir, createTempDir, PNPM_AVAILABLE, runCli, runCommand } from './helpers';
-import { describeProject, groupChoices, listChoices, toCliArgs } from './install-scripts-projects';
+import { describeProject, groupChoices, listChoices, toCliArgs } from '../choice-projects';
 
 /**
  * Fails when a dependency with an install script is brought by a choice without a ruling in META (`installScripts`).

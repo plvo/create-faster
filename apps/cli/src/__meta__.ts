@@ -18,6 +18,12 @@ const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 
 
 const NODE_TYPES_VERSION = '^22';
 
+// The range `expo-doctor` expects of the Expo SDK, so every workspace shares it and no app sits on another major.
+const TYPESCRIPT_VERSION = '~6.0.3';
+const REACT_TYPES_VERSION = '^19.2.18';
+const VITE_VERSION = '^8.3.4';
+const PG_TYPES_VERSION = '^8.23.1';
+
 /** A script whose sentence changes when a turborepo root runs it in every app. */
 const describedPerRepo = (script: string, description: string, everyAppDescription: string) => [
   $when({ repo: 'single' }, { script, description }),
@@ -141,7 +147,7 @@ const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
     exports: { './types': './src/types.ts' },
     devDependencies: {
       '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
-      typescript: '^5.9.3',
+      typescript: TYPESCRIPT_VERSION,
     },
   }),
 };
@@ -383,9 +389,9 @@ export const META: Meta = {
           'tw-animate-css': '^1.4.0',
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': NODE_TYPES_VERSION,
-          '@types/react': '^19.2.18',
+          '@types/react': REACT_TYPES_VERSION,
           '@types/react-dom': '^19.2.5',
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
@@ -406,6 +412,8 @@ export const META: Meta = {
       scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP],
       // turbo gives a task no terminal, and Expo prints no QR code and takes no key press without one: in a turborepo its dev server is not `dev`, which `turbo dev` runs in every app. A single repo runs no turbo.
       interactiveScripts: ['dev:expo'],
+      // React Native checks the renderer version, so the SDK fixes the exact React the app runs (and `expo-doctor` the minor of its types), whatever the other apps use.
+      pinnedPackages: ['react', 'react-dom', '@types/react'],
       packageJson: {
         main: 'expo-router/entry',
         dependencies: {
@@ -428,7 +436,7 @@ export const META: Meta = {
           'react-native-worklets': '0.10.1',
         },
         devDependencies: {
-          typescript: '~6.0.3',
+          typescript: TYPESCRIPT_VERSION,
           '@types/react': '~19.2.4',
         },
         scripts: {
@@ -452,7 +460,7 @@ export const META: Meta = {
           hono: '^4.7.4',
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
@@ -475,7 +483,7 @@ export const META: Meta = {
       packageJson: {
         dependencies: {},
         devDependencies: {
-          typescript: '^5.9.3',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
@@ -507,16 +515,16 @@ export const META: Meta = {
           'react-dom': '^19.2.8',
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': NODE_TYPES_VERSION,
-          '@types/react': '^19.2.18',
+          '@types/react': REACT_TYPES_VERSION,
           '@types/react-dom': '^19.2.5',
           '@tanstack/react-router-devtools': '^1.167.2',
           '@tailwindcss/vite': '^4.3.3',
           '@vitejs/plugin-react': '^6.1.2',
           nitro: $when(RUNS_NODE_SERVER, NITRO_VERSION),
           tailwindcss: '^4.3.3',
-          vite: '^8.3.4',
+          vite: VITE_VERSION,
         },
         scripts: {
           dev: 'vite dev --port {{port}}',
@@ -552,10 +560,10 @@ export const META: Meta = {
           'tailwind-merge': '^3.6.0',
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           tailwindcss: '^4.3.3',
           '@tailwindcss/postcss': '^4.3.3',
-          '@types/react': '^19.2.18',
+          '@types/react': REACT_TYPES_VERSION,
         },
         exports: {
           './': './src/components/',
@@ -631,7 +639,7 @@ export const META: Meta = {
           '@repo/db': $when({ repo: 'turborepo', orm: true }, '*'),
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
         },
@@ -679,10 +687,10 @@ export const META: Meta = {
           zod: '^4.5.4',
         },
         devDependencies: {
-          typescript: '^5',
+          typescript: TYPESCRIPT_VERSION,
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
-          '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, '^8'),
+          '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, PG_TYPES_VERSION),
         },
         exports: {
           '.': './src/index.ts',
@@ -770,6 +778,8 @@ export const META: Meta = {
       label: 'NativeWind',
       hint: 'A library for styling React Native applications with Tailwind CSS',
       installScripts: { fsevents: false },
+      // NativeWind 4 compiles with Tailwind CSS 3, while the Next.js and TanStack Start apps of a turborepo run Tailwind CSS 4.
+      pinnedPackages: ['tailwindcss'],
       category: 'UI',
       support: { stacks: ['expo'] },
       packageJson: {
@@ -862,7 +872,7 @@ export const META: Meta = {
           vitest: '^4.1.11',
           '@vitest/coverage-v8': '^4.1.11',
           '@vitejs/plugin-react': '^6.1.2',
-          vite: '^8.3.4',
+          vite: VITE_VERSION,
           jsdom: '^30.0.1',
           '@testing-library/react': '^16.3.3',
           '@testing-library/dom': '^10.4.1',
@@ -886,7 +896,7 @@ export const META: Meta = {
         devDependencies: {
           vitest: '^4.1.11',
           '@vitest/coverage-v8': '^4.1.11',
-          vite: '^8.2.2',
+          vite: VITE_VERSION,
         },
         scripts: {
           test: 'vitest run',
@@ -1062,7 +1072,7 @@ export const META: Meta = {
               pg: '^8.23.0',
             },
             devDependencies: {
-              '@types/pg': '^8.23.1',
+              '@types/pg': PG_TYPES_VERSION,
             },
           },
           deploymentPackageJson: {
@@ -1235,7 +1245,7 @@ export const META: Meta = {
               ),
             },
             devDependencies: {
-              typescript: '^5',
+              typescript: TYPESCRIPT_VERSION,
               '@types/node': NODE_TYPES_VERSION,
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               'drizzle-kit': '^0.31.10',
@@ -1287,7 +1297,7 @@ export const META: Meta = {
               mariadb: $when({ database: 'mysql' }, '^3.5.3'),
             },
             devDependencies: {
-              typescript: '^5',
+              typescript: TYPESCRIPT_VERSION,
               '@types/node': NODE_TYPES_VERSION,
               '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
               dotenv: '^17.4.2',
@@ -1485,9 +1495,13 @@ export const META: Meta = {
         label: 'Turborepo',
         hint: 'Monorepo repository',
         packageJson: {
+          devDependencies: {
+            rimraf: '^6.0.1',
+            syncpack: '^15.3.3',
+          },
           scripts: {
             clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
-            'versions:list': 'syncpack list-mismatches',
+            'versions:list': 'syncpack lint',
             'versions:fix': 'syncpack fix',
           },
         },
