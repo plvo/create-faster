@@ -269,6 +269,12 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
       expect(table?.[1]).toMatch(/UNIQUE\(\s*`?tag`?\s*\)\s*ON CONFLICT REPLACE/);
     });
 
+    test('do not depend on the name of the project: a default in the schema would only fit a project of that name', async () => {
+      const files = await filesUnder(web('src/migrations'));
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) expect(await readTextFile(file), file).not.toContain(PROJECT);
+    });
+
     test('are committed with their snapshots, so migrate:create writes a delta', async () => {
       const files = (await filesUnder(web('src/migrations'))).map((file) => file.slice(web('src/migrations').length + 1));
       const migrations = files.filter((file) => file.endsWith('.ts') && file !== 'index.ts');

@@ -5,8 +5,9 @@ import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from
 export const MEDIA_CACHE_CONTROL = 'public, max-age=604800, stale-while-revalidate=86400';
 
 // The Local API takes a file without going through the multipart parser, so the size limit of the config does not apply to it.
+// Payload leaves `size` undefined once it has read an image, so the bytes are measured when it hands them over.
 const refuseLargeFile: CollectionBeforeChangeHook = ({ data, req }) => {
-  const size = req.file?.size;
+  const size = req.file?.data?.length ?? req.file?.size;
   if (size !== undefined && size > MAX_UPLOAD_BYTES) {
     throw new APIError(`The file is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`, 413);
   }

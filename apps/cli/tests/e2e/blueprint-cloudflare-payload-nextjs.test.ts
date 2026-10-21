@@ -60,12 +60,13 @@ const FIRST_RUN_SCRIPTS = ((META.blueprints['cloudflare-payload-nextjs'] as Meta
 const LARGE_MEDIA_SCRIPT = `import { getPayloadClient } from '@/lib/payload';
 
 const payload = await getPayloadClient();
-const size = 21 * 1024 * 1024;
+const padding = ' '.repeat(21 * 1024 * 1024);
+const data = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><!--' + padding + '--></svg>');
 try {
   await payload.create({
     collection: 'media',
     data: { alt: 'Too large' },
-    file: { data: Buffer.alloc(size), mimetype: 'image/svg+xml', name: 'local-api-large.svg', size },
+    file: { data, mimetype: 'image/svg+xml', name: 'local-api-large.svg', size: data.length },
   });
   console.log('STORED');
 } catch (error) {
@@ -250,7 +251,9 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     const before = await readdir(migrations);
     const result = await run([pm, 'run', 'migrate:create', ...(pm === 'npm' ? ['--'] : []), '--skip-empty'], webDir);
     expect(result.exitCode, result.stderr + result.stdout).toBe(0);
-    expect(await readdir(migrations)).toEqual(before);
+    const added = (await readdir(migrations)).filter((file) => !before.includes(file) && file.endsWith('.ts'));
+    const sources = await Promise.all(added.map((file) => readFile(join(migrations, file), 'utf8')));
+    expect(added, sources.join('\n')).toEqual([]);
   }, TIMEOUT_COMMAND);
 
   test('the remote commands refuse to run while the database id is still the placeholder, and leave nothing behind', async () => {
@@ -542,7 +545,9 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       const cookies = (allowed.headers.getSetCookie?.() ?? []).map((cookie) => cookie.split(';')[0]).join('; ');
       expect(cookies).toContain('__prerender_bypass');
 
-      const page = await get('/draft-only', { headers: { Cookie: cookies } });
+      // The draft cookie says that someone asked for a preview; the draft is shown to the signed-in editor only.
+      expect((await get('/draft-only', { headers: { Cookie: cookies } })).status).toBe(404);
+      const page = await get('/draft-only', { headers: { Cookie: cookies, ...authorization } });
       expect(page.status).toBe(200);
       expect(await page.text()).toContain('Draft only heading');
     });

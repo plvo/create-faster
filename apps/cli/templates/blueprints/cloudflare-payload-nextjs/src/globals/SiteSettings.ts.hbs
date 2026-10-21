@@ -9,7 +9,9 @@ export const SiteSettings: GlobalConfig = {
     update: authenticated,
   },
   fields: [
-    { name: 'siteName', type: 'text', defaultValue: '{{projectName}}', required: true },
+    // A function: a fixed default would be written into the column and the migration snapshots, which would then only fit a
+    // project of this name. The default still fills the form and the read of a global that was never saved.
+    { name: 'siteName', type: 'text', defaultValue: () => '{{projectName}}', required: true },
     {
       name: 'navigation',
       type: 'array',

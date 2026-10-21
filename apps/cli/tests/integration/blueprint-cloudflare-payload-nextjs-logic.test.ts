@@ -473,10 +473,19 @@ describe('cloudflare-payload-nextjs generated logic', () => {
 
       test('refuses a file over the limit that skipped the multipart parser, and keeps one at the limit', () => {
         const [refuse] = media.Media.hooks.beforeChange;
+        // Payload hands the hook the bytes, and leaves `size` undefined once it has read the image.
+        const read = (bytes: number) => ({ data: Buffer.alloc(bytes), size: undefined });
+
+        expect(() => refuse?.({ data: {}, req: { file: read(maxBytes + 1) } })).toThrow('The file is larger than 20 MB');
+        expect(refuse?.({ data: { alt: 'x' }, req: { file: read(maxBytes) } })).toEqual({ alt: 'x' });
+        expect(refuse?.({ data: { alt: 'x' }, req: {} })).toEqual({ alt: 'x' });
+      });
+
+      test('refuses a file kept in a temporary file, which has a size and no bytes', () => {
+        const [refuse] = media.Media.hooks.beforeChange;
 
         expect(() => refuse?.({ data: {}, req: { file: { size: maxBytes + 1 } } })).toThrow('The file is larger than 20 MB');
         expect(refuse?.({ data: { alt: 'x' }, req: { file: { size: maxBytes } } })).toEqual({ alt: 'x' });
-        expect(refuse?.({ data: { alt: 'x' }, req: {} })).toEqual({ alt: 'x' });
       });
 
       test('turns the controls off that need sharp', () => {
