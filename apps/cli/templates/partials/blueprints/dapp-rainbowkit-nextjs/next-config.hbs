@@ -1,0 +1,3 @@
+
+  // RainbowKit reaches @coinbase/cdp-sdk, which dynamically imports optional @x402/* peers that are not installed. Loaded by Node at runtime instead of bundled, the missing peers only matter if x402 signing is used.
+  serverExternalPackages: ['@coinbase/cdp-sdk'],
