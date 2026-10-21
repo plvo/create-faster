@@ -2,7 +2,12 @@ import { existsSync } from 'node:fs';
 import { cancel, log } from '@clack/prompts';
 import color from 'picocolors';
 import { META } from '@/__meta__';
-import { getBlueprintAppContexts, getCompatibleLibraryNames, isRequirementMet } from '@/lib/addon-utils';
+import {
+  describeRequire,
+  getBlueprintAppContexts,
+  getCompatibleLibraryNames,
+  isRequirementMet,
+} from '@/lib/addon-utils';
 import { PACKAGE_MANAGERS } from '@/lib/constants';
 import { readPackageManagerVersion } from '@/lib/package-manager';
 import { projectNameOf, resolveProjectDir, validateAppName, validateProjectName } from '@/lib/project-location';
@@ -403,12 +408,8 @@ function filterToolingByRequirements(ctx: Omit<TemplateContext, 'repo'>): void {
     const addon = META.project.tooling.options[toolingName];
     if (!addon) return false;
 
-    if (!isRequirementMet(addon.require, ctx)) {
-      const missing: string[] = [];
-      if (addon.require?.git && !ctx.git) missing.push('git');
-      if (addon.require?.linter && !ctx.project.linter) missing.push('a linter');
-      const reason = missing.length > 0 ? missing.join(' and ') : 'unmet requirements';
-      log.warn(`${toolingName} requires ${reason}. Skipping.`);
+    if (addon.require && !isRequirementMet(addon.require, ctx)) {
+      log.warn(`${toolingName} requires ${describeRequire(addon.require, ctx)}. Skipping.`);
       return false;
     }
     return true;

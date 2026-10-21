@@ -1,0 +1,9 @@
+The `prepare` script runs `husky` on install, which points `core.hooksPath` at `.husky/_`, so the hooks are active once the dependencies are installed.
+
+{{#if (and (isMono) (or (has "linter" "eslint") (has "linter" "eslint-prettier")))}}
+`.husky/pre-commit` runs `lint-staged` on the staged files. ESLint takes the configuration of the directory it runs in and the root has none, so the tasks are the `lint-staged` key of each app and each package that lints itself (the `package.json` beside its `eslint.config.mjs`), and lint-staged applies the closest key to each staged file. A new workspace that lints itself needs the same key.{{#if (has "linter" "eslint-prettier")}} The `lint-staged` key of the root `package.json` covers the files outside the workspaces.{{/if}} A task that fails stops the commit.
+{{else}}
+`.husky/pre-commit` runs `lint-staged` on the staged files, with the tasks of the `lint-staged` key of the root `package.json`. A task that fails stops the commit.
+{{/if}}
+
+`.husky/commit-msg` checks that the first line of the message is `<type>(<scope>): <subject>` with a type that matches `{{> husky/commit-types}}`. It prints either that the message is valid or a warning that lists the format and the types, and it never blocks the commit.

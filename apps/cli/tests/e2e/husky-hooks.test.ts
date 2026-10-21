@@ -46,6 +46,14 @@ describe.each(['bun', 'npm', 'pnpm'])('husky hooks after a generation with %s', 
         expect(commit.exitCode).toBe(0);
         expect(await readFile(join(projectDir, 'src', 'answer.ts'), 'utf8')).toBe(FORMATTED_SOURCE);
         expect(commit.output).toContain('Invalid commit message format');
+        expect(commit.output).not.toContain('Commit message is valid');
+
+        await writeFile(join(projectDir, 'src', 'second.ts'), FORMATTED_SOURCE);
+        const conventional = await commitAll(projectDir, 'chore: initial commit');
+
+        expect(conventional.exitCode).toBe(0);
+        expect(conventional.output).toContain('Commit message is valid');
+        expect(conventional.output).not.toContain('Invalid commit message format');
       } finally {
         await cleanupTempDir(tempDir);
       }

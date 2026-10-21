@@ -16,7 +16,6 @@ No additional libraries configured.
 {{/if}}
 
 {{/each}}
-
 {{#if (monoPackages)}}
 ## Shared Packages
 
@@ -29,6 +28,7 @@ No additional libraries configured.
 ### `packages/db`
 
 Shared database configuration and schema:
+
 - **Database**: {{project.database}}
 {{#if project.orm}}
 - **ORM**: {{project.orm}}
@@ -56,6 +56,7 @@ Install dependencies:
 {{#if pm}}{{pm}} install{{else}}npm install{{/if}}
 ```
 
+{{> readme/post-install}}
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}

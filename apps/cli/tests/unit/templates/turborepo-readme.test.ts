@@ -38,6 +38,27 @@ describe('turborepo README start script', () => {
   });
 });
 
+describe('turborepo README post-install step', () => {
+  const ctx: TemplateContext = {
+    projectName: 'demo',
+    repo: 'turborepo',
+    apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+    project: { linter: 'biome', tooling: [] },
+    git: false,
+    pm: 'npm',
+  };
+
+  test('tells to format after the install when the CLI did not install', () => {
+    expect(renderReadme({ ...ctx, skipInstall: true })).toContain(
+      '```bash\nnpm install\n```\n\nFormat the generated files:\n\n```bash\nnpm run check\n```\n\n',
+    );
+  });
+
+  test('says nothing when the CLI installed and formatted', () => {
+    expect(renderReadme(ctx)).not.toContain('Format the generated files');
+  });
+});
+
 describe('turborepo README db package section', () => {
   const ctx: TemplateContext = {
     projectName: 'demo',

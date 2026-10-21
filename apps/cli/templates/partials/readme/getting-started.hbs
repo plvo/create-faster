@@ -6,6 +6,7 @@ Install dependencies:
 {{#if pm}}{{pm}} install{{else}}npm install{{/if}}
 ```
 
+{{> readme/post-install}}
 {{> readme/cloudflare-types}}
 {{> readme/route-tree}}
 {{> readme/first-run}}
@@ -15,10 +16,12 @@ Install dependencies:
 ```bash
 {{runScript "dev"}}
 ```
-
 {{#each (listeningApps)}}
-Open [{{appUrl appName}}]({{appUrl appName}}) in your browser.
 
+Open [{{appUrl appName}}]({{appUrl appName}}) in your browser.
 {{/each}}
+{{#if (listeningApps)}}
+
+{{/if}}
 {{> ports/override}}
 {{/if}}

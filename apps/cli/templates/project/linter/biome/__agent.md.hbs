@@ -1,0 +1,3 @@
+The `biome.json` at the root configures the lint and the format of the whole repository{{#if (isMono)}}, every app and package{{/if}}: single quotes, semicolons, two-space indent and 120 columns. Biome skips what `.gitignore` ignores, plus the build output and generated directories `biome.json` lists.
+
+`{{runScript "lint"}}` reports problems and changes nothing. `{{runScript "check"}}` also fixes what is safe to fix, formats and sorts the imports. `{{runScript "format"}}` formats but leaves the import order alone, which `check` enforces, so run `check` before a commit.

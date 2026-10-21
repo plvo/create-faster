@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { getAppLibraries } from '@/lib/addon-utils';
+import { getAppLibraries, getSelectedProjectAddonEntries } from '@/lib/addon-utils';
 import { DOCS_URL, TEMPLATES_DIR } from '@/lib/constants';
 import { collectEnvGroups } from '@/lib/env-generator';
 import { readFrontmatterFile } from '@/lib/frontmatter';
@@ -96,27 +96,9 @@ function collectSections(ctx: TemplateContext): Section[] {
   }
 
   const projectEnrich = singleAppEnrich(ctx);
-  const projectCategories: { category: keyof typeof META.project; order: number }[] = [
-    { category: 'database', order: DEFAULT_ORDER.database },
-    { category: 'orm', order: DEFAULT_ORDER.orm },
-    { category: 'deployment', order: DEFAULT_ORDER.deployment },
-    { category: 'linter', order: DEFAULT_ORDER.linter },
-  ];
-
-  for (const { category, order } of projectCategories) {
-    const value = ctx.project[category as 'database' | 'orm' | 'deployment' | 'linter'];
-    if (!value) continue;
-    const addon = META.project[category].options[value];
-    if (!addon) continue;
-    const ficheSource = join(TEMPLATES_DIR, 'project', category, value, AGENT_DOC_FILENAME);
-    push(ficheSource, 'root', addon.label, order, ctx, projectEnrich);
-  }
-
-  for (const tooling of ctx.project.tooling) {
-    const addon = META.project.tooling.options[tooling];
-    if (!addon) continue;
-    const ficheSource = join(TEMPLATES_DIR, 'project', 'tooling', tooling, AGENT_DOC_FILENAME);
-    push(ficheSource, 'root', addon.label, DEFAULT_ORDER.tooling, ctx, projectEnrich);
+  for (const { category, name, addon } of getSelectedProjectAddonEntries(ctx)) {
+    const ficheSource = join(TEMPLATES_DIR, 'project', category, name, AGENT_DOC_FILENAME);
+    push(ficheSource, 'root', addon.label, DEFAULT_ORDER[category], ctx, projectEnrich);
   }
 
   return sections;

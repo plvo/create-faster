@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import { getRootScripts } from '@/lib/package-json-generator';
-import { collectPostGenerateSteps } from '@/lib/post-generate';
+import { collectManualPostGenerateSteps, collectPostGenerateSteps } from '@/lib/post-generate';
 import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 function contextWith(project: Partial<ProjectContext>, overrides: Partial<TemplateContext> = {}): TemplateContext {
@@ -25,6 +25,19 @@ function turborepoWith(project: Partial<ProjectContext>): TemplateContext {
     ],
   });
 }
+
+describe('collectManualPostGenerateSteps', () => {
+  const commands = (ctx: TemplateContext) => collectManualPostGenerateSteps(ctx).map(({ command }) => command);
+
+  test('lists the steps the CLI does not run: no install flag, or no package manager', () => {
+    expect(commands(contextWith({ linter: 'biome' }, { skipInstall: true }))).toEqual(['bun run check']);
+    expect(commands(contextWith({ linter: 'prettier' }, { pm: undefined }))).toEqual(['npm run format']);
+  });
+
+  test('lists none when the CLI installs and runs them itself', () => {
+    expect(commands(contextWith({ linter: 'biome' }))).toEqual([]);
+  });
+});
 
 describe('collectPostGenerateSteps', () => {
   test('resolves the script a selected addon declares through the selected package manager', () => {

@@ -6,6 +6,7 @@ An app that listens on a port takes it from the `PORT` environment variable: the
 The app listens on port {{appPort appName}}. Set `PORT` to listen on another one: `PORT=4000 {{runScript "dev"}}`.
 {{/if}}
 {{#if (hasRootScript "start")}}
+
 `start` takes `PORT` the same way.
 {{/if}}
 {{#if (appOriginEnvs)}}

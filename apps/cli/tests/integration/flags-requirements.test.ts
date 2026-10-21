@@ -42,14 +42,18 @@ describe('library requirements checked against flags without project answers', (
   });
 
   test.each([
-    { name: 'git', args: ['--tooling', 'husky', '--linter', 'biome', '--no-git'], needs: 'git' },
-    { name: 'a linter', args: ['--tooling', 'husky', '--git'], needs: 'a linter' },
-  ])('husky without $name is rejected by its META requirement', async ({ args, needs }) => {
+    { name: 'git', args: ['--tooling', 'husky', '--linter', 'biome', '--no-git'], needs: 'git', met: 'a linter' },
+    { name: 'a linter', args: ['--tooling', 'husky', '--git'], needs: 'a linter', met: 'git' },
+  ])('husky without $name is rejected by its META requirement, naming only what is missing', async ({
+    args,
+    needs,
+    met,
+  }) => {
     const result = await runCli(['x', '--app', 'x:nextjs', ...args, '--no-install'], tempDir);
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("tooling 'husky' requires");
-    expect(result.stderr).toContain(needs);
+    expect(result.stderr).toContain(`tooling 'husky' requires ${needs}`);
+    expect(result.stderr).not.toContain(met);
     expect(await readdir(tempDir)).toEqual([]);
   });
 });

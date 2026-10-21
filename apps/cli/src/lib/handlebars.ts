@@ -30,6 +30,7 @@ import {
   getScriptCommand,
   getTypeScriptRunner,
 } from './package-manager';
+import { collectManualPostGenerateSteps } from './post-generate';
 import { collectProductionSteps } from './production-steps';
 import { collectScriptList, describeScript } from './script-list';
 import { resolveBlueprintChain } from './template-resolver';
@@ -221,6 +222,13 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('interactiveSteps', (options: Handlebars.HelperOptions) => {
     return collectInteractiveSteps(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('manualPostGenerateSteps', (options: Handlebars.HelperOptions) => {
+    return collectManualPostGenerateSteps(options.data.root as TemplateContext).map(({ description, command }) => ({
+      description,
+      commands: [command],
+    }));
   });
 
   Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {

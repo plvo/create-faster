@@ -16,3 +16,13 @@ export function collectPostGenerateSteps(ctx: TemplateContext): ResolvedPostGene
     })),
   );
 }
+
+/** Whether the CLI installs the dependencies itself: a package manager is selected and `--no-install` is absent. */
+export function installsDependencies(ctx: TemplateContext): boolean {
+  return Boolean(ctx.pm) && !ctx.skipInstall;
+}
+
+/** The `postGenerate` steps the user runs: all of them when the CLI does not install, none when it runs them itself. */
+export function collectManualPostGenerateSteps(ctx: TemplateContext): ResolvedPostGenerateStep[] {
+  return installsDependencies(ctx) ? [] : collectPostGenerateSteps(ctx);
+}

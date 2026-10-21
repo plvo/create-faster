@@ -1,5 +1,10 @@
 import color from 'picocolors';
-import { collectPostGenerateSteps, type ResolvedPostGenerateStep } from '@/lib/post-generate';
+import {
+  collectManualPostGenerateSteps,
+  collectPostGenerateSteps,
+  installsDependencies,
+  type ResolvedPostGenerateStep,
+} from '@/lib/post-generate';
 import { runCommand } from '@/lib/run-command';
 import { taskSpinner } from '@/tui/task-spinner';
 import type { TemplateContext } from '@/types/ctx';
@@ -78,10 +83,14 @@ async function initializeGit(projectPath: string): Promise<GitFailure | undefine
 
 export async function runPostGeneration(ctx: TemplateContext, projectPath: string): Promise<PostGenerationResult> {
   const steps = collectPostGenerateSteps(ctx);
-  const installs = ctx.pm && !ctx.skipInstall;
+  const installs = installsDependencies(ctx);
   const gitFailure = ctx.git ? await initializeGit(projectPath) : undefined;
   const installFailure = installs ? await installDependencies(ctx, projectPath) : undefined;
-  const pendingPostGenerate = installs && !installFailure ? await runPostGenerateSteps(steps, projectPath) : steps;
+  const pendingPostGenerate = !installs
+    ? collectManualPostGenerateSteps(ctx)
+    : installFailure
+      ? steps
+      : await runPostGenerateSteps(steps, projectPath);
 
   return { installFailure, gitFailure, pendingPostGenerate };
 }

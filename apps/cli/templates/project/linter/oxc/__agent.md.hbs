@@ -1,0 +1,3 @@
+Oxlint lints and Oxfmt formats, both configured from the root: `oxlint.config.mts` has {{#if (isMono)}}an override per app that uses React or a test library (`apps/<app>/**`){{else}}an override when the app uses React or a test library{{/if}}, with the plugins of its stack and libraries, and `oxfmt.config.mts` sets the style (single quotes, 120 columns) and sorts the imports{{#if (hasLibrary "shadcn")}} and the Tailwind classes{{/if}}. Both skip generated directories, and Oxfmt skips lockfiles too.
+
+`{{runScript "lint"}}` reports problems and changes nothing. `{{runScript "format"}}` runs Oxfmt. `{{runScript "check"}}` applies the Oxlint fixes, then formats.
