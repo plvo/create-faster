@@ -50,7 +50,7 @@ export const useAppForm = () => ({
 });`,
   'field.mjs': `import { createElement } from './react.mjs';
 export const Field = ({ children, ...props }) => createElement('div', props, ...children);
-export const FieldLabel = ({ children, ...props }) => createElement('label', props, ...children);`,
+export const FieldLabel = ({ children, ...props }) => createElement('label', { 'data-component': 'FieldLabel', ...props }, ...children);`,
   'input.mjs': `import { createElement } from './react.mjs';
 export const Input = ({ children, ...props }) => createElement('${FILE_FIELD_TAG}', props, ...children);`,
   'trpc.mjs': `const chain = new Proxy(function () {}, { get: () => chain, apply: () => chain });
@@ -187,9 +187,13 @@ describe(`${BLUEPRINT} documents`, () => {
       expect(text).toContain('Oct 21, 2026');
     });
 
-    test('the file field is the design system input', async () => {
-      const fileFields = elementsOf(await renderDocuments()).filter((element) => element.props.type === 'file');
+    test('the file field is the design system input, named by a design system label', async () => {
+      const tree = await renderDocuments();
+      const fileFields = elementsOf(tree).filter((element) => element.props.type === 'file');
       expect(fileFields.map((field) => field.tag)).toEqual([FILE_FIELD_TAG]);
+      const label = elementsOf(tree).find((element) => element.props['data-component'] === 'FieldLabel' && textOf(element) === 'File');
+      expect(label, 'a FieldLabel reads File').toBeDefined();
+      expect(label?.props.htmlFor).toBe(fileFields[0]?.props.id);
     });
 
     test('deleting asks first and removes nothing until confirmed', async () => {

@@ -21,6 +21,13 @@ interface Manifest {
 
 const SOURCE_FILE = /\.(ts|tsx)$/;
 
+// The directory of the closest package.json above a file.
+function workspaceOf(file: string, files: string[]): string {
+  let directory = dirname(file);
+  while (!files.includes(join(directory, 'package.json'))) directory = dirname(directory);
+  return directory;
+}
+
 describe('dependencies a generated workspace declares for a component it ships', () => {
   let tempDir: string;
 
@@ -32,7 +39,7 @@ describe('dependencies a generated workspace declares for a component it ships',
     await cleanupTempDir(tempDir);
   });
 
-  test.each(PROJECTS)('$name: cmdk is declared only where a source imports it', async ({ name, args }) => {
+  test.each(PROJECTS)('$name: cmdk is declared where a source imports it, and only there', async ({ name, args }) => {
     const result = await runCli([name, ...args, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
     const projectPath = join(tempDir, name);
@@ -48,6 +55,15 @@ describe('dependencies a generated workspace declares for a component it ships',
       if (!contents.some((source) => /from ['"]cmdk['"]/.test(source))) unused.push(workspace.slice(projectPath.length));
     }
 
-    expect(unused).toEqual([]);
+    expect(unused, 'declared and imported by no source').toEqual([]);
+
+    const undeclared: string[] = [];
+    for (const file of files.filter((candidate) => SOURCE_FILE.test(candidate))) {
+      if (!/from ['"]cmdk['"]/.test(await readTextFile(file))) continue;
+      const workspace = workspaceOf(file, files);
+      const manifest = await readJsonFile<Manifest>(join(workspace, 'package.json'));
+      if (!manifest.dependencies?.cmdk && !manifest.devDependencies?.cmdk) undeclared.push(file.slice(projectPath.length));
+    }
+    expect(undeclared, 'imported and declared by no package.json').toEqual([]);
   });
 });
