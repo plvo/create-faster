@@ -553,7 +553,6 @@ export const META: Meta = {
           'radix-ui': '^1.6.7',
           'class-variance-authority': '^0.7.1',
           clsx: '^2.1.1',
-          cmdk: '^1.1.1',
           'lucide-react': '^1.37.0',
           react: '^19.2.8',
           'tw-animate-css': '^1.4.0',
