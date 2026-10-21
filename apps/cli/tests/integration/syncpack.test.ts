@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { dirname, join } from 'node:path';
 import { $, Glob } from 'bun';
 import { META } from '@/__meta__';
-import { groupChoices, toCliArgs } from '../e2e/install-scripts-projects';
+import { groupChoices, toCliArgs } from '../choice-projects';
 import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 

@@ -18,7 +18,7 @@ const HONO_SERVES_FROM_NODE: Parameters<typeof $when>[0] = { deployment: { not: 
 
 const NODE_TYPES_VERSION = '^22';
 
-// One range for every workspace: syncpack, which a turborepo root runs, reports a package on another range as a mismatch. The one `expo-doctor` expects of the Expo SDK, so no app sits on another major.
+// The range `expo-doctor` expects of the Expo SDK, so every workspace shares it and no app sits on another major.
 const TYPESCRIPT_VERSION = '~6.0.3';
 const REACT_TYPES_VERSION = '^19.2.18';
 const VITE_VERSION = '^8.3.4';
@@ -1495,6 +1495,10 @@ export const META: Meta = {
         label: 'Turborepo',
         hint: 'Monorepo repository',
         packageJson: {
+          devDependencies: {
+            rimraf: '^6.0.1',
+            syncpack: '^15.3.3',
+          },
           scripts: {
             clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
             'versions:list': 'syncpack lint',

@@ -4,7 +4,7 @@ import { META } from '@/__meta__';
 import { isLibraryCompatible } from '@/lib/addon-utils';
 import type { EnvVar, MetaAddon, PackageJsonConfig } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
-import { groupChoices, toCliArgs } from '../e2e/install-scripts-projects';
+import { groupChoices, toCliArgs } from '../choice-projects';
 import { cleanupTempDir, createTempDir, readJsonFile, readTextFile, runCli } from './helpers';
 import {
   declaredVariables,

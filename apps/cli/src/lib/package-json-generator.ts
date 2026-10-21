@@ -310,8 +310,6 @@ function composeRootPackageJson(ctx: TemplateContext): PackageJson {
   const scripts: Record<string, string> = {};
 
   let devDependencies: Record<string, string> = {
-    rimraf: '^6.0.1',
-    syncpack: '^15.3.3',
     turbo: '^2.4.0',
   };
 
