@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import { GeneratedPassword } from '@/components/admin/generated-password';
+import { formatDate } from '@/lib/format-date';
 import { useTRPC } from '@/trpc/providers';
 
 export function UserDetail({ id }: { id: string }) {
@@ -101,11 +102,7 @@ export function UserDetail({ id }: { id: string }) {
           <div>
             <dt className='text-sm font-medium'>Joined</dt>
             <dd className='text-sm text-muted-foreground'>
-              {new Date(user.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              {formatDate(user.createdAt, 'long')}
             </dd>
           </div>
         </dl>

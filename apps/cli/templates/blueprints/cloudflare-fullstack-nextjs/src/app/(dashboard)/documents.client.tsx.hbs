@@ -6,15 +6,19 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient, useSuspenseQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Trash2, Upload } from 'lucide-react';
 import { z } from 'zod';
+import { Input } from '@repo/ui/components/ui/input';
 import { useAppForm } from '@repo/ui/lib/form';
 import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { COUNT_STALE_TIME } from '@repo/api/pagination';
+import { formatDate } from '@/lib/format-date';
+import { formatFileSize } from '@/lib/format-file-size';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { responseErrorMessage } from '@/lib/response-error';
 import { PagedList } from '@/components/table-pagination';
@@ -35,13 +39,14 @@ export function DocumentsClient() {
     ],
   });
   const fileRef = useRef<HTMLInputElement>(null);
-
+  const [deleting, setDeleting] = useState<{ id: string; title: string } | null>(null);
 
   const deleteMutation = useMutation(
     trpc.documents.delete.mutationOptions({
       onSuccess: () => {
         invalidatePagedList(queryClient, trpc.documents);
         toast.success('Document deleted');
+        setDeleting(null);
       },
       onError: (error) => toast.error(error.message),
     }),
@@ -75,7 +80,11 @@ export function DocumentsClient() {
   });
 
   return (
-    <div className='space-y-8'>
+    <div className='space-y-6'>
+      <div className='space-y-1'>
+        <h1 className='text-3xl font-bold'>Documents</h1>
+        <p className='text-sm text-muted-foreground'>Upload, browse and remove your documents.</p>
+      </div>
       <Can permissions={{ document: ['create'] }}>
         <form
           onSubmit={(e) => {
@@ -93,7 +102,7 @@ export function DocumentsClient() {
             <label className='text-sm font-medium' htmlFor='document-file'>
               File
             </label>
-            <input id='document-file' ref={fileRef} type='file' className='text-sm' />
+            <Input id='document-file' ref={fileRef} type='file' />
           </div>
           <form.AppForm>
             <form.SubmitButton>
@@ -126,19 +135,18 @@ export function DocumentsClient() {
                 <tr key={doc.id} className='border-b last:border-0 hover:bg-muted/50'>
                   <td className='px-4 py-3 font-medium'>{doc.title}</td>
                   <td className='hidden px-4 py-3 text-muted-foreground sm:table-cell'>
-                    {doc.size != null ? `${(doc.size / 1024).toFixed(1)} KB` : '—'}
+                    {doc.size != null ? formatFileSize(doc.size) : '—'}
                   </td>
                   <td className='hidden px-4 py-3 text-muted-foreground md:table-cell'>
-                    {new Date(doc.createdAt).toLocaleDateString()}
+                    {formatDate(doc.createdAt)}
                   </td>
                   <td className='px-4 py-3 text-right'>
                     <Can permissions={{ document: ['delete'] }}>
                       <button
                         type='button'
-                        onClick={() => deleteMutation.mutate({ id: doc.id })}
-                        disabled={deleteMutation.isPending}
-                        className='text-destructive hover:text-destructive/80 disabled:opacity-50'
-                        aria-label='Delete document'
+                        onClick={() => setDeleting({ id: doc.id, title: doc.title })}
+                        className='text-destructive hover:text-destructive/80'
+                        aria-label={`Delete ${doc.title}`}
                       >
                         <Trash2 className='size-4' />
                       </button>
@@ -150,6 +158,20 @@ export function DocumentsClient() {
           </table>
         </div>
       </PagedList>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+        title='Delete document'
+        description={`${deleting?.title ?? 'This document'} will be deleted. This cannot be undone.`}
+        confirmLabel='Delete'
+        disabled={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleting) deleteMutation.mutate({ id: deleting.id });
+        }}
+      />
     </div>
   );
 }

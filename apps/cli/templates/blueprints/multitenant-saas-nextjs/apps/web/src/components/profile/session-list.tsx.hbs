@@ -11,6 +11,7 @@ import { ComputerIcon, Delete01Icon, SmartPhone01Icon, InternetIcon } from '@hug
 import { HugeiconsIcon } from '@hugeicons/react';
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
+import { formatDate } from '@/lib/format-date';
 import { useTRPC } from '@/trpc/providers';
 
 function getDeviceIcon(userAgent: string | null | undefined) {
@@ -98,12 +99,7 @@ export function SessionList() {
                   </p>
                   <p className='text-xs text-muted-foreground'>
                     {session.ipAddress ?? 'Unknown IP'} · Created{' '}
-                    {new Date(session.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatDate(session.createdAt, 'dateTime')}
                   </p>
                 </div>
               </div>
