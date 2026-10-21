@@ -116,7 +116,8 @@ describe('nextjs-mdx-pwa', () => {
   // src/proxy.ts twice, as the dev server's 404 of a slug that `dynamicParams = false` rejects does, reaches 11 on
   // one ServerResponse. Bare Next.js 16.4.2 with a proxy and `dynamicParams = false` prints it, 16.2.12 does not
   // (vercel/next.js#97757). `dynamicParams = false` is what `output: export` needs, and the page 404s without it
-  // only after rendering, so the page keeps it. This test starts to pass once Next.js fixes the budget.
+  // only after rendering, so the page keeps it. `test.failing` passes while the body
+  // fails: once Next.js fixes the budget the body passes, this test FAILS, and the marker comes off.
   test.failing(
     'dev 404s an unknown document without a listener leak warning',
     async () => {
