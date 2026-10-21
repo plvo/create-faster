@@ -6,6 +6,7 @@ import { collectFirstRunSteps } from '@/lib/first-run';
 import { collectInteractiveSteps } from '@/lib/interactive-steps';
 import { collectMonoPackages, getRootScripts } from '@/lib/package-json-generator';
 import { getPackageRunner, getScriptCommand } from '@/lib/package-manager';
+import { installsDependencies } from '@/lib/post-generate';
 import type { GitFailure, PendingPostGenerateStep } from '@/lib/post-generation';
 import { collectProductionSteps } from '@/lib/production-steps';
 import { getProjectDir, quoteProjectDir } from '@/lib/project-location';
@@ -188,7 +189,7 @@ function buildStepsNote(
     steps.push('git init');
     steps.push('');
   }
-  if (ctx.skipInstall || !ctx.pm) {
+  if (!installsDependencies(ctx)) {
     steps.push('# Install dependencies:');
     steps.push(`${ctx.pm ?? 'npm'} install`);
     steps.push('');
@@ -230,7 +231,7 @@ function buildStepsNote(
   if (hasGitRepository) {
     steps.push('# Git:');
     steps.push('git add .');
-    steps.push('git commit -m "Initial commit"');
+    steps.push('git commit -m "chore: initial commit"');
     steps.push('git branch -M main');
     steps.push('git remote add origin <your-repo-url>');
     steps.push('git push -u origin main');

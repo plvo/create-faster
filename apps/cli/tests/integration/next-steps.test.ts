@@ -128,6 +128,20 @@ describe('next steps printed by the summary, the README and AGENTS.md', () => {
     await expectEveryPrintedScriptToExist(generated);
   });
 
+  describe.each([
+    { name: 'single repo', args: ['--app', 'web:nextjs'] },
+    { name: 'turborepo', args: ['--app', 'web:nextjs', '--app', 'api:hono'] },
+  ])('a $name generated with --no-install and a formatter', ({ name, args }) => {
+    test('tells to format after the install, in the README as in the summary', async () => {
+      const generated = await generate(`format-${name.replace(' ', '-')}`, [...args, '--linter', 'biome']);
+
+      for (const text of [generated.readme, generated.stdout]) {
+        expectInOrder(text, ['npm install', 'Format the generated files', 'npm run check', 'npm run dev']);
+      }
+      await expectEveryPrintedScriptToExist(generated);
+    });
+  });
+
   test('the first commit comes before the push, on a branch named main', async () => {
     const { stdout } = await generate('git-steps', ['--app', 'web:nextjs']);
     const gitSteps = stdout.slice(stdout.indexOf('# Git:'));

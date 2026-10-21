@@ -1,14 +1,14 @@
 #!/bin/sh
 
-commit_msg=$(cat "$1")
+subject=$(head -n 1 "$1")
 
-type=$(echo "$commit_msg" | awk 'match($0, /^(build|ci|feat|fix|perf|refactor|style|docs|test|chore|revert|workflow|wip|security)/) {print substr($0, RSTART, RLENGTH)}')
-
-if [ -z "$type" ]; then
+if echo "$subject" | grep -Eq '^(build|ci|feat|fix|perf|refactor|style|docs|test|chore|revert|workflow|wip|security)(\([^)]+\))?!?: .+'; then
+    echo "✅ Commit message is valid!"
+else
     echo "⚠️  Invalid commit message format, recommended: "
     echo "  • <type>(<scope>): <subject>"
     echo "  • Example: feat(auth): add email login"
-    echo "Allowed types:" 
+    echo "Allowed types:"
     echo "  • build"
     echo "  • ci"
     echo "  • feat"
@@ -24,7 +24,5 @@ if [ -z "$type" ]; then
     echo "  • wip"
     echo "  • security"
 fi
-
-echo "✅ Commit message is valid!"
 
 exit 0
