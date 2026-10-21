@@ -252,6 +252,7 @@ describe('META.blueprints names', () => {
   test('every blueprint name ends with the stack of its main app', () => {
     expect(Object.keys(META.blueprints).sort()).toEqual([
       'cloudflare-fullstack-nextjs',
+      'cloudflare-payload-nextjs',
       'cloudflare-static-site-nextjs',
       'dapp-privy-nextjs',
       'dapp-rainbowkit-nextjs',

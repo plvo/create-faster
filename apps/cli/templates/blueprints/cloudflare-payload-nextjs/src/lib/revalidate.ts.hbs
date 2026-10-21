@@ -1,0 +1,19 @@
+import { revalidateTag } from 'next/cache';
+
+// Next.js has no code for this error: it throws a plain Error when a write happens outside a request (a migration, the seed, `ensure-admin`), where there is no cache to revalidate.
+const NO_REQUEST_MESSAGE = 'Invariant: static generation store missing';
+
+function isMissingRequest(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith(NO_REQUEST_MESSAGE);
+}
+
+/** Expires the tags at once: the next read of a page that depends on one fetches the document again. */
+export function revalidateTags(tags: string[]): void {
+  for (const tag of new Set(tags)) {
+    try {
+      revalidateTag(tag, { expire: 0 });
+    } catch (error) {
+      if (!isMissingRequest(error)) throw error;
+    }
+  }
+}

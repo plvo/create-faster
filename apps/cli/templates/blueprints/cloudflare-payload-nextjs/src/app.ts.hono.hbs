@@ -1,0 +1,42 @@
+---
+mono:
+  scope: app
+  path: src/app.ts
+---
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { logger } from 'hono/logger';
+import { runBackup } from './backup';
+
+const app = new Hono<{ Bindings: CloudflareEnv }>();
+
+app.use(logger());
+
+app.notFound((c) => c.json({ ok: false, message: 'Not found' }, 404));
+
+app.get('/', (c) => c.json({ ok: true, message: '{{appName}} is running' }, 200));
+
+// Hashing both sides gives buffers of the same length, which timingSafeEqual requires, and hides the length of the token.
+const sha256 = (value: string) => createHash('sha256').update(value).digest();
+
+// Runs a backup now, for the editor who wants one before a risky change. It fails closed: with no token set nobody can call it.
+app.post('/backup/run', async (c) => {
+  const expected = c.env.BACKUP_TRIGGER_TOKEN;
+  if (!expected) return c.json({ ok: false, message: 'BACKUP_TRIGGER_TOKEN is not set' }, 503);
+
+  const given = c.req.header('Authorization')?.replace(/^Bearer /, '') ?? '';
+  if (!timingSafeEqual(sha256(given), sha256(expected))) return c.json({ ok: false, message: 'Unauthorized' }, 401);
+
+  const manifest = await runBackup(c.env);
+  return c.json({ ok: true, prefix: manifest.prefix, tables: manifest.tables.length }, 200);
+});
+
+app.onError((err, c) => {
+  const isDev = process.env.NODE_ENV === 'development';
+  console.error('Error:', err);
+  if (err instanceof HTTPException) return c.json({ ok: false, message: err.message }, err.status);
+  return c.json({ ok: false, message: isDev ? err.message : 'Internal server error' }, 500);
+});
+
+export default app;

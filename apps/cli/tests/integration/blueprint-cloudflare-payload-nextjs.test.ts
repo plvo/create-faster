@@ -1,6 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, fileExists, filesUnder, readJsonFile, readTextFile, runCli } from './helpers';
+import {
+  cleanupTempDir,
+  createTempDir,
+  evaluateGeneratedModule,
+  expectInOrder,
+  fileExists,
+  filesUnder,
+  readJsonFile,
+  readTextFile,
+  runCli,
+} from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -63,8 +73,8 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
         'src/app/(frontend)/posts/page.tsx',
         'src/app/(frontend)/posts/[slug]/page.tsx',
         'src/app/(frontend)/not-found.tsx',
-        'src/app/(frontend)/sitemap.ts',
-        'src/app/(frontend)/robots.ts',
+        'src/app/sitemap.ts',
+        'src/app/robots.ts',
         'src/app/(frontend)/next/preview/route.ts',
         'src/migrations/index.ts',
         'scripts/ensure-admin.ts',
@@ -265,14 +275,97 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
     });
   });
 
+  describe('the README', () => {
+    test('orders the provisioning: database, id, R2 bucket, migration, first admin, deploy, production URL, first deploy', async () => {
+      const readme = await readTextFile(join(projectPath, 'README.md'));
+      expectInOrder(readme, [
+        `wrangler d1 create ${PROJECT}-db`,
+        'REPLACE_WITH_D1_DATABASE_ID',
+        `wrangler r2 bucket create ${PROJECT}-storage`,
+        'bun run db:migrate:remote',
+        'bun run ensure-admin:remote',
+        '6. Deploy.',
+        '### Production URL',
+        '### First deploy',
+        'export NEXT_PUBLIC_APP_URL=',
+        '--secrets-file .prod.env',
+        '### First admin',
+      ]);
+    });
+
+    test('carries the first deploy itself, so it does not depend on the agent notes', async () => {
+      const dir = await createTempDir();
+      try {
+        const result = await runCli(['no-notes', '--blueprint', BLUEPRINT, '--no-agent-context', '--no-git', '--no-install', '--pm', 'bun'], dir);
+        expect(result.exitCode, result.stderr).toBe(0);
+        const readme = await readTextFile(join(dir, 'no-notes/README.md'));
+        expect(readme).toContain('--secrets-file .prod.env');
+        expect(readme).not.toContain('docs/agents');
+        expect(await fileExists(join(dir, 'no-notes/docs/agents'))).toBe(false);
+      } finally {
+        await cleanupTempDir(dir);
+      }
+    });
+  });
+
+  describe('fonts', () => {
+    test('the paths of the site layout reach the font files of the stack', async () => {
+      const layout = await readTextFile(web('src/app/(frontend)/layout.tsx'));
+      const sources = [...layout.matchAll(/src: '([^']+\.woff)'/g)].map((match) => match[1] ?? '');
+      expect(sources).toHaveLength(2);
+      for (const source of sources) {
+        expect(await fileExists(join(web('src/app/(frontend)'), source)), source).toBe(true);
+      }
+    });
+  });
+
   describe('robots.txt', () => {
-    test('disallows everything outside the production origin and /admin/ and /api/ inside it', async () => {
-      const source = await readTextFile(web('src/app/(frontend)/robots.ts'));
-      expect(source).toContain('/admin/');
-      expect(source).toContain('/api/');
-      expect(source).toContain('NEXT_PUBLIC_APP_URL');
-      expect(source).toContain('workers.dev');
-      expect(source).toContain('localhost');
+    interface Robots {
+      rules: { userAgent: string; allow?: string; disallow?: string | string[] };
+      sitemap?: string;
+    }
+    type RobotsRoute = () => Promise<Robots>;
+
+    // The route reads the origin from get-app-url and the host of the request from next/headers.
+    async function loadRobots(): Promise<RobotsRoute> {
+      const directory = join(tempDir, 'robots');
+      const getAppUrl = join(directory, 'get-app-url.mjs');
+      const headers = join(directory, 'next-headers.mjs');
+      await evaluateGeneratedModule(await readTextFile(web('src/lib/get-app-url.ts')), getAppUrl);
+      await Bun.write(headers, 'export const headers = async () => ({ get: () => globalThis.__requestHost });');
+      const { default: robots } = await evaluateGeneratedModule<{ default: RobotsRoute }>(
+        await readTextFile(web('src/app/robots.ts')),
+        join(directory, 'robots.mjs'),
+        { '@/lib/get-app-url': getAppUrl, 'next/headers': headers },
+      );
+      return robots;
+    }
+
+    async function robotsFor(appUrl: string, requestHost: string): Promise<Robots> {
+      process.env.NEXT_PUBLIC_APP_URL = appUrl;
+      (globalThis as { __requestHost?: string }).__requestHost = requestHost;
+      return (await loadRobots())();
+    }
+
+    afterAll(() => {
+      Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_APP_URL');
+    });
+
+    test('allows the public site, keeps /admin/ and /api/ out and names the sitemap on the production origin', async () => {
+      const robots = await robotsFor('https://example.com', 'example.com');
+      expect(robots.rules).toEqual({ userAgent: '*', allow: '/', disallow: ['/admin/', '/api/'] });
+      expect(robots.sitemap).toBe('https://example.com/sitemap.xml');
+    });
+
+    test.each([
+      ['a local run', 'http://localhost:3000', 'localhost:3000'],
+      ['a workers.dev address configured as the origin', 'https://site-web.account.workers.dev', 'site-web.account.workers.dev'],
+      ['the workers.dev address of a Worker that has a custom domain', 'https://example.com', 'site-web.account.workers.dev'],
+      ['a preview URL', 'https://example.com', 'abc123-site-web.account.workers.dev'],
+    ])('disallows everything on %s', async (_title, appUrl, requestHost) => {
+      const robots = await robotsFor(appUrl, requestHost);
+      expect(robots.rules).toEqual({ userAgent: '*', disallow: '/' });
+      expect(robots.sitemap).toBeUndefined();
     });
   });
 });

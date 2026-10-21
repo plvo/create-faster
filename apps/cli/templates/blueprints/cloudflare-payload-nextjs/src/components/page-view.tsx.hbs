@@ -1,0 +1,21 @@
+import { LivePreviewListener } from '@/components/live-preview-listener';
+import { RenderBlocks } from '@/components/render-blocks';
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { getPage, rememberMissing } from '@/lib/queries';
+import { draftMode } from 'next/headers';
+import { notFound } from 'next/navigation';
+
+export async function PageView({ slug }: { slug: string }) {
+  const { isEnabled: draft } = await draftMode();
+  const page = await getPage(slug, draft);
+  if (!page) {
+    await rememberMissing(CACHE_TAGS.page(slug));
+    notFound();
+  }
+  return (
+    <>
+      {draft && <LivePreviewListener />}
+      <RenderBlocks blocks={page.layout} />
+    </>
+  );
+}

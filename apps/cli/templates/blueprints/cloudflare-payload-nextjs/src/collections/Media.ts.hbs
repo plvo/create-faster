@@ -1,0 +1,53 @@
+import { authenticated } from '@/access';
+import { MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
+import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload';
+
+// The Local API takes a file without going through the multipart parser, so the size limit of the config does not apply to it.
+const refuseLargeFile: CollectionBeforeChangeHook = ({ data, req }) => {
+  const size = req.file?.size;
+  if (size !== undefined && size > MAX_UPLOAD_BYTES) {
+    throw new APIError(`The file is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`, 413);
+  }
+  return data;
+};
+
+export const Media: CollectionConfig = {
+  slug: 'media',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: () => true,
+    update: authenticated,
+  },
+  admin: {
+    description: `Images up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. Nothing resizes an image on Workers: upload it at the size it is shown.`,
+  },
+  fields: [
+    { name: 'alt', type: 'text', required: true },
+    {
+      name: 'focalX',
+      type: 'number',
+      admin: { description: 'Where the image is framed, from the left (0) to the right (100).', step: 1 },
+      defaultValue: 50,
+      max: 100,
+      min: 0,
+    },
+    {
+      name: 'focalY',
+      type: 'number',
+      admin: { description: 'Where the image is framed, from the top (0) to the bottom (100).', step: 1 },
+      defaultValue: 50,
+      max: 100,
+      min: 0,
+    },
+  ],
+  hooks: {
+    beforeChange: [refuseLargeFile],
+  },
+  upload: {
+    // Cropping and the focal point are applied with sharp, which does not run on workerd: the admin would offer them and the server would drop the value. The focal fields above frame the image at delivery instead.
+    crop: false,
+    focalPoint: false,
+    mimeTypes: ['image/*'],
+  },
+};

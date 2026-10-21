@@ -1,0 +1,29 @@
+import { authenticated } from '@/access';
+import { revalidateSiteSettings } from '@/hooks/revalidate';
+import type { GlobalConfig } from 'payload';
+
+export const SiteSettings: GlobalConfig = {
+  slug: 'site-settings',
+  access: {
+    read: () => true,
+    update: authenticated,
+  },
+  fields: [
+    { name: 'siteName', type: 'text', defaultValue: '{{projectName}}', required: true },
+    {
+      name: 'navigation',
+      type: 'array',
+      admin: { description: 'The links of the header.' },
+      fields: [
+        { name: 'label', type: 'text', required: true },
+        { name: 'href', type: 'text', required: true },
+      ],
+      maxRows: 8,
+    },
+    { name: 'footerText', type: 'textarea' },
+  ],
+  hooks: {
+    afterChange: [revalidateSiteSettings],
+  },
+  label: 'Site settings',
+};

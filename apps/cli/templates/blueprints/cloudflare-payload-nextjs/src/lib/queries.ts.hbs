@@ -1,0 +1,129 @@
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { getPayloadClient } from '@/lib/payload';
+import type { Page, Post, SiteSetting } from '@/payload-types';
+import { unstable_cache } from 'next/cache';
+
+// Every read of the public site goes through unstable_cache with the tags that the hooks of the collections expire, so a page
+// view reads R2 and the tag cache, not D1. A draft is read from the database each time, for the signed-in editor only.
+
+// A read that finds nothing throws this, which unstable_cache does not store: a made-up URL leaves nothing in the cache.
+class NothingFound extends Error {}
+
+async function findPage(slug: string, draft: boolean): Promise<Page | null> {
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: 'pages',
+    depth: 1,
+    draft,
+    limit: 1,
+    overrideAccess: draft,
+    pagination: false,
+    where: { slug: { equals: slug } },
+  });
+  return docs[0] ?? null;
+}
+
+async function findPost(slug: string, draft: boolean): Promise<Post | null> {
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: 'posts',
+    depth: 1,
+    draft,
+    limit: 1,
+    overrideAccess: draft,
+    pagination: false,
+    where: { slug: { equals: slug } },
+  });
+  return docs[0] ?? null;
+}
+
+async function cachedOrNull<T>(read: () => Promise<T | null>, key: string[], tags: string[]): Promise<T | null> {
+  const readOrThrow = async (): Promise<T> => {
+    const found = await read();
+    if (found === null) throw new NothingFound();
+    return found;
+  };
+  try {
+    return await unstable_cache(readOrThrow, key, { tags })();
+  } catch (error) {
+    if (error instanceof NothingFound) return null;
+    throw error;
+  }
+}
+
+export function getPage(slug: string, draft: boolean): Promise<Page | null> {
+  if (draft) return findPage(slug, true);
+  return cachedOrNull(() => findPage(slug, false), ['page', slug], [CACHE_TAGS.page(slug)]);
+}
+
+export function getPost(slug: string, draft: boolean): Promise<Post | null> {
+  if (draft) return findPost(slug, true);
+  return cachedOrNull(() => findPost(slug, false), ['post', slug], [CACHE_TAGS.post(slug)]);
+}
+
+const MISSING_REVALIDATE_SECONDS = 5;
+
+/**
+ * Called before a page answers 404. The cached 404 of the route then carries the tag of the document it waits for, so
+ * publishing that document replaces it at once, and expires in a few seconds anyway: a made-up URL is not kept for good.
+ */
+export async function rememberMissing(tag: string): Promise<void> {
+  await unstable_cache(async () => null, ['missing', tag], {
+    revalidate: MISSING_REVALIDATE_SECONDS,
+    tags: [tag],
+  })();
+}
+
+const POSTS_PER_LIST = 50;
+
+export const getPublishedPosts = unstable_cache(
+  async (): Promise<Post[]> => {
+    const payload = await getPayloadClient();
+    const { docs } = await payload.find({
+      collection: 'posts',
+      depth: 1,
+      limit: POSTS_PER_LIST,
+      overrideAccess: false,
+      pagination: false,
+      sort: '-publishedAt',
+    });
+    return docs;
+  },
+  ['posts'],
+  { tags: [CACHE_TAGS.posts] },
+);
+
+export const getSiteSettings = unstable_cache(
+  async (): Promise<SiteSetting> => {
+    const payload = await getPayloadClient();
+    return payload.findGlobal({ slug: 'site-settings' });
+  },
+  ['site-settings'],
+  { tags: [CACHE_TAGS.siteSettings] },
+);
+
+export interface SitemapEntry {
+  collection: 'pages' | 'posts';
+  slug: string;
+  updatedAt: string;
+}
+
+export const getSitemapEntries = unstable_cache(
+  async (): Promise<SitemapEntry[]> => {
+    const payload = await getPayloadClient();
+    const read = async (collection: SitemapEntry['collection']): Promise<SitemapEntry[]> => {
+      const { docs } = await payload.find({
+        collection,
+        depth: 0,
+        limit: 1000,
+        overrideAccess: false,
+        pagination: false,
+        select: { slug: true, updatedAt: true },
+      });
+      return docs.map((doc) => ({ collection, slug: doc.slug, updatedAt: doc.updatedAt }));
+    };
+    return [...(await read('pages')), ...(await read('posts'))];
+  },
+  ['sitemap'],
+  { tags: [CACHE_TAGS.pages, CACHE_TAGS.posts] },
+);

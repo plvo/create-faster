@@ -23,7 +23,8 @@ type DatabaseName = keyof typeof META.project.database.options;
 const WORKSPACE_SCOPE = '@repo/';
 
 /** Read from the shell or by the tool that starts the app, never from a `.env` file the project ships. */
-const PROVIDED_BY_THE_ENVIRONMENT = new Set(['NODE_ENV', 'PORT', 'PORTLESS_URL']);
+// WRANGLER_CONFIG_PATH and WRANGLER_REMOTE_BINDINGS are set by the remote runner of cloudflare-payload-nextjs (scripts/remote.ts) for one command.
+const PROVIDED_BY_THE_ENVIRONMENT = new Set(['NODE_ENV', 'PORT', 'PORTLESS_URL', 'WRANGLER_CONFIG_PATH', 'WRANGLER_REMOTE_BINDINGS']);
 
 /** Filled by the bundler: `import.meta.env.DEV` and the like. */
 const VITE_BUILT_INS = new Set(['DEV', 'PROD', 'MODE', 'SSR', 'BASE_URL']);
@@ -403,8 +404,13 @@ describe('apps receive what they use', () => {
       }
       const bindings = new Set<string>();
       for (const file of project.files.filter((candidate) => candidate.endsWith('wrangler.jsonc'))) {
-        for (const [, binding] of (await readTextFile(join(project.root, file))).matchAll(/"binding":\s*"(\w+)"/g)) {
+        const config = await readTextFile(join(project.root, file));
+        for (const [, binding] of config.matchAll(/"binding":\s*"(\w+)"/g)) {
           if (binding) bindings.add(binding);
+        }
+        // The `vars` of a Worker are on its process.env, like its bindings.
+        for (const variable of Object.keys((Bun.JSONC.parse(config) as { vars?: Record<string, string> }).vars ?? {})) {
+          bindings.add(variable);
         }
       }
 

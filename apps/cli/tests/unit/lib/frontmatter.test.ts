@@ -116,10 +116,10 @@ describe('readFrontmatterFile', () => {
   });
 
   test('reads file without frontmatter', () => {
-    const filepath = join(TEMPLATES_DIR, 'stack/nextjs/src/app/error.tsx.hbs');
+    const filepath = join(TEMPLATES_DIR, 'stack/nextjs/src/components/app-providers.tsx.hbs');
     const result = readFrontmatterFile(filepath);
     expect(result.data).toEqual({});
-    expect(result.content).toContain('export default function');
+    expect(result.content).toContain('export function AppProviders');
   });
 
   test('throws on non-existent file', () => {

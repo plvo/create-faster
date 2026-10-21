@@ -1,0 +1,7 @@
+export const CACHE_TAGS = {
+  pages: 'pages',
+  posts: 'posts',
+  siteSettings: 'site-settings',
+  page: (slug: string) => `page:${slug}`,
+  post: (slug: string) => `post:${slug}`,
+} as const;

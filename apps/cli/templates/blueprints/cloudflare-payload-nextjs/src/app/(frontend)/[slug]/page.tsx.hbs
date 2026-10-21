@@ -1,0 +1,30 @@
+import { PageView } from '@/components/page-view';
+import { metadataOf } from '@/lib/page-metadata';
+import { getPage } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
+import { notFound } from 'next/navigation';
+
+type Props = { params: Promise<{ slug: string }> };
+
+// A page is rendered on its first request and kept until a hook of the Pages collection expires its tags: nothing is built
+// ahead, and nothing expires on a timer.
+export const revalidate = false;
+
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const { isEnabled: draft } = await draftMode();
+  const page = await getPage(slug, draft);
+  return page ? metadataOf(page) : {};
+}
+
+export default async function Page({ params }: Props) {
+  const { slug } = await params;
+  // The page with the slug `home` is served at `/`.
+  if (slug === 'home') notFound();
+  return <PageView slug={slug} />;
+}

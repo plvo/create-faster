@@ -1,0 +1,115 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Media } from '@/collections/Media';
+import { Pages } from '@/collections/Pages';
+import { Posts } from '@/collections/Posts';
+import { Users } from '@/collections/Users';
+import { SiteSettings } from '@/globals/SiteSettings';
+import { getAppUrl } from '@/lib/get-app-url';
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_REQUEST_BYTES } from '@/lib/upload-limits';
+import { type CloudflareContext, getCloudflareContext } from '@opennextjs/cloudflare';
+import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite';
+import { seoPlugin } from '@payloadcms/plugin-seo';
+import { lexicalEditor } from '@payloadcms/richtext-lexical';
+import { r2Storage } from '@payloadcms/storage-r2';
+import { buildConfig, type Payload, type PayloadLogger, type Plugin } from 'payload';
+import type { GetPlatformProxyOptions } from 'wrangler';
+
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
+
+// The directory the cron Worker and the `wrangler d1` scripts of the repo write the local D1 and R2 state to.
+const LOCAL_STATE_DIRECTORY = path.resolve(dirname, '../../../.wrangler/v3');
+
+const realpath = (value: string) => {
+  try {
+    return fs.existsSync(value) ? fs.realpathSync(value) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// The Payload CLI and the Next.js CLI (`next dev`, `next build`) run in Node, where the bindings come from Wrangler's platform proxy.
+const isCLI = process.argv.some((value) => {
+  const resolved = realpath(value);
+  if (!resolved) return false;
+  return resolved.endsWith(path.join('payload', 'bin.js')) || resolved.endsWith(path.join('next', 'dist', 'bin', 'next'));
+});
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Pino transports do not run on workerd.
+const jsonLog =
+  (level: string, write: typeof console.log) =>
+  (objectOrMessage: object | string, message?: string): void => {
+    if (typeof objectOrMessage === 'string') {
+      write(JSON.stringify({ level, msg: objectOrMessage }));
+      return;
+    }
+    write(JSON.stringify({ level, ...objectOrMessage, msg: message ?? (objectOrMessage as { msg?: string }).msg }));
+  };
+
+// Only the log methods Payload calls are implemented, so the logger is not a complete pino Logger.
+const workersLogger = {
+  level: 'info',
+  trace: jsonLog('trace', console.debug),
+  debug: jsonLog('debug', console.debug),
+  info: jsonLog('info', console.log),
+  warn: jsonLog('warn', console.warn),
+  error: jsonLog('error', console.error),
+  fatal: jsonLog('fatal', console.error),
+  silent: () => {},
+} as unknown as PayloadLogger;
+
+// Wrangler is imported through a computed name so the bundler leaves it out of the Worker. The bindings are the local ones
+// (the state in LOCAL_STATE_DIRECTORY) unless WRANGLER_REMOTE_BINDINGS is 'true' and the Wrangler config marks them remote:
+// `next build` sets NODE_ENV=production and loads this file at module scope, so NODE_ENV never decides it.
+function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
+  return import(/* webpackIgnore: true */ `${'__wrangler'.replaceAll('_', '')}`).then(({ getPlatformProxy }) =>
+    getPlatformProxy({
+      configPath: process.env.WRANGLER_CONFIG_PATH,
+      persist: { path: LOCAL_STATE_DIRECTORY },
+      remoteBindings: process.env.WRANGLER_REMOTE_BINDINGS === 'true',
+    } satisfies GetPlatformProxyOptions),
+  );
+}
+
+const cloudflare = isCLI || !isProduction ? await getCloudflareContextFromWrangler() : await getCloudflareContext({ async: true });
+
+// The SEO plugin registers endpoints that generate field values, which no field of this project uses. Its labels are what the
+// SEO fields need, so only its translations are kept.
+const seoTranslations: Plugin = async (config) => ({ ...config, i18n: (await seoPlugin({})(config)).i18n });
+
+// @payloadcms/db-d1-sqlite sets `upsert` to `updateOne` without `upsert: true`, so the preferences of the admin (the state of
+// the sidebar, the columns of a list) are never saved. https://github.com/payloadcms/payload/issues/17202
+const savePreferencesOnD1 = (payload: Payload) => {
+  payload.db.upsert = (args) => payload.db.updateOne({ ...args, options: { upsert: true } });
+};
+
+const appUrl = getAppUrl();
+
+export default buildConfig({
+  admin: {
+    importMap: { baseDir: path.resolve(dirname) },
+    user: Users.slug,
+  },
+  collections: [Users, Media, Pages, Posts],
+  cors: [appUrl],
+  csrf: [appUrl],
+  db: sqliteD1Adapter({ binding: cloudflare.env.DB, push: false }),
+  editor: lexicalEditor(),
+  globals: [SiteSettings],
+  // GraphQL is not guaranteed to run on workerd (payloadcms/payload#17771) and the site reads through the Local API.
+  graphQL: { disable: true },
+  logger: isProduction ? workersLogger : undefined,
+  onInit: savePreferencesOnD1,
+  plugins: [seoTranslations, r2Storage({ bucket: cloudflare.env.STORAGE, collections: { media: true } })],
+  secret: process.env.PAYLOAD_SECRET || '',
+  serverURL: appUrl,
+  typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
+  upload: {
+    abortOnLimit: true,
+    limits: { fileSize: MAX_UPLOAD_BYTES },
+    requestSizeLimit: MAX_UPLOAD_REQUEST_BYTES,
+  },
+});

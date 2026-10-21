@@ -1,0 +1,138 @@
+// Adds the sample site settings, image, pages and posts that are missing, and deletes nothing: a second run changes nothing,
+// and an edit made in the admin stays. Run by `payload run`, which loads .env.
+import { getPayloadClient } from '@/lib/payload';
+import type { Media, Page, Post } from '@/payload-types';
+import type { DefaultTypedEditorState } from '@payloadcms/richtext-lexical';
+import type { Payload } from 'payload';
+
+// The seed runs outside a request, where there is no cache to revalidate.
+const context = { disableRevalidate: true };
+
+const text = (value: string) => ({ detail: 0, format: 0, mode: 'normal' as const, style: '', text: value, type: 'text' as const, version: 1 });
+const block = (type: 'heading' | 'paragraph', value: string, extra: Record<string, unknown> = {}) => ({
+  children: [text(value)],
+  direction: 'ltr' as const,
+  format: '' as const,
+  indent: 0,
+  type,
+  version: 1,
+  ...extra,
+});
+const richText = (...children: ReturnType<typeof block>[]): DefaultTypedEditorState => ({
+  root: { children, direction: 'ltr', format: '', indent: 0, type: 'root', version: 1 },
+}) as DefaultTypedEditorState;
+const heading = (value: string) => block('heading', value, { tag: 'h2' });
+const paragraph = (value: string) => block('paragraph', value, { textFormat: 0, textStyle: '' });
+
+const SAMPLE_IMAGE = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="1200" height="630" fill="url(#g)"/><circle cx="900" cy="315" r="180" fill="#ffffff" fill-opacity="0.15"/></svg>`;
+
+async function ensureMedia(payload: Payload): Promise<Media> {
+  const filename = 'sample-cover.svg';
+  const existing = await payload.find({ collection: 'media', limit: 1, where: { filename: { equals: filename } } });
+  if (existing.docs[0]) return existing.docs[0];
+  const data = Buffer.from(SAMPLE_IMAGE);
+  return payload.create({
+    collection: 'media',
+    context,
+    data: { alt: 'A blue gradient with a pale circle' },
+    file: { data, mimetype: 'image/svg+xml', name: filename, size: data.length },
+  });
+}
+
+async function ensureSiteSettings(payload: Payload, siteName: string) {
+  const current = await payload.findGlobal({ slug: 'site-settings' });
+  if (current.footerText || current.navigation?.length) return;
+  await payload.updateGlobal({
+    slug: 'site-settings',
+    context,
+    data: {
+      footerText: `${siteName}, built with Payload on Cloudflare Workers.`,
+      navigation: [{ href: '/about', label: 'About' }],
+      siteName,
+    },
+  });
+}
+
+async function ensurePage(payload: Payload, slug: string, data: Omit<Page, 'createdAt' | 'id' | 'slug' | 'updatedAt'>) {
+  const existing = await payload.find({ collection: 'pages', limit: 1, where: { slug: { equals: slug } } });
+  if (existing.docs[0]) return;
+  await payload.create({ collection: 'pages', context, data: { ...data, _status: 'published', slug } });
+}
+
+async function ensurePost(payload: Payload, slug: string, data: Omit<Post, 'createdAt' | 'id' | 'slug' | 'updatedAt'>) {
+  const existing = await payload.find({ collection: 'posts', limit: 1, where: { slug: { equals: slug } } });
+  if (existing.docs[0]) return;
+  await payload.create({ collection: 'posts', context, data: { ...data, _status: 'published', slug } });
+}
+
+const payload = await getPayloadClient();
+const cover = await ensureMedia(payload);
+
+await ensureSiteSettings(payload, '{{projectName}}');
+
+await ensurePage(payload, 'home', {
+  title: 'Home',
+  layout: [
+    {
+      blockType: 'hero',
+      ctaHref: '/posts',
+      ctaLabel: 'Read the posts',
+      heading: 'A site you edit from an admin',
+      image: cover.id,
+      subheading: 'Pages and posts live in Payload, on Cloudflare D1 and R2, and reach the site as soon as you publish.',
+    },
+    {
+      blockType: 'richText',
+      content: richText(
+        heading('Edit this page'),
+        paragraph('Sign in at /admin, open Pages and change this text. The site shows it without a deploy.'),
+      ),
+    },
+    {
+      blockType: 'callToAction',
+      heading: 'Write a post',
+      href: '/admin/collections/posts/create',
+      label: 'Open the admin',
+      text: 'Posts have a cover image, an excerpt and a publication date.',
+    },
+  ],
+});
+
+await ensurePage(payload, 'about', {
+  title: 'About',
+  layout: [
+    {
+      blockType: 'richText',
+      content: richText(
+        heading('About this site'),
+        paragraph('This is a sample page built from blocks: a hero, rich text, media and a call to action.'),
+      ),
+    },
+    { blockType: 'mediaBlock', caption: 'A sample image from the media library', media: cover.id },
+  ],
+});
+
+await ensurePost(payload, 'hello-world', {
+  title: 'Hello, world',
+  content: richText(
+    paragraph('This is the first post. It is a sample: edit or delete it from the admin.'),
+    heading('Drafts and preview'),
+    paragraph('A post stays a draft until you publish it, and the preview shows the draft on the real site.'),
+  ),
+  cover: cover.id,
+  excerpt: 'The first post of the site.',
+  publishedAt: new Date('2026-01-01T09:00:00.000Z').toISOString(),
+});
+
+await ensurePost(payload, 'media-without-sharp', {
+  title: 'Media without sharp',
+  content: richText(
+    paragraph('Workers cannot run sharp, so an image is stored and served as it was uploaded.'),
+    paragraph('Upload it at the size it is shown, and set where it is framed with the focal point fields.'),
+  ),
+  cover: cover.id,
+  excerpt: 'What changes for images on Workers.',
+  publishedAt: new Date('2026-01-02T09:00:00.000Z').toISOString(),
+});
+
+console.log('The sample site settings, image, pages and posts are in place.');

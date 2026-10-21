@@ -1,0 +1,38 @@
+import '@/styles/globals.css';
+import '@/styles/rich-text.css';
+import { DraftBanner } from '@/components/draft-banner';
+import { Footer } from '@/components/footer';
+import { Header } from '@/components/header';
+import { getAppUrl } from '@/lib/get-app-url';
+import { getSiteSettings } from '@/lib/queries';
+import type { Metadata } from 'next';
+import localFont from 'next/font/local';
+import { draftMode } from 'next/headers';
+
+{{> nextjs/fonts fontsDirectory="../../styles/fonts"}}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { siteName } = await getSiteSettings();
+  return {
+    metadataBase: new URL(getAppUrl()),
+    title: { default: siteName, template: `%s | ${siteName}` },
+  };
+}
+
+export default async function FrontendLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const { isEnabled: draft } = await draftMode();
+  return (
+    <html lang='en' className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <body className='flex min-h-screen flex-col antialiased' suppressHydrationWarning>
+        {draft && <DraftBanner />}
+        <Header />
+        <main className='flex-1'>{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}

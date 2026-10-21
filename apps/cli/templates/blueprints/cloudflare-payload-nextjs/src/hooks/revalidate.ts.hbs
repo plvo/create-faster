@@ -1,0 +1,42 @@
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { revalidateTags } from '@/lib/revalidate';
+import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, GlobalAfterChangeHook } from 'payload';
+
+interface Sluggable {
+  _status?: 'draft' | 'published' | null;
+  slug?: string | null;
+}
+
+// A draft saved over a published document changes nothing the site shows, so only a document that is or was published
+// has tags to expire. The previous slug goes too: its page is gone after a rename.
+function tagsOf(listTag: string, documentTag: (slug: string) => string, doc: Sluggable, previousDoc?: Sluggable) {
+  const slugs = [doc.slug, previousDoc?.slug].filter((slug): slug is string => Boolean(slug));
+  return [listTag, ...slugs.map(documentTag)];
+}
+
+function revalidateAfterChange(listTag: string, documentTag: (slug: string) => string): CollectionAfterChangeHook {
+  return ({ doc, previousDoc, req }) => {
+    if (req.context.disableRevalidate) return doc;
+    if (doc._status === 'published' || previousDoc?._status === 'published') {
+      revalidateTags(tagsOf(listTag, documentTag, doc, previousDoc));
+    }
+    return doc;
+  };
+}
+
+function revalidateAfterDelete(listTag: string, documentTag: (slug: string) => string): CollectionAfterDeleteHook {
+  return ({ doc, req }) => {
+    if (!req.context.disableRevalidate) revalidateTags(tagsOf(listTag, documentTag, doc));
+    return doc;
+  };
+}
+
+export const revalidatePage = revalidateAfterChange(CACHE_TAGS.pages, CACHE_TAGS.page);
+export const revalidateDeletedPage = revalidateAfterDelete(CACHE_TAGS.pages, CACHE_TAGS.page);
+export const revalidatePost = revalidateAfterChange(CACHE_TAGS.posts, CACHE_TAGS.post);
+export const revalidateDeletedPost = revalidateAfterDelete(CACHE_TAGS.posts, CACHE_TAGS.post);
+
+export const revalidateSiteSettings: GlobalAfterChangeHook = ({ doc, req }) => {
+  if (!req.context.disableRevalidate) revalidateTags([CACHE_TAGS.siteSettings]);
+  return doc;
+};

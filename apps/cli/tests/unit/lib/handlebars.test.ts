@@ -521,4 +521,19 @@ describe('Handlebars helpers', () => {
       expect(template({ apps: [{ appName: 'web' }] })).toBe('3000');
     });
   });
+  describe('generatedFiles', () => {
+    const EACH = '{{#each (generatedFiles)}}[{{this}}]{{/each}}';
+    const ctx = (blueprint?: string): Partial<TemplateContext> => ({ blueprint, apps: [], project: { tooling: [] } });
+
+    test('lists the files the selected blueprint declares', () => {
+      expect(Handlebars.compile(EACH)(ctx('cloudflare-payload-nextjs'))).toBe(
+        '[**/src/payload-types.ts][**/importMap.js][**/src/migrations/*]',
+      );
+    });
+
+    test('is empty without a blueprint, and for a blueprint that declares none', () => {
+      expect(Handlebars.compile(EACH)(ctx())).toBe('');
+      expect(Handlebars.compile(EACH)(ctx('dapp-privy-nextjs'))).toBe('');
+    });
+  });
 });

@@ -1,0 +1,12 @@
+import { getSiteSettings } from '@/lib/queries';
+
+export async function Footer() {
+  const settings = await getSiteSettings();
+  return (
+    <footer className='border-t'>
+      <div className='mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground'>
+        {settings.footerText || settings.siteName}
+      </div>
+    </footer>
+  );
+}

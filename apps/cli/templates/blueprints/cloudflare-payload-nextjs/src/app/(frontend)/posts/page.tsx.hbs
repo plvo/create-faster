@@ -1,0 +1,43 @@
+import { Media } from '@/components/media';
+import { formatDate } from '@/lib/format-date';
+import { getPublishedPosts } from '@/lib/queries';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+// Same reason as the home page: it reads the database without a dynamic segment, so it is not built ahead.
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = { title: 'Posts' };
+
+export default async function PostsPage() {
+  const posts = await getPublishedPosts();
+  return (
+    <section className='mx-auto max-w-3xl px-4 py-12'>
+      <h1 className='mb-8 text-3xl font-bold'>Posts</h1>
+      {posts.length === 0 ? (
+        <p className='text-muted-foreground'>No post has been published yet.</p>
+      ) : (
+        <ul className='flex flex-col gap-8'>
+          {posts.map((post) => (
+            <li key={post.id}>
+              <article className='flex flex-col gap-3'>
+                <Media className='h-48 w-full rounded-lg' media={post.cover} />
+                <h2 className='text-xl font-semibold'>
+                  <Link className='underline-offset-4 hover:underline' href={`/posts/${post.slug}`}>
+                    {post.title}
+                  </Link>
+                </h2>
+                {post.publishedAt && (
+                  <time className='text-sm text-muted-foreground' dateTime={post.publishedAt}>
+                    {formatDate(post.publishedAt, 'long')}
+                  </time>
+                )}
+                {post.excerpt && <p className='text-muted-foreground'>{post.excerpt}</p>}
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

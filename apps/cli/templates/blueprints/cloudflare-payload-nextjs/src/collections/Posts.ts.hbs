@@ -1,0 +1,50 @@
+import { authenticated, authenticatedOrPublished } from '@/access';
+import { seoTab } from '@/fields/seo';
+import { populatePublishedAt } from '@/hooks/populate-published-at';
+import { revalidateDeletedPost, revalidatePost } from '@/hooks/revalidate';
+import { previewUrl } from '@/lib/preview-url';
+import { type CollectionConfig, slugField } from 'payload';
+
+export const Posts: CollectionConfig = {
+  slug: 'posts',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: authenticatedOrPublished,
+    update: authenticated,
+  },
+  admin: {
+    defaultColumns: ['title', 'slug', 'publishedAt', 'updatedAt'],
+    livePreview: { url: ({ data }) => previewUrl('posts', data?.slug) },
+    preview: (data) => previewUrl('posts', data?.slug),
+    useAsTitle: 'title',
+  },
+  fields: [
+    { name: 'title', type: 'text', required: true },
+    {
+      type: 'tabs',
+      tabs: [
+        {
+          label: 'Content',
+          fields: [
+            { name: 'excerpt', type: 'textarea', admin: { description: 'Shown in the list of posts.' } },
+            { name: 'cover', type: 'upload', relationTo: 'media' },
+            { name: 'content', type: 'richText', required: true },
+          ],
+        },
+        seoTab,
+      ],
+    },
+    { name: 'publishedAt', type: 'date', admin: { position: 'sidebar' } },
+    slugField(),
+  ],
+  hooks: {
+    afterChange: [revalidatePost],
+    afterDelete: [revalidateDeletedPost],
+    beforeChange: [populatePublishedAt],
+  },
+  versions: {
+    drafts: { autosave: { interval: 1000 } },
+    maxPerDoc: 50,
+  },
+};

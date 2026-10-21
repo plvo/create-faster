@@ -1,0 +1,37 @@
+---
+path: docs/agents/media.md
+mono:
+  scope: root
+  path: docs/agents/media.md
+---
+# Media
+
+Uploads go to the `media` collection (`apps/web/src/collections/Media.ts`) and are stored in the R2 bucket (`STORAGE`) by `@payloadcms/storage-r2`, at the root of the bucket. A file is served from `/api/media/file/<filename>`, through Payload.
+
+## No `sharp`
+
+`sharp` is a native module and does not run on workerd, so this project installs and configures none. What Payload does with it is not available:
+
+- **No image sizes.** The collection declares no `imageSizes`; the original is the only file.
+- **No crop and no focal point.** The admin would show the controls and the server would drop the value, so the collection sets `crop: false` and `focalPoint: false`. The `focalX` and `focalY` fields (percent, 50 by default) take their place: `apps/web/src/components/media.tsx` reads them as the `object-position` of the image.
+- **No format conversion and no EXIF removal.** A photo keeps its metadata, the location of the shot included.
+- Width, height, file size and MIME type are still recorded.
+
+Upload an image at the size it is shown. A site that needs resizing does it at delivery with Cloudflare Images transformations (`/cdn-cgi/image/<options>/<path>`), which needs a zone: the route answers 404 on a `workers.dev` address.
+
+## Why `next/image` does not optimize
+
+`images.unoptimized` is `true` in `apps/web/next.config.ts`. The OpenNext image optimizer fetches a relative URL through the `ASSETS` binding, which holds the build output and not the media in R2, so it answered 404 for every image. The `Media` component renders `next/image`, which then writes a plain `<img>` with its width, height and `object-position`.
+
+## Limits
+
+An upload is limited to `MAX_UPLOAD_BYTES` (20 MB, `apps/web/src/lib/upload-limits.ts`), a constant that the config and the collection share:
+
+- `upload.limits.fileSize` with `abortOnLimit: true` makes the multipart parser refuse a larger file with a 413 before anything is stored, and `requestSizeLimit` leaves 1 MB around it for the rest of the request.
+- The Local API takes a file without the multipart parser, so a `beforeChange` hook of the collection checks the size of `req.file` too.
+
+Only images are accepted (`mimeTypes: ['image/*']`).
+
+## The page cache shares the bucket
+
+OpenNext keeps the cached pages in the same bucket, under the `incremental-cache/` prefix, and the backups of the cron Worker are under `backups/`. A media file is never stored under either prefix.

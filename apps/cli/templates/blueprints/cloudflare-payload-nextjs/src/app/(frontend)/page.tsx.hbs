@@ -1,0 +1,18 @@
+import { PageView } from '@/components/page-view';
+import { metadataOf } from '@/lib/page-metadata';
+import { getPage } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
+
+// The home page has no dynamic segment to render on the first request, so it is rendered for each one: built ahead, it would read D1 before the first migration ran. Its data comes from the tagged cache.
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { isEnabled: draft } = await draftMode();
+  const page = await getPage('home', draft);
+  return page ? metadataOf(page) : {};
+}
+
+export default function HomePage() {
+  return <PageView slug='home' />;
+}

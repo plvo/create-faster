@@ -1,0 +1,11 @@
+'use client';
+
+import { getAppUrl } from '@/lib/get-app-url';
+import { RefreshRouteOnSave } from '@payloadcms/live-preview-react';
+import { useRouter } from 'next/navigation';
+
+// Refreshes the page when the editor saves in the admin, so the preview follows what is typed.
+export function LivePreviewListener() {
+  const router = useRouter();
+  return <RefreshRouteOnSave refresh={router.refresh} serverURL={getAppUrl()} />;
+}

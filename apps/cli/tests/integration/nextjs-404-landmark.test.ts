@@ -48,12 +48,14 @@ describe.each(PROJECTS)('$title 404', ({ args, appNames }) => {
   });
 
   // The 404 an unknown URL reaches: the not found page of the group whose catch-all page answers it, inside that
-  // group's layout, else the root one.
+  // group's layout, else the root one. The layouts are the root layout of the app and the one of the group.
   async function reachedNotFound(appDirectory: string) {
     const appRoot = join(appDirectory, 'src/app');
     const catchAll = (await filesUnder(appRoot)).map((file) => relative(appRoot, file)).find((file) => CATCH_ALL_PAGE.test(file));
     const groupDirectory = catchAll ? dirname(dirname(catchAll)) : '.';
-    const layouts = [join(appRoot, 'layout.tsx')];
+    // An app with several root layouts has none at the top: the layout of the group is the root one.
+    const topLevelLayout = join(appRoot, 'layout.tsx');
+    const layouts = (await fileExists(topLevelLayout)) ? [topLevelLayout] : [];
     if (groupDirectory !== '.') layouts.push(join(appRoot, groupDirectory, 'layout.tsx'));
     const notFoundFile = join(appRoot, groupDirectory, 'not-found.tsx');
     const titleSource = catchAll ? join(appRoot, catchAll) : notFoundFile;

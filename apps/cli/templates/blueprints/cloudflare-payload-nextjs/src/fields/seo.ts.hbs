@@ -1,0 +1,19 @@
+import {
+  MetaDescriptionField,
+  MetaImageField,
+  MetaTitleField,
+  OverviewField,
+} from '@payloadcms/plugin-seo/fields';
+import type { Tab } from 'payload';
+
+// The field exports of the SEO plugin, not seoPlugin(): the plugin registers the generate endpoints, which no field here uses.
+export const seoTab: Tab = {
+  name: 'meta',
+  label: 'SEO',
+  fields: [
+    OverviewField({ descriptionPath: 'meta.description', imagePath: 'meta.image', titlePath: 'meta.title' }),
+    MetaTitleField({}),
+    MetaImageField({ relationTo: 'media' }),
+    MetaDescriptionField({}),
+  ],
+};

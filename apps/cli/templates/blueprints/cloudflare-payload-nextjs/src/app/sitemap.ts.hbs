@@ -1,0 +1,19 @@
+import { getAppUrl } from '@/lib/get-app-url';
+import { pathOf } from '@/lib/preview-url';
+import { getSitemapEntries } from '@/lib/queries';
+import type { MetadataRoute } from 'next';
+
+// Reads the database without a dynamic segment, so it is not built ahead (see the home page).
+export const dynamic = 'force-dynamic';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const origin = getAppUrl();
+  const entries = await getSitemapEntries();
+  return [
+    { url: `${origin}/posts` },
+    ...entries.map(({ collection, slug, updatedAt }) => ({
+      lastModified: updatedAt,
+      url: `${origin}${pathOf(collection, slug)}`,
+    })),
+  ];
+}

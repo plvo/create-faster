@@ -1,0 +1,19 @@
+import { authenticated } from '@/access';
+import type { CollectionConfig } from 'payload';
+
+// Every user is an editor with access to the whole admin. The first one is created by `ensure-admin`.
+export const Users: CollectionConfig = {
+  slug: 'users',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: authenticated,
+    update: authenticated,
+  },
+  admin: {
+    defaultColumns: ['name', 'email'],
+    useAsTitle: 'email',
+  },
+  auth: true,
+  fields: [{ name: 'name', type: 'text' }],
+};

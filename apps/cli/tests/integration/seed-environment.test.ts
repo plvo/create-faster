@@ -16,6 +16,7 @@ const PRISMA_SEED_COMMAND = 'prisma db seed';
 
 const KNOWN_SEEDING_BLUEPRINTS = [
   'cloudflare-fullstack-nextjs',
+  'cloudflare-payload-nextjs',
   'dapp-privy-nextjs',
   'dapp-rainbowkit-nextjs',
   'multitenant-saas-nextjs',
@@ -58,11 +59,18 @@ interface SeedCheck {
 interface NodeCommand {
   file: string;
   envFiles: string[];
+  /** The runner loads the `.env` of the app itself: `payload run` does, through @next/env. */
+  loadsEnvItself?: boolean;
 }
 
-/** The file a script runs through `tsx` or `node`, and the `.env` files the runner is given. */
+/** The file a script runs through `payload run`, `tsx` or `node`, and the `.env` files the runner is given. */
 function parseNodeCommand(script: string): NodeCommand | undefined {
   const tokens = script.split(/\s+/);
+  const payload = tokens.indexOf('payload');
+  if (payload >= 0 && tokens[payload + 1] === 'run') {
+    const file = tokens[payload + 2] ?? '';
+    return SEED_FILE.test(file) ? { file, envFiles: [], loadsEnvItself: true } : undefined;
+  }
   const runner = tokens.findIndex((token) => NODE_RUNNERS.includes(token));
   if (runner < 0) return undefined;
   const envFiles: string[] = [];
@@ -119,7 +127,7 @@ async function checkSeeds(project: string): Promise<SeedCheck> {
         result.problems.push(`${where(manifest)}: \`${script}\` loads ${envFile}, which has no ${envFile}.example`);
       }
     }
-    if (command.envFiles.length === 0 && !(await loadsDotenvFirst(file))) {
+    if (command.envFiles.length === 0 && !command.loadsEnvItself && !(await loadsDotenvFirst(file))) {
       result.problems.push(
         `${where(manifest)}: \`${script}\` loads no .env: no --env-file flag, and \`import 'dotenv/config'\` is not the first import of ${command.file}`,
       );

@@ -1,0 +1,70 @@
+import { Media } from '@/components/media';
+import { RichText } from '@/components/rich-text';
+import type { Page } from '@/payload-types';
+import { Button } from '@repo/ui/components/ui/button';
+import Link from 'next/link';
+
+type Block = Page['layout'][number];
+
+function HeroBlock({ block }: { block: Extract<Block, { blockType: 'hero' }> }) {
+  return (
+    <section className='relative isolate overflow-hidden'>
+      <Media className='absolute inset-0 -z-10 size-full opacity-30' media={block.image} priority />
+      <div className='mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 py-24 text-center'>
+        <h1 className='text-4xl font-bold tracking-tight sm:text-5xl'>{block.heading}</h1>
+        {block.subheading && <p className='text-lg text-muted-foreground'>{block.subheading}</p>}
+        {block.ctaLabel && block.ctaHref && (
+          <Button asChild size='lg'>
+            <Link href={block.ctaHref}>{block.ctaLabel}</Link>
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RichTextBlock({ block }: { block: Extract<Block, { blockType: 'richText' }> }) {
+  return (
+    <section className='mx-auto max-w-3xl px-4 py-8'>
+      <RichText data={block.content} />
+    </section>
+  );
+}
+
+function MediaBlock({ block }: { block: Extract<Block, { blockType: 'mediaBlock' }> }) {
+  return (
+    <figure className='mx-auto max-w-4xl px-4 py-8'>
+      <Media className='h-auto w-full rounded-lg' media={block.media} />
+      {block.caption && <figcaption className='mt-2 text-center text-sm text-muted-foreground'>{block.caption}</figcaption>}
+    </figure>
+  );
+}
+
+function CallToActionBlock({ block }: { block: Extract<Block, { blockType: 'callToAction' }> }) {
+  return (
+    <section className='mx-auto my-8 flex max-w-3xl flex-col items-center gap-4 rounded-lg border px-4 py-12 text-center'>
+      <h2 className='text-2xl font-semibold'>{block.heading}</h2>
+      {block.text && <p className='text-muted-foreground'>{block.text}</p>}
+      <Button asChild>
+        <Link href={block.href}>{block.label}</Link>
+      </Button>
+    </section>
+  );
+}
+
+function BlockView({ block }: { block: Block }) {
+  switch (block.blockType) {
+    case 'hero':
+      return <HeroBlock block={block} />;
+    case 'richText':
+      return <RichTextBlock block={block} />;
+    case 'mediaBlock':
+      return <MediaBlock block={block} />;
+    case 'callToAction':
+      return <CallToActionBlock block={block} />;
+  }
+}
+
+export function RenderBlocks({ blocks }: { blocks: Page['layout'] }) {
+  return blocks.map((block) => <BlockView block={block} key={block.id} />);
+}

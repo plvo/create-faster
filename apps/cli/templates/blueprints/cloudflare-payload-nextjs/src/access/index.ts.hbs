@@ -1,0 +1,9 @@
+import type { Access } from 'payload';
+
+export const authenticated: Access = ({ req }) => Boolean(req.user);
+
+// Everyone reads the published documents; a signed-in user reads the drafts too.
+export const authenticatedOrPublished: Access = ({ req }) => {
+  if (req.user) return true;
+  return { _status: { equals: 'published' } };
+};
