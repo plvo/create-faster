@@ -33,6 +33,8 @@ Run these from the repository root, in this order, the first time. The productio
 
 {{> cloudflare/first-deploy}}
 
+The `triggers.crons` schedule of the cron Worker (`0 3 * * *`, daily at 03:00 UTC) is registered when it is deployed.
+
 ## First admin
 
 {{> cloudflare/first-admin}}

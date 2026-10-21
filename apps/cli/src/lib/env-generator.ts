@@ -262,7 +262,7 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
   return app ? collectAppEnvNames(ctx, app, (env) => Boolean(env.secret)) : [];
 }
 
-export interface AppSecret {
+interface AppSecret {
   name: string;
   /** The command that prints a value for it (`generateCommand`). */
   command?: string;
