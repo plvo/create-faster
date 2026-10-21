@@ -604,6 +604,37 @@ describe('CLI Integration', () => {
       const components = await readJsonFile<{ tailwind: { css: string } }>(join(projectPath, 'apps/web/components.json'));
       expect(components.tailwind.css).toBe('../../packages/ui/src/base.css');
     });
+
+    test.each([
+      {
+        projectName: 'test-oxc-mdx-turbo',
+        name: 'a turborepo app with shadcn and mdx declares the mdx classes to the unknown-classes rule',
+        args: ['--app', 'web:nextjs:shadcn,mdx', '--app', 'api:hono'],
+        allowsMdxClasses: true,
+      },
+      {
+        projectName: 'test-oxc-no-mdx-turbo',
+        name: 'a turborepo app with shadcn and no mdx keeps the unknown-classes rule unchanged',
+        args: ['--app', 'web:nextjs:shadcn', '--app', 'api:hono'],
+        allowsMdxClasses: false,
+      },
+      {
+        projectName: 'test-oxc-mdx-single',
+        name: 'a single repo with shadcn and mdx keeps the unknown-classes rule unchanged',
+        args: ['--app', 'web:nextjs:shadcn,mdx'],
+        allowsMdxClasses: false,
+      },
+    ])('$name', async ({ projectName, args, allowsMdxClasses }) => {
+      const result = await runCli([projectName, ...args, '--linter', 'oxc', '--no-git', '--no-install'], tempDir);
+      expect(result.exitCode).toBe(0);
+
+      const oxlintConfig = await readTextFile(join(tempDir, projectName, 'oxlint.config.mts'));
+      if (allowsMdxClasses) {
+        expect(oxlintConfig).toContain("'shadcn/no-unknown-classes': ['error', { allow: ['*-mdx'] }]");
+      } else {
+        expect(oxlintConfig).toContain("'shadcn/no-unknown-classes': 'error'");
+      }
+    });
   });
 
   describe('shadcn theme', () => {
