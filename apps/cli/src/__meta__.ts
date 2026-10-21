@@ -104,6 +104,12 @@ const FIX_AND_FORMAT_CODE = { script: 'check', description: 'Fix lint issues and
 // The stacks whose app defines a `build` script: a `prebuild` hook on any other stack would never run.
 const STACKS_WITH_BUILD_SCRIPT: StackName[] = ['nextjs', 'tanstack-start'];
 
+const PRISMA_GENERATE = 'prisma generate';
+// The client is generated, not committed: a single repo runs it before the scripts that import it, as a `pre` hook.
+// `stack` narrows the hook to the stacks that define the script it precedes.
+const PRISMA_GENERATE_IN_SINGLE_REPO = (stack?: StackName[]) =>
+  $when(stack ? { repo: 'single', stack } : { repo: 'single' }, PRISMA_GENERATE);
+
 const NITRO_VERSION = '^3.0.260903-beta';
 
 // Workspace packages type-check on their own, without the app's wrangler-generated binding types.
@@ -1322,14 +1328,14 @@ export const META: Meta = {
             },
             scripts: {
               ...TYPECHECK_WITH_TSC,
-              'db:generate': 'prisma generate',
+              'db:generate': PRISMA_GENERATE,
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',
               'db:studio': 'prisma studio',
               'db:seed': 'prisma db seed',
-              predev: $when({ repo: 'single' }, 'prisma generate'),
-              pretypecheck: $when({ repo: 'single' }, 'prisma generate'),
-              prebuild: $when({ repo: 'single', stack: STACKS_WITH_BUILD_SCRIPT }, 'prisma generate'),
+              predev: PRISMA_GENERATE_IN_SINGLE_REPO(),
+              pretypecheck: PRISMA_GENERATE_IN_SINGLE_REPO(),
+              prebuild: PRISMA_GENERATE_IN_SINGLE_REPO(STACKS_WITH_BUILD_SCRIPT),
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
             exports: {
@@ -1521,7 +1527,6 @@ export const META: Meta = {
             clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
             'versions:list': 'syncpack lint',
             'versions:fix': 'syncpack fix',
-            typecheck: 'turbo typecheck',
           },
         },
         scriptDescriptions: [

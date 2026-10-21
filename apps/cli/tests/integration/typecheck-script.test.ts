@@ -49,12 +49,17 @@ const TURBOREPOS: { name: string; args: string[] }[] = [
   { name: 'blueprint-lambda-terraform', args: ['--blueprint', 'lambda-terraform-aws-hono'] },
 ];
 
-const SINGLE_REPOS: { name: string; args: string[] }[] = [
+const SINGLE_REPOS: { name: string; args: string[]; pretypecheck?: string }[] = [
   { name: 'single-nextjs', args: ['--app', 'single-nextjs:nextjs'] },
   { name: 'single-start', args: ['--app', 'single-start:tanstack-start'] },
   { name: 'single-hono', args: ['--app', 'single-hono:hono'] },
   { name: 'single-node', args: ['--app', 'single-node:node'] },
   { name: 'single-expo', args: ['--app', 'single-expo:expo'] },
+  {
+    name: 'single-prisma',
+    args: ['--app', 'single-prisma:nextjs', '--database', 'postgres', '--orm', 'prisma'],
+    pretypecheck: 'prisma generate',
+  },
 ];
 
 async function typecheckableWorkspaces(projectPath: string): Promise<string[]> {
@@ -96,9 +101,12 @@ describe('typecheck script', () => {
       const root = await readJsonFile<Manifest>(join(projectPath, 'package.json'));
       expect(root.scripts?.typecheck).toBe('turbo typecheck');
       const turbo = await readJsonFile<TurboConfig>(join(projectPath, 'turbo.json'));
-      expect(turbo.tasks.typecheck?.dependsOn, 'a change in a package invalidates the cache of the apps that use it').toEqual(
-        name === 'prisma' ? ['^typecheck', 'db:generate'] : ['^typecheck'],
-      );
+      const dependsOn = turbo.tasks.typecheck?.dependsOn ?? [];
+      expect(dependsOn, 'a change in a package invalidates the cache of the apps that use it').toContain('^typecheck');
+      for (const task of dependsOn.filter((dependency) => !dependency.startsWith('^'))) {
+        expect(Object.keys(turbo.tasks), `${task} is a task of turbo.json`).toContain(task);
+      }
+      if (name === 'prisma') expect(dependsOn, 'the client is generated before the package is type-checked').toContain('db:generate');
     });
 
     test('every app and package that has a tsconfig type-checks itself', async () => {
@@ -117,11 +125,12 @@ describe('typecheck script', () => {
     });
   });
 
-  describe.each(SINGLE_REPOS)('single repo $name', ({ name, args }) => {
+  describe.each(SINGLE_REPOS)('single repo $name', ({ name, args, pretypecheck }) => {
     test('the app type-checks with the same script', async () => {
       const projectPath = await generate(name, args);
       const manifest = await readJsonFile<Manifest>(join(projectPath, 'package.json'));
       expect(manifest.scripts?.typecheck).toBe(TYPECHECK);
+      expect(manifest.scripts?.pretypecheck, 'the Prisma client exists before tsc runs').toBe(pretypecheck);
     });
   });
 });
