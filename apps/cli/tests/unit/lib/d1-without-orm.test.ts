@@ -27,24 +27,20 @@ const COMBINATIONS: [string, TemplateContext['repo'], StackName[]][] = [
 describe.each(COMBINATIONS)('D1 without an ORM: %s', (_, repo, stacks) => {
   const manifests = generateAllPackageJsons(makeContext(repo, stacks));
 
-  test('no package.json defines a Drizzle or Wrangler migration script', () => {
-    const scripts = manifests.flatMap(({ content }) => Object.keys(content.scripts ?? {}));
-    expect(scripts.filter((script) => D1_SCRIPTS.includes(script))).toEqual([]);
+  test('no package.json, root script or app script is a Drizzle or Wrangler migration script', () => {
+    const context = makeContext(repo, stacks);
+    const defined = [
+      ...manifests.flatMap(({ content }) => Object.keys(content.scripts ?? {})),
+      ...Object.keys(getRootScripts(context)),
+      ...getAppScripts(context).flatMap(({ scripts }) => Object.keys(scripts)),
+    ];
+    expect(defined.filter((script) => D1_SCRIPTS.includes(script))).toEqual([]);
   });
 
   test('no package.json mentions Drizzle or declares the libSQL client', () => {
     const text = JSON.stringify(manifests.map(({ content }) => content));
     expect(text).not.toMatch(/drizzle/i);
     expect(text).not.toContain('@libsql/client');
-  });
-
-  test('the root and the apps expose none of the D1 scripts', () => {
-    const context = makeContext(repo, stacks);
-    const exposed = [
-      ...Object.keys(getRootScripts(context)),
-      ...getAppScripts(context).flatMap(({ scripts }) => Object.keys(scripts)),
-    ];
-    expect(exposed.filter((script) => D1_SCRIPTS.includes(script))).toEqual([]);
   });
 });
 

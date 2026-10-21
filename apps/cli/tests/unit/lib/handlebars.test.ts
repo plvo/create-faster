@@ -282,6 +282,56 @@ describe('Handlebars helpers', () => {
     });
   });
 
+  describe('orderedSteps', () => {
+    const render = (source: string, context: object = {}) => Handlebars.compile(source)(context);
+    const SOURCE = [
+      '{{#orderedSteps}}',
+      '{{#step}}',
+      'First.',
+      '',
+      '   ```bash',
+      '   run',
+      '   ```',
+      '{{/step}}',
+      '{{#step}}',
+      '{{#if second}}',
+      'Second.',
+      '{{/if}}',
+      '{{/step}}',
+      '{{#step}}',
+      '{{#if third}}',
+      'Third.',
+      '{{/if}}',
+      '{{/step}}',
+      '{{/orderedSteps}}',
+    ].join('\n');
+
+    test('numbers the steps that render something, in order, separates them with a blank line and ends with a line break', () => {
+      expect(render(SOURCE, { second: true, third: true })).toBe(
+        '1. First.\n\n   ```bash\n   run\n   ```\n\n2. Second.\n\n3. Third.\n',
+      );
+    });
+
+    test('drops a step that renders only whitespace and renumbers the following ones', () => {
+      expect(render(SOURCE, { third: true })).toBe('1. First.\n\n   ```bash\n   run\n   ```\n\n2. Third.\n');
+      expect(render(SOURCE, {})).toBe('1. First.\n\n   ```bash\n   run\n   ```\n');
+    });
+
+    test('renders nothing when no step remains', () => {
+      expect(render('{{#orderedSteps}}{{#step}}{{#if a}}x{{/if}}{{/step}}{{/orderedSteps}}')).toBe('');
+    });
+
+    test('collects steps opened inside loops', () => {
+      expect(render('{{#orderedSteps}}{{#each items}}{{#step}}{{this}}{{/step}}{{/each}}{{/orderedSteps}}', { items: ['x', 'y'] })).toBe(
+        '1. x\n\n2. y\n',
+      );
+    });
+
+    test('refuses a step outside orderedSteps', () => {
+      expect(() => render('{{#step}}x{{/step}}')).toThrow('{{#step}} must be inside {{#orderedSteps}}');
+    });
+  });
+
   describe('hasPackage', () => {
     const template = Handlebars.compile('{{#each apps}}{{#if (hasPackage "db")}}yes{{else}}no{{/if}}{{/each}}');
     const monorepo = (orm?: string): TemplateContext => ({

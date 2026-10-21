@@ -50,29 +50,9 @@ describe('the d1 database without an ORM', () => {
   describe.each(COMBINATIONS)('%s', (_, name) => {
     const projectFile = (file: string) => readTextFile(join(tempDir, name, file));
 
-    test('no package.json carries a Drizzle script, a Wrangler migration script or the libSQL client', async () => {
-      const root = join(tempDir, name);
-      const manifests = (await filesUnder(root, ['node_modules'])).filter((file) => file.endsWith('package.json'));
-      expect(manifests.length).toBeGreaterThan(0);
-      for (const manifest of manifests) {
-        const text = await readTextFile(manifest);
-        expect(text).not.toMatch(/drizzle/i);
-        expect(text).not.toContain('@libsql/client');
-        expect(text).not.toMatch(/"(db:[\w:]+|local-setup)"/);
-        expect(text).not.toContain('d1 migrations');
-      }
-    });
-
-    test.each(DOCUMENTS)('%s: says nothing about Drizzle, migrations scripts or seeding', async (file) => {
+    test.each(DOCUMENTS)('%s: says nothing about Drizzle, migration scripts or seeding', async (file) => {
       const doc = await projectFile(file);
       for (const forbidden of FORBIDDEN_IN_DOCS) expect(doc).not.toMatch(forbidden);
-    });
-
-    test.each(DOCUMENTS)('%s: the D1 provisioning goes from the paste of the id straight to the deploy', async (file) => {
-      const doc = await projectFile(file);
-      expect(doc).toContain('2. Copy the `database_id`');
-      expect(doc).toContain('3. Deploy.');
-      expect(doc).not.toMatch(/^4\. /m);
     });
 
     test.each(DOCUMENTS)('%s: every printed script exists in the directory it is run from', async (file) => {
@@ -101,7 +81,7 @@ describe('the d1 database without an ORM', () => {
   });
 });
 
-describe('the d1 database with an ORM keeps its provisioning steps', () => {
+describe('the d1 database with an ORM keeps the db of the Cloudflare fiche', () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -115,13 +95,6 @@ describe('the d1 database with an ORM keeps its provisioning steps', () => {
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);
-  });
-
-  test.each(DOCUMENTS)('%s: local migration, remote migration and deploy are steps 3, 4 and 5', async (file) => {
-    const doc = await readTextFile(join(tempDir, 'with-orm', file));
-    expect(doc).toContain('3. Generate the migrations');
-    expect(doc).toContain('4. Apply the migrations to the production database');
-    expect(doc).toContain('5. Deploy.');
   });
 
   test('AGENTS.md: describes the db exported by src/lib/server.ts', async () => {

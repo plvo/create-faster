@@ -74,18 +74,24 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('D1 provisioning d
       single: (name, scripts) => [
         `${runner} wrangler d1 create ${name}-db --no-update-config`,
         'REPLACE_WITH_D1_DATABASE_ID',
+        '3. Generate the migrations',
         `${pm} run db:generate\n`,
         `${pm} run db:migrate\n`,
+        '4. Apply the migrations to the production database',
         `${pm} run db:migrate:remote\n`,
+        '5. Deploy.',
         'secrets.required',
         `listed under **${scripts}**`,
       ],
       turborepo: (name, scripts) => [
         `(cd apps/web && ${runner} wrangler d1 create ${name}-db --no-update-config)`,
         'REPLACE_WITH_D1_DATABASE_ID',
+        '3. Generate the migrations',
         `${pm} run db:generate\n`,
         `${pm} run db:migrate\n`,
+        '4. Apply the migrations to the production database',
         `${pm} run db:migrate:remote\n`,
+        '5. Deploy.',
         'secrets.required',
         `listed under **${scripts}**`,
       ],
@@ -157,6 +163,19 @@ describe('D1 provisioning docs list the secrets a deploy needs', () => {
         'Create every other resource',
         'except `preview`',
       ]);
+    }
+  });
+
+  test.each([
+    ['single repo', 'steps-no-orm-single', ['--app', 'web:nextjs']],
+    ['turborepo', 'steps-no-orm-mono', ['--app', 'web:nextjs', '--app', 'api:hono']],
+  ])('%s without an ORM: the steps are create, paste and deploy, in README and AGENTS.md', async (_, name, apps) => {
+    await generate(name, [...apps, '--database', 'd1', '--deployment', 'cloudflare']);
+
+    for (const file of ['README.md', 'AGENTS.md']) {
+      const doc = await projectFile(name, file);
+      expectInOrder(doc, ['1. Create the database', '2. Copy the `database_id`', '3. Deploy.']);
+      expect(doc).not.toMatch(/^4\. /m);
     }
   });
 
