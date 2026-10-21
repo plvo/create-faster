@@ -49,10 +49,12 @@ describe('META.stacks clientOnly', () => {
     expect(clientOnly).toEqual(['expo']);
   });
 
-  test('is declared on the database and ORM addons as serverOnly', () => {
-    const serverOnly = [...Object.values(META.project.database.options), ...Object.values(META.project.orm.options)];
+  test('is read from the database and ORM categories as serverOnly', () => {
+    const serverOnly = Object.entries(META.project)
+      .filter(([, category]) => 'serverOnly' in category && category.serverOnly)
+      .map(([name]) => name);
 
-    expect(serverOnly.every((addon) => addon.serverOnly)).toBe(true);
+    expect(serverOnly).toEqual(['database', 'orm']);
   });
 });
 

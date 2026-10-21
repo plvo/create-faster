@@ -125,8 +125,6 @@ export interface MetaAddon {
   providesLocalFilesystem?: boolean;
   /** Library that consumes a module-singleton `db` and cannot use a per-request binding database yet. */
   needsSingletonDb?: boolean;
-  /** Database or ORM whose client runs in server code: in a turborepo, an app on a `clientOnly` stack receives neither its package reference nor its variables. */
-  serverOnly?: boolean;
   mono?: AddonMono;
   packageJson?: PackageJsonConfig;
   /** Package.json contribution applied when `ctx.project.deployment` matches the key. */
@@ -153,6 +151,8 @@ export interface MetaProjectCategory {
   prompt: string;
   selection: 'single' | 'multi';
   require?: string[];
+  /** The addons of this category bring code that runs on a server (a database client): in a turborepo, an app on a `clientOnly` stack receives neither their package reference nor their variables. */
+  serverOnly?: boolean;
   options: Record<string, MetaAddon>;
 }
 
@@ -161,7 +161,7 @@ export type PackageManagerPackageJson = Partial<Record<PackageManagerName, Packa
 
 interface MetaStack {
   type: 'app' | 'server';
-  /** The app runs on a device or in a browser only and cannot run server code (a native app), so it receives nothing a `serverOnly` addon brings. */
+  /** The app cannot run server code (a native app), so it receives nothing a `serverOnly` category brings. */
   clientOnly?: boolean;
   label: string;
   hint: string;

@@ -1,5 +1,5 @@
 import { META } from '@/__meta__';
-import { appReceivesAddon, findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
+import { appReceives, findRuntimeAddon, getAppLibraries } from '@/lib/addon-utils';
 import { collectMonoPackages } from '@/lib/package-json-generator';
 import { resolveAppPort } from '@/lib/utils';
 import { matches } from '@/lib/when';
@@ -117,7 +117,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         ctx.project.tooling.includes(optionName);
 
       if (isSelected && addon.envs) {
-        for (const env of addon.envs) addEnv(env, { source: 'project', serverOnly: addon.serverOnly });
+        for (const env of addon.envs) addEnv(env, { source: 'project', serverOnly: category.serverOnly });
       }
     }
   }
@@ -180,7 +180,7 @@ function addToGroup(grouped: Map<string, string[]>, path: string, value: string)
 
 function appAcceptsEnv(env: CollectedEnv, app: TemplateContext['apps'][number], ctx: TemplateContext): boolean {
   if (env.appName && env.appName !== app.appName) return false;
-  if (!appReceivesAddon(env, app, ctx)) return false;
+  if (!appReceives(env, app, ctx)) return false;
   if (env.source === 'library' && !app.libraries.includes(env.libraryName!)) return false;
   return !env.stacks || env.stacks.includes(app.stackName);
 }

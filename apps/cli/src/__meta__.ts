@@ -1041,12 +1041,12 @@ export const META: Meta = {
     },
     database: {
       prompt: 'Include a database?',
+      serverOnly: true,
       selection: 'single',
       options: {
         postgres: {
           label: 'PostgreSQL',
           hint: 'Relational database',
-          serverOnly: true,
           mono: { scope: 'root' },
           serverlessBinding: 'hyperdrive',
           firstRun: START_DOCKER_DATABASE,
@@ -1078,7 +1078,6 @@ export const META: Meta = {
         mysql: {
           label: 'MySQL',
           hint: 'Relational database',
-          serverOnly: true,
           mono: { scope: 'root' },
           serverlessBinding: 'hyperdrive',
           firstRun: START_DOCKER_DATABASE,
@@ -1100,7 +1099,6 @@ export const META: Meta = {
         sqlite: {
           label: 'SQLite',
           hint: 'Local file database, no server needed',
-          serverOnly: true,
           mono: { scope: 'root' },
           needsLocalFilesystem: true,
           packageJson: {
@@ -1126,7 +1124,6 @@ export const META: Meta = {
         d1: {
           label: 'Cloudflare D1',
           hint: 'Managed SQLite on Cloudflare, accessed via the DB binding',
-          serverOnly: true,
           mono: { scope: 'root' },
           require: { deployment: ['cloudflare'] },
           serverlessBinding: 'd1',
@@ -1201,13 +1198,13 @@ export const META: Meta = {
     },
     orm: {
       prompt: 'Configure an ORM?',
+      serverOnly: true,
       selection: 'single',
       require: ['database'],
       options: {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
-          serverOnly: true,
           installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
@@ -1254,7 +1251,6 @@ export const META: Meta = {
         prisma: {
           label: 'Prisma',
           hint: 'Type-safe ORM with migrations',
-          serverOnly: true,
           installScripts: { ...TSX_INSTALL_SCRIPTS, '@prisma/engines': true, prisma: false },
           require: { database: ['postgres', 'mysql'] },
           mono: { scope: 'pkg', name: 'db' },
