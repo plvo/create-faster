@@ -1,0 +1,4 @@
+---
+inline: true
+---
+{{#inDirectory "apps" (deployAppDir)}}WRANGLER_HIDE_BANNER=true {{installedBinaryRunner}} wrangler auth token{{/inDirectory}} | sed 's/^/Authorization: Bearer /'

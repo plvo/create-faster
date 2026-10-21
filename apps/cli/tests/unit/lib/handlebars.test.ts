@@ -54,6 +54,20 @@ describe('Handlebars helpers', () => {
       const template = Handlebars.compile('{{#if (or a b c)}}yes{{else}}no{{/if}}');
       expect(template({ a: false, b: false, c: false })).toBe('no');
     });
+
+    test('treats an empty list as falsy, as {{#if}} does', () => {
+      const template = Handlebars.compile('{{#if (or a b)}}yes{{else}}no{{/if}}');
+      expect(template({ a: [], b: false })).toBe('no');
+      expect(template({ a: [], b: ['x'] })).toBe('yes');
+    });
+  });
+
+  describe('and with a list', () => {
+    test('treats an empty list as falsy, as {{#if}} does', () => {
+      const template = Handlebars.compile('{{#if (and a b)}}yes{{else}}no{{/if}}');
+      expect(template({ a: [], b: true })).toBe('no');
+      expect(template({ a: ['x'], b: true })).toBe('yes');
+    });
   });
 
   describe('isTurborepo', () => {

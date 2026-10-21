@@ -1,0 +1,10 @@
+---
+mono:
+  scope: app
+  path: src/lib/response-error.ts
+---
+/** The message of a failed response: its body, or `fallback` when the server sent none (an unhandled error answers 500 with an empty body). */
+export async function responseErrorMessage(res: Response, fallback: string): Promise<string> {
+  const body = (await res.text()).trim();
+  return body || fallback;
+}

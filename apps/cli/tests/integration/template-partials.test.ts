@@ -6,7 +6,7 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'public-urls', 'api-token-header', 'keep-names-off', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 
@@ -43,11 +43,18 @@ ${flags}${beforeD1},
 
 const NEXTJS_FLAGS = `  // global_fetch_strictly_public routes fetch() through the public internet so OpenNext asset serving avoids Worker subrequest limits
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],`;
+const WORKERS_DEV = `,
+  // Served from its workers.dev URL, without per-version preview URLs: Wrangler warns on every deploy that both default to enabled when the file sets neither
+  "workers_dev": true,
+  "preview_urls": false`;
+const KEEP_NAMES_OFF = `,
+  // next-themes (and any inline script written as a function) is serialized with toString() and runs in the browser: keep-names would wrap its inner functions in __name(), which the browser does not define
+  "keep_names": false`;
 const NEXTJS_ASSETS = `
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
+  }${WORKERS_DEV}${KEEP_NAMES_OFF},
   // The build only inlines the literal process.env.NODE_ENV: without this var, dependencies reading it at runtime see "development" in workerd
   "vars": {
     "NODE_ENV": "production"
@@ -57,7 +64,7 @@ const AUTH_SECRET = `,
   "secrets": {
     "required": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]
   }`;
-const WORKER_FLAGS = `  "compatibility_flags": ["nodejs_compat"]`;
+const WORKER_FLAGS = `  "compatibility_flags": ["nodejs_compat"]${WORKERS_DEV}`;
 
 describe('Templates rendered through partials', () => {
   let tempDir: string;

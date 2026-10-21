@@ -16,6 +16,7 @@ import { useTRPC } from '@/trpc/providers';
 import { Can } from '@/components/can';
 import { COUNT_STALE_TIME } from '@repo/api/pagination';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
+import { responseErrorMessage } from '@/lib/response-error';
 import { PagedList } from '@/components/table-pagination';
 import { usePageParams } from '@/hooks/use-page-params';
 
@@ -62,7 +63,7 @@ export function DocumentsClient() {
 
       try {
         const res = await fetch('/api/documents/upload', { method: 'POST', body });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) throw new Error(await responseErrorMessage(res, 'Upload failed'));
         invalidatePagedList(queryClient, trpc.documents);
         toast.success('Document uploaded');
         formApi.reset();

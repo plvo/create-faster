@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { authClient } from '@repo/auth/auth-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui/components/ui/avatar';
 import { Button } from '@repo/ui/components/ui/button';
+import { responseErrorMessage } from '@/lib/response-error';
 
 export function AvatarUpload({ name, image }: { name: string; image: string | null }) {
   const router = useRouter();
@@ -37,7 +38,7 @@ export function AvatarUpload({ name, image }: { name: string; image: string | nu
     setUploading(true);
     try {
       const res = await fetch('/api/avatar', { method: 'POST', body });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await responseErrorMessage(res, 'Upload failed'));
       const { url } = (await res.json()) as { url: string };
       const result = await authClient.updateUser({ image: url });
       if (result.error) throw new Error(result.error.message ?? 'Update failed');
