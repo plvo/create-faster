@@ -443,6 +443,21 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       expect(await page.text()).toContain(`${title} | `);
     });
 
+    test('shows a changed alt text on the pages and the list that embed the image', async () => {
+      await get('/posts/hello-world');
+      await get('/posts');
+      const found = await json('/api/media?where[filename][equals]=sample-cover.svg&limit=1');
+      const id = ((await found.json()) as { docs: { id: number }[] }).docs[0]?.id;
+      expect(id, 'the seeded cover').toBeDefined();
+
+      const alt = `Cover edited ${Date.now()}`;
+      const patch = await json(`/api/media/${id}`, { method: 'PATCH', body: JSON.stringify({ alt }) });
+      expect(patch.status, await patch.text()).toBe(200);
+
+      expect(await (await get('/posts/hello-world')).text()).toContain(`alt="${alt}"`);
+      expect(await (await get('/posts')).text()).toContain(`alt="${alt}"`);
+    });
+
     test('shows a page created after a 404, and hides a draft', async () => {
       expect((await get('/fresh-page')).status).toBe(404);
 

@@ -80,7 +80,10 @@ export const getPublishedPosts = cache(
         limit: POSTS_PER_LIST,
         overrideAccess: false,
         pagination: false,
-        populate: { media: { alt: true, focalX: true, focalY: true, height: true, url: true, width: true } },
+        // `url` is computed from the filename after the read, so the filename is selected too.
+        populate: {
+          media: { alt: true, filename: true, focalX: true, focalY: true, height: true, url: true, width: true },
+        },
         select: { cover: true, excerpt: true, publishedAt: true, slug: true, title: true },
         sort: '-publishedAt',
       });

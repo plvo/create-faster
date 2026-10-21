@@ -434,7 +434,16 @@ describe('cloudflare-payload-nextjs generated logic', () => {
 
       expect(finds[0]?.collection).toBe('posts');
       expect(Object.keys(finds[0]?.select ?? {}).sort()).toEqual(['cover', 'excerpt', 'publishedAt', 'slug', 'title']);
-      expect(Object.keys(finds[0]?.populate?.media ?? {}).sort()).toEqual(['alt', 'focalX', 'focalY', 'height', 'url', 'width']);
+      // Payload computes `url` from `filename` after the read: a select without the filename gives a null url, and no cover.
+      expect(Object.keys(finds[0]?.populate?.media ?? {}).sort()).toEqual([
+        'alt',
+        'filename',
+        'focalX',
+        'focalY',
+        'height',
+        'url',
+        'width',
+      ]);
       expect(finds[0]).toMatchObject({ overrideAccess: false });
     });
 
