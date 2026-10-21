@@ -1,7 +1,10 @@
 import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { chmod, copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { chmod, copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { META } from '@/__meta__';
+import type { MetaBlueprint } from '@/types/meta';
 import {
   cleanupTempDir,
   createTempDir,
@@ -18,11 +21,15 @@ import {
  * npm and pnpm. Everything runs on the local D1 and R2 state of the generated repository: nothing reaches a Cloudflare
  * account.
  *
- * Signing in is the one step that payloadcms/payload#18274 breaks on Cloudflare (Payload 3.90 and later hash passwords with
- * 600,000 PBKDF2 iterations, and the runtime of Cloudflare refuses more than 100,000), but this test cannot see it:
- * open-source workerd, which runs here, overrides `checkPbkdfIterations()` to accept any count (cloudflare/workerd#7550).
- * It checks that the seeded admin signs in and that the tests after it get their token; the release check of the pinned
- * Payload version is a sign-in on a deployed Worker.
+ * Signing in is the one step that payloadcms/payload#18274 breaks on Cloudflare: Payload 3.90 and later hash passwords with
+ * 600,000 PBKDF2 iterations, and the runtime of Cloudflare refuses more than 100,000. Open-source workerd, which runs the
+ * preview here, overrides its PBKDF2 check (`worker-factory.c++`, `test-fixture.c++`) and accepts any count, so neither the
+ * preview nor `wrangler dev` can show it (cloudflare/workerd#7550, unmerged, would raise the production limit to 1,000,000).
+ * The Node processes that hash a password for the first time (`ensure-admin`, the seed, the migration) therefore run with
+ * `pbkdf2-limit.mjs` preloaded, which refuses more than 100,000 iterations as Cloudflare does: creating the first admin
+ * fails for a release that hashes above it, and this file stays red until a release that does not is pinned.
+ * `E2E_PBKDF2_LIMIT=off` runs the same tests without the preload, to see what else passes. The proof for a pinned release
+ * is a sign-in on a deployed Worker.
  */
 
 const TIMEOUT_INSTALL = 400_000;
@@ -33,6 +40,39 @@ const TIMEOUT_PREVIEW = 180_000;
 const PROJECT = 'payload-e2e';
 const STRICT_PNPM_MAJOR = 11;
 const FALLBACK_PNPM = ['env', 'pnpm_config_manage_package_manager_versions=false', 'npx', '--yes', 'pnpm@12'];
+
+const PBKDF2_LIMIT_PRELOAD = pathToFileURL(resolve(import.meta.dir, 'pbkdf2-limit.mjs')).href;
+/** The Node processes that hash a password run with the limit of Cloudflare, unless `E2E_PBKDF2_LIMIT=off`. */
+const PBKDF2_LIMIT: Record<string, string> =
+  process.env.E2E_PBKDF2_LIMIT === 'off' ? {} : { NODE_OPTIONS: `--import=${PBKDF2_LIMIT_PRELOAD}` };
+
+/** Nothing here talks to an account: a token that no account accepts and no account id, in every command that could reach one. */
+const NO_CLOUDFLARE_ACCOUNT: Record<string, string> = {
+  CLOUDFLARE_ACCOUNT_ID: '',
+  CLOUDFLARE_API_TOKEN: 'invalid-token-so-that-nothing-reaches-an-account',
+};
+
+const FIRST_RUN_SCRIPTS = ((META.blueprints['cloudflare-payload-nextjs'] as MetaBlueprint).firstRun ?? []).flatMap((step) =>
+  step.commands.flatMap((command) => ('script' in command ? [command.script] : [])),
+);
+
+/** Run by `payload run`: the Local API takes a file without the multipart parser, so only the hook of the collection stops it. */
+const LARGE_MEDIA_SCRIPT = `import { getPayloadClient } from '@/lib/payload';
+
+const payload = await getPayloadClient();
+const size = 21 * 1024 * 1024;
+try {
+  await payload.create({
+    collection: 'media',
+    data: { alt: 'Too large' },
+    file: { data: Buffer.alloc(size), mimetype: 'image/svg+xml', name: 'local-api-large.svg', size },
+  });
+  console.log('STORED');
+} catch (error) {
+  console.log('REFUSED', (error as { status?: number }).status);
+}
+process.exit(0);
+`;
 
 const ADMIN_EMAIL = 'admin@example.com';
 const ADMIN_PASSWORD = 'password';
@@ -65,6 +105,22 @@ function count(projectDir: string, table: string): number {
   } finally {
     database.close();
   }
+}
+
+/** The keys of each local R2 bucket (one database file each) under the persisted state of the repository. */
+function localBuckets(projectDir: string): Record<string, string[]> {
+  const directory = join(projectDir, '.wrangler/v3/r2/miniflare-R2BucketObject');
+  const buckets: Record<string, string[]> = {};
+  for (const file of Bun.spawnSync(['ls', directory]).stdout.toString().split('\n').filter((name) => name.endsWith('.sqlite'))) {
+    const database = new Database(join(directory, file), { readonly: true });
+    try {
+      if (!database.query("SELECT 1 FROM sqlite_master WHERE name = '_mf_objects'").get()) continue;
+      buckets[file] = (database.query('SELECT key FROM _mf_objects').all() as { key: string }[]).map(({ key }) => key);
+    } finally {
+      database.close();
+    }
+  }
+  return buckets;
 }
 
 /** Replaces the blank secrets of a copied `.env` the way the first-run steps tell a developer to. */
@@ -128,8 +184,9 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     });
     await fillSecrets(join(cronDir, '.env'), { BACKUP_TRIGGER_TOKEN: BACKUP_TOKEN });
 
-    for (const script of ['migrate', 'ensure-admin', 'db:seed']) {
-      const result = await runScript(script);
+    expect(FIRST_RUN_SCRIPTS.length).toBeGreaterThan(0);
+    for (const script of FIRST_RUN_SCRIPTS) {
+      const result = await runScript(script, projectDir, PBKDF2_LIMIT);
       expect(result.exitCode, `${script}\n${result.stderr}\n${result.stdout}`).toBe(0);
     }
     expect({
@@ -140,9 +197,9 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     }).toEqual({ users: 1, pages: 2, posts: 2, media: 1 });
   }, TIMEOUT_COMMAND * 3);
 
-  test('the admin script and the seed run again and change nothing', async () => {
-    for (const script of ['ensure-admin', 'db:seed']) {
-      const result = await runScript(script);
+  test('the first-run steps run again and change nothing', async () => {
+    for (const script of FIRST_RUN_SCRIPTS) {
+      const result = await runScript(script, projectDir, PBKDF2_LIMIT);
       expect(result.exitCode, `${script}\n${result.stderr}`).toBe(0);
     }
     expect({
@@ -151,7 +208,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       posts: count(projectDir, 'posts'),
       media: count(projectDir, 'media'),
     }).toEqual({ users: 1, pages: 2, posts: 2, media: 1 });
-  }, TIMEOUT_COMMAND * 2);
+  }, TIMEOUT_COMMAND * FIRST_RUN_SCRIPTS.length);
 
   test('the revalidations table has the columns the installed OpenNext reads and writes', async () => {
     const populate = await readFile(
@@ -188,6 +245,14 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     expect(after).toEqual(before);
   }, TIMEOUT_COMMAND * 2);
 
+  test('the committed migrations are in step with the collections: migrate:create adds none', async () => {
+    const migrations = join(webDir, 'src/migrations');
+    const before = await readdir(migrations);
+    const result = await run([pm, 'run', 'migrate:create', ...(pm === 'npm' ? ['--'] : []), '--skip-empty'], webDir);
+    expect(result.exitCode, result.stderr + result.stdout).toBe(0);
+    expect(await readdir(migrations)).toEqual(before);
+  }, TIMEOUT_COMMAND);
+
   test('the remote commands refuse to run while the database id is still the placeholder, and leave nothing behind', async () => {
     for (const script of ['db:migrate:remote', 'ensure-admin:remote']) {
       const result = await runScript(script, webDir);
@@ -202,7 +267,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     const dev = await startServer([pm, 'run', 'dev'], webDir, {
       port: devPort,
       readyTimeout: TIMEOUT_PREVIEW,
-      env: { ...env, PORT: String(devPort), NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${devPort}` },
+      env: { ...env, ...NO_CLOUDFLARE_ACCOUNT, PORT: String(devPort), NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${devPort}` },
     });
     try {
       const home = await fetch(new URL('/', dev.url));
@@ -229,7 +294,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
   }, TIMEOUT_COMMAND * 2);
 
   test('builds the Worker for the origin it is served from', async () => {
-    const build = await run([pm, 'run', 'build:cf'], webDir, { NEXT_PUBLIC_APP_URL: origin });
+    const build = await run([pm, 'run', 'build:cf'], webDir, { ...NO_CLOUDFLARE_ACCOUNT, NEXT_PUBLIC_APP_URL: origin });
     expect(build.exitCode, build.stderr + build.stdout).toBe(0);
     expect(await fileExists(join(webDir, '.open-next/worker.js'))).toBe(true);
   }, TIMEOUT_BUILD_CF);
@@ -249,7 +314,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       server = await startServer([pm, 'run', 'preview', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)], webDir, {
         port,
         readyTimeout: TIMEOUT_PREVIEW,
-        env: { ...env, PORT: String(port) },
+        env: { ...env, ...NO_CLOUDFLARE_ACCOUNT, PORT: String(port) },
       });
     }, TIMEOUT_PREVIEW + 30_000);
 
@@ -275,10 +340,20 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       expect(second.headers.get('x-nextjs-cache')).toBe('HIT');
     });
 
-    test('answers 404 for an unknown slug and an unknown path', async () => {
-      expect((await get('/no-such-page')).status).toBe(404);
-      expect((await get('/posts/no-such-post')).status).toBe(404);
-      expect((await get('/no/such/path')).status).toBe(404);
+    const cachedPages = () =>
+      Object.values(localBuckets(projectDir))
+        .flat()
+        .filter((key) => key.startsWith('incremental-cache/')).length;
+
+    test('answers 404 for an unknown slug and an unknown path, and caches nothing for them', async () => {
+      const before = cachedPages();
+      expect(before).toBeGreaterThan(0);
+
+      for (const path of ['/no-such-page', '/posts/no-such-post', '/no/such/path', '/made-up-1', '/made-up-2']) {
+        expect((await get(path)).status, path).toBe(404);
+      }
+      await Bun.sleep(1000);
+      expect(cachedPages()).toBe(before);
     });
 
     test('serves a robots.txt that disallows everything off the production origin, and a sitemap of the published content', async () => {
@@ -298,13 +373,41 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       expect(image.headers.get('content-type')).toContain('image/svg+xml');
     });
 
+    const expectRefused = async (response: Response) => {
+      expect(response.status).toBe(403);
+      const body = (await response.json()) as { errors?: { message?: string }[] };
+      expect(body.errors?.[0]?.message).toBeTruthy();
+    };
+    const anonymousJson = (path: string, body: unknown) =>
+      get(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
     test('refuses an anonymous first-register once the admin exists', async () => {
-      const response = await json('/api/users/first-register', {
-        method: 'POST',
-        body: JSON.stringify({ email: 'intruder@example.com', password: 'intruder-password-1', 'confirm-password': 'intruder-password-1' }),
-      });
-      expect(response.status).toBeGreaterThanOrEqual(400);
+      await expectRefused(
+        await anonymousJson('/api/users/first-register', {
+          email: 'intruder@example.com',
+          password: 'intruder-password-1',
+          'confirm-password': 'intruder-password-1',
+        }),
+      );
       expect(count(projectDir, 'users')).toBe(1);
+    });
+
+    test('refuses an anonymous request to read the users or to create a page', async () => {
+      await expectRefused(await get('/api/users'));
+      await expectRefused(await get('/api/users/1'));
+      await expectRefused(await anonymousJson('/api/pages', { title: 'Anonymous page', _status: 'published' }));
+      expect(count(projectDir, 'pages')).toBe(2);
+    });
+
+    test('refuses an anonymous upload and stores nothing', async () => {
+      const form = new FormData();
+      form.set('_payload', JSON.stringify({ alt: 'Anonymous' }));
+      form.set('file', new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>'], { type: 'image/svg+xml' }), 'anonymous.svg');
+      const before = count(projectDir, 'media');
+
+      await expectRefused(await get('/api/media', { method: 'POST', body: form }));
+      expect(count(projectDir, 'media')).toBe(before);
+      expect((await get('/api/media/file/anonymous.svg')).status).toBe(404);
     });
 
     test('signs in with the seeded admin', async () => {
@@ -348,6 +451,81 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       expect((await get('/draft-only')).status).toBe(404);
     });
 
+    const pageBody = (title: string, slug: string, status = 'published') =>
+      JSON.stringify({ title, slug, _status: status, layout: [{ blockType: 'callToAction', heading: `${title} heading`, label: 'Go', href: '/' }] });
+    const postBody = (title: string, slug: string) =>
+      JSON.stringify({
+        title,
+        slug,
+        _status: 'published',
+        content: {
+          root: {
+            type: 'root',
+            format: '',
+            indent: 0,
+            version: 1,
+            direction: 'ltr',
+            children: [
+              {
+                type: 'paragraph',
+                format: '',
+                indent: 0,
+                version: 1,
+                direction: 'ltr',
+                children: [{ type: 'text', text: `${title} body`, version: 1, detail: 0, format: 0, mode: 'normal', style: '' }],
+              },
+            ],
+          },
+        },
+      });
+
+    test('lists the published pages to an anonymous reader and never a draft', async () => {
+      const list = async (query: string) =>
+        (await (await get(`/api/pages?${query}`)).json()) as { docs: { slug: string; _status?: string }[]; totalDocs: number };
+
+      const everything = await list('limit=100&depth=0');
+      expect(everything.docs.length).toBeGreaterThan(0);
+      expect(everything.docs.every((doc) => doc._status === 'published')).toBe(true);
+      expect(everything.docs.some((doc) => doc.slug === 'draft-only')).toBe(false);
+      expect((await list('where[slug][equals]=draft-only')).totalDocs).toBe(0);
+      expect((await list('draft=true&where[slug][equals]=draft-only')).totalDocs).toBe(0);
+    });
+
+    test('moves a page to its new address when the slug changes, and the old one answers 404', async () => {
+      const created = await json('/api/pages', { method: 'POST', body: pageBody('Before rename', 'before-rename') });
+      expect(created.status, await created.text()).toBe(201);
+      expect((await get('/before-rename')).status).toBe(200);
+      const id = ((await (await json('/api/pages?where[slug][equals]=before-rename')).json()) as { docs: { id: number }[] }).docs[0]?.id;
+
+      const renamed = await json(`/api/pages/${id}`, { method: 'PATCH', body: JSON.stringify({ slug: 'after-rename', _status: 'published' }) });
+      expect(renamed.status, await renamed.text()).toBe(200);
+
+      expect((await get('/before-rename')).status).toBe(404);
+      expect((await get('/after-rename')).status).toBe(200);
+      expect(await (await get('/sitemap.xml')).text()).toContain('/after-rename</loc>');
+    });
+
+    test('stops serving a page that is deleted, and drops it from the sitemap', async () => {
+      const id = ((await (await json('/api/pages?where[slug][equals]=after-rename')).json()) as { docs: { id: number }[] }).docs[0]?.id;
+      const deleted = await json(`/api/pages/${id}`, { method: 'DELETE' });
+      expect(deleted.status, await deleted.text()).toBe(200);
+
+      expect((await get('/after-rename')).status).toBe(404);
+      expect(await (await get('/sitemap.xml')).text()).not.toContain('after-rename');
+    });
+
+    test('adds a new post to the list of posts and serves it', async () => {
+      expect(await (await get('/posts')).text()).not.toContain('E2E post');
+
+      const created = await json('/api/posts', { method: 'POST', body: postBody('E2E post', 'e2e-post') });
+      expect(created.status, await created.text()).toBe(201);
+
+      expect(await (await get('/posts')).text()).toContain('E2E post');
+      const post = await get('/posts/e2e-post');
+      expect(post.status).toBe(200);
+      expect(await post.text()).toContain('E2E post body');
+    });
+
     test('previews a draft for a signed-in editor who holds the preview secret, and for nobody else', async () => {
       const authorization = { Authorization: `JWT ${token}` };
       const preview = (secret: string, headers: Record<string, string> = authorization) =>
@@ -369,24 +547,42 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       expect(await page.text()).toContain('Draft only heading');
     });
 
-    test('uploads an image, refuses one over the limit before storing it, and saves admin preferences', async () => {
-      const upload = (bytes: Uint8Array, name: string) => {
-        const form = new FormData();
-        form.set('_payload', JSON.stringify({ alt: 'A test image' }));
-        form.set('file', new Blob([bytes], { type: 'image/svg+xml' }), name);
-        return get('/api/media', { method: 'POST', headers: { Authorization: `JWT ${token}` }, body: form });
-      };
+    const upload = (bytes: Uint8Array, name: string) => {
+      const form = new FormData();
+      form.set('_payload', JSON.stringify({ alt: 'A test image' }));
+      form.set('file', new Blob([bytes], { type: 'image/svg+xml' }), name);
+      return get('/api/media', { method: 'POST', headers: { Authorization: `JWT ${token}` }, body: form });
+    };
+
+    test('uploads an image to R2 and serves it with a cache header', async () => {
       const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>');
       const small = await upload(svg, 'e2e-small.svg');
       expect(small.status, await small.text()).toBe(201);
-      expect((await get('/api/media/file/e2e-small.svg')).status).toBe(200);
 
+      const served = await get('/api/media/file/e2e-small.svg');
+      expect(served.status).toBe(200);
+      expect(served.headers.get('cache-control')).toContain('max-age=604800');
+    });
+
+    test('refuses an upload over the limit before storing it', async () => {
       const before = count(projectDir, 'media');
       const tooLarge = await upload(new Uint8Array(21 * 1024 * 1024), 'e2e-large.svg');
       expect(tooLarge.status).toBe(413);
       expect(count(projectDir, 'media')).toBe(before);
       expect((await get('/api/media/file/e2e-large.svg')).status).toBe(404);
+    });
 
+    test('refuses a file over the limit that the Local API receives, which skips the multipart parser', async () => {
+      await writeFile(join(webDir, 'scripts/e2e-large-media.ts'), LARGE_MEDIA_SCRIPT);
+      const before = count(projectDir, 'media');
+      const result = await run([pm, 'run', 'payload', ...(pm === 'npm' ? ['--'] : []), 'run', 'scripts/e2e-large-media.ts'], webDir);
+      await rm(join(webDir, 'scripts/e2e-large-media.ts'), { force: true });
+
+      expect(result.stdout, result.stderr).toContain('REFUSED 413');
+      expect(count(projectDir, 'media')).toBe(before);
+    }, TIMEOUT_COMMAND);
+
+    test('saves and reads an admin preference', async () => {
       const saved = await json('/api/payload-preferences/e2e-key', { method: 'POST', body: JSON.stringify({ value: { open: true } }) });
       expect(saved.status, await saved.text()).toBeLessThan(300);
       const read = await json('/api/payload-preferences/e2e-key');
@@ -395,41 +591,74 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
   });
 
   describe('the cron Worker', () => {
-    test('writes a backup with a manifest to the local bucket when asked, and refuses a request without the token', async () => {
+    let cron: RunningServer;
+    let cronUrl: string;
+    const backupManifests = () =>
+      Object.values(localBuckets(projectDir))
+        .flat()
+        .filter((key) => /^backups\/.+\/manifest\.json$/.test(key));
+
+    beforeAll(async () => {
       const cronPort = await getFreePort();
       const inspectorPort = await getFreePort();
-      const cron = await startServer([pm, 'run', 'dev', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)], cronDir, {
+      cron = await startServer([pm, 'run', 'dev', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)], cronDir, {
         port: cronPort,
         readyTimeout: TIMEOUT_PREVIEW,
-        env: { ...env, PORT: String(cronPort) },
+        env: { ...env, ...NO_CLOUDFLARE_ACCOUNT, PORT: String(cronPort) },
       });
-      try {
-        const url = `http://127.0.0.1:${cronPort}/backup/run`;
-        expect((await fetch(url, { method: 'POST' })).status).toBe(401);
+      cronUrl = `http://127.0.0.1:${cronPort}`;
+    }, TIMEOUT_PREVIEW + 30_000);
 
-        const response = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${BACKUP_TOKEN}` } });
-        expect(response.status).toBe(200);
-        const { prefix, tables } = (await response.json()) as { prefix: string; tables: number };
-        expect(tables).toBeGreaterThan(10);
+    afterAll(async () => {
+      await cron?.stop();
+    });
 
-        const manifest = await run(
-          ['sh', '-c', `${pm === 'bun' ? 'bunx' : 'npx'} wrangler r2 object get ${PROJECT}-storage/${prefix}manifest.json --local --persist-to ../../.wrangler --pipe`],
-          cronDir,
-        );
-        expect(manifest.exitCode, manifest.stderr).toBe(0);
-        const parsed = JSON.parse(manifest.stdout.slice(manifest.stdout.indexOf('{'))) as { tables: { name: string; rows: number }[] };
-        const pages = parsed.tables.find((table) => table.name === 'pages');
-        expect(pages?.rows).toBeGreaterThanOrEqual(2);
-        expect(parsed.tables.some((table) => table.name.startsWith('_cf_') || table.name.startsWith('sqlite_'))).toBe(false);
-      } finally {
-        await cron.stop();
-      }
-    }, TIMEOUT_PREVIEW * 2);
-  });
+    test('refuses a backup request without the token or with another', async () => {
+      const url = `${cronUrl}/backup/run`;
+      expect((await fetch(url, { method: 'POST' })).status).toBe(401);
+      expect((await fetch(url, { method: 'POST', headers: { Authorization: 'Bearer another-token' } })).status).toBe(401);
+      expect(backupManifests()).toEqual([]);
+    });
 
-  test('the generated files left out of git by the linters are the ones Payload writes', async () => {
-    const ignored = await readFile(join(projectDir, 'biome.json'), 'utf8');
-    for (const path of ['importMap.js', 'payload-types.ts', 'src/migrations']) expect(ignored).toContain(path);
-    expect((await readdir(join(webDir, 'src/migrations'))).some((file) => file.endsWith('.json'))).toBe(true);
+    test('writes a backup with a manifest to its own bucket when asked, away from the media', async () => {
+      const response = await fetch(`${cronUrl}/backup/run`, { method: 'POST', headers: { Authorization: `Bearer ${BACKUP_TOKEN}` } });
+      expect(response.status).toBe(200);
+      const { prefix, tables } = (await response.json()) as { prefix: string; tables: number };
+      expect(tables).toBeGreaterThan(10);
+
+      const buckets = Object.values(localBuckets(projectDir));
+      const withBackups = buckets.filter((keys) => keys.some((key) => key.startsWith('backups/')));
+      expect(withBackups).toHaveLength(1);
+      expect(withBackups[0]?.every((key) => key.startsWith('backups/'))).toBe(true);
+
+      const manifest = await run(
+        ['sh', '-c', `${pm === 'bun' ? 'bunx' : 'npx'} wrangler r2 object get ${PROJECT}-backups/${prefix}manifest.json --local --persist-to ../../.wrangler --pipe`],
+        cronDir,
+        NO_CLOUDFLARE_ACCOUNT,
+      );
+      expect(manifest.exitCode, manifest.stderr).toBe(0);
+      const parsed = JSON.parse(manifest.stdout.slice(manifest.stdout.indexOf('{'))) as { tables: { name: string; rows: number }[] };
+      const pages = parsed.tables.find((table) => table.name === 'pages');
+      expect(pages?.rows).toBeGreaterThanOrEqual(2);
+      expect(parsed.tables.some((table) => table.name.startsWith('_cf_') || table.name.startsWith('sqlite_'))).toBe(false);
+    });
+
+    test('runs the backup when the schedule fires', async () => {
+      const before = backupManifests().length;
+      expect(before).toBeGreaterThan(0);
+      // A backup is named after the second it starts: wait for the next one, or the scheduled run would rewrite the last.
+      await Bun.sleep(1100);
+
+      const fired = await fetch(`${cronUrl}/cdn-cgi/local/explorer/api/local/scheduled?worker=${PROJECT}-cron`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cron: '0 3 * * *' }),
+      });
+      expect(fired.status, await fired.text()).toBeLessThan(300);
+
+      const deadline = Date.now() + 30_000;
+      while (backupManifests().length === before && Date.now() < deadline) await Bun.sleep(500);
+      expect(backupManifests()).toHaveLength(before + 1);
+    }, TIMEOUT_PREVIEW);
   });
 });
