@@ -31,6 +31,7 @@ const BLUEPRINTS = [
   'multitenant-saas-nextjs',
   'cloudflare-static-site-nextjs',
   'cloudflare-fullstack-nextjs',
+  'cloudflare-payload-nextjs',
   'showcase-nextjs',
 ];
 
