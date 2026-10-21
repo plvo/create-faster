@@ -1176,14 +1176,20 @@ export const META: Meta = {
           ],
           packageJson: {
             devDependencies: {
-              '@libsql/client': LIBSQL_CLIENT_VERSION,
+              '@libsql/client': $when({ orm: true }, LIBSQL_CLIENT_VERSION),
             },
             scripts: {
-              'db:generate': 'drizzle-kit generate',
-              'db:migrate': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
-              'db:migrate:local': `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
-              'db:migrate:remote': 'wrangler d1 migrations apply DB --remote',
-              'local-setup': `{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
+              'db:generate': $when({ orm: true }, 'drizzle-kit generate'),
+              'db:migrate': $when({ orm: true }, `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`),
+              'db:migrate:local': $when(
+                { orm: true },
+                `wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
+              ),
+              'db:migrate:remote': $when({ orm: true }, 'wrangler d1 migrations apply DB --remote'),
+              'local-setup': $when(
+                { orm: true },
+                `{{packageManager}} run db:generate && wrangler d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
+              ),
             },
           },
           deploymentPackageJson: {
@@ -1193,19 +1199,19 @@ export const META: Meta = {
               },
               scripts: {
                 'db:migrate': $when(
-                  { repo: 'turborepo' },
+                  { repo: 'turborepo', orm: true },
                   `wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
                 ),
                 'db:migrate:local': $when(
-                  { repo: 'turborepo' },
+                  { repo: 'turborepo', orm: true },
                   `wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE}`,
                 ),
                 'db:migrate:remote': $when(
-                  { repo: 'turborepo' },
+                  { repo: 'turborepo', orm: true },
                   'wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --remote',
                 ),
                 'local-setup': $when(
-                  { repo: 'turborepo' },
+                  { repo: 'turborepo', orm: true },
                   `{{packageManager}} run db:generate && wrangler --config {{workspaceRoot}}/apps/{{deployAppDir}}/wrangler.jsonc d1 migrations apply DB --local ${WRANGLER_PERSIST_STATE} && {{packageManager}} run db:seed`,
                 ),
               },

@@ -80,7 +80,7 @@ TanStack Start apps run on Workers through `@cloudflare/vite-plugin` (set up in 
 - Local state (D1, KV, R2) is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root{{/if}}, the same directory the `wrangler ... --persist-to` scripts use.
 
 **Global scope rule**: in a production build the app's modules are evaluated in the Worker's global scope. At module level there is no I/O, no timers and no randomness (`crypto.randomUUID()`, `crypto.getRandomValues()`). Code that does passes in `vite dev` and fails in `vite preview` and after deploy.
-{{#if (has "database" "d1")}}
+{{#if (and (has "database" "d1") project.orm)}}
 
 **Database — D1**: the app's `src/lib/server.ts` exports a `db` built once at module scope with `createDb(env.DB)`. The D1 binding is safe to hold across requests, so import `db` directly in server functions and route handlers. The `createDb(d1)` factory in the db {{#if (isMono)}}package{{else}}module{{/if}} stays a plain factory with no `cloudflare:workers` import.
 {{/if}}
@@ -125,7 +125,7 @@ The Prisma client is generated for the `workerd` runtime (`runtime = "workerd"` 
 `preview` and `deploy` are per-app scripts: run them from the app directory (`cd apps/<app>`). Hono apps: {{> cloudflare/app-list stack="hono"}}.
 
 {{/if}}
-- `{{runScript "dev"}}` — `wrangler dev` on the app port (`PORT` overrides it), so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps and the `db:migrate` script{{/if}}
+- `{{runScript "dev"}}` — `wrangler dev` on the app port (`PORT` overrides it), so the app runs in the Workers runtime with its bindings on `c.env`; there is no Node or Bun server and no `start` script. Local state is persisted in the `.wrangler/` directory{{#if (isMono)}} at the monorepo root, shared with the other apps{{#if (hasRootScript "db:migrate")}} and the `db:migrate` script{{/if}}{{/if}}
 - `{{runAppScript "deploy"}}` — `wrangler deploy`
 - `{{runAppScript "preview"}}` — `wrangler dev` without `--port`: the same runtime and local state as `dev`, on Wrangler's default port
 - `{{runScript "cf-typegen"}}` — regenerate `cloudflare-env.d.ts`. Install runs it (`postinstall`); run it again after every change to `wrangler.jsonc`: `src/app.ts` types the app as `new Hono<{ Bindings: CloudflareEnv }>()` and `tsc` needs the generated types

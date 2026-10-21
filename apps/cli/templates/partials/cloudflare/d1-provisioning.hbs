@@ -8,7 +8,7 @@ Provision the production database once, before the first deploy. Wrangler needs 
    ```
 
 2. Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID`.
-{{#if project.orm}}
+{{#if (and (hasRootScript "db:generate") (hasRootScript "db:migrate"))}}
 
 3. Generate the migrations (the template ships none; running `db:generate` again changes nothing when they exist) and apply them to the local database again. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`. Seed it again only if it held seed data.
 
@@ -19,8 +19,10 @@ Provision the production database once, before the first deploy. Wrangler needs 
    {{runScript "db:seed"}}
 {{/if}}
    ```
+{{/if}}
+{{#if (hasRootScript "db:migrate:remote")}}
 
-4. Apply the migrations to the production database:
+{{#if (and (hasRootScript "db:generate") (hasRootScript "db:migrate"))}}4{{else}}3{{/if}}. Apply the migrations to the production database:
 
    ```bash
    {{runScript "db:migrate:remote"}}
@@ -28,7 +30,7 @@ Provision the production database once, before the first deploy. Wrangler needs 
 {{/if}}
 {{#if deploy}}
 
-{{#if project.orm}}5{{else}}3{{/if}}. Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
+{{#if (and (hasRootScript "db:generate") (hasRootScript "db:migrate"))}}{{#if (hasRootScript "db:migrate:remote")}}5{{else}}4{{/if}}{{else}}{{#if (hasRootScript "db:migrate:remote")}}4{{else}}3{{/if}}{{/if}}. Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
 
    - Set the runtime secrets: every name under `secrets.required` in a `wrangler.jsonc` must be set (the secrets notes of the Cloudflare Workers section of `AGENTS.md` say how).
 {{#each apps}}
