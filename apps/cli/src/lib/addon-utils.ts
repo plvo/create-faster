@@ -85,15 +85,27 @@ export function resolveCompositeAddons(
   return parts;
 }
 
+interface SelectedProjectAddon {
+  category: ProjectCategoryName;
+  name: string;
+  addon: MetaAddon;
+}
+
 /** The selected project addons in category order, each composite addon preceded by the addons it composes. */
-export function getSelectedProjectAddons(ctx: TemplateContext): MetaAddon[] {
+export function getSelectedProjectAddonEntries(ctx: TemplateContext): SelectedProjectAddon[] {
   const categories = Object.keys(META.project) as ProjectCategoryName[];
 
   return categories.flatMap((category) => {
     const selection = ctx.project[category];
     const names = Array.isArray(selection) ? selection : selection ? [selection] : [];
-    return names.flatMap((name) => resolveCompositeAddons(category, name).map(({ addon }) => addon));
+    return names.flatMap((selected) =>
+      resolveCompositeAddons(category, selected).map(({ name, addon }) => ({ category, name, addon })),
+    );
   });
+}
+
+export function getSelectedProjectAddons(ctx: TemplateContext): MetaAddon[] {
+  return getSelectedProjectAddonEntries(ctx).map(({ addon }) => addon);
 }
 
 export function isCategoryValueAllowedByLibraries(
@@ -255,22 +267,29 @@ export function applyAppScripts(
   return next;
 }
 
-/** The requirements as a sentence; with a context, only the ones it does not meet. */
-export function describeRequire(require: AddonRequire, ctx?: Partial<TemplateContext>): string {
-  const descriptions: Record<keyof AddonRequire, string> = {
-    git: 'git',
-    linter: Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter',
-    database: `database: ${require.database?.join(' or ')}`,
-    orm: `orm: ${require.orm?.join(' or ')}`,
-    deployment: `deployment: ${require.deployment?.join(' or ')}`,
-    tooling: `tooling: ${require.tooling?.join(' or ')}`,
-    libraries: `library: ${require.libraries?.join(' or ')}`,
-    stacks: `an app on stack: ${require.stacks?.join(' or ')}`,
+/** The requirements the context does not meet, as a sentence. */
+export function describeRequire(require: AddonRequire, ctx: Partial<TemplateContext>): string {
+  const unmet: string[] = [];
+  const describeUnless = (part: AddonRequire, description: string) => {
+    if (!isRequirementMet(part, ctx)) unmet.push(description);
   };
-  return (Object.keys(descriptions) as (keyof AddonRequire)[])
-    .filter((key) => require[key] && !(ctx && isRequirementMet({ [key]: require[key] }, ctx)))
-    .map((key) => descriptions[key])
-    .join(', ');
+
+  if (require.git) describeUnless({ git: require.git }, 'git');
+  if (require.linter) {
+    const description = Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter';
+    describeUnless({ linter: require.linter }, description);
+  }
+  if (require.database) describeUnless({ database: require.database }, `database: ${require.database.join(' or ')}`);
+  if (require.orm) describeUnless({ orm: require.orm }, `orm: ${require.orm.join(' or ')}`);
+  if (require.deployment) {
+    describeUnless({ deployment: require.deployment }, `deployment: ${require.deployment.join(' or ')}`);
+  }
+  if (require.tooling) describeUnless({ tooling: require.tooling }, `tooling: ${require.tooling.join(' or ')}`);
+  if (require.libraries) {
+    describeUnless({ libraries: require.libraries }, `library: ${require.libraries.join(' or ')}`);
+  }
+  if (require.stacks) describeUnless({ stacks: require.stacks }, `an app on stack: ${require.stacks.join(' or ')}`);
+  return unmet.join(', ');
 }
 
 function getDeploymentLabel(ctx: Partial<TemplateContext>): string {

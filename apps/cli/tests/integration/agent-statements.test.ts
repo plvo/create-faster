@@ -26,6 +26,7 @@ const PROJECTS = {
   'hono-single': ['--app', 'hono-single:hono', ...GENERIC_ORM],
   'node-only': ['--app', 'node-only:node', ...GENERIC_ORM],
   'mono-node': ['--app', 'web:nextjs', '--app', 'jobs:node', ...GENERIC_ORM],
+  'node-evlog': ['--app', 'node-evlog:node:evlog'],
   'hono-cloudflare': ['--app', 'hono-cloudflare:hono', '--deployment', 'cloudflare'],
   'hono-cloudflare-portless': ['--app', 'hono-cloudflare-portless:hono', '--deployment', 'cloudflare', '--tooling', 'portless'],
   'prisma-single': ['--app', 'prisma-single:nextjs', '--database', 'postgres', '--orm', 'prisma'],
@@ -557,27 +558,53 @@ describe('the per-app AGENTS.md documents', () => {
     }
   });
 
-  test('the Node app describes its entry point, its runner and the absence of a build', async () => {
-    const agents = await readTextFile(join(projectPath('mono-node'), 'apps', 'jobs', 'AGENTS.md'));
+  async function nodeApp(project: string, app?: string) {
+    const directory = app ? join(projectPath(project), 'apps', app) : projectPath(project);
+    return {
+      agents: await readTextFile(join(directory, 'AGENTS.md')),
+      scripts: (await readJsonFile<{ scripts: Record<string, string> }>(join(directory, 'package.json'))).scripts,
+      tsconfig: await readTextFile(join(directory, 'tsconfig.json')),
+      entry: await readTextFile(join(directory, 'src', 'index.ts')),
+    };
+  }
+
+  test('the Node app of a bun turborepo describes its entry point, its scripts and the absence of a build', async () => {
+    const { agents, scripts, tsconfig, entry } = await nodeApp('mono-node', 'jobs');
 
     expect(agents).toContain('## Node\n\nPlain TypeScript Node app: no framework and no HTTP server. `src/index.ts` is the entry point');
-    expect(agents).toContain('`dev` runs the entry under Bun with `--hot`');
+    expect(agents).toContain('`dev` runs the entry under Bun with `--hot` and `start` runs it under Bun with `NODE_ENV=production`');
     expect(agents).toContain('There is no `build` script');
+    expect(agents).toContain('`tsconfig.json` sets `noEmit`');
     expect(agents).toContain('The root `bun run dev` and `bun run start` run it together with the other apps.');
-    const scripts = (await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath('mono-node'), 'apps', 'jobs', 'package.json'))).scripts;
     expect(scripts.build).toBeUndefined();
     expect(scripts.dev).toBe('bun run --hot src/index.ts');
+    expect(scripts.start).toBe('NODE_ENV=production bun run src/index.ts');
+    expect(tsconfig).toContain('"noEmit": true');
+    expect(entry).toContain("console.log('Hello from jobs')");
+    expect(agents).toContain('it only prints a greeting until you add code');
   });
 
-  test('a single Node app on npm runs through tsx and has no root-script sentence', async () => {
+  test('a single Node app with evlog says it initializes the logger, which its entry does', async () => {
+    const { agents, entry } = await nodeApp('node-evlog');
+
+    expect(agents).toContain('it initializes the evlog logger for this service and logs a `startup` event');
+    expect(entry).toContain('initLogger');
+    expect(entry).toContain("service: 'node-evlog'");
+    expect(entry).toContain("action: 'startup'");
+    expect(agents).not.toContain('together with the other apps');
+  });
+
+  test('a Node app on npm runs through tsx', async () => {
     const dirNpm = await createTempDir();
     try {
       const result = await runCli(['node-npm', '--app', 'node-npm:node', '--no-git', '--no-install', '--pm', 'npm'], dirNpm);
       expect(result.exitCode).toBe(0);
       const agents = await readTextFile(join(dirNpm, 'node-npm', 'AGENTS.md'));
+      const { scripts } = await readJsonFile<{ scripts: Record<string, string> }>(join(dirNpm, 'node-npm', 'package.json'));
 
-      expect(agents).toContain('`dev` runs the entry on Node through `tsx watch`');
-      expect(agents).not.toContain('together with the other apps');
+      expect(agents).toContain('`dev` runs the entry on Node through `tsx watch` and `start` runs it through `tsx` with `NODE_ENV=production`');
+      expect(scripts.dev).toBe('tsx watch src/index.ts');
+      expect(scripts.start).toBe('NODE_ENV=production tsx src/index.ts');
     } finally {
       await cleanupTempDir(dirNpm);
     }
@@ -593,10 +620,11 @@ describe('the per-app AGENTS.md documents', () => {
   });
 });
 
-type LineKind = 'blank' | 'heading' | 'list' | 'table' | 'quote' | 'indented' | 'text';
+type LineKind = 'blank' | 'fence' | 'heading' | 'list' | 'table' | 'quote' | 'indented' | 'text';
 
 function lineKind(line: string): LineKind {
   if (line === '') return 'blank';
+  if (line.startsWith('```')) return 'fence';
   if (/^#{1,6} /.test(line)) return 'heading';
   if (/^([-*+]|\d+\.) /.test(line)) return 'list';
   if (line.startsWith('|')) return 'table';
@@ -606,9 +634,10 @@ function lineKind(line: string): LineKind {
 }
 
 /**
- * The lines of a Markdown document, outside code fences, that break the layout of the rendered text: a paragraph,
- * list item, table or quote that follows a paragraph line directly (Markdown renders them inside it), a paragraph that
- * follows a list item, table or quote directly, and the second blank line in a row.
+ * The lines of a Markdown document, outside code fences, that break the house layout of a generated README: every
+ * block is one line set apart by a blank line, so a paragraph, list item, table or quote right below a paragraph line,
+ * or a paragraph right below a list item, table or quote, is a block that lost its blank line (a CommonMark renderer
+ * would fold some of these into the paragraph above), and a blank line is never doubled.
  */
 function layoutProblems(markdown: string): string[] {
   const lines = markdown.split('\n');
@@ -638,6 +667,7 @@ describe('generated READMEs keep paragraphs, lists and blank lines apart', () =>
     ]);
     expect(layoutProblems('text\nanother line\n')).toEqual(['glued to the line above: another line']);
     expect(layoutProblems('- item\n  continued\n\ntext\n\n| a |\n| - |\n')).toEqual([]);
+    expect(layoutProblems('```\ncode\n```\ntext\n')).toEqual([]);
   });
 
   test.each(Object.keys(PROJECTS) as ProjectName[])('%s', async (name) => {

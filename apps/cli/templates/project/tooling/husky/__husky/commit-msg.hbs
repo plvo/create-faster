@@ -1,28 +1,16 @@
 #!/bin/sh
 
 subject=$(head -n 1 "$1")
+types='{{> husky/commit-types}}'
 
-if echo "$subject" | grep -Eq '^(build|ci|feat|fix|perf|refactor|style|docs|test|chore|revert|workflow|wip|security)(\([^)]+\))?!?: .+'; then
+if echo "$subject" | grep -Eq "^($types)(\([^)]+\))?!?: .+"; then
     echo "✅ Commit message is valid!"
 else
     echo "⚠️  Invalid commit message format, recommended: "
     echo "  • <type>(<scope>): <subject>"
     echo "  • Example: feat(auth): add email login"
     echo "Allowed types:"
-    echo "  • build"
-    echo "  • ci"
-    echo "  • feat"
-    echo "  • fix"
-    echo "  • perf"
-    echo "  • refactor"
-    echo "  • style"
-    echo "  • docs"
-    echo "  • test"
-    echo "  • chore"
-    echo "  • revert"
-    echo "  • workflow"
-    echo "  • wip"
-    echo "  • security"
+    echo "$types" | tr '|' '\n' | sed 's/^/  • /'
 fi
 
 exit 0

@@ -61,8 +61,11 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
 
   test('the notes create the production bucket only: dev and preview run on a local one', async () => {
     const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+    const createCommands = notes.split('\n').filter((line) => line.includes('r2 bucket create'));
 
-    expect(notes.match(/r2 bucket create/g)).toHaveLength(1);
+    expect(createCommands).toHaveLength(1);
+    expect(createCommands[0]).toContain(`${projectName}-storage --no-update-config`);
+    expect(notes).not.toContain('storage-preview');
     expect(notes).toContain('`dev` and `preview` keep their files in a local bucket');
   });
 

@@ -1,0 +1,8 @@
+{{!-- Renders the step it is called in: a description and its commands (an entry of firstRunSteps or manualPostGenerateSteps). The caller adds the blank line after it. --}}
+{{description}}:
+
+```bash
+{{#each commands}}
+{{this}}
+{{/each}}
+```

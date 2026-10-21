@@ -215,6 +215,27 @@ describe('collectAgentContextFiles (blueprint)', () => {
   });
 });
 
+describe('collectAgentContextFiles (empty fiche)', () => {
+  const contentOf = (stackName: 'nextjs' | 'tanstack-start') =>
+    collectAgentContextFiles(
+      makeContext({
+        apps: [{ appName: 'web', stackName, libraries: ['tanstack-query'] }],
+        project: { tooling: [] },
+      }),
+    ).find((file) => file.destination === 'AGENTS.md')?.content ?? '';
+
+  test('a fiche that renders nothing for the combination adds no section, not an empty one', () => {
+    const content = contentOf('nextjs');
+
+    expect(content).not.toContain('## TanStack Query');
+    expect(content).toContain('\n## Next.js\n\n');
+  });
+
+  test('the same fiche adds its section where it has something to say', () => {
+    expect(contentOf('tanstack-start')).toContain('\n## TanStack Query\n\n`getRouter()`');
+  });
+});
+
 describe('collectAgentContextFiles (composite addon)', () => {
   const rootOf = (ctx: TemplateContext) =>
     collectAgentContextFiles(ctx).find((file) => file.destination === 'AGENTS.md')?.content ?? '';

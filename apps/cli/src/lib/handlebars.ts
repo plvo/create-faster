@@ -225,7 +225,10 @@ function registerHelpers(): void {
   });
 
   Handlebars.registerHelper('manualPostGenerateSteps', (options: Handlebars.HelperOptions) => {
-    return collectManualPostGenerateSteps(options.data.root as TemplateContext);
+    return collectManualPostGenerateSteps(options.data.root as TemplateContext).map(({ description, command }) => ({
+      description,
+      commands: [command],
+    }));
   });
 
   Handlebars.registerHelper('productionSteps', (options: Handlebars.HelperOptions) => {

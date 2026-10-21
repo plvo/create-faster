@@ -13,7 +13,7 @@ import {
   resolveDeployAppDir,
   resolveScriptPlaceholders,
 } from '@/lib/addon-utils';
-import type { TemplateContext } from '@/types/ctx';
+import type { ProjectContext, TemplateContext } from '@/types/ctx';
 
 describe('cloudflare-static declares its availability as META data', () => {
   const option = META.project.deployment.options['cloudflare-static'];
@@ -228,22 +228,50 @@ describe('isRequirementMet on a context without project answers', () => {
 });
 
 describe('describeRequire', () => {
+  const requireOf = (library: string) => META.libraries[library]?.require ?? {};
   const husky = META.project.tooling.options.husky?.require ?? {};
-  const withBiome = { apps: [], project: { tooling: [], linter: 'biome' } } satisfies Partial<TemplateContext>;
-  const withoutLinter = { apps: [], project: { tooling: [] } } satisfies Partial<TemplateContext>;
-
-  test('lists every requirement without a context', () => {
-    expect(describeRequire(husky)).toBe('git, a linter');
+  const project = (overrides: Partial<ProjectContext> = {}): Partial<TemplateContext> => ({
+    apps: [],
+    project: { tooling: [], ...overrides },
   });
 
-  test('lists only what the context does not meet', () => {
-    expect(describeRequire(husky, { ...withBiome, git: false })).toBe('git');
-    expect(describeRequire(husky, { ...withoutLinter, git: true })).toBe('a linter');
-    expect(describeRequire(husky, { ...withoutLinter, git: false })).toBe('git, a linter');
+  test('husky: only the missing one of git and a linter', () => {
+    expect(describeRequire(husky, { ...project({ linter: 'biome' }), git: false })).toBe('git');
+    expect(describeRequire(husky, { ...project(), git: true })).toBe('a linter');
+    expect(describeRequire(husky, { ...project(), git: false })).toBe('git, a linter');
+    expect(describeRequire(husky, { ...project({ linter: 'biome' }), git: true })).toBe('');
   });
 
-  test('lists nothing when the context meets them all', () => {
-    expect(describeRequire(husky, { ...withBiome, git: true })).toBe('');
+  test('better-auth: the database and the orm are told apart', () => {
+    const betterAuth = requireOf('better-auth');
+
+    expect(describeRequire(betterAuth, project())).toBe(
+      'database: postgres or mysql or sqlite or d1, orm: drizzle or prisma',
+    );
+    expect(describeRequire(betterAuth, project({ database: 'postgres' }))).toBe('orm: drizzle or prisma');
+    expect(describeRequire(betterAuth, project({ database: 'postgres', orm: 'drizzle' }))).toBe('');
+  });
+
+  test('a requirement set to a list the selection is outside of is listed', () => {
+    expect(describeRequire({ orm: ['drizzle'] }, project({ orm: 'prisma' }))).toBe('orm: drizzle');
+    expect(describeRequire({ linter: ['biome', 'oxc'] }, project({ linter: 'eslint' }))).toBe('linter: biome or oxc');
+    expect(describeRequire({ linter: ['biome', 'oxc'] }, project({ linter: 'oxc' }))).toBe('');
+  });
+
+  test('cloudflare-static: the stacks of the apps', () => {
+    const staticDeployment = META.project.deployment.options['cloudflare-static']?.require ?? {};
+    const honoOnly: Partial<TemplateContext> = {
+      apps: [{ appName: 'api', stackName: 'hono', libraries: [] }],
+      project: { tooling: [] },
+    };
+
+    expect(describeRequire(staticDeployment, honoOnly)).toBe('an app on stack: nextjs or tanstack-start');
+    expect(
+      describeRequire(staticDeployment, {
+        apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+        project: { tooling: [] },
+      }),
+    ).toBe('');
   });
 });
 
