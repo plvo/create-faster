@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@repo/ui/components/ui/button';
 import {
@@ -28,6 +28,11 @@ export function UserActions({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [confirmingBan, setConfirmingBan] = useState(false);
+  const banItemRef = useRef<HTMLDivElement>(null);
+  const cancelBanRef = useRef<HTMLDivElement>(null);
+  const itemToFocus = useRef<'ban' | 'cancel' | null>(null);
 
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
@@ -84,10 +89,28 @@ export function UserActions({ user }: { user: User }) {
     }
   };
 
+  // The confirmation and the Ban User item replace each other, which would drop the keyboard focus on the page: the item
+  // that takes the other's place takes the focus.
+  const swapBanItems = (confirming: boolean) => {
+    itemToFocus.current = confirming ? 'cancel' : 'ban';
+    setConfirmingBan(confirming);
+  };
+
+  useEffect(() => {
+    const target = itemToFocus.current === 'cancel' ? cancelBanRef : banItemRef;
+    if (itemToFocus.current) target.current?.focus();
+    itemToFocus.current = null;
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setConfirmingBan(false);
+  };
+
   if (session?.user.id === user.id) return null;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' size='icon' disabled={loading} aria-label='Actions'>
           <MoreHorizontal />
@@ -106,8 +129,30 @@ export function UserActions({ user }: { user: User }) {
           <DropdownMenuItem onClick={handleUnban}>
             Unban User
           </DropdownMenuItem>
+        ) : confirmingBan ? (
+          <>
+            <DropdownMenuItem onSelect={handleBan} className='text-destructive focus:text-destructive'>
+              Confirm ban
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              ref={cancelBanRef}
+              onSelect={(event) => {
+                event.preventDefault();
+                swapBanItems(false);
+              }}
+            >
+              Cancel
+            </DropdownMenuItem>
+          </>
         ) : (
-          <DropdownMenuItem onClick={handleBan} className='text-destructive focus:text-destructive'>
+          <DropdownMenuItem
+            ref={banItemRef}
+            onSelect={(event) => {
+              event.preventDefault();
+              swapBanItems(true);
+            }}
+            className='text-destructive focus:text-destructive'
+          >
             Ban User
           </DropdownMenuItem>
         )}
