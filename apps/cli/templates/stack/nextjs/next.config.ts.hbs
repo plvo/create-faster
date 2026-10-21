@@ -29,12 +29,8 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // Top right keeps the dev indicator off a sidebar footer (bottom left) and off the toasts (bottom right).
   devIndicators: { position: 'top-right' },
+{{> (blueprintPartial "next-config")}}
 
-  {{#if (eq blueprint "dapp-rainbowkit-nextjs")}}
-  // RainbowKit reaches @coinbase/cdp-sdk, which dynamically imports optional @x402/* peers that are not installed. Loaded by Node at runtime instead of bundled, the missing peers only matter if x402 signing is used.
-  serverExternalPackages: ['@coinbase/cdp-sdk'],
-
-  {{/if}}
   {{#if (has "deployment" "cloudflare-static")}}
   // `next dev` answers an unknown param of a dynamic route with a 500 under `output: 'export'`, whatever `dynamicParams` says; without it the route answers its 404 page, as the export does.
   // {{> nextjs/export-dev-note}}

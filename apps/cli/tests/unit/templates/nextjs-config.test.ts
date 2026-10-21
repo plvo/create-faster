@@ -197,3 +197,30 @@ describe('proxy.ts.hbs: posthog library', () => {
     expect(rendered).not.toContain('ingest');
   });
 });
+
+describe('next.config.ts.hbs: blueprint section', () => {
+  function makeBlueprintContext(blueprint?: string): TemplateContext {
+    return {
+      projectName: 'my-project',
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      blueprint,
+    };
+  }
+
+  test('externalizes the CDP SDK for dapp-rainbowkit-nextjs between blank lines, with no trailing spaces', () => {
+    const rendered = renderHbs(NEXT_CONFIG_TEMPLATE, makeBlueprintContext('dapp-rainbowkit-nextjs'));
+    expect(rendered).toMatch(
+      /\n\n {2}\/\/ RainbowKit reaches [^\n]+\n {2}serverExternalPackages: \['@coinbase\/cdp-sdk'\],\n\n/,
+    );
+    expect(rendered).not.toMatch(/ +\n/);
+  });
+
+  test('leaves plain projects and other blueprints without serverExternalPackages', () => {
+    for (const blueprint of [undefined, 'dapp-privy-nextjs']) {
+      expect(renderHbs(NEXT_CONFIG_TEMPLATE, makeBlueprintContext(blueprint))).not.toContain('serverExternalPackages');
+    }
+  });
+});
