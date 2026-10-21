@@ -351,7 +351,9 @@ export function validateRequirements(selection: Partial<TemplateContext>, ctx: P
     for (const libraryName of app.libraries) {
       const library = META.libraries[libraryName];
       if (library?.require && !isRequirementMet(library.require, ctx)) {
-        printError(`library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require)}`);
+        printError(
+          `library '${libraryName}' on app '${app.appName}' requires ${describeRequire(library.require, ctx)}`,
+        );
         process.exit(1);
       }
     }
@@ -365,7 +367,7 @@ export function validateRequirements(selection: Partial<TemplateContext>, ctx: P
     for (const value of values) {
       const addon = category.options[value];
       if (addon?.require && !isRequirementMet(addon.require, ctx)) {
-        printError(`${categoryName} '${value}' requires ${describeRequire(addon.require)}`);
+        printError(`${categoryName} '${value}' requires ${describeRequire(addon.require, ctx)}`);
         process.exit(1);
       }
       if (!isServerRuntimeSatisfied(addon, ctx)) {

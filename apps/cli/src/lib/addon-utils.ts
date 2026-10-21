@@ -255,17 +255,22 @@ export function applyAppScripts(
   return next;
 }
 
-export function describeRequire(require: AddonRequire): string {
-  const parts: string[] = [];
-  if (require.git) parts.push('git');
-  if (require.linter) parts.push(Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter');
-  if (require.database) parts.push(`database: ${require.database.join(' or ')}`);
-  if (require.orm) parts.push(`orm: ${require.orm.join(' or ')}`);
-  if (require.deployment) parts.push(`deployment: ${require.deployment.join(' or ')}`);
-  if (require.tooling) parts.push(`tooling: ${require.tooling.join(' or ')}`);
-  if (require.libraries) parts.push(`library: ${require.libraries.join(' or ')}`);
-  if (require.stacks) parts.push(`an app on stack: ${require.stacks.join(' or ')}`);
-  return parts.join(', ');
+/** The requirements as a sentence; with a context, only the ones it does not meet. */
+export function describeRequire(require: AddonRequire, ctx?: Partial<TemplateContext>): string {
+  const descriptions: Record<keyof AddonRequire, string> = {
+    git: 'git',
+    linter: Array.isArray(require.linter) ? `linter: ${require.linter.join(' or ')}` : 'a linter',
+    database: `database: ${require.database?.join(' or ')}`,
+    orm: `orm: ${require.orm?.join(' or ')}`,
+    deployment: `deployment: ${require.deployment?.join(' or ')}`,
+    tooling: `tooling: ${require.tooling?.join(' or ')}`,
+    libraries: `library: ${require.libraries?.join(' or ')}`,
+    stacks: `an app on stack: ${require.stacks?.join(' or ')}`,
+  };
+  return (Object.keys(descriptions) as (keyof AddonRequire)[])
+    .filter((key) => require[key] && !(ctx && isRequirementMet({ [key]: require[key] }, ctx)))
+    .map((key) => descriptions[key])
+    .join(', ');
 }
 
 function getDeploymentLabel(ctx: Partial<TemplateContext>): string {
@@ -283,7 +288,7 @@ export function getCategoryOptionUnavailability(
   if (!addon) return undefined;
 
   if (addon.require && !isRequirementMet(addon.require, ctx)) {
-    return `requires ${describeRequire(addon.require)}`;
+    return `requires ${describeRequire(addon.require, ctx)}`;
   }
 
   if (!isCategoryValueAllowedByLibraries(categoryName, name, ctx)) {

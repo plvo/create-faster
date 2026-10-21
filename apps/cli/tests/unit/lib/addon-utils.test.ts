@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
+  describeRequire,
   getCategoryOptionUnavailability,
   getProjectAddon,
   isCategoryValueAllowedByLibraries,
@@ -223,6 +224,26 @@ describe('isRequirementMet on a context without project answers', () => {
   test('requirements on apps and libraries still resolve', () => {
     expect(isRequirementMet({ stacks: ['nextjs'] }, appsOnly)).toBe(true);
     expect(isRequirementMet({ libraries: ['better-auth'] }, appsOnly)).toBe(true);
+  });
+});
+
+describe('describeRequire', () => {
+  const husky = META.project.tooling.options.husky?.require ?? {};
+  const withBiome = { apps: [], project: { tooling: [], linter: 'biome' } } satisfies Partial<TemplateContext>;
+  const withoutLinter = { apps: [], project: { tooling: [] } } satisfies Partial<TemplateContext>;
+
+  test('lists every requirement without a context', () => {
+    expect(describeRequire(husky)).toBe('git, a linter');
+  });
+
+  test('lists only what the context does not meet', () => {
+    expect(describeRequire(husky, { ...withBiome, git: false })).toBe('git');
+    expect(describeRequire(husky, { ...withoutLinter, git: true })).toBe('a linter');
+    expect(describeRequire(husky, { ...withoutLinter, git: false })).toBe('git, a linter');
+  });
+
+  test('lists nothing when the context meets them all', () => {
+    expect(describeRequire(husky, { ...withBiome, git: true })).toBe('');
   });
 });
 
