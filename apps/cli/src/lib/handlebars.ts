@@ -11,6 +11,7 @@ import {
   collectAppReceivesEnv,
   collectAppSecretDetails,
   collectAppSecrets,
+  collectDeploySecrets,
   collectEnvFileNames,
   collectProjectSecrets,
   collectTaskEnv,
@@ -133,6 +134,10 @@ function registerHelpers(): void {
       return this.appName ? collectAppSecretDetails(options.data.root as TemplateContext, this.appName) : [];
     },
   );
+
+  Handlebars.registerHelper('deploySecrets', (options: Handlebars.HelperOptions) => {
+    return collectDeploySecrets(options.data.root as TemplateContext);
+  });
 
   Handlebars.registerHelper('appOriginEnvs', (...args: unknown[]) => {
     const options = args.pop() as Handlebars.HelperOptions;

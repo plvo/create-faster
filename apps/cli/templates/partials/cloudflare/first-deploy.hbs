@@ -7,19 +7,24 @@ Give the build the production URL, as a shell variable (it wins over `.env`). Ne
    export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name appName=(deployAppDir)}}.<subdomain>.workers.dev
    ```
 {{/step}}
-{{#if (projectSecrets "nextjs" "tanstack-start" "hono" "node" "expo")}}
+{{#if (deploySecrets)}}
 {{#step}}
-Generate the secrets in the shell, and keep each value (a password manager): Cloudflare never shows a secret again, and you need some of them later.
+Give each secret a value in the shell, and keep each value (a password manager): Cloudflare never shows a secret again, and you need some of them later.
 
    ```bash
-{{#each apps}}
-{{#each (appSecretDetails)}}
+{{#each (deploySecrets)}}
 {{#if command}}
    export {{name}}=$({{command}})
+{{else}}
+   export {{name}}=
 {{/if}}
 {{/each}}
-{{/each}}
    ```
+{{#each (deploySecrets)}}
+{{#unless command}}
+   `{{name}}` has no generator: put the value its service gave you after `export {{name}}=`. The secrets file is written from it, so a secret left empty is deployed empty.
+{{/unless}}
+{{/each}}
 {{/step}}
 {{/if}}
 {{#each apps}}

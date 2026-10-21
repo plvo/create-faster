@@ -284,6 +284,17 @@ export function collectAppSecretDetails(ctx: TemplateContext, appName: string): 
   return [...byName.values()];
 }
 
+/** The secrets a deploy needs a value for in the shell, each once: those of every app, except an origin, which the production URL gives. */
+export function collectDeploySecrets(ctx: TemplateContext): Pick<AppSecret, 'name' | 'command'>[] {
+  const byName = new Map<string, Pick<AppSecret, 'name' | 'command'>>();
+  for (const app of ctx.apps) {
+    for (const { name, command, origin } of collectAppSecretDetails(ctx, app.appName)) {
+      if (!origin && !byName.has(name)) byName.set(name, { name, command });
+    }
+  }
+  return [...byName.values()];
+}
+
 /** The `.env` of each app (those on one of the stacks, all apps when none is given) and its variables that are the origin the app is served from. */
 export function collectAppOriginEnvs(
   ctx: TemplateContext,
