@@ -333,7 +333,10 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
 
       const posts = await get('/posts');
       expect(posts.status).toBe(200);
-      expect(await posts.text()).toContain('Hello, world');
+      const postsHtml = await posts.text();
+      expect(postsHtml).toContain('Hello, world');
+      // The card's cover keeps the computed url through the populate select.
+      expect(postsHtml).toContain('src="/api/media/file/sample-cover.svg"');
 
       const post = await get('/posts/hello-world');
       expect(post.status).toBe(200);
@@ -343,9 +346,11 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
     });
 
     test('serves a page from the cache after the first request', async () => {
-      await get('/about');
-      const second = await get('/about');
-      expect(second.headers.get('x-nextjs-cache')).toBe('HIT');
+      for (const path of ['/', '/about']) {
+        await get(path);
+        const second = await get(path);
+        expect(second.headers.get('x-nextjs-cache'), path).toBe('HIT');
+      }
     });
 
     const cachedPages = () =>

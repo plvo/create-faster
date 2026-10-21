@@ -858,17 +858,15 @@ describe('cloudflare-payload-nextjs generated logic', () => {
         objects.set(`backups/${day}/${day}T03-00-00Z/users/0001.ndjson`, { body: '' });
       };
 
-      test('deletes the days older than the retention and keeps the others, the media and the page cache', async () => {
+      test('deletes the days older than the retention and keeps the others', async () => {
         for (const day of ['2026-09-01', '2026-09-25', '2026-10-20']) keep(day);
-        objects.set('media.png', { body: 'image' });
-        objects.set('incremental-cache/page', { body: 'page' });
 
         await backup.runBackup(env({ BACKUP_RETENTION_DAYS: '30' }), NOW);
 
         expect(days().has('2026-09-01')).toBe(false);
         expect([...days()]).toEqual(expect.arrayContaining(['2026-09-25', '2026-10-20', '2026-10-21']));
-        expect(objects.has('media.png')).toBe(true);
-        expect(objects.has('incremental-cache/page')).toBe(true);
+        // The bucket is the backups' own: the media and the page cache live in another one the cron Worker does not bind.
+        expect([...objects.keys()].every((key) => key.startsWith('backups/'))).toBe(true);
       });
 
       test('keeps a day whose end is within the retention and deletes one whose end is exactly at it', async () => {
