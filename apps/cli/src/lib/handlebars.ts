@@ -21,7 +21,7 @@ import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
 import { collectInteractiveSteps, getInteractiveScript } from './interactive-steps';
-import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
+import { appListensOnPort, collectMonoPackages, getAppScripts, getRootScripts } from './package-json-generator';
 import {
   getAppScriptCommand,
   getCommandInWorkspaceDirectory,
@@ -103,6 +103,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('hasRootScript', function (this: TemplateContext, name: string) {
     return name in getRootScripts(this);
+  });
+
+  Handlebars.registerHelper('hasAppScript', (name: string, options: Handlebars.HelperOptions) => {
+    return getAppScripts(options.data.root as TemplateContext).some(({ scripts }) => name in scripts);
   });
 
   Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {

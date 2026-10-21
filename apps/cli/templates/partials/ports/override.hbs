@@ -7,9 +7,11 @@ The app listens on port {{appPort appName}}. Set `PORT` to listen on another one
 {{/if}}
 {{#if (hasRootScript "start")}}
 `start` takes `PORT` the same way.
+{{/if}}
 {{#if (appOriginEnvs)}}
+{{#if (or (hasAppScript "start") (hasAppScript "preview"))}}
 
-The variables below hold the origin each app is served from. The authentication check of a production server compares the origin of a request with it (a request from another origin is refused), and the server calls its own app through it. After changing the port, set them to the new origin (`http://localhost:4000`) in the `.env` of the app and run `{{runScript "build"}}` again before `start`: the values a framework exposes to the browser are frozen at build.
+The variables below hold the origin each app is served from. The authentication check of a production server compares the origin of a request with it (a request from another origin is refused), and the server calls its own app through it. After changing the port, set them to the new origin (`http://localhost:4000`) in the `.env` of the app and build again, with the build command of the production steps, before `start` or `preview`: the values a framework exposes to the browser are frozen at build.
 
 {{#each (appOriginEnvs)}}
 {{> env/app-url-variables}}

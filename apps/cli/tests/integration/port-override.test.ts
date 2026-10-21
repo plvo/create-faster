@@ -132,7 +132,7 @@ describe('single repo', () => {
 describe('origin variables of an app served on another port', () => {
   const AUTH_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'api:hono'];
   const AUTH_PROJECT = ['--database', 'sqlite', '--orm', 'drizzle'];
-  const BUILD_AGAIN = '`npm run build` again before `start`';
+  const BUILD_AGAIN = 'build again, with the build command of the production steps, before `start` or `preview`';
 
   test('a turborepo lists the variables to change in the .env of each app that has them', async () => {
     const project = await generate('port-url-mono', [...AUTH_APPS, ...AUTH_PROJECT]);
@@ -170,7 +170,7 @@ describe('origin variables of an app served on another port', () => {
     for (const file of ['README.md', 'AGENTS.md']) {
       const text = await readTextFile(join(project, file));
       expect(text, file).toContain('`start` takes `PORT` the same way.');
-      expect(text, file).not.toContain('again before `start`');
+      expect(text, file).not.toContain('before `start` or `preview`');
     }
   });
 
@@ -180,7 +180,7 @@ describe('origin variables of an app served on another port', () => {
 
     expect(agents).toContain('`start` takes `PORT` the same way.');
     expect(agents).not.toContain('variables below');
-    expect(agents).not.toContain('again before `start`');
+    expect(agents).not.toContain('before `start` or `preview`');
   });
 
   test('under portless, plain start needs the origin of the port it serves on', async () => {
@@ -253,6 +253,19 @@ describe('blueprints', () => {
     const notes = await readTextFile(join(project, 'docs/agents/cloudflare-deploy.md'));
 
     expect(notes).toContain('`BETTER_AUTH_URL` is already `https://web.localhost:1355`');
+  });
+
+  test('the cloudflare-fullstack-nextjs README and AGENTS.md list the origin variables, though it has no start script', async () => {
+    const project = await generate('port-blueprint-cf-origin', ['--blueprint', 'cloudflare-fullstack-nextjs']);
+
+    for (const file of ['README.md', 'AGENTS.md']) {
+      const text = await readTextFile(join(project, file));
+      expect(text, file).not.toContain('`start` takes `PORT`');
+      expect(text, file).toContain('before `start` or `preview`');
+      expect(text, file).toMatch(
+        /variables below[^\n]*\n\n- `apps\/web\/\.env`: `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`\n(?!- )/,
+      );
+    }
   });
 
   test('the cloudflare-fullstack-nextjs preview serves on the port of the web app, so BETTER_AUTH_URL matches it', async () => {
