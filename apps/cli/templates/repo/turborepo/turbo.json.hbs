@@ -66,6 +66,13 @@
 {{/if}}
 {{/entry}}
 {{#entry}}
+{{#if (hasRootScript "typecheck")}}
+    "typecheck": {
+      "dependsOn": ["^typecheck"{{#if (has "orm" "prisma")}}, "db:generate"{{/if}}]
+    }
+{{/if}}
+{{/entry}}
+{{#entry}}
 {{#if (or (has "orm" "drizzle") (has "orm" "prisma"))}}
     "db:push": {
       "cache": false

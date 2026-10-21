@@ -1,0 +1,14 @@
+const LOCALE = 'en-US';
+const TIME_ZONE = 'UTC';
+
+const FORMATS = {
+  date: { year: 'numeric', month: 'short', day: 'numeric' },
+  long: { year: 'numeric', month: 'long', day: 'numeric' },
+  dateTime: { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' },
+} as const satisfies Record<string, Intl.DateTimeFormatOptions>;
+
+export type DateFormat = keyof typeof FORMATS;
+
+export function formatDate(value: Date | string | number, format: DateFormat = 'date'): string {
+  return new Intl.DateTimeFormat(LOCALE, { ...FORMATS[format], timeZone: TIME_ZONE }).format(new Date(value));
+}

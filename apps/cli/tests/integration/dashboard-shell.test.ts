@@ -285,7 +285,11 @@ describe('dashboard shell', () => {
     };
 
     beforeAll(async () => {
-      ({ NavUser } = await load<{ NavUser: Component }>(blueprint, 'src/components/navigation/nav-user.tsx'));
+      const hook = 'src/hooks/use-menu-confirmation.ts';
+      await load(blueprint, hook, {}, 'ts');
+      ({ NavUser } = await load<{ NavUser: Component }>(blueprint, 'src/components/navigation/nav-user.tsx', {
+        '@/hooks/use-menu-confirmation': relativeModule(blueprint, hook),
+      }));
     });
 
     test('selecting Logout keeps the menu open and shows the confirmation', async () => {

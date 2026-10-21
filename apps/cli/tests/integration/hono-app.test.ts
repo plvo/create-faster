@@ -60,6 +60,12 @@ describe.each(APPS)('generated Hono app, $name', ({ name, args }) => {
     else process.env.NODE_ENV = nodeEnv;
   });
 
+  test('the root URL the README links answers, it is not a 404', async () => {
+    const res = await app.request('/');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+  });
+
   test('an unexpected error in production returns a generic 500 and logs the error with its stack', async () => {
     process.env.NODE_ENV = 'production';
     const res = await app.request('/boom');

@@ -165,10 +165,11 @@ describe('isLifecycleScript', () => {
 describe('collectScriptList', () => {
   const lines = (ctx: TemplateContext) => collectScriptList(ctx).map(({ command }) => command);
 
-  test('a Next.js app lists its development, production and analysis scripts', () => {
+  test('a Next.js app lists its development, analysis, type-check and production scripts', () => {
     expect(collectScriptList(project('single', 'nextjs'))).toEqual([
       { command: 'npm run dev', description: 'Start the development server' },
       { command: 'npm run analyze', description: 'Analyze the bundle size' },
+      { command: 'npm run typecheck', description: 'Type-check the code' },
       { command: 'npm run build', description: 'Build for production' },
       { command: 'npm run start', description: 'Start the production server' },
     ]);
@@ -201,6 +202,7 @@ describe('collectScriptList', () => {
     expect(lines(ctx)).toEqual([
       'npm run dev',
       'npm run analyze',
+      'npm run typecheck',
       'npm run build',
       'npm run start',
       'npm run db:generate',
@@ -261,6 +263,7 @@ describe('collectScriptList', () => {
     expect(lines({ ...project('single', 'nextjs'), pm: 'bun' })).toEqual([
       'bun run dev',
       'bun run analyze',
+      'bun run typecheck',
       'bun run build',
       'bun run start',
     ]);

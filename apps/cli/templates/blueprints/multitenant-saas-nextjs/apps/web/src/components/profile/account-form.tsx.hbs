@@ -10,6 +10,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-q
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAppForm } from '@repo/ui/lib/form';
+import { formatDate } from '@/lib/format-date';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
@@ -60,11 +61,7 @@ export function AccountForm() {
           <span className='text-sm font-medium'>Joined</span>
           <p className='text-sm text-muted-foreground'>
             {user?.createdAt
-              ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })
+              ? formatDate(user.createdAt, 'long')
               : '—'}
           </p>
         </div>

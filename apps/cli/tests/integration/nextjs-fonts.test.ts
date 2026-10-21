@@ -18,6 +18,12 @@ const openingTag = (source: string, tag: 'html' | 'body'): string => {
   return match[0];
 };
 
+const localFontOptions = (source: string, font: 'geistSans' | 'geistMono'): string => {
+  const match = source.match(new RegExp(`const ${font} = localFont\\(\\{([^}]*)\\}\\)`));
+  if (!match) throw new Error(`no ${font} declaration in the layout`);
+  return match[1] as string;
+};
+
 const ruleBody = (css: string, selector: string): string => {
   const match = css.match(new RegExp(`(?:^|\\n)${selector}\\s*\\{([^}]*)\\}`));
   if (!match) throw new Error(`no ${selector} rule in the stylesheet`);
@@ -57,6 +63,11 @@ describe('Next.js font variables', () => {
     expect(layout).not.toContain('{{');
   }
 
+  function expectOnlySansPreloaded(layout: string): void {
+    expect(localFontOptions(layout, 'geistSans')).not.toContain('preload: false');
+    expect(localFontOptions(layout, 'geistMono')).toContain('preload: false');
+  }
+
   function expectVariablesOnHtml(layout: string): void {
     expectFontsDeclaredAndRendered(layout);
     const html = openingTag(layout, 'html');
@@ -94,17 +105,33 @@ describe('Next.js font variables', () => {
     expectVariablesOnHtml(layouts[0] as string);
   });
 
+  test('a Next.js app preloads Geist Sans only, the font its first paint uses', async () => {
+    const projectDir = await generate(['fonts-preload', '--app', 'fonts-preload:nextjs']);
+    const layouts = await readLayouts(projectDir, []);
+    expect(layouts).toHaveLength(1);
+    expectOnlySansPreloaded(layouts[0] as string);
+  });
+
   test('at least one blueprint has a Next.js app', () => {
     expect(nextjsBlueprints.length).toBeGreaterThan(0);
   });
 
   describe.each(nextjsBlueprints)('blueprint %s', (name, blueprint) => {
-    test('sets the font variables on <html>', async () => {
+    let layouts: string[];
+
+    beforeAll(async () => {
       const projectDir = await generate([name, '--blueprint', name]);
       const appNames = blueprint.context.apps.filter((app) => app.stackName === 'nextjs').map((app) => app.appName);
-      const layouts = await readLayouts(projectDir, appNames);
+      layouts = await readLayouts(projectDir, appNames);
+    });
+
+    test('sets the font variables on <html>', () => {
       expect(layouts.length).toBeGreaterThan(0);
       for (const layout of layouts) expectVariablesOnHtml(layout);
+    });
+
+    test('preloads Geist Sans only', () => {
+      for (const layout of layouts) expectOnlySansPreloaded(layout);
     });
   });
 });

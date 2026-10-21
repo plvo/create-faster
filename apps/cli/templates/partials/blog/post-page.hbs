@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getAllPosts, getPost } from '@/lib/blog';
+import { formatDate } from '@/lib/format-date';
 import { Breadcrumbs } from '@/components/seo/breadcrumbs';
 import { ArticleJsonLd } from '@/components/seo/json-ld';
 import { createPageMetadata } from '@/lib/seo';
@@ -56,11 +57,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       <header className="mb-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <time dateTime={post.metadata.publishedAt}>
-            {new Date(post.metadata.publishedAt).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+            {formatDate(post.metadata.publishedAt, 'long')}
           </time>
           {post.metadata.author && (
             <>

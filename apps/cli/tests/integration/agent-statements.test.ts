@@ -404,7 +404,7 @@ describe('docs say the seed deletes the users', () => {
 });
 
 describe('AGENTS.md lists the scripts the root package.json defines', () => {
-  const NOT_COMMANDS = new Set(['predev', 'prebuild', 'postinstall', 'prepare']);
+  const NOT_COMMANDS = new Set(['predev', 'prebuild', 'pretypecheck', 'postinstall', 'prepare']);
   const CASES: ProjectName[] = [
     'single',
     'mono',

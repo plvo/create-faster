@@ -20,7 +20,8 @@ export const state = { denied: false, session: null, data: [], total: 0, sort: '
   'react.mjs': `${REACT_ELEMENT_STUB}
 export const Suspense = ({ children }) => children;
 export const cache = (fn) => fn;
-export const useRef = () => ({ current: null });`,
+export const useRef = () => ({ current: null });
+export const useState = (initial) => [initial, () => {}];`,
   'next-headers.mjs': 'export const headers = async () => new Headers();',
   'next-navigation.mjs': `export const redirect = (path) => { throw new Error('redirect:' + path); };
 export const notFound = () => { throw new Error('not-found'); };

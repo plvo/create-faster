@@ -18,6 +18,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Can } from '@/components/can';
+import { formatDate } from '@/lib/format-date';
 import { getAppUrl } from '@/lib/get-app-url';
 import { useTRPC } from '@/trpc/providers';
 
@@ -64,7 +65,7 @@ export function PendingInvitationsTable() {
           <TableRow key={i.id}>
             <TableCell className='break-all whitespace-normal'>{i.email}</TableCell>
             <TableCell>{i.role}</TableCell>
-            <TableCell className='hidden sm:table-cell'>{i.expiresAt ? new Date(i.expiresAt).toLocaleDateString() : '—'}</TableCell>
+            <TableCell className='hidden sm:table-cell'>{i.expiresAt ? formatDate(i.expiresAt) : '—'}</TableCell>
             <TableCell>
               <div className='flex flex-wrap gap-2'>
                 <Button

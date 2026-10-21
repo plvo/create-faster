@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
 import { useAppForm } from '@repo/ui/lib/form';
+import { formatDate } from '@/lib/format-date';
 
 const schema = z.object({
   name: z.string().min(1, 'Display name required').max(64),
@@ -62,7 +63,7 @@ export function AccountForm({
         <div className='space-y-1'>
           <dt className='text-sm font-medium'>Joined</dt>
           <dd className='text-sm text-muted-foreground'>
-            {new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatDate(createdAt, 'long')}
           </dd>
         </div>
       </dl>

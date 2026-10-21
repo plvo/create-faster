@@ -22,8 +22,24 @@ setIntegrationTimeout();
 const GENERATED_PASSWORD = { file: 'src/components/admin/generated-password.tsx', exportName: 'GeneratedPassword' };
 const GENERATED_PASSWORD_MODULE = { '@/components/admin/generated-password': { ...GENERATED_PASSWORD, stub: 'generated-password.mjs' } };
 
+const FORMAT_DATE_MODULE = {
+  '@/lib/format-date': { file: 'src/lib/format-date.ts', exportName: 'formatDate', stub: 'format-date.mjs' },
+};
+
 const TABLE_PAGINATION_MODULE = {
   '@/components/table-pagination': { file: 'src/components/table-pagination.tsx', exportName: 'TablePagination', stub: 'table-pagination.mjs' },
+};
+
+const FORMAT_FILE_SIZE_MODULE = {
+  '@/lib/format-file-size': { file: 'src/lib/format-file-size.ts', exportName: 'formatFileSize', stub: 'format-file-size.mjs' },
+};
+
+const CONFIRM_DIALOG_MODULE = {
+  '@/components/confirm-dialog': { file: 'src/components/confirm-dialog.tsx', exportName: 'ConfirmDialog', stub: 'confirm-dialog.mjs' },
+};
+
+const MENU_CONFIRMATION_MODULE = {
+  '@/hooks/use-menu-confirmation': { file: 'src/hooks/use-menu-confirmation.ts', exportName: 'useMenuConfirmation', stub: 'use-menu-confirmation.mjs' },
 };
 
 const USER_ACTIONS = { file: 'src/components/admin/user-actions.tsx', exportName: 'UserActions' };
@@ -520,7 +536,7 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
         createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
       },
       { ...COMMON_IMPORTS, ...blueprint.routerStubs },
-      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE },
+      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE, ...FORMAT_DATE_MODULE, ...MENU_CONFIRMATION_MODULE },
     ));
   });
 
@@ -1037,11 +1053,19 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/trpc/server': './trpc-server.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
         '@repo/ui/components/ui/search-input': './search-input.mjs',
+        '@repo/ui/components/ui/field': './field.mjs',
         '@repo/api/user-list': './user-list.mjs',
         '@/hooks/use-user-list-params': './user-list-params.mjs',
         '@/components/table-pagination': './paged-list.mjs',
       },
-      { ...GENERATED_PASSWORD_MODULE, ...INLINE_EDIT_MODULE, ...RESPONSE_ERROR_MODULE },
+      {
+        ...GENERATED_PASSWORD_MODULE,
+        ...INLINE_EDIT_MODULE,
+        ...RESPONSE_ERROR_MODULE,
+        ...FORMAT_DATE_MODULE,
+        ...FORMAT_FILE_SIZE_MODULE,
+        ...CONFIRM_DIALOG_MODULE,
+      },
     ));
 
     // The data table block runs for real against a hand-made table instance, so the stand-ins around it are its own.
@@ -1194,7 +1218,11 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     test('deleting a document', async () => {
       const documents = { items: [{ id: 'd1', title: 'Plan', size: 2048, createdAt: new Date(0) }], total: 1 };
       const page = await mount('documents', { data: documents });
-      await page.click('Delete document');
+      await page.click('Delete');
+      expect(invalidated(), 'the confirm button deletes nothing while no document is chosen').toEqual([]);
+      await page.click('Delete Plan');
+      expect(invalidated(), 'choosing a document to delete deletes nothing yet').toEqual([]);
+      await page.click('Delete');
       expect(invalidated()).toEqual(['documents']);
     });
 
