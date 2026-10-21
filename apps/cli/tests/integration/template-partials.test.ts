@@ -6,7 +6,7 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
-const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'workers-dev', 'keep-names-off', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
+const PARTIAL_NAMES = ['d1-binding', 'hyperdrive-binding', 'node-env-var', 'public-urls', 'api-token-header', 'keep-names-off', 'secrets-required', 'worker-name', 'client-options', 'api-host', 'asset-host', 'cookie-plugin'];
 
 const withoutDbPort = (content: string) => content.replace(/localhost:\d+\//g, 'localhost:PORT/');
 

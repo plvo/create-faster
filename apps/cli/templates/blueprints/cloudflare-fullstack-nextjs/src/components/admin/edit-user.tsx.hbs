@@ -52,6 +52,29 @@ const PROFILE_FIELDS = [
 
 const labelId = (field: string) => `edit-user-${field}`;
 
+function ConfirmActions({
+  label,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  label: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
+      <Button type='button' variant='destructive' onClick={onConfirm} disabled={pending}>
+        {label}
+      </Button>
+      <Button type='button' variant='ghost' onClick={onCancel}>
+        Cancel
+      </Button>
+    </>
+  );
+}
+
 export function EditUser({ user }: { user: AdminUser }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -208,19 +231,12 @@ export function EditUser({ user }: { user: AdminUser }) {
           </div>
           <div className='flex flex-wrap gap-2'>
             {confirming === 'ban' ? (
-              <>
-                <Button
-                  type='button'
-                  variant='destructive'
-                  onClick={() => banMutation.mutate({ id: user.id, banned: true })}
-                  disabled={banMutation.isPending}
-                >
-                  Confirm ban
-                </Button>
-                <Button type='button' variant='ghost' onClick={() => setConfirming(null)}>
-                  Cancel
-                </Button>
-              </>
+              <ConfirmActions
+                label='Confirm ban'
+                pending={banMutation.isPending}
+                onConfirm={() => banMutation.mutate({ id: user.id, banned: true })}
+                onCancel={() => setConfirming(null)}
+              />
             ) : (
               <Button
                 type='button'
@@ -232,20 +248,12 @@ export function EditUser({ user }: { user: AdminUser }) {
               </Button>
             )}
             {confirming === 'delete' ? (
-              <>
-                <Button
-                  type='button'
-                  variant='destructive'
-                  onClick={() => removeMutation.mutate({ id: user.id })}
-                  disabled={removeMutation.isPending}
-                >
-                  <Trash2 className='size-4' />
-                  Confirm delete
-                </Button>
-                <Button type='button' variant='ghost' onClick={() => setConfirming(null)}>
-                  Cancel
-                </Button>
-              </>
+              <ConfirmActions
+                label='Confirm delete'
+                pending={removeMutation.isPending}
+                onConfirm={() => removeMutation.mutate({ id: user.id })}
+                onCancel={() => setConfirming(null)}
+              />
             ) : (
               <Button type='button' variant='destructive' onClick={() => setConfirming('delete')}>
                 <Trash2 className='size-4' />
