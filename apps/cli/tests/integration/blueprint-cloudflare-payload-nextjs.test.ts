@@ -293,7 +293,7 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
         `wrangler r2 bucket create ${PROJECT}-backups`,
         'bun run db:migrate:remote',
         'bun run ensure-admin:remote',
-        '7. Learn the production URL and deploy',
+        '8. Learn the production URL and deploy',
         '### Production URL',
         '### First deploy',
         'export NEXT_PUBLIC_APP_URL=',
@@ -304,6 +304,14 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
       // The generic deploy step would send the reader to the build commands before the URL and the secrets.
       expect(readme).not.toContain('Then run the build and deploy commands listed under');
       expect(readme).not.toContain('Set the runtime secrets: every name under');
+    });
+
+    test('migrates, creates the admin and seeds the local database again once the real database id is pasted: its data is keyed by that id', async () => {
+      const readme = await readTextFile(join(projectPath, 'README.md'));
+      const afterBuckets = readme.slice(readme.indexOf(`wrangler r2 bucket create ${PROJECT}-backups`));
+      const beforeRemote = afterBuckets.slice(0, afterBuckets.indexOf('bun run db:migrate:remote'));
+      expect(beforeRemote).toContain('no such table');
+      expectInOrder(beforeRemote, ['bun run migrate\n', 'bun run ensure-admin\n', 'bun run db:seed\n']);
     });
 
     test('does not let the first deploy lose the token of the backups: it is generated into a variable to keep', async () => {
