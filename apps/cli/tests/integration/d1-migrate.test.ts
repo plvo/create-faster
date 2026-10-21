@@ -61,7 +61,9 @@ describe('Turborepo: d1 migrate workflow points at the deploy app config and a s
 
   test('the deploy app preview shares the workspace-root local state', async () => {
     const pkg = JSON.parse(await readTextFile(join(projectPath, 'apps/web/package.json')));
-    expect(pkg.scripts.preview).toBe('opennextjs-cloudflare preview -- --persist-to ../../.wrangler');
+    expect(pkg.scripts.preview).toBe(
+      `sh -c 'opennextjs-cloudflare preview -- --port=\${PORT:-3001} --persist-to ../../.wrangler "$@"' sh`,
+    );
   });
 
   test('drizzle config resolves the local D1 file from the persisted state dir', async () => {
@@ -128,7 +130,9 @@ describe('Single repo: d1 migrate workflow stays self-consistent on one local st
   test('migrate, preview and drizzle config all agree on the root .wrangler/v3 state', async () => {
     const pkg = JSON.parse(await readTextFile(join(projectPath, 'package.json')));
     expect(pkg.scripts['db:migrate']).toBe('wrangler d1 migrations apply DB --local --persist-to ./.wrangler');
-    expect(pkg.scripts.preview).toBe('opennextjs-cloudflare preview -- --persist-to ./.wrangler');
+    expect(pkg.scripts.preview).toBe(
+      `sh -c 'opennextjs-cloudflare preview -- --port=\${PORT:-3000} --persist-to ./.wrangler "$@"' sh`,
+    );
     expect(pkg.scripts['local-setup']).toBe(
       'bun run db:generate && wrangler d1 migrations apply DB --local --persist-to ./.wrangler && bun run db:seed',
     );

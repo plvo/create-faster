@@ -6,9 +6,9 @@ import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
 import {
+  collectAppOriginEnvs,
   collectAppReceivesEnv,
   collectAppSecrets,
-  collectAppUrlEnvs,
   collectEnvFileNames,
   collectProjectSecrets,
   collectTaskEnv,
@@ -119,9 +119,9 @@ function registerHelpers(): void {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
   });
 
-  Handlebars.registerHelper('appUrlEnvs', (...args: unknown[]) => {
+  Handlebars.registerHelper('appOriginEnvs', (...args: unknown[]) => {
     const options = args.pop() as Handlebars.HelperOptions;
-    return collectAppUrlEnvs(options.data.root as TemplateContext, args as StackName[]);
+    return collectAppOriginEnvs(options.data.root as TemplateContext, args as StackName[]);
   });
 
   Handlebars.registerHelper(

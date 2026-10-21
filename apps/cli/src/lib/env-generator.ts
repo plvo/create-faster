@@ -28,6 +28,7 @@ interface CollectedEnv {
   serverOnly?: boolean;
   file?: string;
   secret?: boolean;
+  origin?: boolean;
   tasks?: string[];
   generateCommand?: string;
   thirdParty?: EnvThirdParty;
@@ -58,8 +59,6 @@ export function resolveAppUrl(ctx: TemplateContext, appName: string): string {
     : `http://localhost:${port}`;
 }
 
-const APP_URL_PLACEHOLDER = '{{appUrl}}';
-
 function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string): string {
   let resolved = value.replace(/\{\{projectName\}\}/g, ctx.projectName);
   if (ctx.dbPort !== undefined) {
@@ -67,7 +66,7 @@ function resolveEnvValue(value: string, ctx: TemplateContext, appName?: string):
   }
   if (appName) {
     resolved = resolved.replace(/\{\{appPort\}\}/g, String(resolveAppPort(ctx.apps, appName)));
-    resolved = resolved.replaceAll(APP_URL_PLACEHOLDER, resolveAppUrl(ctx, appName));
+    resolved = resolved.replace(/\{\{appUrl\}\}/g, resolveAppUrl(ctx, appName));
   }
   return resolved;
 }
@@ -102,6 +101,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         stacks: env.stacks,
         file: env.file,
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
+        origin: env.origin,
         tasks: env.tasks,
         generateCommand: env.generateCommand,
         thirdParty: env.thirdParty,
@@ -243,32 +243,35 @@ export function collectEnvFiles(ctx: TemplateContext): EnvFileOutput[] {
   return files;
 }
 
-/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
-export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
-  const app = ctx.apps.find((candidate) => candidate.appName === appName);
-  if (!app) return [];
-
+/** The names of the variables of the `.env` of the app that satisfy the predicate, each once. */
+function collectAppEnvNames(
+  ctx: TemplateContext,
+  app: TemplateContext['apps'][number],
+  predicate: (env: CollectedEnv) => boolean,
+): string[] {
   const names = collectAllEnvs(ctx)
-    .filter((env) => env.secret && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx))
+    .filter((env) => predicate(env) && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
 }
 
-/** The variables of the `.env` of each app (those on one of the stacks, all apps when none is given) whose value is the URL the app is served from. */
-export function collectAppUrlEnvs(
+/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
+export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  return app ? collectAppEnvNames(ctx, app, (env) => Boolean(env.secret)) : [];
+}
+
+/** The `.env` of each app (those on one of the stacks, all apps when none is given) and its variables that are the origin the app is served from. */
+export function collectAppOriginEnvs(
   ctx: TemplateContext,
   stacks: readonly StackName[] = [],
-): { appName: string; names: string[] }[] {
-  const envs = collectAllEnvs(ctx).filter(
-    (env) => env.value.includes(APP_URL_PLACEHOLDER) && isReadFromAppEnvFile(env, ctx),
-  );
-
+): { path: string; names: string[] }[] {
   return ctx.apps
     .filter((app) => stacks.length === 0 || stacks.includes(app.stackName))
     .map((app) => ({
-      appName: app.appName,
-      names: [...new Set(envs.filter((env) => appAcceptsEnv(env, app)).map((env) => extractEnvKey(env.value)))],
+      path: toEnvPath(resolveScopeToPath('app', ctx, app.appName) ?? ''),
+      names: collectAppEnvNames(ctx, app, (env) => Boolean(env.origin)),
     }))
     .filter(({ names }) => names.length > 0);
 }

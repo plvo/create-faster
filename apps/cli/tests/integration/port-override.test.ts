@@ -129,7 +129,7 @@ describe('single repo', () => {
   });
 });
 
-describe('URL variables of an app served on another port', () => {
+describe('origin variables of an app served on another port', () => {
   const AUTH_APPS = ['--app', 'web:nextjs:better-auth,trpc', '--app', 'api:hono'];
   const AUTH_PROJECT = ['--database', 'sqlite', '--orm', 'drizzle'];
   const BUILD_AGAIN = '`npm run build` again before `start`';
@@ -174,26 +174,64 @@ describe('URL variables of an app served on another port', () => {
     }
   });
 
-  test('any library whose variable holds the URL of the app is listed, not only the auth ones', async () => {
+  test('a variable that only holds the URL of the app is not an origin to change', async () => {
     const project = await generate('port-url-playwright', ['--app', 'app:nextjs:playwright']);
-    expect(await readTextFile(join(project, 'AGENTS.md'))).toContain('- `.env`: `BASE_URL`');
+    const agents = await readTextFile(join(project, 'AGENTS.md'));
+
+    expect(agents).toContain('`start` takes `PORT` the same way.');
+    expect(agents).not.toContain('variables below');
+    expect(agents).not.toContain('again before `start`');
   });
 
-  test('the Cloudflare notes of a Next.js app give the origin of the Worker preview', async () => {
-    const project = await generate('port-url-cloudflare', [
+  test('under portless, plain start needs the origin of the port it serves on', async () => {
+    const project = await generate('port-url-portless', [...AUTH_APPS, ...AUTH_PROJECT, '--tooling', 'portless']);
+
+    for (const file of ['README.md', 'AGENTS.md']) {
+      const text = await readTextFile(join(project, file));
+      expect(text, file).toContain('Plain `start` does not go through portless');
+      expect(text, file).toContain('`http://localhost:<port>`');
+      expect(text, file).toContain('`start:portless`');
+    }
+  });
+});
+
+describe('preview of a Worker', () => {
+  const previewOnAppPort = (port: number, persist: string) =>
+    `sh -c 'opennextjs-cloudflare preview -- --port=\${PORT:-${port}} --persist-to ${persist} "$@"' sh`;
+
+  async function previewOf(project: string, packageDir = ''): Promise<string | undefined> {
+    const { scripts } = await readJsonFile<PackageJson>(join(project, packageDir, 'package.json'));
+    return scripts.preview;
+  }
+
+  test('a Next.js Worker serves its preview on the port of its app, which PORT overrides', async () => {
+    const single = await generate('port-preview-single', ['--app', 'app:nextjs', '--deployment', 'cloudflare']);
+    expect(await previewOf(single)).toBe(previewOnAppPort(3000, './.wrangler'));
+
+    const mono = await generate('port-preview-mono', [
       '--app',
-      'web:nextjs:better-auth,trpc',
-      '--database',
-      'd1',
-      '--orm',
-      'drizzle',
+      'api:hono',
+      '--app',
+      'web:nextjs',
       '--deployment',
       'cloudflare',
     ]);
-    const agents = await readTextFile(join(project, 'AGENTS.md'));
+    expect(await previewOf(mono, 'apps/web')).toBe(previewOnAppPort(3001, '../../.wrangler'));
+  });
 
-    expect(agents).toContain('The preview listens on Wrangler\'s port (8787 by default), not on the one `.env` names');
-    expect(agents).toContain('- `.env`: `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`');
+  test('a TanStack Start Worker keeps the port flag in a single repo, where --port <port> would be dropped', async () => {
+    const single = await generate('port-preview-start', ['--app', 'app:tanstack-start', '--deployment', 'cloudflare']);
+    expect(await previewOf(single)).toBe('vite preview --port=${PORT:-3000}');
+
+    const mono = await generate('port-preview-start-mono', [
+      '--app',
+      'api:hono',
+      '--app',
+      'web:tanstack-start',
+      '--deployment',
+      'cloudflare',
+    ]);
+    expect(await previewOf(mono, 'apps/web')).toBe('vite preview --port=${PORT:-3001}');
   });
 });
 
@@ -217,13 +255,13 @@ describe('blueprints', () => {
     expect(notes).toContain('`BETTER_AUTH_URL` is already `https://web.localhost:1355`');
   });
 
-  test('the cloudflare-fullstack-nextjs preview notes name the variables to set for the origin of the preview', async () => {
+  test('the cloudflare-fullstack-nextjs preview serves on the port of the web app, so BETTER_AUTH_URL matches it', async () => {
     const project = await generate('port-blueprint-cf-preview', ['--blueprint', 'cloudflare-fullstack-nextjs']);
-    const notes = await readTextFile(join(project, 'docs/agents/cloudflare-deploy.md'));
+    const { scripts } = await readJsonFile<PackageJson>(join(project, 'apps/web/package.json'));
 
-    expect(notes).toContain('The preview listens on Wrangler\'s port (8787 by default), not on the one `.env` names');
-    expect(notes).toContain('set them to its origin (`http://localhost:8787`)');
-    expect(notes).toContain('\n  - `apps/web/.env`: `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`\n');
+    expect(scripts.preview).toBe(
+      `sh -c 'opennextjs-cloudflare preview -- --port=\${PORT:-3000} --persist-to ../../.wrangler "$@"' sh`,
+    );
   });
 
   describe('multitenant-saas-nextjs invitation links', () => {

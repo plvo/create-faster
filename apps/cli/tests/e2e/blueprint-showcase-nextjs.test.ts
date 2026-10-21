@@ -146,9 +146,9 @@ describe('blueprint-showcase-nextjs on cloudflare', () => {
       const port = await getFreePort();
       const inspectorPort = await getFreePort();
       const server = await startServer(
-        ['bun', 'run', 'preview', '--', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspectorPort)],
+        ['bun', 'run', 'preview', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)],
         projectDir,
-        { port, readyPath: '/blog', readyTimeout: TIMEOUT_PREVIEW / 2 },
+        { port, readyPath: '/blog', readyTimeout: TIMEOUT_PREVIEW / 2, env: { PORT: String(port) } },
       );
       let stderr: string;
       try {

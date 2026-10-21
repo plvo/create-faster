@@ -68,13 +68,11 @@ describe('nextjs-mdx on cloudflare', () => {
           '--',
           '--ip',
           '127.0.0.1',
-          '--port',
-          String(port),
           '--inspector-port',
           String(inspectorPort),
         ],
         projectDir,
-        { port, readyPath: '/mdx', readyTimeout: TIMEOUT_PREVIEW / 2 },
+        { port, readyPath: '/mdx', readyTimeout: TIMEOUT_PREVIEW / 2, env: { PORT: String(port) } },
       );
       let stderr: string;
       try {
