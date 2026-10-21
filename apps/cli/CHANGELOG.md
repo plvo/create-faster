@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.6.9](https://github.com/plvo/create-faster/compare/create-faster-v1.6.8...create-faster-v1.6.9) (2026-10-21)
+
+
+### Features
+
+* **blueprints:** declare the seed behavior in META, render it in docs ([#416](https://github.com/plvo/create-faster/issues/416)) ([30394b0](https://github.com/plvo/create-faster/commit/30394b06f48d35a3fc694a70331f3f498e3dfb39))
+* **cloudflare-fullstack:** page, search and sort the users list ([#417](https://github.com/plvo/create-faster/issues/417)) ([f25e0e6](https://github.com/plvo/create-faster/commit/f25e0e6a8cdbd5dbcefcf624bfa6f02465af652a))
+* **meta:** declare root script sentences in META ([#414](https://github.com/plvo/create-faster/issues/414)) ([f506887](https://github.com/plvo/create-faster/commit/f5068873d3b67e562b35f631239e6d3e68800726))
+* **org-dashboard:** paginate the contacts and users lists ([#412](https://github.com/plvo/create-faster/issues/412)) ([c6fcf3c](https://github.com/plvo/create-faster/commit/c6fcf3c05c02d61fa25966c4ad24e42f1bf5e77b))
+
+
+### Bug Fixes
+
+* **agents:** make the generated AGENTS.md statements true ([#405](https://github.com/plvo/create-faster/issues/405)) ([7342435](https://github.com/plvo/create-faster/commit/73424354c43c0c070cbdc1aca3ba1d95b3092ebc))
+* **aws:** one backend config and region, ordered deploy guides ([#398](https://github.com/plvo/create-faster/issues/398)) ([dd06939](https://github.com/plvo/create-faster/commit/dd0693979786a8c51b9beccd02a9e8030705f3f0))
+* **blueprints:** repair the shell of the four dashboards ([#385](https://github.com/plvo/create-faster/issues/385)) ([c206c9b](https://github.com/plvo/create-faster/commit/c206c9b9c92b9e286d25aca5e4a9704ff9103bf2))
+* **blueprints:** saas member removal, role-gated write actions, 404 ([#388](https://github.com/plvo/create-faster/issues/388)) ([1e03a33](https://github.com/plvo/create-faster/commit/1e03a33de9d4606b4d9fd1a7de9bce8e3c1f1f5e))
+* **blueprints:** scope dependencies and envs per app ([#411](https://github.com/plvo/create-faster/issues/411)) ([87c5818](https://github.com/plvo/create-faster/commit/87c5818df4cf34a9ef81bce8f3b7871353aa5e92))
+* **blueprints:** serve the blog from the bundle on a Worker ([#393](https://github.com/plvo/create-faster/issues/393)) ([b2acb09](https://github.com/plvo/create-faster/commit/b2acb0968a8ab73b78afa653968506cd57f509b0))
+* **blueprints:** surface and map errors of dashboard mutations ([#384](https://github.com/plvo/create-faster/issues/384)) ([6b4076b](https://github.com/plvo/create-faster/commit/6b4076b4c3242b068d40638c2156f8bac43ec186))
+* **blueprints:** wire static site contact form, dev 404 and prod URL ([#399](https://github.com/plvo/create-faster/issues/399)) ([4683f92](https://github.com/plvo/create-faster/commit/4683f92a249d0a99fd01e84e8c20473c2046f5c4))
+* **cli:** install prompt default, help defaults, file count ([#402](https://github.com/plvo/create-faster/issues/402)) ([9cd00e2](https://github.com/plvo/create-faster/commit/9cd00e29ad53116e7a07f8b0de32326484cfb8a8))
+* **cli:** keep the database out of client-only turborepo apps ([#424](https://github.com/plvo/create-faster/issues/424)) ([08e14b6](https://github.com/plvo/create-faster/commit/08e14b6773bcb3a9b091b83c86a3814e7f836461))
+* **cli:** polish interactive prompts, help and redirected output ([#391](https://github.com/plvo/create-faster/issues/391)) ([1585f75](https://github.com/plvo/create-faster/commit/1585f75e431609c1e23b64ea2b7474f381d593db))
+* **cli:** print only the steps the project can run ([#374](https://github.com/plvo/create-faster/issues/374)) ([90d67f2](https://github.com/plvo/create-faster/commit/90d67f2a210fe2b2b4c01106c3f2cb1432b8ff97))
+* **cloudflare:** document ordered D1 provisioning for every repo type ([#389](https://github.com/plvo/create-faster/issues/389)) ([3aa9bff](https://github.com/plvo/create-faster/commit/3aa9bff3524a9b95e6481411928481d63bd147ae))
+* **cloudflare:** document the production URL and first admin ([#394](https://github.com/plvo/create-faster/issues/394)) ([761c4e1](https://github.com/plvo/create-faster/commit/761c4e146ef664c53cb91a8a568492259cce33d8))
+* **cloudflare:** remove the __name page error, cover fresh accounts ([#426](https://github.com/plvo/create-faster/issues/426)) ([959c2f3](https://github.com/plvo/create-faster/commit/959c2f3b0858330e14d51ac965f8613fe81f41f8))
+* **cloudflare:** serve the preview on the app port, list origin variables ([#425](https://github.com/plvo/create-faster/issues/425)) ([54e509e](https://github.com/plvo/create-faster/commit/54e509e6e037aab090e1456de972ed0f7072eb73))
+* **dashboards:** polish fullstack UI, dates, ban, typecheck ([#432](https://github.com/plvo/create-faster/issues/432)) ([0357cc5](https://github.com/plvo/create-faster/commit/0357cc52d9e48a8d26e0af7742c170993ae9c1c1))
+* **docs:** add missing fiches, one commit-msg verdict ([#430](https://github.com/plvo/create-faster/issues/430)) ([ae3b9af](https://github.com/plvo/create-faster/commit/ae3b9af4b793b488d317afc2528e63f9807545d9))
+* **e2e:** repair the three failing e2e files ([#431](https://github.com/plvo/create-faster/issues/431)) ([f822981](https://github.com/plvo/create-faster/commit/f8229812e2c94c8fc57fbbf35edb7862d58a2b75))
+* **eslint:** lint the workspace packages of a turborepo ([#400](https://github.com/plvo/create-faster/issues/400)) ([6c3e0f2](https://github.com/plvo/create-faster/commit/6c3e0f2680fa5e0e822a62891fa01418c065e6df))
+* **eslint:** run lint-staged eslint in each turborepo workspace ([#406](https://github.com/plvo/create-faster/issues/406)) ([87d61a5](https://github.com/plvo/create-faster/commit/87d61a596dc6c3bbb9f16d5fe82b9db7d6d44e9d))
+* **expo:** run the Expo dev server from its app directory in a turborepo ([#395](https://github.com/plvo/create-faster/issues/395)) ([0dc23d5](https://github.com/plvo/create-faster/commit/0dc23d5946e3e185b28c36c3d017d17da69f0fd6))
+* **hono:** run dev in Wrangler on cloudflare so bindings exist ([#382](https://github.com/plvo/create-faster/issues/382)) ([dbb0d2b](https://github.com/plvo/create-faster/commit/dbb0d2bdfff3094c0eb614e6d414243ead29820a))
+* **mdx:** serve the Next.js MDX pages on Cloudflare ([#380](https://github.com/plvo/create-faster/issues/380)) ([5eb79bc](https://github.com/plvo/create-faster/commit/5eb79bc0a4a8d6cf0232adff9cb0892e1699a599))
+* **nextjs:** apply the Geist fonts through the html element ([#386](https://github.com/plvo/create-faster/issues/386)) ([c036b58](https://github.com/plvo/create-faster/commit/c036b58a73b9a1eecae6bd4e143f6cfc3e790366))
+* **nextjs:** one main on 404, scroll attribute, dapp titles ([#407](https://github.com/plvo/create-faster/issues/407)) ([2201193](https://github.com/plvo/create-faster/commit/22011933168b57d85aa77330aaa5ded6a92c647f))
+* **ports:** let PORT override the port of every app under turbo ([#396](https://github.com/plvo/create-faster/issues/396)) ([26185f8](https://github.com/plvo/create-faster/commit/26185f8c6b3b9f1f7d3dc30fd72c615c605472b3))
+* **shadcn:** make shadcn add work in a turborepo ([#390](https://github.com/plvo/create-faster/issues/390)) ([ef85356](https://github.com/plvo/create-faster/commit/ef853560be9fa9246c48168004904ed8f7a1a50d))
+* **tanstack-start:** load Geist through the theme font variables ([#404](https://github.com/plvo/create-faster/issues/404)) ([2c51356](https://github.com/plvo/create-faster/commit/2c51356158d3669146f4061010017258d72388ee))
+* **templates:** leave third-party ids blank and say where to get them ([#397](https://github.com/plvo/create-faster/issues/397)) ([7c80908](https://github.com/plvo/create-faster/commit/7c80908694bb636fe4f7540b819ae1ae80ca8007))
+* **templates:** quiet fresh projects, lint clean on every linter ([#403](https://github.com/plvo/create-faster/issues/403)) ([04fa60a](https://github.com/plvo/create-faster/commit/04fa60ac3b1de5de90b8ccd22d966e6f57392db6))
+* **turborepo:** align workspace versions for syncpack 15 ([#427](https://github.com/plvo/create-faster/issues/427)) ([f3ff592](https://github.com/plvo/create-faster/commit/f3ff592e0800ec22c6c1aa5bd56dcb5348a79609))
+* **turborepo:** define the root build only when an app declares it ([#413](https://github.com/plvo/create-faster/issues/413)) ([3e40257](https://github.com/plvo/create-faster/commit/3e40257af84240390fc6718a3aae9e8b8137e0f6))
+
 ## [1.6.8](https://github.com/plvo/create-faster/compare/create-faster-v1.6.7...create-faster-v1.6.8) (2026-10-16)
 
 
