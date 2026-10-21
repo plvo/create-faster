@@ -46,6 +46,16 @@ app.notFound((c) => {
   );
 });
 
+app.get('/', (c) => {
+  return c.json(
+    {
+      ok: true,
+      message: '{{appName}} is running',
+    },
+    200,
+  );
+});
+
 app.get('/health/:id', (c) => {
   const { id } = c.req.param();
   return c.json(
