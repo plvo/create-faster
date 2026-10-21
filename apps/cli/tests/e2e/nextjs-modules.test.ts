@@ -90,17 +90,38 @@ describe('nextjs-mdx-pwa', () => {
     TIMEOUT_START,
   );
 
+  const fetchUnknownDocumentInDev = async (): Promise<{ status: number; output: ServerOutput }> => {
+    const server = await startServer(['bun', 'run', 'dev'], projectDir, { readyTimeout: TIMEOUT_START });
+    let status = 0;
+    let output: ServerOutput | undefined;
+    try {
+      expect((await fetch(`${server.url}/mdx`)).status).toBe(200);
+      status = (await fetch(`${server.url}/mdx/does-not-exist`)).status;
+    } finally {
+      output = await server.stop();
+    }
+    return { status, output };
+  };
+
   test(
+    'dev 404s an unknown document',
+    async () => {
+      const { status } = await fetchUnknownDocumentInDev();
+      expect(status).toBe(404);
+    },
+    TIMEOUT_START * 2,
+  );
+
+  // Next.js 16.3 and later add one more close listener per request than 16.2 did. A request that goes through
+  // src/proxy.ts twice, as the dev server's 404 of a slug that `dynamicParams = false` rejects does, reaches 11 on
+  // one ServerResponse. Bare Next.js 16.4.2 with a proxy and `dynamicParams = false` prints it, 16.2.12 does not
+  // (vercel/next.js#97757). `dynamicParams = false` is what `output: export` needs, and the page 404s without it
+  // only after rendering, so the page keeps it. `test.failing` passes while the body
+  // fails: once Next.js fixes the budget the body passes, this test FAILS, and the marker comes off.
+  test.failing(
     'dev 404s an unknown document without a listener leak warning',
     async () => {
-      const server = await startServer(['bun', 'run', 'dev'], projectDir, { readyTimeout: TIMEOUT_START });
-      let output: ServerOutput | undefined;
-      try {
-        expect((await fetch(`${server.url}/mdx`)).status).toBe(200);
-        expect((await fetch(`${server.url}/mdx/does-not-exist`)).status).toBe(404);
-      } finally {
-        output = await server.stop();
-      }
+      const { output } = await fetchUnknownDocumentInDev();
       expect(output.stderr).not.toContain('MaxListenersExceededWarning');
     },
     TIMEOUT_START * 2,

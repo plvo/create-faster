@@ -30,7 +30,12 @@ export default defineConfig({
 {{#if (hasLibrary "shadcn")}}
         'shadcn/no-arbitrary-values': 'error',
         'shadcn/no-raw-colors': 'error',
+{{!-- A turborepo app reads its theme from packages/ui/src/base.css, which does not import the app's mdx.css that declares the *-mdx classes. --}}
+{{#if (and (hasLibrary "mdx") (eq @root.repo "turborepo"))}}
+        'shadcn/no-unknown-classes': ['error', { allow: ['*-mdx'] }],
+{{else}}
         'shadcn/no-unknown-classes': 'error',
+{{/if}}
 {{/if}}
       },
 {{/if}}
