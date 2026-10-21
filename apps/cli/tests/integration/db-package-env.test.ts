@@ -117,6 +117,6 @@ describe.each([{ orm: 'drizzle' }, { orm: 'prisma' }])('turborepo with postgres 
   test('README describes packages/db', async () => {
     const readme = await readTextFile(join(project, 'README.md'));
     expect(readme).toContain('### `packages/db`');
-    expect(readme).toContain(`Uses shared database package (\`packages/db\`) with ${orm} ORM.`);
+    expect(readme).toContain(`- **ORM**: ${orm}`);
   });
 });

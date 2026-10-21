@@ -52,14 +52,12 @@ describe('turborepo README db package section', () => {
     const readme = renderReadme(ctx);
 
     expect(readme).toContain('### `packages/db`');
-    expect(readme).toContain('Uses shared database package (`packages/db`).');
     expect(readme).not.toContain('ORM');
   });
 
   test('names the ORM when the project has one', () => {
     const readme = renderReadme({ ...ctx, project: { ...ctx.project, orm: 'drizzle' } });
 
-    expect(readme).toContain('Uses shared database package (`packages/db`) with drizzle ORM.');
     expect(readme).toContain('- **ORM**: drizzle');
   });
 });

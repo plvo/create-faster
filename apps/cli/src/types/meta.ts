@@ -151,6 +151,8 @@ export interface MetaProjectCategory {
   prompt: string;
   selection: 'single' | 'multi';
   require?: string[];
+  /** The addons of this category bring code that runs on a server (a database client): in a turborepo, an app on a `clientOnly` stack receives neither their package reference nor their variables. */
+  serverOnly?: boolean;
   options: Record<string, MetaAddon>;
 }
 
@@ -159,6 +161,8 @@ export type PackageManagerPackageJson = Partial<Record<PackageManagerName, Packa
 
 interface MetaStack {
   type: 'app' | 'server';
+  /** The app cannot run server code (a native app), so it receives nothing a `serverOnly` category brings. */
+  clientOnly?: boolean;
   label: string;
   hint: string;
   moduleType?: 'module';

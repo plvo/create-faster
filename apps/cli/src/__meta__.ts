@@ -395,6 +395,7 @@ export const META: Meta = {
     },
     expo: {
       type: 'app',
+      clientOnly: true,
       label: 'Expo',
       hint: 'React Native framework',
       scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP],
@@ -1040,6 +1041,7 @@ export const META: Meta = {
     },
     database: {
       prompt: 'Include a database?',
+      serverOnly: true,
       selection: 'single',
       options: {
         postgres: {
@@ -1196,6 +1198,7 @@ export const META: Meta = {
     },
     orm: {
       prompt: 'Configure an ORM?',
+      serverOnly: true,
       selection: 'single',
       require: ['database'],
       options: {

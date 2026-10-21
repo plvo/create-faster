@@ -25,6 +25,18 @@ export function getCompatibleLibraryNames(stackName: StackName): string[] {
     .map(([name]) => name);
 }
 
+/**
+ * Whether the app receives what a `serverOnly` category brings: a turborepo app on a `clientOnly` stack receives nothing of it.
+ * A single repo has one app, which owns the project tooling, so it receives it whatever its stack.
+ */
+export function appReceives(
+  scope: { serverOnly?: boolean },
+  app: Pick<AppContext, 'stackName'>,
+  ctx: Pick<TemplateContext, 'repo'>,
+): boolean {
+  return !(ctx.repo === 'turborepo' && scope.serverOnly && META.stacks[app.stackName].clientOnly);
+}
+
 /** The libraries of an app that its stack supports, in the order they were selected. */
 export function getAppLibraries(app: AppContext): { name: string; library: MetaLibrary }[] {
   return app.libraries.flatMap((name) => {
