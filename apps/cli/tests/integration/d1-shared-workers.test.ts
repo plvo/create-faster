@@ -62,7 +62,7 @@ describe('D1 turborepo: every Worker shares one database and one local state', (
       }),
     );
     expect(previews).toEqual([
-      'opennextjs-cloudflare preview -- --persist-to ../../.wrangler',
+      `sh -c 'opennextjs-cloudflare preview -- --port=\${PORT:-3002} --persist-to ../../.wrangler "$@"' sh`,
       'wrangler dev --persist-to ../../.wrangler',
     ]);
   });

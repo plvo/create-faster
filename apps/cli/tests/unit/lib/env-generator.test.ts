@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
   collectAppSecrets,
+  collectAppOriginEnvs,
   collectEnvFiles,
   collectEnvGroups,
   collectEnvsToGenerate,
@@ -858,5 +859,70 @@ describe('EnvVar.thirdParty', () => {
     for (const [name, sources] of sourcesByName) {
       expect({ name, sourceCount: sources.size }).toEqual({ name, sourceCount: 1 });
     }
+  });
+});
+
+describe('collectAppOriginEnvs', () => {
+  const postgres = META.project.database.options.postgres as MetaAddon;
+  const ORIGIN_ENVS: EnvVar[] = [
+    { value: 'ALL_APPS_ORIGIN=1', monoScope: ['app'], origin: true },
+    { value: 'NEXT_ONLY_ORIGIN=1', monoScope: ['app'], origin: true, stacks: ['nextjs'] },
+    { value: 'PKG_ORIGIN=1', monoScope: [{ pkg: 'db' }], origin: true },
+    { value: 'FILE_ORIGIN=1', monoScope: ['app'], origin: true, file: 'cli' },
+    { value: 'HOLDS_URL={{appUrl}}', monoScope: ['app'] },
+  ];
+
+  function collectWith<T>(run: () => T): T {
+    const previous = postgres.envs;
+    postgres.envs = ORIGIN_ENVS;
+    try {
+      return run();
+    } finally {
+      postgres.envs = previous;
+    }
+  }
+
+  const turborepo = makeContext({
+    apps: [
+      { appName: 'web', stackName: 'nextjs', libraries: ['better-auth', 'trpc'] },
+      { appName: 'site', stackName: 'tanstack-start', libraries: ['better-auth'] },
+      { appName: 'api', stackName: 'hono', libraries: [] },
+    ],
+  });
+
+  test('an app receives the origin variables of its libraries, and none of another app', () => {
+    expect(collectAppOriginEnvs(turborepo)).toEqual([
+      { path: 'apps/web/.env', names: ['BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL'] },
+      { path: 'apps/site/.env', names: ['BETTER_AUTH_URL'] },
+    ]);
+  });
+
+  test('a project addon variable goes to every app, narrowed by stacks, and never a package or file variable', () => {
+    const [web, site, api] = collectWith(() => collectAppOriginEnvs(turborepo));
+
+    expect(web?.names).toEqual(['ALL_APPS_ORIGIN', 'NEXT_ONLY_ORIGIN', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL']);
+    expect(site?.names).toEqual(['ALL_APPS_ORIGIN', 'BETTER_AUTH_URL']);
+    expect(api).toEqual({ path: 'apps/api/.env', names: ['ALL_APPS_ORIGIN'] });
+  });
+
+  test('a variable that merely holds the URL of the app is not an origin', () => {
+    const names = collectWith(() => collectAppOriginEnvs(turborepo).flatMap((entry) => entry.names));
+    expect(names).not.toContain('HOLDS_URL');
+    expect(collectAppOriginEnvs(makeContext({ apps: [{ appName: 'web', stackName: 'nextjs', libraries: ['playwright'] }] }))).toEqual([]);
+  });
+
+  test('the stacks narrow the apps', () => {
+    expect(collectAppOriginEnvs(turborepo, ['tanstack-start'])).toEqual([
+      { path: 'apps/site/.env', names: ['BETTER_AUTH_URL'] },
+    ]);
+    expect(collectAppOriginEnvs(turborepo, ['hono'])).toEqual([]);
+  });
+
+  test('a single repo app receives them in its root .env', () => {
+    const ctx = makeContext({
+      repo: 'single',
+      apps: [{ appName: 'my-project', stackName: 'nextjs', libraries: ['better-auth'] }],
+    });
+    expect(collectAppOriginEnvs(ctx)).toEqual([{ path: '.env', names: ['BETTER_AUTH_URL'] }]);
   });
 });

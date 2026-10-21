@@ -28,6 +28,7 @@ interface CollectedEnv {
   serverOnly?: boolean;
   file?: string;
   secret?: boolean;
+  origin?: boolean;
   tasks?: string[];
   generateCommand?: string;
   thirdParty?: EnvThirdParty;
@@ -100,6 +101,7 @@ function collectAllEnvs(ctx: TemplateContext): CollectedEnv[] {
         stacks: env.stacks,
         file: env.file,
         secret: typeof env.secret === 'object' ? matches(env.secret, ctx) : env.secret,
+        origin: env.origin,
         tasks: env.tasks,
         generateCommand: env.generateCommand,
         thirdParty: env.thirdParty,
@@ -241,16 +243,37 @@ export function collectEnvFiles(ctx: TemplateContext): EnvFileOutput[] {
   return files;
 }
 
-/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
-export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
-  const app = ctx.apps.find((candidate) => candidate.appName === appName);
-  if (!app) return [];
-
+/** The names of the variables of the `.env` of the app that satisfy the predicate, each once. */
+function collectAppEnvNames(
+  ctx: TemplateContext,
+  app: TemplateContext['apps'][number],
+  predicate: (env: CollectedEnv) => boolean,
+): string[] {
   const names = collectAllEnvs(ctx)
-    .filter((env) => env.secret && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx))
+    .filter((env) => predicate(env) && isReadFromAppEnvFile(env, ctx) && appAcceptsEnv(env, app, ctx))
     .map((env) => extractEnvKey(env.value));
 
   return [...new Set(names)];
+}
+
+/** The names of the secret variables the app reads at runtime: those of its `.env`, the ones a Worker must be given. */
+export function collectAppSecrets(ctx: TemplateContext, appName: string): string[] {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  return app ? collectAppEnvNames(ctx, app, (env) => Boolean(env.secret)) : [];
+}
+
+/** The `.env` of each app (those on one of the stacks, all apps when none is given) and its variables that are the origin the app is served from. */
+export function collectAppOriginEnvs(
+  ctx: TemplateContext,
+  stacks: readonly StackName[] = [],
+): { path: string; names: string[] }[] {
+  return ctx.apps
+    .filter((app) => stacks.length === 0 || stacks.includes(app.stackName))
+    .map((app) => ({
+      path: toEnvPath(resolveScopeToPath('app', ctx, app.appName) ?? ''),
+      names: collectAppEnvNames(ctx, app, (env) => Boolean(env.origin)),
+    }))
+    .filter(({ names }) => names.length > 0);
 }
 
 /** The names of the dedicated env files (`EnvVar.file`) the project receives, each once: files only a CLI loads, so they are never committed. */

@@ -6,6 +6,7 @@ import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
 import {
+  collectAppOriginEnvs,
   collectAppReceivesEnv,
   collectAppSecrets,
   collectEnvFileNames,
@@ -20,7 +21,7 @@ import { collectFirstRunSteps } from './first-run';
 import { readFrontmatterFile } from './frontmatter';
 import { collectInstallScripts } from './install-scripts';
 import { collectInteractiveSteps, getInteractiveScript } from './interactive-steps';
-import { appListensOnPort, collectMonoPackages, getRootScripts } from './package-json-generator';
+import { appListensOnPort, collectMonoPackages, getAppScripts, getRootScripts } from './package-json-generator';
 import {
   getAppScriptCommand,
   getCommandInWorkspaceDirectory,
@@ -104,6 +105,10 @@ function registerHelpers(): void {
     return name in getRootScripts(this);
   });
 
+  Handlebars.registerHelper('hasAppScript', (name: string, options: Handlebars.HelperOptions) => {
+    return getAppScripts(options.data.root as TemplateContext).some(({ scripts }) => name in scripts);
+  });
+
   Handlebars.registerHelper('appUrl', (appName: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
     return appListensOnPort(root, appName) ? resolveAppUrl(root, appName) : '';
@@ -116,6 +121,11 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
+  });
+
+  Handlebars.registerHelper('appOriginEnvs', (...args: unknown[]) => {
+    const options = args.pop() as Handlebars.HelperOptions;
+    return collectAppOriginEnvs(options.data.root as TemplateContext, args as StackName[]);
   });
 
   Handlebars.registerHelper(

@@ -23,6 +23,8 @@ export interface EnvVar {
   when?: WhenMatch;
   file?: string;
   secret?: boolean | WhenMatch;
+  /** The variable is the origin the app is served from (`http://localhost:3000`): after the port changes it must follow, which the port override notes list (`appOriginEnvs` helper). */
+  origin?: boolean;
   /** Turborepo tasks that read the variable; the root `turbo.json` lists it in their `env` (`taskEnv` helper). */
   tasks?: string[];
   /** A command that prints a value for the variable; the first-run steps tell to run it and set the variable in the `.env` of each app that reads it. The CLI never writes the value. */

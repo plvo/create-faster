@@ -180,8 +180,12 @@ const CLOUDFLARE_TYPEGEN = 'wrangler types --env-interface CloudflareEnv cloudfl
 const WRANGLER_PERSIST_STATE = '--persist-to {{workspaceRoot}}/.wrangler';
 
 // Wrangler reads no port variable, so the script expands `PORT` itself, in the `sh` it hands to portless (which sets `PORT` and quotes its arguments).
-// The arguments a package manager appends to the script reach Wrangler through "$@".
-const HONO_WORKER_DEV = `sh -c 'wrangler dev --port=\${PORT:-{{port}}} ${WRANGLER_PERSIST_STATE} "$@"' sh`;
+// The arguments a package manager appends to the script reach Wrangler through "$@". `--port=` is the form a single repo keeps: it only strips `--port {{port}}`.
+const wranglerOnAppPort = (command: string) =>
+  `sh -c '${command} --port=\${PORT:-{{port}}} ${WRANGLER_PERSIST_STATE} "$@"' sh`;
+const HONO_WORKER_DEV = wranglerOnAppPort('wrangler dev');
+// A preview serves on the port of the app, like `dev`, so the origin in its `.env` (BETTER_AUTH_URL) is the one the browser uses.
+const OPENNEXT_PREVIEW = wranglerOnAppPort('opennextjs-cloudflare preview --');
 
 const GENERATE_ROUTE_TREE = 'tsr generate';
 
@@ -214,6 +218,7 @@ const PRIVY_DASHBOARD_URL = 'https://dashboard.privy.io';
 const SEED_PASSWORD: EnvVar = { value: 'SEED_PASSWORD=password', monoScope: ['app'], tasks: ['db:seed'] };
 const NEXT_PUBLIC_APP_URL: EnvVar = {
   value: 'NEXT_PUBLIC_APP_URL={{appUrl}}',
+  origin: true,
   stacks: ['nextjs'],
   monoScope: ['app'],
 };
@@ -652,6 +657,7 @@ export const META: Meta = {
           value: 'BETTER_AUTH_URL={{appUrl}}',
           monoScope: ['app'],
           secret: true,
+          origin: true,
         },
       ],
     },
@@ -969,6 +975,7 @@ export const META: Meta = {
               },
               scripts: {
                 deploy: 'vite build && wrangler deploy',
+                preview: `vite preview --port=\${PORT:-{{port}}}`,
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
                 postinstall: `${CLOUDFLARE_TYPEGEN} && ${GENERATE_ROUTE_TREE}`,
               },
@@ -982,7 +989,7 @@ export const META: Meta = {
               },
               scripts: {
                 'build:cf': `${CLOUDFLARE_TYPEGEN} && opennextjs-cloudflare build`,
-                preview: `opennextjs-cloudflare preview -- ${WRANGLER_PERSIST_STATE}`,
+                preview: OPENNEXT_PREVIEW,
                 deploy: 'opennextjs-cloudflare deploy',
                 'cf-typegen': CLOUDFLARE_TYPEGEN,
                 postinstall: CLOUDFLARE_TYPEGEN,
