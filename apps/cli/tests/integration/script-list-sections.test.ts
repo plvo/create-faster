@@ -7,7 +7,6 @@ setIntegrationTimeout();
 
 const MONO = ['--app', 'web:nextjs', '--app', 'api:hono'];
 const CASES = [
-  ['single D1 without an ORM', ['--app', 'web:nextjs', '--database', 'd1', '--deployment', 'cloudflare']],
   [
     'single D1 with Drizzle',
     ['--app', 'web:nextjs', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare'],

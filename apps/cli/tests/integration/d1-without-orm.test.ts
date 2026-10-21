@@ -22,7 +22,12 @@ const COMBINATIONS: [string, string, string[]][] = [
 ];
 
 const DOCUMENTS = ['README.md', 'AGENTS.md'];
-const FORBIDDEN_IN_DOCS = [/drizzle/i, /\bdb:(generate|migrate|seed|push|studio)/, /local-setup/, /## Seeding/];
+const FORBIDDEN_IN_DOCS = [
+  /drizzle/i,
+  /\bdb:(generate|migrate|seed|push|studio)/,
+  /local-setup/,
+  /Seeding/,
+];
 
 describe('the d1 database without an ORM', () => {
   let tempDir: string;
