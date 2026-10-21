@@ -13,8 +13,9 @@
   }{{> cloudflare/public-urls}}{{> cloudflare/d1-binding}},
   "r2_buckets": [
     {
-      "binding": "STORAGE",
-      "bucket_name": "{{projectName}}-storage"
+      // The backups have a bucket of their own: the Worker that serves the public media cannot read them
+      "binding": "BACKUPS",
+      "bucket_name": "{{projectName}}-backups"
     }
   ]{{> cloudflare/secrets-required}}
 }

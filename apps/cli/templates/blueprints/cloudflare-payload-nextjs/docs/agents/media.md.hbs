@@ -32,6 +32,10 @@ An upload is limited to `MAX_UPLOAD_BYTES` (20 MB, `apps/web/src/lib/upload-limi
 
 Only images are accepted (`mimeTypes: ['image/*']`).
 
+## Caching and heavy traffic
+
+The R2 handler of Payload sends no cache header, so the `media` collection adds `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` to the responses of `/api/media/file/...` (`upload.modifyResponseHeaders`, `MEDIA_CACHE_CONTROL` in `apps/web/src/collections/Media.ts`): browsers and the edge keep a file for a week. Every other request still goes through the Worker and a D1 lookup. For heavy traffic the next step is a public custom domain on the bucket, with the `generateFileURL` option of `r2Storage`, which serves the files without the Worker; this project does not make a bucket public.
+
 ## The page cache shares the bucket
 
-OpenNext keeps the cached pages in the same bucket, under the `incremental-cache/` prefix, and the backups of the cron Worker are under `backups/`. A media file is never stored under either prefix.
+OpenNext keeps the cached pages in the same bucket, under the `incremental-cache/` prefix. The backups of the cron Worker are in a bucket of their own. A media file is never stored under that prefix.

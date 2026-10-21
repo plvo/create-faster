@@ -35,7 +35,7 @@ export const Posts: CollectionConfig = {
         seoTab,
       ],
     },
-    { name: 'publishedAt', type: 'date', admin: { position: 'sidebar' } },
+    { name: 'publishedAt', type: 'date', admin: { position: 'sidebar' }, index: true },
     slugField(),
   ],
   hooks: {

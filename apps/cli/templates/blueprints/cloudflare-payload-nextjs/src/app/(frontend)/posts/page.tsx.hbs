@@ -4,7 +4,7 @@ import { getPublishedPosts } from '@/lib/queries';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-// Same reason as the home page: it reads the database without a dynamic segment, so it is not built ahead.
+// It has no dynamic segment to defer its first render to, so it is not built ahead (it would query D1 before the first migration); its data comes from the tagged cache.
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = { title: 'Posts' };

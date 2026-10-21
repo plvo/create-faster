@@ -2,6 +2,8 @@ import { authenticated } from '@/access';
 import { MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
 import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload';
 
+export const MEDIA_CACHE_CONTROL = 'public, max-age=604800, stale-while-revalidate=86400';
+
 // The Local API takes a file without going through the multipart parser, so the size limit of the config does not apply to it.
 const refuseLargeFile: CollectionBeforeChangeHook = ({ data, req }) => {
   const size = req.file?.size;
@@ -49,5 +51,10 @@ export const Media: CollectionConfig = {
     crop: false,
     focalPoint: false,
     mimeTypes: ['image/*'],
+    // A file is served by Payload from R2, with no cache header of its own: a week lets browsers and the edge keep it.
+    // For heavy traffic the next step is a public custom domain on the bucket, which serves the files without the Worker.
+    modifyResponseHeaders: ({ headers }) => {
+      headers.set('Cache-Control', MEDIA_CACHE_CONTROL);
+    },
   },
 };

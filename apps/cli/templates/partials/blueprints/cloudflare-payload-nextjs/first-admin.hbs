@@ -1,7 +1,7 @@
 
 ### First admin
 
-`{{runScript "ensure-admin:remote"}}` creates the admin of the production database before the first deploy, so nobody else can claim the account: Payload lets the first visitor create a user while the users collection is empty. Once the Worker is deployed, sign in at `/admin` of the production URL with the `ADMIN_EMAIL` and `ADMIN_PASSWORD` of `apps/web/.env.admin`, and create the other editors from Users.
+{{> blueprints/cloudflare-payload-nextjs/first-admin-text}}
 {{#if (ne agentContext false)}}
 
 The whole first deploy of this project, in order, is in [`docs/agents/cloudflare-deploy.md`](docs/agents/cloudflare-deploy.md).

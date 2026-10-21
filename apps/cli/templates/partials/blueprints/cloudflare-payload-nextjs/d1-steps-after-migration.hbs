@@ -1,5 +1,5 @@
 {{#step}}
-Create the first admin of the production database, before the Worker is reachable: Payload lets the first visitor create a user while the users collection is empty, and a deployed Worker has a public address. Put the email and a password of at least 12 characters in `apps/web/.env.admin` (`ADMIN_EMAIL` and `ADMIN_PASSWORD`), then run the command. It does nothing once a user exists.
+Create the first admin of the production database, before the Worker is reachable (see First admin below). Put the email and a password of at least 12 characters in `apps/web/.env.admin` first:
 
    ```bash
    {{runScript "ensure-admin:remote"}}

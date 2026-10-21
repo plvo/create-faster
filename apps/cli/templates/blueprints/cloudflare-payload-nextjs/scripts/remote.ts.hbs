@@ -1,8 +1,8 @@
-// Runs a Payload command against the real D1 database and R2 bucket of the account, for one run: `migrate` applies the
+// Runs a script of this app against the real D1 database and R2 bucket of the account, for one run: `migrate` applies the
 // migrations, `ensure-admin` creates the first admin.
 // The committed wrangler.jsonc has no remote binding (`next build` resolves the bindings through payload.config.ts, so a
 // remote one would make every build reach the account). This script writes a Wrangler config with DB and STORAGE as remote
-// bindings, points payload.config.ts at it, runs the command and deletes the config. Wrangler needs a login first
+// bindings, points payload.config.ts at it, runs the script and deletes the config. Wrangler needs a login first
 // (`wrangler login`, or CLOUDFLARE_API_TOKEN).
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,9 +10,9 @@ import path from 'node:path';
 import { bindingsWithoutDatabaseId, remoteBindingsConfig } from './remote-config';
 
 const REMOTE_BINDINGS = ['DB', 'STORAGE'];
-const COMMANDS: Record<string, string[]> = {
-  'ensure-admin': ['run', 'scripts/ensure-admin.ts'],
-  migrate: ['migrate'],
+const SCRIPTS: Record<string, string> = {
+  'ensure-admin': '{{runScript "ensure-admin"}}',
+  migrate: '{{runScript "migrate"}}',
 };
 
 const fail: (message: string) => never = (message) => {
@@ -21,8 +21,8 @@ const fail: (message: string) => never = (message) => {
 };
 
 const [name = ''] = process.argv.slice(2);
-const payloadArguments = COMMANDS[name];
-if (!payloadArguments) fail(`Usage: remote.ts <${Object.keys(COMMANDS).join('|')}>`);
+const command = SCRIPTS[name];
+if (!command) fail(`Usage: remote.ts <${Object.keys(SCRIPTS).join('|')}>`);
 
 const { experimental_readRawConfig } = await import('wrangler');
 const { rawConfig, configPath } = experimental_readRawConfig({ config: 'wrangler.jsonc' });
@@ -38,15 +38,15 @@ const remoteConfigPath = path.resolve('.wrangler', 'remote-bindings.jsonc');
 mkdirSync(path.dirname(remoteConfigPath), { recursive: true });
 writeFileSync(remoteConfigPath, JSON.stringify(remoteBindingsConfig(rawConfig, REMOTE_BINDINGS), null, 2));
 try {
-  const result = spawnSync('payload', payloadArguments, {
+  const result = spawnSync(command, {
     env: {
       ...process.env,
-      NODE_OPTIONS: '--no-deprecation',
       // The migration needs no secret, and a CI job that only migrates has none.
       PAYLOAD_SECRET: process.env.PAYLOAD_SECRET || (name === 'migrate' ? 'ignore' : ''),
       WRANGLER_CONFIG_PATH: remoteConfigPath,
       WRANGLER_REMOTE_BINDINGS: 'true',
     },
+    shell: true,
     stdio: 'inherit',
   });
   process.exitCode = result.status ?? 1;

@@ -3,23 +3,18 @@
 // Run by `payload run`, which loads .env; the admin credentials live in .env.admin, which only this script reads.
 import { existsSync } from 'node:fs';
 import { getPayloadClient } from '@/lib/payload';
+import { adminCredentials } from './admin-credentials';
 
 const ADMIN_ENV_FILE = '.env.admin';
-const MIN_REMOTE_PASSWORD_LENGTH = 12;
 
 if (existsSync(ADMIN_ENV_FILE)) process.loadEnvFile(ADMIN_ENV_FILE);
 
-const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password } = process.env;
-if (!email || !password) {
-  console.error(`Set ADMIN_EMAIL and ADMIN_PASSWORD in ${ADMIN_ENV_FILE} (copy ${ADMIN_ENV_FILE}.example).`);
+const credentials = adminCredentials(process.env, ADMIN_ENV_FILE);
+if ('error' in credentials) {
+  console.error(credentials.error);
   process.exit(1);
 }
-
-// The example password is for the local database: the production admin is reachable from the internet.
-if (process.env.WRANGLER_REMOTE_BINDINGS === 'true' && password.length < MIN_REMOTE_PASSWORD_LENGTH) {
-  console.error(`Choose an ADMIN_PASSWORD of at least ${MIN_REMOTE_PASSWORD_LENGTH} characters in ${ADMIN_ENV_FILE} before creating the admin of the production database.`);
-  process.exit(1);
-}
+const { email, password } = credentials;
 
 const payload = await getPayloadClient();
 const { totalDocs } = await payload.count({ collection: 'users' });

@@ -68,8 +68,7 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
         'src/app/(payload)/admin/importMap.js',
         'src/app/(payload)/api/[...slug]/route.ts',
         'src/app/(frontend)/layout.tsx',
-        'src/app/(frontend)/page.tsx',
-        'src/app/(frontend)/[slug]/page.tsx',
+        'src/app/(frontend)/[[...slug]]/page.tsx',
         'src/app/(frontend)/posts/page.tsx',
         'src/app/(frontend)/posts/[slug]/page.tsx',
         'src/app/(frontend)/not-found.tsx',
@@ -78,6 +77,8 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
         'src/app/(frontend)/next/preview/route.ts',
         'src/migrations/index.ts',
         'scripts/ensure-admin.ts',
+        'scripts/admin-credentials.ts',
+        'scripts/remote.ts',
         'scripts/seed.ts',
         'open-next.config.ts',
         'next.config.ts',
@@ -184,10 +185,11 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
       }
     });
 
-    test('cron binds the same D1 and R2 and runs a daily schedule', async () => {
+    test('cron binds the same D1 and its own backups bucket, and runs a daily schedule', async () => {
       const config = Bun.JSONC.parse(await readTextFile(cron('wrangler.jsonc'))) as WranglerShape;
       expect(config.d1_databases?.map((d1) => d1.binding)).toEqual(['DB']);
-      expect(config.r2_buckets?.map((r2) => [r2.binding, r2.bucket_name])).toEqual([['STORAGE', `${PROJECT}-storage`]]);
+      // The backups have a bucket of their own, which the Worker that serves the media does not bind.
+      expect(config.r2_buckets?.map((r2) => [r2.binding, r2.bucket_name])).toEqual([['BACKUPS', `${PROJECT}-backups`]]);
       expect(config.triggers?.crons).toHaveLength(1);
       expect(config.vars).toHaveProperty('BACKUP_RETENTION_DAYS');
     });
@@ -276,21 +278,33 @@ describe(`Blueprint generation - ${BLUEPRINT}`, () => {
   });
 
   describe('the README', () => {
-    test('orders the provisioning: database, id, R2 bucket, migration, first admin, deploy, production URL, first deploy', async () => {
+    test('orders the provisioning, then the production URL, the first deploy and the first admin: no deploy before the secrets', async () => {
       const readme = await readTextFile(join(projectPath, 'README.md'));
       expectInOrder(readme, [
         `wrangler d1 create ${PROJECT}-db`,
         'REPLACE_WITH_D1_DATABASE_ID',
         `wrangler r2 bucket create ${PROJECT}-storage`,
+        `wrangler r2 bucket create ${PROJECT}-backups`,
         'bun run db:migrate:remote',
         'bun run ensure-admin:remote',
-        '6. Deploy.',
+        '7. Learn the production URL and deploy',
         '### Production URL',
         '### First deploy',
         'export NEXT_PUBLIC_APP_URL=',
-        '--secrets-file .prod.env',
+        'export PAYLOAD_SECRET=$(openssl rand -base64 32)',
+        'bun run deploy --secrets-file .prod.env',
         '### First admin',
       ]);
+      // The generic deploy step would send the reader to the build commands before the URL and the secrets.
+      expect(readme).not.toContain('Then run the build and deploy commands listed under');
+      expect(readme).not.toContain('Set the runtime secrets: every name under');
+    });
+
+    test('does not let the first deploy lose the token of the backups: it is generated into a variable to keep', async () => {
+      const readme = await readTextFile(join(projectPath, 'README.md'));
+      expect(readme).toContain('export BACKUP_TRIGGER_TOKEN=$(openssl rand -base64 32)');
+      expect(readme).toContain('"$BACKUP_TRIGGER_TOKEN" > apps/cron/.prod.env');
+      expect(readme).toContain('and keep each value');
     });
 
     test('carries the first deploy itself, so it does not depend on the agent notes', async () => {

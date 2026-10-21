@@ -1,49 +1,7 @@
-{{> cloudflare/production-url-section publicUse="the Payload config, the sitemap and the preview links read"}}
+{{> cloudflare/production-url appUrlUse="the Payload config, the sitemap and the preview links read"}}
 
 ### First deploy
 
-From the repository root, once the steps above are done. The first deploy of a Worker takes its secrets from a file: the Worker does not exist yet, so `wrangler secret put` cannot run.
+From the repository root, once the steps above are done.
 
-{{#orderedSteps}}
-{{#step}}
-Give the build the production URL, as a shell variable (it wins over `.env`). Next.js freezes `NEXT_PUBLIC_APP_URL` into the bundle, and Payload takes its server URL and the origins it trusts from it:
-
-   ```bash
-   export NEXT_PUBLIC_APP_URL=https://{{projectName}}-web.<subdomain>.workers.dev
-   ```
-{{/step}}
-{{#step}}
-Write the secrets of the web Worker to a file (gitignored):
-
-   ```bash
-   printf 'PAYLOAD_SECRET=%s\nPREVIEW_SECRET=%s\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" > apps/web/.prod.env
-   ```
-{{/step}}
-{{#step}}
-Build the web Worker, then deploy it with the secrets file and delete the file: the Worker holds the secrets now.
-
-   ```bash
-   {{#inDirectory "apps" "web"}}{{runScript "build:cf"}}{{/inDirectory}}
-   {{#inDirectory "apps" "web"}}{{runScript "deploy" "--secrets-file .prod.env"}}{{/inDirectory}}
-   rm apps/web/.prod.env
-   ```
-
-   `build:cf` bundles every `.env*` value of the app into the Worker as a fallback for a secret that was never set, so build where `apps/web/.env` holds no real secret (CI, or a checkout without a `.env`). Later deploys are `{{#inDirectory "apps" "web"}}{{runScript "build:cf"}}{{/inDirectory}}` and `{{#inDirectory "apps" "web"}}{{runScript "deploy"}}{{/inDirectory}}`.
-{{/step}}
-{{#step}}
-Deploy the cron Worker with its token, the same way. Its daily schedule is registered on deploy.
-
-   ```bash
-   printf 'BACKUP_TRIGGER_TOKEN=%s\n' "$(openssl rand -base64 32)" > apps/cron/.prod.env
-   {{#inDirectory "apps" "cron"}}{{runScript "deploy" "--secrets-file .prod.env"}}{{/inDirectory}}
-   rm apps/cron/.prod.env
-   ```
-{{/step}}
-{{#step}}
-Check the site, with a retry: routes answer 404 for about a minute after `wrangler deploy`.
-
-   ```bash
-   for i in $(seq 1 12); do curl -fsS -o /dev/null "$NEXT_PUBLIC_APP_URL/" && break; sleep 10; done
-   ```
-{{/step}}
-{{/orderedSteps}}
+{{> cloudflare/first-deploy}}

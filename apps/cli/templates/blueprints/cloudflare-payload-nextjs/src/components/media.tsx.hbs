@@ -3,9 +3,12 @@ import type { Media as MediaDocument } from '@/payload-types';
 import { cn } from '@repo/ui/lib/utils';
 import Image from 'next/image';
 
+// The fields the image needs: a list populates no more than these.
+export type MediaFrame = Pick<MediaDocument, 'alt' | 'focalX' | 'focalY' | 'height' | 'url' | 'width'>;
+
 interface MediaProps {
   className?: string;
-  media: MediaDocument | number | null | undefined;
+  media: MediaFrame | number | null | undefined;
   priority?: boolean;
 }
 

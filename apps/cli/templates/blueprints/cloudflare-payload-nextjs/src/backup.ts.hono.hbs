@@ -4,19 +4,22 @@ mono:
   path: src/backup.ts
 ---
 // Dumps every table of the D1 database to R2 as NDJSON, one object per table (more when a table is large), with a manifest.
-// The media are not copied: they are already in the bucket, and the `media` table of the dump is their index.
+// The backups have a bucket of their own, bound to this Worker only. The media are not copied: they are already in the media
+// bucket, and the `media` table of the dump is their index.
 // D1 Time Travel rewinds the whole database to a point of the last 30 days, and covers nothing of R2.
 
 const BACKUP_PREFIX = 'backups/';
-const ROWS_PER_QUERY = 500;
+// One query per page of rows: a run is one invocation, whose D1 queries are counted (1000 on the Workers Paid plan), so the
+// pages are large. A page that returns fewer rows than this is the last one.
+const ROWS_PER_QUERY = 2000;
 const BYTES_PER_OBJECT = 8 * 1024 * 1024;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_RETENTION_DAYS = 30;
 
 interface BackupEnv {
   BACKUP_RETENTION_DAYS?: string;
+  BACKUPS: R2Bucket;
   DB: D1Database;
-  STORAGE: R2Bucket;
 }
 
 interface TableEntry {
@@ -49,20 +52,21 @@ async function dumpTable(env: BackupEnv, table: string, prefix: string): Promise
   const flush = async () => {
     if (lines.length === 0) return;
     const key = `${prefix}${table}/${String(entry.objects.length + 1).padStart(4, '0')}.ndjson`;
-    await env.STORAGE.put(key, `${lines.join('\n')}\n`, { httpMetadata: { contentType: 'application/x-ndjson' } });
+    await env.BACKUPS.put(key, `${lines.join('\n')}\n`, { httpMetadata: { contentType: 'application/x-ndjson' } });
     entry.objects.push(key);
     lines = [];
     bytes = 0;
   };
 
   let lastRowId = 0;
-  for (;;) {
+  let lastPageLength = ROWS_PER_QUERY;
+  while (lastPageLength === ROWS_PER_QUERY) {
     const { results } = await env.DB.prepare(
       `SELECT rowid AS __rowid, * FROM ${quote(table)} WHERE rowid > ?1 ORDER BY rowid LIMIT ${ROWS_PER_QUERY}`,
     )
       .bind(lastRowId)
       .all<Record<string, unknown> & { __rowid: number }>();
-    if (results.length === 0) break;
+    lastPageLength = results.length;
     for (const { __rowid, ...row } of results) {
       const line = JSON.stringify(row);
       lines.push(line);
@@ -85,20 +89,31 @@ async function deleteUnder(bucket: R2Bucket, prefix: string): Promise<void> {
   } while (cursor);
 }
 
-// A backup lives under backups/<date>/<time>/: every date older than the retention goes, with the backups inside.
-async function pruneOldBackups(env: BackupEnv, now: Date): Promise<string[]> {
-  const retentionDays = Number(env.BACKUP_RETENTION_DAYS ?? DEFAULT_RETENTION_DAYS);
+export function retentionDaysOf(env: BackupEnv): number {
+  const days = Number(env.BACKUP_RETENTION_DAYS ?? DEFAULT_RETENTION_DAYS);
+  if (!Number.isInteger(days) || days < 1) {
+    throw new Error(`BACKUP_RETENTION_DAYS must be a whole number of days, 1 or more (got "${env.BACKUP_RETENTION_DAYS}")`);
+  }
+  return days;
+}
+
+// A backup lives under backups/<date>/<time>/: a date whose last moment is older than the retention goes, with the
+// backups inside. The date of the run is never one of them.
+async function pruneOldBackups(env: BackupEnv, now: Date, retentionDays: number): Promise<string[]> {
   const oldest = now.getTime() - retentionDays * DAY_MS;
-  const { delimitedPrefixes } = await env.STORAGE.list({ delimiter: '/', prefix: BACKUP_PREFIX });
+  const today = `${BACKUP_PREFIX}${now.toISOString().slice(0, 10)}/`;
+  const { delimitedPrefixes } = await env.BACKUPS.list({ delimiter: '/', prefix: BACKUP_PREFIX });
   const expired = delimitedPrefixes.filter((prefix) => {
     const day = Date.parse(prefix.slice(BACKUP_PREFIX.length, -1));
-    return Number.isFinite(day) && day + DAY_MS <= oldest;
+    return prefix !== today && Number.isFinite(day) && day + DAY_MS <= oldest;
   });
-  for (const prefix of expired) await deleteUnder(env.STORAGE, prefix);
+  for (const prefix of expired) await deleteUnder(env.BACKUPS, prefix);
   return expired;
 }
 
 export async function runBackup(env: BackupEnv, now = new Date()): Promise<BackupManifest> {
+  // Refuses a run whose retention is wrong before it writes or deletes anything.
+  const retentionDays = retentionDaysOf(env);
   const timestamp = now.toISOString().replaceAll(':', '-').replace(/\.\d+Z$/, 'Z');
   const prefix = `${BACKUP_PREFIX}${now.toISOString().slice(0, 10)}/${timestamp}/`;
 
@@ -106,11 +121,11 @@ export async function runBackup(env: BackupEnv, now = new Date()): Promise<Backu
   for (const table of await listTables(env.DB)) tables.push(await dumpTable(env, table, prefix));
 
   const manifest: BackupManifest = { createdAt: now.toISOString(), prefix, tables };
-  await env.STORAGE.put(`${prefix}manifest.json`, JSON.stringify(manifest, null, 2), {
+  await env.BACKUPS.put(`${prefix}manifest.json`, JSON.stringify(manifest, null, 2), {
     httpMetadata: { contentType: 'application/json' },
   });
 
-  const pruned = await pruneOldBackups(env, now);
+  const pruned = await pruneOldBackups(env, now, retentionDays);
   console.log(`[cron] backed up ${tables.length} table(s) to ${prefix}, pruned ${pruned.length} old day(s)`);
   return manifest;
 }

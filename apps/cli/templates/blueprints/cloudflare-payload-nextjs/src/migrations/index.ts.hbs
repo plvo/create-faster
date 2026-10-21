@@ -1,5 +1,6 @@
 import * as migration_20261021_133016_initial from './20261021_133016_initial';
 import * as migration_20261021_133100_revalidations from './20261021_133100_revalidations';
+import * as migration_20261021_133200_published_at_index from './20261021_133200_published_at_index';
 
 export const migrations = [
   {
@@ -10,6 +11,11 @@ export const migrations = [
   {
     up: migration_20261021_133100_revalidations.up,
     down: migration_20261021_133100_revalidations.down,
-    name: '20261021_133100_revalidations'
+    name: '20261021_133100_revalidations',
+  },
+  {
+    up: migration_20261021_133200_published_at_index.up,
+    down: migration_20261021_133200_published_at_index.down,
+    name: '20261021_133200_published_at_index'
   },
 ];

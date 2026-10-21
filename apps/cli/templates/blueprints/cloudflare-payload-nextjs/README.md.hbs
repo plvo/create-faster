@@ -17,6 +17,8 @@ A Turborepo with two Workers:
 
 The database is Cloudflare D1 and the media are in R2. Payload owns the schema and its migrations: there is no ORM package.
 
+`robots.txt` disallows everything on `localhost` and on a `workers.dev` address, so the site is not indexed until it is served from a custom domain (set it as `NEXT_PUBLIC_APP_URL` for the build).
+
 Running it needs nothing from Cloudflare, and nothing here reaches your account unless a command says it does. Deploying it needs the Workers Paid plan: the Free plan allows 10 ms of CPU per request and 50 D1 queries per invocation, which an admin request exceeds.
 
 ## Getting Started
@@ -79,9 +81,9 @@ Images go to R2 and are limited to 20 MB. `sharp` does not run on Workers, so no
 {{> readme/d1-provisioning scripts="Available Scripts"}}
 ## Backups and restore
 
-The cron Worker dumps every table to R2 each day (`backups/<date>/<time>/<table>/0001.ndjson` and a `manifest.json`), keeps 30 days of backups and runs one on demand when `POST /backup/run` carries `BACKUP_TRIGGER_TOKEN` as a bearer token. The media are not copied: they are already in the bucket, and the `media` table of the dump is their index. D1 Time Travel rewinds the whole database to a point of the last 30 days and covers nothing of R2.
+The cron Worker dumps every table to a bucket of its own (`{{projectName}}-backups`, which no other Worker binds) each day (`backups/<date>/<time>/<table>/0001.ndjson` and a `manifest.json`), keeps 30 days of backups and runs one on demand when `POST /backup/run` carries `BACKUP_TRIGGER_TOKEN` as a bearer token, the value you stored at the first deploy. The media are not copied: they are already in the media bucket, and the `media` table of the dump is their index. D1 Time Travel rewinds the whole database to a point of the last 30 days and covers nothing of R2.
 
-To restore, rewind the database with `wrangler d1 time-travel restore DB --timestamp=<ISO 8601 time>` (from `apps/web`), or bring back the rows of one table from a backup: download its objects with `wrangler r2 object get {{projectName}}-storage/backups/<date>/<time>/<table>/0001.ndjson --remote --file <file>`. Each line is one row, a JSON object of column names and values: write the rows as `INSERT OR REPLACE` statements and run them with `wrangler d1 execute DB --remote --file <file.sql>`. The files of the media are still in the bucket.
+To restore, rewind the database with `wrangler d1 time-travel restore DB --timestamp=<ISO 8601 time>` (from `apps/web`), or bring back the rows of one table from a backup: download its objects with `wrangler r2 object get {{projectName}}-backups/backups/<date>/<time>/<table>/0001.ndjson --remote --file <file>`. Each line is one row, a JSON object of column names and values: write the rows as `INSERT OR REPLACE` statements and run them with `wrangler d1 execute DB --remote --file <file.sql>`. The files of the media are still in the bucket.
 
 ## Environment Variables
 

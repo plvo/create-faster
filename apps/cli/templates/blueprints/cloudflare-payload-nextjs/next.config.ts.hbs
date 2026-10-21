@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,
   },
+  // The admin is shown in no frame of another site (live preview frames the site from the admin, on the same origin).
+  headers: async () => [
+    { source: '/admin/:path*', headers: [{ key: 'Content-Security-Policy', value: "frame-ancestors 'self'" }] },
+  ],
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],

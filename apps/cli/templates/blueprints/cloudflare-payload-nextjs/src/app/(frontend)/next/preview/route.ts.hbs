@@ -1,5 +1,6 @@
 import { getPayloadClient } from '@/lib/payload';
 import { safeRedirectPath } from '@/lib/safe-redirect';
+import { sameSecret } from '@/lib/same-secret';
 import { draftMode } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
@@ -10,7 +11,7 @@ const FORBIDDEN = 'You are not allowed to preview this page';
 export async function GET(request: NextRequest): Promise<Response> {
   const { searchParams } = request.nextUrl;
   const secret = process.env.PREVIEW_SECRET;
-  if (!secret || searchParams.get('previewSecret') !== secret) return new Response(FORBIDDEN, { status: 403 });
+  if (!secret || !sameSecret(searchParams.get('previewSecret') ?? '', secret)) return new Response(FORBIDDEN, { status: 403 });
 
   const path = searchParams.get('path');
   if (!path) return new Response('Insufficient search params', { status: 404 });

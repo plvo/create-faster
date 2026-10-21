@@ -6,7 +6,7 @@ mono:
 ---
 # Cloudflare deploy
 
-Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNext: the Payload admin, its API and the public site) and the **cron** Worker (`apps/cron`, Hono: the daily backup). Both bind the same D1 database (`DB`) and R2 bucket (`STORAGE`).
+Two Workers ship from this repo: the **web** app (`apps/web`, Next.js via OpenNext: the Payload admin, its API and the public site) and the **cron** Worker (`apps/cron`, Hono: the daily backup). Both bind the same D1 database (`DB`). `web` binds the media bucket (`STORAGE`, and `NEXT_INC_CACHE_R2_BUCKET` for the page cache); `cron` binds the backups bucket (`BACKUPS`) and nothing else of R2.
 
 Nothing in this repo reaches your Cloudflare account unless you ask for it: `dev`, `build`, `build:cf` and `preview` run on local D1 and R2 state, and only the commands below that say "remote" or "deploy" use your login.
 
@@ -14,33 +14,33 @@ Nothing in this repo reaches your Cloudflare account unless you ask for it: `dev
 
 ## One-time provisioning
 
-### D1 and R2
-
 {{> cloudflare/d1-provisioning}}
 
-### Secrets
-
-`apps/web/wrangler.jsonc` lists `PAYLOAD_SECRET` and `PREVIEW_SECRET` under `secrets.required`, and `apps/cron/wrangler.jsonc` lists `BACKUP_TRIGGER_TOKEN`: a deploy fails until each is set. Generate each with `openssl rand -base64 32`. The first deploy of a new Worker takes them from a file (the Worker does not exist yet, so `wrangler secret put` cannot run), written in First deploy below; once a Worker exists, change one with `{{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler secret put PAYLOAD_SECRET{{/inDirectory}}`.
+`apps/web/wrangler.jsonc` lists `PAYLOAD_SECRET` and `PREVIEW_SECRET` under `secrets.required`, and `apps/cron/wrangler.jsonc` lists `BACKUP_TRIGGER_TOKEN`: a deploy fails until each is set. The first deploy below sets them; afterwards change one with `{{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler secret put PAYLOAD_SECRET{{/inDirectory}}`.
 
 ## Production URL and first deploy
 
 {{> blueprints/cloudflare-payload-nextjs/deploy}}
 
+`robots.txt` disallows everything on a `workers.dev` address and on `localhost`, so the site is not indexed until it is served from a custom domain: set that domain as `NEXT_PUBLIC_APP_URL` for the build.
+
+## First admin
+
+{{> blueprints/cloudflare-payload-nextjs/first-admin-text}}
+
 ## Backups
 
-The cron Worker dumps every table of the database to R2 each day: one NDJSON object per table (more when a table is large) and a `manifest.json`, under `backups/<date>/<time>/` in the bucket. `_cf_*` and `sqlite_*` tables are left out (D1 refuses to read the first). The media are not copied: they are already in the bucket, and the `media` table of the dump is their index. Backups older than `BACKUP_RETENTION_DAYS` (30, a var of `apps/cron/wrangler.jsonc`) are deleted by the next run. D1 Time Travel rewinds the whole database to any point of the last 30 days and covers nothing of R2.
+The cron Worker dumps every table of the database to the backups bucket each day: one NDJSON object per table (more when a table is large) and a `manifest.json`, under `backups/<date>/<time>/`. `_cf_*` and `sqlite_*` tables are left out (D1 refuses to read the first). The media are not copied: they are already in the media bucket, and the `media` table of the dump is their index. Backups older than `BACKUP_RETENTION_DAYS` (30, a var of `apps/cron/wrangler.jsonc`) are deleted by the next run; a value that is not a whole number of days, 1 or more, stops the run before it writes or deletes anything. D1 Time Travel rewinds the whole database to any point of the last 30 days and covers nothing of R2.
 
-To run one now, with the token of the cron Worker:
+A run reads the tables in pages of 2,000 rows, one D1 query per page, in one invocation. D1 counts the queries of an invocation (1,000 on the Workers Paid plan, 50 on the Free plan), so a database of more than about two million rows in total needs a run split by table.
+
+To run one now, with the token you stored at the first deploy (`BACKUP_TRIGGER_TOKEN`; Cloudflare never shows a secret again, so set a new one with `wrangler secret put` if you lost it):
 
 ```bash
 curl -X POST -H "Authorization: Bearer $BACKUP_TRIGGER_TOKEN" https://{{projectName}}-cron.<subdomain>.workers.dev/backup/run
 ```
 
-Locally, `{{#inDirectory "apps" "cron"}}{{runScript "dev"}}{{/inDirectory}}` serves the Worker on port {{appPort "cron"}} over the same local state as the web app, and the same request with the token of `apps/cron/.env` writes a backup to the local bucket.
-
-## First admin
-
-`{{runScript "ensure-admin:remote"}}` creates the admin of the production database before the first deploy: Payload lets the first visitor create a user while the users collection is empty, and a deployed Worker has a public address. Sign in at `/admin` with `ADMIN_EMAIL` and `ADMIN_PASSWORD` of `apps/web/.env.admin`.
+Locally, `{{#inDirectory "apps" "cron"}}{{runScript "dev"}}{{/inDirectory}}` serves the Worker on port {{appPort "cron"}} over the same local state as the web app, and the same request with the token of `apps/cron/.env` writes a backup to the local backups bucket. Fire the schedule itself, without waiting for 03:00: `curl -X POST "http://localhost:{{appPort "cron"}}/cdn-cgi/local/explorer/api/local/scheduled?worker={{projectName}}-cron" -H 'Content-Type: application/json' -d '{"cron":"0 3 * * *"}'`.
 
 ## Known warnings
 

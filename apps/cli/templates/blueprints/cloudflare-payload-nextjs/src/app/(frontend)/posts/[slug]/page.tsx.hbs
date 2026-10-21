@@ -1,10 +1,9 @@
 import { LivePreviewListener } from '@/components/live-preview-listener';
 import { Media } from '@/components/media';
 import { RichText } from '@/components/rich-text';
-import { CACHE_TAGS } from '@/lib/cache-tags';
 import { formatDate } from '@/lib/format-date';
 import { metadataOf } from '@/lib/page-metadata';
-import { getPost, rememberMissing } from '@/lib/queries';
+import { getPost } from '@/lib/queries';
 import type { Metadata } from 'next';
 import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -29,10 +28,7 @@ export default async function PostPage({ params }: Props) {
   const { slug } = await params;
   const { isEnabled: draft } = await draftMode();
   const post = await getPost(slug, draft);
-  if (!post) {
-    await rememberMissing(CACHE_TAGS.post(slug));
-    notFound();
-  }
+  if (!post) notFound();
   return (
     <article className='mx-auto flex max-w-3xl flex-col gap-6 px-4 py-12'>
       {draft && <LivePreviewListener />}

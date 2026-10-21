@@ -12,7 +12,7 @@ interface WranglerConfig {
   r2_buckets?: Binding[];
 }
 
-export const DATABASE_ID_PLACEHOLDER = 'REPLACE_WITH_D1_DATABASE_ID';
+export const DATABASE_ID_PLACEHOLDER = '{{> cloudflare/d1-database-id-placeholder}}';
 
 /** A Wrangler config that holds the named bindings only, each of them remote: they reach the real D1 database and R2 bucket. */
 export function remoteBindingsConfig(config: WranglerConfig, bindings: string[]): WranglerConfig {
