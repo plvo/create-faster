@@ -143,6 +143,8 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
   let origin: string;
   let server: RunningServer | undefined;
   let token = '';
+  let firstRunDone = false;
+  const requireFirstRun = () => expect(firstRunDone, 'the first-run steps did not complete, so there is no admin and no content to serve').toBe(true);
 
   const run = (args: string[], cwd: string, extra: Record<string, string> = {}) => runCommand(args, cwd, { ...env, ...extra });
   const runScript = (script: string, cwd = projectDir, extra: Record<string, string> = {}) =>
@@ -196,6 +198,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       posts: count(projectDir, 'posts'),
       media: count(projectDir, 'media'),
     }).toEqual({ users: 1, pages: 2, posts: 2, media: 1 });
+    firstRunDone = true;
   }, TIMEOUT_COMMAND * 3);
 
   test('the first-run steps run again and change nothing', async () => {
@@ -266,6 +269,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
   }, TIMEOUT_COMMAND);
 
   test('`dev` serves the seeded site and signs the admin in, over the local state', async () => {
+    requireFirstRun();
     const devPort = await getFreePort();
     const dev = await startServer([pm, 'run', 'dev'], webDir, {
       port: devPort,
@@ -313,6 +317,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
       get(path, { ...init, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `JWT ${token}` } : {}), ...init.headers } });
 
     beforeAll(async () => {
+      requireFirstRun();
       const inspectorPort = await getFreePort();
       server = await startServer([pm, 'run', 'preview', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)], webDir, {
         port,
@@ -604,6 +609,7 @@ describe.each(['bun', 'npm', 'pnpm'])('blueprint-cloudflare-payload-nextjs under
         .filter((key) => /^backups\/.+\/manifest\.json$/.test(key));
 
     beforeAll(async () => {
+      requireFirstRun();
       const cronPort = await getFreePort();
       const inspectorPort = await getFreePort();
       cron = await startServer([pm, 'run', 'dev', '--', '--ip', '127.0.0.1', '--inspector-port', String(inspectorPort)], cronDir, {
