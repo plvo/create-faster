@@ -19,6 +19,7 @@ import { setIntegrationTimeout } from './timeout';
 setIntegrationTimeout();
 
 const BLUEPRINTS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start'];
+const HOOK_PATH = 'apps/web/src/hooks/use-menu-confirmation.ts';
 const ACTIONS_PATH = 'apps/web/src/components/admin/user-actions.tsx';
 
 type Component = (props: Record<string, unknown>) => unknown;
@@ -73,6 +74,7 @@ const IMPORTS: Record<string, string> = {
   '@repo/ui/components/ui/dropdown-menu': './dropdown-menu.mjs',
   '@/trpc/providers': './trpc.mjs',
   '@repo/auth/auth-client': './auth-client.mjs',
+  '@/hooks/use-menu-confirmation': './use-menu-confirmation.mjs',
 };
 
 const globals = globalThis as { __adminCalls?: { name: string; args: unknown }[] };
@@ -125,6 +127,11 @@ describe.each(BLUEPRINTS)('%s ban action', (blueprint) => {
     await mkdir(stubs, { recursive: true });
     for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
     react = (await import(join(stubs, 'react.mjs'))) as typeof react;
+    await evaluateGeneratedModule(
+      await readTextFile(join(tempDir, blueprint, HOOK_PATH)),
+      join(stubs, 'use-menu-confirmation.mjs'),
+      { react: './react.mjs' },
+    );
     ({ UserActions } = await evaluateGeneratedModule<{ UserActions: Component }>(
       await readTextFile(join(tempDir, blueprint, ACTIONS_PATH)),
       join(stubs, 'user-actions.mjs'),

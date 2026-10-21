@@ -18,7 +18,6 @@ import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 {{/unless}}
-import React from 'react';
 {{#if (eq icons "hugeicons")}}
 import { ArrowUpDownIcon, Logout01Icon, Moon02Icon, Sun03Icon, UserIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -39,6 +38,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
 import type { Session } from '@repo/auth/types';
 import { authClient } from '@repo/auth/auth-client';
+import { useMenuConfirmation } from '@/hooks/use-menu-confirmation';
 
 function UserAvatar({ user }: { user: Session['user'] }) {
   const initials = user.name
@@ -67,11 +67,7 @@ function UserAvatar({ user }: { user: Session['user'] }) {
 }
 
 export function NavUser({ session }: { session: Session }) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [showLogout, setShowLogout] = React.useState(false);
-  const logoutItemRef = React.useRef<HTMLDivElement>(null);
-  const cancelLogoutRef = React.useRef<HTMLButtonElement>(null);
-  const itemToFocus = React.useRef<'logout' | 'cancel' | null>(null);
+  const logoutConfirmation = useMenuConfirmation<HTMLDivElement, HTMLButtonElement>();
   const { isMobile } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
@@ -92,24 +88,6 @@ export function NavUser({ session }: { session: Session }) {
   };
 {{/if}}
 
-  // The confirmation and the Logout item replace each other, which would drop the keyboard focus on the page: the item
-  // that takes the other's place takes the focus.
-  const swapLogoutItems = (confirming: boolean) => {
-    itemToFocus.current = confirming ? 'cancel' : 'logout';
-    setShowLogout(confirming);
-  };
-
-  React.useEffect(() => {
-    const target = itemToFocus.current === 'cancel' ? cancelLogoutRef : logoutItemRef;
-    if (itemToFocus.current) target.current?.focus();
-    itemToFocus.current = null;
-  });
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) setShowLogout(false);
-  };
-
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
@@ -117,7 +95,7 @@ export function NavUser({ session }: { session: Session }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu modal={false} open={isOpen} onOpenChange={handleOpenChange}>
+        <DropdownMenu modal={false} open={logoutConfirmation.open} onOpenChange={logoutConfirmation.onOpenChange}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size='lg'
@@ -182,7 +160,7 @@ export function NavUser({ session }: { session: Session }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {showLogout ? (
+            {logoutConfirmation.confirming ? (
               <div className='space-y-1 p-1'>
                 <p className='px-1 py-1 text-sm text-muted-foreground'>Are you sure?</p>
                 <DropdownMenuItem asChild onSelect={handleLogout}>
@@ -194,20 +172,20 @@ export function NavUser({ session }: { session: Session }) {
                   asChild
                   onSelect={(event) => {
                     event.preventDefault();
-                    swapLogoutItems(false);
+                    logoutConfirmation.swapItems(false);
                   }}
                 >
-                  <Button ref={cancelLogoutRef} variant='outline' size='sm' className='w-full'>
+                  <Button ref={logoutConfirmation.cancelRef} variant='outline' size='sm' className='w-full'>
                     Cancel
                   </Button>
                 </DropdownMenuItem>
               </div>
             ) : (
               <DropdownMenuItem
-                ref={logoutItemRef}
+                ref={logoutConfirmation.actionRef}
                 onSelect={(event) => {
                   event.preventDefault();
-                  swapLogoutItems(true);
+                  logoutConfirmation.swapItems(true);
                 }}
                 className='hover:bg-destructive/40'
               >

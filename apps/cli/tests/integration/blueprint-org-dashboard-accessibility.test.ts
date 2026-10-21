@@ -38,6 +38,10 @@ const CONFIRM_DIALOG_MODULE = {
   '@/components/confirm-dialog': { file: 'src/components/confirm-dialog.tsx', exportName: 'ConfirmDialog', stub: 'confirm-dialog.mjs' },
 };
 
+const MENU_CONFIRMATION_MODULE = {
+  '@/hooks/use-menu-confirmation': { file: 'src/hooks/use-menu-confirmation.ts', exportName: 'useMenuConfirmation', stub: 'use-menu-confirmation.mjs' },
+};
+
 const USER_ACTIONS = { file: 'src/components/admin/user-actions.tsx', exportName: 'UserActions' };
 
 interface Blueprint {
@@ -532,7 +536,7 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
         createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
       },
       { ...COMMON_IMPORTS, ...blueprint.routerStubs },
-      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE, ...FORMAT_DATE_MODULE },
+      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE, ...FORMAT_DATE_MODULE, ...MENU_CONFIRMATION_MODULE },
     ));
   });
 

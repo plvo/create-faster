@@ -1,0 +1,35 @@
+{{!-- The whole src/hooks/use-menu-confirmation.ts: a dropdown menu item that asks before it acts, as menu items.
+The menu stays open while it asks (the item prevents the default of its select), the confirmation closes with the menu,
+and the keyboard focus follows the item that replaces the one removed. Shared by the user menu (Logout) and the user
+row menu (Ban User). --}}
+import { useEffect, useRef, useState } from 'react';
+
+type FocusTarget = 'action' | 'cancel';
+
+export function useMenuConfirmation<ActionItem extends HTMLElement = HTMLDivElement, CancelItem extends HTMLElement = HTMLDivElement>() {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const actionRef = useRef<ActionItem>(null);
+  const cancelRef = useRef<CancelItem>(null);
+  const itemToFocus = useRef<FocusTarget | null>(null);
+
+  // The confirmation and the action item replace each other, which would drop the keyboard focus on the page: the
+  // item that takes the other's place takes the focus.
+  const swapItems = (nextConfirming: boolean) => {
+    itemToFocus.current = nextConfirming ? 'cancel' : 'action';
+    setConfirming(nextConfirming);
+  };
+
+  useEffect(() => {
+    const target = itemToFocus.current === 'cancel' ? cancelRef : actionRef;
+    if (itemToFocus.current) target.current?.focus();
+    itemToFocus.current = null;
+  });
+
+  const onOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setConfirming(false);
+  };
+
+  return { open, onOpenChange, confirming, swapItems, actionRef, cancelRef };
+}
