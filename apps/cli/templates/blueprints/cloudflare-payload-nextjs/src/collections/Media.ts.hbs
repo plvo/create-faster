@@ -1,14 +1,16 @@
 import { authenticated } from '@/access';
+import { revalidateDeletedMedia, revalidateMedia } from '@/hooks/revalidate';
 import { MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
 import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload';
 
 export const MEDIA_CACHE_CONTROL = 'public, max-age=604800, stale-while-revalidate=86400';
 
 // The Local API takes a file without going through the multipart parser, so the size limit of the config does not apply to it.
-// Payload leaves `size` undefined once it has read an image, so the bytes are measured when it hands them over.
+// Payload leaves `size` undefined once it has read an image, and hands an empty buffer next to the real size when it keeps
+// the upload in a temporary file, so the larger of the two is the size of the file.
 const refuseLargeFile: CollectionBeforeChangeHook = ({ data, req }) => {
-  const size = req.file?.data?.length ?? req.file?.size;
-  if (size !== undefined && size > MAX_UPLOAD_BYTES) {
+  const size = Math.max(req.file?.data?.length ?? 0, req.file?.size ?? 0);
+  if (size > MAX_UPLOAD_BYTES) {
     throw new APIError(`The file is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`, 413);
   }
   return data;
@@ -45,6 +47,8 @@ export const Media: CollectionConfig = {
     },
   ],
   hooks: {
+    afterChange: [revalidateMedia],
+    afterDelete: [revalidateDeletedMedia],
     beforeChange: [refuseLargeFile],
   },
   upload: {

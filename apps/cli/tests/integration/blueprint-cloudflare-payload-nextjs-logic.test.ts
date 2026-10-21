@@ -150,6 +150,7 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       pages: string;
       posts: string;
       siteSettings: string;
+      media: string;
       page: (slug: string) => string;
       post: (slug: string) => string;
     };
@@ -163,6 +164,8 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       revalidatePost: (args: unknown) => unknown;
       revalidateDeletedPost: (args: unknown) => unknown;
       revalidateSiteSettings: (args: unknown) => unknown;
+      revalidateMedia: (args: unknown) => unknown;
+      revalidateDeletedMedia: (args: unknown) => unknown;
     }
     let hooks: Hooks;
     let tags: Tags['CACHE_TAGS'];
@@ -230,9 +233,24 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       expect(revalidated()).toEqual([tags.siteSettings]);
     });
 
+    test('editing or deleting a media expires the reads that embed it, and uploading one expires nothing', () => {
+      hooks.revalidateMedia({ doc: { id: 1 }, operation: 'update', req: { context: {} } });
+      expect(revalidated()).toEqual([tags.media]);
+
+      globalThis.__recorder.revalidated.length = 0;
+      hooks.revalidateDeletedMedia({ doc: { id: 1 }, req: { context: {} } });
+      expect(revalidated()).toEqual([tags.media]);
+
+      globalThis.__recorder.revalidated.length = 0;
+      hooks.revalidateMedia({ doc: { id: 2 }, operation: 'create', req: { context: {} } });
+      expect(globalThis.__recorder.revalidated).toEqual([]);
+    });
+
     test('a write that asks for it expires nothing', () => {
       hooks.revalidatePage(changed(doc('about', 'published'), undefined, { disableRevalidate: true }));
       hooks.revalidateSiteSettings({ doc: {}, req: { context: { disableRevalidate: true } } });
+      hooks.revalidateMedia({ doc: {}, operation: 'update', req: { context: { disableRevalidate: true } } });
+      hooks.revalidateDeletedMedia({ doc: {}, req: { context: { disableRevalidate: true } } });
 
       expect(globalThis.__recorder.revalidated).toEqual([]);
     });
@@ -272,7 +290,7 @@ describe('cloudflare-payload-nextjs generated logic', () => {
     let authCalls: number;
     let signedIn: { id: number } | null;
     let tags: Tags['CACHE_TAGS'];
-    let hookTags: (event: 'page' | 'post' | 'settings', slug: string) => string[];
+    let hookTags: (event: 'page' | 'post' | 'settings' | 'media', slug: string) => string[];
 
     const PUBLISHED = { 'about': { slug: 'about', title: 'About', _status: 'published' } } as Record<string, Record<string, unknown>>;
 
@@ -320,6 +338,7 @@ describe('cloudflare-payload-nextjs generated logic', () => {
         if (event === 'page') hooks.revalidatePage?.({ doc: published, req: { context: {} } });
         if (event === 'post') hooks.revalidatePost?.({ doc: published, req: { context: {} } });
         if (event === 'settings') hooks.revalidateSiteSettings?.({ doc: {}, req: { context: {} } });
+        if (event === 'media') hooks.revalidateMedia?.({ doc: {}, operation: 'update', req: { context: {} } });
         return globalThis.__recorder.revalidated.map(([tag]) => tag);
       };
     });
@@ -342,12 +361,16 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       await queries.getSitemapEntries();
       const sitemapTags = [...tagsOfReads()];
 
-      expect(pageTags).toEqual([tags.page('about')]);
+      expect(pageTags).toEqual([tags.page('about'), tags.media]);
       expect(hookTags('page', 'about')).toContain(pageTags[0] as string);
-      expect(postTags).toEqual([tags.post('about')]);
+      expect(postTags).toEqual([tags.post('about'), tags.media]);
       expect(hookTags('post', 'about')).toContain(postTags[0] as string);
-      expect(postsListTags).toEqual([tags.posts]);
+      expect(postsListTags).toEqual([tags.posts, tags.media]);
       expect(hookTags('post', 'about')).toContain(postsListTags[0] as string);
+      // They embed media at depth 1, so editing or deleting an image expires them too.
+      for (const embedding of [pageTags, postTags, postsListTags]) {
+        expect(hookTags('media', 'about')).toContain(embedding[1] as string);
+      }
       expect(settingsTags).toEqual([tags.siteSettings]);
       expect(hookTags('settings', 'about')).toContain(settingsTags[0] as string);
       // The sitemap lists both collections: a page or a post that is published expires it.
@@ -442,7 +465,11 @@ describe('cloudflare-payload-nextjs generated logic', () => {
     interface MediaModule {
       MEDIA_CACHE_CONTROL: string;
       Media: {
-        hooks: { beforeChange: ((args: unknown) => unknown)[] };
+        hooks: {
+          afterChange: ((args: unknown) => unknown)[];
+          afterDelete: ((args: unknown) => unknown)[];
+          beforeChange: ((args: unknown) => unknown)[];
+        };
         upload: { modifyResponseHeaders: (args: { headers: Headers }) => void; crop: boolean; focalPoint: boolean };
       };
     }
@@ -464,8 +491,14 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       beforeAll(async () => {
         const limits = await path('src/lib/upload-limits.ts');
         maxBytes = ((await import(limits)) as { MAX_UPLOAD_BYTES: number }).MAX_UPLOAD_BYTES;
+        const cacheTags = await path('src/lib/cache-tags.ts');
+        const revalidate = await path('src/lib/revalidate.ts', { 'next/cache': await stub('next-cache') });
         media = await load<MediaModule>('src/collections/Media.ts', {
           '@/access': await path('src/access/index.ts'),
+          '@/hooks/revalidate': await path('src/hooks/revalidate.ts', {
+            '@/lib/cache-tags': cacheTags,
+            '@/lib/revalidate': revalidate,
+          }),
           '@/lib/upload-limits': limits,
           payload: await stub('payload'),
         });
@@ -484,8 +517,21 @@ describe('cloudflare-payload-nextjs generated logic', () => {
       test('refuses a file kept in a temporary file, which has a size and no bytes', () => {
         const [refuse] = media.Media.hooks.beforeChange;
 
-        expect(() => refuse?.({ data: {}, req: { file: { size: maxBytes + 1 } } })).toThrow('The file is larger than 20 MB');
-        expect(refuse?.({ data: { alt: 'x' }, req: { file: { size: maxBytes } } })).toEqual({ alt: 'x' });
+        // Payload passes an empty buffer next to the real size when it keeps the upload in a temporary file.
+        const kept = (size: number) => ({ data: Buffer.alloc(0), size });
+
+        expect(() => refuse?.({ data: {}, req: { file: kept(maxBytes + 1) } })).toThrow('The file is larger than 20 MB');
+        expect(refuse?.({ data: { alt: 'x' }, req: { file: kept(maxBytes) } })).toEqual({ alt: 'x' });
+      });
+
+      test('expires the reads that embed an image when it is edited or deleted', () => {
+        const [afterChange] = media.Media.hooks.afterChange;
+        const [afterDelete] = media.Media.hooks.afterDelete;
+
+        afterChange?.({ doc: { id: 1 }, operation: 'update', req: { context: {} } });
+        afterDelete?.({ doc: { id: 1 }, req: { context: {} } });
+
+        expect(globalThis.__recorder.revalidated.map(([tag]) => tag)).toEqual(['media', 'media']);
       });
 
       test('turns the controls off that need sharp', () => {

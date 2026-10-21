@@ -31,6 +31,17 @@ function revalidateAfterDelete(listTag: string, documentTag: (slug: string) => s
   };
 }
 
+// An image saved with new alt text or focal point, or deleted, changes every page and post that embeds it. A new upload is embedded nowhere yet.
+export const revalidateMedia: CollectionAfterChangeHook = ({ doc, operation, req }) => {
+  if (operation !== 'create' && !req.context.disableRevalidate) revalidateTags([CACHE_TAGS.media]);
+  return doc;
+};
+
+export const revalidateDeletedMedia: CollectionAfterDeleteHook = ({ doc, req }) => {
+  if (!req.context.disableRevalidate) revalidateTags([CACHE_TAGS.media]);
+  return doc;
+};
+
 export const revalidatePage = revalidateAfterChange(CACHE_TAGS.pages, CACHE_TAGS.page);
 export const revalidateDeletedPage = revalidateAfterDelete(CACHE_TAGS.pages, CACHE_TAGS.page);
 export const revalidatePost = revalidateAfterChange(CACHE_TAGS.posts, CACHE_TAGS.post);

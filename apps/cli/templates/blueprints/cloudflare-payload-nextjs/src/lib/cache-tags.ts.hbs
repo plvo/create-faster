@@ -2,6 +2,8 @@ export const CACHE_TAGS = {
   pages: 'pages',
   posts: 'posts',
   siteSettings: 'site-settings',
+  // Carried by every read that embeds an image, which changes when the image is edited or deleted.
+  media: 'media',
   page: (slug: string) => `page:${slug}`,
   post: (slug: string) => `post:${slug}`,
 } as const;

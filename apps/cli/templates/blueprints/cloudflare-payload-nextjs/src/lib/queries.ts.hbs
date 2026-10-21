@@ -9,7 +9,8 @@ import { cache } from 'react';
 // Every read of the public site goes through unstable_cache with the tags that the hooks of the collections expire, so a
 // page view reads R2 and the tag cache, not D1. The reads are wrapped in React's cache() too, because a render asks for
 // the same document several times (metadata, layout, header, footer, page). A draft is read from the database each time,
-// for the signed-in editor only.
+// for the signed-in editor only. A read that embeds images (depth 1) also carries the media tag, which an edited or
+// deleted image expires.
 
 // A read that finds nothing throws this, which unstable_cache does not store.
 class NothingFound extends Error {}
@@ -54,12 +55,12 @@ async function cachedOrNull<T>(read: () => Promise<T | null>, key: string[], tag
 
 export const getPage = cache(async (slug: string, draft: boolean): Promise<Page | null> => {
   if (draft) return findBySlug('pages', slug, true);
-  return cachedOrNull(() => findBySlug('pages', slug, false), ['page', slug], [CACHE_TAGS.page(slug)]);
+  return cachedOrNull(() => findBySlug('pages', slug, false), ['page', slug], [CACHE_TAGS.page(slug), CACHE_TAGS.media]);
 });
 
 export const getPost = cache(async (slug: string, draft: boolean): Promise<Post | null> => {
   if (draft) return findBySlug('posts', slug, true);
-  return cachedOrNull(() => findBySlug('posts', slug, false), ['post', slug], [CACHE_TAGS.post(slug)]);
+  return cachedOrNull(() => findBySlug('posts', slug, false), ['post', slug], [CACHE_TAGS.post(slug), CACHE_TAGS.media]);
 });
 
 const POSTS_PER_LIST = 50;
@@ -86,7 +87,7 @@ export const getPublishedPosts = cache(
       return docs as PostCard[];
     },
     ['posts'],
-    { tags: [CACHE_TAGS.posts] },
+    { tags: [CACHE_TAGS.posts, CACHE_TAGS.media] },
   ),
 );
 
