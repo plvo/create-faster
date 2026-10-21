@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import Handlebars from 'handlebars';
-import { getBlueprintSeed, getProjectAddon, resolveDeployAppDir } from '@/lib/addon-utils';
+import { getBlueprintGeneratedFiles, getBlueprintSeed, getProjectAddon, resolveDeployAppDir } from '@/lib/addon-utils';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
 import type { PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
@@ -270,6 +270,10 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('installedBinaryRunner', (options: Handlebars.HelperOptions) => {
     return getInstalledBinaryRunner(options.data.root as TemplateContext);
+  });
+
+  Handlebars.registerHelper('generatedFiles', (options: Handlebars.HelperOptions) => {
+    return getBlueprintGeneratedFiles(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('blueprintSeed', (options: Handlebars.HelperOptions) => {

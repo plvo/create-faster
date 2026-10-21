@@ -16,3 +16,6 @@ routeTree.gen.ts
 {{#if (has "orm" "drizzle")}}
 drizzle/
 {{/if}}
+{{#each (generatedFiles)}}
+{{this}}
+{{/each}}

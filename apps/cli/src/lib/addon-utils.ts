@@ -62,6 +62,12 @@ export function getBlueprintSeed(ctx: TemplateContext): BlueprintSeed | undefine
   return blueprint?.seed;
 }
 
+/** The globs of the committed files the tools of the selected blueprint write; empty without a blueprint or when it has none. */
+export function getBlueprintGeneratedFiles(ctx: TemplateContext): string[] {
+  const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
+  return blueprint?.generatedFiles ?? [];
+}
+
 export function getProjectAddon(category: string, name: string): MetaAddon | undefined {
   const cat = META.project[category as ProjectCategoryName];
   if (!cat) return undefined;

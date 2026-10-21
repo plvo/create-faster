@@ -1,6 +1,7 @@
 ---
 inline: true
 ---
+{{!-- Hash parameter: tagCacheBinding, the name of a second binding to the same database (the OpenNext D1 tag cache reads NEXT_TAG_CACHE_D1), omitted for none. --}}
 {{#if (has "database" "d1")}},
   "d1_databases": [
     {
@@ -8,5 +9,10 @@ inline: true
       "database_name": "{{projectName}}-db",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID"{{#if project.orm}},
       "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"{{/if}}
-    }
+    }{{#if tagCacheBinding}},
+    {
+      "binding": "{{tagCacheBinding}}",
+      "database_name": "{{projectName}}-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }{{/if}}
   ]{{/if}}

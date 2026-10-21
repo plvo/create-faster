@@ -1,12 +1,12 @@
-{{!-- Geist Sans is preloaded because the first paint uses it. Geist Mono only styles code and ids, so it is not: a preloaded font that the page does not use makes the browser warn on every page, and a rule that uses it loads it on demand. The root layout puts geistSans.variable and geistMono.variable on <html>, where the theme's --font-sans and --font-mono resolve them. --}}
+{{!-- Hash parameter: fontsDirectory, the path of the fonts directory from the layout (../styles/fonts when omitted, for a layout at src/app/layout.tsx). Geist Sans is preloaded because the first paint uses it. Geist Mono only styles code and ids, so it is not: a preloaded font that the page does not use makes the browser warn on every page, and a rule that uses it loads it on demand. The root layout puts geistSans.variable and geistMono.variable on <html>, where the theme's --font-sans and --font-mono resolve them. --}}
 const geistSans = localFont({
-  src: '../styles/fonts/geist-sans-vf.woff',
+  src: '{{#if fontsDirectory}}{{fontsDirectory}}{{else}}../styles/fonts{{/if}}/geist-sans-vf.woff',
   variable: '--font-geist-sans',
   weight: '100 900',
 });
 
 const geistMono = localFont({
-  src: '../styles/fonts/geist-mono-vf.woff',
+  src: '{{#if fontsDirectory}}{{fontsDirectory}}{{else}}../styles/fonts{{/if}}/geist-mono-vf.woff',
   preload: false,
   variable: '--font-geist-mono',
   weight: '100 900',

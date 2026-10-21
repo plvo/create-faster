@@ -4,6 +4,7 @@
 
 {{> cloudflare/d1-provisioning deploy=scripts}}
 {{> cloudflare/production-url}}
+{{> (blueprintPartial "production-url")}}
 {{> (blueprintPartial "first-admin")}}
 
 {{/if}}

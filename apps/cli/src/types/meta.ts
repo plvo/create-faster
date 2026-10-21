@@ -231,9 +231,11 @@ export interface MetaBlueprintApp extends AppContext {
  * empties as the docs say it (`contacts`, `users`). `always` empties it before every run, against whatever
  * `DATABASE_URL` points to. `with-reset` empties it only with `--reset` (the seed then has `--fixtures` and `--help`
  * too) and says where: `local-only` opens the local database and nothing else, `refuses-remote-without-force` refuses
- * a database that does not look local unless `--force` is passed.
+ * a database that does not look local unless `--force` is passed. `never` is a seed that only adds what is missing
+ * and deletes nothing: `rows` then names what it adds, and `script` is where the seed lives.
  */
 export type BlueprintSeed =
+  | { rows: string[]; deletes: 'never'; script: string }
   | { rows: string[]; deletes: 'always' }
   | { rows: string[]; deletes: 'with-reset'; target: 'local-only' | 'refuses-remote-without-force' };
 
@@ -261,6 +263,8 @@ export interface MetaBlueprint {
   scriptDescriptions?: Conditional<ScriptDescription>[];
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
   firstRun?: FirstRunStep[];
+  /** Globs of the committed files a tool of the blueprint writes (Payload's types, import map and migrations): the linters and formatters leave them alone, because they must stay byte-identical to the tool's output (`generatedFiles` helper). */
+  generatedFiles?: string[];
   /** Declared by a blueprint that ships its own seed script (a template at a seed destination in its chain); not inherited through `extends`. */
   seed?: BlueprintSeed;
 }

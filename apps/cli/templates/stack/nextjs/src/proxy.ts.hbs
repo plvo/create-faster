@@ -3,5 +3,7 @@ deploymentPath:
   cloudflare: src/middleware.ts
 deploymentSkip:
   - cloudflare-static
+blueprintSkip:
+  - cloudflare-payload-nextjs
 ---
 {{> nextjs/proxy}}

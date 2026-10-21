@@ -1,7 +1,7 @@
 import { defineConfig } from 'oxlint';
 
 export default defineConfig({
-  ignorePatterns: ['**/generated/**'],
+  ignorePatterns: ['**/generated/**'{{#each (generatedFiles)}}, '{{this}}'{{/each}}],
   overrides: [
 {{#each apps}}
 {{#if (or (eq stackName "nextjs") (eq stackName "tanstack-start") (eq stackName "expo") (hasLibrary "vitest") (hasLibrary "vitest-node") (hasLibrary "jest-expo"))}}
