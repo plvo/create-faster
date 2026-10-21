@@ -46,6 +46,13 @@ const START_DEV_SERVER = describedPerRepo(
   'Start the development server',
   'Start the dev server of every app that has a `dev` script',
 );
+const TYPECHECK_CODE = describedPerRepo(
+  'typecheck',
+  'Type-check the code',
+  'Type-check every app and package that has a `typecheck` script',
+);
+// The script of every app and package that has a tsconfig. A turborepo root runs them all through turbo.
+const TYPECHECK_WITH_TSC = { typecheck: 'tsc --noEmit' };
 const ANALYZE_BUNDLE = { script: 'analyze', description: 'Analyze the bundle size' };
 const OPEN_EXPO_APP = [
   { script: 'android', description: 'Start the Expo dev server and open the app on Android' },
@@ -144,6 +151,7 @@ function lintsWithEslint(config: PackageJsonConfig): PackageJsonConfig {
 
 const LAMBDA_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
   shared: lintsWithEslint({
+    scripts: TYPECHECK_WITH_TSC,
     exports: { './types': './src/types.ts' },
     devDependencies: {
       '@types/aws-lambda': AWS_LAMBDA_TYPES_VERSION,
@@ -379,7 +387,7 @@ export const META: Meta = {
       type: 'app',
       label: 'Next.js',
       hint: 'React framework with SSR',
-      scriptDescriptions: [...START_DEV_SERVER, ANALYZE_BUNDLE],
+      scriptDescriptions: [...START_DEV_SERVER, ANALYZE_BUNDLE, ...TYPECHECK_CODE],
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       packageJson: {
         dependencies: {
@@ -397,6 +405,7 @@ export const META: Meta = {
           '@tailwindcss/postcss': '^4.3.3',
         },
         scripts: {
+          ...TYPECHECK_WITH_TSC,
           analyze: 'next experimental-analyze',
           dev: 'next dev --port {{port}}',
           build: 'next build',
@@ -409,7 +418,7 @@ export const META: Meta = {
       clientOnly: true,
       label: 'Expo',
       hint: 'React Native framework',
-      scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP],
+      scriptDescriptions: [...START_DEV_SERVER, ...OPEN_EXPO_APP, ...TYPECHECK_CODE],
       // turbo gives a task no terminal, and Expo prints no QR code and takes no key press without one: in a turborepo its dev server is not `dev`, which `turbo dev` runs in every app. A single repo runs no turbo.
       interactiveScripts: ['dev:expo'],
       // React Native checks the renderer version, so the SDK fixes the exact React the app runs (and `expo-doctor` the minor of its types), whatever the other apps use.
@@ -440,6 +449,7 @@ export const META: Meta = {
           '@types/react': '~19.2.4',
         },
         scripts: {
+          ...TYPECHECK_WITH_TSC,
           dev: $when({ repo: 'single' }, 'expo start'),
           'dev:expo': $when({ repo: 'turborepo' }, 'expo start'),
           android: 'expo start --android',
@@ -452,7 +462,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Hono',
       hint: 'Fast web framework',
-      scriptDescriptions: START_DEV_SERVER,
+      scriptDescriptions: [...START_DEV_SERVER, ...TYPECHECK_CODE],
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
@@ -464,6 +474,7 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
+          ...TYPECHECK_WITH_TSC,
           dev: 'bun run --port {{port}} --hot src/index.ts',
           start: $when(HONO_SERVES_FROM_NODE, 'NODE_ENV=production bun run --port {{port}} src/index.ts'),
         },
@@ -477,7 +488,7 @@ export const META: Meta = {
       type: 'server',
       label: 'Node',
       hint: 'Plain TypeScript',
-      scriptDescriptions: START_DEV_SERVER,
+      scriptDescriptions: [...START_DEV_SERVER, ...TYPECHECK_CODE],
       productionScripts: [...BUILD_FOR_PRODUCTION, ...START_PRODUCTION_SERVER],
       installScripts: TSX_INSTALL_SCRIPTS,
       packageJson: {
@@ -487,6 +498,7 @@ export const META: Meta = {
           '@types/node': NODE_TYPES_VERSION,
         },
         scripts: {
+          ...TYPECHECK_WITH_TSC,
           dev: 'bun run --hot src/index.ts',
           start: 'NODE_ENV=production bun run src/index.ts',
         },
@@ -500,7 +512,7 @@ export const META: Meta = {
       type: 'app',
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
-      scriptDescriptions: START_DEV_SERVER,
+      scriptDescriptions: [...START_DEV_SERVER, ...TYPECHECK_CODE],
       productionScripts: [...BUILD_FOR_PRODUCTION, PREVIEW_PRODUCTION_BUILD, ...START_PRODUCTION_SERVER],
       installScripts: { fsevents: false },
       moduleType: 'module',
@@ -527,6 +539,7 @@ export const META: Meta = {
           vite: VITE_VERSION,
         },
         scripts: {
+          ...TYPECHECK_WITH_TSC,
           dev: 'vite dev --port {{port}}',
           build: 'vite build',
           preview: 'vite preview --port {{port}}',
@@ -564,6 +577,7 @@ export const META: Meta = {
           '@tailwindcss/postcss': '^4.3.3',
           '@types/react': REACT_TYPES_VERSION,
         },
+        scripts: TYPECHECK_WITH_TSC,
         exports: {
           './': './src/components/',
           './base.css': './src/base.css',
@@ -642,6 +656,7 @@ export const META: Meta = {
           '@types/node': $when({ repo: 'turborepo' }, NODE_TYPES_VERSION),
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
         },
+        scripts: TYPECHECK_WITH_TSC,
         exports: {
           './auth': './src/auth.ts',
           './auth-client': './src/auth-client.ts',
@@ -691,6 +706,7 @@ export const META: Meta = {
           '@cloudflare/workers-types': WORKERS_TYPES_IN_PACKAGE,
           '@types/pg': $when({ repo: 'turborepo', orm: 'drizzle', database: 'postgres' }, PG_TYPES_VERSION),
         },
+        scripts: TYPECHECK_WITH_TSC,
         exports: {
           '.': './src/index.ts',
         },
@@ -1252,6 +1268,7 @@ export const META: Meta = {
               tsx: TSX_RUNNER,
             },
             scripts: {
+              ...TYPECHECK_WITH_TSC,
               'db:generate': 'drizzle-kit generate',
               'db:migrate': 'drizzle-kit migrate',
               'db:push': 'drizzle-kit push',
@@ -1304,12 +1321,14 @@ export const META: Meta = {
               tsx: TSX_RUNNER,
             },
             scripts: {
+              ...TYPECHECK_WITH_TSC,
               'db:generate': 'prisma generate',
               'db:migrate': 'prisma migrate dev',
               'db:push': 'prisma db push',
               'db:studio': 'prisma studio',
               'db:seed': 'prisma db seed',
               predev: $when({ repo: 'single' }, 'prisma generate'),
+              pretypecheck: $when({ repo: 'single' }, 'prisma generate'),
               prebuild: $when({ repo: 'single', stack: STACKS_WITH_BUILD_SCRIPT }, 'prisma generate'),
             },
             types: $when({ repo: 'turborepo' }, './dist/src/index.d.ts'),
@@ -1502,6 +1521,7 @@ export const META: Meta = {
             clean: 'rimraf "**/.turbo" "**/.next" "**/dist" "**/generated" "**/node_modules"',
             'versions:list': 'syncpack lint',
             'versions:fix': 'syncpack fix',
+            typecheck: 'turbo typecheck',
           },
         },
         scriptDescriptions: [
