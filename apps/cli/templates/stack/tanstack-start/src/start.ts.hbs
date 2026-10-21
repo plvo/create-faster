@@ -8,11 +8,13 @@ import { createCsrfMiddleware, {{#if (hasLibrary "evlog")}}createMiddleware, {{/
 import { EvlogError } from 'evlog'
 import { findLogger } from '@/lib/evlog'
 
+const toError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)))
+
 const logRequestErrors = createMiddleware({ type: 'request' }).server(async ({ next }) => {
   try {
     return await next()
   } catch (error) {
-    findLogger()?.error(error)
+    findLogger()?.error(toError(error))
     if (EvlogError.isEvlogError(error)) {
       throw new Response(JSON.stringify(error.toJSON()), {
         status: error.status || 500,
@@ -27,7 +29,7 @@ const logServerFnErrors = createMiddleware({ type: 'function' }).server(async ({
   try {
     return await next()
   } catch (error) {
-    findLogger()?.error(error)
+    findLogger()?.error(toError(error))
     throw error
   }
 })
