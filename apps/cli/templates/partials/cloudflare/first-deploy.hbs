@@ -1,0 +1,62 @@
+{{!-- The first deploy of a turborepo of Workers, as numbered steps: the production URL for the build, the secrets, and each app built and deployed. The first deploy of a Worker takes its secrets from a file, because the Worker does not exist yet and `wrangler secret put` cannot run. --}}
+{{#orderedSteps}}
+{{#step}}
+Give the build the production URL, as a shell variable (it wins over `.env`). Next.js freezes `NEXT_PUBLIC_APP_URL` into the bundle:
+
+   ```bash
+   export NEXT_PUBLIC_APP_URL=https://{{> cloudflare/worker-name appName=(deployAppDir)}}.<subdomain>.workers.dev
+   ```
+{{/step}}
+{{#if (projectSecrets "nextjs" "tanstack-start" "hono" "node" "expo")}}
+{{#step}}
+Generate the secrets in the shell, and keep each value (a password manager): Cloudflare never shows a secret again, and you need some of them later.
+
+   ```bash
+{{#each apps}}
+{{#each (appSecretDetails)}}
+{{#if command}}
+   export {{name}}=$({{command}})
+{{/if}}
+{{/each}}
+{{/each}}
+   ```
+{{/step}}
+{{/if}}
+{{#each apps}}
+{{#step}}
+{{#if (eq stackName "nextjs")}}
+Build the `{{appName}}` Worker{{#if (appSecrets)}}, write its secrets to a file (gitignored){{/if}}, deploy it{{#if (appSecrets)}} with the file{{/if}}{{#if (appSecrets)}} and delete the file: the Worker holds the secrets now{{/if}}.
+{{else}}
+Deploy the `{{appName}}` Worker{{#if (appSecrets)}} with its secrets in a file (gitignored), then delete the file{{/if}}.
+{{/if}}
+
+   ```bash
+{{#if (appSecrets)}}
+   printf '{{#each (appSecretDetails)}}{{name}}=%s\n{{/each}}'{{#each (appSecretDetails)}} "${{#if origin}}NEXT_PUBLIC_APP_URL{{else}}{{name}}{{/if}}"{{/each}} > {{#if (isMono)}}apps/{{appName}}/{{/if}}.prod.env
+{{/if}}
+{{#if (eq stackName "nextjs")}}
+   {{#inDirectory "apps" appName}}{{runScript "build:cf"}}{{/inDirectory}}
+{{/if}}
+{{#if (appSecrets)}}
+   {{#inDirectory "apps" appName}}{{runScript "deploy" "--secrets-file .prod.env"}}{{/inDirectory}}
+{{else}}
+   {{#inDirectory "apps" appName}}{{runScript "deploy"}}{{/inDirectory}}
+{{/if}}
+{{#if (appSecrets)}}
+   rm {{#if (isMono)}}apps/{{appName}}/{{/if}}.prod.env
+{{/if}}
+   ```
+{{/step}}
+{{/each}}
+{{#step}}
+Check the site, with a retry: routes answer 404 for about a minute after `wrangler deploy`.
+
+   ```bash
+   for i in $(seq 1 12); do curl -fsS -o /dev/null "$NEXT_PUBLIC_APP_URL/" && break; sleep 10; done
+   ```
+{{/step}}
+{{/orderedSteps}}
+{{#if (hasAppScript "build:cf")}}
+
+`build:cf` bundles every `.env*` value of the app into the Worker, as a fallback for a secret that was never set. Build where the `.env` of the app holds no real secret (CI, or a checkout without a `.env`). Later deploys are the build and the deploy commands of each app, without the secrets file.
+{{/if}}

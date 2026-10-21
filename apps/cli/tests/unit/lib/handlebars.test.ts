@@ -522,7 +522,7 @@ describe('Handlebars helpers', () => {
     });
   });
   describe('generatedFiles', () => {
-    const EACH = '{{#each (generatedFiles)}}[{{this}}]{{/each}}';
+    const EACH = '{{#each (generatedFiles "biome")}}[{{this}}]{{/each}}';
     const ctx = (blueprint?: string): Partial<TemplateContext> => ({ blueprint, apps: [], project: { tooling: [] } });
 
     test('lists the files the selected blueprint declares', () => {
@@ -534,6 +534,78 @@ describe('Handlebars helpers', () => {
     test('is empty without a blueprint, and for a blueprint that declares none', () => {
       expect(Handlebars.compile(EACH)(ctx())).toBe('');
       expect(Handlebars.compile(EACH)(ctx('dapp-privy-nextjs'))).toBe('');
+    });
+  });
+  describe('hasAppFile', () => {
+    const ctx = (overrides: Partial<TemplateContext>): Partial<TemplateContext> => ({
+      projectName: 'proj',
+      repo: 'single',
+      apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
+      project: { tooling: [], deployment: 'cloudflare' },
+      git: false,
+      ...overrides,
+    });
+    const HAS = '{{#if (hasAppFile "src/middleware.ts")}}yes{{else}}no{{/if}}';
+
+    test('is true when the project generates the file for an app, in a single repo and in a turborepo', () => {
+      expect(Handlebars.compile(HAS)(ctx({}))).toBe('yes');
+      expect(
+        Handlebars.compile(HAS)(
+          ctx({
+            repo: 'turborepo',
+            apps: [
+              { appName: 'web', stackName: 'nextjs', libraries: [] },
+              { appName: 'api', stackName: 'hono', libraries: [] },
+            ],
+          }),
+        ),
+      ).toBe('yes');
+    });
+
+    test('is false when the project does not generate it', () => {
+      expect(Handlebars.compile(HAS)(ctx({ project: { tooling: [] } }))).toBe('no');
+      expect(Handlebars.compile(HAS)(ctx({ blueprint: 'cloudflare-payload-nextjs' }))).toBe('no');
+    });
+  });
+
+  describe('hasBlueprintPartial', () => {
+    const HAS = '{{#if (hasBlueprintPartial "deploy-step")}}yes{{else}}no{{/if}}';
+
+    test('is true for a blueprint that has the partial, and false for the others and without a blueprint', () => {
+      expect(Handlebars.compile(HAS)({ blueprint: 'cloudflare-payload-nextjs' })).toBe('yes');
+      expect(Handlebars.compile(HAS)({ blueprint: 'cloudflare-fullstack-nextjs' })).toBe('no');
+      expect(Handlebars.compile(HAS)({})).toBe('no');
+    });
+  });
+
+  describe('appSecretDetails', () => {
+    test('tells how to give each secret of an app a value: a command that prints one, or the origin of the app', () => {
+      const ctx: Partial<TemplateContext> = {
+        projectName: 'proj',
+        repo: 'turborepo',
+        apps: [
+          { appName: 'web', stackName: 'nextjs', libraries: [] },
+          { appName: 'cron', stackName: 'hono', libraries: [] },
+        ],
+        project: { database: 'd1', deployment: 'cloudflare', tooling: [] },
+        blueprint: 'cloudflare-payload-nextjs',
+        git: false,
+      };
+      const template = Handlebars.compile(
+        '{{#each apps}}{{appName}}:{{#each (appSecretDetails)}} {{name}}={{#if command}}{{command}}{{else}}-{{/if}}{{#if origin}}/origin{{/if}}{{/each}};{{/each}}',
+      );
+
+      expect(template(ctx)).toBe(
+        'web: PAYLOAD_SECRET=openssl rand -base64 32 PREVIEW_SECRET=openssl rand -base64 32;cron: BACKUP_TRIGGER_TOKEN=openssl rand -base64 32;',
+      );
+    });
+  });
+
+  describe('seedFile', () => {
+    test('is the file the seed of the blueprint declares, else scripts/seed.ts', () => {
+      expect(Handlebars.compile('{{seedFile}}')({ blueprint: 'cloudflare-payload-nextjs' })).toBe('apps/web/scripts/seed.ts');
+      expect(Handlebars.compile('{{seedFile}}')({ blueprint: 'org-dashboard-nextjs' })).toBe('scripts/seed.ts');
+      expect(Handlebars.compile('{{seedFile}}')({})).toBe('scripts/seed.ts');
     });
   });
 });

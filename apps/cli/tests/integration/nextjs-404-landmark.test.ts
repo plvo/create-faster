@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { dirname, join, relative } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, fileExists, filesUnder, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, fileExists, filesUnder, readTextFile, rootLayoutsOf, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -10,7 +10,8 @@ const PROJECT = 'site';
 const NOT_FOUND_TITLE = "title: 'Page not found'";
 // SidebarInset renders the main landmark of a dashboard.
 const MAIN_LANDMARK = /<(main|SidebarInset)[\s>]/g;
-const CATCH_ALL_PAGE = /(^|\/)\[\.\.\.[^\]/]+\]\/page\.tsx$/;
+// `[...slug]` and the optional `[[...slug]]`.
+const CATCH_ALL_PAGE = /(^|\/)\[{1,2}\.\.\.[^\]/]+\]{1,2}\/page\.tsx$/;
 
 const countMains = (source: string): number => source.match(MAIN_LANDMARK)?.length ?? 0;
 
@@ -54,9 +55,9 @@ describe.each(PROJECTS)('$title 404', ({ args, appNames }) => {
     const catchAll = (await filesUnder(appRoot)).map((file) => relative(appRoot, file)).find((file) => CATCH_ALL_PAGE.test(file));
     const groupDirectory = catchAll ? dirname(dirname(catchAll)) : '.';
     // An app with several root layouts has none at the top: the layout of the group is the root one.
-    const topLevelLayout = join(appRoot, 'layout.tsx');
-    const layouts = (await fileExists(topLevelLayout)) ? [topLevelLayout] : [];
-    if (groupDirectory !== '.') layouts.push(join(appRoot, groupDirectory, 'layout.tsx'));
+    const groupLayout = join(appRoot, groupDirectory, 'layout.tsx');
+    const layouts = (await rootLayoutsOf(appDirectory)).filter((layout) => layout === join(appRoot, 'layout.tsx') || layout === groupLayout);
+    if (groupDirectory !== '.' && !layouts.includes(groupLayout)) layouts.push(groupLayout);
     const notFoundFile = join(appRoot, groupDirectory, 'not-found.tsx');
     const titleSource = catchAll ? join(appRoot, catchAll) : notFoundFile;
     return { layouts, notFoundFile, titleSource };

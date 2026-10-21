@@ -196,7 +196,9 @@ describe('linter ignore lists', () => {
       'apps/web/src/app/(payload)/admin/importMap.js',
       'apps/web/src/migrations/20261021_133016_initial.ts',
     ];
-    const patterns = (META.blueprints[BLUEPRINT] as MetaBlueprint).generatedFiles ?? [];
+    const patterns = ((META.blueprints[BLUEPRINT] as MetaBlueprint).generatedFiles ?? []).filter(
+      (file): file is string => typeof file === 'string',
+    );
 
     // [linter, file that lists the ignores in a turborepo]
     const IGNORE_FILES: [string, string][] = [

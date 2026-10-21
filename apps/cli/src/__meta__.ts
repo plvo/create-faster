@@ -112,8 +112,9 @@ const PAYLOAD_PACKAGES = [
   '@payloadcms/plugin-seo',
   '@payloadcms/live-preview-react',
 ];
-// Payload prints Node deprecation warnings from its dependencies on every command.
-const PAYLOAD_CLI = 'NODE_OPTIONS=--no-deprecation payload';
+// Payload prints Node deprecation warnings from its dependencies on every command. The option is added to those of the
+// environment, which `--import` of a preload or `--max-old-space-size` may already hold.
+const PAYLOAD_CLI = 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation" payload';
 const REMOTE_BINDINGS_RUNNER = '{{tsRunner}} scripts/remote.ts';
 const ADD_MISSING_SAMPLE_CONTENT = {
   script: 'db:seed',
@@ -121,7 +122,6 @@ const ADD_MISSING_SAMPLE_CONTENT = {
   readmeSection: SEEDING_SECTION,
 };
 const PAYLOAD_SCRIPTS = [
-  { script: 'payload', description: 'Run the Payload CLI' },
   { script: 'generate:types', description: 'Regenerate the Cloudflare binding types and the Payload types' },
   { script: 'generate:importmap', description: 'Regenerate the import map of the Payload admin' },
   { script: 'migrate', description: 'Apply the Payload migrations to the local database' },
@@ -575,6 +575,10 @@ export const META: Meta = {
     },
     'tanstack-start': {
       type: 'app',
+      // The Start plugin writes the route tree on the first `vite dev` or `vite build`, and `tsr generate` on install; ESLint ignores it in the config of the stack.
+      generatedFiles: [
+        { glob: '**/routeTree.gen.ts', as: { eslint: false, oxlint: false, prettier: 'routeTree.gen.ts' } },
+      ],
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
       scriptDescriptions: [...START_DEV_SERVER, ...TYPECHECK_CODE],
@@ -1305,6 +1309,13 @@ export const META: Meta = {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
+          // drizzle-kit writes the migrations, and the `meta/*.json` of its snapshots without a final newline.
+          generatedFiles: [
+            {
+              glob: '**/drizzle/**',
+              as: { biome: '**/drizzle/**/*', eslint: false, oxlint: false, prettier: 'drizzle/' },
+            },
+          ],
           installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
@@ -2079,7 +2090,7 @@ export const META: Meta = {
       seed: {
         rows: ['pages', 'posts', 'media', 'site settings'],
         deletes: 'never',
-        script: 'apps/web/scripts/seed.ts',
+        file: 'apps/web/scripts/seed.ts',
       },
       agentArchitecture: [
         'Content-managed site on Cloudflare: a Next.js (OpenNext) web app that serves the Payload admin',
@@ -2111,7 +2122,7 @@ export const META: Meta = {
               },
               scripts: {
                 // Turbopack fails on the server bundle of Payload (payloadcms/payload#16470).
-                build: 'NODE_OPTIONS=--no-deprecation next build --webpack',
+                build: 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation" next build --webpack',
                 payload: PAYLOAD_CLI,
                 'generate:types': `${CLOUDFLARE_TYPEGEN} && ${PAYLOAD_CLI} generate:types`,
                 'generate:importmap': `${PAYLOAD_CLI} generate:importmap`,

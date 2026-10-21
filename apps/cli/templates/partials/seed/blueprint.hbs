@@ -1,9 +1,9 @@
 {{#with (blueprintSeed)}}
 {{#if (eq deletes "always")}}
-{{> seed/deletes-users rows=rows script="scripts/seed.ts"}}
+{{> seed/deletes-users rows=rows script=(seedFile)}}
 {{else if (eq deletes "never")}}
-`{{runScript "db:seed"}}` runs `{{script}}`, which adds the sample {{> seed/rows rows=rows}} that are missing and deletes nothing: what you changed in the admin stays, and running it again adds nothing.
+`{{runScript "db:seed"}}` runs `{{seedFile}}`, which adds the sample {{> seed/rows rows=rows}} that are missing and deletes nothing: what you changed in the admin stays, and running it again adds nothing.
 {{else}}
-`{{runScript "db:seed"}}` runs `scripts/seed.ts`, which creates the demo accounts that are missing and keeps the ones that exist. `--reset` makes it delete all {{> seed/rows rows=rows}} first (accounts you created yourself included){{#if (eq target "local-only")}}; the seed only touches the local database{{/if}}{{#if (eq target "refuses-remote-without-force")}}; it refuses a database that does not look local unless `--force` is passed{{/if}}. `--fixtures` adds demo data and `--help` prints the usage.
+`{{runScript "db:seed"}}` runs `{{seedFile}}`, which creates the demo accounts that are missing and keeps the ones that exist. `--reset` makes it delete all {{> seed/rows rows=rows}} first (accounts you created yourself included){{#if (eq target "local-only")}}; the seed only touches the local database{{/if}}{{#if (eq target "refuses-remote-without-force")}}; it refuses a database that does not look local unless `--force` is passed{{/if}}. `--fixtures` adds demo data and `--help` prints the usage.
 {{/if}}
 {{/with}}

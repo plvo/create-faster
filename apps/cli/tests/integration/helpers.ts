@@ -510,7 +510,7 @@ export async function filesUnder(root: string, skippedDirectories: readonly stri
 
 // Route groups whose root layout a blueprint takes from a library, so the rules about the root layout of the app do not
 // apply to it: the Payload admin renders the `<html>` of the `RootLayout` of @payloadcms/next/layouts.
-const LIBRARY_ROOT_LAYOUT_GROUPS = ['(payload)'];
+const GROUPS_WITH_A_LIBRARY_ROOT_LAYOUT = ['(payload)'];
 
 /**
  * The root layouts of a Next.js app, as absolute paths of the files that exist: `src/app/layout.tsx`, else the layout of
@@ -525,7 +525,7 @@ export async function rootLayoutsOf(appDirectory: string): Promise<string[]> {
 
   const entries = await readdir(appRoot, { withFileTypes: true });
   const groupLayouts = entries
-    .filter((entry) => entry.isDirectory() && /^\(.+\)$/.test(entry.name) && !LIBRARY_ROOT_LAYOUT_GROUPS.includes(entry.name))
+    .filter((entry) => entry.isDirectory() && /^\(.+\)$/.test(entry.name) && !GROUPS_WITH_A_LIBRARY_ROOT_LAYOUT.includes(entry.name))
     .map((entry) => join(appRoot, entry.name, 'layout.tsx'));
   const existing: string[] = [];
   for (const layout of groupLayouts) {

@@ -1,5 +1,5 @@
 {{!-- deploy: the name of the section that lists the build and deploy commands; when set, the last step deploys the apps --}}
-{{!-- A blueprint adds steps of its own through the blueprint partials d1-steps-before-migration and d1-steps-after-migration, each made of {{#step}} blocks --}}
+{{!-- A blueprint adds steps of its own through the blueprint partials d1-steps-before-migration and d1-steps-after-migration, each made of {{#step}} blocks, and replaces the deploy step by a blueprint partial deploy-step (the text of the step) --}}
 Provision the production database once, before the first deploy. Wrangler needs a Cloudflare login first (its `login` command, or `CLOUDFLARE_API_TOKEN` in CI).
 
 {{#orderedSteps}}
@@ -11,7 +11,7 @@ Create the database. `--no-update-config` stops Wrangler from offering to add th
    ```
 {{/step}}
 {{#step}}
-Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `REPLACE_WITH_D1_DATABASE_ID` wherever it appears.
+Copy the `database_id` it prints (not the `binding`, which stays `DB`) into the `d1_databases` entry of {{#if (isMono)}}every `apps/*/wrangler.jsonc` (they all bind this one database){{else}}`wrangler.jsonc`{{/if}}, replacing `{{> cloudflare/d1-database-id-placeholder}}` wherever it appears.
 {{/step}}
 {{> (blueprintPartial "d1-steps-before-migration")}}
 {{#step}}
@@ -39,6 +39,9 @@ Apply the migrations to the production database:
 {{> (blueprintPartial "d1-steps-after-migration")}}
 {{#step}}
 {{#if deploy}}
+{{#if (hasBlueprintPartial "deploy-step")}}
+{{> (blueprintPartial "deploy-step")}}
+{{else}}
 Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
 
    - Set the runtime secrets: every name under `secrets.required` in a `wrangler.jsonc` must be set (the secrets notes of the Cloudflare Workers section of `AGENTS.md` say how).
@@ -51,6 +54,7 @@ Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
    {{> cloudflare/production-url pointer=true}}
 
    Then run the build and deploy commands listed under **{{deploy}}**, except `preview`, which keeps running.
+{{/if}}
 {{/if}}
 {{/step}}
 {{/orderedSteps}}

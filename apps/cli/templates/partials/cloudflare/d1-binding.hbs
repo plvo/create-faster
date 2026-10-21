@@ -7,12 +7,12 @@ inline: true
     {
       "binding": "DB",
       "database_name": "{{projectName}}-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"{{#if project.orm}},
+      "database_id": "{{> cloudflare/d1-database-id-placeholder}}"{{#if project.orm}},
       "migrations_dir": "{{#if (isMono)}}../../packages/db/drizzle{{else}}drizzle{{/if}}"{{/if}}
     }{{#if tagCacheBinding}},
     {
       "binding": "{{tagCacheBinding}}",
       "database_name": "{{projectName}}-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "database_id": "{{> cloudflare/d1-database-id-placeholder}}"
     }{{/if}}
   ]{{/if}}

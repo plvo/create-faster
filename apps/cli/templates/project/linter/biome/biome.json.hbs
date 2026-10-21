@@ -18,9 +18,7 @@
       "!**/dist/**/*",
       "!**/out/**/*",
       "!**/generated/**/*",
-      "!**/.turbo/**/*"{{#if (has "orm" "drizzle")}},
-      "!**/drizzle/**/*"{{/if}}{{#if (has "stack" "tanstack-start")}},
-      "!**/routeTree.gen.ts"{{/if}}{{#each (generatedFiles)}},
+      "!**/.turbo/**/*"{{#each (generatedFiles "biome")}},
       "!{{this}}"{{/each}}
     ]
   },

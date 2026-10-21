@@ -15,6 +15,7 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('cloudflare-fullst
   const projectName = `urls-${pm}`;
   const runner = BINARY_RUNNER[pm];
   const productionUrl = `https://${projectName}-web.<subdomain>.workers.dev`;
+  const deployWithSecrets = pm === 'npm' ? 'npm run deploy -- --secrets-file .prod.env' : `${pm} run deploy --secrets-file .prod.env`;
   let tempDir: string;
   let notes: string;
   let schema: string;
@@ -43,7 +44,7 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('cloudflare-fullst
       '## Build & deploy',
       'export NEXT_PUBLIC_APP_URL=',
       `(cd apps/web && ${pm} run build:cf)`,
-      `(cd apps/web && ${pm} run deploy -- --secrets-file .prod.env)`,
+      `(cd apps/web && ${deployWithSecrets})`,
       'rm apps/web/.prod.env',
       `(cd apps/cron && ${pm} run deploy)`,
     ]);
@@ -85,11 +86,12 @@ describe.each(Object.keys(BINARY_RUNNER) as PackageManager[])('cloudflare-fullst
 
   test('the build sets the production URL itself and the secrets file reuses it, so .env needs no real value', () => {
     expect(notes).toContain(`export NEXT_PUBLIC_APP_URL=${productionUrl}`);
+    expect(notes).toContain('export BETTER_AUTH_SECRET=$(openssl rand -base64 32)');
     expect(notes).toContain(
-      `printf 'BETTER_AUTH_SECRET=%s\\nBETTER_AUTH_URL=%s\\n' "$(openssl rand -base64 32)" "$NEXT_PUBLIC_APP_URL" > apps/web/.prod.env`,
+      `printf 'BETTER_AUTH_SECRET=%s\\nBETTER_AUTH_URL=%s\\n' "$BETTER_AUTH_SECRET" "$NEXT_PUBLIC_APP_URL" > apps/web/.prod.env`,
     );
     expect(notes).not.toContain('stay in `.env` at build time');
-    expect(notes).toMatch(/Only `NEXT_PUBLIC_APP_URL` is given to the build/);
+    expect(notes).toContain('Give the build the production URL, as a shell variable (it wins over `.env`)');
   });
 
   test('the first admin is promoted with a remote D1 command that matches the generated schema', () => {

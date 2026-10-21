@@ -43,10 +43,10 @@ const SENTENCES: Record<string, string[]> = {
   ],
 };
 
-// A blueprint whose seed is not the `scripts/seed.ts` of the root, or whose guide on the data is not `data-layer.md`.
-const SEED_SCRIPTS: Record<string, string> = { 'cloudflare-payload-nextjs': 'apps/web/scripts/seed.ts' };
+// A blueprint whose guide on the data is not `data-layer.md`.
 const DATA_GUIDES: Record<string, string> = { 'cloudflare-payload-nextjs': 'docs/agents/payload.md' };
-const seedScriptOf = (name: string) => SEED_SCRIPTS[name] ?? 'scripts/seed.ts';
+// The seed of a blueprint is `scripts/seed.ts` unless its META says where it is.
+const seedScriptOf = (name: string) => (META.blueprints[name] as MetaBlueprint).seed?.file ?? 'scripts/seed.ts';
 
 const SEEDING_BLUEPRINTS = Object.entries(META.blueprints)
   .filter(([, blueprint]) => 'seed' in blueprint)

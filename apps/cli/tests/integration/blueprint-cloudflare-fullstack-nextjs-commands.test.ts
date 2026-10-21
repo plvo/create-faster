@@ -77,7 +77,7 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
 
   test('--secrets-file reaches the deploy script: npm swallows a flag that follows the script name without --', async () => {
     for (const file of NOTE_FILES) {
-      expect(await readTextFile(join(projectPath, file))).not.toMatch(/run deploy --secrets-file/);
+      expect(await readTextFile(join(projectPath, file))).not.toMatch(/\bnpm run deploy --secrets-file/);
     }
     expect(await readTextFile(join(projectPath, 'AGENTS.md'))).toContain(
       `(cd apps/<app> && ${pm} run deploy -- --secrets-file .prod.env)`,

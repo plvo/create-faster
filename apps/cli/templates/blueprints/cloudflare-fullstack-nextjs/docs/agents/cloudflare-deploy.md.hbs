@@ -20,11 +20,7 @@ Both Workers bind the same database (`apps/web` and `apps/cron`).
 
 Create the bucket, declining Wrangler's offer to add the binding itself, as for D1. `dev` and `preview` keep their files in a local bucket, so only the deployed Worker needs this one (`preview_bucket_name` in `apps/web/wrangler.jsonc` names the bucket `wrangler dev --remote` would use; create it only for that):
 
-```bash
-{{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler r2 bucket create {{projectName}}-storage --no-update-config{{/inDirectory}}
-```
-
-An account that never used R2 refuses it with error `10042` (`Please enable R2 through the Cloudflare Dashboard`). Enable R2 at `https://dash.cloudflare.com/<account id>/r2/overview` (the account id is the one `wrangler whoami` prints, see Production URL), then run the command again. Create the bucket before the first deploy: the web Worker binds `STORAGE`, and a deploy with no bucket behind it fails with error `10085`.
+{{> cloudflare/r2-bucket}}
 {{> cloudflare/production-url}}
 
 ### Secrets
@@ -35,31 +31,7 @@ The web app lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` (the production URL
 
 Run these from the repository root, in this order, the first time. The production URL is the one learned above.
 
-**1. Give the build the production URL.** Only `NEXT_PUBLIC_APP_URL` is given to the build, as a shell variable (it wins over `.env`). Next.js freezes it into the client bundle and the server code, and the server-side tRPC client calls the app at it, so a build with the local value deploys a Worker that calls `localhost`:
-
-```bash
-export NEXT_PUBLIC_APP_URL=https://{{projectName}}-web.<subdomain>.workers.dev
-```
-
-**2. Write the secrets of the first deploy** to `apps/web/.prod.env` (gitignored; a new Worker does not exist yet, so `wrangler secret put` cannot run). `BETTER_AUTH_URL` is the same URL:
-
-```bash
-printf 'BETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=%s\n' "$(openssl rand -base64 32)" "$NEXT_PUBLIC_APP_URL" > apps/web/.prod.env
-```
-
-**3. Build the web Worker:** `{{#inDirectory "apps" "web"}}{{runScript "build:cf"}}{{/inDirectory}}` (wrangler types → `opennextjs-cloudflare build`, which runs `next build` once through the `build` script).
-
-**4. Deploy it:** `{{#inDirectory "apps" "web"}}{{runScript "deploy"}} -- --secrets-file .prod.env{{/inDirectory}}` (`opennextjs-cloudflare deploy`). Later deploys are `{{#inDirectory "apps" "web"}}{{runScript "deploy"}}{{/inDirectory}}`, with the secrets already in place.
-
-**5. Delete the secrets file.** The Worker holds the secrets now, and `.prod.env` keeps them in clear text on disk:
-
-```bash
-rm apps/web/.prod.env
-```
-
-**6. Deploy the cron Worker:** `{{#inDirectory "apps" "cron"}}{{runScript "deploy"}}{{/inDirectory}}` (`wrangler deploy`). The `triggers.crons` schedule (`0 3 * * *` — daily at 03:00 UTC) is registered on deploy.
-
-**Build where `apps/web/.env` holds no real secret.** `build:cf` bundles every `.env*` value, server secrets included, into the Worker (`.open-next/cloudflare/next-env.mjs`) as a `process.env` fallback, with no opt-out. A secret set with `wrangler secret put` or `--secrets-file` wins at runtime, but the bundled value is used silently when a secret was never set. `.env` is for local development: build the Worker you deploy in CI, or from a checkout that has none.
+{{> cloudflare/first-deploy}}
 
 ## First admin
 

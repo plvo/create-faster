@@ -59,7 +59,7 @@ describe('the seed of a blueprint', () => {
   test('cloudflare-payload-nextjs declares a seed that deletes nothing and says where it lives', () => {
     const seed = (META.blueprints['cloudflare-payload-nextjs'] as MetaBlueprint).seed;
     expect(seed?.deletes).toBe('never');
-    expect(seed && 'script' in seed ? seed.script : undefined).toBe('apps/web/scripts/seed.ts');
+    expect(seed?.file).toBe('apps/web/scripts/seed.ts');
   });
 });
 
@@ -69,7 +69,7 @@ describe('BlueprintSeed', () => {
     const always: BlueprintSeed = { rows: ['users'], deletes: 'always', target: 'local-only' };
     // @ts-expect-error a seed that deletes with --reset says where it may run
     const withReset: BlueprintSeed = { rows: ['users'], deletes: 'with-reset' };
-    // @ts-expect-error a seed that never deletes has no target and says where it lives
+    // @ts-expect-error a seed that never deletes has no target to refuse a remote database with
     const never: BlueprintSeed = { rows: ['pages'], deletes: 'never', target: 'local-only' };
 
     expect([always.deletes, withReset.deletes, never.deletes]).toEqual(['always', 'with-reset', 'never']);
