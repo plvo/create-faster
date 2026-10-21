@@ -35,8 +35,8 @@ describe('Turborepo root build', () => {
     await cleanupTempDir(tempDir);
   });
 
-  const noBuildCases: { name: string; args: string[]; pm?: string; tasks?: string[]; emptyTasks?: boolean }[] = [
-    { name: 'expo-only', args: ['--app', 'a:expo', '--app', 'b:expo'], emptyTasks: true },
+  const noBuildCases: { name: string; args: string[]; pm?: string; tasks?: string[]; onlyTypecheckTask?: boolean }[] = [
+    { name: 'expo-only', args: ['--app', 'a:expo', '--app', 'b:expo'], onlyTypecheckTask: true },
     { name: 'hono-bun-only', args: ['--app', 'api:hono', '--app', 'worker:hono'] },
     { name: 'hono-npm-only', args: ['--app', 'api:hono', '--app', 'worker:hono'], pm: 'npm' },
     {
@@ -71,14 +71,14 @@ describe('Turborepo root build', () => {
     },
   ];
 
-  for (const { name, args, pm, tasks: otherTasks = [], emptyTasks = false } of noBuildCases) {
+  for (const { name, args, pm, tasks: otherTasks = [], onlyTypecheckTask = false } of noBuildCases) {
     test(`${name}: no app declares build, so the root has no build script, task or printed step`, async () => {
       const { projectPath, scripts, tasks } = await generateTurborepo(tempDir, name, args, pm);
 
       expect(scripts).not.toHaveProperty(['build']);
       expectBuildTaskFollowsRootBuild(scripts, tasks);
       for (const task of otherTasks) expect(tasks).toHaveProperty([task]);
-      if (emptyTasks) expect(await readTextFile(join(projectPath, 'turbo.json'))).toContain('"tasks": {}');
+      if (onlyTypecheckTask) expect(Object.keys(tasks)).toEqual(['typecheck']);
 
       for (const document of ['README.md', 'AGENTS.md']) {
         const text = await readTextFile(join(projectPath, document));
