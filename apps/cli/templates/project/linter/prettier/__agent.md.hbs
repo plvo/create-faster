@@ -1,0 +1,3 @@
+Prettier formats the code and does not lint. `.prettierrc` sets the style (semicolons, single quotes, trailing commas, 100 columns) and sorts Tailwind classes, including the ones inside `cn` and `clsx` calls. `.prettierignore` keeps build output, lockfiles{{#if (has "stack" "tanstack-start")}}, the generated route tree{{/if}}{{#if (has "orm" "drizzle")}} and the Drizzle migrations{{/if}} out of it.
+
+`{{runScript "format"}}` rewrites the files and `{{runScript "format:check"}}` only reports the files that differ.{{#if (has "linter" "eslint-prettier")}} ESLint does the linting, with `eslint-config-prettier` as the last entry of its configuration so no ESLint rule fights the formatter.{{/if}}

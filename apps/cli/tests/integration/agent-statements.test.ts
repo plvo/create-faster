@@ -25,6 +25,9 @@ const PROJECTS = {
   'start-mono': ['--app', 'web:tanstack-start:trpc,better-auth', '--app', 'api:hono', ...GENERIC_ORM],
   'hono-single': ['--app', 'hono-single:hono', ...GENERIC_ORM],
   'node-only': ['--app', 'node-only:node', ...GENERIC_ORM],
+  'mono-node': ['--app', 'web:nextjs', '--app', 'jobs:node', ...GENERIC_ORM],
+  'hono-cloudflare': ['--app', 'hono-cloudflare:hono', '--deployment', 'cloudflare'],
+  'hono-cloudflare-portless': ['--app', 'hono-cloudflare-portless:hono', '--deployment', 'cloudflare', '--tooling', 'portless'],
   'prisma-single': ['--app', 'prisma-single:nextjs', '--database', 'postgres', '--orm', 'prisma'],
   'd1-single': ['--app', 'd1-single:nextjs', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare'],
   'd1-mono': [
@@ -51,6 +54,8 @@ const PROJECTS = {
   'dapp-privy-nextjs': ['--blueprint', 'dapp-privy-nextjs'],
   'dapp-privy-eslint-prettier': ['--blueprint', 'dapp-privy-nextjs', '--linter', 'eslint-prettier'],
   'dapp-rainbowkit-nextjs': ['--blueprint', 'dapp-rainbowkit-nextjs'],
+  'showcase-nextjs': ['--blueprint', 'showcase-nextjs'],
+  'cloudflare-static-site-nextjs': ['--blueprint', 'cloudflare-static-site-nextjs'],
 } as const;
 
 type ProjectName = keyof typeof PROJECTS;
@@ -528,5 +533,114 @@ describe('generated READMEs keep a blank line before every heading', () => {
 
   test.each(Object.keys(PROJECTS) as ProjectName[])('%s', async (name) => {
     expect(gluedHeadings(await readTextFile(join(projectPath(name), 'README.md')))).toEqual([]);
+  });
+});
+
+describe('the per-app AGENTS.md documents', () => {
+  const TURBOREPOS = (Object.keys(PROJECTS) as ProjectName[]).filter((name) =>
+    PROJECTS[name].filter((arg) => arg === '--app').length > 1,
+  );
+
+  test('the turborepo projects are covered', () => {
+    expect(TURBOREPOS).toContain('mono-node');
+    expect(TURBOREPOS).toContain('mono');
+  });
+
+  test.each(TURBOREPOS)('%s: the root promises one per app, and every app has it', async (name) => {
+    const root = await readTextFile(join(projectPath(name), 'AGENTS.md'));
+    const apps = await readdir(join(projectPath(name), 'apps'));
+
+    expect(root).toContain('Per-app detail lives in each `apps/<app>/AGENTS.md`.');
+    for (const app of apps) {
+      expect(await fileExists(join(projectPath(name), 'apps', app, 'AGENTS.md')), app).toBe(true);
+      expect(await readTextFile(join(projectPath(name), 'apps', app, 'CLAUDE.md'))).toBe('@AGENTS.md\n');
+    }
+  });
+
+  test('the Node app describes its entry point, its runner and the absence of a build', async () => {
+    const agents = await readTextFile(join(projectPath('mono-node'), 'apps', 'jobs', 'AGENTS.md'));
+
+    expect(agents).toContain('## Node\n\nPlain TypeScript Node app: no framework and no HTTP server. `src/index.ts` is the entry point');
+    expect(agents).toContain('`dev` runs the entry under Bun with `--hot`');
+    expect(agents).toContain('There is no `build` script');
+    expect(agents).toContain('The root `bun run dev` and `bun run start` run it together with the other apps.');
+    const scripts = (await readJsonFile<{ scripts: Record<string, string> }>(join(projectPath('mono-node'), 'apps', 'jobs', 'package.json'))).scripts;
+    expect(scripts.build).toBeUndefined();
+    expect(scripts.dev).toBe('bun run --hot src/index.ts');
+  });
+
+  test('a single Node app on npm runs through tsx and has no root-script sentence', async () => {
+    const dirNpm = await createTempDir();
+    try {
+      const result = await runCli(['node-npm', '--app', 'node-npm:node', '--no-git', '--no-install', '--pm', 'npm'], dirNpm);
+      expect(result.exitCode).toBe(0);
+      const agents = await readTextFile(join(dirNpm, 'node-npm', 'AGENTS.md'));
+
+      expect(agents).toContain('`dev` runs the entry on Node through `tsx watch`');
+      expect(agents).not.toContain('together with the other apps');
+    } finally {
+      await cleanupTempDir(dirNpm);
+    }
+  });
+
+  test('the Hono Worker fiche names portless only for a project that uses it', async () => {
+    const withoutPortless = await readTextFile(join(projectPath('hono-cloudflare'), 'AGENTS.md'));
+    const withPortless = await readTextFile(join(projectPath('hono-cloudflare-portless'), 'AGENTS.md'));
+
+    expect(withoutPortless).toContain('The `PORT` environment variable overrides it. There is no `start` script');
+    expect(withoutPortless).not.toContain('portless reaches it');
+    expect(withPortless).toContain('The `PORT` environment variable overrides it, which is how portless reaches it.');
+  });
+});
+
+type LineKind = 'blank' | 'heading' | 'list' | 'table' | 'quote' | 'indented' | 'text';
+
+function lineKind(line: string): LineKind {
+  if (line === '') return 'blank';
+  if (/^#{1,6} /.test(line)) return 'heading';
+  if (/^([-*+]|\d+\.) /.test(line)) return 'list';
+  if (line.startsWith('|')) return 'table';
+  if (line.startsWith('>')) return 'quote';
+  if (/^\s/.test(line)) return 'indented';
+  return 'text';
+}
+
+/**
+ * The lines of a Markdown document, outside code fences, that break the layout of the rendered text: a paragraph,
+ * list item, table or quote that follows a paragraph line directly (Markdown renders them inside it), a paragraph that
+ * follows a list item, table or quote directly, and the second blank line in a row.
+ */
+function layoutProblems(markdown: string): string[] {
+  const lines = markdown.split('\n');
+  let inFence = false;
+  const problems: string[] = [];
+
+  for (const [index, line] of lines.entries()) {
+    if (line.startsWith('```')) inFence = !inFence;
+    if (inFence || line.startsWith('```') || index === 0) continue;
+    const kind = lineKind(line);
+    const previous = lineKind(lines[index - 1] as string);
+    const isGlued =
+      (kind === 'text' && ['text', 'list', 'table', 'quote'].includes(previous)) ||
+      (['list', 'table', 'quote'].includes(kind) && previous === 'text');
+    if (isGlued) problems.push(`glued to the line above: ${line}`);
+    if (kind === 'blank' && previous === 'blank') problems.push('a second blank line in a row');
+  }
+  return problems;
+}
+
+describe('generated READMEs keep paragraphs, lists and blank lines apart', () => {
+  test('the check sees a list item or a paragraph glued to a paragraph, and a second blank line, outside code fences', () => {
+    expect(layoutProblems('text\n- item\n\n- item\n- item\nafter the list\n\n\nnext\n```\ntext\ntext\n```\n')).toEqual([
+      'glued to the line above: - item',
+      'glued to the line above: after the list',
+      'a second blank line in a row',
+    ]);
+    expect(layoutProblems('text\nanother line\n')).toEqual(['glued to the line above: another line']);
+    expect(layoutProblems('- item\n  continued\n\ntext\n\n| a |\n| - |\n')).toEqual([]);
+  });
+
+  test.each(Object.keys(PROJECTS) as ProjectName[])('%s', async (name) => {
+    expect(layoutProblems(await readTextFile(join(projectPath(name), 'README.md')))).toEqual([]);
   });
 });

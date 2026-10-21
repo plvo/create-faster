@@ -1,0 +1,3 @@
+Oxlint lints and Oxfmt formats, both configured from the root: `oxlint.config.mts` has one override per app{{#if (isMono)}} (`apps/<app>/**`){{/if}} that turns on the plugins of its stack and test libraries, and `oxfmt.config.mts` sets the style (single quotes, 120 columns) and sorts the imports{{#if (hasLibrary "shadcn")}} and the Tailwind classes{{/if}}. Both skip generated directories and lockfiles.
+
+`{{runScript "lint"}}` reports problems and changes nothing. `{{runScript "format"}}` runs Oxfmt. `{{runScript "check"}}` applies the Oxlint fixes, then formats.

@@ -91,11 +91,10 @@ describe('collectAgentContextFiles (turborepo)', () => {
     expect(files.find((f) => f.destination === 'CLAUDE.md')?.content).toBe('@AGENTS.md\n');
   });
 
-  test('apps with no fiche-bearing addon get no AGENTS.md', () => {
+  test('an app with no library gets its AGENTS.md from the fiche of its stack', () => {
     const files = collectAgentContextFiles(monoContext());
-    // api (node, no libs) has no stack/lib fiche → no apps/api/AGENTS.md.
-    // If a node fiche is added later, switch this app to a fiche-less stack.
-    expect(files.some((f) => f.destination === 'apps/api/AGENTS.md')).toBe(false);
+    const api = files.find((f) => f.destination === 'apps/api/AGENTS.md');
+    expect(api?.content).toContain('## Node\n\nPlain TypeScript Node app');
   });
 });
 
@@ -216,6 +215,33 @@ describe('collectAgentContextFiles (blueprint)', () => {
   });
 });
 
+describe('collectAgentContextFiles (composite addon)', () => {
+  const rootOf = (ctx: TemplateContext) =>
+    collectAgentContextFiles(ctx).find((file) => file.destination === 'AGENTS.md')?.content ?? '';
+
+  test('a composite linter contributes the section of each addon it composes', () => {
+    const root = rootOf(makeContext({ project: { linter: 'eslint-prettier', tooling: [] } }));
+
+    expect(root).toContain('\n## ESLint\n\n');
+    expect(root).toContain('\n## Prettier\n\n');
+    expect(root.indexOf('## ESLint')).toBeLessThan(root.indexOf('## Prettier'));
+  });
+
+  test('a linter that composes nothing contributes only its own section', () => {
+    const root = rootOf(makeContext({ project: { linter: 'prettier', tooling: [] } }));
+
+    expect(root).toContain('\n## Prettier\n\n');
+    expect(root).not.toContain('## ESLint');
+  });
+
+  test('a tooling addon contributes its section after the linter', () => {
+    const root = rootOf(makeContext({ project: { linter: 'biome', tooling: ['husky'] } }));
+
+    expect(root.indexOf('## Biome')).toBeGreaterThanOrEqual(0);
+    expect(root.indexOf('## Biome')).toBeLessThan(root.indexOf('## Husky'));
+  });
+});
+
 describe('collectAgentContextFiles (headings)', () => {
   const HEADING_FOLLOWED_BY_HEADING = /^#{1,6} .*\n+#{1,6} /m;
 
@@ -235,6 +261,13 @@ describe('collectAgentContextFiles (headings)', () => {
         project: { deployment: 'cloudflare', database: 'd1', orm: 'drizzle', tooling: [] },
       }),
     ],
+    ...Object.keys(META.project.linter.options).flatMap((linter): [string, TemplateContext][] => [
+      [`single repo with ${linter} and husky`, makeContext({ project: { linter, tooling: ['husky'] } })],
+      [
+        `turborepo with ${linter} and husky`,
+        makeContext({ repo: 'turborepo', apps: cloudflareApps, project: { linter, tooling: ['husky'] } }),
+      ],
+    ]),
     ...Object.entries(META.blueprints).map(([name, blueprint]): [string, TemplateContext] => [
       `blueprint ${name}`,
       makeContext({

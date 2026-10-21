@@ -5,58 +5,43 @@ description: Husky is a Git hooks manager that lets you run scripts at key momen
 
 [→ Husky Documentation](https://typicode.github.io/husky)
 
-**Requires:** Git repository
+**Requires:** Git repository and a linter
 
 ## What create-faster adds
 
 Beyond the official setup, we include:
 
-**Three Git Hooks:**
-1. **Pre-commit** - Auto-format code before committing
-2. **Commit-msg** - Validate conventional commit format
-3. **Post-commit** - Auto-amend if formatter changed files
+**Two Git Hooks:**
+1. **Pre-commit** - Runs lint-staged on the staged files
+2. **Commit-msg** - Checks the conventional commit format
 
-**Smart Package Manager Detection:**
-- Detects bun, pnpm, npm, or yarn from lock files
-- Defaults to bun if no lock file found
-- Runs formatter only if Biome or similar is installed
+**lint-staged:**
+- The tasks come from the linter you chose: `biome check --write`, `eslint --fix`, `prettier --write`, or `oxlint --fix` followed by `oxfmt`
+- In a turborepo with ESLint, each app and package carries its own `lint-staged` entry, so a staged file is linted with the configuration of its own workspace
+- The `prepare` script runs `husky` on install, which activates the hooks
 
-**Conventional Commits Validation:**
-- Enforces `<type>(<scope>): <subject>` format
+**Conventional Commits Check:**
+- Expects `<type>(<scope>): <subject>` on the first line
 - Accepted types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `workflow`, `wip`, `security`
 - Example: `feat(auth): add email login`
-- Shows helpful emoji guide on invalid format
-- Allows commit to proceed (warning, not error)
-
-**Auto-Amend Workflow:**
-- If pre-commit hook formats files, post-commit auto-amends
-- Prevents "formatting" commits cluttering history
-- Uses `--no-verify` to avoid infinite hook loop
+- Prints one verdict: the message is valid, or a warning that lists the format and the types
+- Never blocks the commit (warning, not error)
 
 Files created:
 ```
 .husky/
-├── pre-commit              # Auto-format before commit
-├── commit-msg              # Validate conventional commit format
-└── post-commit             # Auto-amend if formatting changed files
+├── pre-commit              # Run lint-staged
+└── commit-msg              # Check the conventional commit format
 ```
 
 **Pre-Commit Hook:**
 ```bash
-# Detects package manager from lock files
-# Runs {pm} run format if linter installed
+# Runs lint-staged: the linter tasks on the staged files
 ```
 
 **Commit-Msg Hook:**
 ```bash
-# Validates: <type>(<scope>): <subject>
+# Checks: <type>(<scope>): <subject>
 # Example: feat(auth): add email login
-# Shows warning with emoji guide if invalid
-```
-
-**Post-Commit Hook:**
-```bash
-# Checks if formatting changed files
-# Auto-amends commit if changes detected
-# Uses --no-verify to prevent loop
+# Prints a warning with the format and the types if invalid
 ```

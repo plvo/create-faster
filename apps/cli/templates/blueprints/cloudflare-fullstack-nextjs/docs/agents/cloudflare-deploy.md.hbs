@@ -18,7 +18,7 @@ Both Workers bind the same database (`apps/web` and `apps/cron`).
 
 ### R2
 
-Create the bucket (and `{{projectName}}-storage-preview` if you use `wrangler dev` preview on the web app), declining Wrangler's offer to add the binding itself, as for D1:
+Create the bucket, declining Wrangler's offer to add the binding itself, as for D1. `dev` and `preview` keep their files in a local bucket, so only the deployed Worker needs this one (`preview_bucket_name` in `apps/web/wrangler.jsonc` names the bucket `wrangler dev --remote` would use; create it only for that):
 
 ```bash
 {{#inDirectory "apps" "web"}}{{installedBinaryRunner}} wrangler r2 bucket create {{projectName}}-storage --no-update-config{{/inDirectory}}

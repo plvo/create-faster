@@ -10,6 +10,9 @@
 {{/if}}
 {{/if}}
 {{#if (hasRootScript "local-setup")}}
+{{#if (hasRootScript "db:seed")}}
+
+{{/if}}
 `{{runScript "local-setup"}}`: {{scriptDescription "local-setup"}}.
 {{/if}}
 {{/if}}

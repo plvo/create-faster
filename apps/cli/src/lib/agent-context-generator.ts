@@ -1,12 +1,13 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { getAppLibraries } from '@/lib/addon-utils';
+import { getAppLibraries, resolveCompositeAddons } from '@/lib/addon-utils';
 import { DOCS_URL, TEMPLATES_DIR } from '@/lib/constants';
 import { collectEnvGroups } from '@/lib/env-generator';
 import { readFrontmatterFile } from '@/lib/frontmatter';
 import { renderTemplate } from '@/lib/handlebars';
 import type { AppContext, TemplateContext } from '@/types/ctx';
+import type { ProjectCategoryName } from '@/types/meta';
 
 interface AgentContextFile {
   destination: string;
@@ -96,27 +97,23 @@ function collectSections(ctx: TemplateContext): Section[] {
   }
 
   const projectEnrich = singleAppEnrich(ctx);
-  const projectCategories: { category: keyof typeof META.project; order: number }[] = [
+  const projectCategories: { category: ProjectCategoryName; order: number }[] = [
     { category: 'database', order: DEFAULT_ORDER.database },
     { category: 'orm', order: DEFAULT_ORDER.orm },
     { category: 'deployment', order: DEFAULT_ORDER.deployment },
     { category: 'linter', order: DEFAULT_ORDER.linter },
+    { category: 'tooling', order: DEFAULT_ORDER.tooling },
   ];
 
   for (const { category, order } of projectCategories) {
-    const value = ctx.project[category as 'database' | 'orm' | 'deployment' | 'linter'];
-    if (!value) continue;
-    const addon = META.project[category].options[value];
-    if (!addon) continue;
-    const ficheSource = join(TEMPLATES_DIR, 'project', category, value, AGENT_DOC_FILENAME);
-    push(ficheSource, 'root', addon.label, order, ctx, projectEnrich);
-  }
-
-  for (const tooling of ctx.project.tooling) {
-    const addon = META.project.tooling.options[tooling];
-    if (!addon) continue;
-    const ficheSource = join(TEMPLATES_DIR, 'project', 'tooling', tooling, AGENT_DOC_FILENAME);
-    push(ficheSource, 'root', addon.label, DEFAULT_ORDER.tooling, ctx, projectEnrich);
+    const selection = ctx.project[category];
+    const names = Array.isArray(selection) ? selection : selection ? [selection] : [];
+    for (const name of names) {
+      for (const { name: partName, addon } of resolveCompositeAddons(category, name)) {
+        const ficheSource = join(TEMPLATES_DIR, 'project', category, partName, AGENT_DOC_FILENAME);
+        push(ficheSource, 'root', addon.label, order, ctx, projectEnrich);
+      }
+    }
   }
 
   return sections;

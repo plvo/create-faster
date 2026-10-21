@@ -7,11 +7,11 @@ This project was initialized with [create-faster](https://github.com/plvo/create
 {{#each apps}}
 **{{stackName}}**{{#if libraries.length}} with {{libraries.length}} librar{{#if (eq libraries.length 1)}}y{{else}}ies{{/if}}{{/if}}
 {{#if libraries}}
+
 - Libraries: {{#each libraries}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 {{/if}}
 
 {{/each}}
-
 {{#if project.database}}
 ## Database & ORM
 

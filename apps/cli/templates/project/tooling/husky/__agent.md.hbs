@@ -1,0 +1,9 @@
+The `prepare` script runs `husky` on install and points `core.hooksPath` at `.husky/_`, so the hooks are active once the dependencies are installed.
+
+`.husky/pre-commit` runs `lint-staged`, which applies the `lint-staged` tasks of `package.json` to the staged files: {{#if (has "linter" "biome")}}`biome check --write --unsafe` (it fixes, formats and sorts the imports; the unsafe fixes include removing unused variables){{/if}}{{#if (has "linter" "oxc")}}`oxlint --fix`, then `oxfmt`{{/if}}{{#if (has "linter" "prettier")}}`prettier --write`{{/if}}{{#if (has "linter" "eslint")}}`eslint --fix`{{/if}}{{#if (has "linter" "eslint-prettier")}}`eslint --fix`, then `prettier --write`{{/if}}. A task that fails stops the commit.
+{{#if (and (isMono) (or (has "linter" "eslint") (has "linter" "eslint-prettier")))}}
+
+ESLint takes the configuration of the directory it runs in, and lint-staged applies the closest configuration to each staged file. A turborepo root has no ESLint configuration, so each app and each package with a `lint` script carries its own `lint-staged` key in its `package.json`, and a file is linted with the configuration of its workspace. A new workspace needs the same key.
+{{/if}}
+
+`.husky/commit-msg` checks that the first line of the message is `<type>(<scope>): <subject>` with one of the types `build`, `ci`, `feat`, `fix`, `perf`, `refactor`, `style`, `docs`, `test`, `chore`, `revert`, `workflow`, `wip` or `security`. It prints either that the message is valid or a warning that lists the format, and it never blocks the commit.

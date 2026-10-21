@@ -59,6 +59,13 @@ describe.each([...PACKAGE_MANAGERS])('cloudflare-fullstack-nextjs notes with %s'
     expect(notes).not.toContain('pnpm dlx');
   });
 
+  test('the notes create the production bucket only: dev and preview run on a local one', async () => {
+    const notes = await readTextFile(join(projectPath, 'docs/agents/cloudflare-deploy.md'));
+
+    expect(notes.match(/r2 bucket create/g)).toHaveLength(1);
+    expect(notes).toContain('`dev` and `preview` keep their files in a local bucket');
+  });
+
   test('no note prints a package manager filter form', async () => {
     for (const file of NOTE_FILES) {
       expect(await readTextFile(join(projectPath, file))).not.toContain('--filter');

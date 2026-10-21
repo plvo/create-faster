@@ -1,0 +1,9 @@
+{{#if (isMono)}}
+ESLint is configured per workspace. `packages/eslint-config` (`@repo/eslint-config`) holds the shared presets, each built on `base.js`: one for Next.js, React, React Native and server code. Every app, and every workspace package that holds code, has its own `eslint.config.mjs` that re-exports the preset it needs, and its own `lint` script (`eslint .`).
+
+The root has no ESLint configuration: `{{runScript "lint"}}` runs `turbo lint`, which lints each workspace with its own, and a bare `eslint .` at the root finds none. A rule for every workspace goes in the preset, a rule for one workspace in its `eslint.config.mjs`.
+{{else}}
+`eslint.config.mjs` at the root is the flat configuration of the app, and `{{runScript "lint"}}` runs `eslint .`.
+{{/if}}
+
+ESLint lints and does not format{{#if (has "linter" "eslint")}}: the project has no formatter{{/if}}.
