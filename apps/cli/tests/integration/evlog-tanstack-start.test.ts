@@ -58,7 +58,7 @@ describe('evlog + TanStack Start', () => {
       expect(start).toContain('requestMiddleware: [csrfMiddleware, logRequestErrors]');
       expect(start).toContain('functionMiddleware: [logServerFnErrors]');
       expect(start).toContain("import { findLogger } from '@/lib/evlog'");
-      expect(start).toContain('findLogger()?.error(error)');
+      expect(start).toContain('findLogger()?.error(toError(error))');
       expect(start).not.toContain('useLogger');
       expect(start).toContain('EvlogError.isEvlogError(error)');
       expect(start).toContain('throw new Response(JSON.stringify(error.toJSON())');
@@ -156,7 +156,7 @@ describe('evlog + TanStack Start', () => {
       expect(start).toContain('requestMiddleware: [csrfMiddleware, logRequestErrors]');
       expect(start).toContain('functionMiddleware: [logServerFnErrors]');
       expect(start).toContain("import { findLogger } from '@/lib/evlog'");
-      expect(start).toContain('findLogger()?.error(error)');
+      expect(start).toContain('findLogger()?.error(toError(error))');
       expect(start).toContain("createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })");
       expect(start).not.toContain('nitro/context');
     });
