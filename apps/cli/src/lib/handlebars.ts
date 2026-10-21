@@ -287,7 +287,8 @@ function registerHelpers(): void {
     return getInstalledBinaryRunner(options.data.root as TemplateContext);
   });
 
-  // The destinations do not depend on the app being rendered, so a project resolves them once.
+  // The destinations do not depend on the app being rendered, so a project resolves them once. They are the paths the resolver
+  // keeps before rendering: a template that renders empty still counts, because rendering one needs this helper to answer.
   const generatedDestinations = new WeakMap<object, string[]>();
   Handlebars.registerHelper('hasAppFile', (path: string, options: Handlebars.HelperOptions) => {
     const root = options.data.root as TemplateContext;
