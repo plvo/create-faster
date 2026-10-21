@@ -48,6 +48,9 @@ export const useAppForm = () => ({
   AppForm: ({ children }) => children[0],
   SubmitButton: ({ children }) => createElement('button', { type: 'submit' }, ...children),
 });`,
+  'field.mjs': `import { createElement } from './react.mjs';
+export const Field = ({ children, ...props }) => createElement('div', props, ...children);
+export const FieldLabel = ({ children, ...props }) => createElement('label', props, ...children);`,
   'input.mjs': `import { createElement } from './react.mjs';
 export const Input = ({ children, ...props }) => createElement('${FILE_FIELD_TAG}', props, ...children);`,
   'trpc.mjs': `const chain = new Proxy(function () {}, { get: () => chain, apply: () => chain });
@@ -135,6 +138,7 @@ describe(`${BLUEPRINT} documents`, () => {
           sonner: './sonner.mjs',
           'lucide-react': './icons.mjs',
           zod: './zod.mjs',
+          '@repo/ui/components/ui/field': './field.mjs',
           '@repo/ui/components/ui/input': './input.mjs',
           '@repo/ui/lib/form': './form.mjs',
           '@/trpc/providers': './trpc.mjs',

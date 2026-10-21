@@ -1049,6 +1049,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/trpc/server': './trpc-server.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
         '@repo/ui/components/ui/search-input': './search-input.mjs',
+        '@repo/ui/components/ui/field': './field.mjs',
         '@repo/api/user-list': './user-list.mjs',
         '@/hooks/use-user-list-params': './user-list-params.mjs',
         '@/components/table-pagination': './paged-list.mjs',

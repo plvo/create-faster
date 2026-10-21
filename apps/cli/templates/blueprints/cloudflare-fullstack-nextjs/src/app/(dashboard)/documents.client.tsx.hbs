@@ -11,6 +11,7 @@ import { useMutation, useQueryClient, useSuspenseQueries } from '@tanstack/react
 import { toast } from 'sonner';
 import { Trash2, Upload } from 'lucide-react';
 import { z } from 'zod';
+import { Field, FieldLabel } from '@repo/ui/components/ui/field';
 import { Input } from '@repo/ui/components/ui/input';
 import { useAppForm } from '@repo/ui/lib/form';
 import { useTRPC } from '@/trpc/providers';
@@ -98,12 +99,10 @@ export function DocumentsClient() {
               {(f) => <f.InputField label='Title' props={{ placeholder: 'Document title' }} />}
             </form.AppField>
           </div>
-          <div className='flex flex-col gap-1.5'>
-            <label className='text-sm font-medium' htmlFor='document-file'>
-              File
-            </label>
+          <Field className='min-w-56 flex-1 gap-2'>
+            <FieldLabel htmlFor='document-file'>File</FieldLabel>
             <Input id='document-file' ref={fileRef} type='file' />
-          </div>
+          </Field>
           <form.AppForm>
             <form.SubmitButton>
               <Upload className='size-4' />
