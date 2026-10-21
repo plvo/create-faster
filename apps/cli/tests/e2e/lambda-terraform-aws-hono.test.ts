@@ -68,7 +68,7 @@ const INVOCATIONS: [name: string, event: unknown, reply: unknown][] = [
   ],
 ];
 
-// Test-only routes added to the api before it is built. The first throws, to see what the error handler answers;
+// Test-only routes added to the api before it is built. The first throws, to see what the error handler answers (outside development it hides the message of an unexpected error);
 // the second reads the literal `process.env.NODE_ENV`, which the build inlines into the bundle.
 const E2E_ROUTES = `
 app.get('/e2e/throw', () => {
@@ -144,10 +144,11 @@ describeWithDocker('lambda-terraform-aws-hono blueprint in the Lambda runtime', 
       expect(JSON.parse(body)).toEqual({ nodeEnv: 'production' });
     }, TIMEOUT_INVOKE);
 
-    test('answers a throwing route without its stack trace', async () => {
+    test('answers a throwing route with a generic 500, without its message or stack trace', async () => {
       const { statusCode, body } = await invokeApi('/e2e/throw');
       expect(statusCode).toBe(500);
-      expect(JSON.parse(body)).toEqual({ ok: false, message: 'e2e boom' });
+      expect(JSON.parse(body)).toEqual({ ok: false, message: 'Internal server error' });
+      expect(body).not.toContain('e2e boom');
       expect(body).not.toContain('stack');
       expect(body).not.toContain('at ');
     }, TIMEOUT_INVOKE);
