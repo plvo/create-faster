@@ -1,0 +1,25 @@
+import { getSiteSettings } from '@/lib/queries';
+import Link from 'next/link';
+
+export async function Header() {
+  const settings = await getSiteSettings();
+  return (
+    <header className='border-b'>
+      <div className='mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4'>
+        <Link className='text-lg font-semibold' href='/'>
+          {settings.siteName}
+        </Link>
+        <nav aria-label='Main' className='flex gap-4 text-sm'>
+          <Link className='underline-offset-4 hover:underline' href='/posts'>
+            Posts
+          </Link>
+          {settings.navigation?.map((link) => (
+            <Link className='underline-offset-4 hover:underline' href={link.href} key={link.id}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}

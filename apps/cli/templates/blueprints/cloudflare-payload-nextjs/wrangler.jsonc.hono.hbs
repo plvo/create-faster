@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "{{> cloudflare/worker-name}}",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
+  "vars": {
+    // Days a backup is kept before the next run deletes it
+    "BACKUP_RETENTION_DAYS": "30"
+  }{{> cloudflare/public-urls}}{{> cloudflare/d1-binding}},
+  "r2_buckets": [
+    {
+      // The backups have a bucket of their own: the Worker that serves the public media cannot read them
+      "binding": "BACKUPS",
+      "bucket_name": "{{projectName}}-backups"
+    }
+  ]{{> cloudflare/secrets-required}}
+}

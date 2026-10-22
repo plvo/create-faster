@@ -1,0 +1,35 @@
+interface Binding {
+  binding: string;
+  database_id?: string;
+  remote?: boolean;
+}
+
+interface WranglerConfig {
+  compatibility_date?: string;
+  compatibility_flags?: string[];
+  d1_databases?: Binding[];
+  name?: string;
+  r2_buckets?: Binding[];
+}
+
+export const DATABASE_ID_PLACEHOLDER = '{{> cloudflare/d1-database-id-placeholder}}';
+
+/** A Wrangler config that holds the named bindings only, each of them remote: they reach the real D1 database and R2 bucket. */
+export function remoteBindingsConfig(config: WranglerConfig, bindings: string[]): WranglerConfig {
+  const remote = (list: Binding[] | undefined) =>
+    list?.filter((entry) => bindings.includes(entry.binding)).map((entry) => ({ ...entry, remote: true }));
+  return {
+    compatibility_date: config.compatibility_date,
+    compatibility_flags: config.compatibility_flags,
+    d1_databases: remote(config.d1_databases),
+    name: config.name,
+    r2_buckets: remote(config.r2_buckets),
+  };
+}
+
+/** The D1 bindings that still hold the placeholder id of the generated config. */
+export function bindingsWithoutDatabaseId(config: WranglerConfig): string[] {
+  return (config.d1_databases ?? [])
+    .filter((entry) => entry.database_id === DATABASE_ID_PLACEHOLDER)
+    .map((entry) => entry.binding);
+}

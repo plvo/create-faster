@@ -11,5 +11,5 @@ export default defineConfig({
     functions: ['cn', 'cva', 'clsx'],
   },
 {{/if}}
-  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'{{#if (has "orm" "drizzle")}}, '**/drizzle/**'{{/if}}{{#if (has "stack" "tanstack-start")}}, '**/routeTree.gen.ts'{{/if}}],
+  ignorePatterns: ['**/generated/**', 'bun.lock', 'package-lock.json', 'pnpm-lock.yaml'{{#each (generatedFiles "oxfmt")}}, '{{this}}'{{/each}}],
 });

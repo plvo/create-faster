@@ -508,6 +508,32 @@ export async function filesUnder(root: string, skippedDirectories: readonly stri
   return entries.filter((entry) => entry.isFile() && !isSkipped(entry)).map((entry) => join(entry.parentPath, entry.name));
 }
 
+// Route groups whose root layout a blueprint takes from a library, so the rules about the root layout of the app do not
+// apply to it: the Payload admin renders the `<html>` of the `RootLayout` of @payloadcms/next/layouts.
+const GROUPS_WITH_A_LIBRARY_ROOT_LAYOUT = ['(payload)'];
+
+/**
+ * The root layouts of a Next.js app, as absolute paths of the files that exist: `src/app/layout.tsx`, else the layout of
+ * each top-level route group (an app with several root layouts has none at the top), without the groups whose layout a
+ * library provides.
+ */
+export async function rootLayoutsOf(appDirectory: string): Promise<string[]> {
+  const appRoot = join(appDirectory, 'src/app');
+  if (!(await fileExists(appRoot))) return [];
+  const topLevelLayout = join(appRoot, 'layout.tsx');
+  if (await fileExists(topLevelLayout)) return [topLevelLayout];
+
+  const entries = await readdir(appRoot, { withFileTypes: true });
+  const groupLayouts = entries
+    .filter((entry) => entry.isDirectory() && /^\(.+\)$/.test(entry.name) && !GROUPS_WITH_A_LIBRARY_ROOT_LAYOUT.includes(entry.name))
+    .map((entry) => join(appRoot, entry.name, 'layout.tsx'));
+  const existing: string[] = [];
+  for (const layout of groupLayouts) {
+    if (await fileExists(layout)) existing.push(layout);
+  }
+  return existing;
+}
+
 export interface RenderedElement {
   tag: string;
   props: Record<string, unknown>;

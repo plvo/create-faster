@@ -1,0 +1,42 @@
+import { PageView } from '@/components/page-view';
+import { metadataOf } from '@/lib/page-metadata';
+import { getPage } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
+import { notFound } from 'next/navigation';
+
+type Props = { params: Promise<{ slug?: string[] }> };
+
+const HOME_SLUG = 'home';
+
+// The home page and every other page go through this one route: it is rendered on its first request and kept until a hook
+// of the Pages collection expires its tags. Nothing is built ahead (so nothing queries D1 before the first migration), and
+// nothing expires on a timer. The page with the slug `home` is served at `/`, never at `/home`.
+export const revalidate = false;
+
+export function generateStaticParams(): { slug: string[] }[] {
+  return [];
+}
+
+// The slug of the page behind the path; undefined when no page can be.
+function slugOf(segments: string[] | undefined): string | undefined {
+  if (!segments) return HOME_SLUG;
+  const [slug, ...rest] = segments;
+  return rest.length === 0 && slug !== HOME_SLUG ? slug : undefined;
+}
+
+const NOT_FOUND: Metadata = { title: 'Page not found' };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const slug = slugOf((await params).slug);
+  if (!slug) return NOT_FOUND;
+  const { isEnabled: draft } = await draftMode();
+  const page = await getPage(slug, draft);
+  return page ? metadataOf(page) : NOT_FOUND;
+}
+
+export default async function Page({ params }: Props) {
+  const slug = slugOf((await params).slug);
+  if (!slug) notFound();
+  return <PageView slug={slug} />;
+}

@@ -1,0 +1,21 @@
+import { getAppUrl } from '@/lib/get-app-url';
+import type { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
+
+// The sites that are not the public one: a local run, and the workers.dev address of a Worker that has a custom domain.
+const NOT_PUBLIC_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$|\.workers\.dev$/;
+
+const hostnameOf = (hostHeader: string): string => new URL(`http://${hostHeader}`).hostname;
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const origin = getAppUrl();
+  const requestHost = (await headers()).get('host') ?? '';
+  const isPublicOrigin =
+    hostnameOf(requestHost || 'localhost') === new URL(origin).hostname && !NOT_PUBLIC_HOSTS.test(new URL(origin).hostname);
+
+  if (!isPublicOrigin) return { rules: { userAgent: '*', disallow: '/' } };
+  return {
+    rules: { userAgent: '*', allow: '/', disallow: ['/admin/', '/api/'] },
+    sitemap: `${origin}/sitemap.xml`,
+  };
+}

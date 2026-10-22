@@ -1,0 +1,65 @@
+import { authenticated } from '@/access';
+import { revalidateDeletedMedia, revalidateMedia } from '@/hooks/revalidate';
+import { MAX_UPLOAD_BYTES } from '@/lib/upload-limits';
+import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload';
+
+export const MEDIA_CACHE_CONTROL = 'public, max-age=604800, stale-while-revalidate=86400';
+
+// The Local API takes a file without going through the multipart parser, so the size limit of the config does not apply to it.
+// Payload leaves `size` undefined once it has read an image, and hands an empty buffer next to the real size when it keeps
+// the upload in a temporary file, so the larger of the two is the size of the file.
+const refuseLargeFile: CollectionBeforeChangeHook = ({ data, req }) => {
+  const size = Math.max(req.file?.data?.length ?? 0, req.file?.size ?? 0);
+  if (size > MAX_UPLOAD_BYTES) {
+    throw new APIError(`The file is larger than ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`, 413);
+  }
+  return data;
+};
+
+export const Media: CollectionConfig = {
+  slug: 'media',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: () => true,
+    update: authenticated,
+  },
+  admin: {
+    description: `Images up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. Nothing resizes an image on Workers: upload it at the size it is shown.`,
+  },
+  fields: [
+    { name: 'alt', type: 'text', required: true },
+    {
+      name: 'focalX',
+      type: 'number',
+      admin: { description: 'Where the image is framed, from the left (0) to the right (100).', step: 1 },
+      defaultValue: 50,
+      max: 100,
+      min: 0,
+    },
+    {
+      name: 'focalY',
+      type: 'number',
+      admin: { description: 'Where the image is framed, from the top (0) to the bottom (100).', step: 1 },
+      defaultValue: 50,
+      max: 100,
+      min: 0,
+    },
+  ],
+  hooks: {
+    afterChange: [revalidateMedia],
+    afterDelete: [revalidateDeletedMedia],
+    beforeChange: [refuseLargeFile],
+  },
+  upload: {
+    // Cropping and the focal point are applied with sharp, which does not run on workerd: the admin would offer them and the server would drop the value. The focal fields above frame the image at delivery instead.
+    crop: false,
+    focalPoint: false,
+    mimeTypes: ['image/*'],
+    // A file is served by Payload from R2, with no cache header of its own: a week lets browsers and the edge keep it.
+    // For heavy traffic the next step is a public custom domain on the bucket, which serves the files without the Worker.
+    modifyResponseHeaders: ({ headers }) => {
+      headers.set('Cache-Control', MEDIA_CACHE_CONTROL);
+    },
+  },
+};

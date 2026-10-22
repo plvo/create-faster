@@ -1,0 +1,19 @@
+import type { Media, Page, Post } from '@/payload-types';
+import type { Metadata } from 'next';
+
+type Described = Pick<Page | Post, 'meta' | 'title'>;
+
+const imageOf = (media: Media | number | null | undefined): Media | undefined =>
+  media && typeof media === 'object' ? media : undefined;
+
+/** The title, description and share image the editor set in the SEO tab, over the document title. */
+export function metadataOf(document: Described, fallbackImage?: Media | number | null): Metadata {
+  const title = document.meta?.title || document.title;
+  const description = document.meta?.description ?? undefined;
+  const image = imageOf(document.meta?.image) ?? imageOf(fallbackImage);
+  return {
+    description,
+    openGraph: { description, images: image?.url ? [{ url: image.url }] : undefined, title },
+    title,
+  };
+}

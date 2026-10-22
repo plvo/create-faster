@@ -1,0 +1,27 @@
+// Creates the first admin from ADMIN_EMAIL and ADMIN_PASSWORD when the users collection is empty, and does nothing otherwise.
+// Payload lets anyone create a user while the collection is empty, so a deployed site has its admin before its first visitor.
+// Run by `payload run`, which loads .env; the admin credentials live in .env.admin, which only this script reads.
+import { existsSync } from 'node:fs';
+import { getPayloadClient } from '@/lib/payload';
+import { adminCredentials } from './admin-credentials';
+
+const ADMIN_ENV_FILE = '.env.admin';
+
+if (existsSync(ADMIN_ENV_FILE)) process.loadEnvFile(ADMIN_ENV_FILE);
+
+const credentials = adminCredentials(process.env, ADMIN_ENV_FILE);
+if ('error' in credentials) {
+  console.error(credentials.error);
+  process.exit(1);
+}
+const { email, password } = credentials;
+
+const payload = await getPayloadClient();
+const { totalDocs } = await payload.count({ collection: 'users' });
+
+if (totalDocs > 0) {
+  console.log('A user exists already: nothing to do.');
+} else {
+  await payload.create({ collection: 'users', data: { email, name: 'Admin', password } });
+  console.log(`Created the admin ${email}.`);
+}

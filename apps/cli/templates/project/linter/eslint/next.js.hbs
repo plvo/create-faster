@@ -13,7 +13,7 @@ import { baseConfig } from "./base.js";
 
 export const nextConfig = [
   ...baseConfig,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "next.config.*"{{#if (has "deployment" "cloudflare")}}, ".open-next/**"{{/if}}]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "next.config.*"{{#if (has "deployment" "cloudflare")}}, ".open-next/**"{{/if}}{{#each (generatedFiles "eslint")}}, "{{this}}"{{/each}}]),
   {
     ...pluginReact.configs.flat.recommended,
     languageOptions: {

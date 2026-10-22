@@ -1,0 +1,3 @@
+{{!-- Hash parameter: suffix, as for cloudflare/r2-bucket-command. The command that creates an R2 bucket and what an account that never used R2 answers. It has no blank line, so it can be indented inside a numbered step. --}}
+{{> cloudflare/r2-bucket-command suffix=suffix}}
+An account that never used R2 refuses it with error `10042` (`Please enable R2 through the Cloudflare Dashboard`). Enable R2 at `https://dash.cloudflare.com/<account id>/r2/overview` (the account id is the one `wrangler whoami` prints), then run the command again. Create the buckets before the first deploy: a Worker that binds a bucket which does not exist fails to deploy with error `10085`.

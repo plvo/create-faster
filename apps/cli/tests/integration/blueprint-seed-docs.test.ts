@@ -38,7 +38,15 @@ const SENTENCES: Record<string, string[]> = {
   'dapp-privy-nextjs': [
     'which deletes all users before it inserts its sample rows: an account you created yourself is lost, so run it on a development database only.',
   ],
+  'cloudflare-payload-nextjs': [
+    'which adds the sample pages, posts, media and site settings that are missing and deletes nothing: what you changed in the admin stays, and running it again adds nothing.',
+  ],
 };
+
+// A blueprint whose guide on the data is not `data-layer.md`.
+const DATA_GUIDES: Record<string, string> = { 'cloudflare-payload-nextjs': 'docs/agents/payload.md' };
+// The seed of a blueprint is `scripts/seed.ts` unless its META says where it is.
+const seedScriptOf = (name: string) => (META.blueprints[name] as MetaBlueprint).seed?.file ?? 'scripts/seed.ts';
 
 const SEEDING_BLUEPRINTS = Object.entries(META.blueprints)
   .filter(([, blueprint]) => 'seed' in blueprint)
@@ -75,7 +83,7 @@ describe('the blueprints that declare a seed', () => {
     const readme = await readTextFile(join(dir, name, 'README.md'));
     const seeding = sectionOf(readme, '## Seeding');
 
-    expect(seeding).toContain('`bun run db:seed` runs `scripts/seed.ts`');
+    expect(seeding).toContain(`\`bun run db:seed\` runs \`${seedScriptOf(name)}\``);
     for (const sentence of SENTENCES[name] ?? []) expect(seeding).toContain(sentence);
     expect(seeding).not.toContain('always, or only with');
   });
@@ -90,7 +98,7 @@ describe('the blueprints that declare a seed', () => {
   });
 
   test.each(SEEDING_BLUEPRINTS)('%s: the guide of the blueprint says the same as the README', async (name) => {
-    const guide = await readTextFile(join(dir, name, 'docs/agents/data-layer.md'));
+    const guide = await readTextFile(join(dir, name, DATA_GUIDES[name] ?? 'docs/agents/data-layer.md'));
     const section = guide.includes('\n## Seeding\n') ? sectionOf(guide, '## Seeding') : sectionOf(guide, '## Seed');
 
     for (const sentence of SENTENCES[name] ?? []) expect(section).toContain(sentence);
@@ -107,7 +115,7 @@ describe('the blueprints that declare a seed', () => {
   });
 
   test.each(SEEDING_BLUEPRINTS)('%s: the data in META describes the seed script', async (name) => {
-    const source = await readTextFile(join(dir, name, 'scripts/seed.ts'));
+    const source = await readTextFile(join(dir, name, seedScriptOf(name)));
     const seed = (META.blueprints[name] as MetaBlueprint).seed;
     if (!seed) throw new Error(`${name} declares no seed`);
 
@@ -125,7 +133,13 @@ describe('the blueprints that declare a seed', () => {
     expect(opensLocalFile).toBe(withReset && seed.target === 'local-only');
     expect(source.includes('isLocalDatabase')).toBe(refusesRemote);
 
+    // A seed that never deletes has no delete statement, and `rows` names what it adds.
     const deletedRows = [...source.matchAll(/db\.delete\((\w+)\)/g)].map(([, table]) => `${table?.replace(/Table$/, '')}s`);
-    expect([...seed.rows].sort()).toEqual(deletedRows.sort());
+    if (seed.deletes === 'never') {
+      expect(source).not.toMatch(/\.delete(?:Many)?\(|\bdelete\w*\(/);
+      expect(deletedRows).toEqual([]);
+    } else {
+      expect([...seed.rows].sort()).toEqual(deletedRows.sort());
+    }
   });
 });

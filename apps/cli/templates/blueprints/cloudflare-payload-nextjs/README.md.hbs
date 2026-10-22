@@ -1,0 +1,108 @@
+---
+mono:
+  scope: root
+  path: README.md
+---
+# {{projectName}}
+
+Generated with [create-faster](https://github.com/plvo/create-faster) using the **Payload CMS (Cloudflare)** blueprint: a content-managed website on Cloudflare Workers. Editors publish pages and posts from the [Payload](https://payloadcms.com) admin at `/admin`, and the public site serves them from the edge as soon as they are published, without a deploy.
+
+## Project Structure
+
+A Turborepo with two Workers:
+
+- `apps/web`: Next.js through OpenNext. The Payload admin (`/admin`), its REST API (`/api`) and the public site (`/`, `/posts`, a page for each slug, `sitemap.xml`, `robots.txt`), on `packages/ui`.
+- `apps/cron`: a Hono Worker that backs up every table of the database to R2 each day.
+- `packages/ui` and `packages/config`: the shadcn components and the shared TypeScript config.
+
+The database is Cloudflare D1 and the media are in R2. Payload owns the schema and its migrations: there is no ORM package.
+
+`robots.txt` disallows everything on `localhost` and on a `workers.dev` address, so the site is not indexed until it is served from a custom domain (set it as `NEXT_PUBLIC_APP_URL` for the build).
+
+Running it needs nothing from Cloudflare, and nothing here reaches your account unless a command says it does. Deploying it needs the Workers Paid plan: the Free plan allows 10 ms of CPU per request and 50 D1 queries per invocation, which an admin request exceeds.
+
+## Getting Started
+
+Install dependencies:
+
+```bash
+{{#if pm}}{{pm}} install{{else}}npm install{{/if}}
+```
+
+{{> readme/post-install}}
+{{> readme/cloudflare-types}}
+{{> readme/first-run}}
+{{scriptDescription "dev"}}:
+
+```bash
+{{runScript "dev"}}
+```
+
+{{#each apps}}
+{{#if (appUrl appName)}}
+- {{appName}}: [{{appUrl appName}}]({{appUrl appName}}), {{> ports/app-command}}
+{{/if}}
+{{/each}}
+
+{{> ports/override}}
+
+Sign in at [{{appUrl "web"}}/admin]({{appUrl "web"}}/admin) with the email and password of `apps/web/.env.admin` (`admin@example.com` and `password` in the example). Everything runs on a local D1 database and R2 bucket under `.wrangler/v3`; nothing reaches your Cloudflare account.
+
+## Editing content
+
+- **Pages** are built from blocks (hero, rich text, media, call to action). The page with the slug `home` is the home page.
+- **Posts** have a cover image, an excerpt and a publication date, and are listed at `/posts`.
+- **Site settings** hold the site name, the links of the header and the text of the footer.
+- Pages and posts have drafts, versions and a preview of the draft on the real site, and live preview refreshes it as you type.
+- A published, changed or deleted page or post reaches the site at once. A new one exists without a deploy.
+
+{{#if (ne agentContext false)}}
+[`docs/agents/payload.md`](docs/agents/payload.md) explains the content model, the cache and how to add a collection.
+
+{{/if}}
+## Migrations
+
+The schema only changes through committed migrations, never by pushing it:
+
+1. Change a collection.
+2. `{{runScript "migrate:create" "<name>"}}` writes the migration and its snapshot into `apps/web/src/migrations/`. Read it: it must be a delta. Commit both.
+3. `{{runScript "migrate"}}` applies it to the local database.
+4. `{{runScript "generate:types"}}` and `{{runScript "generate:importmap"}}` regenerate the Payload types and the admin import map. Commit them too.
+
+## Media
+
+Images go to R2 and are limited to 20 MB. `sharp` does not run on Workers, so nothing resizes, crops or converts an image: upload it at the size it is shown, and set where it is framed with the focal point fields of the media. Resizing at delivery uses Cloudflare Images transformations (`/cdn-cgi/image/`), which needs a zone: it answers 404 on a `workers.dev` address.{{#if (ne agentContext false)}} [`docs/agents/media.md`](docs/agents/media.md) has the details.{{/if}}
+
+## Available Scripts
+
+{{> scripts/root-list readme=true}}
+{{> readme/seeding}}
+
+{{> readme/d1-provisioning scripts="Available Scripts"}}
+## Backups and restore
+
+The cron Worker dumps every table to a bucket of its own (`{{projectName}}-backups`, which no other Worker binds) each day (`backups/<date>/<time>/<table>/0001.ndjson` and a `manifest.json`), keeps 30 days of backups and runs one on demand when `POST /backup/run` carries `BACKUP_TRIGGER_TOKEN` as a bearer token, the value you stored at the first deploy. The media are not copied: they are already in the media bucket, and the `media` table of the dump is their index. D1 Time Travel rewinds the whole database to a point of the last 30 days and covers nothing of R2.
+
+To restore, rewind the database with `wrangler d1 time-travel restore DB --timestamp=<ISO 8601 time>` (from `apps/web`), or bring back the rows of one table from a backup: download its objects with `wrangler r2 object get {{projectName}}-backups/backups/<date>/<time>/<table>/0001.ndjson --remote --file <file>`. Each line is one row, a JSON object of column names and values: write the rows as `INSERT OR REPLACE` statements and run them with `wrangler d1 execute DB --remote --file <file.sql>`. The files of the media are still in the bucket.
+
+## Environment Variables
+
+Copy each `.env*.example` file to the same name without `.example` and configure:
+{{#each envGroups}}
+
+### `{{path}}`
+{{#each vars}}
+- `{{this}}`
+{{/each}}
+{{/each}}
+
+## Learn More
+
+- [create-faster documentation](https://github.com/plvo/create-faster)
+- [Payload documentation](https://payloadcms.com/docs)
+- [Payload on Cloudflare](https://blog.cloudflare.com/payload-cms-workers/)
+- [OpenNext for Cloudflare](https://opennext.js.org/cloudflare)
+{{#if (ne agentContext false)}}
+
+The per-aspect notes for coding agents are in `docs/agents/`: [Payload on Workers](docs/agents/payload.md), [Cloudflare deploy](docs/agents/cloudflare-deploy.md) and [Media](docs/agents/media.md).
+{{/if}}

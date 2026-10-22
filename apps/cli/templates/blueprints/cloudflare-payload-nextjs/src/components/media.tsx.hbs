@@ -1,0 +1,33 @@
+import { getAppUrl } from '@/lib/get-app-url';
+import type { Media as MediaDocument } from '@/payload-types';
+import { cn } from '@repo/ui/lib/utils';
+import Image from 'next/image';
+
+// The fields the image needs: a list populates no more than these.
+export type MediaFrame = Pick<MediaDocument, 'alt' | 'focalX' | 'focalY' | 'height' | 'url' | 'width'>;
+
+interface MediaProps {
+  className?: string;
+  media: MediaFrame | number | null | undefined;
+  priority?: boolean;
+}
+
+// next.config.ts turns the image optimizer off, so this renders the file as stored, framed by the focal point the editor set.
+// Payload gives the file an address on the server URL; the path alone works on every address of the site.
+const relativeUrl = (url: string) => (url.startsWith(getAppUrl()) ? url.slice(getAppUrl().length) : url);
+
+export function Media({ className, media, priority }: MediaProps) {
+  if (!media || typeof media !== 'object' || !media.url || !media.width || !media.height) return null;
+  const position = `${media.focalX ?? 50}% ${media.focalY ?? 50}%`;
+  return (
+    <Image
+      alt={media.alt}
+      className={cn('object-cover', className)}
+      height={media.height}
+      priority={priority}
+      src={relativeUrl(media.url)}
+      style=\{{ objectPosition: position }}
+      width={media.width}
+    />
+  );
+}

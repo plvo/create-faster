@@ -10,9 +10,6 @@ node_modules
 pnpm-lock.yaml
 bun.lock*
 package-lock.json
-{{#if (has "stack" "tanstack-start")}}
-routeTree.gen.ts
-{{/if}}
-{{#if (has "orm" "drizzle")}}
-drizzle/
-{{/if}}
+{{#each (generatedFiles "prettier")}}
+{{this}}
+{{/each}}

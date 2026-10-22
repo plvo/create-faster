@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "{{> cloudflare/worker-name}}",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-12",
+  // global_fetch_strictly_public routes fetch() through the public internet so OpenNext asset serving avoids Worker subrequest limits
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }{{> cloudflare/public-urls}}{{> cloudflare/keep-names-off}}{{> cloudflare/node-env-var}}{{> cloudflare/d1-binding tagCacheBinding="NEXT_TAG_CACHE_D1"}},
+  // No binding is remote here: `next build` resolves them through payload.config.ts, so a remote one would make every build reach the account. `db:migrate:remote` and `ensure-admin:remote` aim at the real D1 and R2 for one run.
+  "r2_buckets": [
+    {
+      // Payload media, at the root of the bucket
+      "binding": "STORAGE",
+      "bucket_name": "{{projectName}}-storage"
+    },
+    {
+      // OpenNext incremental cache, under the incremental-cache/ prefix of the same bucket
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "{{projectName}}-storage"
+    }
+  ]{{> cloudflare/secrets-required}}
+}

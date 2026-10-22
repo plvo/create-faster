@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join, posix } from 'node:path';
+import { META } from '@/__meta__';
+import type { MetaBlueprint } from '@/types/meta';
 import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -183,6 +185,51 @@ describe('linter ignore lists', () => {
       expect(await readTextFile(join(pkg, 'react.js'))).toContain(`"src/${ROUTE_TREE}"`);
       expect(await readTextFile(join(pkg, 'next.js'))).toContain('"next.config.*"');
       expect(await readTextFile(join(pkg, 'next.js'))).toContain('".open-next/**"');
+    });
+  });
+  // The files a tool of the blueprint writes and the repository commits (Payload's types, import map and migrations) must stay
+  // byte-identical to its output, so no linter or formatter rewrites them or reports on them.
+  describe('files a blueprint generates', () => {
+    const BLUEPRINT = 'cloudflare-payload-nextjs';
+    const GENERATED = [
+      'apps/web/src/payload-types.ts',
+      'apps/web/src/app/(payload)/admin/importMap.js',
+      'apps/web/src/migrations/20261021_133016_initial.ts',
+    ];
+    const patterns = ((META.blueprints[BLUEPRINT] as MetaBlueprint).generatedFiles ?? []).filter(
+      (file): file is string => typeof file === 'string',
+    );
+
+    // [linter, file that lists the ignores in a turborepo]
+    const IGNORE_FILES: [string, string][] = [
+      ['biome', 'biome.json'],
+      ['oxc', 'oxlint.config.mts'],
+      ['oxc', 'oxfmt.config.mts'],
+      ['prettier', '.prettierignore'],
+      ['eslint-prettier', '.prettierignore'],
+      ['eslint', 'packages/eslint-config/next.js'],
+    ];
+
+    test('the blueprint names the files Payload writes, and each is matched by a pattern', () => {
+      expect(patterns.length).toBeGreaterThan(0);
+      for (const file of GENERATED) {
+        expect(
+          patterns.some((pattern) => new Bun.Glob(pattern).match(file)),
+          file,
+        ).toBe(true);
+      }
+      expect(patterns.some((pattern) => new Bun.Glob(pattern).match('apps/web/src/payload.config.ts'))).toBe(false);
+    });
+
+    test.each(IGNORE_FILES)('%s lists them in %s', async (linter, file) => {
+      const dir = await generate(`${linter}-${file.replaceAll(/\W/g, '-')}-payload`, linter, ['--blueprint', BLUEPRINT]);
+      const content = await readTextFile(join(dir, file));
+      for (const pattern of patterns) expect(content, pattern).toContain(pattern);
+    });
+
+    test('a project without the blueprint lists none of them', async () => {
+      const dir = await generate('biome-no-payload', 'biome', ['--app', 'web:nextjs']);
+      expect(await readTextFile(join(dir, 'biome.json'))).not.toContain('payload-types');
     });
   });
 });

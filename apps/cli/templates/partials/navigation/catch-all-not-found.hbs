@@ -1,0 +1,10 @@
+{{!-- The whole page file of a catch-all route that answers every URL no page matches with notFound(), so the 404 renders
+inside the layout of the group of the route (and behind its guard) instead of in the root 404. --}}
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+
+export const metadata: Metadata = { title: 'Page not found' };
+
+export default function CatchAllNotFoundPage() {
+  notFound();
+}

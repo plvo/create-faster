@@ -1,0 +1,26 @@
+import { authenticated } from '@/access';
+import { APIError, type CollectionBeforeDeleteHook, type CollectionConfig } from 'payload';
+
+// An empty users collection lets the next visitor create the first user, so the last one cannot be deleted.
+const keepTheLastUser: CollectionBeforeDeleteHook = async ({ req }) => {
+  const { totalDocs } = await req.payload.count({ collection: 'users', req });
+  if (totalDocs <= 1) throw new APIError('The last user cannot be deleted', 403);
+};
+
+// Every user is an editor with access to the whole admin. The first one is created by `ensure-admin`.
+export const Users: CollectionConfig = {
+  slug: 'users',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: authenticated,
+    update: authenticated,
+  },
+  admin: {
+    defaultColumns: ['name', 'email'],
+    useAsTitle: 'email',
+  },
+  auth: true,
+  hooks: { beforeDelete: [keepTheLastUser] },
+  fields: [{ name: 'name', type: 'text' }],
+};

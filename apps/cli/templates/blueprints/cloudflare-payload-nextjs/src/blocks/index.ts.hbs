@@ -1,0 +1,46 @@
+import type { Block } from 'payload';
+
+// Blocks hold flat fields: the D1 adapter replaces an array by deleting its rows and inserting them again without a transaction, so a field of rows inside a block stays small or does not exist.
+
+export const Hero: Block = {
+  slug: 'hero',
+  interfaceName: 'HeroBlock',
+  fields: [
+    { name: 'heading', type: 'text', required: true },
+    { name: 'subheading', type: 'textarea' },
+    { name: 'image', type: 'upload', relationTo: 'media' },
+    { name: 'ctaLabel', type: 'text' },
+    { name: 'ctaHref', type: 'text' },
+  ],
+};
+
+export const RichTextBlock: Block = {
+  slug: 'richText',
+  interfaceName: 'RichTextBlock',
+  labels: { plural: 'Rich texts', singular: 'Rich text' },
+  fields: [{ name: 'content', type: 'richText', required: true }],
+};
+
+export const MediaBlock: Block = {
+  slug: 'mediaBlock',
+  interfaceName: 'MediaBlock',
+  labels: { plural: 'Media', singular: 'Media' },
+  fields: [
+    { name: 'media', type: 'upload', relationTo: 'media', required: true },
+    { name: 'caption', type: 'text' },
+  ],
+};
+
+export const CallToAction: Block = {
+  slug: 'callToAction',
+  interfaceName: 'CallToActionBlock',
+  labels: { plural: 'Calls to action', singular: 'Call to action' },
+  fields: [
+    { name: 'heading', type: 'text', required: true },
+    { name: 'text', type: 'textarea' },
+    { name: 'label', type: 'text', required: true },
+    { name: 'href', type: 'text', required: true },
+  ],
+};
+
+export const PAGE_BLOCKS: Block[] = [Hero, RichTextBlock, MediaBlock, CallToAction];

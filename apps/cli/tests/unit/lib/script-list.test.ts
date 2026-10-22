@@ -88,6 +88,8 @@ function combinations(): [string, TemplateContext][] {
     ]);
 
     for (const [name, blueprint] of Object.entries(META.blueprints)) {
+      // A blueprint of several apps is a turborepo: a single repo has one app.
+      if (repo === 'single' && blueprint.context.apps.length > 1) continue;
       found.push([
         `${repo} blueprint ${name}`,
         {

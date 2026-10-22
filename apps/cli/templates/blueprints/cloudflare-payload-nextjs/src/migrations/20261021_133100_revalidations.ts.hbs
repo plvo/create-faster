@@ -1,0 +1,19 @@
+import { MigrateDownArgs, MigrateUpArgs, sql } from '@payloadcms/db-d1-sqlite'
+
+// The tag cache of OpenNext (@opennextjs/cloudflare/overrides/tag-cache/d1-next-tag-cache) reads and writes this table
+// through the NEXT_TAG_CACHE_D1 binding, which is the same database. `opennextjs-cloudflare preview` and `deploy` create it
+// when it is missing; creating it here puts it in the migrations, with the rest of the schema.
+export async function up({ db }: MigrateUpArgs): Promise<void> {
+  await db.run(sql`CREATE TABLE IF NOT EXISTS revalidations (
+  	tag TEXT NOT NULL,
+  	revalidatedAt INTEGER NOT NULL,
+  	stale INTEGER,
+  	expire INTEGER DEFAULT NULL,
+  	UNIQUE(tag) ON CONFLICT REPLACE
+  );
+  `)
+}
+
+export async function down({ db }: MigrateDownArgs): Promise<void> {
+  await db.run(sql`DROP TABLE IF EXISTS revalidations;`)
+}

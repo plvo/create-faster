@@ -2,6 +2,7 @@ import { readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
+import type { MetaBlueprint } from '@/types/meta';
 import { cleanupTempDir, createTempDir, fileExists, readJsonFile, readTextFile, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
@@ -16,6 +17,7 @@ const PRISMA_SEED_COMMAND = 'prisma db seed';
 
 const KNOWN_SEEDING_BLUEPRINTS = [
   'cloudflare-fullstack-nextjs',
+  'cloudflare-payload-nextjs',
   'dapp-privy-nextjs',
   'dapp-rainbowkit-nextjs',
   'multitenant-saas-nextjs',
@@ -52,17 +54,26 @@ interface Manifest {
 interface SeedCheck {
   /** The seed files that run under Node, relative to the project. */
   checked: string[];
+  /** The seed files whose runner is trusted to load the `.env` of the app itself, which the e2e of the blueprint proves. */
+  loadedByTheRunner: string[];
   problems: string[];
 }
 
 interface NodeCommand {
   file: string;
   envFiles: string[];
+  /** The runner loads the `.env` of the app itself: `payload run` does, through @next/env. */
+  loadsEnvItself?: boolean;
 }
 
-/** The file a script runs through `tsx` or `node`, and the `.env` files the runner is given. */
+/** The file a script runs through `payload run`, `tsx` or `node`, and the `.env` files the runner is given. */
 function parseNodeCommand(script: string): NodeCommand | undefined {
   const tokens = script.split(/\s+/);
+  const payload = tokens.indexOf('payload');
+  if (payload >= 0 && tokens[payload + 1] === 'run') {
+    const file = tokens[payload + 2] ?? '';
+    return SEED_FILE.test(file) ? { file, envFiles: [], loadsEnvItself: true } : undefined;
+  }
   const runner = tokens.findIndex((token) => NODE_RUNNERS.includes(token));
   if (runner < 0) return undefined;
   const envFiles: string[] = [];
@@ -103,7 +114,7 @@ async function checkSeeds(project: string): Promise<SeedCheck> {
     ),
   );
   const visited = new Set<string>();
-  const result: SeedCheck = { checked: [], problems: [] };
+  const result: SeedCheck = { checked: [], loadedByTheRunner: [], problems: [] };
   const where = (manifest: string) => relative(project, manifest);
 
   async function checkNodeSeed(manifest: string, script: string, command: NodeCommand): Promise<void> {
@@ -114,12 +125,13 @@ async function checkSeeds(project: string): Promise<SeedCheck> {
       return;
     }
     result.checked.push(where(file));
+    if (command.loadsEnvItself) result.loadedByTheRunner.push(where(file));
     for (const envFile of command.envFiles) {
       if (!(await fileExists(resolve(packageDir, `${envFile}.example`)))) {
         result.problems.push(`${where(manifest)}: \`${script}\` loads ${envFile}, which has no ${envFile}.example`);
       }
     }
-    if (command.envFiles.length === 0 && !(await loadsDotenvFirst(file))) {
+    if (command.envFiles.length === 0 && !command.loadsEnvItself && !(await loadsDotenvFirst(file))) {
       result.problems.push(
         `${where(manifest)}: \`${script}\` loads no .env: no --env-file flag, and \`import 'dotenv/config'\` is not the first import of ${command.file}`,
       );
@@ -190,12 +202,16 @@ describe('seeds load their environment under Node', () => {
   }
 
   const checkedByBlueprint = new Map<string, string[]>();
+  const loadedByTheRunnerByBlueprint = new Map<string, string[]>();
 
   test.each(Object.keys(META.blueprints))('blueprint %s', async (blueprint) => {
-    const { checked, problems } = await checkSeeds(await generate(`seed-${blueprint}`, ['--blueprint', blueprint]));
+    const { checked, loadedByTheRunner, problems } = await checkSeeds(
+      await generate(`seed-${blueprint}`, ['--blueprint', blueprint]),
+    );
 
     expect(problems).toEqual([]);
     checkedByBlueprint.set(blueprint, checked);
+    loadedByTheRunnerByBlueprint.set(blueprint, loadedByTheRunner);
   });
 
   test.each(GENERIC_SEEDS)('generic seed $name', async ({ name, args }) => {
@@ -203,6 +219,25 @@ describe('seeds load their environment under Node', () => {
 
     expect(problems).toEqual([]);
     expect(checked.length).toBeGreaterThan(0);
+  });
+
+  // `payload run` loads the `.env` of the app through @next/env, which this test cannot see in the generated files: the
+  // e2e of the blueprint is the proof. It copies `.env.example` to `.env`, fills the secrets there and nowhere else, and
+  // runs every first-run step of META, the seed included, so a seed that read nothing would fail it.
+  test('a seed whose runner loads the .env itself is proved by the e2e of its blueprint', async () => {
+    const trusted = [...loadedByTheRunnerByBlueprint].filter(([, files]) => files.length > 0);
+    expect(trusted.length).toBeGreaterThan(0);
+
+    for (const [blueprint] of trusted) {
+      const firstRunScripts = (META.blueprints[blueprint as keyof typeof META.blueprints] as MetaBlueprint).firstRun?.flatMap(
+        (step) => step.commands.flatMap((command) => ('script' in command ? [command.script] : [])),
+      );
+      expect(firstRunScripts, blueprint).toContain('db:seed');
+
+      const e2e = await readTextFile(join(import.meta.dir, `../e2e/blueprint-${blueprint}.test.ts`));
+      expect(e2e, blueprint).toContain('for (const script of FIRST_RUN_SCRIPTS)');
+      expect(e2e, blueprint).toContain("fillSecrets(join(webDir, '.env')");
+    }
   });
 
   test('every blueprint that seeds was checked', () => {

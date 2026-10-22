@@ -1,0 +1,12 @@
+import Link from 'next/link';
+
+export function DraftBanner() {
+  return (
+    <div className='bg-secondary px-4 py-2 text-center text-secondary-foreground text-sm' role='status'>
+      You are viewing the drafts.{' '}
+      <Link className='font-medium underline' href='/next/exit-preview' prefetch={false}>
+        Exit preview
+      </Link>
+    </div>
+  );
+}

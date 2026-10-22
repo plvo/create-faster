@@ -1,0 +1,4 @@
+{{!-- Hash parameter: suffix, the end of the name of the bucket ({{projectName}}-<suffix>; storage when omitted). The command that creates an R2 bucket, without a blank line so it can be indented inside a numbered step. --}}
+```bash
+{{#inDirectory "apps" (deployAppDir)}}{{installedBinaryRunner}} wrangler r2 bucket create {{projectName}}-{{#if suffix}}{{suffix}}{{else}}storage{{/if}} --no-update-config{{/inDirectory}}
+```

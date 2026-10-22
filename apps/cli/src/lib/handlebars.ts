@@ -1,14 +1,17 @@
 import { join } from 'node:path';
 import Handlebars from 'handlebars';
 import { getBlueprintSeed, getProjectAddon, resolveDeployAppDir } from '@/lib/addon-utils';
+import { collectGeneratedFiles } from '@/lib/generated-files';
 import type { EnrichedTemplateContext, ProjectContext, TemplateContext } from '@/types/ctx';
-import type { PartialFrontmatter } from '@/types/meta';
+import type { GeneratedFileTool, PartialFrontmatter } from '@/types/meta';
 import type { StackName } from '@/types/stack-name';
 import { PARTIALS_DIR } from './constants';
 import {
   collectAppOriginEnvs,
   collectAppReceivesEnv,
+  collectAppSecretDetails,
   collectAppSecrets,
+  collectDeploySecrets,
   collectEnvFileNames,
   collectProjectSecrets,
   collectTaskEnv,
@@ -33,7 +36,7 @@ import {
 import { collectManualPostGenerateSteps } from './post-generate';
 import { collectProductionSteps } from './production-steps';
 import { collectScriptList, describeScript } from './script-list';
-import { resolveBlueprintChain } from './template-resolver';
+import { getAllTemplatesForContext, resolveBlueprintChain } from './template-resolver';
 import { resolveAppPort } from './utils';
 
 const COMPILE_OPTIONS: CompileOptions = {
@@ -45,6 +48,7 @@ const COMPILE_OPTIONS: CompileOptions = {
 const PARTIAL_EXTENSION = '.hbs';
 
 const EMPTY_PARTIAL = (): string => '';
+const DEFAULT_SEED_FILE = 'scripts/seed.ts';
 
 /** Truthiness as `{{#if}}` reads it: a helper that returns a list (`appSecrets`) is false when the list is empty. */
 const isPresent = (value: unknown): boolean => Boolean(value) && !(Array.isArray(value) && value.length === 0);
@@ -122,6 +126,17 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('appSecrets', function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
     return this.appName ? collectAppSecrets(options.data.root as TemplateContext, this.appName) : [];
+  });
+
+  Handlebars.registerHelper(
+    'appSecretDetails',
+    function (this: EnrichedTemplateContext, options: Handlebars.HelperOptions) {
+      return this.appName ? collectAppSecretDetails(options.data.root as TemplateContext, this.appName) : [];
+    },
+  );
+
+  Handlebars.registerHelper('deploySecrets', (options: Handlebars.HelperOptions) => {
+    return collectDeploySecrets(options.data.root as TemplateContext);
   });
 
   Handlebars.registerHelper('appOriginEnvs', (...args: unknown[]) => {
@@ -270,6 +285,36 @@ function registerHelpers(): void {
 
   Handlebars.registerHelper('installedBinaryRunner', (options: Handlebars.HelperOptions) => {
     return getInstalledBinaryRunner(options.data.root as TemplateContext);
+  });
+
+  // The destinations do not depend on the app being rendered, so a project resolves them once. They are the paths the resolver
+  // keeps before rendering: a template that renders empty still counts, because rendering one needs this helper to answer.
+  const generatedDestinations = new WeakMap<object, string[]>();
+  Handlebars.registerHelper('hasAppFile', (path: string, options: Handlebars.HelperOptions) => {
+    const root = options.data.root as TemplateContext;
+    let destinations = generatedDestinations.get(root);
+    if (!destinations) {
+      destinations = getAllTemplatesForContext(root).map((template) => template.destination);
+      generatedDestinations.set(root, destinations);
+    }
+    return destinations.some(
+      (destination) =>
+        destination === path || (destination.startsWith('apps/') && destination.split('/').slice(2).join('/') === path),
+    );
+  });
+
+  Handlebars.registerHelper('hasBlueprintPartial', (name: string, options: Handlebars.HelperOptions) => {
+    const { blueprint } = options.data.root as TemplateContext;
+    if (!blueprint) return false;
+    return resolveBlueprintChain(blueprint).some((link) => Handlebars.partials[`blueprints/${link}/${name}`]);
+  });
+
+  Handlebars.registerHelper('generatedFiles', (tool: GeneratedFileTool, options: Handlebars.HelperOptions) => {
+    return collectGeneratedFiles(options.data.root as TemplateContext, tool);
+  });
+
+  Handlebars.registerHelper('seedFile', (options: Handlebars.HelperOptions) => {
+    return getBlueprintSeed(options.data.root as TemplateContext)?.file ?? DEFAULT_SEED_FILE;
   });
 
   Handlebars.registerHelper('blueprintSeed', (options: Handlebars.HelperOptions) => {

@@ -1,0 +1,18 @@
+import { getAppUrl } from '@/lib/get-app-url';
+
+type PreviewedCollection = 'pages' | 'posts';
+
+export function pathOf(collection: PreviewedCollection, slug: string): string {
+  if (collection === 'posts') return `/posts/${encodeURIComponent(slug)}`;
+  return slug === 'home' ? '/' : `/${encodeURIComponent(slug)}`;
+}
+
+/** The address that turns draft mode on for the signed-in editor and lands on the page of the document. */
+export function previewUrl(collection: PreviewedCollection, slug: unknown): string | null {
+  if (typeof slug !== 'string' || !slug) return null;
+  const search = new URLSearchParams({
+    path: pathOf(collection, slug),
+    previewSecret: process.env.PREVIEW_SECRET ?? '',
+  });
+  return `${getAppUrl()}/next/preview?${search}`;
+}

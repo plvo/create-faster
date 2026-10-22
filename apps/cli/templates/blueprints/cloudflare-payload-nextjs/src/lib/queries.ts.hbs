@@ -1,0 +1,137 @@
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { getPayloadClient } from '@/lib/payload';
+import type { Media, Page, Post, SiteSetting } from '@/payload-types';
+import type { DataFromCollectionSlug } from 'payload';
+import { unstable_cache } from 'next/cache';
+import { headers } from 'next/headers';
+import { cache } from 'react';
+
+// Every read of the public site goes through unstable_cache with the tags that the hooks of the collections expire, so a
+// page view reads R2 and the tag cache, not D1. The reads are wrapped in React's cache() too, because a render asks for
+// the same document several times (metadata, layout, header, footer, page). A draft is read from the database each time,
+// for the signed-in editor only. A read that embeds images (depth 1) also carries the media tag, which an edited or
+// deleted image expires.
+
+// A read that finds nothing throws this, which unstable_cache does not store.
+class NothingFound extends Error {}
+
+type SluggedCollection = 'pages' | 'posts';
+
+async function findBySlug<Collection extends SluggedCollection>(
+  collection: Collection,
+  slug: string,
+  draft: boolean,
+): Promise<DataFromCollectionSlug<Collection> | null> {
+  const payload = await getPayloadClient();
+  // The draft cookie only says that someone asked for a preview: the drafts are read for a signed-in user, and the
+  // published document is what anyone else gets.
+  const user = draft ? (await payload.auth({ headers: await headers() })).user : null;
+  const { docs } = await payload.find({
+    collection,
+    depth: 1,
+    draft: user !== null,
+    limit: 1,
+    overrideAccess: false,
+    pagination: false,
+    user,
+    where: { slug: { equals: slug } },
+  });
+  return (docs[0] as DataFromCollectionSlug<Collection> | undefined) ?? null;
+}
+
+async function cachedOrNull<T>(read: () => Promise<T | null>, key: string[], tags: string[]): Promise<T | null> {
+  const readOrThrow = async (): Promise<T> => {
+    const found = await read();
+    if (found === null) throw new NothingFound();
+    return found;
+  };
+  try {
+    return await unstable_cache(readOrThrow, key, { tags })();
+  } catch (error) {
+    if (error instanceof NothingFound) return null;
+    throw error;
+  }
+}
+
+export const getPage = cache(async (slug: string, draft: boolean): Promise<Page | null> => {
+  if (draft) return findBySlug('pages', slug, true);
+  return cachedOrNull(() => findBySlug('pages', slug, false), ['page', slug], [CACHE_TAGS.page(slug), CACHE_TAGS.media]);
+});
+
+export const getPost = cache(async (slug: string, draft: boolean): Promise<Post | null> => {
+  if (draft) return findBySlug('posts', slug, true);
+  return cachedOrNull(() => findBySlug('posts', slug, false), ['post', slug], [CACHE_TAGS.post(slug), CACHE_TAGS.media]);
+});
+
+const POSTS_PER_LIST = 50;
+
+// What the card of a post in the list shows, and of its cover.
+export type PostCard = Pick<Post, 'excerpt' | 'id' | 'publishedAt' | 'slug' | 'title'> & {
+  cover?: number | Pick<Media, 'alt' | 'focalX' | 'focalY' | 'height' | 'id' | 'url' | 'width'> | null;
+};
+
+export const getPublishedPosts = cache(
+  unstable_cache(
+    async (): Promise<PostCard[]> => {
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: 'posts',
+        depth: 1,
+        limit: POSTS_PER_LIST,
+        overrideAccess: false,
+        pagination: false,
+        // `url` is computed from the filename after the read, so the filename is selected too.
+        populate: {
+          media: { alt: true, filename: true, focalX: true, focalY: true, height: true, url: true, width: true },
+        },
+        select: { cover: true, excerpt: true, publishedAt: true, slug: true, title: true },
+        sort: '-publishedAt',
+      });
+      return docs as PostCard[];
+    },
+    ['posts'],
+    { tags: [CACHE_TAGS.posts, CACHE_TAGS.media] },
+  ),
+);
+
+export const getSiteSettings = cache(
+  unstable_cache(
+    async (): Promise<SiteSetting> => {
+      const payload = await getPayloadClient();
+      return payload.findGlobal({ slug: 'site-settings' });
+    },
+    ['site-settings'],
+    { tags: [CACHE_TAGS.siteSettings] },
+  ),
+);
+
+export interface SitemapEntry {
+  collection: SluggedCollection;
+  slug: string;
+  updatedAt: string;
+}
+
+const SITEMAP_ENTRIES_PER_COLLECTION = 1000;
+
+export const getSitemapEntries = cache(
+  unstable_cache(
+    async (): Promise<SitemapEntry[]> => {
+      const payload = await getPayloadClient();
+      const read = async (collection: SluggedCollection): Promise<SitemapEntry[]> => {
+        const { docs } = await payload.find({
+          collection,
+          depth: 0,
+          limit: SITEMAP_ENTRIES_PER_COLLECTION,
+          overrideAccess: false,
+          pagination: false,
+          select: { slug: true, updatedAt: true },
+        });
+        return docs.map((doc) => ({ collection, slug: doc.slug, updatedAt: doc.updatedAt }));
+      };
+      const [pages, posts] = await Promise.all([read('pages'), read('posts')]);
+      return [...pages, ...posts];
+    },
+    ['sitemap'],
+    { tags: [CACHE_TAGS.pages, CACHE_TAGS.posts] },
+  ),
+);

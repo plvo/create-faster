@@ -1,0 +1,7 @@
+{{#step}}
+Create the first admin of the production database, before the Worker is reachable (see First admin below). Put the email and a password of at least 12 characters in `apps/web/.env.admin` first:
+
+   ```bash
+   {{runScript "ensure-admin:remote"}}
+   ```
+{{/step}}

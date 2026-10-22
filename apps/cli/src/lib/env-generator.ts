@@ -262,6 +262,39 @@ export function collectAppSecrets(ctx: TemplateContext, appName: string): string
   return app ? collectAppEnvNames(ctx, app, (env) => Boolean(env.secret)) : [];
 }
 
+interface AppSecret {
+  name: string;
+  /** The command that prints a value for it (`generateCommand`). */
+  command?: string;
+  /** It is the origin the app is served from, so its value is the public URL of the app. */
+  origin: boolean;
+}
+
+/** The secret variables the app reads at runtime, with what tells how to give each a value for a deploy. */
+export function collectAppSecretDetails(ctx: TemplateContext, appName: string): AppSecret[] {
+  const app = ctx.apps.find((candidate) => candidate.appName === appName);
+  if (!app) return [];
+
+  const byName = new Map<string, AppSecret>();
+  for (const env of collectAllEnvs(ctx)) {
+    if (!env.secret || !isReadFromAppEnvFile(env, ctx) || !appAcceptsEnv(env, app, ctx)) continue;
+    const name = extractEnvKey(env.value);
+    if (!byName.has(name)) byName.set(name, { name, command: env.generateCommand, origin: Boolean(env.origin) });
+  }
+  return [...byName.values()];
+}
+
+/** The secrets a deploy needs a value for in the shell, each once: those of every app, except an origin, which the production URL gives. */
+export function collectDeploySecrets(ctx: TemplateContext): Pick<AppSecret, 'name' | 'command'>[] {
+  const byName = new Map<string, Pick<AppSecret, 'name' | 'command'>>();
+  for (const app of ctx.apps) {
+    for (const { name, command, origin } of collectAppSecretDetails(ctx, app.appName)) {
+      if (!origin && !byName.has(name)) byName.set(name, { name, command });
+    }
+  }
+  return [...byName.values()];
+}
+
 /** The `.env` of each app (those on one of the stacks, all apps when none is given) and its variables that are the origin the app is served from. */
 export function collectAppOriginEnvs(
   ctx: TemplateContext,

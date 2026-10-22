@@ -25,6 +25,10 @@ const WORKSPACE_SCOPE = '@repo/';
 /** Read from the shell or by the tool that starts the app, never from a `.env` file the project ships. */
 const PROVIDED_BY_THE_ENVIRONMENT = new Set(['NODE_ENV', 'PORT', 'PORTLESS_URL']);
 
+/** Whether a script of the project sets the variable in the environment of the command it runs (`{ env: { NAME: value } }`). */
+const isSetByAScript = (variable: string, scripts: { source: string }[]): boolean =>
+  scripts.some(({ source }) => new RegExp(`^\\s*${variable}:`, 'm').test(source) && source.includes('spawnSync'));
+
 /** Filled by the bundler: `import.meta.env.DEV` and the like. */
 const VITE_BUILT_INS = new Set(['DEV', 'PROD', 'MODE', 'SSR', 'BASE_URL']);
 
@@ -403,8 +407,13 @@ describe('apps receive what they use', () => {
       }
       const bindings = new Set<string>();
       for (const file of project.files.filter((candidate) => candidate.endsWith('wrangler.jsonc'))) {
-        for (const [, binding] of (await readTextFile(join(project.root, file))).matchAll(/"binding":\s*"(\w+)"/g)) {
+        const config = await readTextFile(join(project.root, file));
+        for (const [, binding] of config.matchAll(/"binding":\s*"(\w+)"/g)) {
           if (binding) bindings.add(binding);
+        }
+        // The `vars` of a Worker are on its process.env, like its bindings.
+        for (const variable of Object.keys((Bun.JSONC.parse(config) as { vars?: Record<string, string> }).vars ?? {})) {
+          bindings.add(variable);
         }
       }
 
@@ -420,11 +429,14 @@ describe('apps receive what they use', () => {
       };
 
       const undeclared: string[] = [];
-      for (const { file, source } of await readScriptFiles(project.root, project.files)) {
+      const scripts = await readScriptFiles(project.root, project.files);
+      for (const { file, source } of scripts) {
         const visible = visibleFrom(ownerOf(project, file));
         for (const { name: variable, source: via } of envReads(source)) {
           const provided =
-            via === 'import.meta.env' ? VITE_BUILT_INS.has(variable) : PROVIDED_BY_THE_ENVIRONMENT.has(variable);
+            via === 'import.meta.env'
+              ? VITE_BUILT_INS.has(variable)
+              : PROVIDED_BY_THE_ENVIRONMENT.has(variable) || isSetByAScript(variable, scripts);
           if (!visible.has(variable) && !provided && !bindings.has(variable)) undeclared.push(`${file}: ${variable}`);
         }
       }

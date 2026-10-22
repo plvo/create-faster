@@ -1,0 +1,19 @@
+{{#step}}
+Create the R2 bucket that holds the media and the page cache, declining Wrangler's offer to add the binding itself as in step 1:
+
+   {{> cloudflare/r2-bucket}}
+{{/step}}
+{{#step}}
+Create the bucket of the backups. Only the cron Worker binds it, so the Worker that serves the public media cannot read them:
+
+   {{> cloudflare/r2-bucket-command suffix="backups"}}
+{{/step}}
+{{#step}}
+Migrate the local database again, create its admin (from `apps/web/.env.admin`) and seed it. Local data is keyed by the `database_id`, so the real id switches local development to a new, empty database: until it is migrated, requests fail with `no such table`.
+
+   ```bash
+   {{runScript "migrate"}}
+   {{runScript "ensure-admin"}}
+   {{runScript "db:seed"}}
+   ```
+{{/step}}

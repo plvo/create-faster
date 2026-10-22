@@ -50,16 +50,18 @@ export function getBlueprintAppContexts(blueprint: MetaBlueprint): AppContext[] 
   return blueprint.context.apps.map(({ appName, stackName, libraries }) => ({ appName, stackName, libraries }));
 }
 
+export function getSelectedBlueprint(ctx: TemplateContext): MetaBlueprint | undefined {
+  return ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
+}
+
 /** What the selected blueprint gives one app alone: its dependencies and variables. */
 export function getBlueprintApp(ctx: TemplateContext, appName: string): MetaBlueprintApp | undefined {
-  const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
-  return blueprint?.context.apps.find((app) => app.appName === appName);
+  return getSelectedBlueprint(ctx)?.context.apps.find((app) => app.appName === appName);
 }
 
 /** What the seed script of the selected blueprint does; undefined when the blueprint ships none and the ORM seed runs. */
 export function getBlueprintSeed(ctx: TemplateContext): BlueprintSeed | undefined {
-  const blueprint: MetaBlueprint | undefined = ctx.blueprint ? META.blueprints[ctx.blueprint] : undefined;
-  return blueprint?.seed;
+  return getSelectedBlueprint(ctx)?.seed;
 }
 
 export function getProjectAddon(category: string, name: string): MetaAddon | undefined {

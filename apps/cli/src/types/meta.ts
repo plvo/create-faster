@@ -33,6 +33,16 @@ export interface EnvVar {
   thirdParty?: EnvThirdParty;
 }
 
+export type GeneratedFileTool = 'biome' | 'eslint' | 'oxfmt' | 'oxlint' | 'prettier';
+
+/**
+ * A committed file that a tool of the choice writes (Payload's types, TanStack Router's route tree, the Drizzle migrations):
+ * the linters and formatters leave it alone, because it must stay byte-identical to the output of its tool. A glob that
+ * every tool reads the same way is a string; `as` gives the form one tool reads (a pattern its syntax needs, or `false`
+ * when that tool already ignores the file by itself).
+ */
+export type GeneratedFile = string | { glob: string; as: Partial<Record<GeneratedFileTool, string | false>> };
+
 export type FirstRunCommand = { command: string } | { script: string };
 
 /** One thing a fresh project needs before `dev` works; `script` runs through the selected package manager. */
@@ -106,6 +116,8 @@ interface AddonRuntime {
 
 export interface MetaAddon {
   label: string;
+  /** The committed files the tools of this choice write; every linter and formatter ignores them. */
+  generatedFiles?: GeneratedFile[];
   hint?: string;
   category?: string;
   compose?: string[];
@@ -172,6 +184,8 @@ interface MetaStack {
   packageManagerPackageJson?: PackageManagerPackageJson;
   /** Install scripts of the dependencies this stack brings, direct or transitive. */
   installScripts?: InstallScripts;
+  /** The committed files this stack's tools write; every linter and formatter ignores them. */
+  generatedFiles?: GeneratedFile[];
   /** Packages this stack needs at the version it declares, whatever the other apps of a turborepo use: the generated syncpack config leaves them out of the comparison between workspaces. */
   pinnedPackages?: string[];
   /** The scripts of this stack that build, serve or ship an app, in the order a user runs them. */
@@ -231,11 +245,15 @@ export interface MetaBlueprintApp extends AppContext {
  * empties as the docs say it (`contacts`, `users`). `always` empties it before every run, against whatever
  * `DATABASE_URL` points to. `with-reset` empties it only with `--reset` (the seed then has `--fixtures` and `--help`
  * too) and says where: `local-only` opens the local database and nothing else, `refuses-remote-without-force` refuses
- * a database that does not look local unless `--force` is passed.
+ * a database that does not look local unless `--force` is passed. `never` is a seed that only adds what is missing
+ * and deletes nothing: `rows` then names what it adds. `file` is where the seed script lives when it is not
+ * `scripts/seed.ts`.
  */
-export type BlueprintSeed =
+export type BlueprintSeed = { file?: string } & (
+  | { rows: string[]; deletes: 'never' }
   | { rows: string[]; deletes: 'always' }
-  | { rows: string[]; deletes: 'with-reset'; target: 'local-only' | 'refuses-remote-without-force' };
+  | { rows: string[]; deletes: 'with-reset'; target: 'local-only' | 'refuses-remote-without-force' }
+);
 
 export interface MetaBlueprint {
   label: string;
@@ -261,6 +279,7 @@ export interface MetaBlueprint {
   scriptDescriptions?: Conditional<ScriptDescription>[];
   /** Replaces the first-run steps of the project addons, for a blueprint that ships its own setup script. */
   firstRun?: FirstRunStep[];
+  generatedFiles?: GeneratedFile[];
   /** Declared by a blueprint that ships its own seed script (a template at a seed destination in its chain); not inherited through `extends`. */
   seed?: BlueprintSeed;
 }

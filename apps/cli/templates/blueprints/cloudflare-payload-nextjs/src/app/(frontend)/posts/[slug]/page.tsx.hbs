@@ -1,0 +1,47 @@
+import { LivePreviewListener } from '@/components/live-preview-listener';
+import { Media } from '@/components/media';
+import { RichText } from '@/components/rich-text';
+import { formatDate } from '@/lib/format-date';
+import { metadataOf } from '@/lib/page-metadata';
+import { getPost } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
+import { notFound } from 'next/navigation';
+
+type Props = { params: Promise<{ slug: string }> };
+
+// Rendered on its first request and kept until a hook of the Posts collection expires its tags.
+export const revalidate = false;
+
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const { isEnabled: draft } = await draftMode();
+  const post = await getPost(slug, draft);
+  return post ? metadataOf(post, post.cover) : {};
+}
+
+export default async function PostPage({ params }: Props) {
+  const { slug } = await params;
+  const { isEnabled: draft } = await draftMode();
+  const post = await getPost(slug, draft);
+  if (!post) notFound();
+  return (
+    <article className='mx-auto flex max-w-3xl flex-col gap-6 px-4 py-12'>
+      {draft && <LivePreviewListener />}
+      <header className='flex flex-col gap-2'>
+        <h1 className='text-4xl font-bold tracking-tight'>{post.title}</h1>
+        {post.publishedAt && (
+          <time className='text-sm text-muted-foreground' dateTime={post.publishedAt}>
+            {formatDate(post.publishedAt, 'long')}
+          </time>
+        )}
+      </header>
+      <Media className='h-auto w-full rounded-lg' media={post.cover} priority />
+      <RichText data={post.content} />
+    </article>
+  );
+}

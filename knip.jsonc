@@ -8,8 +8,8 @@
       "entry": [".github/scripts/*.cjs"]
     },
     "apps/cli": {
-      // test files are run by directory (bun test tests/unit, tests/e2e), which knip does not expand; lambda-invoke.mjs is run as a node subprocess by tests/e2e/lambda-handler.ts, by file path; setup.ts is the bun test preload named in bunfig.toml
-      "entry": ["tests/**/*.test.ts", "tests/e2e/lambda-invoke.mjs", "tests/setup.ts"],
+      // test files are run by directory (bun test tests/unit, tests/e2e), which knip does not expand; lambda-invoke.mjs is run as a node subprocess by tests/e2e/lambda-handler.ts, by file path; pbkdf2-limit.mjs is preloaded into the Node processes of the Payload e2e through NODE_OPTIONS=--import; setup.ts is the bun test preload named in bunfig.toml
+      "entry": ["tests/**/*.test.ts", "tests/e2e/lambda-invoke.mjs", "tests/e2e/pbkdf2-limit.mjs", "tests/setup.ts"],
       // resolved at runtime: tests/integration/hono-app.test.ts imports a generated app that imports evlog through a symlink to this node_modules; tests/integration/trpc-auth-errors.test.ts hands the path of superjson to a generated tRPC instance that imports it; tests/integration/syncpack.test.ts runs the syncpack binary on generated projects, by the path of its package
       "ignoreDependencies": ["evlog", "superjson", "syncpack"]
     },

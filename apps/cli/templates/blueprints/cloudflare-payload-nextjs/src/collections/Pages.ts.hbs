@@ -1,0 +1,57 @@
+import { authenticated, authenticatedOrPublished } from '@/access';
+import { PAGE_BLOCKS } from '@/blocks';
+import { seoTab } from '@/fields/seo';
+import { populatePublishedAt } from '@/hooks/populate-published-at';
+import { revalidateDeletedPage, revalidatePage } from '@/hooks/revalidate';
+import { previewUrl } from '@/lib/preview-url';
+import { type CollectionConfig, slugField } from 'payload';
+
+export const Pages: CollectionConfig = {
+  slug: 'pages',
+  access: {
+    create: authenticated,
+    delete: authenticated,
+    read: authenticatedOrPublished,
+    update: authenticated,
+  },
+  admin: {
+    defaultColumns: ['title', 'slug', 'updatedAt'],
+    description: 'The page with the slug `home` is the home page.',
+    livePreview: { url: ({ data }) => previewUrl('pages', data?.slug) },
+    preview: (data) => previewUrl('pages', data?.slug),
+    useAsTitle: 'title',
+  },
+  fields: [
+    { name: 'title', type: 'text', required: true },
+    {
+      type: 'tabs',
+      tabs: [
+        {
+          label: 'Content',
+          fields: [
+            {
+              name: 'layout',
+              type: 'blocks',
+              admin: { initCollapsed: true },
+              blocks: PAGE_BLOCKS,
+              required: true,
+            },
+          ],
+        },
+        seoTab,
+      ],
+    },
+    { name: 'publishedAt', type: 'date', admin: { position: 'sidebar' } },
+    slugField(),
+  ],
+  hooks: {
+    afterChange: [revalidatePage],
+    afterDelete: [revalidateDeletedPage],
+    beforeChange: [populatePublishedAt],
+  },
+  versions: {
+    // Without maxPerDoc a document keeps a full copy of every array row on each save, and the versions table grows without bound.
+    drafts: { autosave: { interval: 1000 } },
+    maxPerDoc: 50,
+  },
+};

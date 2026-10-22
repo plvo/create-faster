@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { META } from '@/__meta__';
-import { cleanupTempDir, createTempDir, fileExists, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, readTextFile, rootLayoutsOf, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -49,10 +49,10 @@ describe('Next.js font variables', () => {
   }
 
   async function readLayouts(projectDir: string, appNames: string[]): Promise<string[]> {
-    const candidates = [join(projectDir, 'src/app/layout.tsx'), ...appNames.map((name) => join(projectDir, 'apps', name, 'src/app/layout.tsx'))];
+    const appDirectories = [projectDir, ...appNames.map((name) => join(projectDir, 'apps', name))];
     const layouts: string[] = [];
-    for (const candidate of candidates) {
-      if (await fileExists(candidate)) layouts.push(await readTextFile(candidate));
+    for (const appDirectory of appDirectories) {
+      for (const layout of await rootLayoutsOf(appDirectory)) layouts.push(await readTextFile(layout));
     }
     return layouts;
   }

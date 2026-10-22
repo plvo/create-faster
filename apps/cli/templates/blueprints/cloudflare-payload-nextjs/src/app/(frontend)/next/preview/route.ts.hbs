@@ -1,0 +1,31 @@
+import { getPayloadClient } from '@/lib/payload';
+import { safeRedirectPath } from '@/lib/safe-redirect';
+import { sameSecret } from '@/lib/same-secret';
+import { draftMode } from 'next/headers';
+import { redirect } from 'next/navigation';
+import type { NextRequest } from 'next/server';
+
+const FORBIDDEN = 'You are not allowed to preview this page';
+
+// Turns draft mode on for a signed-in editor who holds the preview secret, then lands on the page to preview.
+export async function GET(request: NextRequest): Promise<Response> {
+  const { searchParams } = request.nextUrl;
+  const secret = process.env.PREVIEW_SECRET;
+  if (!secret || !sameSecret(searchParams.get('previewSecret') ?? '', secret)) return new Response(FORBIDDEN, { status: 403 });
+
+  const path = searchParams.get('path');
+  if (!path) return new Response('Insufficient search params', { status: 404 });
+  const destination = safeRedirectPath(path, '');
+  if (!destination) return new Response('This endpoint can only be used for relative previews', { status: 400 });
+
+  const payload = await getPayloadClient();
+  const { user } = await payload.auth({ headers: request.headers });
+  const draft = await draftMode();
+  if (!user) {
+    draft.disable();
+    return new Response(FORBIDDEN, { status: 403 });
+  }
+
+  draft.enable();
+  redirect(destination);
+}

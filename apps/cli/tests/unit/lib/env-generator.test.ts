@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { META } from '@/__meta__';
 import {
   collectAppSecrets,
+  collectDeploySecrets,
   collectAppOriginEnvs,
   collectEnvFiles,
   collectEnvGroups,
@@ -624,6 +625,51 @@ describe('EnvVar.secret', () => {
 
       expect(collectProjectSecrets(ctx, ['node'])).toEqual(['DATABASE_URL']);
       expect(collectProjectSecrets(ctx, ['hono'])).toEqual([]);
+    });
+  });
+
+  describe('collectDeploySecrets', () => {
+    const withProjectEnvs = <T>(envs: EnvVar[], run: () => T): T => {
+      const previous = postgres.envs;
+      postgres.envs = envs;
+      try {
+        return run();
+      } finally {
+        postgres.envs = previous;
+      }
+    };
+    const apps = makeContext({
+      apps: [
+        { appName: 'web', stackName: 'nextjs', libraries: ['better-auth'] },
+        { appName: 'site', stackName: 'tanstack-start', libraries: ['better-auth'] },
+        { appName: 'worker', stackName: 'hono', libraries: [] },
+      ],
+    });
+
+    test('lists once each secret to give a value in the shell and its generator, for every app', () => {
+      const secrets = withProjectEnvs(
+        [
+          { value: 'WORKER_TOKEN=', monoScope: ['app'], secret: true, generateCommand: 'openssl rand -hex 16' },
+          { value: 'VENDOR_KEY=', monoScope: ['app'], secret: true },
+        ],
+        () => collectDeploySecrets(apps),
+      );
+
+      expect(secrets).toEqual([
+        { name: 'WORKER_TOKEN', command: 'openssl rand -hex 16' },
+        { name: 'VENDOR_KEY', command: undefined },
+        { name: 'BETTER_AUTH_SECRET', command: expect.any(String) },
+      ]);
+    });
+
+    test('leaves out the origin of an app, which the production URL gives', () => {
+      const names = collectDeploySecrets(apps).map((secret) => secret.name);
+
+      expect(names).not.toContain('BETTER_AUTH_URL');
+    });
+
+    test('is empty when no app has a secret', () => {
+      expect(collectDeploySecrets(makeContext({ apps: [{ appName: 'api', stackName: 'hono', libraries: [] }] }))).toEqual([]);
     });
   });
 

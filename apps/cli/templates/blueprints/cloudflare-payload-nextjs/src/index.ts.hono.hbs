@@ -1,0 +1,14 @@
+---
+mono:
+  scope: app
+  path: src/index.ts
+---
+import app from './app';
+import { runBackup } from './backup';
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runBackup(env));
+  },
+};

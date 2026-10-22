@@ -1,0 +1,17 @@
+import { LivePreviewListener } from '@/components/live-preview-listener';
+import { RenderBlocks } from '@/components/render-blocks';
+import { getPage } from '@/lib/queries';
+import { draftMode } from 'next/headers';
+import { notFound } from 'next/navigation';
+
+export async function PageView({ slug }: { slug: string }) {
+  const { isEnabled: draft } = await draftMode();
+  const page = await getPage(slug, draft);
+  if (!page) notFound();
+  return (
+    <>
+      {draft && <LivePreviewListener />}
+      <RenderBlocks blocks={page.layout} />
+    </>
+  );
+}

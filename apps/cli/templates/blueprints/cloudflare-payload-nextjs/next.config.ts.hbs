@@ -1,0 +1,39 @@
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import { withPayload } from '@payloadcms/next/withPayload';
+import type { NextConfig } from 'next';
+
+{{!-- development only: the call starts a local workerd on the persisted state, and `next build` loads this config too, where it would hold the shared local D1 while OpenNext builds and previews --}}
+if (process.env.NODE_ENV === 'development') {
+  initOpenNextCloudflareForDev({ persist: { path: '../../.wrangler/v3' } });
+}
+
+const nextConfig: NextConfig = {
+  transpilePackages: ['@repo/ui'],
+  reactStrictMode: true,
+  agentRules: false,
+  // Top right keeps the dev indicator off the toasts (bottom right).
+  devIndicators: { position: 'top-right' },
+  // The OpenNext image optimizer fetches through ASSETS, which does not hold the media served from R2, so it answered 404 for every image.
+  images: { unoptimized: true },
+  // Packages with Cloudflare Workers (workerd) specific code: https://opennext.js.org/cloudflare/howtos/workerd
+  serverExternalPackages: ['jose', 'pg-cloudflare'],
+  experimental: {
+    // Parallel build workers drop the connection to the platform proxy that payload.config.ts opens.
+    cpus: 1,
+    staticGenerationMaxConcurrency: 1,
+  },
+  // The admin is shown in no frame of another site (live preview frames the site from the admin, on the same origin).
+  headers: async () => [
+    { source: '/admin/:path*', headers: [{ key: 'Content-Security-Policy', value: "frame-ancestors 'self'" }] },
+  ],
+  webpack: (webpackConfig) => {
+    webpackConfig.resolve.extensionAlias = {
+      '.cjs': ['.cts', '.cjs'],
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+    };
+    return webpackConfig;
+  },
+};
+
+export default withPayload(nextConfig, { devBundleServerPackages: false });

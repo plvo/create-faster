@@ -99,6 +99,44 @@ const REGENERATE_CLOUDFLARE_TYPES = {
 
 const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
 
+// Payload publishes `payload` and every `@payloadcms/*` package in lockstep, and each adapter peers on the exact core version, so one constant pins them all.
+// 3.90.0 and later hash passwords with 600,000 PBKDF2 iterations while the runtime of Cloudflare refuses more than 100,000, so nobody can sign in on Workers (payloadcms/payload#18274). The cloudflare-payload-nextjs blueprint is released once a Payload version that fixes it is published, and pins that version here.
+const PAYLOAD_VERSION = '3.91.0';
+const PAYLOAD_PACKAGES = [
+  'payload',
+  '@payloadcms/next',
+  '@payloadcms/ui',
+  '@payloadcms/db-d1-sqlite',
+  '@payloadcms/storage-r2',
+  '@payloadcms/richtext-lexical',
+  '@payloadcms/plugin-seo',
+  '@payloadcms/live-preview-react',
+];
+// Payload prints Node deprecation warnings from its dependencies on every command. The option is added to those of the
+// environment, which `--import` of a preload or `--max-old-space-size` may already hold.
+// biome-ignore lint/suspicious/noTemplateCurlyInString: the shell expands ${NODE_OPTIONS:-} when the script runs
+const PAYLOAD_NODE_OPTIONS = 'NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation"';
+const PAYLOAD_CLI = `${PAYLOAD_NODE_OPTIONS} payload`;
+const REMOTE_BINDINGS_RUNNER = '{{tsRunner}} scripts/remote.ts';
+const ADD_MISSING_SAMPLE_CONTENT = {
+  script: 'db:seed',
+  description: 'Add the sample pages, posts and media that are missing; it deletes nothing',
+  readmeSection: SEEDING_SECTION,
+};
+const PAYLOAD_SCRIPTS = [
+  { script: 'generate:types', description: 'Regenerate the Cloudflare binding types and the Payload types' },
+  { script: 'generate:importmap', description: 'Regenerate the import map of the Payload admin' },
+  { script: 'migrate', description: 'Apply the Payload migrations to the local database' },
+  { script: 'migrate:create', description: 'Write a Payload migration from the change of the collections' },
+  { script: 'ensure-admin', description: 'Create the first admin of the local database when it has no user' },
+  {
+    script: 'ensure-admin:remote',
+    description: 'Create the first admin of the production database when it has no user',
+  },
+  ADD_MISSING_SAMPLE_CONTENT,
+];
+const forwardedToWeb = (script: string) => `cd apps/web && {{packageManager}} run ${script}`;
+
 const LINT_CODE = { script: 'lint', description: 'Lint code' };
 const FORMAT_CODE = { script: 'format', description: 'Format code' };
 const FIX_AND_FORMAT_CODE = { script: 'check', description: 'Fix lint issues and format code' };
@@ -244,6 +282,27 @@ const NEXT_PUBLIC_APP_URL: EnvVar = {
   stacks: ['nextjs'],
   monoScope: ['app'],
 };
+const PAYLOAD_SECRET: EnvVar = {
+  value: 'PAYLOAD_SECRET=',
+  monoScope: ['app'],
+  secret: true,
+  generateCommand: GENERATE_SECRET,
+};
+const PREVIEW_SECRET: EnvVar = {
+  value: 'PREVIEW_SECRET=',
+  monoScope: ['app'],
+  secret: true,
+  generateCommand: GENERATE_SECRET,
+};
+const BACKUP_TRIGGER_TOKEN: EnvVar = {
+  value: 'BACKUP_TRIGGER_TOKEN=',
+  monoScope: ['app'],
+  secret: true,
+  generateCommand: GENERATE_SECRET,
+};
+// Only `ensure-admin` reads them, and OpenNext bundles every `.env*` of the app into the Worker, so they live in a file of their own.
+const ADMIN_EMAIL: EnvVar = { value: 'ADMIN_EMAIL=admin@example.com', monoScope: ['app'], file: 'admin' };
+const ADMIN_PASSWORD: EnvVar = { value: 'ADMIN_PASSWORD=password', monoScope: ['app'], file: 'admin' };
 
 const ORG_DASHBOARD_WEB_LIBRARIES = [
   'shadcn',
@@ -518,6 +577,10 @@ export const META: Meta = {
     },
     'tanstack-start': {
       type: 'app',
+      // The Start plugin writes the route tree on the first `vite dev` or `vite build`, and `tsr generate` on install; ESLint ignores it in the config of the stack.
+      generatedFiles: [
+        { glob: '**/routeTree.gen.ts', as: { eslint: false, oxlint: false, prettier: 'routeTree.gen.ts' } },
+      ],
       label: 'TanStack Start',
       hint: 'Full-stack React framework',
       scriptDescriptions: [...START_DEV_SERVER, ...TYPECHECK_CODE],
@@ -1248,6 +1311,13 @@ export const META: Meta = {
         drizzle: {
           label: 'Drizzle',
           hint: 'Lightweight TypeScript ORM',
+          // drizzle-kit writes the migrations, and the `meta/*.json` of its snapshots without a final newline.
+          generatedFiles: [
+            {
+              glob: '**/drizzle/**',
+              as: { biome: '**/drizzle/**/*', eslint: false, oxlint: false, prettier: 'drizzle/' },
+            },
+          ],
           installScripts: TSX_INSTALL_SCRIPTS,
           mono: { scope: 'pkg', name: 'db' },
           interactiveScripts: ['db:push'],
@@ -2000,6 +2070,99 @@ export const META: Meta = {
         },
       },
       envs: [{ ...SEED_PASSWORD, monoScope: ['root'], file: 'seed' }],
+    },
+    'cloudflare-payload-nextjs': {
+      label: 'Payload CMS (Cloudflare)',
+      hint: 'Payload CMS with a public site on Cloudflare Workers: D1, R2 media, drafts and preview, and a backup cron Worker',
+      category: 'CMS',
+      scriptDescriptions: PAYLOAD_SCRIPTS,
+      firstRun: [
+        {
+          description: 'Create the tables of the local database from the committed migrations',
+          commands: [{ script: 'migrate' }],
+        },
+        {
+          description: 'Create the first admin from the email and password of `.env.admin`',
+          commands: [{ script: 'ensure-admin' }],
+        },
+        { description: 'Add the sample pages, posts and media', commands: [{ script: 'db:seed' }] },
+      ],
+      // Payload writes them (`generate:types`, `generate:importmap`, `migrate:create`) and the committed copy must match.
+      generatedFiles: ['**/src/payload-types.ts', '**/importMap.js', '**/src/migrations/*'],
+      seed: {
+        rows: ['pages', 'posts', 'media', 'site settings'],
+        deletes: 'never',
+        file: 'apps/web/scripts/seed.ts',
+      },
+      agentArchitecture: [
+        'Content-managed site on Cloudflare: a Next.js (OpenNext) web app that serves the Payload admin',
+        'at `/admin`, its REST API at `/api` and the public site, plus a Hono cron Worker (Turborepo).',
+        'Payload 3.x owns the schema and its migrations on Cloudflare D1 (no ORM package), stores media',
+        'in R2 (no `sharp`: nothing resizes images), and caches pages in R2 and D1 until a hook revalidates',
+        'their tags. The cron Worker backs up every D1 table and the media index to R2 every day.',
+        '',
+        'Per-aspect detail in `docs/agents/`:',
+        '- [Payload on Workers](docs/agents/payload.md)',
+        '- [Cloudflare deploy](docs/agents/cloudflare-deploy.md)',
+        '- [Media](docs/agents/media.md)',
+      ].join('\n'),
+      context: {
+        apps: [
+          {
+            appName: 'web',
+            stackName: 'nextjs',
+            libraries: ['shadcn'],
+            packageJson: {
+              // payload.config.ts awaits the Cloudflare context at the top level; `generate:types` and `generate:importmap` fail as CommonJS.
+              type: 'module',
+              dependencies: {
+                ...Object.fromEntries(PAYLOAD_PACKAGES.map((name) => [name, PAYLOAD_VERSION])),
+                graphql: '^16.8.1',
+              },
+              devDependencies: {
+                tsx: TSX_RUNNER,
+              },
+              scripts: {
+                // Turbopack fails on the server bundle of Payload (payloadcms/payload#16470).
+                build: `${PAYLOAD_NODE_OPTIONS} next build --webpack`,
+                payload: PAYLOAD_CLI,
+                'generate:types': `${CLOUDFLARE_TYPEGEN} && ${PAYLOAD_CLI} generate:types`,
+                'generate:importmap': `${PAYLOAD_CLI} generate:importmap`,
+                migrate: `${PAYLOAD_CLI} migrate`,
+                'migrate:create': `${PAYLOAD_CLI} migrate:create`,
+                'ensure-admin': `${PAYLOAD_CLI} run scripts/ensure-admin.ts`,
+                'db:seed': `${PAYLOAD_CLI} run scripts/seed.ts`,
+                'db:migrate:remote': `${REMOTE_BINDINGS_RUNNER} migrate`,
+                'ensure-admin:remote': `${REMOTE_BINDINGS_RUNNER} ensure-admin`,
+              },
+            },
+            envs: [PAYLOAD_SECRET, PREVIEW_SECRET, NEXT_PUBLIC_APP_URL, ADMIN_EMAIL, ADMIN_PASSWORD],
+          },
+          {
+            appName: 'cron',
+            stackName: 'hono',
+            libraries: [],
+            envs: [BACKUP_TRIGGER_TOKEN],
+          },
+        ],
+        project: {
+          database: 'd1',
+          deployment: 'cloudflare',
+        },
+      },
+      rootPackageJson: {
+        scripts: {
+          'generate:types': forwardedToWeb('generate:types'),
+          'generate:importmap': forwardedToWeb('generate:importmap'),
+          migrate: forwardedToWeb('migrate'),
+          'migrate:create': forwardedToWeb('migrate:create'),
+          'ensure-admin': forwardedToWeb('ensure-admin'),
+          'ensure-admin:remote': forwardedToWeb('ensure-admin:remote'),
+          'db:seed': forwardedToWeb('db:seed'),
+          'db:migrate:remote': forwardedToWeb('db:migrate:remote'),
+        },
+      },
+      installScripts: { sharp: false, 'unrs-resolver': false },
     },
     'showcase-nextjs': {
       label: 'Showcase',
