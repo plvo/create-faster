@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.10](https://github.com/plvo/create-faster/compare/create-faster-v1.6.9...create-faster-v1.6.10) (2026-10-22)
+
+
+### Bug Fixes
+
+* **d1:** generate no drizzle script without an orm ([#435](https://github.com/plvo/create-faster/issues/435)) ([f4f4d3e](https://github.com/plvo/create-faster/commit/f4f4d3e72cb1b3c9b7f08e0bf30d521cb58646e8))
+
+
+### Refactor
+
+* **nextjs:** move the rainbowkit next config to a blueprint partial ([#438](https://github.com/plvo/create-faster/issues/438)) ([aa03930](https://github.com/plvo/create-faster/commit/aa03930c5a4414052ef384f1a42706c086db17a3))
+
 ## [1.6.9](https://github.com/plvo/create-faster/compare/create-faster-v1.6.8...create-faster-v1.6.9) (2026-10-21)
 
 
