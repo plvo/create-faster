@@ -31,7 +31,8 @@ export function ChangeEmailForm({ email }: { email: string }) {
     validators: { onSubmit: schema },
     onSubmit: async ({ value, formApi }) => {
       const newEmail = value.newEmail.trim();
-      // The password is read by the server before better-auth sees the request: it is not part of the typed body.
+      // `currentPassword` is not part of better-auth's typed body: a better-auth `before` hook (`emailChangeGuard`) reads it
+      // from the request, then zod drops the extra key when the endpoint validates the body.
       const request = { newEmail, currentPassword: value.currentPassword, callbackURL: EMAIL_CHANGE_CALLBACK_URL };
       const result = await authClient.changeEmail(request);
       if (result.error) {

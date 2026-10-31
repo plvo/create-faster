@@ -79,7 +79,10 @@ export const emailChangeGuard = {
             after: async (user, ctx) => {
               const previous = ctx?.context.session?.user.email;
               if (ctx?.path !== '/verify-email' || !user || !previous || previous === user.email) return;
-              await deliverLink({ kind: 'email-changed', to: previous, link: new URL(ctx.context.baseURL).origin });
+              // The address is already written: a mailer that fails or is slow must not fail or hold the answer.
+              await ctx.context.runInBackgroundOrAwait(
+                deliverLink({ kind: 'email-changed', to: previous, link: new URL(ctx.context.baseURL).origin }),
+              );
             },
           },
         },
