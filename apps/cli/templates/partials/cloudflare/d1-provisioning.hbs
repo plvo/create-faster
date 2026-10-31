@@ -35,6 +35,9 @@ Apply the migrations to the production database:
 {{/if}}
 {{/step}}
 {{#step}}
+{{> (blueprintPartial "d1-defaults")}}
+{{/step}}
+{{#step}}
 {{#if deploy}}
 Deploy. A deploy fails until what `wrangler.jsonc` asks for exists, so first:
 

@@ -7,17 +7,22 @@ mono:
 'use client';
 
 import type { ReactNode } from 'react';
+import type { PermissionRequest } from '@repo/auth/permissions';
 import { usePermission } from '@/hooks/use-permission';
 
+// Renders nothing while the verdict is unknown, `children` when every listed action is granted and `fallback` when
+// one is not.
 export function Can({
   permissions,
   children,
   fallback = null,
 }: {
-  permissions: Record<string, string[]>;
+  permissions: PermissionRequest;
   children: ReactNode;
   fallback?: ReactNode;
 }): ReactNode {
-  return usePermission(permissions) ? children : fallback;
+  const verdict = usePermission(permissions);
+  if (verdict === 'unknown') return null;
+  return verdict === 'granted' ? children : fallback;
 }
 {{{{/raw}}}}

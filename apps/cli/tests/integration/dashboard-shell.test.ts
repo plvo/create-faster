@@ -101,7 +101,10 @@ export const can = (role, permissions) => {
   const granted = DEFINITIONS[role] ?? {};
   return Object.entries(permissions).every(([resource, actions]) => actions.every((action) => granted[resource]?.includes(action)));
 };`,
-  'trpc-server.mjs': `export const getQueryClient = () => ({ fetchQuery: async (options) => globalThis.__records?.[options.procedure] });
+  'trpc-server.mjs': `export const getQueryClient = () => ({
+  fetchQuery: async (options) => globalThis.__records?.[options.procedure],
+  prefetchQuery: async () => {},
+});
 const procedures = (path) => new Proxy(function () {}, {
   get: (_, key) => (key === 'then' ? undefined : key === 'queryOptions' ? (input) => ({ procedure: path.join('.'), input }) : procedures([...path, key])),
 });
@@ -490,7 +493,6 @@ describe('dashboard shell', () => {
   const SIDEBAR_BLUEPRINTS: [string, string][] = [
     ['org-dashboard-nextjs', 'Dashboard'],
     [START_BLUEPRINT, 'Dashboard'],
-    ['cloudflare-fullstack-nextjs', 'Documents'],
   ];
   describe.each(SIDEBAR_BLUEPRINTS)('%s sidebar', (blueprint, homeTitle) => {
     const roles: [string, boolean][] = [

@@ -55,7 +55,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('registers a documents router using d1 per-request auth', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/trpc');
     expect(readFileSync(join(base, 'routers/_app.ts.hbs'), 'utf8')).toContain('documents: documentsRouter');
-    expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('createAuth(opts.ctx.db)');
+    expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('hasPermission(opts.ctx.db');
     expect(readFileSync(join(base, 'routers/documents.ts.hbs'), 'utf8')).toContain('STORAGE.delete(doc.r2Key)');
   });
 
@@ -109,17 +109,15 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(signupForm).not.toContain("import { auth } from");
   });
 
-  test('ships can.tsx and use-permission.ts (the partial the org dashboard renders)', () => {
+  test('ships can.tsx and its own use-permission.ts, which reads the permission list of the caller', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src');
     const can = readFileSync(join(base, 'components/can.tsx.hbs'), 'utf8');
     expect(can).toContain("import { usePermission } from '@/hooks/use-permission'");
     expect(can).toContain('usePermission(permissions)');
     expect(can).toContain('{{{{raw}}}}');
-    expect(readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8')).toContain('{{> hooks/use-permission}}');
-    const usePerm = partial('hooks/use-permission');
-    expect(usePerm).toContain("import type { AppRole } from '@repo/auth/permissions'");
-    expect(usePerm).toContain('authClient.admin.checkRolePermission');
-    expect(usePerm).toContain('{{{{raw}}}}');
+    const usePerm = readFileSync(join(base, 'hooks/use-permission.ts.hbs'), 'utf8');
+    expect(usePerm).toContain('trpc.permissions.mine.queryOptions()');
+    expect(usePerm).not.toContain('checkRolePermission');
   });
 
   test('(dashboard) layout requires the cached session (not singleton)', () => {
@@ -193,15 +191,15 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(get).toContain('if (!session?.user)');
   });
 
-  test('roles page renders the static role × permission matrix (read-only)', () => {
+  test('roles page renders the role × permission matrix read from the database (read-only)', () => {
     const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
-    expect(page).toContain("import { roleDefinitions, statement } from '@repo/auth/permissions'");
+    expect(page).toContain("import { listRoleMatrix } from '@repo/auth/role-permissions'");
+    expect(page).not.toContain('roleDefinitions');
     // the matrix stays read-only.
     expect(page).toContain('read-only');
-    expect(page).toContain('isGranted(role, resource, action)');
     expect(page).toContain('await requireAdmin()');
     // current viewer's column is highlighted.
-    expect(page).toContain('role === currentRole');
+    expect(page).toContain('role.id === currentRole');
   });
 
   test('sidebar route labels rename access control to "Roles"', () => {
@@ -264,7 +262,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     const dialog = bpFile('src/components/admin/create-user-dialog.tsx.hbs');
     expect(dialog).toContain('trpc.users.create');
     expect(dialog).toContain('createdPassword');
-    expect(dialog).toContain("import { roleDefinitions } from '@repo/auth/permissions'");
+    expect(dialog).toContain("import { roles } from '@repo/auth/permissions'");
     // creation uses normal inputs (not inline edit).
     expect(dialog).toContain('f.InputField');
     expect(dialog).toContain('f.SelectField');
@@ -471,12 +469,13 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('sidebar hides a permission category when none of its routes are visible', () => {
     expect(bpFile('src/components/navigation/sidebar-links.tsx.hbs')).toContain('{{> org-dashboard/sidebar-links}}');
     const links = partial('org-dashboard/sidebar-links');
-    expect(links).toContain("import { allowedRoutes } from '@/lib/allowed-routes'");
-    expect(bpFile('src/lib/allowed-routes.ts.hbs')).toContain('{{> org-dashboard/allowed-routes}}');
+    expect(links).toContain("import { useAllowedRoutes } from '@/lib/allowed-routes'");
+    // The blueprint keeps its own page rule: the verdict of the permission list of the database, not the role name.
+    const rule = bpFile('src/lib/allowed-routes.ts.hbs');
+    expect(rule).toContain("import { usePermissions, verdictOf } from '@/hooks/use-permission'");
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
-    expect(partial('org-dashboard/allowed-routes')).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
-    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('{{> hooks/use-permission}}');
-    expect(partial('hooks/use-permission')).toContain('export function can(');
+    expect(rule).toContain("ROUTES.filter((item) => verdictOf(granted, item.permissions ?? {}) === 'granted')");
+    expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('export function verdictOf(');
   });
 
   test('sidebar user menu keeps the dropdown open when confirming logout', () => {
@@ -485,7 +484,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     // onSelect + preventDefault stops the menu from closing on the first Logout click.
     expect(navUser).toContain('onSelect={(event) => {');
     expect(navUser).toContain('event.preventDefault();');
-    expect(navUser).toContain('swapLogoutItems(true);');
+    expect(navUser).toContain('logoutConfirmation.swapItems(true);');
   });
 
   test('account display name uses an inline-edit field; documents upload uses a normal input', () => {

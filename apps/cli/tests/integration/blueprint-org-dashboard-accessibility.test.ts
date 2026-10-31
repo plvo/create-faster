@@ -118,10 +118,11 @@ export const notFound = () => { throw new Error('not found'); };`,
   'next-headers.mjs': 'export const headers = async () => ({});',
   'trpc-server.mjs': `export const HydrateClient = ({ children }) => children;
 export const prefetch = () => {};
-export const getQueryClient = () => ({ fetchQuery: async () => ({}) });
+export const getQueryClient = () => ({ fetchQuery: async () => ({}), prefetchQuery: async () => {} });
 export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ queryOptions: (input) => input ?? {} }) }) });`,
   'skeleton.mjs': 'export const Skeleton = () => null;',
-  'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });`,
+  'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });
+export const getDb = async () => null;`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
 export const useNavigate = () => () => {};
 export const notFound = () => ({ kind: 'notFound' });`,
@@ -286,7 +287,13 @@ export const DataTableShell = ({ columns, data }) =>
 export const roleDefinitions = {
   admin: { user: ['create', 'list'], contact: ['create', 'read'] },
   manager: { contact: ['read'] },
-};`,
+};
+// The fullstack blueprint: the compiled role names, and the admin grants beside the stored roles.
+export const roles = { admin: {}, manager: {} };
+export const ADMIN_ROLE = 'admin';
+export const PERMISSIONS = ['user.create', 'user.list', 'contact.create', 'contact.read'];
+export const ADMIN_PERMISSIONS = PERMISSIONS;`,
+  'role-permissions.mjs': `export const listRoleMatrix = async () => [{ id: 'manager', label: 'Manager', permissions: ['contact.read'] }];`,
 };
 
 const COMMON_IMPORTS: Record<string, string> = {
@@ -1053,6 +1060,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         'next/navigation': './next-navigation.mjs',
         '@/lib/auth/session': './session.mjs',
         '@/trpc/server': './trpc-server.mjs',
+        '@repo/auth/role-permissions': './role-permissions.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
         '@repo/ui/components/ui/search-input': './search-input.mjs',
         '@repo/ui/components/ui/field': './field.mjs',

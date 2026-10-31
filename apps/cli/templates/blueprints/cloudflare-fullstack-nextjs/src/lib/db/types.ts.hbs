@@ -5,13 +5,24 @@ mono:
   path: src/types.ts
 ---
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import type { documentTable, userAccountTable, userSessionTable, userTable, userVerificationTable } from './schema';
+import type {
+  documentTable,
+  rolePermissionTable,
+  roleTable,
+  userAccountTable,
+  userSessionTable,
+  userTable,
+  userVerificationTable,
+} from './schema';
 
 export type User = InferSelectModel<typeof userTable>;
 export type NewUser = InferInsertModel<typeof userTable>;
 
 export type Document = InferSelectModel<typeof documentTable>;
 export type NewDocument = InferInsertModel<typeof documentTable>;
+
+export type Role = InferSelectModel<typeof roleTable>;
+export type RolePermission = InferSelectModel<typeof rolePermissionTable>;
 
 export type UserAccount = InferSelectModel<typeof userAccountTable>;
 export type UserSession = InferSelectModel<typeof userSessionTable>;

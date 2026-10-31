@@ -99,8 +99,11 @@ export const router = t.router;
 export const protectedProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;`,
   // The generated middleware runs for real; every signed-in user holds every permission, only the role of the
-  // caller varies, so the admin gate and the owner filter are what the tests tell apart.
-  'auth.mjs': 'export const createAuth = () => ({ api: { userHasPermission: async () => ({ success: true }) } });',
+  // caller varies, so the admin gate and the owner filter are what the tests tell apart. What a role holds is
+  // decided by the generated engine, which blueprint-cloudflare-fullstack-nextjs-roles.test.ts runs on a database.
+  'auth.mjs': 'export const createAuth = () => ({ api: {} });',
+  'permissions.mjs': "export const ADMIN_ROLE = 'admin';",
+  'role-permissions.mjs': 'export const hasPermission = async () => true;',
   'db.mjs': `export * from '${REAL.drizzle}';
 export * from './schema.mjs';`,
 };
@@ -254,7 +257,8 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
     });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', {
-      '@repo/auth/auth': './auth.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
       '@trpc/server': REAL.trpcServer,
       '../trpc': './trpc.mjs',
     });

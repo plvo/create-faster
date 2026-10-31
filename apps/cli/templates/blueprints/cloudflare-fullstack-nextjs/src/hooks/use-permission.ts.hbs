@@ -3,4 +3,31 @@ mono:
   scope: app
   path: src/hooks/use-permission.ts
 ---
-{{> hooks/use-permission}}
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import type { Permission, PermissionRequest } from '@repo/auth/permissions';
+import { useTRPC } from '@/trpc/providers';
+
+// `unknown` until the permission list of the caller is in the query cache. The dashboard layout fetches it on the
+// server and hydrates it, so the first render already has it; `unknown` only shows if that fetch failed, and renders
+// nothing.
+export type Verdict = 'unknown' | 'granted' | 'denied';
+
+export function verdictOf(granted: readonly Permission[] | undefined, permissions: PermissionRequest): Verdict {
+  const wanted = Object.entries(permissions).flatMap(([resource, actions]) =>
+    (actions ?? []).map((action) => `${resource}.${action}` as Permission),
+  );
+  if (wanted.length === 0) return 'granted';
+  if (!granted) return 'unknown';
+  return wanted.every((permission) => granted.includes(permission)) ? 'granted' : 'denied';
+}
+
+export function usePermissions(): readonly Permission[] | undefined {
+  const trpc = useTRPC();
+  return useQuery(trpc.permissions.mine.queryOptions()).data;
+}
+
+export function usePermission(permissions: PermissionRequest): Verdict {
+  return verdictOf(usePermissions(), permissions);
+}

@@ -3,6 +3,7 @@ mono:
   scope: app
   path: src/lib/constants.ts
 ---
+import type { PermissionRequest } from '@repo/auth/permissions';
 import type { LucideIcon } from 'lucide-react';
 import { FileText, ShieldCheck, Users } from 'lucide-react';
 
@@ -11,11 +12,11 @@ export interface RouteProps {
   title: string;
   icon?: LucideIcon;
   category?: string;
-  permissions?: Record<string, string[]>;
+  permissions?: PermissionRequest;
 }
 
 export const ROUTES: RouteProps[] = [
-  { url: '/', title: 'Documents', icon: FileText },
+  { url: '/', title: 'Documents', icon: FileText, permissions: { document: ['read'] } },
   { url: '/admin/users', title: 'Users', icon: Users, category: 'Administration', permissions: { user: ['list'] } },
   { url: '/admin/roles', title: 'Roles', icon: ShieldCheck, category: 'Administration', permissions: { user: ['list'] } },
 ];

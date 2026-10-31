@@ -6,7 +6,7 @@ mono:
   path: src/schema.ts
 ---
 import { relations, sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 const timeColumns = {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -105,3 +105,19 @@ export const documentTable = sqliteTable('documents', {
 export const documentTableRelations = relations(documentTable, ({ one }) => ({
   owner: one(userTable, { fields: [documentTable.userId], references: [userTable.id] }),
 }));
+
+// The roles of the application, next to the `admin` plugin: `id` is the value of `users.role`. `admin` has no row (it
+// is compiled, see packages/auth/src/permissions.ts). A user whose role has no row here holds no permission.
+export const roleTable = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  label: text('label').notNull(),
+  ...timeColumns,
+});
+
+// What a role may do on a business resource, one row per permission. Only the names of `businessStatement` are
+// honored (packages/auth/src/role-permissions.ts); `user` and `session` are account administration and never stored.
+export const rolePermissionTable = sqliteTable('role_permissions', {
+  roleId: text('role_id').notNull().references(() => roleTable.id, { onDelete: 'cascade' }),
+  resource: text('resource').notNull(),
+  action: text('action').notNull(),
+}, (table) => [primaryKey({ columns: [table.roleId, table.resource, table.action] })]);

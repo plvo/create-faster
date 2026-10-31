@@ -99,6 +99,15 @@ const REGENERATE_CLOUDFLARE_TYPES = {
 
 const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
 
+const WRITE_DEFAULT_ROLES = {
+  script: 'db:roles',
+  description: 'Write the default roles into the local database; a role that already exists is left as it is',
+};
+const WRITE_DEFAULT_ROLES_REMOTE = {
+  script: 'db:roles:remote',
+  description: 'Write the default roles into the production database; a role that already exists is left as it is',
+};
+
 const LINT_CODE = { script: 'lint', description: 'Lint code' };
 const FORMAT_CODE = { script: 'format', description: 'Format code' };
 const FIX_AND_FORMAT_CODE = { script: 'check', description: 'Fix lint issues and format code' };
@@ -1902,20 +1911,21 @@ export const META: Meta = {
       label: 'Cloudflare Fullstack',
       hint: 'Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and a cron Worker — all on Cloudflare',
       category: 'Business',
-      scriptDescriptions: SEEDING_SCRIPTS,
+      scriptDescriptions: [...SEEDING_SCRIPTS, WRITE_DEFAULT_ROLES, WRITE_DEFAULT_ROLES_REMOTE],
       firstRun: [
         {
           description:
-            'Set up the local database and seed demo data (this deletes the local D1 state, sign-ups included)',
+            'Set up the local database, write the default roles and seed demo data (this deletes the local D1 state, sign-ups included)',
           commands: [{ script: 'local-setup' }],
         },
       ],
       seed: { rows: ['documents', 'users'], deletes: 'with-reset', target: 'local-only' },
       agentArchitecture: [
         'Fullstack Cloudflare app: a Next.js (OpenNext) web app + a Hono cron Worker (Turborepo),',
-        'Better Auth with the admin plugin + access-control (admin/user/manager), tRPC for typed',
-        'APIs, TanStack Query for client data, Drizzle on Cloudflare D1, and direct-binding R2',
-        'uploads. The cron Worker purges expired documents (D1 rows + R2 objects) on a schedule.',
+        'Better Auth with the admin plugin for account administration, roles (admin/user/manager by',
+        'default) whose permissions on business resources are read from D1, tRPC for typed APIs,',
+        'TanStack Query for client data, Drizzle on Cloudflare D1, and direct-binding R2 uploads.',
+        'The cron Worker purges expired documents (D1 rows + R2 objects) on a schedule.',
         '',
         'Per-aspect detail in `docs/agents/`:',
         '- [Auth & RBAC](docs/agents/auth-rbac.md)',
@@ -1954,6 +1964,8 @@ export const META: Meta = {
           exports: {
             './types': './src/types.ts',
             './permissions': './src/permissions.ts',
+            './role-permissions': './src/role-permissions.ts',
+            './default-roles': './src/default-roles.ts',
           },
         },
         db: {
@@ -1999,6 +2011,8 @@ export const META: Meta = {
         },
         scripts: {
           'db:seed': '{{tsRunner}} --env-file=apps/web/.env --env-file=.env.seed scripts/seed.ts',
+          'db:roles': '{{tsRunner}} scripts/default-roles.ts',
+          'db:roles:remote': '{{tsRunner}} scripts/default-roles.ts --remote',
           'local-setup': '{{tsRunner}} scripts/local-setup.ts',
         },
       },

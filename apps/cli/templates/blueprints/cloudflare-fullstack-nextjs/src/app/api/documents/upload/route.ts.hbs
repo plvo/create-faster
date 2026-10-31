@@ -4,6 +4,7 @@ mono:
   scope: app
   path: src/app/api/documents/upload/route.ts
 ---
+import { hasPermission } from '@repo/auth/role-permissions';
 import { documentTable } from '@repo/db';
 import { NextResponse } from 'next/server';
 import { getEnv } from '@/lib/env';
@@ -12,14 +13,14 @@ import { getAuth, getDb } from '@/lib/server';
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB — safe under the 128 MB Worker memory cap
 
 export async function POST(req: Request) {
+  const db = await getDb();
   const auth = await getAuth();
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
 
-  const { success: canCreate } = await auth.api.userHasPermission({
-    body: { userId: session.user.id, permissions: { document: ['create'] } },
-  });
-  if (!canCreate) return new NextResponse('Forbidden', { status: 403 });
+  if (!(await hasPermission(db, session.user.role, 'document', 'create'))) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
 
   let form: FormData;
   try {
@@ -42,7 +43,6 @@ export async function POST(req: Request) {
   // request stream does not carry. A Blob has a size, so R2 streams it without buffering.
   await STORAGE.put(key, file, { httpMetadata: { contentType } });
 
-  const db = await getDb();
   try {
     const [doc] = await db
       .insert(documentTable)

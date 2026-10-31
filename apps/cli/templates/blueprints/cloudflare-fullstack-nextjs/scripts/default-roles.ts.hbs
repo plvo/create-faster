@@ -1,0 +1,64 @@
+---
+mono:
+  scope: root
+---
+import { spawn } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { defaultRoleStatements } from '@repo/auth/default-roles';
+
+// Wrangler runs from the web app, which declares it, and reaches the D1 database through the `DB` binding of its
+// wrangler.jsonc. The local state is the one the migrations and the seed use.
+const WRANGLER = '{{installedBinaryRunner}} wrangler d1 execute DB';
+const WRANGLER_DIRECTORY = 'apps/web';
+const remote = process.argv.includes('--remote');
+const target = remote ? '--remote' : '--local --persist-to ../../.wrangler';
+
+function run(command: string, capture: boolean): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, {
+      cwd: WRANGLER_DIRECTORY,
+      shell: true,
+      stdio: ['inherit', capture ? 'pipe' : 'inherit', 'inherit'],
+    });
+    let output = '';
+    child.stdout?.on('data', (chunk) => {
+      output += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve(output);
+      else reject(new Error(`\`${command}\` exited with code ${code}`));
+    });
+  });
+}
+
+async function existingRoleIds(): Promise<string[]> {
+  const output = await run(`${WRANGLER} ${target} --json --command "SELECT id FROM roles"`, true);
+  const [statement] = JSON.parse(output.slice(output.indexOf('['))) as { results: { id: string }[] }[];
+  return (statement?.results ?? []).map((row) => row.id);
+}
+
+async function main(): Promise<void> {
+  const statements = defaultRoleStatements(await existingRoleIds());
+  if (statements.length === 0) {
+    console.log('The default roles are already there, nothing to write.');
+    return;
+  }
+
+  const directory = await mkdtemp(join(tmpdir(), 'default-roles-'));
+  const file = join(directory, 'default-roles.sql');
+  try {
+    await writeFile(file, `${statements.join('\n')}\n`);
+    await run(`${WRANGLER} ${target} --file "${file}"`, false);
+    console.log(`Wrote the default roles to the ${remote ? 'production' : 'local'} database.`);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+main().catch((error) => {
+  console.error('Writing the default roles failed:', error instanceof Error ? error.message : error);
+  process.exit(1);
+});

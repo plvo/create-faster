@@ -7,31 +7,65 @@ mono:
 import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 
-export const statement = {
-  ...defaultStatements,
+// The role the Better Auth `admin` plugin treats as administrator (`adminRoles` in auth.ts). It has no rows in the
+// database: `permissionsOf` (role-permissions.ts) grants it every permission below.
+export const ADMIN_ROLE = 'admin';
+
+// Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for
+// `admin` alone, and is never stored.
+export const accountStatement = defaultStatements;
+
+// The business vocabulary: the only resources and actions a role can be given in the database (`role_permissions`),
+// and the only source of valid names. To add a permission, add the action here, then grant it to roles in the
+// database (docs/agents/auth-rbac.md).
+export const businessStatement = {
   document: ['create', 'read', 'update', 'delete'],
 } as const;
 
+export const statement = { ...accountStatement, ...businessStatement } as const;
+
 export const ac = createAccessControl(statement);
 
-// Single source of truth for what each role may do. `roles` is built from this.
-export const roleDefinitions = {
-  admin: {
-    ...adminAc.statements,
-    document: ['create', 'read', 'update', 'delete'],
-  },
-  user: {
-    document: ['create', 'read', 'update', 'delete'],
-  },
-  manager: {
-    document: ['read'],
-  },
-} as const;
+// What `admin` holds: the account administration the plugin grants its administrators, and every business action.
+const adminStatement = { ...adminAc.statements, ...businessStatement } as const;
 
+// The compiled roles of the `admin` plugin, which rejects any other role name when it assigns one. Only `admin`
+// holds permissions here; what `user` and `manager` may do on business resources is read from the database.
 export const roles = {
-  admin: ac.newRole(roleDefinitions.admin),
-  user: ac.newRole(roleDefinitions.user),
-  manager: ac.newRole(roleDefinitions.manager),
+  admin: ac.newRole(adminStatement),
+  user: ac.newRole({}),
+  manager: ac.newRole({}),
 };
 
-export type AppRole = keyof typeof roleDefinitions;
+export type AppRole = keyof typeof roles;
+
+export type Statement = typeof statement;
+export type Resource = keyof Statement;
+export type Action<R extends Resource = Resource> = Statement[R][number];
+export type BusinessResource = keyof typeof businessStatement;
+
+type PermissionOf<S extends Record<string, readonly string[]>> = {
+  [R in keyof S & string]: `${R}.${S[R][number]}`;
+}[keyof S & string];
+
+// A permission as a flat name, `document.read`, the form the server sends to the client and the database stores
+// split in two columns.
+export type Permission = PermissionOf<Statement>;
+export type BusinessPermission = PermissionOf<typeof businessStatement>;
+
+// What a check asks for: every listed action of every listed resource.
+export type PermissionRequest = { [R in Resource]?: readonly Action<R>[] };
+
+function namesOf(source: Record<string, readonly string[]>): string[] {
+  return Object.entries(source).flatMap(([resource, actions]) => actions.map((action) => `${resource}.${action}`));
+}
+
+export const PERMISSIONS = namesOf(statement) as Permission[];
+export const ADMIN_PERMISSIONS = namesOf(adminStatement) as Permission[];
+export const BUSINESS_PERMISSIONS = namesOf(businessStatement) as BusinessPermission[];
+
+const BUSINESS_NAMES: ReadonlySet<string> = new Set(BUSINESS_PERMISSIONS);
+
+export function isBusinessPermission(resource: string, action: string): boolean {
+  return BUSINESS_NAMES.has(`${resource}.${action}`);
+}

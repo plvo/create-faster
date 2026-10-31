@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-import { allowedRoutes } from '@/lib/allowed-routes';
+import { useAllowedRoutes } from '@/lib/allowed-routes';
 import type { RouteProps } from '@/lib/constants';
 
 function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
@@ -45,7 +45,7 @@ export function SidebarLinks({ role }: { role: string | null | undefined }) {
   const pathname = usePathname();
 {{/if}}
 
-  const allowedPages = allowedRoutes(role);
+  const allowedPages = useAllowedRoutes(role);
   const grouplessPages = allowedPages.filter((item) => !item.category);
   const groupedPages = allowedPages.reduce<Record<string, RouteProps[]>>((acc, item) => {
     if (!item.category) return acc;

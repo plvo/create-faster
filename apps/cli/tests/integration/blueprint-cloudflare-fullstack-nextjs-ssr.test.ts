@@ -16,7 +16,7 @@ const redirectTo = (path: string): RegExp => new RegExp(`^redirect:${path}$`);
 // what they are called with, in `calls`, so a test asserts on behaviour and not on how the source is written.
 const STUBS: Record<string, string> = {
   'recorder.mjs': `export const calls = [];
-export const state = { denied: false, session: null, data: [], total: 0, sort: '-createdAt', search: '' };`,
+export const state = { denied: false, session: null, data: [], total: 0, sort: '-createdAt', search: '', permissions: ['document.read'] };`,
   'react.mjs': `${REACT_ELEMENT_STUB}
 export const Suspense = ({ children }) => children;
 export const cache = (fn) => fn;
@@ -56,7 +56,12 @@ export const useTRPC = () => trpc;
 export const HydrateClient = ({ children }) => children;
 export const prefetch = (options) => { calls.push(['prefetch', options]); };
 // A query resolves to state.data; null stands for an id that matches no row.
-export const getQueryClient = () => ({ fetchQuery: async (options) => { calls.push(['fetch', options]); return state.data; } });`,
+export const getQueryClient = () => ({
+  fetchQuery: async (options) => { calls.push(['fetch', options]); return state.data; },
+  prefetchQuery: async (options) => { calls.push(['awaited-prefetch', options]); },
+  // The permissions of the caller, which the layout fetched for the request: state.permissions answers.
+  ensureQueryData: async () => state.permissions,
+});`,
   'react-query.mjs': `import { calls, state } from './recorder.mjs';
 export const useSuspenseQuery = (options) => { calls.push(['read', options]); return { data: state.data }; };
 export const useSuspenseQueries = ({ queries }) => queries.map((options) => {
@@ -75,8 +80,10 @@ export const useUserListParams = () => ({
 });
 export const usePageParams = () => ({ page: 1, pageSize: 10, setPage: write('setPage'), setPageSize: write('setPageSize') });`,
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
-  'permissions.mjs': `export const statement = { user: ['list'] };
-export const roleDefinitions = { admin: { user: ['list'] }, user: {} };`,
+  'permissions.mjs': `export const ADMIN_ROLE = 'admin';
+export const PERMISSIONS = ['user.list'];
+export const ADMIN_PERMISSIONS = ['user.list'];`,
+  'role-permissions.mjs': 'export const listRoleMatrix = async () => [];',
   'clients.mjs': `export const UsersClient = () => null;
 export const UserClient = () => null;
 export const DocumentsClient = () => null;`,
@@ -91,6 +98,7 @@ const SHARED_IMPORTS: Record<string, string> = {
   '@/trpc/providers': './trpc.mjs',
   '@repo/ui/lib/form': './form.mjs',
   '@repo/auth/permissions': './permissions.mjs',
+  '@repo/auth/role-permissions': './role-permissions.mjs',
   zod: './zod.mjs',
   './users.client': './clients.mjs',
   './user.client': './clients.mjs',
@@ -103,7 +111,7 @@ const SHARED_IMPORTS: Record<string, string> = {
 
 interface Recorder {
   calls: unknown[];
-  state: { denied: boolean; session: unknown; data: unknown; total: number; sort: string; search: string };
+  state: { denied: boolean; session: unknown; data: unknown; total: number; sort: string; search: string; permissions: string[] };
 }
 
 type Component = (props?: unknown) => unknown;
@@ -235,6 +243,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     recorder.state.session = null;
     recorder.state.data = [];
     recorder.state.total = 0;
+    recorder.state.permissions = ['document.read'];
     recorder.state.sort = '-createdAt';
     recorder.state.search = '';
   });
@@ -292,6 +301,14 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
       ['prefetch', { path: 'documents.list', input: { page: 3, pageSize: 50 } }],
       ['prefetch', { path: 'documents.count' }],
     ]);
+  });
+
+  test('a role without document.read gets the no-access message and the page starts no query', async () => {
+    recorder.state.permissions = [];
+    const route = await load(`${APP}/page.tsx`);
+    const tree = await route.default?.({ searchParams: Promise.resolve({}) });
+    expect(recorder.calls).toEqual(['requireSession']);
+    expect([...descendants(tree)].map((element) => element.type)).toEqual(['div', 'h1', 'p']);
   });
 
   test('a hostile URL prefetches the first page, in the default order, with no search', async () => {
@@ -446,14 +463,16 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
   });
 
   describe('every session lookup goes through the cached guards', () => {
-    test('the dashboard layout requires a session', async () => {
+    test('the dashboard layout requires a session, then awaits the permissions of the caller for the browser', async () => {
       recorder.state.session = { user: { role: 'admin' } };
       const layout = await load(`${APP}/layout.tsx`);
       await layout.default?.({ children: 'body' });
-      expect(recorder.calls).toEqual(['requireSession']);
+      expect(recorder.calls).toEqual(['requireSession', ['awaited-prefetch', { path: 'permissions.mine', input: undefined }]]);
 
+      recorder.calls.length = 0;
       recorder.state.denied = true;
       await expect(layout.default?.({ children: 'body' })).rejects.toThrow('denied by requireSession');
+      expect(recorder.calls).toEqual(['requireSession']);
     });
 
     test('the admin layout and the roles page require an admin', async () => {
