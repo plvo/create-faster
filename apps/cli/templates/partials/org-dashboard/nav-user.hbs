@@ -11,7 +11,7 @@ import { Link, useRouter } from '@tanstack/react-router';
 
 {{/if}}
 {{#unless (eq icons "hugeicons")}}
-import { ChevronsUpDown, LogOut, Moon, Sun, UserIcon } from 'lucide-react';
+import { ChevronsUpDown, LogOut, Monitor, Moon, Sun, UserIcon } from 'lucide-react';
 {{/unless}}
 import { useTheme } from 'next-themes';
 {{#unless (eq stackName "tanstack-start")}}
@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 {{/unless}}
 {{#if (eq icons "hugeicons")}}
-import { ArrowUpDownIcon, Logout01Icon, Moon02Icon, Sun03Icon, UserIcon } from '@hugeicons/core-free-icons';
+import { ArrowUpDownIcon, ComputerIcon, Logout01Icon, Moon02Icon, Sun03Icon, UserIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 {{/if}}
 {{#if (eq avatar "image")}}
@@ -32,6 +32,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@repo/ui/components/ui/dropdown-menu';
@@ -39,6 +41,15 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@re
 import type { Session } from '@repo/auth/types';
 import { authClient } from '@repo/auth/auth-client';
 import { useMenuConfirmation } from '@/hooks/use-menu-confirmation';
+
+const THEME_CHOICES = [
+  { value: 'light', label: 'Light', icon: {{#if (eq icons "hugeicons")}}Sun03Icon{{else}}Sun{{/if}} },
+  { value: 'dark', label: 'Dark', icon: {{#if (eq icons "hugeicons")}}Moon02Icon{{else}}Moon{{/if}} },
+  { value: 'system', label: 'System', icon: {{#if (eq icons "hugeicons")}}ComputerIcon{{else}}Monitor{{/if}} },
+];
+
+// A Radix item closes the menu on select unless the handler prevents the default.
+const keepMenuOpen = (event: Event) => event.preventDefault();
 
 function UserAvatar({ user }: { user: Session['user'] }) {
   const initials = user.name
@@ -69,7 +80,7 @@ function UserAvatar({ user }: { user: Session['user'] }) {
 export function NavUser({ session }: { session: Session }) {
   const logoutConfirmation = useMenuConfirmation<HTMLDivElement, HTMLButtonElement>();
   const { isMobile } = useSidebar();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 {{#if (eq stackName "tanstack-start")}}
   const queryClient = useQueryClient();
@@ -87,10 +98,6 @@ export function NavUser({ session }: { session: Session }) {
     router.push('/login');
   };
 {{/if}}
-
-  const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  };
 
   return (
     <SidebarMenu>
@@ -150,15 +157,21 @@ export function NavUser({ session }: { session: Session }) {
                   Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={toggleTheme}>
-{{#if (eq icons "hugeicons")}}
-                <HugeiconsIcon icon={resolvedTheme === 'dark' ? Sun03Icon : Moon02Icon} />
-{{else}}
-                {resolvedTheme === 'dark' ? <Sun /> : <Moon />}
-{{/if}}
-                {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
-              </DropdownMenuItem>
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className='text-xs font-normal text-muted-foreground'>Theme</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+              {THEME_CHOICES.map(({ value, label, icon{{#unless (eq icons "hugeicons")}}: Icon{{/unless}} }) => (
+                <DropdownMenuRadioItem key={value} value={value} onSelect={keepMenuOpen}>
+{{#if (eq icons "hugeicons")}}
+                  <HugeiconsIcon icon={icon} />
+{{else}}
+                  <Icon />
+{{/if}}
+                  {label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             {logoutConfirmation.confirming ? (
               <div className='space-y-1 p-1'>

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -55,6 +55,7 @@ export const ChevronsUpDown = icon('ChevronsUpDown');
 export const LogOut = icon('LogOut');
 export const Moon = icon('Moon');
 export const Sun = icon('Sun');
+export const Monitor = icon('Monitor');
 export const UserIcon = icon('UserIcon');
 export const LayoutDashboard = icon('LayoutDashboard');
 export const Users = icon('Users');
@@ -65,8 +66,13 @@ export const ArrowUpDownIcon = 'ArrowUpDownIcon';
 export const Logout01Icon = 'Logout01Icon';
 export const Moon02Icon = 'Moon02Icon';
 export const Sun03Icon = 'Sun03Icon';
+export const ComputerIcon = 'ComputerIcon';
 export const HugeiconsIcon = ({ icon: name }) => createElement('svg', { 'aria-hidden': 'true', 'data-icon': String(name) });`,
-  'themes.mjs': `export const useTheme = () => ({ theme: globalThis.__theme, resolvedTheme: globalThis.__theme, setTheme() {} });`,
+  'themes.mjs': `export const useTheme = () => ({
+  theme: globalThis.__chosenTheme ?? globalThis.__theme,
+  resolvedTheme: globalThis.__theme,
+  setTheme: (value) => { (globalThis.__themeChanges ??= []).push(value); },
+});`,
   'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
 export const usePathname = () => globalThis.__pathname ?? '/';
 export const useSearchParams = () => new URLSearchParams(globalThis.__search ?? '');
@@ -158,14 +164,28 @@ const SIBLING_COMPONENTS = {
 };
 
 const MODULES: Record<string, string> = {
-  'dropdown-menu.mjs': `import { Box, Rule, MenuItem } from './ui.mjs';
+  'dropdown-menu.mjs': `import { createElement } from './react.mjs';
+import { Box, Rule, MenuItem } from './ui.mjs';
 export const DropdownMenu = Box;
 export const DropdownMenuTrigger = ({ asChild, children, ...props }) => (asChild ? children[0] : Box({ children, ...props }));
 export const DropdownMenuContent = Box;
 export const DropdownMenuGroup = Box;
 export const DropdownMenuLabel = Box;
 export const DropdownMenuSeparator = Rule;
-export const DropdownMenuItem = MenuItem;`,
+export const DropdownMenuItem = MenuItem;
+export const DropdownMenuRadioGroup = ({ children, value, onValueChange, ...props }) =>
+  createElement('div', { role: 'group', ...props }, ...children.flat(Infinity).map((item) => ({
+    ...item,
+    props: { ...item.props, checked: item.props.value === value, onValueChange },
+  })));
+// Radix runs the item's own onSelect, then reports its value to the group whether or not the default was prevented.
+export const DropdownMenuRadioItem = ({ children, onSelect, onValueChange, checked, ...props }) =>
+  createElement('div', {
+    role: 'menuitemradio',
+    'aria-checked': checked,
+    ...props,
+    onSelect: (event) => { onSelect?.(event); onValueChange?.(props.value); },
+  }, ...children);`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 import { Box, Section, Heading, List, Item, Button, useSidebar } from './ui.mjs';
 export { useSidebar };
@@ -204,6 +224,8 @@ const fakeEvent = (): FakeEvent => {
 const globals = globalThis as {
   __serverRender?: boolean;
   __theme?: string;
+  __chosenTheme?: string;
+  __themeChanges?: string[];
   __search?: string;
   __pathname?: string;
   __requestHeaders?: Record<string, string>;
@@ -352,6 +374,67 @@ describe('dashboard shell', () => {
       const closed = await render(NavUser, { session });
       expect(menuOf(closed).props.open).toBe(false);
       expect(treeText(closed)).not.toContain('Are you sure?');
+    });
+
+    describe('theme choices', () => {
+      const THEMES = ['Light', 'Dark', 'System'];
+      const radios = (tree: RenderedChild[]): RenderedElement[] =>
+        elementsOf(tree).filter((element) => element.props.role === 'menuitemradio');
+      const menu = async (chosen: string | undefined, resolved = 'dark'): Promise<RenderedChild[]> => {
+        globals.__theme = resolved;
+        globals.__chosenTheme = chosen;
+        react.resetState();
+        return render(NavUser, { session });
+      };
+
+      beforeEach(() => {
+        globals.__themeChanges = [];
+      });
+      afterAll(() => {
+        globals.__theme = undefined;
+        globals.__chosenTheme = undefined;
+        globals.__themeChanges = undefined;
+      });
+
+      test('Light, Dark and System are menu items of one radio group', async () => {
+        const tree = await menu('light', 'light');
+        expect(radios(tree).map(textOf)).toEqual(THEMES);
+        const group = must(
+          elementsOf(tree).find((element) => element.props.role === 'group'),
+          'the theme group',
+        );
+        expect(radios(group.children)).toHaveLength(3);
+      });
+
+      test.each(THEMES)('selecting %s applies it and keeps the menu open', async (name) => {
+        const item = must(radios(await menu('light', 'light')).find((element) => textOf(element) === name), name);
+        const event = select(item, name);
+        expect(event.defaultPrevented, 'a Radix item closes the menu on select unless the handler prevents it').toBe(true);
+        expect(globals.__themeChanges).toEqual([name.toLowerCase()]);
+      });
+
+      test('System is marked when it is the theme, not the theme it resolves to', async () => {
+        const marked = async (chosen: string, resolved: string): Promise<string[]> =>
+          radios(await menu(chosen, resolved))
+            .filter((element) => element.props['aria-checked'] === true)
+            .map(textOf);
+        expect(await marked('system', 'dark')).toEqual(['System']);
+        expect(await marked('system', 'light')).toEqual(['System']);
+        expect(await marked('dark', 'dark')).toEqual(['Dark']);
+        expect(await marked('light', 'dark')).toEqual(['Light']);
+      });
+
+      test('Profile still navigates and closes the menu', async () => {
+        const profile = must(itemNamed(await menu('dark'), 'Profile'), 'the Profile item');
+        expect(profile.tag).toBe('a');
+        expect(profile.props.href).toBe('/profile/account');
+        const onSelect = profile.props.onSelect as ((event: FakeEvent) => void) | undefined;
+        if (onSelect) {
+          const event = fakeEvent();
+          onSelect(event);
+          expect(event.defaultPrevented).toBe(false);
+        }
+      });
     });
   });
 
