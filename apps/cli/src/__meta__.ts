@@ -1915,7 +1915,7 @@ export const META: Meta = {
       firstRun: [
         {
           description:
-            'Set up the local database, write the default roles and seed demo data (this deletes the local D1 state, sign-ups included)',
+            'Set up the local database, write the default roles (the `db:roles` script, idempotent) and seed demo data (this deletes the local D1 state, sign-ups included)',
           commands: [{ script: 'local-setup' }],
         },
       ],
