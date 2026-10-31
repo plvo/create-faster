@@ -17,10 +17,11 @@ const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_SETUP = 240_000;
 const TIMEOUT_SERVER = 120_000;
 
-const SEED_PASSWORD = 'password';
+const PASSWORD = 'e2e-password-0123';
 const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 const ACCOUNT_PAGE = '/profile/account';
-const LINK_LINE = /\[change-email\] (\S+) → (\S+)/g;
+const CALLBACK = '/profile/account?emailChange=confirmed';
+const LOGGED_LINK = /\[(change-email|email-changed)\] (\S+) → (\S+)/g;
 
 const describeFailure = (result: CommandResult): string => `${result.stdout}\n${result.stderr}`;
 
@@ -38,53 +39,70 @@ function expiredChangeToken(email: string, updateTo: string): string {
   return `${unsigned}.${createHmac('sha256', AUTH_SECRET).update(unsigned).digest('base64url')}`;
 }
 
+interface Account {
+  email: string;
+  cookie: string;
+}
+
+// Each test signs up the accounts it needs, so it runs alone as well as in the file.
 describe('cloudflare-fullstack-nextjs email change e2e', () => {
   let projectDir: string;
   let server: RunningServer;
-  let clientCount = 0;
+  let requests = 0;
+  let accounts = 0;
 
   const post = (path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', origin: server.url, 'x-forwarded-for': `10.4.4.${++clientCount}`, ...headers },
+      headers: { 'content-type': 'application/json', origin: server.url, 'x-forwarded-for': `10.4.4.${++requests % 250}`, ...headers },
       body: JSON.stringify(body),
     });
 
-  const signIn = async (email: string, password = SEED_PASSWORD): Promise<string> => {
-    const response = await post('/api/auth/sign-in/email', { email, password });
+  const newAccount = async (): Promise<Account> => {
+    const email = `account-${++accounts}-${Date.now()}@example.com`;
+    const response = await post('/api/auth/sign-up/email', { email, password: PASSWORD, name: 'Account' });
     expect(response.status, await response.clone().text()).toBe(200);
-    return cookieHeaderOf(response);
+    return { email, cookie: cookieHeaderOf(response) };
   };
+
+  const signIn = (email: string) => post('/api/auth/sign-in/email', { email, password: PASSWORD });
 
   const sessionUser = async (cookie: string): Promise<{ email: string; emailVerified: boolean }> => {
     const response = await fetch(new URL('/api/auth/get-session', server.url), { headers: { cookie } });
     return ((await response.json()) as { user: { email: string; emailVerified: boolean } }).user;
   };
 
-  const requestChange = (cookie: string, newEmail: string): Promise<Response> =>
-    post('/api/auth/change-email', { newEmail, callbackURL: '/profile/account?emailChange=confirmed' }, { cookie });
+  const requestChange = (cookie: string, newEmail: string, currentPassword: string | null = PASSWORD): Promise<Response> =>
+    post('/api/auth/change-email', { newEmail, currentPassword, callbackURL: CALLBACK }, { cookie });
 
-  const deliveredLinks = (): { to: string; link: string }[] =>
-    [...server.output().stdout.matchAll(LINK_LINE)].map(([, to = '', link = '']) => ({ to, link }));
+  const logged = (kind: string): { to: string; link: string }[] =>
+    [...server.output().stdout.matchAll(LOGGED_LINK)]
+      .filter((match) => match[1] === kind)
+      .map(([, , to = '', link = '']) => ({ to, link }));
 
-  const linkSentTo = async (address: string): Promise<string> => {
+  const waitFor = async <T>(find: () => T | undefined, what: string): Promise<T> => {
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
-      const delivered = deliveredLinks().find((entry) => entry.to === address);
-      if (delivered) return delivered.link;
+      const found = find();
+      if (found !== undefined) return found;
       await Bun.sleep(200);
     }
-    throw new Error(`No [change-email] link logged for ${address}\n${server.output().stdout}`);
+    throw new Error(`Never logged: ${what}\n${server.output().stdout}`);
   };
 
-  const openLink = async (link: string, cookie?: string): Promise<URL> => {
-    const response = await fetch(link, { redirect: 'manual', headers: cookie ? { cookie } : {} });
-    expect(response.status, await response.clone().text()).toBe(302);
+  const linkSentTo = (address: string): Promise<string> =>
+    waitFor(() => logged('change-email').find((entry) => entry.to === address)?.link, `a change-email link for ${address}`);
+
+  const openLink = async (link: string, cookie?: string): Promise<Response> =>
+    fetch(link, { redirect: 'manual', headers: cookie ? { cookie } : {} });
+
+  const landingOf = (response: Response): URL => {
+    expect(response.status, response.headers.get('location') ?? '').toBe(302);
     return new URL(response.headers.get('location') ?? '', server.url);
   };
 
-  const pageAt = async (landing: URL, cookie: string): Promise<string> => {
-    const response = await fetch(new URL(`${landing.pathname}${landing.search}`, server.url), { headers: { cookie } });
+  const pageAt = async (path: string, cookie: string): Promise<string> => {
+    const response = await fetch(new URL(path, server.url), { headers: { cookie } });
     expect(response.status).toBe(200);
     return response.text();
   };
@@ -117,126 +135,173 @@ describe('cloudflare-fullstack-nextjs email change e2e', () => {
   test(
     'the address changes only after the link sent to the new address is opened, and the profile and user menu follow',
     async () => {
-      const cookie = await signIn('user@example.com');
-      const before = await sessionUser(cookie);
-      expect(before.email).toBe('user@example.com');
+      const { email, cookie } = await newAccount();
+      const newEmail = `moved-${accounts}.Address@Example.com`;
 
-      const requested = await requestChange(cookie, 'New.Address@Example.com');
+      const requested = await requestChange(cookie, newEmail);
       expect([requested.status, await requested.json()]).toEqual([200, { status: true }]);
 
-      const link = await linkSentTo('new.address@example.com');
+      const link = await linkSentTo(newEmail.toLowerCase());
       expect(link).toContain('/api/auth/verify-email?token=');
+      expect((await sessionUser(cookie)).email).toBe(email);
+      expect((await signIn(newEmail)).status).toBe(401);
 
-      expect((await sessionUser(cookie)).email).toBe('user@example.com');
-      expect((await post('/api/auth/sign-in/email', { email: 'new.address@example.com', password: SEED_PASSWORD })).status).toBe(401);
-
-      const landing = await openLink(link, cookie);
+      const landing = landingOf(await openLink(link, cookie));
       expect([landing.pathname, landing.searchParams.get('emailChange'), landing.searchParams.get('error')]).toEqual([
         ACCOUNT_PAGE,
         'confirmed',
         null,
       ]);
+      expect(await sessionUser(cookie)).toMatchObject({ email: newEmail.toLowerCase(), emailVerified: true });
+      expect((await signIn(email)).status).toBe(401);
+      expect((await signIn(newEmail)).status).toBe(200);
 
-      expect(await sessionUser(cookie)).toMatchObject({ email: 'new.address@example.com', emailVerified: true });
-      expect((await post('/api/auth/sign-in/email', { email: 'user@example.com', password: SEED_PASSWORD })).status).toBe(401);
-      await signIn('new.address@example.com');
+      const page = await pageAt(`${landing.pathname}${landing.search}`, cookie);
+      const escaped = newEmail.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(page).toContain(`Your email address is now ${newEmail.toLowerCase()}.`);
+      expect(page).toMatch(new RegExp(`<dt[^>]*>Email</dt><dd[^>]*>${escaped}</dd>`));
+      expect(page).toMatch(new RegExp(`data-sidebar="footer"[\\s\\S]*?<span class="truncate text-xs">${escaped}</span>`));
+      expect(page).not.toContain(email);
 
-      // Every dashboard page carries the user menu, which reads the email from the same session as the profile.
-      const page = await pageAt(landing, cookie);
-      expect(page).toContain('Your email address is now new.address@example.com.');
-      expect(page.match(/new\.address@example\.com/g)?.length).toBeGreaterThanOrEqual(3);
-      expect(page).not.toContain('user@example.com');
+      const notice = await waitFor(() => logged('email-changed').find((entry) => entry.to === email), `a notice to ${email}`);
+      expect(notice.link).toStartWith(server.url);
     },
     TIMEOUT_SERVER,
   );
 
-  // better-auth signs in whoever opens the link when the browser has no session. An address typed with a typo
-  // would then hand the account to the owner of that address, so the link works in a signed-in browser only.
-  test('a link opened without a session changes nothing and signs nobody in, and still works once signed in', async () => {
-    const cookie = await signIn('new.address@example.com');
-    expect((await requestChange(cookie, 'second.address@example.com')).status).toBe(200);
-    const link = await linkSentTo('second.address@example.com');
+  test('the current password is required, and a wrong one answers the same for a taken and a free address', async () => {
+    const { cookie } = await newAccount();
+    const taken = await newAccount();
+    const linksBefore = logged('change-email').length;
 
-    const anonymous = await fetch(link, { redirect: 'manual' });
-    const landing = new URL(anonymous.headers.get('location') ?? '', server.url);
-    expect([anonymous.status, landing.pathname, landing.searchParams.get('error')]).toEqual([302, ACCOUNT_PAGE, 'SIGN_IN_REQUIRED']);
-    expect(anonymous.headers.getSetCookie()).toEqual([]);
-    expect((await sessionUser(cookie)).email).toBe('new.address@example.com');
+    const outcomes: [number, unknown][] = [];
+    for (const target of [`free-${accounts}@example.com`, taken.email]) {
+      for (const password of ['wrong-password', '', null]) {
+        const response = await requestChange(cookie, target, password);
+        outcomes.push([response.status, await response.json()]);
+      }
+    }
+    expect(outcomes.every(([status]) => status === 400)).toBe(true);
+    expect(new Set(outcomes.map((outcome) => JSON.stringify(outcome))).size).toBe(1);
 
-    const signedIn = await openLink(link, cookie);
-    expect(signedIn.searchParams.get('error')).toBeNull();
-    expect((await sessionUser(cookie)).email).toBe('second.address@example.com');
+    await Bun.sleep(500);
+    expect(logged('change-email')).toHaveLength(linksBefore);
   });
 
   test('a taken address and a free one get the same answer, and nothing is sent for the taken one', async () => {
-    const cookie = await signIn('manager@example.com');
-    const linksBefore = deliveredLinks().length;
+    const { cookie, email } = await newAccount();
+    const taken = await newAccount();
+    const free = `free-${accounts}@example.com`;
+    const linksBefore = logged('change-email').length;
 
-    const taken = await requestChange(cookie, 'admin@example.com');
-    const free = await requestChange(cookie, 'manager.free@example.com');
-    expect([taken.status, await taken.json()]).toEqual([free.status, await free.json()]);
+    const takenAnswer = await requestChange(cookie, taken.email);
+    const freeAnswer = await requestChange(cookie, free);
+    expect([takenAnswer.status, await takenAnswer.json()]).toEqual([freeAnswer.status, await freeAnswer.json()]);
 
-    await linkSentTo('manager.free@example.com');
+    await linkSentTo(free);
     await Bun.sleep(500);
-    expect(deliveredLinks().slice(linksBefore).map((entry) => entry.to)).toEqual(['manager.free@example.com']);
-    expect((await sessionUser(cookie)).email).toBe('manager@example.com');
+    expect(logged('change-email').slice(linksBefore).map((entry) => entry.to)).toEqual([free]);
+    expect((await sessionUser(cookie)).email).toBe(email);
   });
 
-  test('an invalid or unchanged address is refused', async () => {
-    const cookie = await signIn('manager@example.com');
-    const linksBefore = deliveredLinks().length;
+  test('an invalid or unchanged address is refused, and so is a request without a session', async () => {
+    const { cookie, email } = await newAccount();
+    const linksBefore = logged('change-email').length;
 
-    const invalid = await requestChange(cookie, 'not-an-email');
-    expect(invalid.status).toBe(400);
-
-    const unchanged = await requestChange(cookie, 'Manager@Example.com');
+    expect((await requestChange(cookie, 'not-an-email')).status).toBe(400);
+    const unchanged = await requestChange(cookie, email.toUpperCase());
     expect(unchanged.status).toBe(400);
     expect(await unchanged.json()).toMatchObject({ message: 'Email is the same' });
+    expect((await requestChange('', 'anonymous@example.com')).status).toBe(401);
 
-    expect(deliveredLinks()).toHaveLength(linksBefore);
+    await Bun.sleep(500);
+    expect(logged('change-email')).toHaveLength(linksBefore);
   });
 
-  test('without a session the request is refused', async () => {
-    const response = await requestChange('', 'anonymous@example.com');
-    expect(response.status).toBe(401);
-  });
+  test('an invalid or expired link lands on the account page with its error and changes nothing', async () => {
+    const { cookie, email } = await newAccount();
 
-  test('an invalid, expired, reused or foreign link redirects to the account page with its error and changes nothing', async () => {
-    const cookie = await signIn('admin@example.com');
-
-    const tampered = await openLink(`${server.url}/api/auth/verify-email?token=not-a-token&callbackURL=${encodeURIComponent('/profile/account?emailChange=confirmed')}`, cookie);
+    const tampered = landingOf(await openLink(`${server.url}/api/auth/verify-email?token=not-a-token&callbackURL=${encodeURIComponent(CALLBACK)}`, cookie));
     expect([tampered.pathname, tampered.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'INVALID_TOKEN']);
-    expect(await pageAt(tampered, cookie)).toContain('This confirmation link is invalid.');
+    expect(await pageAt(`${tampered.pathname}${tampered.search}`, cookie)).toContain('This confirmation link is invalid.');
 
-    const expired = await openLink(
-      `${server.url}/api/auth/verify-email?token=${expiredChangeToken('admin@example.com', 'admin.expired@example.com')}&callbackURL=${encodeURIComponent('/profile/account?emailChange=confirmed')}`,
-      cookie,
-    );
+    const expiredToken = expiredChangeToken(email, `expired-${accounts}@example.com`);
+    const expired = landingOf(await openLink(`${server.url}/api/auth/verify-email?token=${expiredToken}&callbackURL=${encodeURIComponent(CALLBACK)}`, cookie));
     expect([expired.pathname, expired.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'TOKEN_EXPIRED']);
-    const expiredPage = await pageAt(expired, cookie);
+    const expiredPage = await pageAt(`${expired.pathname}${expired.search}`, cookie);
     expect(expiredPage).toContain('This confirmation link has expired.');
     expect(expiredPage).not.toContain('Your email address is now');
 
-    const memberCookie = await signIn('manager@example.com');
-    const link = await linkSentTo('manager.free@example.com');
-    const foreign = await openLink(link, cookie);
-    expect([foreign.pathname, foreign.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'INVALID_USER']);
-    expect((await sessionUser(memberCookie)).email).toBe('manager@example.com');
-    expect((await sessionUser(cookie)).email).toBe('admin@example.com');
+    expect((await sessionUser(cookie)).email).toBe(email);
+  });
 
-    expect((await openLink(link, memberCookie)).searchParams.get('error')).toBeNull();
-    const reused = await openLink(link, memberCookie);
+  test('a reused link, or one opened by another account, lands with its error and changes nothing more', async () => {
+    const owner = await newAccount();
+    const other = await newAccount();
+    const target = `reused-${accounts}@example.com`;
+    expect((await requestChange(owner.cookie, target)).status).toBe(200);
+    const link = await linkSentTo(target);
+
+    const foreign = landingOf(await openLink(link, other.cookie));
+    expect([foreign.pathname, foreign.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'INVALID_USER']);
+    expect((await sessionUser(owner.cookie)).email).toBe(owner.email);
+
+    expect(landingOf(await openLink(link, owner.cookie)).searchParams.get('error')).toBeNull();
+    const reused = landingOf(await openLink(link, owner.cookie));
     expect([reused.pathname, reused.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'USER_NOT_FOUND']);
-    expect((await sessionUser(memberCookie)).email).toBe('manager.free@example.com');
+    expect((await sessionUser(owner.cookie)).email).toBe(target);
+  });
+
+  test('a link whose address was taken in the meantime lands with an error, not a server failure', async () => {
+    const owner = await newAccount();
+    const target = `wanted-${accounts}@example.com`;
+    expect((await requestChange(owner.cookie, target)).status).toBe(200);
+    const link = await linkSentTo(target);
+
+    const rival = await post('/api/auth/sign-up/email', { email: target, password: PASSWORD, name: 'Rival' });
+    expect(rival.status).toBe(200);
+
+    const landing = landingOf(await openLink(link, owner.cookie));
+    expect([landing.pathname, landing.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'EMAIL_TAKEN']);
+    expect(await pageAt(`${landing.pathname}${landing.search}`, owner.cookie)).toContain('can no longer be used');
+    expect((await sessionUser(owner.cookie)).email).toBe(owner.email);
+  });
+
+  test('a link opened without a session changes nothing and signs nobody in, and still works once signed in', async () => {
+    const owner = await newAccount();
+    const target = `second-${accounts}@example.com`;
+    expect((await requestChange(owner.cookie, target)).status).toBe(200);
+    const link = await linkSentTo(target);
+
+    const anonymous = await openLink(link);
+    const landing = landingOf(anonymous);
+    expect([landing.pathname, landing.searchParams.get('error')]).toEqual([ACCOUNT_PAGE, 'SIGN_IN_REQUIRED']);
+    expect(anonymous.headers.getSetCookie()).toEqual([]);
+    expect((await sessionUser(owner.cookie)).email).toBe(owner.email);
+
+    expect(landingOf(await openLink(link, owner.cookie)).searchParams.get('error')).toBeNull();
+    expect((await sessionUser(owner.cookie)).email).toBe(target);
+  });
+
+  test('a callback that leaves the site is refused with a 4xx on the verification route, never redirected to', async () => {
+    for (const callback of ['/\t/evil.example', '/\n/evil.example', '//evil.example', '/\\evil.example', 'https://evil.example/']) {
+      const url = `${server.url}/api/auth/verify-email?token=x&callbackURL=${encodeURIComponent(callback)}`;
+      const response = await openLink(url);
+      expect([JSON.stringify(callback), response.status >= 400 && response.status < 500, response.headers.get('location')]).toEqual([
+        JSON.stringify(callback),
+        true,
+        null,
+      ]);
+    }
   });
 
   test('the public verification route is closed, and the server logs no error', async () => {
-    const cookie = await signIn('admin@example.com');
-    const resend = await post('/api/auth/send-verification-email', { email: 'admin@example.com' }, { cookie });
+    const { cookie, email } = await newAccount();
+    const resend = await post('/api/auth/send-verification-email', { email }, { cookie });
     expect(resend.status).toBe(404);
 
     await Bun.sleep(1_000);
-    const { stdout, stderr } = await server.stop();
+    const { stdout, stderr } = server.output();
     expect(`${stdout}\n${stderr}`).not.toMatch(/⨯|\[Error|ERROR/);
   });
 });
