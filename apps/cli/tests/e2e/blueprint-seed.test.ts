@@ -11,7 +11,12 @@ import {
   runCommand,
   startServer,
 } from './helpers';
-import { cookieHeaderOf, expectSessionCookieKeptOn } from './set-cookie';
+import {
+  cookieHeaderOf,
+  expectSessionCookieAttributes,
+  expectSessionCookieKeptOn,
+  expectSessionCookieSecureMatchesScheme,
+} from './set-cookie';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_SETUP = 240_000;
@@ -361,15 +366,22 @@ describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-ne
     }
   });
 
-  // The factory passes better-auth a dynamic `baseURL` with `protocol: 'auto'`. With a dynamic baseURL better-auth
-  // decides the `__Secure-` prefix and the `Secure` attribute from NODE_ENV, not from the scheme of the request, so
-  // the production build answers `__Secure-better-auth.session_token; Secure` on plain http, which a browser that
-  // does not treat the host as secure drops (Safari does so on localhost). `test.failing` passes while the body
-  // fails: once the cookie follows the scheme the body passes, this test FAILS, and the marker comes off.
-  test.failing('the sign-in cookies are the ones a browser keeps on the origin the production server answers from', async () => {
-    const response = await post(server, '/api/auth/sign-in/email', { email: 'owner@example.com', password: SEED_PASSWORD }, { 'x-forwarded-for': '10.1.0.8' });
-    expect(response.status, await response.clone().text()).toBe(200);
-    expectSessionCookieKeptOn(response, server.url);
+  let ownerSignIn: Response;
+
+  test('the sign-in cookies are httpOnly, same-site and last past the browser session', async () => {
+    ownerSignIn = await post(server, '/api/auth/sign-in/email', { email: 'owner@example.com', password: SEED_PASSWORD }, { 'x-forwarded-for': '10.1.0.8' });
+    expect(ownerSignIn.status, await ownerSignIn.clone().text()).toBe(200);
+    expectSessionCookieAttributes(ownerSignIn);
+  });
+
+  // https://github.com/plvo/create-faster/issues/459: the factory passes better-auth a dynamic `baseURL` with
+  // `protocol: 'auto'`, and better-auth then decides the `__Secure-` prefix and the `Secure` attribute from NODE_ENV,
+  // not from the scheme of the request. The production build answers `__Secure-better-auth.session_token; Secure` on
+  // plain http, which a browser that does not treat the host as secure drops (Safari does so on localhost).
+  // The sign-in and its status are the test above, so only the scheme assertion sits here. `test.failing` passes
+  // while the body fails: once #459 is fixed the body passes, this test FAILS, and the marker comes off.
+  test.failing('the sign-in cookies are Secure only on https', () => {
+    expectSessionCookieSecureMatchesScheme(ownerSignIn, server.url);
   });
 
   test('a signed-in user is redirected away from signup while an invitee can still accept an invitation', async () => {
