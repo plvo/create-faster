@@ -9,6 +9,7 @@ import { Link, useRouter } from '@tanstack/react-router';
 {{else}}
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 {{/if}}
 {{#unless (eq icons "hugeicons")}}
 import { ChevronsUpDown, LogOut, Monitor, Moon, Sun, UserIcon } from 'lucide-react';
@@ -78,26 +79,24 @@ function UserAvatar({ user }: { user: Session['user'] }) {
 }
 
 export function NavUser({ session }: { session: Session }) {
-  const logoutConfirmation = useMenuConfirmation<HTMLDivElement, HTMLButtonElement>();
+  const { actionRef, cancelRef, ...logoutConfirmation } = useMenuConfirmation<HTMLDivElement, HTMLButtonElement>();
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-{{#if (eq stackName "tanstack-start")}}
   const queryClient = useQueryClient();
 
-  // The cache is cleared once the login page replaced the dashboard, so no mounted query refetches without a session.
+  // The query cache lives as long as the tab and holds what the account saw (its permissions, its records), so it is
+  // emptied on the way out: the next account would first render the previous one's otherwise. On Start it is cleared
+  // once the login page replaced the dashboard, so no mounted query refetches without a session.
   const handleLogout = async () => {
     await authClient.signOut();
+{{#if (eq stackName "tanstack-start")}}
     await router.navigate({ to: '/login' });
+{{else}}
+    router.push('/login');
+{{/if}}
     queryClient.clear();
   };
-{{else}}
-
-  const handleLogout = async () => {
-    await authClient.signOut();
-    router.push('/login');
-  };
-{{/if}}
 
   return (
     <SidebarMenu>
@@ -188,14 +187,14 @@ export function NavUser({ session }: { session: Session }) {
                     logoutConfirmation.swapItems(false);
                   }}
                 >
-                  <Button ref={logoutConfirmation.cancelRef} variant='outline' size='sm' className='w-full'>
+                  <Button ref={cancelRef} variant='outline' size='sm' className='w-full'>
                     Cancel
                   </Button>
                 </DropdownMenuItem>
               </div>
             ) : (
               <DropdownMenuItem
-                ref={logoutConfirmation.actionRef}
+                ref={actionRef}
                 onSelect={(event) => {
                   event.preventDefault();
                   logoutConfirmation.swapItems(true);

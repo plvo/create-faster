@@ -73,7 +73,7 @@ export const HugeiconsIcon = ({ icon: name }) => createElement('svg', { 'aria-hi
   resolvedTheme: globalThis.__theme,
   setTheme: (value) => { (globalThis.__themeChanges ??= []).push(value); },
 });`,
-  'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
+  'next-navigation.mjs': `export const useRouter = () => ({ push: (url) => { (globalThis.__events ??= []).push('navigate:' + url); } });
 export const usePathname = () => globalThis.__pathname ?? '/';
 export const useSearchParams = () => new URLSearchParams(globalThis.__search ?? '');
 export const notFound = () => { throw { kind: 'notFound' }; };
@@ -82,15 +82,16 @@ export const redirect = (url) => { throw { redirectTo: url }; };`,
   'next-headers.mjs': `export const headers = async () => ({ get: (name) => globalThis.__requestHeaders?.[name.toLowerCase()] ?? null });`,
   'next-server.mjs': `export const NextResponse = { next: (init) => ({ init }) };`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
-export const useRouter = () => ({ navigate: async () => {} });
+export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__events ??= []).push('navigate:' + to); } });
 export const useLocation = ({ select }) => select({ pathname: globalThis.__pathname ?? '/' });
 export const notFound = () => ({ kind: 'notFound' });
 export const Outlet = () => ({ type: 'div', props: { 'data-component': 'Outlet', children: [] } });
 export const createFileRoute = () => (options) => ({ options, useRouteContext: () => ({ session: {} }) });`,
-  'query.mjs': `export const useQueryClient = () => ({ clear() {} });`,
-  'auth-client.mjs': `export const authClient = { signOut: async () => {} };`,
+  'query.mjs': `export const useQueryClient = () => ({ clear() { (globalThis.__events ??= []).push('clear'); } });`,
+  'auth-client.mjs': `export const authClient = { signOut: async () => { (globalThis.__events ??= []).push('signOut'); } };`,
   'auth.mjs': `export const auth = { api: { getSession: async () => globalThis.__session ?? null } };
-export const getAuth = async () => auth;`,
+export const getAuth = async () => auth;
+export const getRequestSession = async () => globalThis.__session ?? null;`,
   'permission.mjs': `const DEFINITIONS = {
   admin: { user: ['list', 'create'], contact: ['create', 'read', 'update', 'delete'] },
   user: { contact: ['create', 'read', 'update', 'delete'] },
@@ -337,6 +338,16 @@ describe('dashboard shell', () => {
       const cancelled = await render(NavUser, { session });
       expect(treeText(cancelled)).not.toContain('Are you sure?');
       expect(itemNamed(cancelled, 'Logout')).toBeDefined();
+    });
+
+    // The query cache holds the permissions and records of the account that signs out. It lives as long as the tab, so
+    // the next account signing in would first render what the previous one saw unless the logout empties it.
+    test('confirming Logout signs out, goes to the login page and then empties the query cache', async () => {
+      const events: string[] = [];
+      (globalThis as { __events?: string[] }).__events = events;
+      const confirm = must(itemNamed(await askConfirmation(), 'Logout'), 'the confirm item');
+      await (confirm.props.onSelect as (event: FakeEvent) => Promise<void>)(fakeEvent());
+      expect(events).toEqual(['signOut', 'navigate:/login', 'clear']);
     });
 
     test('Cancel takes the focus the removed Logout item leaves behind', async () => {
