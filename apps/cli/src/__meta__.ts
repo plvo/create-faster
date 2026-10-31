@@ -349,7 +349,7 @@ const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the g
 
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
-const BETTER_AUTH_VERSION = '^1.7.7';
+const BETTER_AUTH_VERSION = '^1.7.14';
 
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';

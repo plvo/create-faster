@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type CommandResult, getFreePort, type RunningServer, runCommand, startServer } from './helpers';
+import { cookieHeaderOf } from './set-cookie';
 
 const SEED_PASSWORD = 'password';
 export const SEEDED_ADMIN = 'admin@example.com';
@@ -24,10 +25,7 @@ export const post = (server: RunningServer, path: string, body: unknown, headers
 export const signIn = async (server: RunningServer, email: string, clientIp: string, password = SEED_PASSWORD): Promise<string> => {
   const response = await post(server, '/api/auth/sign-in/email', { email, password }, { 'x-forwarded-for': clientIp });
   expect(response.status, await response.clone().text()).toBe(200);
-  return response.headers
-    .getSetCookie()
-    .map((entry) => entry.split(';')[0])
-    .join('; ');
+  return cookieHeaderOf(response);
 };
 
 export const redirectOf = async (server: RunningServer, path: string, cookie?: string): Promise<{ status: number; location: URL | null }> => {
