@@ -1,0 +1,33 @@
+---
+mono:
+  scope: app
+  path: src/lib/auth/email-change.ts
+---
+export const EMAIL_CHANGE_CALLBACK_URL = '/profile/account?emailChange=confirmed';
+
+export interface EmailChangeNotice {
+  tone: 'success' | 'error';
+  message: string;
+}
+
+const LINK_ERRORS: Record<string, string> = {
+  TOKEN_EXPIRED: 'This confirmation link has expired. Request a new one below.',
+  SIGN_IN_REQUIRED: 'Sign in to the account that asked for the change, then open the confirmation link again.',
+  INVALID_USER: 'This link was sent for another account. Sign in with that account and open the link again.',
+  USER_NOT_FOUND: 'This link has already been used or is no longer valid. Request a new one below.',
+};
+
+const INVALID_LINK = 'This confirmation link is invalid. Request a new one below.';
+
+/**
+ * What the account page says about the link the user just opened, from the query better-auth redirects to:
+ * `error` carries its error code, `emailChange` the marker added to EMAIL_CHANGE_CALLBACK_URL.
+ */
+export function emailChangeNotice(
+  search: { error?: string; emailChange?: string },
+  email: string,
+): EmailChangeNotice | null {
+  if (search.error) return { tone: 'error', message: LINK_ERRORS[search.error] ?? INVALID_LINK };
+  if (search.emailChange === 'confirmed') return { tone: 'success', message: `Your email address is now ${email}.` };
+  return null;
+}

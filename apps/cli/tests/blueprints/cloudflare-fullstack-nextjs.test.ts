@@ -430,15 +430,27 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(nextConfig).toContain("persist: { path: '{{#if (isMono)}}../../{{/if}}.wrangler/v3' }");
   });
 
-  test('auth config sends a reset link through the mailer seam, which logs it and warns in production', () => {
+  test('auth config sends reset and email change links through the mailer seam, which logs them and warns in production', () => {
     const auth = bpFile('src/lib/auth/auth.ts.hbs');
     expect(auth).toContain('sendResetPassword');
-    expect(auth).toContain('sendResetPasswordEmail');
+    expect(auth).toContain("deliverLink({ kind: 'reset-password'");
+    expect(auth).toContain("deliverLink({ kind: 'change-email'");
     expect(auth).not.toContain('console.');
     const email = bpFile('src/lib/auth/email.ts.hbs');
-    expect(email).toContain('export async function sendResetPasswordEmail');
-    expect(email).toContain('[reset-password] ${to} → ${url}');
+    expect(email).toContain('export async function deliverLink');
+    expect(email).toContain('[${kind}] ${to} → ${link}');
     expect(email).toContain('No mailer is configured');
+  });
+
+  test('email change sends a link to the new address: changeEmail is on, the unverified shortcut and sign-up sending are off', () => {
+    const auth = bpFile('src/lib/auth/auth.ts.hbs');
+    expect(auth).toContain('changeEmail: { enabled: true }');
+    expect(auth).toContain('sendVerificationEmail');
+    expect(auth).not.toContain('updateEmailWithoutVerification');
+    expect(auth).not.toContain('sendChangeEmailConfirmation');
+    expect(auth).not.toContain('sendOnSignUp');
+    expect(auth).not.toContain('sendOnSignIn');
+    expect(auth).toContain("disabledPaths: ['/send-verification-email']");
   });
 
   test('ships forgot-password and reset-password flows wired to authClient', () => {

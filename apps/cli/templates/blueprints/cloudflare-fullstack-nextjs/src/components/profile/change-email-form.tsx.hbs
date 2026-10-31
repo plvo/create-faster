@@ -1,0 +1,76 @@
+---
+mono:
+  scope: app
+  path: src/components/profile/change-email-form.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useAppForm } from '@repo/ui/lib/form';
+import { EMAIL_CHANGE_CALLBACK_URL } from '@/lib/auth/email-change';
+
+export function ChangeEmailForm({ email }: { email: string }) {
+  const [requested, setRequested] = useState(false);
+
+  const schema = z
+    .object({ newEmail: z.string().trim().email('Enter a valid email address') })
+    .refine((d) => d.newEmail.toLowerCase() !== email.toLowerCase(), {
+      message: 'This is already your email address',
+      path: ['newEmail'],
+    });
+
+  const form = useAppForm({
+    defaultValues: { newEmail: '' },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value, formApi }) => {
+      const result = await authClient.changeEmail({
+        newEmail: value.newEmail.trim(),
+        callbackURL: EMAIL_CHANGE_CALLBACK_URL,
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? 'Email change failed');
+        return;
+      }
+      formApi.reset();
+      setRequested(true);
+    },
+  });
+
+  return (
+    <section className='space-y-4 rounded-lg border bg-card p-6'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change email</h2>
+        <p className='text-sm text-muted-foreground'>
+          We send a confirmation link to the new address. Your email stays {email} until you open it.
+        </p>
+      </div>
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          setRequested(false);
+          form.handleSubmit();
+        }}
+        className='flex max-w-md flex-col gap-3'
+      >
+        <form.AppField name='newEmail'>
+          {(f) => <f.InputField label='New email' props={{ type: 'email', autoComplete: 'email' }} />}
+        </form.AppField>
+        <form.AppForm>
+          <form.SubmitButton>Send confirmation link</form.SubmitButton>
+        </form.AppForm>
+      </form>
+      {requested && (
+        <p role='status' className='text-sm text-muted-foreground'>
+          If that address can be used, a confirmation link has been sent to it. Your email does not change until you
+          open the link.
+        </p>
+      )}
+    </section>
+  );
+}
+{{{{/raw}}}}

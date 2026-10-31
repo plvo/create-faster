@@ -6,19 +6,35 @@ mono:
 import type { Metadata } from 'next';
 import { AccountForm } from '@/components/profile/account-form';
 import { AvatarUpload } from '@/components/profile/avatar-upload';
+import { ChangeEmailForm } from '@/components/profile/change-email-form';
+import { emailChangeNotice } from '@/lib/auth/email-change';
 import { requireSession } from '@/lib/auth/session';
 
 export const metadata: Metadata = { title: 'Account' };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; emailChange?: string }>;
+}) {
   const session = await requireSession();
+  const notice = emailChangeNotice(await searchParams, session.user.email);
 
   const { name, email, image, createdAt } = session.user;
 
   return (
     <div className='space-y-6'>
+      {notice && (
+        <p
+          role={notice.tone === 'error' ? 'alert' : 'status'}
+          className={notice.tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}
+        >
+          {notice.message}
+        </p>
+      )}
       <AvatarUpload name={name} image={image ?? null} />
       <AccountForm initialName={name} email={email} createdAt={new Date(createdAt).toISOString()} />
+      <ChangeEmailForm email={email} />
     </div>
   );
 }

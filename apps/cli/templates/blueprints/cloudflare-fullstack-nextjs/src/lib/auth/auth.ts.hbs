@@ -8,9 +8,10 @@ import { type Database, userAccountTable, userSessionTable, userTable, userVerif
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
-import { sendResetPasswordEmail } from './email';
+import { deliverLink } from './email';
 import { ac, roles } from './permissions';
 import { refuseOwnRoleChange } from './refuse-own-role-change';
+import { requireSessionForEmailLink } from './require-session-for-email-link';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
@@ -41,6 +42,7 @@ export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin) {
     plugins: [
       admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }),
       refuseOwnRoleChange,
+      requireSessionForEmailLink,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
     emailAndPassword: {
@@ -48,10 +50,17 @@ export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin) {
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        await sendResetPasswordEmail({ to: user.email, url });
+        await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
+    emailVerification: {
+      sendVerificationEmail: async ({ user, url }) => {
+        await deliverLink({ kind: 'change-email', to: user.email, link: url });
+      },
+    },
+    disabledPaths: ['/send-verification-email'],
     user: {
+      changeEmail: { enabled: true },
       modelName: 'user',
       fields: { email: 'email', emailVerified: 'emailVerified', image: 'avatarUrl', createdAt: 'createdAt', updatedAt: 'updatedAt' },
     },
