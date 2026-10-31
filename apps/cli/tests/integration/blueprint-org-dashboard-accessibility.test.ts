@@ -159,7 +159,8 @@ export const EditUser = () => null;
 export const UsersClient = () => null;
 export const UserClient = () => null;
 export const AppHeader = () => null;
-export const AppSidebar = () => null;`,
+export const AppSidebar = () => null;
+export const CommandPaletteProvider = ({ children }) => children;`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 export const SidebarProvider = ({ children }) => children;
 // SidebarInset renders the main landmark of the page, as the generated ui component does.
@@ -320,6 +321,7 @@ const COMMON_IMPORTS: Record<string, string> = {
   '@repo/ui/components/ui/table': './table.mjs',
   '@/components/navigation/app-header': './leaf.mjs',
   '@/components/navigation/app-sidebar': './leaf.mjs',
+  '@/components/navigation/command-palette': './leaf.mjs',
   '@repo/ui/lib/utils': './utils.mjs',
   '../../field': './field.mjs',
   '../../input': './input.mjs',

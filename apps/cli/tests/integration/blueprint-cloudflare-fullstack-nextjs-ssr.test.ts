@@ -447,6 +447,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
 
   describe('every session lookup goes through the cached guards', () => {
     test('the dashboard layout requires a session', async () => {
+      recorder.state.session = { user: { role: 'admin' } };
       const layout = await load(`${APP}/layout.tsx`);
       await layout.default?.({ children: 'body' });
       expect(recorder.calls).toEqual(['requireSession']);

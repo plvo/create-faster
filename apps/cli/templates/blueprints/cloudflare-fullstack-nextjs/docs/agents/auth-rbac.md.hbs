@@ -33,7 +33,7 @@ Server-side (tRPC) — `packages/api/src/middleware/rbac.ts`:
 Client-side — `apps/web/src/components/can.tsx` + `apps/web/src/hooks/use-permission.ts`:
 
 - `usePermission(permissions)` calls `authClient.admin.checkRolePermission` against the current session role.
-- `useCan()` returns a predicate over the current role; the sidebar (`sidebar-links.tsx`) uses it to filter `ROUTES` and hide a whole category label when none of its links are permitted.
+- `useCan()` returns a predicate over the current role; the sidebar (`sidebar-links.tsx`) uses it to filter `ROUTES` and hide a whole category label when none of its links are permitted. The command palette (`command-palette.tsx`) lists the same pages through the `allowedRoutes(role)` of `src/lib/allowed-routes.ts`, which `sidebar-links.tsx` uses too, so a page a role cannot open appears in neither.
 {{{{raw}}}}
 - `<Can permissions={{ document: ['create'] }}>…</Can>` renders its children only when the role grants every listed action. Example from the documents page: the upload form is wrapped in `<Can permissions={{ document: ['create'] }}>` and each delete button in `<Can permissions={{ document: ['delete'] }}>`.
 {{{{/raw}}}}

@@ -102,6 +102,7 @@ const IMPORT_TARGETS: Record<string, string> = {
   '@repo/ui/components/ui/sidebar': './sidebar-ui.mjs',
   '@/hooks/use-permission': './use-permission.mjs',
   '@/lib/constants': './constants.mjs',
+  '@/lib/allowed-routes': './allowed-routes.mjs',
   '@/lib/auth/guards': './guards.mjs',
   '@/components/contacts/contact-detail': './page-parts.mjs',
   '@/components/admin/user-detail': './page-parts.mjs',
@@ -381,6 +382,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
     test('the sidebar renders each role only the links its permissions open', async () => {
       await evaluate(`${WEB}/src/lib/constants.ts`, 'constants.mjs');
+      await evaluate(`${WEB}/src/lib/allowed-routes.ts`, 'allowed-routes.mjs');
       const { SidebarLinks } = await evaluate<{ SidebarLinks: (props: { role: string }) => unknown }>(
         `${WEB}/src/components/navigation/sidebar-links.tsx`,
         'sidebar-links.mjs',

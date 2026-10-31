@@ -351,6 +351,9 @@ const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.14';
 
+// The dependency of the `ui/command` partial, which a dashboard blueprint renders as the `command.tsx` of its `ui` package.
+const COMMAND_UI_DEPENDENCIES = { cmdk: '^1.1.1' };
+
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';
 
@@ -1965,7 +1968,7 @@ export const META: Meta = {
             '@dnd-kit/utilities': '^3.2.2',
             '@tanstack/react-form': '^1.33.5',
             '@tanstack/react-table': '^8.21.3',
-            cmdk: '^1.1.1',
+            ...COMMAND_UI_DEPENDENCIES,
             'react-dom': '^19.2.8',
           },
           devDependencies: {
