@@ -55,7 +55,13 @@ export const FieldLabel = ({ children, ...props }) => createElement('label', { '
 export const Input = ({ children, ...props }) => createElement('${FILE_FIELD_TAG}', props, ...children);`,
   'trpc.mjs': `const chain = new Proxy(function () {}, { get: () => chain, apply: () => chain });
 export const useTRPC = () => chain;`,
-  'can.mjs': 'export const Can = ({ children }) => children[0];',
+  // Renders its children when every listed action is in `globalThis.__granted` (every action of the page when unset).
+  'can.mjs': `const ALL = ['document.create', 'document.delete', 'document.delete-any'];
+export const Can = ({ permissions, children }) => {
+  const granted = globalThis.__granted ?? ALL;
+  const wanted = Object.entries(permissions).flatMap(([resource, actions]) => actions.map((action) => resource + '.' + action));
+  return wanted.every((permission) => granted.includes(permission)) ? children[0] : null;
+};`,
   'confirm-dialog.mjs': `import { createElement } from './react.mjs';
 export const ConfirmDialog = ({ description, children, ...props }) => createElement('dialog', props, description);`,
   'pagination.mjs': `export const COUNT_STALE_TIME = 0;
@@ -68,7 +74,7 @@ export const parsePageParams = (search) => search;`,
 export const ProfileTabNav = () => createElement('nav', {});`,
 };
 
-const globals = globalThis as { __mutations?: unknown[]; __documents?: unknown[] };
+const globals = globalThis as { __mutations?: unknown[]; __documents?: unknown[]; __granted?: string[] };
 
 const tagged = (tree: RenderedChild[], tag: string): RenderedElement[] =>
   elementsOf(tree).filter((element) => element.tag === tag);
@@ -158,10 +164,11 @@ describe(`${BLUEPRINT} documents`, () => {
     const renderDocuments = async (): Promise<RenderedChild[]> => {
       globals.__mutations = [];
       globals.__documents = [
-        { id: 'doc-1', title: 'Quarterly report', size: 300, createdAt: '2026-10-21T23:30:00.000Z' },
+        { id: 'doc-1', userId: 'me', title: 'Quarterly report', size: 300, createdAt: '2026-10-21T23:30:00.000Z' },
+        { id: 'doc-2', userId: 'someone-else', title: 'Their plan', size: 300, createdAt: '2026-10-21T23:30:00.000Z' },
       ];
       react.resetState();
-      return render(DocumentsClient);
+      return render(DocumentsClient, { userId: 'me' });
     };
 
     const deleteDialog = (tree: RenderedChild[]): RenderedElement => {
@@ -174,6 +181,24 @@ describe(`${BLUEPRINT} documents`, () => {
       const button = elementsOf(tree).find((element) => element.props['aria-label'] === 'Delete Quarterly report');
       (button?.props.onClick as (() => void) | undefined)?.();
     };
+
+    const deletable = async (granted: string[]): Promise<string[]> => {
+      globals.__granted = granted;
+      try {
+        return elementsOf(await renderDocuments())
+          .map((element) => element.props['aria-label'])
+          .filter((label): label is string => typeof label === 'string' && label.startsWith('Delete '));
+      } finally {
+        globals.__granted = undefined;
+      }
+    };
+
+    test('a delete button shows on a row the role may delete: its own with delete, another user\'s only with delete-any too', async () => {
+      expect(await deletable(['document.delete'])).toEqual(['Delete Quarterly report']);
+      expect(await deletable(['document.delete', 'document.delete-any'])).toEqual(['Delete Quarterly report', 'Delete Their plan']);
+      expect(await deletable(['document.delete-any'])).toEqual([]);
+      expect(await deletable([])).toEqual([]);
+    });
 
     test('the page has its own h1', async () => {
       const headings = tagged(await renderDocuments(), 'h1');

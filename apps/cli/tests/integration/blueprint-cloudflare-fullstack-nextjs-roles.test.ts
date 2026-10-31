@@ -22,15 +22,6 @@ const REAL = {
 };
 
 const STUBS: Record<string, string> = {
-  // A real tRPC instance. protectedProcedure refuses a caller without a session, as the generated one does.
-  'trpc.mjs': `import { initTRPC, TRPCError } from '${REAL.trpcServer}';
-const t = initTRPC.context().create();
-export const router = t.router;
-export const createCallerFactory = t.createCallerFactory;
-export const protectedProcedure = t.procedure.use((opts) => {
-  if (!opts.ctx.session?.user) throw new TRPCError({ code: 'UNAUTHORIZED' });
-  return opts.next({ ctx: opts.ctx });
-});`,
   'db.mjs': `export * from '${REAL.drizzle}';
 export * from './schema.mjs';`,
 };
@@ -66,6 +57,7 @@ interface DocumentRow {
 
 interface Caller {
   documents: { list: (input?: unknown) => Promise<DocumentRow[]>; count: () => Promise<number>; delete: (input: { id: string }) => Promise<unknown> };
+  users: { list: (input?: unknown) => Promise<unknown[]> };
   permissions: { mine: () => Promise<string[]> };
 }
 
@@ -174,7 +166,20 @@ describe(`${BLUEPRINT} database roles`, () => {
       '../document-scope': './document-scope.mjs',
     };
     const zod = Bun.resolveSync('zod', import.meta.dir);
+    // The real context and procedures of the generated api package: a stand-in would make the refusals below test the stand-in.
+    await Bun.write(
+      join(stubs, 'counting-auth.mjs'),
+      "export const createAuth = () => ({ api: { getSession: async () => { globalThis.__sessionReads = (globalThis.__sessionReads ?? 0) + 1; return { user: { id: 'read-here', role: 'user' } }; } } });",
+    );
+    await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
+    await generated(`${API}/trpc.ts`, 'trpc.mjs', {
+      '@repo/auth/auth': './counting-auth.mjs',
+      '@trpc/server': REAL.trpcServer,
+      superjson: Bun.resolveSync('superjson', import.meta.dir),
+      './auth-errors': './auth-errors.mjs',
+    });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod });
+    await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod, './pagination': './pagination.mjs' });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     scope = await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', imports);
@@ -184,14 +189,19 @@ describe(`${BLUEPRINT} database roles`, () => {
       '../page-query': './page-query.mjs',
       '../pagination': './pagination.mjs',
     });
+    const { usersRouter } = await generated<{ usersRouter: unknown }>(`${API}/router/users.ts`, 'users-router.mjs', {
+      ...imports,
+      zod,
+      '../page-query': './page-query.mjs',
+      '../pagination': './pagination.mjs',
+      '../user-list': './user-list.mjs',
+      '@repo/auth/auth': './counting-auth.mjs',
+    });
     const { permissionsRouter } = await generated<{ permissionsRouter: unknown }>(`${API}/router/permissions.ts`, 'permissions-router.mjs', imports);
 
-    const trpc = (await import(join(stubs, 'trpc.mjs'))) as {
-      router: (procedures: Record<string, unknown>) => unknown;
-      createCallerFactory: (router: unknown) => (ctx: unknown) => Caller;
-    };
-    appRouter = trpc.router({ documents: documentsRouter, permissions: permissionsRouter });
-    createCaller = trpc.createCallerFactory;
+    const trpc = (await import(join(stubs, 'trpc.mjs'))) as { router: (procedures: Record<string, unknown>) => unknown };
+    appRouter = trpc.router({ documents: documentsRouter, users: usersRouter, permissions: permissionsRouter });
+    createCaller = (router) => (ctx) => (router as { createCaller: (context: unknown) => Caller }).createCaller(ctx);
   });
 
   afterAll(async () => {
@@ -239,6 +249,13 @@ describe(`${BLUEPRINT} database roles`, () => {
     test('a procedure answers FORBIDDEN to a role the database does not know', async () => {
       await expect(callerOf('auditor').documents.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
+
+    test('a procedure answers UNAUTHORIZED without a session, before any permission is read', async () => {
+      const anonymous = createCaller(appRouter)({ db, headers: new Headers(), session: null });
+      await expect(anonymous.documents.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+      await expect(anonymous.permissions.mine()).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+      expect(permissionReads()).toBe(0);
+    });
   });
 
   describe('a revocation is refused on the next request', () => {
@@ -278,6 +295,13 @@ describe(`${BLUEPRINT} database roles`, () => {
       expect(await engine.permissionsOf(db, 'manager')).toEqual(['document.read']);
       expect(await engine.hasPermission(db, 'manager', 'user', 'list')).toBe(false);
       expect(await engine.hasPermission(db, 'manager', 'session', 'revoke')).toBe(false);
+    });
+
+    test('planted user.list and session.list rows leave account administration refused', async () => {
+      addRole('manager');
+      grant('manager', 'document.read', 'user.list', 'session.list');
+      await expect(callerOf('manager').users.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(await callerOf('manager').permissions.mine()).toEqual(['document.read']);
     });
 
     test('the vocabulary of stored permissions is the business statement, and excludes the account statement', () => {
@@ -456,6 +480,15 @@ describe(`${BLUEPRINT} database roles`, () => {
     test('admin sees every document through its own permissions, not through its name', async () => {
       seedDocuments();
       expect(ids(await callerOf('admin', 'u1').documents.list())).toEqual(['d1', 'd2']);
+    });
+
+    test('a delete the server refuses is an error, not a success: a document of someone else without delete-any, or none at all', async () => {
+      seedDocuments();
+      addRole('worker');
+      grant('worker', 'document.read', 'document.delete');
+      await expect(callerOf('worker', 'u1').documents.delete({ id: 'd2' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      await expect(callerOf('worker', 'u1').documents.delete({ id: 'missing' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect((sqlite.query('SELECT id FROM documents ORDER BY id').all() as { id: string }[]).map((row) => row.id)).toEqual(['d1', 'd2']);
     });
 
     test('delete-any lets a caller delete a document of someone else, and without it only their own', () => {

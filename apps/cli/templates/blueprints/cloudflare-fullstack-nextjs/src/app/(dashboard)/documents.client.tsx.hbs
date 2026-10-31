@@ -29,7 +29,8 @@ const schema = z.object({
   title: z.string().max(200),
 });
 
-export function DocumentsClient() {
+// `userId` is the signed-in user, read by the page on the server: a row is theirs when it carries it.
+export function DocumentsClient({ userId }: { userId: string }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const pagination = usePageParams();
@@ -140,7 +141,7 @@ export function DocumentsClient() {
                     {formatDate(doc.createdAt)}
                   </td>
                   <td className='px-4 py-3 text-right'>
-                    <Can permissions={{ document: ['delete'] }}>
+                    <Can permissions={{ document: doc.userId === userId ? ['delete'] : ['delete', 'delete-any'] }}>
                       <button
                         type='button'
                         onClick={() => setDeleting({ id: doc.id, title: doc.title })}

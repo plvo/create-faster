@@ -140,7 +140,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(page).toContain('/api/documents/upload');
     expect(page).toContain('{{{{raw}}}}');
     expect(page).toContain("permissions={{ document: ['create'] }}");
-    expect(page).toContain("permissions={{ document: ['delete'] }}");
+    expect(page).toContain("permissions={{ document: doc.userId === userId ? ['delete'] : ['delete', 'delete-any'] }}");
   });
 
   test('profile is a tabbed account/security/sessions/preferences area', () => {

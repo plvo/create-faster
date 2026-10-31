@@ -340,14 +340,24 @@ describe('dashboard shell', () => {
       expect(itemNamed(cancelled, 'Logout')).toBeDefined();
     });
 
-    // The query cache holds the permissions and records of the account that signs out. It lives as long as the tab, so
-    // the next account signing in would first render what the previous one saw unless the logout empties it.
-    test('confirming Logout signs out, goes to the login page and then empties the query cache', async () => {
+    // The query cache holds the permissions and records of the account that signs out, and lives as long as the tab: the
+    // next account signing in would first render what the previous one saw. It must go while no dashboard is mounted, or
+    // its queries refetch without a session and flash UNAUTHORIZED. Start navigates inside the app and clears once the
+    // login page replaced the dashboard; a Next.js `router.push` returns before it navigates, so Next.js leaves with a
+    // full navigation, which starts the next page with a cache of its own.
+    test('confirming Logout signs out and leaves for the login page, with the query cache gone once the dashboard is', async () => {
       const events: string[] = [];
-      (globalThis as { __events?: string[] }).__events = events;
-      const confirm = must(itemNamed(await askConfirmation(), 'Logout'), 'the confirm item');
-      await (confirm.props.onSelect as (event: FakeEvent) => Promise<void>)(fakeEvent());
-      expect(events).toEqual(['signOut', 'navigate:/login', 'clear']);
+      const globals = globalThis as { __events?: string[]; window?: unknown };
+      const realWindow = globals.window;
+      globals.__events = events;
+      globals.window = { location: { origin: 'https://app.test', assign: (url: URL | string) => events.push(`assign:${url}`) } };
+      try {
+        const confirm = must(itemNamed(await askConfirmation(), 'Logout'), 'the confirm item');
+        await (confirm.props.onSelect as (event: FakeEvent) => Promise<void>)(fakeEvent());
+      } finally {
+        globals.window = realWindow;
+      }
+      expect(events).toEqual(blueprint === START_BLUEPRINT ? ['signOut', 'navigate:/login', 'clear'] : ['signOut', 'assign:https://app.test/login']);
     });
 
     test('Cancel takes the focus the removed Logout item leaves behind', async () => {

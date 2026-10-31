@@ -271,6 +271,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
 
     const imports = {
       zod: REAL.zod,
+      '@trpc/server': REAL.trpcServer,
       '@repo/db': './db.mjs',
       '@repo/auth/auth': './auth.mjs',
       '../trpc': './trpc.mjs',

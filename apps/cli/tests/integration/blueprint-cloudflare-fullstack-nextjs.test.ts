@@ -100,7 +100,7 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     expect(page).not.toContain("'use client'");
     expect(page).toContain("import { getQueryClient, HydrateClient, prefetch, trpc } from '@/trpc/server'");
     expect(page).toContain('<HydrateClient>');
-    expect(page).toContain('<DocumentsClient />');
+    expect(page).toContain('<DocumentsClient userId={session.user.id} />');
 
     const client = await readTextFile(join(dashboard, 'documents.client.tsx'));
     expect(client).toContain("'use client'");

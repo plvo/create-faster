@@ -9,7 +9,6 @@ import { Link, useRouter } from '@tanstack/react-router';
 {{else}}
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 {{/if}}
 {{#unless (eq icons "hugeicons")}}
 import { ChevronsUpDown, LogOut, Monitor, Moon, Sun, UserIcon } from 'lucide-react';
@@ -17,7 +16,6 @@ import { ChevronsUpDown, LogOut, Monitor, Moon, Sun, UserIcon } from 'lucide-rea
 import { useTheme } from 'next-themes';
 {{#unless (eq stackName "tanstack-start")}}
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 {{/unless}}
 {{#if (eq icons "hugeicons")}}
 import { ArrowUpDownIcon, ComputerIcon, Logout01Icon, Moon02Icon, Sun03Icon, UserIcon } from '@hugeicons/core-free-icons';
@@ -82,21 +80,30 @@ export function NavUser({ session }: { session: Session }) {
   const { actionRef, cancelRef, ...logoutConfirmation } = useMenuConfirmation<HTMLDivElement, HTMLButtonElement>();
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
+{{#if (eq stackName "tanstack-start")}}
   const router = useRouter();
   const queryClient = useQueryClient();
 
   // The query cache lives as long as the tab and holds what the account saw (its permissions, its records), so it is
-  // emptied on the way out: the next account would first render the previous one's otherwise. On Start it is cleared
-  // once the login page replaced the dashboard, so no mounted query refetches without a session.
+  // emptied on the way out: the next account would first render the previous one's otherwise. It is cleared once the
+  // login page replaced the dashboard, so no mounted query refetches without a session.
   const handleLogout = async () => {
     await authClient.signOut();
-{{#if (eq stackName "tanstack-start")}}
     await router.navigate({ to: '/login' });
-{{else}}
-    router.push('/login');
-{{/if}}
     queryClient.clear();
   };
+{{else}}
+
+  // A full navigation: the query cache lives as long as the tab and holds what the account saw (its permissions, its
+  // records), and the next page starts with a cache of its own. `router.push` returns before the navigation happens, so
+  // clearing the cache after it would empty it under a dashboard that is still mounted, whose queries then refetch
+  // without a session. The address is absolute, which `@next/next/no-location-assign-relative-destination` wants for a
+  // deliberate full navigation.
+  const handleLogout = async () => {
+    await authClient.signOut();
+    window.location.assign(new URL('/login', window.location.origin));
+  };
+{{/if}}
 
   return (
     <SidebarMenu>

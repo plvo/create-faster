@@ -31,7 +31,7 @@ export const useParams = () => ({ id: 'u1' });`,
 const guard = (name) => async () => {
   calls.push(name);
   if (state.denied) throw new Error('denied by ' + name);
-  return state.session;
+  return state.session ?? { user: { id: 'signed-in-user', role: 'user' } };
 };
 export const requireSession = guard('requireSession');
 export const requireAdmin = guard('requireAdmin');
@@ -167,7 +167,7 @@ const PROTECTED_PAGES = [
     guard: 'requireSession',
     keys: [{ path: 'documents.list', input: FIRST_PAGE }, { path: 'documents.count' }],
     loads: 'prefetch',
-    reader: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient' },
+    reader: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient', props: { userId: 'u1' } },
     client: 'DocumentsClient',
   },
 ];
@@ -260,7 +260,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
 
       recorder.calls.length = 0;
       const readerModule = await load(reader.file);
-      await readerModule[reader.exportName]?.();
+      await readerModule[reader.exportName]?.('props' in reader ? reader.props : undefined);
       expect(recorder.calls).toEqual(keys.map((key) => ['read', key]));
     });
 

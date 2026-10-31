@@ -18,7 +18,7 @@ export default async function DocumentsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireSession();
+  const session = await requireSession();
   // The layout already fetched the permissions of the caller for this request, so this reads the same answer.
   const granted = await getQueryClient().ensureQueryData(trpc.permissions.mine.queryOptions());
   if (!granted.includes('document.read')) {
@@ -36,7 +36,7 @@ export default async function DocumentsPage({
   return (
     <HydrateClient>
       <Suspense fallback={<Skeleton className='h-64 w-full' />}>
-        <DocumentsClient />
+        <DocumentsClient userId={session.user.id} />
       </Suspense>
     </HydrateClient>
   );

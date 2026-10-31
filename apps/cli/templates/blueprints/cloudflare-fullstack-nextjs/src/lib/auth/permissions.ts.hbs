@@ -8,7 +8,7 @@ import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 
 // The role the Better Auth `admin` plugin treats as administrator (`adminRoles` in auth.ts). It has no rows in the
-// database: `permissionsOf` (role-permissions.ts) grants it every permission below.
+// database: `permissionsOf` (role-permissions.ts) grants it what `adminStatement` below lists.
 export const ADMIN_ROLE = 'admin';
 
 // Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for

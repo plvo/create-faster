@@ -5,6 +5,7 @@ mono:
   path: src/router/documents.ts
 ---
 import { count, documentTable, eq } from '@repo/db';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { deletableDocument, visibleDocuments } from '../document-scope';
 import { router } from '../trpc';
@@ -39,7 +40,8 @@ export const documentsRouter = router({
         .from(documentTable)
         .where(deletableDocument(ctx.permissions, ctx.session.user.id, input.id))
         .limit(1);
-      if (!doc) return { deleted: false };
+      // A document the caller may not delete answers like one that does not exist: the client shows it as an error.
+      if (!doc) throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
 
       await ctx.db.delete(documentTable).where(eq(documentTable.id, doc.id));
       const { getCloudflareContext } = await import('@opennextjs/cloudflare');
