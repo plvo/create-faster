@@ -404,6 +404,7 @@ describe('dashboard shell', () => {
           'the theme group',
         );
         expect(radios(group.children)).toHaveLength(3);
+        expect(group.props['aria-label'], 'the group is named, as the label beside it is not tied to it').toBe('Theme');
       });
 
       test.each(THEMES)('selecting %s applies it and keeps the menu open', async (name) => {
@@ -428,12 +429,9 @@ describe('dashboard shell', () => {
         const profile = must(itemNamed(await menu('dark'), 'Profile'), 'the Profile item');
         expect(profile.tag).toBe('a');
         expect(profile.props.href).toBe('/profile/account');
-        const onSelect = profile.props.onSelect as ((event: FakeEvent) => void) | undefined;
-        if (onSelect) {
-          const event = fakeEvent();
-          onSelect(event);
-          expect(event.defaultPrevented).toBe(false);
-        }
+        const event = fakeEvent();
+        (profile.props.onSelect as ((event: FakeEvent) => void) | undefined)?.(event);
+        expect(event.defaultPrevented, 'Profile keeps the default select, which closes the menu').toBe(false);
       });
     });
   });

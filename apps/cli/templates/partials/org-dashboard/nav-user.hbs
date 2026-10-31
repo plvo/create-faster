@@ -160,11 +160,11 @@ export function NavUser({ session }: { session: Session }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className='text-xs font-normal text-muted-foreground'>Theme</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-              {THEME_CHOICES.map(({ value, label, icon{{#unless (eq icons "hugeicons")}}: Icon{{/unless}} }) => (
+            <DropdownMenuRadioGroup aria-label='Theme' value={theme} onValueChange={setTheme}>
+              {THEME_CHOICES.map(({ value, label, icon: Icon }) => (
                 <DropdownMenuRadioItem key={value} value={value} onSelect={keepMenuOpen}>
 {{#if (eq icons "hugeicons")}}
-                  <HugeiconsIcon icon={icon} />
+                  <HugeiconsIcon icon={Icon} />
 {{else}}
                   <Icon />
 {{/if}}
