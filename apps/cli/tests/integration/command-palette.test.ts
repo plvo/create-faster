@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
+import type { TemplateContext } from '@/types/ctx';
 import {
   REACT_HOOKS_STUB,
   type RenderedChild,
@@ -262,16 +263,14 @@ describe(`${BLUEPRINT} command palette`, () => {
     ({ default: DashboardLayout } = await load<{ default: Component }>('src/app/(dashboard)/layout.tsx', 'layout.mjs', layoutImports));
 
     setupTemplateEngine();
-    const startSource = renderTemplate('{{> navigation/command-palette}}', {
+    const startContext: TemplateContext = {
       projectName: 'my-project',
       repo: 'turborepo',
       apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
       project: { tooling: [] },
       git: false,
-      appName: 'web',
-      stackName: 'tanstack-start',
-      libraries: [],
-    });
+    };
+    const startSource = renderTemplate('{{> navigation/command-palette}}', { ...startContext, ...startContext.apps[0] });
     const start = await evaluateGeneratedModule<{ CommandPaletteProvider: Component; CommandPaletteTrigger: Component }>(
       startSource,
       join(stubs, 'command-palette-start.mjs'),
