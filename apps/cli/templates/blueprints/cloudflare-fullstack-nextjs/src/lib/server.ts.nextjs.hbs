@@ -1,0 +1,24 @@
+---
+path: src/lib/server.ts
+mono:
+  scope: app
+  path: src/lib/server.ts
+---
+import 'server-only';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createAuth } from '@repo/auth/auth';
+import { createDb } from '@repo/db';
+import { nextCookies } from 'better-auth/next-js';
+import { getEnv } from '@/lib/env';
+
+export async function getDb() {
+  return createDb((await getEnv()).DB);
+}
+
+// A link's delivery runs after the response (`waitUntil`), so the time a request takes does not tell a free address
+// from a taken one, for which nothing is sent.
+export async function getAuth() {
+  const db = await getDb();
+  const { ctx } = await getCloudflareContext({ async: true });
+  return createAuth(db, nextCookies(), (task) => ctx.waitUntil(task));
+}

@@ -1,7 +1,18 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cleanupTempDir, createTempDir, evaluateGeneratedModule, fileExists, readTextFile, runCli } from './helpers';
+import {
+  REACT_HOOKS_STUB,
+  type RenderedChild,
+  cleanupTempDir,
+  createTempDir,
+  elementsOf,
+  evaluateGeneratedModule,
+  readTextFile,
+  renderElementTree,
+  runCli,
+  textOf,
+} from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -13,39 +24,78 @@ interface EmailChangeNotice {
 
 interface EmailChangeModule {
   EMAIL_CHANGE_CALLBACK_URL: string;
-  emailChangeNotice: (search: { error?: string; emailChange?: string }, email: string) => EmailChangeNotice | null;
+  emailChangeNotice: (
+    search: { error?: string | string[]; emailChange?: string | string[] },
+    email: string,
+  ) => EmailChangeNotice | null;
+}
+
+type Component = (props: Record<string, unknown>) => unknown;
+type SubmitHandler = (event: { preventDefault: () => void }) => void;
+
+interface FormHarness {
+  values: Record<string, string>;
+  errors: Record<string, string[]>;
+  pending: Promise<void>;
+  reset: () => void;
+}
+interface AuthClientHarness {
+  requests: Record<string, unknown>[];
+  answer: { error?: { message?: string } };
+}
+interface ToastHarness {
+  errors: string[];
 }
 
 const WEB = 'apps/web';
+const CURRENT_EMAIL = 'owner@example.com';
+const NEW_EMAIL = 'a-rather-long-new.address@example.com';
+const PASSWORD = 'correct-horse-battery';
 
-interface HookContext {
-  path: string;
-  query?: Record<string, string>;
-  session?: { user: { id: string } } | null;
-  redirect: (url: string) => { redirectedTo: string };
-}
-
-interface Hook {
-  matcher: (ctx: Pick<HookContext, 'path'>) => boolean;
-  handler: (ctx: HookContext) => Promise<void>;
-}
-
-// The pieces of better-auth/api the plugin uses: the middleware is its own function, the session is the one the
-// test puts on the context, and an APIError records its status.
-const BETTER_AUTH_API_STUB = `export const createAuthMiddleware = (handler) => handler;
-export const getSessionFromCtx = async (ctx) => ctx.session ?? null;
-export class APIError extends Error {
-  constructor(status, body) {
-    super(body.message);
-    this.status = status;
-  }
+// A stand-in for the TanStack form kit that keeps what the component hands it: the values a test sets, the schema
+// it validates with on submit, and the field components, which print the errors the schema found.
+const FORM_STUB = `import { createElement } from './react.mjs';
+export const harness = { values: {}, errors: {}, pending: Promise.resolve(), reset() { this.values = {}; this.errors = {}; } };
+const field = (name) => {
+  const print = (type) => ({ label, props }) =>
+    createElement('field', { name, label, type: type ?? props?.type, error: (harness.errors[name] ?? []).join(' ') });
+  return { InputField: print(), PasswordField: print('password') };
+};
+export function useAppForm({ defaultValues, validators, onSubmit }) {
+  if (Object.keys(harness.values).length === 0) harness.values = { ...defaultValues };
+  return {
+    AppField: ({ name, children }) => children[0](field(name)),
+    AppForm: ({ children }) => children,
+    SubmitButton: ({ children }) => createElement('button', { type: 'submit' }, ...children),
+    handleSubmit() {
+      harness.pending = (async () => {
+        harness.errors = {};
+        const parsed = validators.onSubmit.safeParse(harness.values);
+        if (!parsed.success) {
+          for (const issue of parsed.error.issues) (harness.errors[issue.path[0]] ??= []).push(issue.message);
+          return;
+        }
+        await onSubmit({ value: harness.values, formApi: { reset: () => { harness.values = { ...defaultValues }; } } });
+      })();
+      return harness.pending;
+    },
+  };
 }`;
+
+const AUTH_CLIENT_STUB = `export const harness = { requests: [], answer: {} };
+export const authClient = { changeEmail: async (request) => { harness.requests.push(request); return harness.answer; } };`;
+
+const TOAST_STUB = `export const harness = { errors: [] };
+export const toast = { error: (message) => harness.errors.push(message) };`;
 
 describe('cloudflare-fullstack-nextjs email change', () => {
   let tempDir: string;
-  let projectPath: string;
   let emailChange: EmailChangeModule;
-  let hook: Hook;
+  let ChangeEmailForm: Component;
+  let react: { beginRender: () => void; resetState: () => void };
+  let form: FormHarness;
+  let authClient: AuthClientHarness;
+  let toast: ToastHarness;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -54,23 +104,36 @@ describe('cloudflare-fullstack-nextjs email change', () => {
       tempDir,
     );
     expect(result.exitCode).toBe(0);
-    projectPath = join(tempDir, 'ec');
-    emailChange = await evaluateGeneratedModule<EmailChangeModule>(
-      await readTextFile(join(projectPath, WEB, 'src/lib/auth/email-change.ts')),
-      join(tempDir, 'email-change.mjs'),
-    );
+    const web = join(tempDir, 'ec', WEB);
 
     const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
-    await Bun.write(join(stubs, 'better-auth-api.mjs'), BETTER_AUTH_API_STUB);
-    const { requireSessionForEmailLink } = await evaluateGeneratedModule<{
-      requireSessionForEmailLink: { hooks: { before: Hook[] } };
-    }>(
-      await readTextFile(join(projectPath, 'packages/auth/src/require-session-for-email-link.ts')),
-      join(stubs, 'require-session-for-email-link.mjs'),
-      { 'better-auth/api': './better-auth-api.mjs' },
+    await Bun.write(join(stubs, 'react.mjs'), REACT_HOOKS_STUB);
+    await Bun.write(join(stubs, 'form.mjs'), FORM_STUB);
+    await Bun.write(join(stubs, 'auth-client.mjs'), AUTH_CLIENT_STUB);
+    await Bun.write(join(stubs, 'sonner.mjs'), TOAST_STUB);
+    react = (await import(join(stubs, 'react.mjs'))) as typeof react;
+    form = ((await import(join(stubs, 'form.mjs'))) as { harness: FormHarness }).harness;
+    authClient = ((await import(join(stubs, 'auth-client.mjs'))) as { harness: AuthClientHarness }).harness;
+    toast = ((await import(join(stubs, 'sonner.mjs'))) as { harness: ToastHarness }).harness;
+
+    emailChange = await evaluateGeneratedModule<EmailChangeModule>(
+      await readTextFile(join(web, 'src/lib/auth/email-change.ts')),
+      join(stubs, 'email-change.mjs'),
     );
-    hook = requireSessionForEmailLink.hooks.before[0] as Hook;
+    ({ ChangeEmailForm } = await evaluateGeneratedModule<{ ChangeEmailForm: Component }>(
+      await readTextFile(join(web, 'src/components/profile/change-email-form.tsx')),
+      join(stubs, 'change-email-form.mjs'),
+      {
+        react: join(stubs, 'react.mjs'),
+        zod: Bun.resolveSync('zod', import.meta.dir),
+        sonner: join(stubs, 'sonner.mjs'),
+        '@repo/auth/auth-client': join(stubs, 'auth-client.mjs'),
+        '@repo/ui/lib/form': join(stubs, 'form.mjs'),
+        '@/lib/auth/email-change': join(stubs, 'email-change.mjs'),
+      },
+      'tsx',
+    ));
   });
 
   afterAll(async () => {
@@ -78,99 +141,144 @@ describe('cloudflare-fullstack-nextjs email change', () => {
   });
 
   describe('the notice the account page shows for the link the user opened', () => {
-    test('a confirmed change names the new address', () => {
-      expect(emailChange.emailChangeNotice({ emailChange: 'confirmed' }, 'new@example.com')).toEqual({
+    const notice = (search: Parameters<EmailChangeModule['emailChangeNotice']>[0]) =>
+      emailChange.emailChangeNotice(search, CURRENT_EMAIL);
+
+    test('a confirmed change names the address', () => {
+      expect(notice({ emailChange: 'confirmed' })).toEqual({
         tone: 'success',
-        message: 'Your email address is now new@example.com.',
+        message: `Your email address is now ${CURRENT_EMAIL}.`,
       });
     });
 
-    test('an expired link says so and an unknown error code is an invalid link', () => {
-      const expired = emailChange.emailChangeNotice({ error: 'TOKEN_EXPIRED' }, 'a@example.com');
-      expect(expired?.tone).toBe('error');
-      expect(expired?.message).toContain('expired');
-
-      const invalid = emailChange.emailChangeNotice({ error: 'INVALID_TOKEN' }, 'a@example.com');
-      expect(invalid?.tone).toBe('error');
-      expect(invalid?.message).toContain('invalid');
-      expect(emailChange.emailChangeNotice({ error: 'SOMETHING_ELSE' }, 'a@example.com')).toEqual(invalid);
+    test.each([
+      ['TOKEN_EXPIRED', 'expired'],
+      ['SIGN_IN_REQUIRED', 'signed out'],
+      ['INVALID_USER', 'another account'],
+      ['USER_NOT_FOUND', 'already been used'],
+      ['EMAIL_TAKEN', 'can no longer be used'],
+      ['INVALID_TOKEN', 'invalid'],
+    ])('the code %s says what happened', (code, wording) => {
+      const found = notice({ error: code });
+      expect(found?.tone).toBe('error');
+      expect(found?.message).toContain(wording);
     });
 
-    test('a link opened by another account names the account, not the token', () => {
-      expect(emailChange.emailChangeNotice({ error: 'INVALID_USER' }, 'a@example.com')?.message).toContain(
-        'another account',
+    test('a link opened signed out says nothing changed and what to do now', () => {
+      expect(notice({ error: 'SIGN_IN_REQUIRED' })?.message).toBe(
+        'The link was opened while you were signed out, so nothing changed. Open it again now that you are signed in.',
       );
     });
 
-    test('an error wins over the confirmed marker the callback URL carries, and a plain visit shows nothing', () => {
-      const failed = emailChange.emailChangeNotice({ emailChange: 'confirmed', error: 'TOKEN_EXPIRED' }, 'a@example.com');
-      expect(failed?.tone).toBe('error');
-      expect(emailChange.emailChangeNotice({}, 'a@example.com')).toBeNull();
-      expect(emailChange.emailChangeNotice({ emailChange: 'other' }, 'a@example.com')).toBeNull();
+    test.each(['__proto__', 'toString', 'constructor', 'hasOwnProperty', 'NOPE'])(
+      'the code %s is an invalid link, never a crash or an empty message',
+      (code) => {
+        const found = notice({ error: code });
+        expect(found?.tone).toBe('error');
+        expect(found?.message).toBe('This confirmation link is invalid. Request a new one below.');
+      },
+    );
+
+    test('a value given twice reads its first', () => {
+      expect(notice({ error: ['TOKEN_EXPIRED', 'EMAIL_TAKEN'] })?.message).toContain('expired');
+      expect(notice({ emailChange: ['confirmed', 'other'] })?.tone).toBe('success');
+    });
+
+    test('an error wins over the confirmed marker the callback carries, and a plain visit shows nothing', () => {
+      expect(notice({ emailChange: 'confirmed', error: 'TOKEN_EXPIRED' })?.tone).toBe('error');
+      expect(notice({})).toBeNull();
+      expect(notice({ emailChange: 'other' })).toBeNull();
     });
   });
 
-  test('better-auth redirects the opened link to the account page, which renders the notice', async () => {
-    const callback = new URL(emailChange.EMAIL_CHANGE_CALLBACK_URL, 'http://localhost');
-    expect(callback.pathname).toBe('/profile/account');
-    expect(await fileExists(join(projectPath, WEB, 'src/app/(dashboard)/profile/account/page.tsx'))).toBe(true);
+  describe('the change email form', () => {
+    const render = async (): Promise<RenderedChild[]> => {
+      react.beginRender();
+      return renderElementTree({ type: ChangeEmailForm, props: { email: CURRENT_EMAIL } });
+    };
 
-    const page = await readTextFile(join(projectPath, WEB, 'src/app/(dashboard)/profile/account/page.tsx'));
-    expect(page).toContain('emailChangeNotice(await searchParams, session.user.email)');
+    const status = (tree: RenderedChild[]) => elementsOf(tree).find((element) => element.props.role === 'status');
+    const errorsOf = (tree: RenderedChild[]) =>
+      Object.fromEntries(
+        elementsOf(tree)
+          .filter((element) => element.tag === 'field')
+          .map((element) => [element.props.name, element.props.error]),
+      );
 
-    const form = await readTextFile(join(projectPath, WEB, 'src/components/profile/change-email-form.tsx'));
-    expect(form).toContain('callbackURL: EMAIL_CHANGE_CALLBACK_URL');
-  });
+    const submit = async (values: Record<string, string>): Promise<RenderedChild[]> => {
+      form.values = values;
+      const handler = elementsOf(await render()).find((element) => element.tag === 'form')?.props.onSubmit as
+        | SubmitHandler
+        | undefined;
+      if (!handler) throw new Error('the form has no submit handler');
+      handler({ preventDefault: () => {} });
+      await form.pending;
+      return render();
+    };
 
-  describe('the link only works in a browser signed in to the account', () => {
-    const redirect = (url: string) => ({ redirectedTo: url });
-    const callbackURL = '/profile/account?emailChange=confirmed';
-
-    test('the hook watches the verification route alone', () => {
-      expect(hook.matcher({ path: '/verify-email' })).toBe(true);
-      expect(hook.matcher({ path: '/sign-in/email' })).toBe(false);
+    beforeEach(() => {
+      react.resetState();
+      form.reset();
+      authClient.requests = [];
+      authClient.answer = { data: { status: true } } as AuthClientHarness['answer'];
+      toast.errors = [];
     });
 
-    test('without a session the link goes back to the callback with an error, and the endpoint never runs', async () => {
-      const outcome = await hook
-        .handler({ path: '/verify-email', query: { callbackURL }, session: null, redirect })
-        .catch((error: unknown) => error);
-      expect(outcome).toEqual({ redirectedTo: `${callbackURL}&error=SIGN_IN_REQUIRED` });
+    test('the status element is there before anything is sent, and empty', async () => {
+      const tree = await render();
+      expect(status(tree)).toBeDefined();
+      expect(textOf(status(tree) as never)).toBe('');
     });
 
-    test('a callback that is not a path of this site is never redirected to', async () => {
-      for (const target of ['https://other.example/', '//other.example', '/\\other.example', '', 'javascript:alert(1)']) {
-        const outcome = await hook
-          .handler({ path: '/verify-email', query: { callbackURL: target }, session: null, redirect })
-          .catch((error: unknown) => error);
-        expect(outcome, target).toBeInstanceOf(Error);
-        expect((outcome as Error & { status: string }).status, target).toBe('UNAUTHORIZED');
-      }
+    test('an address that is not valid is refused in the form, and nothing is sent', async () => {
+      const tree = await submit({ newEmail: 'not-an-email', currentPassword: PASSWORD });
+      expect(errorsOf(tree).newEmail).toBe('Enter a valid email address');
+      expect(authClient.requests).toEqual([]);
     });
 
-    test('with a session the endpoint decides', async () => {
-      await expect(
-        hook.handler({ path: '/verify-email', query: { callbackURL }, session: { user: { id: 'u1' } }, redirect }),
-      ).resolves.toBeUndefined();
+    test('the current address, in any case, is refused in the form', async () => {
+      const tree = await submit({ newEmail: ` ${CURRENT_EMAIL.toUpperCase()} `, currentPassword: PASSWORD });
+      expect(errorsOf(tree).newEmail).toBe('This is already your email address');
+      expect(authClient.requests).toEqual([]);
     });
-  });
 
-  test('the auth package enables the change through a link to the new address only', async () => {
-    const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
-    expect(auth).toContain('changeEmail: { enabled: true }');
-    expect(auth).not.toContain('updateEmailWithoutVerification');
-    expect(auth).not.toContain('sendChangeEmailConfirmation');
-    expect(auth).not.toContain('sendOnSignUp');
-    expect(auth).toContain("deliverLink({ kind: 'change-email', to: user.email, link: url })");
-    expect(auth).toContain('requireSessionForEmailLink,');
-  });
+    test('a missing password is refused in the form', async () => {
+      const tree = await submit({ newEmail: NEW_EMAIL, currentPassword: '' });
+      expect(errorsOf(tree).currentPassword).toBe('Enter your current password');
+      expect(authClient.requests).toEqual([]);
+    });
 
-  test('the agent docs describe the flow and where to plug a mail provider', async () => {
-    const docs = await readTextFile(join(projectPath, 'docs/agents/auth-rbac.md'));
-    expect(docs).toContain('## Email change');
-    expect(docs).toContain('deliverLink');
-    expect(docs).toContain('packages/auth/src/email.ts');
-    expect(docs).toContain('[change-email]');
-    expect(docs).toContain('updateEmailWithoutVerification');
+    test('a request sends the address, the password and the account page as the callback, then says the same neutral thing', async () => {
+      const tree = await submit({ newEmail: ` ${NEW_EMAIL} `, currentPassword: PASSWORD });
+      expect(authClient.requests).toEqual([
+        { newEmail: NEW_EMAIL, currentPassword: PASSWORD, callbackURL: emailChange.EMAIL_CHANGE_CALLBACK_URL },
+      ]);
+      expect(textOf(status(tree) as never)).toBe(
+        `If ${NEW_EMAIL} can be used, a confirmation link has been sent to it. Your email does not change until you open the link.`,
+      );
+      expect(form.values).toEqual({ newEmail: '', currentPassword: '' });
+      expect(toast.errors).toEqual([]);
+    });
+
+    test('a refusal of the server is a toast with its message, and keeps the form as it was', async () => {
+      authClient.answer = { error: { message: 'Invalid password' } };
+      const tree = await submit({ newEmail: NEW_EMAIL, currentPassword: 'wrong' });
+      expect(toast.errors).toEqual(['Invalid password']);
+      expect(textOf(status(tree) as never)).toBe('');
+      expect(form.values).toEqual({ newEmail: NEW_EMAIL, currentPassword: 'wrong' });
+    });
+
+    test('a refusal without a message still says that the change failed', async () => {
+      authClient.answer = { error: {} };
+      await submit({ newEmail: NEW_EMAIL, currentPassword: PASSWORD });
+      expect(toast.errors).toEqual(['Email change failed']);
+    });
+
+    test('a new request clears the message of the previous one while it runs', async () => {
+      await submit({ newEmail: NEW_EMAIL, currentPassword: PASSWORD });
+      authClient.answer = { error: { message: 'Invalid password' } };
+      const tree = await submit({ newEmail: 'second@example.com', currentPassword: 'wrong' });
+      expect(textOf(status(tree) as never)).toBe('');
+    });
   });
 });

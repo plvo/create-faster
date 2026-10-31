@@ -461,13 +461,13 @@ describe('TanStack Start + better-auth', () => {
     test('cloudflare-fullstack-nextjs: the blueprint doc shows the factory signature and the getAuth call', async () => {
       const projectPath = await generate('docs-cf-fullstack', ['--blueprint', 'cloudflare-fullstack-nextjs', '--linter', 'biome']);
       const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth-rbac.md'));
-      expect(authDoc).toContain('exports `createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)`');
-      expect(authDoc).toContain('calls `createAuth(db, nextCookies())`');
+      expect(authDoc).toContain('exports `createAuth(db: Database, cookiePlugin?: BetterAuthPlugin, runInBackground?');
+      expect(authDoc).toContain('calls `createAuth(db, nextCookies(), runInBackground)`');
       expect(await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'))).toContain(
-        'export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)',
+        'export function createAuth(\n  db: Database,\n  cookiePlugin?: BetterAuthPlugin,\n  runInBackground?:',
       );
       expect(await readTextFile(join(projectPath, 'apps/web/src/lib/server.ts'))).toContain(
-        'createAuth(await getDb(), nextCookies())',
+        'createAuth(db, nextCookies(), (task) => ctx.waitUntil(task))',
       );
     });
 

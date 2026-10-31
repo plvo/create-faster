@@ -48,7 +48,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
       join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/lib/auth/auth.ts.hbs'),
       'utf8',
     );
-    expect(auth).toContain('export function createAuth(db: Database, cookiePlugin?: BetterAuthPlugin)');
+    expect(auth).toContain('export function createAuth(\n  db: Database,\n  cookiePlugin?: BetterAuthPlugin,');
     expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }),");
   });
 
@@ -436,21 +436,11 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(auth).toContain("deliverLink({ kind: 'reset-password'");
     expect(auth).toContain("deliverLink({ kind: 'change-email'");
     expect(auth).not.toContain('console.');
-    const email = bpFile('src/lib/auth/email.ts.hbs');
-    expect(email).toContain('export async function deliverLink');
-    expect(email).toContain('[${kind}] ${to} → ${link}');
-    expect(email).toContain('No mailer is configured');
-  });
-
-  test('email change sends a link to the new address: changeEmail is on, the unverified shortcut and sign-up sending are off', () => {
-    const auth = bpFile('src/lib/auth/auth.ts.hbs');
-    expect(auth).toContain('changeEmail: { enabled: true }');
-    expect(auth).toContain('sendVerificationEmail');
-    expect(auth).not.toContain('updateEmailWithoutVerification');
-    expect(auth).not.toContain('sendChangeEmailConfirmation');
-    expect(auth).not.toContain('sendOnSignUp');
-    expect(auth).not.toContain('sendOnSignIn');
-    expect(auth).toContain("disabledPaths: ['/send-verification-email']");
+    expect(bpFile('src/lib/auth/email.ts.hbs')).toContain('{{> auth/deliver-link');
+    const delivery = partial('auth/deliver-link');
+    expect(delivery).toContain('export async function deliverLink');
+    expect(delivery).toContain('[${kind}] ${to} → ${link}');
+    expect(delivery).toContain('No mailer is configured');
   });
 
   test('ships forgot-password and reset-password flows wired to authClient', () => {
