@@ -1,0 +1,13 @@
+---
+path: src/lib/auth/auth.ts
+mono:
+  scope: app
+  path: src/lib/auth/auth.ts
+---
+import { createAuth } from '@repo/auth/auth';
+import { nextCookies } from 'better-auth/next-js';
+import { after } from 'next/server';
+
+// A link's delivery runs after the response (`after`), so the time a password reset takes does not tell an account
+// that exists from one that does not.
+export const auth = createAuth(nextCookies(), (task) => after(task));
