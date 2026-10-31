@@ -30,7 +30,7 @@ describe.each([
   {
     blueprint: 'cloudflare-fullstack-nextjs',
     seamFile: 'email.ts',
-    kinds: ['reset-password', 'change-email'] as string[],
+    kinds: ['reset-password', 'change-email', 'email-changed'] as string[],
     call: (file: string, kind: string) =>
       `import { deliverLink } from ${JSON.stringify(file)}; await deliverLink({ kind: ${JSON.stringify(kind)}, to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
     forgotPasswordForm: 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx',

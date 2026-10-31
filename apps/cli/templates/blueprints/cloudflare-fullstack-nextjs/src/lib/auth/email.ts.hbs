@@ -4,26 +4,4 @@ mono:
   name: auth
   path: src/email.ts
 ---
-type LinkKind = 'reset-password' | 'change-email';
-
-interface LinkDelivery {
-  kind: LinkKind;
-  to: string;
-  link: string;
-}
-
-const isDev = process.env.NODE_ENV === 'development';
-
-/**
- * The single place password reset and email change links leave the server.
- * No mailer is configured: the link is logged to the server console, in development and in production.
- * Replace the body with a call to a mail provider (Resend, SES, Postmark, ...) to deliver `link` to `to`.
- */
-export async function deliverLink({ kind, to, link }: LinkDelivery): Promise<void> {
-  console.log(`[${kind}] ${to} → ${link}`);
-  if (!isDev) {
-    console.warn(
-      `[${kind}] No mailer is configured: this link is only in the server logs. Plug a mailer into packages/auth/src/email.ts before going live.`,
-    );
-  }
-}
+{{> auth/deliver-link kinds="'reset-password' | 'change-email' | 'email-changed'" file="packages/auth/src/email.ts"}}

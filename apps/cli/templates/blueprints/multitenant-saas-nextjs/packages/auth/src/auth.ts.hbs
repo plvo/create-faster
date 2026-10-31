@@ -57,7 +57,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
       minPasswordLength: 8,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        deliverLink({ kind: 'reset-password', to: user.email, link: url });
+        await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
     advanced: {
@@ -71,7 +71,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         requireEmailVerificationOnInvitation: false,
         cancelPendingInvitationsOnReInvite: true,
         async sendInvitationEmail(data) {
-          deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
+          await deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
       ...(cookiePlugin ? [cookiePlugin] : []),

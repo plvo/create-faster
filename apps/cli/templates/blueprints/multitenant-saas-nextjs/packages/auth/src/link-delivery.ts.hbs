@@ -4,26 +4,4 @@ mono:
   name: auth
   path: src/link-delivery.ts
 ---
-type LinkKind = 'reset-password' | 'invitation';
-
-interface LinkDelivery {
-  kind: LinkKind;
-  to: string;
-  link: string;
-}
-
-const isDev = process.env.NODE_ENV === 'development';
-
-/**
- * The single place password reset and invitation links leave the server.
- * No mailer is configured: the link is logged to the server console, in development and in production.
- * Replace the body with a call to a mail provider (Resend, SES, Postmark, ...) to deliver `link` to `to`.
- */
-export function deliverLink({ kind, to, link }: LinkDelivery): void {
-  console.log(`[${kind}] ${to} → ${link}`);
-  if (!isDev) {
-    console.warn(
-      `[${kind}] No mailer is configured: this link is only in the server logs. Plug a mailer into packages/auth/src/link-delivery.ts before going live.`,
-    );
-  }
-}
+{{> auth/deliver-link kinds="'reset-password' | 'invitation'" file="packages/auth/src/link-delivery.ts"}}
