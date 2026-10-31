@@ -55,7 +55,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('registers a documents router using d1 per-request auth', () => {
     const base = join(import.meta.dir, '../../templates/blueprints/cloudflare-fullstack-nextjs/src/trpc');
     expect(readFileSync(join(base, 'routers/_app.ts.hbs'), 'utf8')).toContain('documents: documentsRouter');
-    expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('hasPermission(opts.ctx.db');
+    expect(readFileSync(join(base, 'middleware/rbac.ts.hbs'), 'utf8')).toContain('isGranted(permissions, resource, action)');
     expect(readFileSync(join(base, 'routers/documents.ts.hbs'), 'utf8')).toContain('STORAGE.delete(doc.r2Key)');
   });
 
@@ -78,7 +78,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
 
   test('session guards read the session through the getAuth per-request seam (not singleton)', () => {
     const session = bpFile('src/lib/auth/session.ts.hbs');
-    expect(session).toContain("import { getAuth } from '@/lib/server'");
+    expect(session).toContain("import { getRequestSession } from '@/lib/server'");
     expect(session).not.toContain("import { auth } from '@repo/auth/auth'");
     expect(session).toContain('{{> auth/session-guards}}');
   });

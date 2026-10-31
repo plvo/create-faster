@@ -8,9 +8,9 @@ import { asc, eq, type Database, rolePermissionTable, roleTable } from '@repo/db
 import { ADMIN_PERMISSIONS, ADMIN_ROLE, type Action, isBusinessPermission, type Permission, type Resource } from './permissions';
 
 // What a role may do, read from the database on every call: the result is never kept, so a permission removed from
-// `role_permissions` is refused on the next request. `admin` holds what it is compiled with, every business action included, without a row, and a role with no
-// row in `roles` holds nothing. A stored row is honored only when it names the business vocabulary, so a hand-written
-// `user.delete` row grants nothing.
+// `role_permissions` is refused on the next request. `admin` holds what it is compiled with, every business action
+// included, without a row. A role with no row in `roles` holds nothing. A stored row is honored only when it names
+// the business vocabulary, so a hand-written `user.delete` row grants nothing.
 export async function permissionsOf(db: Database, role: string | null | undefined): Promise<Permission[]> {
   if (!role) return [];
   if (role === ADMIN_ROLE) return [...ADMIN_PERMISSIONS];
@@ -24,16 +24,19 @@ export async function permissionsOf(db: Database, role: string | null | undefine
   return [...new Set(granted.map((row) => `${row.resource}.${row.action}` as Permission))];
 }
 
-// The one decision every server check goes through: the procedures, the route handlers and the permission list of
-// the client.
+// The one test of a permission against a list `permissionsOf` returned: the procedures, the route handlers and the
+// permission list of the client all go through it.
+export function isGranted<R extends Resource>(granted: readonly Permission[], resource: R, action: Action<R>): boolean {
+  return granted.includes(`${resource}.${action}` as Permission);
+}
+
 export async function hasPermission<R extends Resource>(
   db: Database,
   role: string | null | undefined,
   resource: R,
   action: Action<R>,
 ): Promise<boolean> {
-  const granted = await permissionsOf(db, role);
-  return granted.includes(`${resource}.${action}` as Permission);
+  return isGranted(await permissionsOf(db, role), resource, action);
 }
 
 export interface RoleMatrixEntry {
@@ -42,17 +45,20 @@ export interface RoleMatrixEntry {
   permissions: Permission[];
 }
 
-// The roles stored in the database with what each holds, for the roles page. `admin` is compiled and not listed.
+// The roles stored in the database with what each holds, for the roles page. `admin` is compiled: a stored row of that
+// name is ignored here as it is by `permissionsOf`.
 export async function listRoleMatrix(db: Database): Promise<RoleMatrixEntry[]> {
   const [roles, rows] = await Promise.all([
     db.select().from(roleTable).orderBy(asc(roleTable.id)),
     db.select().from(rolePermissionTable).orderBy(asc(rolePermissionTable.resource), asc(rolePermissionTable.action)),
   ]);
-  return roles.map((role) => ({
-    id: role.id,
-    label: role.label,
-    permissions: rows
-      .filter((row) => row.roleId === role.id && isBusinessPermission(row.resource, row.action))
-      .map((row) => `${row.resource}.${row.action}` as Permission),
-  }));
+  return roles
+    .filter((role) => role.id !== ADMIN_ROLE)
+    .map((role) => ({
+      id: role.id,
+      label: role.label,
+      permissions: rows
+        .filter((row) => row.roleId === role.id && isBusinessPermission(row.resource, row.action))
+        .map((row) => `${row.resource}.${row.action}` as Permission),
+    }));
 }

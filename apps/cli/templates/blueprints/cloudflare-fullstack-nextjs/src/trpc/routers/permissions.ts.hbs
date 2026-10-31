@@ -4,11 +4,11 @@ mono:
   name: api
   path: src/router/permissions.ts
 ---
-import { permissionsOf } from '@repo/auth/role-permissions';
+import { callerPermissions } from '../middleware/rbac';
 import { protectedProcedure, router } from '../trpc';
 
 export const permissionsRouter = router({
-  // The flat list of what the caller may do, read from the database on every call. The dashboard layout fetches it on
+  // The flat list of what the caller may do, read from the database once per request (see `callerPermissions`). The dashboard layout fetches it on
   // the server and hydrates it, so the sidebar and the buttons are right on the first render.
-  mine: protectedProcedure.query(({ ctx }) => permissionsOf(ctx.db, ctx.session.user.role)),
+  mine: protectedProcedure.query(({ ctx }) => callerPermissions(ctx)),
 });

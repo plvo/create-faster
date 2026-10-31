@@ -12,10 +12,11 @@ export interface DefaultRole {
 }
 
 // The roles a fresh database starts with. The names of the permissions are typed from `businessStatement`, so a
-// misspelled one fails type checking. The `db:roles` command writes them.
+// misspelled one fails type checking. The `db:roles` command writes them. `manager` reads every user's documents
+// (`read-any`) and deletes none; `user` works on its own.
 export const DEFAULT_ROLES = {
   user: { label: 'User', permissions: ['document.create', 'document.read', 'document.update', 'document.delete'] },
-  manager: { label: 'Manager', permissions: ['document.read'] },
+  manager: { label: 'Manager', permissions: ['document.read', 'document.read-any'] },
 } as const satisfies Record<string, DefaultRole>;
 
 // A role identifier is the value of `users.role`, which the admin plugin and the SQL below carry as plain text.
@@ -40,26 +41,32 @@ function assertValid(id: string, role: DefaultRole): void {
   for (const permission of role.permissions) permissionColumns(permission);
 }
 
-// The SQL that writes the roles of `definitions` that are not in `existingRoleIds`, as statements that ignore a row
-// that already exists. A role that exists is never written again, so a permission removed from it since stays removed.
-// Every definition is validated, whether it is written or not.
-export function defaultRoleStatements(
-  existingRoleIds: Iterable<string>,
-  definitions: Readonly<Record<string, DefaultRole>> = DEFAULT_ROLES,
-): string[] {
+// The SQL that writes the roles of `definitions`, in the order to run it: the roles, then their permissions. The
+// defaults are written once, into a database that has no role at all: the statements write nothing as soon as a role
+// exists, so a default role an operator deleted, a permission revoked since or a matrix emptied is never written back
+// and a role someone else created first is left alone. The permissions are written only by the run that wrote the roles
+// (`changes()` is the row count of the statement before). Send both statements in one request, so that D1 writes them
+// together: a run stopped between them leaves roles that hold nothing, which refuses, and a rerun does not guess.
+// Every definition is validated first.
+export function defaultRoleStatements(definitions: Readonly<Record<string, DefaultRole>> = DEFAULT_ROLES): string[] {
   for (const [id, role] of Object.entries(definitions)) assertValid(id, role);
 
-  const existing = new Set(existingRoleIds);
-  return Object.entries(definitions)
-    .filter(([id]) => !existing.has(id))
-    .flatMap(([id, role]) => {
-      const rows = role.permissions.map((permission) => {
-        const [resource, action] = permissionColumns(permission);
-        return `(${quoted(id)}, ${quoted(resource)}, ${quoted(action)})`;
-      });
-      return [
-        `INSERT OR IGNORE INTO roles (id, label) VALUES (${quoted(id)}, ${quoted(role.label)});`,
-        ...(rows.length > 0 ? [`INSERT OR IGNORE INTO role_permissions (role_id, resource, action) VALUES ${rows.join(', ')};`] : []),
-      ];
-    });
+  const roles = Object.entries(definitions);
+  const roleRows = roles.map(([id, role]) => `(${quoted(id)}, ${quoted(role.label)})`);
+  const permissionRows = roles.flatMap(([id, role]) =>
+    role.permissions.map((permission) => {
+      const [resource, action] = permissionColumns(permission);
+      return `(${quoted(id)}, ${quoted(resource)}, ${quoted(action)})`;
+    }),
+  );
+  if (roleRows.length === 0) return [];
+
+  return [
+    `INSERT INTO roles (id, label) SELECT column1, column2 FROM (VALUES ${roleRows.join(', ')}) WHERE NOT EXISTS (SELECT 1 FROM roles);`,
+    ...(permissionRows.length > 0
+      ? [
+          `INSERT INTO role_permissions (role_id, resource, action) SELECT column1, column2, column3 FROM (VALUES ${permissionRows.join(', ')}) WHERE changes() > 0;`,
+        ]
+      : []),
+  ];
 }

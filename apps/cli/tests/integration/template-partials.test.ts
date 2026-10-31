@@ -112,6 +112,8 @@ describe('Templates rendered through partials', () => {
       );
       expect(await readTextFile(join(path, 'src/lib/server.ts'))).toBe(`import 'server-only';
 import { nextCookies } from 'better-auth/next-js';
+import { headers } from 'next/headers';
+import { cache } from 'react';
 import { createDb } from '@/lib/db';
 import { createAuth } from '@/lib/auth/create-auth';
 import { getEnv } from '@/lib/env';
@@ -123,6 +125,9 @@ export async function getDb() {
 export async function getAuth() {
   return createAuth(await getDb(), nextCookies());
 }
+
+// The session of the request, read once by whoever asks first: the page guards and the tRPC context of the server share it.
+export const getRequestSession = cache(async () => (await getAuth()).api.getSession({ headers: await headers() }));
 `);
       expect(await readTextFile(join(path, 'AGENTS.md'))).toContain(
         "`getAuth()` in `src/lib/server.ts` builds this app's instance per request with `nextCookies()`: call it, never build one yourself.\n",

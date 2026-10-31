@@ -3,23 +3,21 @@ mono:
   scope: root
 ---
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { defaultRoleStatements } from '@repo/auth/default-roles';
 
 // Wrangler runs from the web app, which declares it, and reaches the D1 database through the `DB` binding of its
-// wrangler.jsonc. The local state is the one the migrations and the seed use.
-const WRANGLER = '{{installedBinaryRunner}} wrangler d1 execute DB';
+// wrangler.jsonc. The local state is the one the migrations and the seed use. No shell is involved: every argument
+// below reaches Wrangler as it is.
+const RUNNER = '{{installedBinaryRunner}}'.split(' ');
 const WRANGLER_DIRECTORY = 'apps/web';
 const remote = process.argv.includes('--remote');
-const target = remote ? '--remote' : '--local --persist-to ../../.wrangler';
+const target = remote ? ['--remote'] : ['--local', '--persist-to', '../../.wrangler'];
 
-function run(command: string, capture: boolean): Promise<string> {
+function wrangler(args: string[], capture: boolean): Promise<string> {
+  const [command = '', ...runnerArgs] = RUNNER;
   return new Promise((resolve, reject) => {
-    const child = spawn(command, {
+    const child = spawn(command, [...runnerArgs, 'wrangler', 'd1', 'execute', 'DB', ...target, ...args], {
       cwd: WRANGLER_DIRECTORY,
-      shell: true,
       stdio: ['inherit', capture ? 'pipe' : 'inherit', 'inherit'],
     });
     let output = '';
@@ -29,33 +27,39 @@ function run(command: string, capture: boolean): Promise<string> {
     child.on('error', reject);
     child.on('close', (code) => {
       if (code === 0) resolve(output);
-      else reject(new Error(`\`${command}\` exited with code ${code}`));
+      else reject(new Error(`wrangler d1 execute exited with code ${code}`));
     });
   });
 }
 
-async function existingRoleIds(): Promise<string[]> {
-  const output = await run(`${WRANGLER} ${target} --json --command "SELECT id FROM roles"`, true);
-  const [statement] = JSON.parse(output.slice(output.indexOf('['))) as { results: { id: string }[] }[];
-  return (statement?.results ?? []).map((row) => row.id);
+async function countRows(): Promise<{ roles: number; permissions: number }> {
+  const output = await wrangler(
+    ['--json', '--command', 'SELECT (SELECT count(*) FROM roles) AS roles, (SELECT count(*) FROM role_permissions) AS permissions'],
+    true,
+  );
+  const start = output.indexOf('[');
+  if (start === -1) throw new Error(`Wrangler did not print JSON:\n${output}`);
+  const [statement] = JSON.parse(output.slice(start)) as { results: { roles: number; permissions: number }[] }[];
+  const counts = statement?.results[0];
+  if (!counts) throw new Error(`Wrangler printed no row:\n${output}`);
+  return counts;
 }
 
 async function main(): Promise<void> {
-  const statements = defaultRoleStatements(await existingRoleIds());
-  if (statements.length === 0) {
-    console.log('The default roles are already there, nothing to write.');
+  const where = remote ? 'production' : 'local';
+  const { roles, permissions } = await countRows();
+  if (roles > 0) {
+    console.log(`The ${where} database already has roles, so nothing is written: the defaults only go into a database with none.`);
+    if (permissions === 0) {
+      console.warn(
+        'No role holds a permission, so every role but admin is refused. If a previous run stopped half way, delete the rows of `roles` and run this command again.',
+      );
+    }
     return;
   }
 
-  const directory = await mkdtemp(join(tmpdir(), 'default-roles-'));
-  const file = join(directory, 'default-roles.sql');
-  try {
-    await writeFile(file, `${statements.join('\n')}\n`);
-    await run(`${WRANGLER} ${target} --file "${file}"`, false);
-    console.log(`Wrote the default roles to the ${remote ? 'production' : 'local'} database.`);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
+  await wrangler(['--command', defaultRoleStatements().join('\n')], false);
+  console.log(`Wrote the default roles to the ${where} database.`);
 }
 
 main().catch((error) => {

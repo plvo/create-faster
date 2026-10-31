@@ -4,28 +4,30 @@ mono:
   name: api
   path: src/router/documents.ts
 ---
-import { and, count, documentTable, eq } from '@repo/db';
+import { count, documentTable, eq } from '@repo/db';
 import { z } from 'zod';
+import { deletableDocument, visibleDocuments } from '../document-scope';
 import { router } from '../trpc';
 import { permissionProcedure } from '../middleware/rbac';
 import { newestFirstPage } from '../page-query';
 import { pageInput } from '../pagination';
 
-// An admin or a manager sees every document, anyone else their own.
-function visibleTo(user: { id: string; role?: string | null }) {
-  const isPrivileged = user.role === 'admin' || user.role === 'manager';
-  return isPrivileged ? undefined : eq(documentTable.userId, user.id);
-}
-
 export const documentsRouter = router({
   list: permissionProcedure('document', 'read')
     .input(pageInput)
     .query(({ ctx, input }) =>
-      newestFirstPage(ctx.db.select().from(documentTable).where(visibleTo(ctx.session.user)), documentTable, input),
+      newestFirstPage(
+        ctx.db.select().from(documentTable).where(visibleDocuments(ctx.permissions, ctx.session.user.id)),
+        documentTable,
+        input,
+      ),
     ),
 
   count: permissionProcedure('document', 'read').query(async ({ ctx }) => {
-    const [result] = await ctx.db.select({ count: count() }).from(documentTable).where(visibleTo(ctx.session.user));
+    const [result] = await ctx.db
+      .select({ count: count() })
+      .from(documentTable)
+      .where(visibleDocuments(ctx.permissions, ctx.session.user.id));
     return result?.count ?? 0;
   }),
 
@@ -35,11 +37,7 @@ export const documentsRouter = router({
       const [doc] = await ctx.db
         .select()
         .from(documentTable)
-        .where(
-          ctx.session.user.role === 'admin'
-            ? eq(documentTable.id, input.id)
-            : and(eq(documentTable.id, input.id), eq(documentTable.userId, ctx.session.user.id)),
-        )
+        .where(deletableDocument(ctx.permissions, ctx.session.user.id, input.id))
         .limit(1);
       if (!doc) return { deleted: false };
 

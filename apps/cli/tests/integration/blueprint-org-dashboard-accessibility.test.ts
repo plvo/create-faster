@@ -293,7 +293,7 @@ export const roles = { admin: {}, manager: {} };
 export const ADMIN_ROLE = 'admin';
 export const PERMISSIONS = ['user.create', 'user.list', 'contact.create', 'contact.read'];
 export const ADMIN_PERMISSIONS = PERMISSIONS;`,
-  'role-permissions.mjs': `export const listRoleMatrix = async () => [{ id: 'manager', label: 'Manager', permissions: ['contact.read'] }];`,
+  'role-permissions.mjs': `export const listRoleMatrix = async () => globalThis.__storedRoles ?? [{ id: 'manager', label: 'Manager', permissions: ['contact.read'] }];`,
 };
 
 const COMMON_IMPORTS: Record<string, string> = {
@@ -1497,7 +1497,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     test('is one table named by a caption, with a header for each column and each row', async () => {
       const roles = await table();
       expect(textOf(must(withTag(roles, 'caption')[0], 'the caption'))).toBe('Permissions granted to each role');
-      expect(headers(roles, 'col').map(textOf)).toEqual(['Permission', 'admin(you)', 'manager']);
+      expect(headers(roles, 'col').map(textOf)).toEqual(['Permission', 'Admin(you)', 'Manager']);
       expect(headers(roles, 'row').map(textOf)).toEqual(PERMISSIONS);
       for (const row of withTag(must(withTag(roles, 'tbody')[0], 'the body'), 'tr')) expect(withTag(row, 'th')[0]?.props.scope).toBe('row');
     });
@@ -1523,9 +1523,27 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       }
     });
 
+    test('names a role by its label, and tells where the defaults come from when the database holds no role', async () => {
+      const globals = globalThis as { __storedRoles?: unknown };
+      globals.__storedRoles = [{ id: 'auditor', label: 'External auditor', permissions: [] }];
+      try {
+        expect(headers(await table(), 'col').map(textOf)).toEqual(['Permission', 'Admin(you)', 'External auditor']);
+        expect(withTag((await mount('roles')).tree, 'p').map(textOf).join(' ')).not.toContain('db:roles');
+
+        globals.__storedRoles = [];
+        const empty = (await mount('roles')).tree;
+        const notice = must(find(empty, (element) => element.props.role === 'status'), 'the empty state');
+        expect(textOf(notice)).toContain('db:roles');
+        expect(textOf(notice)).toContain('db:roles:remote');
+        expect(headers(await table(), 'col').map(textOf)).toEqual(['Permission', 'Admin(you)']);
+      } finally {
+        globals.__storedRoles = undefined;
+      }
+    });
+
     test('marks the role of the signed-in admin with text', async () => {
       const roles = await table();
-      expect(headers(roles, 'col').map(textOf).filter((name) => name.includes('(you)'))).toEqual(['admin(you)']);
+      expect(headers(roles, 'col').map(textOf).filter((name) => name.includes('(you)'))).toEqual(['Admin(you)']);
     });
 
     test('is compact enough to fit a phone and scrolls inside its frame when it does not', async () => {

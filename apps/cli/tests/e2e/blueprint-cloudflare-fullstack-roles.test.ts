@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   type CommandResult,
@@ -27,6 +27,9 @@ const MEMBER = 'user@example.com';
 const describeFailure = (result: CommandResult): string => `${result.stdout}\n${result.stderr}`;
 
 let clientNumber = 0;
+
+// The Documents entry of the sidebar, which the page title and the breadcrumb of the same page do not match.
+const DOCUMENTS_LINK = /<a\b[^>]*data-sidebar="menu-button"[^>]*href="\/"|<a\b[^>]*href="\/"[^>]*data-sidebar="menu-button"/;
 
 describe('cloudflare-fullstack-nextjs roles read from the database, on a served project with the local D1', () => {
   let projectDir: string;
@@ -102,6 +105,7 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     const before = await d1('SELECT role_id, resource, action FROM role_permissions ORDER BY role_id, resource, action');
     expect(before.map((row) => `${row.role_id}.${row.action}`)).toEqual([
       'manager.read',
+      'manager.read-any',
       'user.create',
       'user.delete',
       'user.read',
@@ -110,7 +114,7 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
 
     const again = await runCommand(['bun', 'run', 'db:roles'], projectDir);
     expect(again.exitCode, describeFailure(again)).toBe(0);
-    expect(again.stdout).toContain('already there');
+    expect(again.stdout).toContain('already has roles');
     expect(await d1('SELECT role_id, resource, action FROM role_permissions ORDER BY role_id, resource, action')).toEqual(before);
   }, TIMEOUT_SETUP);
 
@@ -119,7 +123,8 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     expect(admin.status).toBe(200);
     expect(admin.data).toEqual(expect.arrayContaining(['document.create', 'document.read', 'document.update', 'document.delete', 'user.list']));
 
-    expect(await query('permissions.mine', await signIn(MANAGER))).toEqual({ status: 200, data: ['document.read'] });
+    const manager = await query('permissions.mine', await signIn(MANAGER));
+    expect((manager.data as string[]).sort()).toEqual(['document.read', 'document.read-any']);
     const member = await query('permissions.mine', await signIn(MEMBER));
     expect((member.data as string[]).sort()).toEqual(['document.create', 'document.delete', 'document.read', 'document.update']);
     expect((await query('permissions.mine', '')).status).toBe(401);
@@ -128,7 +133,7 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
   test('the first render of the sidebar and of the buttons is already right for a non-admin', async () => {
     const manager = await page('/', await signIn(MANAGER));
     expect(manager.status).toBe(200);
-    expect(manager.html).toContain('Documents');
+    expect(manager.html).toMatch(DOCUMENTS_LINK);
     expect(manager.html).not.toContain('/admin/users');
     expect(manager.html).not.toContain('type="file"');
 
@@ -141,16 +146,17 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     expect(admin.html).toContain('/admin/roles');
   });
 
-  test('a non-admin is refused account administration, and a stored row naming user or session grants nothing', async () => {
+  test('a non-admin is refused account administration', async () => {
     const cookie = await signIn(MANAGER);
     expect((await query('users.list', cookie, {})).status).toBe(403);
     expect(await page('/admin/users', cookie)).toMatchObject({ status: 307, location: expect.stringMatching(/\/$/) });
+  });
 
+  test('a stored row naming user or session is not part of what the server says the caller may do', async () => {
+    const cookie = await signIn(MANAGER);
     await d1("PRAGMA foreign_keys = OFF; INSERT INTO role_permissions (role_id, resource, action) VALUES ('manager', 'user', 'list'), ('manager', 'session', 'list')");
     try {
-      expect((await query('users.list', cookie, {})).status).toBe(403);
-      expect(await query('permissions.mine', cookie)).toEqual({ status: 200, data: ['document.read'] });
-      expect(await page('/admin/users', cookie)).toMatchObject({ status: 307 });
+      expect(await query('permissions.mine', cookie)).toEqual({ status: 200, data: ['document.read', 'document.read-any'] });
     } finally {
       await d1("DELETE FROM role_permissions WHERE resource IN ('user', 'session')");
     }
@@ -163,11 +169,12 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     await d1("DELETE FROM role_permissions WHERE role_id = 'manager' AND action = 'read'");
     try {
       expect((await query('documents.list', cookie, { page: 1, pageSize: 10 })).status).toBe(403);
-      expect(await query('permissions.mine', cookie)).toEqual({ status: 200, data: [] });
+      expect(await query('permissions.mine', cookie)).toEqual({ status: 200, data: ['document.read-any'] });
 
       const noAccess = await page('/', cookie);
       expect(noAccess.status).toBe(200);
       expect(noAccess.html).toContain('Your role has no access to documents.');
+      expect(noAccess.html).not.toMatch(DOCUMENTS_LINK);
 
       const rerun = await runCommand(['bun', 'run', 'db:roles'], projectDir);
       expect(rerun.exitCode, describeFailure(rerun)).toBe(0);
@@ -203,4 +210,57 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     }
     expect((await query('documents.list', cookie, { page: 1, pageSize: 10 })).status).toBe(200);
   });
+  test('the defaults command does not write back a default role an operator deleted', async () => {
+    await d1("DELETE FROM roles WHERE id = 'manager'");
+    try {
+      const rerun = await runCommand(['bun', 'run', 'db:roles'], projectDir);
+      expect(rerun.exitCode, describeFailure(rerun)).toBe(0);
+      expect(await d1('SELECT id FROM roles')).toEqual([{ id: 'user' }]);
+      expect(await query('permissions.mine', await signIn(MANAGER))).toEqual({ status: 200, data: [] });
+    } finally {
+      await d1(
+        "INSERT INTO roles (id, label) VALUES ('manager', 'Manager'); INSERT INTO role_permissions (role_id, resource, action) VALUES ('manager', 'document', 'read'), ('manager', 'document', 'read-any')",
+      );
+    }
+  }, TIMEOUT_SETUP);
+
+  test('read-any decides which documents a role sees, whatever the role is called', async () => {
+    const cookie = await signIn(MANAGER);
+    const [all] = await d1('SELECT count(*) AS n FROM documents');
+    expect((await query('documents.count', cookie)).data).toBe(all?.n);
+    const [own] = await d1("SELECT count(*) AS n FROM documents WHERE user_id = (SELECT id FROM users WHERE email = 'manager@example.com')");
+
+    await d1("DELETE FROM role_permissions WHERE role_id = 'manager' AND action = 'read-any'");
+    try {
+      expect((await query('documents.count', cookie)).data).toBe(own?.n);
+    } finally {
+      await d1("INSERT INTO role_permissions (role_id, resource, action) VALUES ('manager', 'document', 'read-any')");
+    }
+    expect((await query('documents.count', cookie)).data).toBe(all?.n);
+  });
+
+  test('permissionProcedure takes business resources and their actions only, at type check', async () => {
+    const apiDir = join(projectDir, 'packages/api');
+    const planted = join(apiDir, 'src/planted-permission.ts');
+    await writeFile(
+      planted,
+      [
+        "import { permissionProcedure } from './middleware/rbac';",
+        "export const fine = permissionProcedure('document', 'read');",
+        "export const account = permissionProcedure('user', 'ban');",
+        "export const unknown = permissionProcedure('document', 'launch');",
+        '',
+      ].join('\n'),
+    );
+    try {
+      const result = await runCommand(['bunx', 'tsc', '--noEmit'], apiDir);
+      const output = describeFailure(result);
+      expect(result.exitCode, output).not.toBe(0);
+      expect(output).toContain('planted-permission.ts(3,');
+      expect(output).toContain('planted-permission.ts(4,');
+      expect(output).not.toContain('planted-permission.ts(2,');
+    } finally {
+      await rm(planted, { force: true });
+    }
+  }, TIMEOUT_SETUP);
 });

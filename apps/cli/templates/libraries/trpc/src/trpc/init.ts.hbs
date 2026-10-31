@@ -30,13 +30,20 @@ import superjson from 'superjson';
 import { trpcErrorFromAuthError } from './auth-errors';
 {{/if}}
 
-export async function createTRPCContext(opts: { headers: Headers{{#if (and (has "database" "d1") project.orm)}}; db: Database{{/if}} }) {
+{{#if (and (hasLibrary "better-auth") (has "database" "d1") project.orm (has "stack" "nextjs"))}}
+// A caller that already read the session of the request hands it over (`null` for none), and the context does not read it again.
+type RequestSession = Awaited<ReturnType<ReturnType<typeof createAuth>['api']['getSession']>>;
+
+{{/if}}
+export async function createTRPCContext(opts: { headers: Headers{{#if (and (has "database" "d1") project.orm)}}; db: Database{{#if (and (hasLibrary "better-auth") (has "stack" "nextjs"))}}; session?: RequestSession{{/if}}{{/if}} }) {
 {{#if (hasLibrary "better-auth")}}
 {{#if (and (has "database" "d1") project.orm)}}
   const sessionReader = createAuth(opts.db);
 {{/if}}
 {{#if (has "stack" "tanstack-start")}}
   const session = await getRequestSession(opts.headers, () => sessionReader.api.getSession({ headers: opts.headers }));
+{{else if (and (has "database" "d1") project.orm)}}
+  const session = opts.session !== undefined ? opts.session : await sessionReader.api.getSession({ headers: opts.headers });
 {{else}}
   const session = await sessionReader.api.getSession({ headers: opts.headers });
 {{/if}}

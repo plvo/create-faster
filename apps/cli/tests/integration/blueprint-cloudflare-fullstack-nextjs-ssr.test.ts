@@ -16,6 +16,7 @@ const redirectTo = (path: string): RegExp => new RegExp(`^redirect:${path}$`);
 // what they are called with, in `calls`, so a test asserts on behaviour and not on how the source is written.
 const STUBS: Record<string, string> = {
   'recorder.mjs': `export const calls = [];
+export const ensured = [];
 export const state = { denied: false, session: null, data: [], total: 0, sort: '-createdAt', search: '', permissions: ['document.read'] };`,
   'react.mjs': `${REACT_ELEMENT_STUB}
 export const Suspense = ({ children }) => children;
@@ -41,8 +42,9 @@ export const getSession = async () => {
 };`,
   'server.mjs': `import { state } from './recorder.mjs';
 export const getAuth = async () => ({ api: { getSession: async () => state.session } });
+export const getRequestSession = async () => state.session;
 export const auth = { api: { getSession: async () => state.session } };`,
-  'trpc.mjs': `import { calls, state } from './recorder.mjs';
+  'trpc.mjs': `import { calls, ensured, state } from './recorder.mjs';
 // trpc.users.get.queryOptions(input) is { path: 'users.get', input }: two calls build the same key only when they name the same procedure and input.
 const make = (path) => new Proxy({}, {
   get: (_, key) => {
@@ -60,7 +62,7 @@ export const getQueryClient = () => ({
   fetchQuery: async (options) => { calls.push(['fetch', options]); return state.data; },
   prefetchQuery: async (options) => { calls.push(['awaited-prefetch', options]); },
   // The permissions of the caller, which the layout fetched for the request: state.permissions answers.
-  ensureQueryData: async () => state.permissions,
+  ensureQueryData: async (options) => { ensured.push(options); return state.permissions; },
 });`,
   'react-query.mjs': `import { calls, state } from './recorder.mjs';
 export const useSuspenseQuery = (options) => { calls.push(['read', options]); return { data: state.data }; };
@@ -111,6 +113,7 @@ const SHARED_IMPORTS: Record<string, string> = {
 
 interface Recorder {
   calls: unknown[];
+  ensured: unknown[];
   state: { denied: boolean; session: unknown; data: unknown; total: number; sort: string; search: string; permissions: string[] };
 }
 
@@ -239,6 +242,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
 
   beforeEach(() => {
     recorder.calls.length = 0;
+    recorder.ensured.length = 0;
     recorder.state.denied = false;
     recorder.state.session = null;
     recorder.state.data = [];
@@ -303,10 +307,17 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     ]);
   });
 
+  test('the documents page reads the permissions of the caller by their own key, before it starts a query', async () => {
+    const route = await load(`${APP}/page.tsx`);
+    await route.default?.({ searchParams: Promise.resolve({}) });
+    expect(recorder.ensured).toEqual([{ path: 'permissions.mine', input: undefined }]);
+  });
+
   test('a role without document.read gets the no-access message and the page starts no query', async () => {
     recorder.state.permissions = [];
     const route = await load(`${APP}/page.tsx`);
     const tree = await route.default?.({ searchParams: Promise.resolve({}) });
+    expect(recorder.ensured).toEqual([{ path: 'permissions.mine', input: undefined }]);
     expect(recorder.calls).toEqual(['requireSession']);
     expect([...descendants(tree)].map((element) => element.type)).toEqual(['div', 'h1', 'p']);
   });

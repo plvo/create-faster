@@ -105,8 +105,9 @@ describe('Single repo: Next.js + cloudflare + d1 + trpc + better-auth', () => {
 
   test('trpc context takes a per-request db and builds auth from it', async () => {
     const init = await readTextFile(join(projectPath, 'src/trpc/init.ts'));
-    expect(init).toContain('createTRPCContext(opts: { headers: Headers; db: Database }');
+    expect(init).toContain('createTRPCContext(opts: { headers: Headers; db: Database; session?: RequestSession }');
     expect(init).toContain('createAuth(opts.db)');
+    expect(init).toContain('opts.session !== undefined ? opts.session');
     expect(init).toContain('protectedProcedure');
     expect(init).not.toContain("import { auth }");
     expect(init).not.toContain("import { db }");
@@ -114,8 +115,8 @@ describe('Single repo: Next.js + cloudflare + d1 + trpc + better-auth', () => {
 
   test('trpc server.tsx supplies the per-request db via getDb()', async () => {
     const server = await readTextFile(join(projectPath, 'src/trpc/server.tsx'));
-    expect(server).toContain("import { getDb } from '@/lib/server'");
-    expect(server).toContain('db: await getDb()');
+    expect(server).toContain("import { getDb, getRequestSession } from '@/lib/server'");
+    expect(server).toContain('db: await getDb(), session: await getRequestSession()');
   });
 
   test('trpc route handler supplies the per-request db via getDb()', async () => {
@@ -170,7 +171,7 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1 + trpc + better-auth', () 
 
   test('api package context takes a per-request db and builds auth from it', async () => {
     const trpc = await readTextFile(join(projectPath, 'packages/api/src/trpc.ts'));
-    expect(trpc).toContain('createTRPCContext(opts: { headers: Headers; db: Database }');
+    expect(trpc).toContain('createTRPCContext(opts: { headers: Headers; db: Database; session?: RequestSession }');
     expect(trpc).toContain('createAuth(opts.db)');
     expect(trpc).not.toContain("import { db }");
   });
@@ -185,8 +186,8 @@ describe('Turborepo: Next.js + Hono + cloudflare + d1 + trpc + better-auth', () 
 
   test('web app callers supply the per-request db', async () => {
     const serverTsx = await readTextFile(join(projectPath, 'apps/web/src/trpc/server.tsx'));
-    expect(serverTsx).toContain("import { getDb } from '@/lib/server'");
-    expect(serverTsx).toContain('db: await getDb()');
+    expect(serverTsx).toContain("import { getDb, getRequestSession } from '@/lib/server'");
+    expect(serverTsx).toContain('db: await getDb(), session: await getRequestSession()');
     const route = await readTextFile(join(projectPath, 'apps/web/src/app/api/trpc/[trpc]/route.ts'));
     expect(route).toContain('db: await getDb()');
     const authRoute = await readTextFile(join(projectPath, 'apps/web/src/app/api/auth/[...all]/route.ts'));

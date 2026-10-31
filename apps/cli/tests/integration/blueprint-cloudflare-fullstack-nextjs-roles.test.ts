@@ -49,19 +49,33 @@ interface Permissions {
 
 interface DefaultRoles {
   DEFAULT_ROLES: Record<string, { label: string; permissions: readonly string[] }>;
-  defaultRoleStatements: (existing: Iterable<string>, definitions?: Record<string, unknown>) => string[];
+  defaultRoleStatements: (definitions?: Record<string, unknown>) => string[];
 }
 
 interface RolePermissions {
   permissionsOf: (db: unknown, role: string | null | undefined) => Promise<string[]>;
   hasPermission: (db: unknown, role: string | null | undefined, resource: string, action: string) => Promise<boolean>;
+  isGranted: (granted: readonly string[], resource: string, action: string) => boolean;
   listRoleMatrix: (db: unknown) => Promise<{ id: string; label: string; permissions: string[] }[]>;
 }
 
+interface DocumentRow {
+  id: string;
+  userId: string;
+}
+
 interface Caller {
-  documents: { list: (input?: unknown) => Promise<unknown[]>; delete: (input: { id: string }) => Promise<unknown> };
-  users: { list: (input?: unknown) => Promise<unknown[]> };
+  documents: { list: (input?: unknown) => Promise<DocumentRow[]>; count: () => Promise<number>; delete: (input: { id: string }) => Promise<unknown> };
   permissions: { mine: () => Promise<string[]> };
+}
+
+interface DocumentScope {
+  visibleDocuments: (granted: readonly string[], userId: string) => unknown;
+  deletableDocument: (granted: readonly string[], userId: string, id: string) => unknown;
+}
+
+interface Rbac {
+  permissionProcedure: (resource: string, action: string) => unknown;
 }
 
 function createTable(sqlite: Database, table: SQLiteTable): void {
@@ -93,12 +107,14 @@ describe(`${BLUEPRINT} database roles`, () => {
   let permissions: Permissions;
   let defaults: DefaultRoles;
   let engine: RolePermissions;
+  let scope: DocumentScope;
   let schema: Record<string, SQLiteTable>;
   let createCaller: (router: unknown) => (ctx: unknown) => Caller;
   let appRouter: unknown;
 
   let sqlite: Database;
   let db: unknown;
+  let queries: string[];
 
   const grant = (role: string, ...names: string[]) => {
     for (const name of names) {
@@ -107,13 +123,20 @@ describe(`${BLUEPRINT} database roles`, () => {
     }
   };
   const addRole = (id: string, label = id) => sqlite.run('INSERT INTO roles (id, label) VALUES (?, ?)', [id, label]);
-  const callerOf = (role: string | null, userId = 'u1') =>
-    createCaller(appRouter)({ db, headers: new Headers(), session: { user: { id: userId, role } } });
+  const addUser = (id: string, role = 'user') =>
+    sqlite.run('INSERT INTO users (id, name, email, email_verified, role) VALUES (?, ?, ?, 0, ?)', [id, id, `${id}@example.com`, role]);
+  const addDocument = (id: string, userId: string) =>
+    sqlite.run("INSERT INTO documents (id, user_id, title, r2_key, size, mime_type) VALUES (?, ?, ?, ?, 1, 'text/plain')", [id, userId, id, id]);
+  // Every call is a request of its own unless a test hands the same headers to several: tRPC builds one context per request.
+  const callerOf = (role: string | null, userId = 'u1', headers = new Headers()) =>
+    createCaller(appRouter)({ db, headers, session: { user: { id: userId, role } } });
   const rowsOf = () =>
     sqlite.query('SELECT role_id, resource, action FROM role_permissions ORDER BY role_id, resource, action').all();
+  const roleIds = () => (sqlite.query('SELECT id FROM roles ORDER BY id').all() as { id: string }[]).map((row) => row.id);
   const runAll = (statements: string[]) => {
     for (const statement of statements) sqlite.run(statement);
   };
+  const permissionReads = () => queries.filter((query) => query.includes('"role_permissions"')).length;
 
   beforeAll(async () => {
     tempDir = await createTempDir();
@@ -148,30 +171,26 @@ describe(`${BLUEPRINT} database roles`, () => {
       '@repo/auth/role-permissions': './role-permissions.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
+      '../document-scope': './document-scope.mjs',
     };
-    await Bun.write(join(stubs, 'auth.mjs'), 'export const createAuth = () => ({ api: {} });');
     const zod = Bun.resolveSync('zod', import.meta.dir);
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod });
-    await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod, './pagination': './pagination.mjs' });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
+    scope = await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', imports);
-    const routerImports = {
+    const { documentsRouter } = await generated<{ documentsRouter: unknown }>(`${API}/router/documents.ts`, 'documents-router.mjs', {
       ...imports,
       zod,
       '../page-query': './page-query.mjs',
       '../pagination': './pagination.mjs',
-      '../user-list': './user-list.mjs',
-      '@repo/auth/auth': './auth.mjs',
-    };
-    const { documentsRouter } = await generated<{ documentsRouter: unknown }>(`${API}/router/documents.ts`, 'documents-router.mjs', routerImports);
-    const { usersRouter } = await generated<{ usersRouter: unknown }>(`${API}/router/users.ts`, 'users-router.mjs', routerImports);
+    });
     const { permissionsRouter } = await generated<{ permissionsRouter: unknown }>(`${API}/router/permissions.ts`, 'permissions-router.mjs', imports);
 
     const trpc = (await import(join(stubs, 'trpc.mjs'))) as {
       router: (procedures: Record<string, unknown>) => unknown;
       createCallerFactory: (router: unknown) => (ctx: unknown) => Caller;
     };
-    appRouter = trpc.router({ documents: documentsRouter, users: usersRouter, permissions: permissionsRouter });
+    appRouter = trpc.router({ documents: documentsRouter, permissions: permissionsRouter });
     createCaller = trpc.createCallerFactory;
   });
 
@@ -185,7 +204,8 @@ describe(`${BLUEPRINT} database roles`, () => {
     for (const name of ['userTable', 'documentTable', 'roleTable', 'rolePermissionTable']) {
       createTable(sqlite, schema[name] as SQLiteTable);
     }
-    db = drizzle(sqlite);
+    queries = [];
+    db = drizzle(sqlite, { logger: { logQuery: (query) => queries.push(query) } });
   });
 
   describe('a role that is missing, or has no rows, is refused', () => {
@@ -216,11 +236,8 @@ describe(`${BLUEPRINT} database roles`, () => {
       for (const role of [null, undefined, '']) expect(await engine.permissionsOf(db, role)).toEqual([]);
     });
 
-    test('a procedure answers FORBIDDEN to a role the database does not know, and UNAUTHORIZED without a session', async () => {
+    test('a procedure answers FORBIDDEN to a role the database does not know', async () => {
       await expect(callerOf('auditor').documents.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
-      await expect(
-        createCaller(appRouter)({ db, headers: new Headers(), session: null }).documents.list(),
-      ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     });
   });
 
@@ -261,13 +278,13 @@ describe(`${BLUEPRINT} database roles`, () => {
       expect(await engine.permissionsOf(db, 'manager')).toEqual(['document.read']);
       expect(await engine.hasPermission(db, 'manager', 'user', 'list')).toBe(false);
       expect(await engine.hasPermission(db, 'manager', 'session', 'revoke')).toBe(false);
-      await expect(callerOf('manager').users.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
     });
 
     test('the vocabulary of stored permissions is the business statement, and excludes the account statement', () => {
       expect(Object.keys(permissions.accountStatement).sort()).toEqual(['session', 'user']);
       expect(Object.keys(permissions.businessStatement)).toEqual(['document']);
       expect(permissions.isBusinessPermission('document', 'read')).toBe(true);
+      expect(permissions.isBusinessPermission('document', 'read-any')).toBe(true);
       for (const [resource, action] of [['user', 'list'], ['user', 'set-role'], ['session', 'list'], ['document', 'nuke'], ['', ''], ['document.read', ''], ['constructor', 'name']] as const) {
         expect([resource, action, permissions.isBusinessPermission(resource, action)]).toEqual([resource, action, false]);
       }
@@ -275,7 +292,7 @@ describe(`${BLUEPRINT} database roles`, () => {
     });
 
     test('the defaults writer refuses a definition that names an account resource, an unknown action or an unsafe role', () => {
-      const attempt = (definitions: Record<string, unknown>) => () => defaults.defaultRoleStatements([], definitions);
+      const attempt = (definitions: Record<string, unknown>) => () => defaults.defaultRoleStatements(definitions);
       expect(attempt({ editor: { label: 'Editor', permissions: ['user.list'] } })).toThrow();
       expect(attempt({ editor: { label: 'Editor', permissions: ['session.revoke'] } })).toThrow();
       expect(attempt({ editor: { label: 'Editor', permissions: ['document.nuke'] } })).toThrow();
@@ -287,19 +304,17 @@ describe(`${BLUEPRINT} database roles`, () => {
       expect(attempt({ editor: { label: 'Editor', permissions: ['document.read'] } })).not.toThrow();
     });
 
-    test('a refused definition writes nothing, even beside valid roles, and a role that already exists is still validated', () => {
+    test('a refused definition writes nothing, even beside valid roles', () => {
       expect(() =>
-        defaults.defaultRoleStatements([], {
+        defaults.defaultRoleStatements({
           fine: { label: 'Fine', permissions: ['document.read'] },
           bad: { label: 'Bad', permissions: ['user.list'] },
         }),
       ).toThrow();
-      expect(() => defaults.defaultRoleStatements(['bad'], { bad: { label: 'Bad', permissions: ['user.list'] } })).toThrow();
     });
 
     test('a label is data, never SQL', () => {
-      addRole('placeholder');
-      runAll(defaults.defaultRoleStatements([], { tricky: { label: "O'Brien'); DROP TABLE roles; --", permissions: ['document.read'] } }));
+      runAll(defaults.defaultRoleStatements({ tricky: { label: "O'Brien'); DROP TABLE roles; --", permissions: ['document.read'] } }));
       expect(sqlite.query("SELECT label FROM roles WHERE id = 'tricky'").get()).toEqual({ label: "O'Brien'); DROP TABLE roles; --" });
     });
   });
@@ -317,12 +332,19 @@ describe(`${BLUEPRINT} database roles`, () => {
     });
 
     test('rows written for admin change nothing, and the defaults never write any', async () => {
-      runAll(defaults.defaultRoleStatements([]));
+      runAll(defaults.defaultRoleStatements());
       expect(rowsOf().filter((row) => (row as { role_id: string }).role_id === 'admin')).toEqual([]);
       expect(sqlite.query("SELECT id FROM roles WHERE id = 'admin'").all()).toEqual([]);
       addRole('admin');
       grant('admin', 'document.read');
       expect(await engine.permissionsOf(db, 'admin')).toEqual([...permissions.ADMIN_PERMISSIONS]);
+    });
+
+    test('the roles matrix never lists a stored admin row', async () => {
+      addRole('admin');
+      grant('admin', 'document.read');
+      addRole('auditor');
+      expect((await engine.listRoleMatrix(db)).map((role) => role.id)).toEqual(['auditor']);
     });
 
     test('the compiled admin role of the plugin covers every business action, and is the list admin is given', () => {
@@ -344,7 +366,6 @@ describe(`${BLUEPRINT} database roles`, () => {
 
     test('admin passes the procedures it never had rows for', async () => {
       await expect(callerOf('admin').documents.list()).resolves.toEqual([]);
-      await expect(callerOf('admin').users.list({})).resolves.toEqual([]);
     });
   });
 
@@ -357,64 +378,240 @@ describe(`${BLUEPRINT} database roles`, () => {
       expect(await callerOf('auditor').permissions.mine()).toEqual([]);
     });
 
-    test('follows a revocation on the next call', async () => {
+    test('follows a revocation on the next request', async () => {
       addRole('user');
       grant('user', 'document.read');
       expect(await callerOf('user').permissions.mine()).toEqual(['document.read']);
       sqlite.run('DELETE FROM role_permissions');
       expect(await callerOf('user').permissions.mine()).toEqual([]);
     });
+  });
 
-    test('needs a session', async () => {
-      await expect(
-        createCaller(appRouter)({ db, headers: new Headers(), session: null }).permissions.mine(),
-      ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  describe('one request reads the permissions of its caller once', () => {
+    test('three procedures of one request read role_permissions once, and each new request reads again', async () => {
+      addRole('manager');
+      grant('manager', 'document.read');
+      const request = new Headers();
+      const caller = callerOf('manager', 'u1', request);
+      await caller.documents.list();
+      await caller.documents.count();
+      await caller.permissions.mine();
+      expect(permissionReads()).toBe(1);
+
+      queries.length = 0;
+      await callerOf('manager').documents.list();
+      await callerOf('manager').documents.count();
+      await callerOf('manager').permissions.mine();
+      expect(permissionReads()).toBe(3);
+    });
+
+    test('a request whose role has no rows reads once as well', async () => {
+      const request = new Headers();
+      await expect(callerOf('auditor', 'u1', request).documents.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      await expect(callerOf('auditor', 'u1', request).documents.count()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(permissionReads()).toBe(1);
+    });
+  });
+
+  describe('the scope of the documents a role sees and deletes comes from the permission list', () => {
+    const ids = (rows: DocumentRow[]) => rows.map((row) => row.id).sort();
+
+    const seedDocuments = () => {
+      addUser('u1');
+      addUser('u2');
+      addDocument('d1', 'u1');
+      addDocument('d2', 'u2');
+    };
+
+    test('read-any shows every document and a role without it sees its own', async () => {
+      seedDocuments();
+      addRole('reader');
+      grant('reader', 'document.read');
+      addRole('auditor');
+      grant('auditor', 'document.read', 'document.read-any');
+      expect(ids(await callerOf('reader', 'u1').documents.list())).toEqual(['d1']);
+      expect(await callerOf('reader', 'u1').documents.count()).toBe(1);
+      expect(ids(await callerOf('auditor', 'u1').documents.list())).toEqual(['d1', 'd2']);
+      expect(await callerOf('auditor', 'u1').documents.count()).toBe(2);
+    });
+
+    test('read-any alone does not open the list: read is still asked', async () => {
+      seedDocuments();
+      addRole('odd');
+      grant('odd', 'document.read-any');
+      await expect(callerOf('odd', 'u1').documents.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    test('a role that gains or loses read-any changes scope on the next request, whatever its name', async () => {
+      seedDocuments();
+      addRole('manager');
+      grant('manager', 'document.read');
+      expect(ids(await callerOf('manager', 'u1').documents.list())).toEqual(['d1']);
+      grant('manager', 'document.read-any');
+      expect(ids(await callerOf('manager', 'u1').documents.list())).toEqual(['d1', 'd2']);
+      sqlite.run("DELETE FROM role_permissions WHERE action = 'read-any'");
+      expect(ids(await callerOf('manager', 'u1').documents.list())).toEqual(['d1']);
+    });
+
+    test('admin sees every document through its own permissions, not through its name', async () => {
+      seedDocuments();
+      expect(ids(await callerOf('admin', 'u1').documents.list())).toEqual(['d1', 'd2']);
+    });
+
+    test('delete-any lets a caller delete a document of someone else, and without it only their own', () => {
+      const run = (granted: string[], userId: string, id: string) =>
+        (db as { select: () => { from: (table: unknown) => { where: (clause: unknown) => { all: () => { id: string }[] } } } })
+          .select()
+          .from(schema.documentTable)
+          .where(scope.deletableDocument(granted, userId, id))
+          .all();
+      seedDocuments();
+      expect(run(['document.delete'], 'u1', 'd1').map((row) => row.id)).toEqual(['d1']);
+      expect(run(['document.delete'], 'u1', 'd2')).toEqual([]);
+      expect(run(['document.delete', 'document.delete-any'], 'u1', 'd2').map((row) => row.id)).toEqual(['d2']);
+    });
+
+    test('the defaults keep the scope of the code they replace: manager sees every document and deletes none, user keeps its own', async () => {
+      seedDocuments();
+      runAll(defaults.defaultRoleStatements());
+      expect(ids(await callerOf('manager', 'u1').documents.list())).toEqual(['d1', 'd2']);
+      expect(ids(await callerOf('user', 'u1').documents.list())).toEqual(['d1']);
+      await expect(callerOf('manager', 'u1').documents.delete({ id: 'd2' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(await engine.permissionsOf(db, 'user')).not.toContain('document.delete-any');
+      expect(await engine.permissionsOf(db, 'manager')).not.toContain('document.delete-any');
     });
   });
 
   describe('the defaults command', () => {
-    test('gives a fresh database the permissions the code gave before: user keeps the full document set, manager reads', async () => {
-      runAll(defaults.defaultRoleStatements([]));
+    test('gives a fresh database the permissions the code gave before: user keeps the document set, manager reads every document', async () => {
+      runAll(defaults.defaultRoleStatements());
       expect((await engine.permissionsOf(db, 'user')).sort()).toEqual([
         'document.create',
         'document.delete',
         'document.read',
         'document.update',
       ]);
-      expect(await engine.permissionsOf(db, 'manager')).toEqual(['document.read']);
+      expect((await engine.permissionsOf(db, 'manager')).sort()).toEqual(['document.read', 'document.read-any']);
       expect(await engine.listRoleMatrix(db)).toEqual([
-        { id: 'manager', label: 'Manager', permissions: ['document.read'] },
+        { id: 'manager', label: 'Manager', permissions: ['document.read', 'document.read-any'] },
         { id: 'user', label: 'User', permissions: ['document.create', 'document.delete', 'document.read', 'document.update'] },
       ]);
     });
 
-    test('is idempotent: a second run, with or without knowing the roles, changes nothing', () => {
-      runAll(defaults.defaultRoleStatements([]));
+    test('runs again without changing anything', () => {
+      runAll(defaults.defaultRoleStatements());
       const once = rowsOf();
-      runAll(defaults.defaultRoleStatements([]));
+      runAll(defaults.defaultRoleStatements());
       expect(rowsOf()).toEqual(once);
-      expect(defaults.defaultRoleStatements(Object.keys(defaults.DEFAULT_ROLES))).toEqual([]);
     });
 
-    test('never touches a role that exists, so a permission revoked since survives a rerun', async () => {
-      runAll(defaults.defaultRoleStatements([]));
+    test('never writes back a default role an operator deleted, and its holders stay refused', async () => {
+      runAll(defaults.defaultRoleStatements());
+      sqlite.run("DELETE FROM roles WHERE id = 'manager'");
+      runAll(defaults.defaultRoleStatements());
+      expect(roleIds()).toEqual(['user']);
+      expect(await engine.permissionsOf(db, 'manager')).toEqual([]);
+    });
+
+    test('never restores a permission revoked since, nor a label changed', async () => {
+      runAll(defaults.defaultRoleStatements());
       sqlite.run("DELETE FROM role_permissions WHERE role_id = 'user' AND action = 'delete'");
       sqlite.run("UPDATE roles SET label = 'Member' WHERE id = 'user'");
-      const existing = (sqlite.query('SELECT id FROM roles').all() as { id: string }[]).map((row) => row.id);
-      runAll(defaults.defaultRoleStatements(existing));
+      runAll(defaults.defaultRoleStatements());
       expect(await engine.hasPermission(db, 'user', 'document', 'delete')).toBe(false);
       expect(sqlite.query("SELECT label FROM roles WHERE id = 'user'").get()).toEqual({ label: 'Member' });
     });
 
-    test('writes only roles that are missing', () => {
-      runAll(defaults.defaultRoleStatements(['user']));
-      expect(sqlite.query('SELECT id FROM roles').all()).toEqual([{ id: 'manager' }]);
+    test('never refills a matrix an operator emptied, with every default role still there', async () => {
+      runAll(defaults.defaultRoleStatements());
+      sqlite.run('DELETE FROM role_permissions');
+      runAll(defaults.defaultRoleStatements());
+      expect(rowsOf()).toEqual([]);
+      expect(await engine.permissionsOf(db, 'user')).toEqual([]);
     });
 
-    test('is safe to run twice at once: the statements ignore rows that exist', () => {
-      const statements = defaults.defaultRoleStatements([]);
+    test('writes nothing into a database where someone else created a role first, whatever the list the script read', () => {
+      addRole('auditor');
+      runAll(defaults.defaultRoleStatements());
+      expect(roleIds()).toEqual(['auditor']);
+      expect(rowsOf()).toEqual([]);
+    });
+
+    test('is all or none: a failure in the middle leaves no role and no permission, and a rerun writes everything', () => {
+      const statements = defaults.defaultRoleStatements();
+      const interrupted = sqlite.transaction(() => {
+        sqlite.run(statements[0] ?? '');
+        throw new Error('interrupted');
+      });
+      expect(() => interrupted()).toThrow('interrupted');
+      expect(roleIds()).toEqual([]);
+      expect(rowsOf()).toEqual([]);
+
+      runAll(statements);
+      expect(roleIds()).toEqual(['manager', 'user']);
+      expect(rowsOf().length).toBe(6);
+    });
+
+    test('a run that stopped between its two statements leaves roles that hold nothing, and a rerun does not guess', async () => {
+      const [roles = ''] = defaults.defaultRoleStatements();
+      sqlite.run(roles);
+      runAll(defaults.defaultRoleStatements());
+      expect(rowsOf()).toEqual([]);
+      expect(await engine.permissionsOf(db, 'user')).toEqual([]);
+    });
+
+    test('two runs at once write the roles once, and the second changes nothing', () => {
+      const statements = defaults.defaultRoleStatements();
       runAll(statements);
       expect(() => runAll(statements)).not.toThrow();
+      expect(roleIds()).toEqual(['manager', 'user']);
+      expect(rowsOf().length).toBe(6);
+    });
+  });
+
+  describe('the tRPC context reuses the session its caller already read', () => {
+    interface Context {
+      session: unknown;
+    }
+    let createTRPCContext: (opts: { headers: Headers; db: unknown; session?: unknown }) => Promise<Context>;
+    const counted = globalThis as { __sessionReads?: number };
+
+    beforeAll(async () => {
+      await Bun.write(
+        join(stubs, 'counting-auth.mjs'),
+        "export const createAuth = () => ({ api: { getSession: async () => { globalThis.__sessionReads = (globalThis.__sessionReads ?? 0) + 1; return { user: { id: 'read-here', role: 'user' } }; } } });",
+      );
+      const generated = async <T>(file: string, name: string, imports: Record<string, string>): Promise<T> =>
+        evaluateGeneratedModule<T>(await readTextFile(join(project, file)), join(stubs, name), imports);
+      await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
+      ({ createTRPCContext } = await generated<{ createTRPCContext: typeof createTRPCContext }>(`${API}/trpc.ts`, 'init.mjs', {
+        '@repo/auth/auth': './counting-auth.mjs',
+        '@trpc/server': REAL.trpcServer,
+        superjson: Bun.resolveSync('superjson', import.meta.dir),
+        './auth-errors': './auth-errors.mjs',
+      }));
+    });
+
+    test('reads the session once when nobody handed it over', async () => {
+      counted.__sessionReads = 0;
+      const context = await createTRPCContext({ headers: new Headers(), db });
+      expect(counted.__sessionReads).toBe(1);
+      expect(context.session).toEqual({ user: { id: 'read-here', role: 'user' } });
+    });
+
+    test('reads nothing when the caller hands over its session, an anonymous visitor included', async () => {
+      counted.__sessionReads = 0;
+      const given = { user: { id: 'u9', role: 'manager' } };
+      expect((await createTRPCContext({ headers: new Headers(), db, session: given })).session).toBe(given);
+      expect((await createTRPCContext({ headers: new Headers(), db, session: null })).session).toBeNull();
+      expect(counted.__sessionReads).toBe(0);
+    });
+
+    test('the page guards and the server context ask the same cached reader', async () => {
+      const web = join(project, 'apps/web/src');
+      expect(await readTextFile(join(web, 'lib/server.ts'))).toMatch(/export const getRequestSession = cache\(/);
+      expect(await readTextFile(join(web, 'lib/auth/session.ts'))).toContain('export const getSession = getRequestSession;');
+      expect(await readTextFile(join(web, 'trpc/server.tsx'))).toContain('session: await getRequestSession()');
     });
   });
 

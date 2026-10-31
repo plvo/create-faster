@@ -17,9 +17,10 @@ export const accountStatement = defaultStatements;
 
 // The business vocabulary: the only resources and actions a role can be given in the database (`role_permissions`),
 // and the only source of valid names. To add a permission, add the action here, then grant it to roles in the
-// database (docs/agents/auth-rbac.md).
+// database (docs/agents/auth-rbac.md). `read-any` and `delete-any` are scope, not new operations: `read` shows a
+// caller their own documents and `read-any` everyone's, `delete` removes their own and `delete-any` anyone's.
 export const businessStatement = {
-  document: ['create', 'read', 'update', 'delete'],
+  document: ['create', 'read', 'update', 'delete', 'read-any', 'delete-any'],
 } as const;
 
 export const statement = { ...accountStatement, ...businessStatement } as const;
@@ -43,6 +44,7 @@ export type Statement = typeof statement;
 export type Resource = keyof Statement;
 export type Action<R extends Resource = Resource> = Statement[R][number];
 export type BusinessResource = keyof typeof businessStatement;
+export type BusinessAction<R extends BusinessResource = BusinessResource> = (typeof businessStatement)[R][number];
 
 type PermissionOf<S extends Record<string, readonly string[]>> = {
   [R in keyof S & string]: `${R}.${S[R][number]}`;

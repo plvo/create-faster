@@ -101,11 +101,11 @@ const SEEDING_SCRIPTS = [SEED_DATABASE, SET_UP_LOCAL_DATABASE];
 
 const WRITE_DEFAULT_ROLES = {
   script: 'db:roles',
-  description: 'Write the default roles into the local database; a role that already exists is left as it is',
+  description: 'Write the default roles into the local database, only when it has no role yet',
 };
 const WRITE_DEFAULT_ROLES_REMOTE = {
   script: 'db:roles:remote',
-  description: 'Write the default roles into the production database; a role that already exists is left as it is',
+  description: 'Write the default roles into the production database, only when it has no role yet',
 };
 
 const LINT_CODE = { script: 'lint', description: 'Lint code' };
@@ -1915,7 +1915,7 @@ export const META: Meta = {
       firstRun: [
         {
           description:
-            'Set up the local database, write the default roles (the `db:roles` script, idempotent) and seed demo data (this deletes the local D1 state, sign-ups included)',
+            'Set up the local database, write the default roles (the `db:roles` script) and seed demo data (this deletes the local D1 state, sign-ups included)',
           commands: [{ script: 'local-setup' }],
         },
       ],

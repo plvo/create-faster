@@ -18,9 +18,10 @@ export default async function RolesPage() {
   const session = await requireAdmin();
 
   // `admin` is compiled and holds what ADMIN_PERMISSIONS lists; every other role is a row of the database.
+  const stored = await listRoleMatrix(await getDb());
   const columns = [
-    { id: ADMIN_ROLE, granted: new Set<string>(ADMIN_PERMISSIONS) },
-    ...(await listRoleMatrix(await getDb())).map((role) => ({ id: role.id, granted: new Set<string>(role.permissions) })),
+    { id: ADMIN_ROLE, label: 'Admin', granted: new Set<string>(ADMIN_PERMISSIONS) },
+    ...stored.map((role) => ({ id: role.id, label: role.label, granted: new Set<string>(role.permissions) })),
   ];
   const currentRole = session.user.role;
 
@@ -39,6 +40,16 @@ export default async function RolesPage() {
         </p>
       </div>
 
+      {stored.length === 0 && (
+        <p role='status' className='rounded-lg border border-dashed p-4 text-sm text-muted-foreground'>
+          No role is stored in the database yet, so every role but admin is refused. Write the default roles with{' '}
+{{{{/raw}}}}
+          <code className='rounded bg-muted px-1 py-0.5 text-xs'>{{runScript "db:roles"}}</code> on this machine, or{' '}
+          <code className='rounded bg-muted px-1 py-0.5 text-xs'>{{runScript "db:roles:remote"}}</code> for production.
+{{{{raw}}}}
+        </p>
+      )}
+
       <div className='overflow-hidden rounded-lg border'>
         <Table>
           <TableCaption className='sr-only'>Permissions granted to each role</TableCaption>
@@ -51,9 +62,9 @@ export default async function RolesPage() {
                 <TableHead
                   key={role.id}
                   scope='col'
-                  className={`px-2 text-center capitalize sm:px-4 ${role.id === currentRole ? 'bg-primary/10 text-primary' : ''}`}
+                  className={`px-2 text-center sm:px-4 ${role.id === currentRole ? 'bg-primary/10 text-primary' : ''}`}
                 >
-                  {role.id}
+                  {role.label}
                   {role.id === currentRole && <span className='block text-xs font-normal normal-case sm:ml-1 sm:inline'>(you)</span>}
                 </TableHead>
               ))}

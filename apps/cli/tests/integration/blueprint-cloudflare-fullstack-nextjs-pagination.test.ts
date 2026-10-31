@@ -103,7 +103,12 @@ export const createCallerFactory = t.createCallerFactory;`,
   // decided by the generated engine, which blueprint-cloudflare-fullstack-nextjs-roles.test.ts runs on a database.
   'auth.mjs': 'export const createAuth = () => ({ api: {} });',
   'permissions.mjs': "export const ADMIN_ROLE = 'admin';",
-  'role-permissions.mjs': 'export const hasPermission = async () => true;',
+  // The admin and the manager read every document, the others their own: the scope the defaults give, by permission.
+  'role-permissions.mjs': `export const permissionsOf = async (_db, role) => [
+  'document.create', 'document.read', 'document.update', 'document.delete',
+  ...(role === 'admin' || role === 'manager' ? ['document.read-any', 'document.delete-any'] : []),
+];
+export const isGranted = (granted, resource, action) => granted.includes(resource + '.' + action);`,
   'db.mjs': `export * from '${REAL.drizzle}';
 export * from './schema.mjs';`,
 };
@@ -256,6 +261,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       'drizzle-orm/sqlite-core': REAL.sqliteCore,
     });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
+    await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', {
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-permissions': './role-permissions.mjs',
@@ -269,6 +275,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       '@repo/auth/auth': './auth.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
+      '../document-scope': './document-scope.mjs',
       '../page-query': './page-query.mjs',
       '../pagination': './pagination.mjs',
       '../user-list': './user-list.mjs',
