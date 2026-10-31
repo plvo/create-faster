@@ -1,12 +1,12 @@
 import { expect } from 'bun:test';
 
-export interface SetCookie {
+interface SetCookie {
   name: string;
   value: string;
   attributes: Map<string, string>;
 }
 
-export function parseSetCookie(header: string): SetCookie {
+function parseSetCookie(header: string): SetCookie {
   const [pair = '', ...attributes] = header.split(';').map((part) => part.trim());
   const separator = pair.indexOf('=');
   return {
@@ -21,7 +21,7 @@ export function parseSetCookie(header: string): SetCookie {
   };
 }
 
-export const setCookiesOf = (response: Response): SetCookie[] => response.headers.getSetCookie().map(parseSetCookie);
+const setCookiesOf = (response: Response): SetCookie[] => response.headers.getSetCookie().map(parseSetCookie);
 
 export const cookieHeaderOf = (response: Response): string =>
   setCookiesOf(response)
