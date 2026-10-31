@@ -1,0 +1,177 @@
+{{!-- The whole command-palette.tsx file: the Ctrl+K / Cmd+K palette that opens a page of the dashboard.
+CommandPaletteProvider holds the shortcut and the dialog, CommandPaletteTrigger is the search field of the sidebar header.
+It reads from the project: @repo/ui (command, sidebar), the sidebar links for the pages a role can open, and the router of the stack. --}}
+{{#if (eq stackName "tanstack-start")}}
+import { useRouter } from '@tanstack/react-router';
+{{else}}
+'use client';
+
+import { useRouter } from 'next/navigation';
+{{/if}}
+{{{{raw}}}}
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@repo/ui/components/ui/command';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
+import { Search } from 'lucide-react';
+import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react';
+import { allowedRoutes } from '@/components/navigation/sidebar-links';
+
+type Platform = 'mac' | 'other';
+
+// ariaKeys is the value of aria-keyshortcuts, which names the modifier keys in full.
+const SHORTCUTS: Record<Platform, { label: string; ariaKeys: string }> = {
+  mac: { label: '⌘K', ariaKeys: 'Meta+K' },
+  other: { label: 'Ctrl K', ariaKeys: 'Control+K' },
+};
+
+const subscribeToNothing = () => () => {};
+
+function readPlatform(): Platform {
+  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? 'mac' : 'other';
+}
+
+// Null on the server and while the page hydrates, so the markup the server sent never disagrees with the first client render.
+function usePlatform(): Platform | null {
+  return useSyncExternalStore(subscribeToNothing, readPlatform, () => null);
+}
+
+export function isPaletteShortcut(event: KeyboardEvent, platform: Platform): boolean {
+  const modifier = platform === 'mac' ? event.metaKey : event.ctrlKey;
+  return modifier && !event.altKey && !event.shiftKey && !event.repeat && event.key.toLowerCase() === 'k';
+}
+
+interface CommandPaletteState {
+  setOpen: (open: boolean) => void;
+}
+
+const CommandPaletteContext = createContext<CommandPaletteState | null>(null);
+
+function useCommandPalette(): CommandPaletteState {
+  const palette = useContext(CommandPaletteContext);
+  if (!palette) throw new Error('CommandPaletteTrigger needs a CommandPaletteProvider above it');
+  return palette;
+}
+
+function PageResults({ role, onSelect }: { role: string | null | undefined; onSelect: (url: string) => void }) {
+  const pages = allowedRoutes(role);
+  if (pages.length === 0) return null;
+
+  return (
+    <CommandGroup heading='Pages'>
+      {pages.map((page) => (
+        <CommandItem
+          key={page.url}
+          value={page.url}
+          keywords={[page.title, page.category ?? '']}
+          onSelect={() => onSelect(page.url)}
+        >
+          {page.icon && <page.icon />}
+          <span>{page.title}</span>
+          {page.category && <span className='ml-auto text-xs text-muted-foreground'>{page.category}</span>}
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+}
+
+function CommandPaletteDialog({
+  role,
+  open,
+  onOpenChange,
+}: {
+  role: string | null | undefined;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+
+  const openPage = (url: string) => {
+    onOpenChange(false);
+{{{{/raw}}}}
+{{#if (eq stackName "tanstack-start")}}
+    router.navigate({ to: url });
+{{else}}
+    router.push(url);
+{{/if}}
+{{{{raw}}}}
+  };
+
+  return (
+    <CommandDialog open={open} onOpenChange={onOpenChange} title='Search' description='Search for a page to open.'>
+      <CommandInput placeholder='Search pages...' />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <PageResults role={role} onSelect={openPage} />
+      </CommandList>
+    </CommandDialog>
+  );
+}
+
+export function CommandPaletteProvider({ role, children }: { role: string | null | undefined; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const platform = usePlatform();
+
+  useEffect(() => {
+    if (!platform) return;
+    const toggleOnShortcut = (event: KeyboardEvent) => {
+      if (!isPaletteShortcut(event, platform)) return;
+      event.preventDefault();
+      setOpen((current) => !current);
+    };
+    document.addEventListener('keydown', toggleOnShortcut);
+    return () => document.removeEventListener('keydown', toggleOnShortcut);
+  }, [platform]);
+
+  return (
+    <CommandPaletteContext.Provider value={{ setOpen }}>
+      {children}
+      <CommandPaletteDialog role={role} open={open} onOpenChange={setOpen} />
+    </CommandPaletteContext.Provider>
+  );
+}
+
+export function CommandPaletteTrigger() {
+  const { setOpen } = useCommandPalette();
+  const { setOpenMobile } = useSidebar();
+  const platform = usePlatform();
+  const shortcut = platform ? SHORTCUTS[platform] : null;
+
+  const openPalette = () => {
+    setOpenMobile(false);
+    setOpen(true);
+  };
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          type='button'
+          variant='outline'
+          tooltip='Search'
+          aria-haspopup='dialog'
+          aria-keyshortcuts={shortcut?.ariaKeys}
+          onClick={openPalette}
+          className='text-muted-foreground'
+        >
+          <Search />
+          <span>Search</span>
+          {shortcut && (
+            <kbd
+              aria-hidden='true'
+              className='ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground md:inline-block group-data-[collapsible=icon]:hidden'
+            >
+              {shortcut.label}
+            </kbd>
+          )}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+{{{{/raw}}}}

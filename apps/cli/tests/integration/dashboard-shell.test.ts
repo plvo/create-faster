@@ -109,7 +109,7 @@ export const trpc = procedures([]);
 export const HydrateClient = ({ children }) => children[0];`,
   'session.mjs': `export const requireAdmin = async () => ({});
 export const requirePermission = async () => ({});
-export const requireSession = async () => ({});`,
+export const requireSession = async () => ({ user: { role: 'admin' } });`,
   'leaf.mjs': `export const Skeleton = () => null;
 export const QueryBoundary = ({ children }) => children[0];
 export const UserDetail = () => null;
@@ -119,6 +119,7 @@ export const ContactClient = () => null;
 export const DetailPending = () => null;
 export const AppSidebar = () => null;
 export const AppHeader = () => null;
+export const CommandPaletteProvider = ({ children }) => children;
 export const Card = ({ children }) => children[0];
 export const Separator = () => null;
 export const DashboardNotFound = () => null;`,
@@ -146,6 +147,7 @@ const UI_IMPORTS: Record<string, string> = {
   '@/components/detail-pending': './leaf.mjs',
   '@/components/navigation/app-sidebar': './leaf.mjs',
   '@/components/navigation/app-header': './leaf.mjs',
+  '@/components/navigation/command-palette': './leaf.mjs',
   '@/components/dashboard-not-found': './leaf.mjs',
   '@/lib/auth/guards': './session.mjs',
   '@repo/ui/components/ui/separator': './leaf.mjs',

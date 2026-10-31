@@ -53,7 +53,7 @@ apps/
 │       │       ├── documents/upload/route.ts  # Multipart → R2 STORAGE.put
 │       │       └── avatar/{route,[userId]/route}.ts  # Avatar upload + serve from R2
 │       ├── components/
-│       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links
+│       │   ├── navigation/             # app-sidebar, app-header, nav-user, sidebar-links, command-palette
 │       │   ├── admin/                  # user-table, create-user-dialog, edit-user, generated-password
 │       │   ├── profile/                # avatar-upload, account/security forms, session-list, tab-nav
 │       │   ├── shared/data-table-shell.tsx  # shuip datatable wrapper (search + sort, client or server mode)
@@ -104,7 +104,7 @@ The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure
 
 ### Dashboard shell
 
-A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item — a whole category label is hidden when none of its links are permitted (`useCan`). The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs (so pages don't repeat their own title). The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`, plus `table`, `badge`, `dialog`, `popover`, `command`, `search-input`) and the shuip `data-table` block live in `packages/ui` as registry-faithful code.
+A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item — a whole category label is hidden when none of its links are permitted (`useCan`). The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs (so pages don't repeat their own title). A search field under the logo, or Ctrl+K (Cmd+K on macOS), opens a command palette that lists the pages the role can open, from the same `ROUTES` table and permission filter as the sidebar. The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`, plus `table`, `badge`, `dialog`, `popover`, `command`, `search-input`) and the shuip `data-table` block live in `packages/ui` as registry-faithful code.
 
 ### Forms
 
@@ -163,7 +163,7 @@ The web Worker lists `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` under `secrets.r
 | `vaul` | Drawer primitive (UI package) |
 | `@tanstack/react-table` | Users datatable (UI package) |
 | `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` | Datatable row drag-reorder (UI package) |
-| `cmdk` | Command palette for datatable filters (UI package) |
+| `cmdk` | Command palette and datatable filters (UI package) |
 
 ## Environment variables
 

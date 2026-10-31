@@ -37,6 +37,11 @@ function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
   );
 }
 
+// The pages a role can open: the list of the sidebar and of the command palette.
+export function allowedRoutes(role: string | null | undefined): RouteProps[] {
+  return ROUTES.filter((item) => can(role, item.permissions ?? {}));
+}
+
 // The role comes from the layout, which read the session on the server, so the first render already lists the links.
 export function SidebarLinks({ role }: { role: string | null | undefined }) {
 {{#if (eq stackName "tanstack-start")}}
@@ -45,7 +50,7 @@ export function SidebarLinks({ role }: { role: string | null | undefined }) {
   const pathname = usePathname();
 {{/if}}
 
-  const allowedPages = ROUTES.filter((item) => can(role, item.permissions ?? {}));
+  const allowedPages = allowedRoutes(role);
   const grouplessPages = allowedPages.filter((item) => !item.category);
   const groupedPages = allowedPages.reduce<Record<string, RouteProps[]>>((acc, item) => {
     if (!item.category) return acc;
