@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import {
   REACT_HOOKS_STUB,
   type RenderedChild,
@@ -55,7 +56,8 @@ export const CommandInput = () => createElement('input', {});
 export const CommandList = host('div', { role: 'listbox' });
 export const CommandEmpty = host('p');
 export const CommandGroup = ({ heading, children }) => createElement('div', { role: 'group', 'aria-label': heading }, ...children);
-export const CommandItem = ({ value, onSelect, children }) => createElement('div', { role: 'option', 'data-value': value, onSelect }, ...children);`,
+export const CommandItem = ({ value, keywords, onSelect, children }) =>
+  createElement('div', { role: 'option', 'data-value': value, 'data-keywords': (keywords ?? []).join(' '), onSelect }, ...children);`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 import { host } from './ui.mjs';
 export const SidebarMenu = host('ul');
@@ -63,15 +65,36 @@ export const SidebarMenuItem = host('li');
 export const SidebarMenuButton = host('button');
 export const SidebarGroup = host('section');
 export const SidebarGroupLabel = host('h3');
+export const SidebarProvider = host('div');
+export const SidebarInset = host('main');
+export const Sidebar = host('aside');
+export const SidebarHeader = host('header');
+export const SidebarContent = host('div');
+export const SidebarFooter = host('footer');
 export const useSidebar = () => ({ isMobile: false, setOpenMobile: (open) => { globalThis.__mobileSidebarOpen = open; } });`,
   'icons.mjs': `import { createElement } from './react.mjs';
 const icon = (name) => () => createElement('svg', { 'aria-hidden': 'true', 'data-icon': name });
 export const FileText = icon('FileText');
 export const ShieldCheck = icon('ShieldCheck');
 export const Users = icon('Users');
-export const Search = icon('Search');`,
+export const Search = icon('Search');
+export const LayoutDashboard = icon('LayoutDashboard');
+export const SearchIcon = icon('SearchIcon');`,
   'next-navigation.mjs': `export const useRouter = () => ({ push: (url) => { (globalThis.__pushed ??= []).push(url); } });
 export const usePathname = () => '/';`,
+  'dialog.mjs': `import { host } from './ui.mjs';
+export const Dialog = host('div');
+export const DialogContent = host('section', { role: 'dialog' });
+export const DialogHeader = host('header');
+export const DialogTitle = host('h2');
+export const DialogDescription = host('p');`,
+  'cmdk.mjs': `import { host } from './ui.mjs';
+export const Command = host('div', { 'data-cmdk': 'true' });`,
+  'utils.mjs': `export const cn = (...names) => names.filter(Boolean).join(' ');`,
+  'tanstack-router.mjs': `export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__navigated ??= []).push(to); } });`,
+  'session.mjs': `export const requireSession = async () => globalThis.__session;`,
+  'leaf.mjs': `export const AppHeader = () => null;
+export const NavUser = () => null;`,
   'next-link.mjs': `export default ({ href, children }) => ({ type: 'a', props: { href, children } });`,
   'permission.mjs': `const GRANTS = {
   admin: { user: ['list', 'create'] },
@@ -93,12 +116,25 @@ const IMPORTS: Record<string, string> = {
   '@repo/ui/components/ui/command': './command.mjs',
   '@repo/ui/components/ui/sidebar': './sidebar.mjs',
   '@/hooks/use-permission': './permission.mjs',
+  cmdk: './cmdk.mjs',
+  '@repo/ui/components/ui/dialog': './dialog.mjs',
+  '@repo/ui/lib/utils': './utils.mjs',
+  '@/hooks/use-mounted': './use-mounted.mjs',
+  '@/lib/constants': './constants.mjs',
+  '@/lib/allowed-routes': './allowed-routes.mjs',
+};
+
+const must = <T,>(value: T | undefined, what: string): T => {
+  if (value === undefined) throw new Error(`${what} is not there`);
+  return value;
 };
 
 const globals = globalThis as {
   __serverRender?: boolean;
   __pushed?: string[];
+  __navigated?: string[];
   __mobileSidebarOpen?: boolean;
+  __session?: unknown;
 };
 
 describe(`${BLUEPRINT} command palette`, () => {
@@ -107,7 +143,9 @@ describe(`${BLUEPRINT} command palette`, () => {
   let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
   let CommandPaletteProvider: Component;
   let CommandPaletteTrigger: Component;
-  let allowedRoutes: (role: string | null | undefined) => { url: string }[];
+  let DashboardLayout: Component;
+  let StartProvider: Component;
+  let StartTrigger: Component;
 
   const fakeDocument = { listeners: [] as KeyHandler[] };
   const realDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -156,6 +194,12 @@ describe(`${BLUEPRINT} command palette`, () => {
     });
   };
 
+  const renderLayout = async (role: string): Promise<RenderedChild[]> => {
+    globals.__session = { user: { role } };
+    react.beginRender();
+    return renderElementTree({ type: DashboardLayout, props: { children: 'Page body' } });
+  };
+
   const mount = async (role: string, userAgent: string): Promise<RenderedChild[]> => {
     useBrowser(userAgent);
     const tree = await render(role);
@@ -196,18 +240,46 @@ describe(`${BLUEPRINT} command palette`, () => {
         { ...IMPORTS, ...imports },
         'tsx',
       );
+    await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
     await load('src/lib/constants.ts', 'constants.mjs');
-    ({ allowedRoutes } = await load<{ allowedRoutes: typeof allowedRoutes }>('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs', {
-      '@/lib/constants': './constants.mjs',
-    }));
+    await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
+    await load('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs');
     ({ CommandPaletteProvider, CommandPaletteTrigger } = await load<{
       CommandPaletteProvider: Component;
       CommandPaletteTrigger: Component;
-    }>(
-      'src/components/navigation/command-palette.tsx',
-      'command-palette.mjs',
-      { '@/components/navigation/sidebar-links': './sidebar-links.mjs' },
-    ));
+    }>('src/components/navigation/command-palette.tsx', 'command-palette.mjs'));
+
+    const layoutImports = {
+      '@/components/navigation/app-header': './leaf.mjs',
+      '@/components/navigation/app-sidebar': './app-sidebar.mjs',
+      '@/components/navigation/command-palette': './command-palette.mjs',
+      '@/lib/auth/session': './session.mjs',
+      './command-palette': './command-palette.mjs',
+      './nav-user': './leaf.mjs',
+      './sidebar-links': './sidebar-links.mjs',
+    };
+    await load('src/components/navigation/app-sidebar.tsx', 'app-sidebar.mjs', layoutImports);
+    ({ default: DashboardLayout } = await load<{ default: Component }>('src/app/(dashboard)/layout.tsx', 'layout.mjs', layoutImports));
+
+    setupTemplateEngine();
+    const startSource = renderTemplate('{{> navigation/command-palette}}', {
+      projectName: 'my-project',
+      repo: 'turborepo',
+      apps: [{ appName: 'web', stackName: 'tanstack-start', libraries: [] }],
+      project: { tooling: [] },
+      git: false,
+      appName: 'web',
+      stackName: 'tanstack-start',
+      libraries: [],
+    });
+    const start = await evaluateGeneratedModule<{ CommandPaletteProvider: Component; CommandPaletteTrigger: Component }>(
+      startSource,
+      join(stubs, 'command-palette-start.mjs'),
+      { ...IMPORTS, '@tanstack/react-router': './tanstack-router.mjs' },
+      'tsx',
+    );
+    StartProvider = start.CommandPaletteProvider;
+    StartTrigger = start.CommandPaletteTrigger;
   });
 
   afterAll(async () => {
@@ -271,6 +343,25 @@ describe(`${BLUEPRINT} command palette`, () => {
       expect(textOf(trigger)).toBe('Search');
       expect(hintOf(trigger)).toBeUndefined();
       expect(trigger.props['aria-keyshortcuts']).toBeUndefined();
+      expect(trigger.props.tooltip).toBe('Search');
+    });
+
+    test('the tooltip of the collapsed sidebar names the shortcut of the platform once mounted', async () => {
+      expect(triggerOf(await mount('admin', MAC)).props.tooltip).toBe('Search (⌘K)');
+      expect(triggerOf(await mount('admin', LINUX)).props.tooltip).toBe('Search (Ctrl K)');
+    });
+
+    test('the hint is hidden below md, so a phone shows none, and with the sidebar collapsed', async () => {
+      const classes = String(hintOf(triggerOf(await mount('admin', LINUX)))?.props.className).split(/\s+/);
+      expect(classes).toContain('hidden');
+      expect(classes).toContain('md:inline-block');
+      expect(classes).toContain('group-data-[collapsible=icon]:hidden');
+    });
+
+    test('the hint is set in a step of the type scale', async () => {
+      const classes = String(hintOf(triggerOf(await mount('admin', LINUX)))?.props.className).split(/\s+/);
+      expect(classes).toContain('text-xs');
+      expect(classes.some((name) => /^text-\[/.test(name))).toBe(false);
     });
 
     test('the key hint is hidden from screen readers, the button carries the announcement', async () => {
@@ -300,21 +391,23 @@ describe(`${BLUEPRINT} command palette`, () => {
     };
 
     test('an administrator finds every page of the sidebar', async () => {
-      const pages = pagesOf(await open('admin'));
-      expect(pages).toEqual(allowedRoutes('admin').map((route) => route.url));
-      expect(pages).toEqual(expect.arrayContaining(['/', '/admin/users', '/admin/roles']));
+      expect(pagesOf(await open('admin'))).toEqual(['/', '/admin/users', '/admin/roles']);
     });
 
     test.each(['user', 'manager'])('a %s never sees a page they cannot access', async (role) => {
-      const pages = pagesOf(await open(role));
-      expect(pages).toEqual(allowedRoutes(role).map((route) => route.url));
-      expect(pages).toEqual(['/']);
+      expect(pagesOf(await open(role))).toEqual(['/']);
     });
 
     test('a role the application does not know finds no page and no group', async () => {
       const tree = await open('stranger');
       expect(pagesOf(tree)).toEqual([]);
       expect(elementsOf(tree).filter((element) => element.props.role === 'group')).toEqual([]);
+    });
+
+    test('a page is findable by its title, which is not in its address', async () => {
+      const documents = elementsOf(await open('admin')).find((element) => element.props['data-value'] === '/');
+      const searchable = `${documents?.props['data-value']} ${documents?.props['data-keywords']}`.toLowerCase();
+      expect(searchable).toContain('documents');
     });
 
     test('selecting a page closes the palette and goes to it', async () => {
@@ -326,13 +419,108 @@ describe(`${BLUEPRINT} command palette`, () => {
     });
   });
 
+  describe('in the dashboard layout', () => {
+    const openPages = async (role: string): Promise<string[]> => {
+      useBrowser(LINUX);
+      await renderLayout(role);
+      react.flushEffects();
+      press({ ctrlKey: true });
+      return pagesOf(await renderLayout(role));
+    };
+
+    test.each([
+      ['admin', ['/', '/admin/users', '/admin/roles']],
+      ['user', ['/']],
+    ])('the palette lists the pages of the role of the session: %s', async (role, pages) => {
+      expect(await openPages(role)).toEqual(pages);
+    });
+
+    test('the search field sits in the sidebar header under the logo and opens the palette of the layout', async () => {
+      useBrowser(LINUX);
+      const tree = await renderLayout('admin');
+      react.flushEffects();
+      const header = must(elementsOf(tree).find((element) => element.tag === 'header'), 'the sidebar header');
+      const inHeader = elementsOf(header.children);
+      const logo = inHeader.findIndex((element) => element.tag === 'button' && textOf(element).includes(BLUEPRINT));
+      const trigger = inHeader.findIndex((element) => element.tag === 'button' && element.props['aria-haspopup'] === 'dialog');
+      expect(logo).toBeGreaterThanOrEqual(0);
+      expect(trigger).toBeGreaterThan(logo);
+
+      (inHeader[trigger]?.props.onClick as () => void)();
+      expect(dialogOf(await renderLayout('admin'))).toBeDefined();
+    });
+
+    test('the search field is in the sidebar only, not in the page', async () => {
+      useBrowser(LINUX);
+      const tree = await renderLayout('admin');
+      const main = must(elementsOf(tree).find((element) => element.tag === 'main'), 'the page');
+      expect(elementsOf(main.children).filter((element) => element.props['aria-haspopup'] === 'dialog')).toEqual([]);
+    });
+  });
+
+  describe('the TanStack Start variant', () => {
+    test('selecting a page closes the palette and navigates with its router', async () => {
+      useBrowser(LINUX);
+      globals.__navigated = [];
+      const renderStart = async (): Promise<RenderedChild[]> => {
+        react.beginRender();
+        return renderElementTree({
+          type: StartProvider,
+          props: { role: 'admin', children: [{ type: StartTrigger, props: { children: [] } }] },
+        });
+      };
+      await renderStart();
+      react.flushEffects();
+      press({ ctrlKey: true });
+      const roles = elementsOf(await renderStart()).find((element) => element.props['data-value'] === '/admin/roles');
+      (roles?.props.onSelect as () => void)();
+      expect(globals.__navigated).toEqual(['/admin/roles']);
+      expect(globals.__pushed).toEqual([]);
+      expect(dialogOf(await renderStart())).toBeUndefined();
+    });
+  });
+
   describe('the shared command component', () => {
+    const loadCommandDialog = async (): Promise<Component> => {
+      const source = await readTextFile(join(projectPath, 'packages/ui/src/components/ui/command.tsx'));
+      const module = await evaluateGeneratedModule<{ CommandDialog: Component }>(
+        source,
+        join(tempDir, 'stubs', 'command-component.mjs'),
+        IMPORTS,
+        'tsx',
+      );
+      return module.CommandDialog;
+    };
+    const renderDialog = async (props: Record<string, unknown>): Promise<RenderedElement> => {
+      const CommandDialog = await loadCommandDialog();
+      const tree = await renderElementTree({ type: CommandDialog, props: { open: true, children: [], ...props } });
+      return must(
+        elementsOf(tree).find((element) => element.props.role === 'dialog'),
+        'the dialog content',
+      );
+    };
+
     test('the ui package declares cmdk and ships the component that imports it', async () => {
       const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/ui/package.json')));
       expect(manifest.dependencies).toHaveProperty('cmdk');
       const source = await readTextFile(join(projectPath, 'packages/ui/src/components/ui/command.tsx'));
       expect(source).toMatch(/from ['"]cmdk['"]/);
       expect(source).toContain('export {');
+    });
+
+    test('the dialog is named and described from inside its content, and cmdk carries the same name', async () => {
+      const content = await renderDialog({ title: 'Search', description: 'Search for a page to open.' });
+      const inside = elementsOf(content.children);
+      expect(inside.find((element) => element.tag === 'h2')?.children).toEqual(['Search']);
+      expect(inside.find((element) => element.tag === 'p')?.children).toEqual(['Search for a page to open.']);
+      expect(inside.find((element) => element.props['data-cmdk'])?.props.label).toBe('Search');
+    });
+
+    test('without a title the dialog still has one', async () => {
+      const content = await renderDialog({});
+      const inside = elementsOf(content.children);
+      expect(inside.find((element) => element.tag === 'h2')?.children).toEqual(['Command Palette']);
+      expect(inside.find((element) => element.props['data-cmdk'])?.props.label).toBe('Command Palette');
     });
   });
 });

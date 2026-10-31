@@ -13,8 +13,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@repo/ui/components/ui/sidebar';
-import { can } from '@/hooks/use-permission';
-import { ROUTES, type RouteProps } from '@/lib/constants';
+import { allowedRoutes } from '@/lib/allowed-routes';
+import type { RouteProps } from '@/lib/constants';
 
 function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
   return (
@@ -35,11 +35,6 @@ function RouteItem({ item, pathname }: { item: RouteProps; pathname: string }) {
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
-}
-
-// The pages a role can open: the list of the sidebar and of the command palette.
-export function allowedRoutes(role: string | null | undefined): RouteProps[] {
-  return ROUTES.filter((item) => can(role, item.permissions ?? {}));
 }
 
 // The role comes from the layout, which read the session on the server, so the first render already lists the links.

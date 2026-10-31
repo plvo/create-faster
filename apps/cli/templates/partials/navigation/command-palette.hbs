@@ -1,6 +1,6 @@
 {{!-- The whole command-palette.tsx file: the Ctrl+K / Cmd+K palette that opens a page of the dashboard.
 CommandPaletteProvider holds the shortcut and the dialog, CommandPaletteTrigger is the search field of the sidebar header.
-It reads from the project: @repo/ui (command, sidebar), the sidebar links for the pages a role can open, and the router of the stack. --}}
+It reads from the project: @repo/ui (command, sidebar), useMounted, allowedRoutes for the pages a role can open, and the router of the stack. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { useRouter } from '@tanstack/react-router';
 {{else}}
@@ -19,8 +19,9 @@ import {
 } from '@repo/ui/components/ui/command';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
 import { Search } from 'lucide-react';
-import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react';
-import { allowedRoutes } from '@/components/navigation/sidebar-links';
+import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import { useMounted } from '@/hooks/use-mounted';
+import { allowedRoutes } from '@/lib/allowed-routes';
 
 type Platform = 'mac' | 'other';
 
@@ -30,15 +31,13 @@ const SHORTCUTS: Record<Platform, { label: string; ariaKeys: string }> = {
   other: { label: 'Ctrl K', ariaKeys: 'Control+K' },
 };
 
-const subscribeToNothing = () => () => {};
-
 function readPlatform(): Platform {
   return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? 'mac' : 'other';
 }
 
 // Null on the server and while the page hydrates, so the markup the server sent never disagrees with the first client render.
 function usePlatform(): Platform | null {
-  return useSyncExternalStore(subscribeToNothing, readPlatform, () => null);
+  return useMounted() ? readPlatform() : null;
 }
 
 export function isPaletteShortcut(event: KeyboardEvent, platform: Platform): boolean {
@@ -153,7 +152,7 @@ export function CommandPaletteTrigger() {
         <SidebarMenuButton
           type='button'
           variant='outline'
-          tooltip='Search'
+          tooltip={shortcut ? `Search (${shortcut.label})` : 'Search'}
           aria-haspopup='dialog'
           aria-keyshortcuts={shortcut?.ariaKeys}
           onClick={openPalette}
@@ -164,7 +163,7 @@ export function CommandPaletteTrigger() {
           {shortcut && (
             <kbd
               aria-hidden='true'
-              className='ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground md:inline-block group-data-[collapsible=icon]:hidden'
+              className='ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground md:inline-block group-data-[collapsible=icon]:hidden'
             >
               {shortcut.label}
             </kbd>

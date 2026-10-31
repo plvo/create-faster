@@ -471,9 +471,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
   test('sidebar hides a permission category when none of its routes are visible', () => {
     expect(bpFile('src/components/navigation/sidebar-links.tsx.hbs')).toContain('{{> org-dashboard/sidebar-links}}');
     const links = partial('org-dashboard/sidebar-links');
-    expect(links).toContain("import { can } from '@/hooks/use-permission'");
+    expect(links).toContain("import { allowedRoutes } from '@/lib/allowed-routes'");
+    expect(bpFile('src/lib/allowed-routes.ts.hbs')).toContain('{{> org-dashboard/allowed-routes}}');
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
-    expect(links).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
+    expect(partial('org-dashboard/allowed-routes')).toContain('ROUTES.filter((item) => can(role, item.permissions ?? {}))');
     expect(bpFile('src/hooks/use-permission.ts.hbs')).toContain('{{> hooks/use-permission}}');
     expect(partial('hooks/use-permission')).toContain('export function can(');
   });
@@ -505,7 +506,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     for (const c of ['table', 'badge', 'dialog', 'popover', 'command', 'search-input']) {
       const file = bpFile(`packages/ui/src/components/ui/${c}.tsx.hbs`);
       expect(file).toContain('mono:');
-      expect(file).toContain('{{{{raw}}}}');
+      expect(file).toMatch(/\{\{\{\{raw\}\}\}\}|\{\{> ui\/command\}\}/);
     }
     const dataTable = bpFile('packages/ui/src/components/block/shuip/data-table.tsx.hbs');
     expect(dataTable).toContain('@tanstack/react-table');

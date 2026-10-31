@@ -503,8 +503,10 @@ describe('dashboard shell', () => {
     // permission module of this test has no session hook, and a component that asked for one would not import.
     test.each(roles)('%s sees no group without a link, on the server too', async (role, seesAdministration) => {
       await load(blueprint, 'src/lib/constants.ts', {}, 'ts');
+      await load(blueprint, 'src/lib/allowed-routes.ts', { '@/lib/constants': relativeModule(blueprint, 'src/lib/constants.ts') }, 'ts');
       const { SidebarLinks } = await load<{ SidebarLinks: Component }>(blueprint, 'src/components/navigation/sidebar-links.tsx', {
         '@/lib/constants': relativeModule(blueprint, 'src/lib/constants.ts'),
+        '@/lib/allowed-routes': relativeModule(blueprint, 'src/lib/allowed-routes.ts'),
       });
       globals.__serverRender = true;
       try {

@@ -39,12 +39,31 @@ describe('the command palette partial', () => {
     expect(() => compiles(palette)).not.toThrow();
   });
 
-  test('both stacks open pages from the route list and permission filter of the sidebar', () => {
+  test('both stacks open pages from the one list the sidebar renders', () => {
     for (const stack of ['nextjs', 'tanstack-start'] as const) {
       expect(renderPartial('navigation/command-palette', stack)).toContain(
-        "import { allowedRoutes } from '@/components/navigation/sidebar-links'",
+        "import { allowedRoutes } from '@/lib/allowed-routes'",
       );
-      expect(renderPartial('org-dashboard/sidebar-links', stack)).toContain('export function allowedRoutes(');
+      expect(renderPartial('org-dashboard/sidebar-links', stack)).toContain(
+        "import { allowedRoutes } from '@/lib/allowed-routes'",
+      );
+      expect(renderPartial('org-dashboard/sidebar-links', stack)).not.toContain('export function allowedRoutes');
+    }
+  });
+
+  test('the page-access rule lives with the route list, as a module of its own', () => {
+    const rule = renderPartial('org-dashboard/allowed-routes', 'nextjs');
+    expect(rule).toContain('export function allowedRoutes(');
+    expect(rule).toContain("from '@/hooks/use-permission'");
+    expect(rule).toContain("from '@/lib/constants'");
+    expect(() => compiles(rule)).not.toThrow();
+  });
+
+  test('both stacks reuse the mounted hook for the hydration guard', () => {
+    for (const stack of ['nextjs', 'tanstack-start'] as const) {
+      const palette = renderPartial('navigation/command-palette', stack);
+      expect(palette).toContain("import { useMounted } from '@/hooks/use-mounted'");
+      expect(palette).not.toContain('useSyncExternalStore');
     }
   });
 });
@@ -55,10 +74,5 @@ describe('the command component partial', () => {
     expect(command).toContain("from 'cmdk'");
     expect(command).not.toContain('{{');
     expect(() => compiles(command)).not.toThrow();
-  });
-
-  test('the dialog title and description sit inside the dialog content, where the dialog labels itself from them', () => {
-    const command = renderPartial('ui/command', 'nextjs');
-    expect(command.indexOf('<DialogContent')).toBeLessThan(command.indexOf('<DialogTitle>'));
   });
 });
