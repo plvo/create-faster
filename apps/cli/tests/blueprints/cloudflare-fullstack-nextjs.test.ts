@@ -49,7 +49,8 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
       'utf8',
     );
     expect(auth).toContain('export function createAuth(\n  db: Database,\n  cookiePlugin?: BetterAuthPlugin,');
-    expect(auth).toContain("admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }),");
+    expect(auth).toContain('admin({ ac, roles, defaultRole: DEFAULT_ROLE, adminRoles: [ADMIN_ROLE] }),');
+    expect(auth).toMatch(/guardAdministrators\(db\),\s*refuseOwnRoleChange,/);
   });
 
   test('registers a documents router using d1 per-request auth', () => {
@@ -262,7 +263,8 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     const dialog = bpFile('src/components/admin/create-user-dialog.tsx.hbs');
     expect(dialog).toContain('trpc.users.create');
     expect(dialog).toContain('createdPassword');
-    expect(dialog).toContain("import { roles } from '@repo/auth/permissions'");
+    expect(dialog).toContain('trpc.users.assignableRoles');
+    expect(dialog).not.toContain('import { roles }');
     // creation uses normal inputs (not inline edit).
     expect(dialog).toContain('f.InputField');
     expect(dialog).toContain('f.SelectField');
@@ -277,6 +279,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(edit).toContain('f.InlineEditField');
     expect(edit).toContain('trpc.users.update');
     expect(edit).toContain('trpc.users.setRole');
+    expect(edit).toContain('trpc.users.assignableRoles');
     expect(edit).toContain('trpc.users.setPassword');
     expect(edit).toContain('trpc.users.setBanned');
     expect(edit).toContain('trpc.users.remove');
