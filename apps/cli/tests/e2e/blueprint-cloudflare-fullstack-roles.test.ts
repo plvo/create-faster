@@ -400,6 +400,180 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     }, TIMEOUT_SETUP * 3);
   });
 
+  describe('editing the matrix', () => {
+    const matrixOf = async (cookie: string): Promise<{ roles: { id: string; permissions: string[]; holders: number }[] }> =>
+      (await query('roles.matrix', cookie)).data as { roles: { id: string; permissions: string[]; holders: number }[] };
+    const roleRows = async (): Promise<string[]> => (await d1('SELECT id FROM roles ORDER BY id')).map((row) => String(row.id));
+    const orphans = async (): Promise<unknown[]> =>
+      d1("SELECT id, role FROM users WHERE role <> 'admin' AND role NOT IN (SELECT id FROM roles)");
+
+    // What a refusal that failed to refuse would leave behind: a role, a permission or an account that the next tests
+    // would read. Restored whatever the assertions found.
+    const removeStrays = (): Promise<void> =>
+      restore(
+        "DELETE FROM role_permissions WHERE role_id NOT IN ('user', 'manager')",
+        "DELETE FROM roles WHERE id NOT IN ('user', 'manager')",
+        "DELETE FROM role_permissions WHERE role_id = 'manager' AND action NOT IN ('read', 'read-any')",
+        "DELETE FROM role_permissions WHERE role_id = 'user' AND action NOT IN ('create', 'read', 'update', 'delete')",
+        "DELETE FROM users WHERE email LIKE 'deferred%@example.com'",
+      );
+
+    test('only the literal admin role manages roles, over HTTP', async () => {
+      const managerCookie = await signIn(MANAGER);
+      const rolesBefore = await roleRows();
+      try {
+        expect((await query('roles.matrix', managerCookie)).status).toBe(403);
+        expect((await query('roles.matrix', '')).status).toBe(401);
+        for (const [procedure, input] of [
+          ['roles.create', { id: 'sneaky', label: 'Sneaky' }],
+          ['roles.setPermission', { id: 'manager', permission: 'document.delete-any', granted: true }],
+          ['roles.remove', { id: 'manager' }],
+        ] as const) {
+          expect([procedure, (await mutate(procedure, managerCookie, input)).status]).toEqual([procedure, 403]);
+        }
+        expect(await roleRows()).toEqual(rolesBefore);
+        expect(await d1("SELECT 1 FROM role_permissions WHERE action = 'delete-any'")).toEqual([]);
+      } finally {
+        await removeStrays();
+      }
+    });
+
+    test('a grant outside the code vocabulary, admin and the reserved ids are refused, and nothing is written', async () => {
+      const cookie = await signIn(ADMIN);
+      const before = await d1('SELECT role_id, resource, action FROM role_permissions ORDER BY role_id, resource, action');
+      try {
+        for (const permission of ['user.delete', 'session.revoke', 'document.launch', 'document']) {
+          const answer = await mutate('roles.setPermission', cookie, { id: 'manager', permission, granted: true });
+          expect([permission, answer.status]).toEqual([permission, 400]);
+        }
+        expect((await mutate('roles.setPermission', cookie, { id: 'admin', permission: 'document.read', granted: false })).status).toBe(400);
+        for (const id of ['admin', 'user', 'constructor']) {
+          expect([id, (await mutate('roles.create', cookie, { id, label: 'Reserved' })).status]).toEqual([id, 400]);
+        }
+        for (const id of ['Auditor', 'my role', 'a,b']) expect((await mutate('roles.create', cookie, { id, label: 'Invalid' })).status).toBe(400);
+        expect((await mutate('roles.create', cookie, { id: 'manager', label: 'Again' })).status).toBe(409);
+        expect((await mutate('roles.remove', cookie, { id: 'admin' })).status).toBe(400);
+        expect((await mutate('roles.remove', cookie, { id: 'user' })).status).toBe(400);
+        expect(await d1('SELECT role_id, resource, action FROM role_permissions ORDER BY role_id, resource, action')).toEqual(before);
+        expect(await roleRows()).toEqual(['manager', 'user']);
+      } finally {
+        await removeStrays();
+      }
+    });
+
+    test('the raw create-user endpoint takes admin or the default role only, so a role cannot be deleted under the account', async () => {
+      const cookie = await signIn(ADMIN);
+      try {
+        await mutate('roles.create', cookie, { id: 'auditor', label: 'Auditor' });
+        for (const role of ['manager', 'auditor', 'constructor']) {
+          const answer = await authPost('/admin/create-user', cookie, { email: `deferred-${role}@example.com`, password: SEED_PASSWORD, name: 'Deferred', role });
+          expect([role, answer.status]).toEqual([role, 400]);
+        }
+        expect(await d1("SELECT 1 FROM users WHERE email LIKE 'deferred-%@example.com'")).toEqual([]);
+        expect(await orphans()).toEqual([]);
+      } finally {
+        await removeStrays();
+      }
+    });
+
+    test('a role is created, granted, held and revoked, and a user holding it is refused at the very next request', async () => {
+      const adminCookie = await signIn(ADMIN);
+      const memberCookie = await signIn(MEMBER);
+      const memberId = await idOf(MEMBER);
+      try {
+        expect((await mutate('roles.create', adminCookie, { id: 'auditor', label: 'Auditor' })).status).toBe(200);
+        expect((await matrixOf(adminCookie)).roles.find((role) => role.id === 'auditor')).toMatchObject({ permissions: [], holders: 0 });
+        expect((await mutate('roles.setPermission', adminCookie, { id: 'auditor', permission: 'document.read', granted: true })).status).toBe(200);
+        expect((await mutate('users.setRole', adminCookie, { id: memberId, role: 'auditor' })).status).toBe(200);
+
+        // The member's session is the one from before the role existed: only the role it reads now has changed.
+        expect(await query('permissions.mine', memberCookie)).toEqual({ status: 200, data: ['document.read'] });
+        expect((await query('documents.list', memberCookie, { page: 1, pageSize: 10 })).status).toBe(200);
+        expect(await upload(memberCookie)).toBe(403);
+
+        expect((await mutate('roles.setPermission', adminCookie, { id: 'auditor', permission: 'document.read', granted: false })).status).toBe(200);
+        expect((await query('documents.list', memberCookie, { page: 1, pageSize: 10 })).status).toBe(403);
+        expect(await query('permissions.mine', memberCookie)).toEqual({ status: 200, data: [] });
+
+        expect((await mutate('roles.setPermission', adminCookie, { id: 'auditor', permission: 'document.create', granted: true })).status).toBe(200);
+        expect(await upload(memberCookie)).toBe(200);
+      } finally {
+        await restore(
+          `UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`,
+          "DELETE FROM roles WHERE id = 'auditor'",
+          "DELETE FROM role_permissions WHERE role_id = 'auditor'",
+          `DELETE FROM documents WHERE user_id = '${memberId}' AND title = 'hello'`,
+        );
+      }
+    }, TIMEOUT_SETUP);
+
+    test('a role someone holds is refused, with the reason, and a free one is deleted with its permissions', async () => {
+      const cookie = await signIn(ADMIN);
+      const memberId = await idOf(MEMBER);
+      try {
+        await mutate('roles.create', cookie, { id: 'auditor', label: 'Auditor' });
+        await mutate('roles.setPermission', cookie, { id: 'auditor', permission: 'document.read', granted: true });
+        await mutate('users.setRole', cookie, { id: memberId, role: 'auditor' });
+
+        const held = await mutate('roles.remove', cookie, { id: 'auditor' });
+        expect(held).toMatchObject({ status: 409, message: '1 account holds this role: give it another role first' });
+        expect(await roleRows()).toContain('auditor');
+        expect(await d1("SELECT action FROM role_permissions WHERE role_id = 'auditor'")).toEqual([{ action: 'read' }]);
+
+        await mutate('users.setRole', cookie, { id: memberId, role: 'user' });
+        expect((await mutate('roles.remove', cookie, { id: 'auditor' })).status).toBe(200);
+        expect(await roleRows()).toEqual(['manager', 'user']);
+        expect(await d1("SELECT 1 FROM role_permissions WHERE role_id = 'auditor'")).toEqual([]);
+        expect((await mutate('roles.remove', cookie, { id: 'auditor' })).status).toBe(404);
+      } finally {
+        await restore(
+          `UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`,
+          "DELETE FROM roles WHERE id = 'auditor'",
+          "DELETE FROM role_permissions WHERE role_id = 'auditor'",
+        );
+      }
+    }, TIMEOUT_SETUP);
+
+    // An assignment and a delete of the same role, sent together, repeated. However the two statements meet on the
+    // local D1, exactly one of the requests wins and no account holds a role that is gone. The statements themselves are
+    // held by blueprint-cloudflare-fullstack-nextjs-role-management.test.ts, which fires the second one between the
+    // first one's check and its write.
+    test('assigning a role and deleting it at once never leaves an account on a deleted role, on the local D1', async () => {
+      const cookie = await signIn(ADMIN);
+      const memberId = await idOf(MEMBER);
+      try {
+        for (let attempt = 0; attempt < 8; attempt++) {
+          expect((await mutate('roles.create', cookie, { id: 'racer', label: 'Racer' })).status).toBe(200);
+          const answers = await Promise.all(
+            attempt % 2 === 0
+              ? [mutate('users.setRole', cookie, { id: memberId, role: 'racer' }), mutate('roles.remove', cookie, { id: 'racer' })]
+              : [mutate('roles.remove', cookie, { id: 'racer' }), mutate('users.setRole', cookie, { id: memberId, role: 'racer' })],
+          );
+          expect(answers.filter((answer) => answer.status === 200), `attempt ${attempt}: ${JSON.stringify(answers)}`).toHaveLength(1);
+          expect(await orphans(), `attempt ${attempt}`).toEqual([]);
+          await d1(`UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`);
+          await d1("DELETE FROM roles WHERE id = 'racer'");
+        }
+      } finally {
+        await restore(`UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`, "DELETE FROM roles WHERE id = 'racer'");
+      }
+    }, TIMEOUT_SETUP * 3);
+
+    test('the roles page renders the matrix from the database, with a labelled box for each stored role', async () => {
+      const adminPage = await page('/admin/roles', await signIn(ADMIN));
+      expect(adminPage.status).toBe(200);
+      // React separates the text nodes of `{label} may {name}` with comments.
+      const html = adminPage.html.replaceAll('<!-- -->', '');
+      expect(html).toContain('Manager may document.read-any');
+      expect(html).toContain('User may document.create');
+      expect(html).toContain('Delete role Manager');
+      expect(html).not.toContain('Delete role User');
+      expect(html).not.toContain('Delete role Admin');
+
+      expect(await page('/admin/roles', await signIn(MANAGER))).toMatchObject({ status: 307, location: expect.stringMatching(/\/$/) });
+    });
+  });
+
   test('permissionProcedure takes business resources and their actions only, at type check', async () => {
     const apiDir = join(projectDir, 'packages/api');
     const planted = join(apiDir, 'src/planted-permission.ts');
