@@ -232,6 +232,8 @@ describe.each(BLUEPRINTS)('%s roles on PostgreSQL', (blueprint) => {
       './role-assignment': './role-assignment.mjs',
       './guard-administrators': './guard-administrators.mjs',
       './refuse-own-role-change': './refuse-own-role-change.mjs',
+      './link-delivery': './link-delivery.mjs',
+      './email-change-guard': './email-change-guard.mjs',
     };
     permissions = await generated(`${AUTH}/permissions.ts`, 'permissions.mjs', {
       'better-auth/plugins/access': REAL.access,
@@ -242,6 +244,8 @@ describe.each(BLUEPRINTS)('%s roles on PostgreSQL', (blueprint) => {
     engine = await generated(`${AUTH}/role-permissions.ts`, 'role-permissions.mjs', own);
     assignment = await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', own);
     management = await generated(`${AUTH}/role-management.ts`, 'role-management.mjs', own);
+    await generated(`${AUTH}/link-delivery.ts`, 'link-delivery.mjs');
+    await generated(`${AUTH}/email-change-guard.ts`, 'email-change-guard.mjs', { ...own, 'better-auth/api': REAL.api });
     await generated(`${AUTH}/refuse-own-role-change.ts`, 'refuse-own-role-change.mjs', { 'better-auth/api': REAL.api });
     await generated(`${AUTH}/guard-administrators.ts`, 'guard-administrators.mjs', { ...own, 'better-auth/api': REAL.api, 'better-auth/db': REAL.db });
     ({ createAuth } = await generated<{ createAuth: () => Auth }>(`${AUTH}/auth.ts`, 'auth.mjs', {
