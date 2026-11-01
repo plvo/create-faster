@@ -21,8 +21,8 @@ The [Org Dashboard (Next.js)](/docs/blueprints/business/org-dashboard-nextjs) st
 
 The blueprint inherits the templates of [Org Dashboard (Next.js)](/docs/blueprints/business/org-dashboard-nextjs) (META `extends`) and replaces only what is specific to the web framework. Everything else is the same, and documented on that page:
 
-- the `api`, `auth`, `db`, `ui` and `config` packages, the tRPC routers (`user`, `contact`, `session`) and the RBAC middleware (`adminProcedure`, `permissionProcedure`)
-- the roles and permission catalog in `packages/auth/src/permissions.ts`, with the `admin`, `user` and `manager` roles
+- the `api`, `auth`, `db`, `ui` and `config` packages, the tRPC routers (`user`, `contact`, `roles`, `permissions`, `session`) and the RBAC middleware (`adminProcedure`, `permissionProcedure`)
+- the permission vocabulary in `packages/auth/src/permissions.ts`, the roles and their permissions in the database (`admin` compiled, `user` and `manager` written by `db:roles`), the role guard and the rules to create, edit, assign and delete roles
 - the database schema, the Docker PostgreSQL setup, `scripts/local-setup.ts` and the seed (`--fixtures`, `--reset`, `--force`), with the same three accounts (`admin@example.com`, `user@example.com`, `manager@example.com`)
 - the `batch` Node worker
 - the pages: login, dashboard home, contacts list and detail, admin users list and detail, admin roles, and the four profile tabs (account, security, sessions, preferences)
@@ -36,10 +36,10 @@ The contacts and admin pages render the same markup in both variants (shared par
 |---|---|---|
 | Routing | App Router, route groups `(auth)` and `(dashboard)` | File routes in `src/routes/`, pathless layouts `_auth` and `_dashboard` |
 | Auth guard | `requireSession()` in the layout and in each protected page | `beforeLoad` of the `_dashboard` layout, once for every dashboard route |
-| Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, and of the dashboard home route |
+| Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, and of the dashboard home route, over the permission list the `_dashboard` route context holds |
 | Data prefetch | Server component prefetch inside a `HydrateClient` boundary; a detail page awaits its record and calls `notFound()` for an unknown id | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component; a detail loader awaits its record and throws `notFound()` for an unknown id, with a `pendingComponent` skeleton meanwhile |
 | List pages | `page` and `pageSize` read from the server component's `searchParams` and prefetched | `page` and `pageSize` search parameters validated in the route's `validateSearch`, read by the loader through `loaderDeps` |
-| Command palette | Opens a result with `useRouter` of `next/navigation` | Opens a result with `useRouter` of TanStack Router, and reads the role from the session of the `_dashboard` route context |
+| Command palette | Opens a result with `useRouter` of `next/navigation` | Opens a result with `useRouter` of TanStack Router, and reads the permission list from the `_dashboard` route context |
 | Post-login redirect | Query parameter validated by `safeRedirectPath` | `redirectTo` search parameter validated in `validateSearch` with the same `safeRedirectPath` |
 | Production server | `next start` | Nitro server (`.output/server/index.mjs`) started with Node |
 | Profile tabs | Directional slide animation with React `ViewTransition` | Plain tab navigation, no transition |
@@ -50,10 +50,10 @@ The contacts and admin pages render the same markup in both variants (shared par
 
 `_dashboard.tsx` and `_auth.tsx` add no segment to the URL. Both decide through one `isSignedIn(session)` check in `src/lib/auth/guards.ts`, so a session one layout accepts is never refused by the other and the two never redirect to each other in a loop:
 
-- `_dashboard` calls `requireSession(location)` in `beforeLoad`. Without a session (or without a role) it redirects to `/login?redirectTo=<requested path>`, and returns `{ session }` into the route context, so every child route and component reads the session from there. `beforeLoad` hooks run parent first and every loader starts after them, so an anonymous visit redirects before any protected query starts.
+- `_dashboard` calls `requireSession(location)` in `beforeLoad`. Without a session (or without a role) it redirects to `/login?redirectTo=<requested path>`, and returns `{ session, permissions }` into the route context (the permission list of the role, read from the database once per request), so every child route and component reads the session and the list from there. `beforeLoad` hooks run parent first and every loader starts after them, so an anonymous visit redirects before any protected query starts.
 - `_auth` wraps the login page and redirects a signed-in user to `/`.
 - `admin.tsx` calls `requireAdmin(context.session)` once for every page under `/admin`: a member is redirected to `/`. The bare `/admin` answers 404 through `admin/index.tsx`.
-- `contacts.tsx` calls `requirePermission(context.session, { contact: ['read'] })` once for every page under `/contacts`: a role without the permission gets the not-found page with a 404 status. The dashboard home (`_dashboard/index.tsx`) makes the same `contact:read` check in its own `beforeLoad`.
+- `contacts.tsx` calls `requirePermission(context.permissions, { contact: ['read'] })` once for every page under `/contacts`: a role without the permission gets the not-found page with a 404 status. The dashboard home (`_dashboard/index.tsx`) makes the same `contact:read` check in its own `beforeLoad`.
 
 The server still enforces every permission: each tRPC procedure keeps its `adminProcedure` or `permissionProcedure`, so the route guards only decide what a page shows.
 

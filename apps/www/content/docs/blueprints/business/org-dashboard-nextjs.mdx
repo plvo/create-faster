@@ -54,7 +54,7 @@ src/
 │       │   │   └── [id]/
 │       │   │       ├── page.tsx          # User detail
 │       │   │       └── user-detail.tsx   # Edit user + generate password
-│       │   └── roles/page.tsx            # Read-only roles + permission matrix (admin only)
+│       │   └── roles/page.tsx            # Editable roles + permission matrix (admin only)
 │       ├── contacts/
 │       │   ├── page.tsx                  # Contact list, one page per URL
 │       │   └── [id]/page.tsx             # Contact detail + edit
@@ -75,7 +75,7 @@ src/
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── hooks/
 │   ├── use-page-params.ts                # Reads and writes the page and page size in the URL
-│   └── use-permission.ts                 # Synchronous role permission check
+│   └── use-permission.ts                 # The permission list of the caller, with a three-state verdict
 ├── lib/
 │   └── constants.ts                      # Route definitions with required permissions
 └── styles/
@@ -107,9 +107,15 @@ src/
 
 ```
 src/
-├── auth.ts                   # Better Auth config (admin plugin + ac/roles, drizzle adapter)
+├── auth.ts                   # Better Auth config (admin plugin + the guard in front of it, drizzle adapter)
 ├── auth-client.ts            # Client with adminClient (ac/roles) + inferAdditionalFields
-├── permissions.ts            # Access-control catalog + admin/user/manager roles
+├── permissions.ts            # Business vocabulary + the compiled admin role of the plugin
+├── role-permissions.ts       # What a role may do, read from the database on every request
+├── role-management.ts        # Create, edit and delete roles
+├── role-assignment.ts        # Assign a role, keep one administrator
+├── guard-administrators.ts   # Guards the plugin endpoints that write a role, a ban or a removal
+├── role-store.ts             # The writes that need a transaction (PostgreSQL)
+├── default-roles.ts          # The roles a fresh database starts with
 ├── types.ts                  # Session type via auth.$Infer.Session
 └── password.ts               # Cryptographic password generation
 ```
@@ -118,21 +124,21 @@ src/
 
 ### Authentication
 
-Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers a custom access-control model (admin/user/manager), ban/unban, and session management. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query. Pages that prefetch an admin-only or permission-gated query call `requireAdmin()` (non-admins are redirected home) or `requirePermission()` (not-found page) in the same place.
+Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers account administration, ban/unban, and session management, and the roles of the database sit next to it. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query. Pages that prefetch an admin-only or permission-gated query call `requireAdmin()` (non-admins are redirected home) or `requirePermission()` (not-found page) in the same place.
 
 ### Role-based access control
 
-A real, single-tenant RBAC built on the Better Auth `admin` plugin's access control. The catalog and roles are code-defined in `packages/auth/src/permissions.ts`:
+A single-tenant RBAC whose roles are data. The code declares the vocabulary (`businessStatement` in `packages/auth/src/permissions.ts`: the `contact` actions) and the compiled `admin` role of the Better Auth `admin` plugin, which holds account administration (`user`, `session`) and every business action. What every other role may do is read from the `roles` and `role_permissions` tables on each request, so a change applies to the next request of everyone who holds the role, with no deployment. Three roles ship by default, written by `db:roles` (which `local-setup` runs) into a database that has no role yet:
 
-- `admin` — full `user`/`session` management + all `contact` actions
+- `admin` — full `user`/`session` management + all `contact` actions (compiled, never edited)
 - `user` (default) — full CRUD on `contact`, no user management
 - `manager` — `contact: ['read']` only, a read-only example role
 
-Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation. Adding a role is a one-file edit in `permissions.ts` (a single `roleDefinitions` map). Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`. The generated `docs/agents/auth.md` covers it in detail (see [Agent Context](/docs/concepts/agent-context)).
+Enforcement is on both sides: the server gates data routes with `permissionProcedure(resource, action)` (tRPC), and the UI gates affordances with the `<Can>` component / `usePermission` hook plus permission-filtered navigation, from the permission list the dashboard layout resolves on the server. An administrator edits the role matrix at `/admin/roles`: tick a box to grant a permission, clear it to revoke it, create a role, delete a role nobody holds. Only the `admin` role manages roles, and a stored permission can only name a business resource, so a role created at runtime never gains account administration. A role is assigned as exactly one id that exists, on every path (the dashboard, `auth.api.*` and the `/api/auth/admin/*` endpoints), and the last administrator can never be demoted, banned or removed, even when two administrators try at once (a transaction with a lock on PostgreSQL). The generated `docs/agents/auth.md` covers it in detail (see [Agent Context](/docs/concepts/agent-context)).
 
 ### Admin panel
 
-User list with clickable rows linking to detail pages, one page at a time (see [Paginated lists](#paginated-lists)). Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing name, first name, last name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin/user/manager) and ban/unban, on every account but your own: the signed-in admin gets no actions on their row, and the server refuses banning, removing or changing the role of yourself (Better Auth refuses the first two; the `refuseOwnRoleChange` plugin in `packages/auth/src/refuse-own-role-change.ts` the third) with a 400 and a message.
+User list with clickable rows linking to detail pages, one page at a time (see [Paginated lists](#paginated-lists)). Creating a user never asks for a password — `user.create` generates one server-side and returns it once. User detail allows editing name, first name, last name, phone, and regenerating one-time passwords (visible once, must be copied). User actions include role assignment (admin and every role of the database, so a role created at runtime is assignable at once) and ban/unban, on every account but your own: the signed-in admin gets no actions on their row and no role select on their page, and the server refuses banning, removing or changing the role of yourself (Better Auth refuses the first two; the `refuseOwnRoleChange` plugin in `packages/auth/src/refuse-own-role-change.ts` the third) with a 400 and a message.
 
 ### CRUD example (Contacts)
 
@@ -153,7 +159,7 @@ Full create, read, update, delete for contacts. Contact form with validation (Ta
 A search field under the logo in the sidebar, or Ctrl+K (Cmd+K on macOS), opens a command palette. It lists the pages the role may open, from the same `ROUTES` table and permission filter as the sidebar, and finds contacts and users from two characters, grouped by type. Selecting a result opens its page: `/contacts/<id>` or `/admin/users/<id>`.
 
 - The records come from one procedure, `search.records`, which returns `{ type, label, items: [{ id, title, subtitle, href }] }[]`. `SEARCHABLE_TYPES` in `packages/api/src/search.ts` is the one list of what can be found: an entry declares its `canSearch` check, its `find` query and the link of an item, so a new record type is one entry and the palette needs no change.
-- A role finds a type exactly when it can list it. Contacts need `contact: ['read']` (the check of `permissionProcedure('contact', 'read')`, which `contact.list` goes through) and users need the `admin` role (the check of `adminProcedure`, behind `user.list`). A type the caller may not read runs no query and returns no group, so the palette reveals nothing the tables would refuse.
+- A role finds a type exactly when it can list it. Contacts need `contact.read` in the permission list of the caller (the check of `permissionProcedure('contact', 'read')`, which `contact.list` goes through) and users need the `admin` role (the check of `adminProcedure`, behind `user.list`). A type the caller may not read runs no query and returns no group, so the palette reveals nothing the tables would refuse.
 - The text is matched as plain text and whatever the case: `%` and `_` match themselves. `containsText` uses the substring function of your database, never `LIKE`, so the match is the same on each. It scans the table, which is accepted at this size; add an index or a full-text search when a table grows.
 - Each type returns at most five items, newest contacts first and users by name. The palette waits for a pause in typing, drops the answer for an older text, and tells apart a search that is running, one that found nothing and one that failed (with a way to try again).
 
