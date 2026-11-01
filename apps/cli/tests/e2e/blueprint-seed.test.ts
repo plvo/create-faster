@@ -449,6 +449,23 @@ describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-ne
     }
   });
 
+  // The web instance hands better-auth the after() of Next.js, so the delivery of a reset link runs after the response.
+  // A request for an account that exists is answered as one for an account that does not, and only the first logs a link.
+  test('a password reset answers alike for an existing and an unknown account, and delivers the link after the response', async () => {
+    const reset = (email: string) =>
+      post(server, '/api/auth/request-password-reset', { email, redirectTo: '/reset-password' }, { 'x-forwarded-for': '10.1.0.9' });
+    const existing = await reset('owner@example.com');
+    const unknown = await reset('nobody@example.com');
+    expect([unknown.status, await unknown.json()]).toEqual([existing.status, await existing.json()]);
+    expect(existing.status).toBe(200);
+
+    const deadline = Date.now() + 15_000;
+    const delivered = () => server.output().stdout.match(/\[reset-password\] (\S+) → (\S+)/g) ?? [];
+    while (Date.now() < deadline && delivered().length === 0) await Bun.sleep(200);
+    expect(delivered().map((line) => line.split(' ')[1])).toEqual(['owner@example.com']);
+    expect(delivered()[0]).toContain('/reset-password/');
+  });
+
   test('the server logs no error', async () => {
     const { stdout, stderr } = await server.stop();
     expect(`${stdout}\n${stderr}`).not.toMatch(/Error|⨯/);
