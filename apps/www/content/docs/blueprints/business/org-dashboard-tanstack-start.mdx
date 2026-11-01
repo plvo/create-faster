@@ -1,11 +1,11 @@
 ---
 title: Org Dashboard (TanStack Start)
-description: Dashboard with auth, role-based access control (admin/user/manager), admin panel, and example CRUD on TanStack Start. Ships as a turborepo with a TanStack Start web app, a Node batch worker, and shared packages.
+description: Dashboard with auth, role-based access control with editable roles, admin panel, and example CRUD on TanStack Start. Ships as a turborepo with a TanStack Start web app, a Node batch worker, and shared packages.
 ---
 
 ## Presentation
 
-The [Org Dashboard (Next.js)](/docs/blueprints/business/org-dashboard-nextjs) starter with a TanStack Start web app instead of Next.js. You get the same product: email/password login, three roles (admin, user, manager) enforced on the server and in the UI, an admin panel, a contacts CRUD, a profile area, a Node batch worker, a one-command local setup, and an idempotent seed. Only the web app changes: routing, route guards, and the production server follow TanStack Start.
+The [Org Dashboard (Next.js)](/docs/blueprints/business/org-dashboard-nextjs) starter with a TanStack Start web app instead of Next.js. You get the same product: email/password login, roles an administrator edits at runtime (admin, user and manager to start with) enforced on the server and in the UI, an admin panel, a contacts CRUD, a profile area, a Node batch worker, a one-command local setup, and an idempotent seed. Only the web app changes: routing, route guards, and the production server follow TanStack Start.
 
 ## Composition
 
@@ -37,6 +37,7 @@ The contacts and admin pages render the same markup in both variants (shared par
 | Routing | App Router, route groups `(auth)` and `(dashboard)` | File routes in `src/routes/`, pathless layouts `_auth` and `_dashboard` |
 | Auth guard | `requireSession()` in the layout and in each protected page | `beforeLoad` of the `_dashboard` layout, once for every dashboard route |
 | Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, and of the dashboard home route, over the permission list the `_dashboard` route context holds |
+| Permission list | `permissions.mine` prefetched by the dashboard layout inside `HydrateClient`, read from the query cache | `getPermissions` server function called by `beforeLoad` of `_dashboard`, serialized with the route context into the document, so hydrating the first page asks the server for nothing; `beforeLoad` runs again on each navigation, so a revocation reaches the next page the user opens |
 | Data prefetch | Server component prefetch inside a `HydrateClient` boundary; a detail page awaits its record and calls `notFound()` for an unknown id | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component; a detail loader awaits its record and throws `notFound()` for an unknown id, with a `pendingComponent` skeleton meanwhile |
 | List pages | `page` and `pageSize` read from the server component's `searchParams` and prefetched | `page` and `pageSize` search parameters validated in the route's `validateSearch`, read by the loader through `loaderDeps` |
 | Command palette | Opens a result with `useRouter` of `next/navigation` | Opens a result with `useRouter` of TanStack Router, and reads the permission list from the `_dashboard` route context |
@@ -103,16 +104,17 @@ src/
 │   ├── contacts/                         # Contact dialog, form, table, detail
 │   ├── navigation/                       # Sidebar, header, nav-user dropdown
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
-│   ├── can.tsx                           # Permission gate component
+│   ├── can.tsx                           # Permission gate component (renders nothing until the verdict is known)
 │   ├── dashboard-not-found.tsx           # Not-found page shown inside the dashboard layout
 │   ├── not-found.tsx                     # Not-found component (404) for URLs outside the dashboard
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
 ├── hooks/
-│   └── use-permission.ts                 # Synchronous role permission check
+│   └── use-permission.ts                 # The permission list of the `_dashboard` route context, and the verdict for a request
 ├── lib/
 │   ├── auth/
 │   │   ├── guards.ts                     # isSignedIn, requireSession, requireAdmin, requirePermission
-│   │   └── permission.ts                 # hasPermission (client-side role check, also used by the guards)
+│   │   └── permissions.ts                # getPermissions: the permission list of the caller, resolved on the server for the route context
+│   ├── allowed-routes.ts                 # The pages the permission list grants, for the sidebar and the command palette
 │   ├── constants.ts                      # Route definitions with required permissions
 │   ├── page-title.ts                     # Page title helper
 │   └── safe-redirect.ts                  # Validates post-login redirect paths
