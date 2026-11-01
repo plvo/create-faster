@@ -134,10 +134,18 @@ const deep = (path = []) => new Proxy(function () {}, {
 });
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
+export const useQuery = () => ({
+  data: globalThis.__testQueryError ? undefined : globalThis.__testQueryData,
+  isPending: !globalThis.__testQueryError && globalThis.__testQueryData === undefined,
+  isError: Boolean(globalThis.__testQueryError),
+});
 // A list page asks for its rows and its total together: the rows are __testQueryData.items, the total .total.
 export const useSuspenseQueries = () => [{ data: globalThis.__testQueryData.items }, { data: globalThis.__testQueryData.total }];
 export const useMutation = (options) => ({
-  mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables),
+  mutate: (variables) =>
+    globalThis.__testMutationError
+      ? options.onError?.(globalThis.__testMutationError, variables)
+      : options.onSuccess?.(globalThis.__testMutationResult, variables),
   mutateAsync: async (variables) => { options.onSuccess?.(globalThis.__testMutationResult, variables); return globalThis.__testMutationResult; },
   isPending: false,
 });
@@ -198,7 +206,7 @@ export const Input = (props) => createElement('input', props);`,
 export const Select = ({ children, ...props }) => createElement('div', { 'data-component': 'Select', ...props }, children);
 export const SelectTrigger = ({ children, ...props }) => createElement('button', { role: 'combobox', ...props }, children);
 export const SelectContent = ({ children }) => createElement('div', { role: 'listbox' }, children);
-export const SelectItem = ({ children, value }) => createElement('div', { role: 'option', 'data-value': value }, children);
+export const SelectItem = ({ children, value, disabled }) => createElement('div', { role: 'option', 'data-value': value, disabled }, children);
 export const SelectValue = () => null;`,
   'page-params.mjs': `// The page the URL names, and what the table asks the URL for.
 export const usePageParams = () => ({
@@ -247,7 +255,7 @@ export const DropdownMenuItem = ({ children, onClick }) => createElement('div', 
 export const DropdownMenuSeparator = () => null;`,
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
   'auth-client.mjs': `// The signed-in user is another one than the users the pages show, unless a test makes them the same.
-export const authClient = { admin: {}, useSession: () => ({ data: { user: { id: globalThis.__testViewerId ?? 'viewer' } } }) };`,
+export const authClient = { admin: {}, useSession: () => ({ data: globalThis.__testNoSession ? null : { user: { id: globalThis.__testViewerId ?? 'viewer' } } }) };`,
   'app-form.mjs': `import { createElement } from './react.mjs';
 import { InlineEditField } from './inline-edit.mjs';
 // A field is the one the generated library renders, fed the value of the form, so a test reads what a page asks of it.
@@ -261,7 +269,8 @@ const field = {
   InlineEditField,
   InputField: (props) => createElement('input', { 'aria-label': props.label }),
   TextareaField: (props) => createElement('textarea', { 'aria-label': props.label }),
-  SelectField: (props) => createElement('button', { role: 'combobox', 'aria-label': props.label }),
+  SelectField: (props) =>
+    createElement('button', { role: 'combobox', 'aria-label': props.label, 'data-options': JSON.stringify(props.options), 'data-description': props.description, disabled: props.props?.disabled }),
 };
 export const useAppForm = (options) => {
   globalThis.__testFormOptions = options;
@@ -291,6 +300,7 @@ export const roleDefinitions = {
 // The fullstack blueprint: the compiled role names, and the admin grants beside the stored roles.
 export const roles = { admin: {}, manager: {} };
 export const ADMIN_ROLE = 'admin';
+export const DEFAULT_ROLE = 'user';
 export const PERMISSIONS = ['user.create', 'user.list', 'contact.create', 'contact.read'];
 export const ADMIN_PERMISSIONS = PERMISSIONS;`,
   'role-permissions.mjs': `export const listRoleMatrix = async () => globalThis.__storedRoles ?? [{ id: 'manager', label: 'Manager', permissions: ['contact.read'] }];`,
@@ -439,6 +449,8 @@ interface PageSource {
 
 interface MountOptions {
   data?: unknown;
+  queryError?: boolean;
+  mutationError?: Error;
   mutationResult?: unknown;
   props?: Record<string, unknown>;
 }
@@ -453,7 +465,10 @@ interface Mounter<Name extends string> {
 
 interface Globals {
   __testViewerId?: string;
+  __testNoSession?: boolean;
   __testQueryData?: unknown;
+  __testQueryError?: boolean;
+  __testMutationError?: Error;
   __testPage?: { page: number; pageSize: number };
   __pageCalls?: [string, number][];
   __testMutationResult?: unknown;
@@ -496,6 +511,8 @@ async function createMounter<Name extends string>(
     const globals = globalThis as Globals;
     globals.__testQueryData = options.data;
     globals.__testMutationResult = options.mutationResult;
+    globals.__testQueryError = options.queryError;
+    globals.__testMutationError = options.mutationError;
     globals.__toasts = [];
     globals.__invalidated = [];
     resetState();
@@ -1038,6 +1055,14 @@ async function emptyStubsFor(
 
 const PASSWORD = 's3cret-Passw0rd';
 
+// What users.assignableRoles answers: admin, then the roles of the database by id.
+const ASSIGNABLE_ROLES = [
+  { id: 'admin', label: 'Admin' },
+  { id: 'auditor', label: 'Auditor' },
+  { id: 'manager', label: 'Manager' },
+  { id: 'user', label: 'User' },
+];
+
 describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
   const blueprint = 'cloudflare-fullstack-nextjs';
   let tempDir: string;
@@ -1214,7 +1239,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         },
       ],
     ])('%s a user', async (_, act) => {
-      const page = await mount('editUser', { props: { user: USER } });
+      const page = await mount('editUser', { props: { user: USER }, data: ASSIGNABLE_ROLES });
       await act(page);
       expect(invalidated()).toEqual(['users']);
     });
@@ -1304,6 +1329,93 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const afterCancel = withTag(page.tree, 'button').map((button) => accessibleName(button, elementsOf(page.tree)));
       expect(afterCancel).toContain('Ban user');
       expect(afterCancel).not.toContain('Confirm ban');
+    });
+  });
+
+  describe('assigning a role', () => {
+    const options = (tree: RenderedChild[]) =>
+      elementsOf(must(find(tree, (element) => element.props['data-component'] === 'Select'), 'the role select').children).filter(
+        (element) => element.props.role === 'option',
+      );
+
+    test('the user editor lists admin and the roles of the database by label, and the user holds the current one', async () => {
+      const page = await mount('editUser', { props: { user: { ...USER, role: 'auditor' } }, data: ASSIGNABLE_ROLES });
+      const select = must(find(page.tree, (element) => element.props['data-component'] === 'Select'), 'the role select');
+      expect(select.props.value).toBe('auditor');
+      expect(options(page.tree).map((option) => [option.props['data-value'], textOf(option)])).toEqual([
+        ['admin', 'Admin'],
+        ['auditor', 'Auditor'],
+        ['manager', 'Manager'],
+        ['user', 'User'],
+      ]);
+    });
+
+    test('a role that no longer exists is shown, and cannot be picked', async () => {
+      const page = await mount('editUser', { props: { user: { ...USER, role: 'ghost' } }, data: ASSIGNABLE_ROLES });
+      const ghost = must(options(page.tree).find((option) => option.props['data-value'] === 'ghost'), 'the current role');
+      expect(textOf(ghost)).toBe('ghost (no longer exists)');
+      expect(ghost.props.disabled).toBe(true);
+    });
+
+    test('nothing is offered until the roles are known', async () => {
+      const page = await mount('editUser', { props: { user: USER } });
+      expect(find(page.tree, (element) => element.props['data-component'] === 'Select')).toBeUndefined();
+      expect(withTag(page.tree, 'h2').map(textOf)).toContain('Role');
+    });
+
+    test('nothing is offered on the signed-in own account, nor before the session is known', async () => {
+      const globals = globalThis as Globals;
+      for (const viewer of [USER.id, null]) {
+        globals.__testViewerId = viewer ?? undefined;
+        globals.__testNoSession = viewer === null;
+        try {
+          const page = await mount('editUser', { props: { user: USER }, data: ASSIGNABLE_ROLES });
+          expect([viewer, find(page.tree, (element) => element.props['data-component'] === 'Select')]).toEqual([viewer, undefined]);
+          expect(withTag(page.tree, 'h2').map(textOf)).not.toContain('Role');
+        } finally {
+          globals.__testViewerId = undefined;
+          globals.__testNoSession = undefined;
+        }
+      }
+    });
+
+    test('the create dialog offers the same roles by label, and nothing to pick while they load', async () => {
+      const loaded = await mount('createUserDialog', { data: ASSIGNABLE_ROLES });
+      const role = must(find(loaded.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
+      expect(JSON.parse(String(role.props['data-options']))).toEqual({ Admin: 'admin', Auditor: 'auditor', Manager: 'manager', User: 'user' });
+      expect(role.props.disabled).toBe(false);
+
+      const loading = await mount('createUserDialog', {});
+      const waiting = must(find(loading.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
+      expect(waiting.props.disabled).toBe(true);
+    });
+
+    test('the editor says the roles could not be loaded, and offers no select', async () => {
+      const page = await mount('editUser', { props: { user: USER }, queryError: true });
+      const alert = must(find(page.tree, (element) => element.props.role === 'alert'), 'the alert');
+      expect(textOf(alert)).toBe('The roles could not be loaded. Reload the page to try again.');
+      expect(find(page.tree, (element) => element.props['data-component'] === 'Select')).toBeUndefined();
+    });
+
+    test('the create dialog says the roles could not be loaded, and the select stays disabled', async () => {
+      const page = await mount('createUserDialog', { queryError: true });
+      const role = must(find(page.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
+      expect(role.props['data-description']).toBe('The roles could not be loaded. Close this dialog and try again.');
+      expect(role.props.disabled).toBe(true);
+    });
+
+    test('a creation that fails after the account exists refreshes the list and shows the reason', async () => {
+      const page = await mount('createUserDialog', { data: ASSIGNABLE_ROLES, mutationError: new Error('No role has that id') });
+      const form = must(find(page.tree, (element) => element.tag === 'form'), 'the form');
+      await page.act(async () => (form.props.onSubmit as (event: { preventDefault(): void }) => unknown)({ preventDefault() {} }));
+      expect((globalThis as Globals).__invalidated).toEqual(['users']);
+      expect(toasts()).toEqual([{ kind: 'error', message: 'No role has that id' }]);
+    });
+
+    test('two roles with one label stay two options', async () => {
+      const page = await mount('createUserDialog', { data: [{ id: 'admin', label: 'Admin' }, { id: 'lead', label: 'Admin' }] });
+      const role = must(find(page.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
+      expect(JSON.parse(String(role.props['data-options']))).toEqual({ Admin: 'admin', 'Admin (lead)': 'lead' });
     });
   });
 
@@ -1397,13 +1509,13 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
     });
 
     test('the role select has a name', async () => {
-      const page = await mount('editUser', { props: { user: USER } });
+      const page = await mount('editUser', { props: { user: USER }, data: ASSIGNABLE_ROLES });
       const select = must(find(page.tree, (element) => element.props.role === 'combobox'), 'the role select');
       expect(accessibleName(select, elementsOf(page.tree))).toBe('Role');
     });
 
     test('every action is a Button with a name', async () => {
-      const page = await mount('editUser', { props: { user: USER } });
+      const page = await mount('editUser', { props: { user: USER }, data: ASSIGNABLE_ROLES });
       const actions = withTag(page.tree, 'button').filter((button) => button.props['data-component'] === 'Button');
       expect(actions.map((button) => accessibleName(button, elementsOf(page.tree)))).toEqual(['Generate new password', 'Ban user', 'Delete user']);
       expect(unnamedControls(page.tree)).toEqual([]);

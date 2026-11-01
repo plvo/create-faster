@@ -56,12 +56,17 @@ interface GeneratedAuth<Factory> {
  * Evaluates the generated `createAuth` of a project's auth package, with the generated modules it imports
  * (`modules`, in dependency order, as file names without extension under `packages/auth/src`) and the stand-ins above.
  * Other imports of `auth.ts` resolve to the real packages. `deliveryModule` is the module `auth.ts` imports its
- * `deliverLink` from, as written in its source (`./email`, `./link-delivery`).
+ * `deliverLink` from, as written in its source (`./email`, `./link-delivery`). `standIns` replace generated modules
+ * that need a database this harness does not have (specifier to source), for a test that never reaches them.
  */
 export async function loadGeneratedAuth<Factory>(
   projectPath: string,
   workDir: string,
-  { modules, deliveryModule }: { modules: string[]; deliveryModule: string },
+  {
+    modules,
+    deliveryModule,
+    standIns = {},
+  }: { modules: string[]; deliveryModule: string; standIns?: Record<string, string> },
 ): Promise<GeneratedAuth<Factory>> {
   const stubs = join(workDir, 'auth-stubs');
   await mkdir(stubs, { recursive: true });
@@ -79,6 +84,12 @@ export async function loadGeneratedAuth<Factory>(
   }
   for (const name of ['plugins/admin/access', 'plugins/organization/access']) {
     imports[`better-auth/${name}`] = resolve(`better-auth/${name}`);
+  }
+
+  for (const [specifier, source] of Object.entries(standIns)) {
+    const target = join(stubs, `${specifier.replace(/\W+/g, '-')}.mjs`);
+    await Bun.write(target, source);
+    imports[specifier] = target;
   }
 
   const authDir = join(projectPath, 'packages/auth/src');

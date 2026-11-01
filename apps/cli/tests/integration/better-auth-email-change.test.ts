@@ -50,6 +50,8 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
     ({ createAuth, database, delivery } = await loadGeneratedAuth<CreateAuth>(join(tempDir, 'ec'), tempDir, {
       modules: ['email-change-guard', 'permissions', 'refuse-own-role-change'],
       deliveryModule: './email',
+      // The guard of the admin endpoints runs on the Drizzle database, which this memory database is not.
+      standIns: { './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });" },
     }));
   });
 

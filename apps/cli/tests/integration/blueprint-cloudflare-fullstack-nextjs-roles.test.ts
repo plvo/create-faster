@@ -3,8 +3,9 @@ import { join } from 'node:path';
 import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
+import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { cleanupTempDir, createTempDir, evaluateGeneratedModule, REACT_ELEMENT_STUB, readTextFile, runCli } from './helpers';
+import { createTable } from './sqlite-tables';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -68,28 +69,6 @@ interface DocumentScope {
 
 interface Rbac {
   permissionProcedure: (resource: string, action: string) => unknown;
-}
-
-function createTable(sqlite: Database, table: SQLiteTable): void {
-  const config = getTableConfig(table);
-  const columns = config.columns.map((column) => {
-    const defaulted = column.name === 'created_at' || column.name === 'updated_at' ? ' DEFAULT (unixepoch())' : '';
-    return `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}${defaulted}`;
-  });
-  for (const key of config.primaryKeys) {
-    columns.push(`PRIMARY KEY (${key.columns.map((column) => `"${column.name}"`).join(', ')})`);
-  }
-  for (const foreignKey of config.foreignKeys) {
-    const reference = foreignKey.reference();
-    const names = (list: { name: string }[]) => list.map((column) => `"${column.name}"`).join(', ');
-    columns.push(
-      `FOREIGN KEY (${names(reference.columns)}) REFERENCES "${getTableConfig(reference.foreignTable).name}" (${names(reference.foreignColumns)}) ON DELETE ${(foreignKey.onDelete ?? 'no action').toUpperCase()}`,
-    );
-  }
-  sqlite.run(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
-  for (const column of config.columns.filter((each) => each.isUnique)) {
-    sqlite.run(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);
-  }
 }
 
 describe(`${BLUEPRINT} database roles`, () => {
@@ -161,6 +140,8 @@ describe(`${BLUEPRINT} database roles`, () => {
       '@repo/db': './db.mjs',
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-permissions': './role-permissions.mjs',
+      '@repo/auth/role-assignment': './role-assignment.mjs',
+      '../auth-errors': './auth-errors.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',
@@ -172,6 +153,7 @@ describe(`${BLUEPRINT} database roles`, () => {
       join(stubs, 'counting-auth.mjs'),
       "export const createAuth = () => ({ api: { getSession: async () => { globalThis.__sessionReads = (globalThis.__sessionReads ?? 0) + 1; return { user: { id: 'read-here', role: 'user' } }; } } });",
     );
+    await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', { '@repo/db': './db.mjs', './permissions': './permissions.mjs' });
     await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
     await generated(`${API}/trpc.ts`, 'trpc.mjs', {
       '@repo/auth/auth': './counting-auth.mjs',
@@ -618,7 +600,8 @@ describe(`${BLUEPRINT} database roles`, () => {
       );
       const generated = async <T>(file: string, name: string, imports: Record<string, string>): Promise<T> =>
         evaluateGeneratedModule<T>(await readTextFile(join(project, file)), join(stubs, name), imports);
-      await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
+      await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', { '@repo/db': './db.mjs', './permissions': './permissions.mjs' });
+    await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
       ({ createTRPCContext } = await generated<{ createTRPCContext: typeof createTRPCContext }>(`${API}/trpc.ts`, 'init.mjs', {
         '@repo/auth/auth': './counting-auth.mjs',
         '@trpc/server': REAL.trpcServer,

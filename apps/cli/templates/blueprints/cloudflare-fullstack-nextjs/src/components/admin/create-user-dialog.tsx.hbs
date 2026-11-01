@@ -6,12 +6,12 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { roles } from '@repo/auth/permissions';
+import { DEFAULT_ROLE } from '@repo/auth/permissions';
 import { Button } from '@repo/ui/components/ui/button';
 import {
   Dialog,
@@ -36,15 +36,19 @@ const schema = z.object({
   phone: z.string().max(40),
 });
 
-const ROLE_OPTIONS = Object.fromEntries(
-  Object.keys(roles).map((role) => [role.charAt(0).toUpperCase() + role.slice(1), role]),
-);
+// The options of the select, by label. Two roles can share a label, so a repeated one carries its id.
+function roleOptions(roles: { id: string; label: string }[]): Record<string, string> {
+  const options: Record<string, string> = {};
+  for (const role of roles) options[role.label in options ? `${role.label} (${role.id})` : role.label] = role.id;
+  return options;
+}
 
 export function CreateUserDialog() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const rolesQuery = useQuery(trpc.users.assignableRoles.queryOptions(undefined, { enabled: open }));
 
   const createMutation = useMutation(
     trpc.users.create.mutationOptions({
@@ -52,12 +56,16 @@ export function CreateUserDialog() {
         invalidatePagedList(queryClient, trpc.users);
         setCreatedPassword(password);
       },
-      onError: (error) => toast.error(error.message),
+      // The account may exist, on the default role, when the assignment of the chosen one failed.
+      onError: (error) => {
+        invalidatePagedList(queryClient, trpc.users);
+        toast.error(error.message);
+      },
     }),
   );
 
   const form = useAppForm({
-    defaultValues: { name: '', email: '', role: 'user', firstName: '', lastName: '', phone: '' },
+    defaultValues: { name: '', email: '', role: DEFAULT_ROLE, firstName: '', lastName: '', phone: '' },
     validators: { onSubmit: schema },
     onSubmit: ({ value }) => {
       createMutation.mutate({
@@ -119,7 +127,16 @@ export function CreateUserDialog() {
             <form.AppField name='email'>
               {(f) => <f.InputField label='Email' props={{ type: 'email', placeholder: 'jane@example.com' }} />}
             </form.AppField>
-            <form.AppField name='role'>{(f) => <f.SelectField label='Role' options={ROLE_OPTIONS} />}</form.AppField>
+            <form.AppField name='role'>
+              {(f) => (
+                <f.SelectField
+                  label='Role'
+                  options={roleOptions(rolesQuery.data ?? [])}
+                  description={rolesQuery.isError ? 'The roles could not be loaded. Close this dialog and try again.' : undefined}
+                  props={{ disabled: !rolesQuery.data }}
+                />
+              )}
+            </form.AppField>
             <div className='grid gap-3 sm:grid-cols-2'>
               <form.AppField name='firstName'>{(f) => <f.InputField label='First name' />}</form.AppField>
               <form.AppField name='lastName'>{(f) => <f.InputField label='Last name' />}</form.AppField>

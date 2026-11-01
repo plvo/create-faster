@@ -110,7 +110,9 @@ export const createCallerFactory = t.createCallerFactory;`,
   // caller varies, so the admin gate and the owner filter are what the tests tell apart. What a role holds is
   // decided by the generated engine, which blueprint-cloudflare-fullstack-nextjs-roles.test.ts runs on a database.
   'auth.mjs': 'export const createAuth = () => ({ api: {} });',
-  'permissions.mjs': "export const ADMIN_ROLE = 'admin';",
+  'permissions.mjs': "export const ADMIN_ROLE = 'admin'; export const DEFAULT_ROLE = 'user'; export const ROLE_ID = /^[a-z0-9-]+$/;",
+  'role-assignment.mjs': 'export const listAssignableRoles = async () => [];',
+  'auth-errors.mjs': 'export const trpcErrorFromAuthError = () => undefined;',
   // The admin and the manager read every document, the others their own: the scope the defaults give, by permission.
   'role-permissions.mjs': `export const permissionsOf = async (_db, role) => [
   'document.create', 'document.read', 'document.update', 'document.delete',
@@ -260,6 +262,9 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       '@trpc/server': REAL.trpcServer,
       '@repo/db': './db.mjs',
       '@repo/auth/auth': './auth.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-assignment': './role-assignment.mjs',
+      '../auth-errors': './auth-errors.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',

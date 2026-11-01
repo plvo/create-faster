@@ -65,6 +65,57 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     return { status: 200, data: body.result.data.json };
   };
 
+
+  // A POST to the Better Auth endpoints, as a browser sends it: the origin of the app and the session cookie.
+  const authPost = async (path: string, cookie: string, body: unknown): Promise<{ status: number; body: Record<string, unknown> | null }> => {
+    const response = await fetch(new URL(`/api/auth${path}`, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: server.url, cookie, 'x-forwarded-for': `10.9.1.${++clientNumber}` },
+      body: JSON.stringify(body),
+    });
+    return { status: response.status, body: (await response.json().catch(() => null)) as Record<string, unknown> | null };
+  };
+
+  // A tRPC mutation is a POST with its input wrapped as superjson wraps it.
+  const mutate = async (procedure: string, cookie: string, input: unknown): Promise<{ status: number; message?: string; data?: unknown }> => {
+    const response = await fetch(new URL(`/api/trpc/${procedure}`, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ json: input }),
+    });
+    const body = (await response.json()) as { result?: { data: { json: unknown } }; error?: { json: { message: string } } };
+    return { status: response.status, message: body.error?.json.message, data: body.result?.data.json };
+  };
+
+  // Runs every statement even when one fails, so a failed cleanup never leaves the rest of the state unrestored, and
+  // then reports the first failure.
+  const restore = async (...statements: string[]): Promise<void> => {
+    const failures: unknown[] = [];
+    for (const statement of statements) {
+      try {
+        await d1(statement);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length > 0) throw failures[0];
+  };
+
+  const idOf = async (email: string): Promise<string> => String((await d1(`SELECT id FROM users WHERE email = '${email}'`))[0]?.id);
+  const roleOf = async (email: string): Promise<unknown> => (await d1(`SELECT role FROM users WHERE email = '${email}'`))[0]?.role;
+
+  // A throwaway account that signs up like anyone, so no seeded account has to be banned or removed.
+  const signUp = async (email: string, role: string): Promise<string> => {
+    const response = await fetch(new URL('/api/auth/sign-up/email', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: server.url, 'x-forwarded-for': `10.9.2.${++clientNumber}` },
+      body: JSON.stringify({ email, password: SEED_PASSWORD, name: email.split('@')[0] }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    await d1(`UPDATE users SET role = '${role}' WHERE email = '${email}'`);
+    return idOf(email);
+  };
+
   const page = async (path: string, cookie: string): Promise<{ status: number; html: string; location: string | null }> => {
     const response = await fetch(new URL(path, server.url), { redirect: 'manual', headers: { cookie } });
     return { status: response.status, html: await response.text(), location: response.headers.get('location') };
@@ -237,6 +288,116 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
       await d1("INSERT INTO role_permissions (role_id, resource, action) VALUES ('manager', 'document', 'read-any')");
     }
     expect((await query('documents.count', cookie)).data).toBe(all?.n);
+  });
+
+  describe('assigning roles and the last administrator', () => {
+    test('an administrator assigns a role created in the database, through the procedures and the plugin endpoint', async () => {
+      await d1("INSERT INTO roles (id, label) VALUES ('auditor', 'Auditor')");
+      const adminCookie = await signIn(ADMIN);
+      const memberId = await idOf(MEMBER);
+      try {
+        expect((await query('users.assignableRoles', adminCookie)).data).toEqual([
+          { id: 'admin', label: 'Admin' },
+          { id: 'auditor', label: 'Auditor' },
+          { id: 'manager', label: 'Manager' },
+          { id: 'user', label: 'User' },
+        ]);
+        expect((await query('users.assignableRoles', await signIn(MANAGER))).status).toBe(403);
+
+        expect((await mutate('users.setRole', adminCookie, { id: memberId, role: 'auditor' })).status).toBe(200);
+        expect(await roleOf(MEMBER)).toBe('auditor');
+        const auditor = await query('permissions.mine', await signIn(MEMBER));
+        expect(auditor.data).toEqual([]);
+
+        const viaPlugin = await authPost('/admin/set-role', adminCookie, { userId: memberId, role: 'manager' });
+        expect(viaPlugin.status).toBe(200);
+        expect(await roleOf(MEMBER)).toBe('manager');
+
+        const created = await mutate('users.create', adminCookie, { name: 'Audrey', email: 'audrey@example.com', role: 'auditor' });
+        expect(created.status).toBe(200);
+        expect(await roleOf('audrey@example.com')).toBe('auditor');
+      } finally {
+        await restore(
+          `UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`,
+          "DELETE FROM users WHERE email = 'audrey@example.com'",
+          "DELETE FROM roles WHERE id = 'auditor'",
+        );
+      }
+    }, TIMEOUT_SETUP);
+
+    test('a role is exactly one id that exists, whichever endpoint writes it', async () => {
+      const adminCookie = await signIn(ADMIN);
+      const memberId = await idOf(MEMBER);
+      try {
+        for (const role of ['user,admin', 'admin,user', ['user', 'admin'], 'Admin', ' admin', 'ghost', 'constructor']) {
+          const answer = await authPost('/admin/set-role', adminCookie, { userId: memberId, role });
+          expect([role, answer.status]).toEqual([role, 400]);
+          expect((await authPost('/admin/update-user', adminCookie, { userId: memberId, data: { role } })).status).toBe(400);
+          expect((await mutate('users.setRole', adminCookie, { id: memberId, role: role as string })).status).toBeGreaterThanOrEqual(400);
+        }
+        expect(await roleOf(MEMBER)).toBe('user');
+        expect((await mutate('users.setRole', adminCookie, { id: await idOf(ADMIN), role: 'user' })).message).toBe(
+          'You cannot change your own role',
+        );
+        expect(await roleOf(ADMIN)).toBe('admin');
+      } finally {
+        await restore(`UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`, `UPDATE users SET role = 'admin' WHERE email = '${ADMIN}'`);
+      }
+    }, TIMEOUT_SETUP);
+
+    // Two requests at once, repeated. What this proves: through the endpoints on a real D1, however the two requests
+    // interleave, exactly one succeeds and an administrator who can sign in is left. What it cannot prove: that the
+    // two guarded writes themselves meet. Over HTTP the second request is often refused before it reaches the guard,
+    // because its caller was already demoted, banned or removed when the request read its session. The interleaving of
+    // the writes is held by blueprint-cloudflare-fullstack-nextjs-role-assignment.test.ts ("in the write itself"),
+    // which sends the guarded statements together and fails on a read followed by a write.
+    //
+    // The seeded administrator would remain after any race, so it is a plain user while the accounts race, and the
+    // count that matters is every administrator who can sign in.
+    const RACE_REPETITIONS = 5;
+    const raceBetween = async (
+      label: string,
+      race: (cookies: [string, string], ids: [string, string]) => Promise<{ status: number }[]>,
+    ): Promise<void> => {
+      const created: string[] = [];
+      try {
+        await d1(`UPDATE users SET role = 'user' WHERE email = '${ADMIN}'`);
+        for (let attempt = 0; attempt < RACE_REPETITIONS; attempt++) {
+          const emails: [string, string] = [`race-${label}-${attempt}-a@example.com`, `race-${label}-${attempt}-b@example.com`];
+          created.push(...emails);
+          const ids: [string, string] = [await signUp(emails[0], 'admin'), await signUp(emails[1], 'admin')];
+          const cookies: [string, string] = [await signIn(emails[0]), await signIn(emails[1])];
+          const answers = await race(cookies, ids);
+          expect(answers.filter((answer) => answer.status === 200), `attempt ${attempt}: ${JSON.stringify(answers)}`).toHaveLength(1);
+          const [{ n }] = (await d1("SELECT count(*) AS n FROM users WHERE role = 'admin' AND coalesce(banned, 0) = 0")) as [{ n: number }];
+          expect(n, `attempt ${attempt}`).toBe(1);
+          await d1(`DELETE FROM users WHERE email IN ('${emails[0]}', '${emails[1]}')`);
+        }
+      } finally {
+        await restore(
+          `UPDATE users SET role = 'admin' WHERE email = '${ADMIN}'`,
+          ...(created.length > 0 ? [`DELETE FROM users WHERE email IN (${created.map((email) => `'${email}'`).join(', ')})`] : []),
+        );
+      }
+    };
+
+    test('two administrators who demote each other at once leave one, on the local D1', async () => {
+      await raceBetween('demote', (cookies, ids) =>
+        Promise.all([
+          authPost('/admin/set-role', cookies[0], { userId: ids[1], role: 'user' }),
+          authPost('/admin/set-role', cookies[1], { userId: ids[0], role: 'user' }),
+        ]),
+      );
+    }, TIMEOUT_SETUP * 3);
+
+    test('an administrator who bans the other while the other removes them leaves one, on the local D1', async () => {
+      await raceBetween('ban-remove', (cookies, ids) =>
+        Promise.all([
+          authPost('/admin/ban-user', cookies[0], { userId: ids[1] }),
+          authPost('/admin/remove-user', cookies[1], { userId: ids[0] }),
+        ]),
+      );
+    }, TIMEOUT_SETUP * 3);
   });
 
   test('permissionProcedure takes business resources and their actions only, at type check', async () => {
