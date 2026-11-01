@@ -6,7 +6,7 @@ mono:
 import { parseArgs } from 'node:util';
 import { faker } from '@faker-js/faker';
 import { createAuth } from '@repo/auth/auth';
-import { contactTable, db, postTable, userTable } from '@repo/db';
+import { contactTable, db, eq, postTable, userTable } from '@repo/db';
 
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'password';
 const auth = createAuth();
@@ -52,9 +52,12 @@ async function findOrCreateUser(input: {
   });
   if (existing) return existing.id;
 
+  // The account is created on the default role and given its own one with a write of this script: the guard of the
+  // `admin` plugin endpoints (packages/auth/src/guard-administrators.ts) takes `admin` or the default role at creation.
   const { user } = await auth.api.createUser({
-    body: { email: input.email, password: DEMO_PASSWORD, name: input.name, role: input.role },
+    body: { email: input.email, password: DEMO_PASSWORD, name: input.name },
   });
+  await db.update(userTable).set({ role: input.role }).where(eq(userTable.id, user.id));
   return user.id;
 }
 

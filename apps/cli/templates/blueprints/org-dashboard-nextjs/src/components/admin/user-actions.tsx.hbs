@@ -1,6 +1,6 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ export function UserActions({ user }: { user: User }) {
   const { data: session } = authClient.useSession();
   const [loading, setLoading] = useState(false);
   const { actionRef, cancelRef, ...banConfirmation } = useMenuConfirmation();
+  const rolesQuery = useQuery(trpc.user.assignableRoles.queryOptions(undefined, { enabled: banConfirmation.open }));
 
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
@@ -69,22 +70,16 @@ export function UserActions({ user }: { user: User }) {
     }
   };
 
-  const handleSetRole = async (role: 'admin' | 'user' | 'manager') => {
-    setLoading(true);
-    try {
-      const res = await authClient.admin.setRole({ userId: user.id, role });
-      if (res.error) {
-        toast.error(res.error.message ?? 'Failed to update role');
-        return;
-      }
-      toast.success(`${user.name} is now ${role}`);
-      invalidateUsers();
-    } catch {
-      toast.error('Failed to update role');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const setRole = useMutation(
+    trpc.user.setRole.mutationOptions({
+      onSuccess: (_result, input) => {
+        const label = rolesQuery.data?.find((role) => role.id === input.role)?.label ?? input.role;
+        toast.success(`${user.name} is now ${label}`);
+        invalidateUsers();
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
 
   if (session?.user.id === user.id) return null;
 
@@ -96,11 +91,15 @@ export function UserActions({ user }: { user: User }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
-        {(['admin', 'user', 'manager'] as const)
-          .filter((role) => role !== user.role)
+        {(rolesQuery.data ?? [])
+          .filter((role) => role.id !== user.role)
           .map((role) => (
-            <DropdownMenuItem key={role} onClick={() => handleSetRole(role)}>
-              Set role: {role}
+            <DropdownMenuItem
+              key={role.id}
+              disabled={setRole.isPending}
+              onClick={() => setRole.mutate({ id: user.id, role: role.id })}
+            >
+              Set role: {role.label}
             </DropdownMenuItem>
           ))}
         <DropdownMenuSeparator />

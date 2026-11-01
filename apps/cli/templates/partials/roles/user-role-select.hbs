@@ -1,0 +1,70 @@
+{{!-- The whole user-role-select.tsx file: the role of another account, as a select of the roles of the database. `router` is the name of the tRPC router that has `assignableRoles` and `setRole`. --}}
+{{{{raw}}}}
+'use client';
+
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { DEFAULT_ROLE } from '@repo/auth/permissions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
+import { Skeleton } from '@repo/ui/components/ui/skeleton';
+import { useTRPC } from '@/trpc/providers';
+
+// Rendered only for an account that is not the signed-in one: a role is never changed on your own account.
+export function UserRoleSelect({
+  userId,
+  role,
+  onChanged,
+}: {
+  userId: string;
+  role: string | null;
+  onChanged: () => void;
+}) {
+  const trpc = useTRPC();
+{{{{/raw}}}}
+  const rolesQuery = useQuery(trpc.{{router}}.assignableRoles.queryOptions());
+  const roleMutation = useMutation(
+    trpc.{{router}}.setRole.mutationOptions({
+{{{{raw}}}}
+      onSuccess: () => {
+        onChanged();
+        toast.success('Role updated');
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const currentRole = role ?? DEFAULT_ROLE;
+
+  if (rolesQuery.isPending) return <Skeleton className='h-9 w-48' />;
+  if (rolesQuery.isError) {
+    return (
+      <p role='alert' className='text-sm text-destructive'>
+        The roles could not be loaded. Reload the page to try again.
+      </p>
+    );
+  }
+
+  return (
+    <Select
+      value={currentRole}
+      onValueChange={(next) => roleMutation.mutate({ id: userId, role: next })}
+      disabled={roleMutation.isPending}
+    >
+      <SelectTrigger aria-label='Role' className='w-48'>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {rolesQuery.data.map((option) => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.label}
+          </SelectItem>
+        ))}
+        {!rolesQuery.data.some((option) => option.id === currentRole) && (
+          <SelectItem value={currentRole} disabled>
+            {currentRole} (no longer exists)
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  );
+}
+{{{{/raw}}}}

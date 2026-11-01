@@ -1,0 +1,5 @@
+// `manager` reads every user's documents (`read-any`) and deletes none; `user` works on its own.
+export const DEFAULT_ROLES = {
+  user: { label: 'User', permissions: ['document.create', 'document.read', 'document.update', 'document.delete'] },
+  manager: { label: 'Manager', permissions: ['document.read', 'document.read-any'] },
+} as const satisfies Record<string, DefaultRole>;

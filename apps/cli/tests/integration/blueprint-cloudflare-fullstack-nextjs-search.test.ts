@@ -202,7 +202,12 @@ describe(`${BLUEPRINT} palette search`, () => {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
-    defaults = await generated('packages/auth/src/default-roles.ts', 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    await generated('packages/auth/src/default-roles.ts', 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    defaults = await generated('packages/auth/src/role-store.ts', 'role-store.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+      './default-roles': './default-roles.mjs',
+    });
     await generated('packages/auth/src/role-permissions.ts', 'role-permissions.mjs', {
       '@repo/db': './db.mjs',
       './permissions': './permissions.mjs',

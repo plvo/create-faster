@@ -4,7 +4,7 @@ import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
-import { cleanupTempDir, createTempDir, evaluateGeneratedModule, REACT_ELEMENT_STUB, readTextFile, runCli } from './helpers';
+import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
 import { createTable } from './sqlite-tables';
 import { setIntegrationTimeout } from './timeout';
 
@@ -130,7 +130,12 @@ describe(`${BLUEPRINT} database roles`, () => {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
-    defaults = await generated(`${AUTH}/default-roles.ts`, 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    await generated(`${AUTH}/default-roles.ts`, 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    defaults = await generated(`${AUTH}/role-store.ts`, 'role-store.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+      './default-roles': './default-roles.mjs',
+    });
     engine = await generated(`${AUTH}/role-permissions.ts`, 'role-permissions.mjs', {
       '@repo/db': './db.mjs',
       './permissions': './permissions.mjs',
@@ -142,18 +147,24 @@ describe(`${BLUEPRINT} database roles`, () => {
       '@repo/auth/role-permissions': './role-permissions.mjs',
       '@repo/auth/role-assignment': './role-assignment.mjs',
       '../auth-errors': './auth-errors.mjs',
+      '../role-input': './role-input.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',
       '../text-match': './text-match.mjs',
     };
     const zod = Bun.resolveSync('zod', import.meta.dir);
+    await generated(`${API}/role-input.ts`, 'role-input.mjs', { zod, '@repo/auth/permissions': './permissions.mjs' });
     // The real context and procedures of the generated api package: a stand-in would make the refusals below test the stand-in.
     await Bun.write(
       join(stubs, 'counting-auth.mjs'),
       "export const createAuth = () => ({ api: { getSession: async () => { globalThis.__sessionReads = (globalThis.__sessionReads ?? 0) + 1; return { user: { id: 'read-here', role: 'user' } }; } } });",
     );
-    await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', { '@repo/db': './db.mjs', './permissions': './permissions.mjs' });
+    await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+      './role-store': './role-store.mjs',
+    });
     await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
     await generated(`${API}/trpc.ts`, 'trpc.mjs', {
       '@repo/auth/auth': './counting-auth.mjs',
@@ -605,7 +616,11 @@ describe(`${BLUEPRINT} database roles`, () => {
       );
       const generated = async <T>(file: string, name: string, imports: Record<string, string>): Promise<T> =>
         evaluateGeneratedModule<T>(await readTextFile(join(project, file)), join(stubs, name), imports);
-      await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', { '@repo/db': './db.mjs', './permissions': './permissions.mjs' });
+      await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+      './role-store': './role-store.mjs',
+    });
     await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
       ({ createTRPCContext } = await generated<{ createTRPCContext: typeof createTRPCContext }>(`${API}/trpc.ts`, 'init.mjs', {
         '@repo/auth/auth': './counting-auth.mjs',
@@ -635,136 +650,6 @@ describe(`${BLUEPRINT} database roles`, () => {
       expect(await readTextFile(join(web, 'lib/server.ts'))).toMatch(/export const getRequestSession = cache\(/);
       expect(await readTextFile(join(web, 'lib/auth/session.ts'))).toContain('export const getSession = getRequestSession;');
       expect(await readTextFile(join(web, 'trpc/server.tsx'))).toContain('session: await getRequestSession()');
-    });
-  });
-
-  describe('the client reads the permission list with a three-state verdict', () => {
-    interface Element {
-      type: { name?: string } | string;
-      props: { children?: unknown; item?: { title: string } };
-    }
-    type Verdict = 'unknown' | 'granted' | 'denied';
-    interface PermissionHook {
-      verdictOf: (granted: readonly string[] | undefined, request: Record<string, string[]>) => Verdict;
-    }
-    const globals = globalThis as { __granted?: readonly string[] };
-
-    let hook: PermissionHook;
-    let Can: (props: { permissions: Record<string, string[]>; children: unknown; fallback?: unknown }) => unknown;
-    let SidebarLinks: (props: { role: string | null }) => unknown;
-
-    function* descendants(node: unknown): Generator<Element> {
-      if (Array.isArray(node)) {
-        for (const child of node) yield* descendants(child);
-      } else if (node && typeof node === 'object' && 'type' in node) {
-        yield node as Element;
-        yield* descendants((node as Element).props.children);
-      }
-    }
-    const textOf = (node: unknown): string =>
-      Array.isArray(node) ? node.map(textOf).join('') : typeof node === 'string' ? node : '';
-    const linksShown = (role: string | null = 'user') =>
-      [...descendants(SidebarLinks({ role }))].filter((element) => (element.type as { name?: string }).name === 'RouteItem').map((element) => element.props.item?.title);
-    const groupsShown = (role: string | null = 'user') =>
-      [...descendants(SidebarLinks({ role }))]
-        .filter((element) => (element.type as { name?: string }).name === 'SidebarGroupLabel')
-        .map((element) => textOf(element.props.children));
-
-    beforeAll(async () => {
-      const web = 'apps/web/src';
-      const STUB_MODULES: Record<string, string> = {
-        'react.mjs': REACT_ELEMENT_STUB,
-        'react-query.mjs': 'export const useQuery = () => ({ data: globalThis.__granted });',
-        'providers.mjs': 'export const useTRPC = () => ({ permissions: { mine: { queryOptions: () => ({}) } } });',
-        'icons.mjs': 'export const FileText = () => null; export const ShieldCheck = () => null; export const Users = () => null;',
-        'next-link.mjs': 'export default function Link() { return null; }',
-        'next-navigation.mjs': "export const usePathname = () => '/';",
-        'sidebar.mjs': ['SidebarGroup', 'SidebarGroupLabel', 'SidebarMenu', 'SidebarMenuButton', 'SidebarMenuItem']
-          .map((name) => `export function ${name}() { return null; }`)
-          .join('\n'),
-      };
-      for (const [file, source] of Object.entries(STUB_MODULES)) await Bun.write(join(stubs, file), source);
-
-      const generated = async <T>(file: string, name: string, imports: Record<string, string>, loader: 'ts' | 'tsx' = 'ts'): Promise<T> =>
-        evaluateGeneratedModule<T>(await readTextFile(join(project, file)), join(stubs, name), imports, loader);
-
-      hook = await generated<PermissionHook>(`${web}/hooks/use-permission.ts`, 'use-permission.mjs', {
-        '@tanstack/react-query': './react-query.mjs',
-        '@/trpc/providers': './providers.mjs',
-      });
-      await generated(`${web}/lib/constants.ts`, 'constants.mjs', { 'lucide-react': './icons.mjs' });
-      await generated(`${web}/lib/allowed-routes.ts`, 'allowed-routes.mjs', {
-        '@/hooks/use-permission': './use-permission.mjs',
-        '@/lib/constants': './constants.mjs',
-      });
-      const componentImports = { react: './react.mjs', '@/hooks/use-permission': './use-permission.mjs' };
-      ({ Can } = await generated<{ Can: typeof Can }>(`${web}/components/can.tsx`, 'can.mjs', componentImports, 'tsx'));
-      ({ SidebarLinks } = await generated<{ SidebarLinks: typeof SidebarLinks }>(
-        `${web}/components/navigation/sidebar-links.tsx`,
-        'sidebar-links.mjs',
-        {
-          ...componentImports,
-          'next/link': './next-link.mjs',
-          'next/navigation': './next-navigation.mjs',
-          '@repo/ui/components/ui/sidebar': './sidebar.mjs',
-          '@/lib/allowed-routes': './allowed-routes.mjs',
-        },
-        'tsx',
-      ));
-    });
-
-    test('is unknown before the list is known, granted when every action is held and denied when one is not', () => {
-      const request = { document: ['read', 'delete'] };
-      expect(hook.verdictOf(undefined, request)).toBe('unknown');
-      expect(hook.verdictOf(['document.read', 'document.delete'], request)).toBe('granted');
-      expect(hook.verdictOf(['document.read'], request)).toBe('denied');
-      expect(hook.verdictOf([], request)).toBe('denied');
-      expect(hook.verdictOf(['user.list'], { document: ['read'] })).toBe('denied');
-    });
-
-    test('a check that asks for nothing is granted whatever the list says', () => {
-      expect(hook.verdictOf(undefined, {})).toBe('granted');
-      expect(hook.verdictOf([], { document: [] })).toBe('granted');
-    });
-
-    test('<Can> renders nothing while unknown, its children when granted and its fallback when denied', () => {
-      const props = { permissions: { document: ['read'] }, children: 'allowed', fallback: 'refused' };
-      globals.__granted = undefined;
-      expect(Can(props)).toBeNull();
-      globals.__granted = ['document.read'];
-      expect(Can(props)).toBe('allowed');
-      globals.__granted = [];
-      expect(Can(props)).toBe('refused');
-      expect(Can({ ...props, fallback: undefined })).toBeNull();
-    });
-
-    test('the sidebar lists the links the permission list grants, with no empty group', () => {
-      globals.__granted = ['document.read'];
-      expect(linksShown()).toEqual(['Documents']);
-      expect(groupsShown()).toEqual([]);
-
-      globals.__granted = [...permissions.ADMIN_PERMISSIONS];
-      expect(linksShown()).toEqual(['Documents', 'Users', 'Roles']);
-      expect(groupsShown()).toEqual(['Administration']);
-    });
-
-    test('a role that lost document.read loses the Documents link', () => {
-      globals.__granted = ['document.create'];
-      expect(linksShown()).toEqual([]);
-    });
-
-    test('the sidebar follows the permission list whatever the role name says', () => {
-      globals.__granted = ['document.read'];
-      expect(linksShown('admin')).toEqual(['Documents']);
-      globals.__granted = [...permissions.ADMIN_PERMISSIONS];
-      expect(linksShown('ghost')).toEqual(['Documents', 'Users', 'Roles']);
-      expect(linksShown(null)).toEqual(['Documents', 'Users', 'Roles']);
-    });
-
-    test('the sidebar lists nothing while the list is unknown', () => {
-      globals.__granted = undefined;
-      expect(linksShown()).toEqual([]);
-      expect(groupsShown()).toEqual([]);
     });
   });
 });

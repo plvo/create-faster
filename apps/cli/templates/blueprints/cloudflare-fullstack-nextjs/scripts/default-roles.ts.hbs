@@ -3,7 +3,7 @@ mono:
   scope: root
 ---
 import { spawn } from 'node:child_process';
-import { defaultRoleStatements } from '@repo/auth/default-roles';
+import { defaultRoleStatements } from '@repo/auth/role-store';
 
 // Wrangler runs from the web app, which declares it, and reaches the D1 database through the `DB` binding of its
 // wrangler.jsonc. The local state is the one the migrations and the seed use. The command runs through a shell, as the

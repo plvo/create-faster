@@ -262,8 +262,11 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       '../trpc': './trpc.mjs',
     });
 
+    await generated(`${API}/role-input.ts`, 'role-input.mjs', { zod: REAL.zod, '@repo/auth/permissions': './permissions.mjs' });
+
     const imports = {
       zod: REAL.zod,
+      '../role-input': './role-input.mjs',
       '@trpc/server': REAL.trpcServer,
       '@repo/db': './db.mjs',
       '@repo/auth/auth': './auth.mjs',

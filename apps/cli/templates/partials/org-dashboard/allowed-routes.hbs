@@ -1,7 +1,12 @@
-{{!-- The whole allowed-routes.ts file: the pages a role can open, one list for the sidebar and the command palette. --}}
-import { can } from '@/hooks/use-permission';
+{{!-- The whole allowed-routes.ts file: the pages the caller may open, one list for the sidebar and the command palette. --}}
+import { verdictOf } from '@repo/auth/permissions';
+import { usePermissions } from '@/hooks/use-permission';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
-export function useAllowedRoutes(role: string | null | undefined): RouteProps[] {
-  return ROUTES.filter((item) => can(role, item.permissions ?? {}));
+// The pages the permission list of the caller grants, for the sidebar and the command palette. The list is the one the
+// server resolved, so the first render already has it; while it is unknown only a page that asks for nothing is listed.
+// The role the shared components hand over is only a name here: what it may do is in the database, so it is not read.
+export function useAllowedRoutes(_role?: string | null): RouteProps[] {
+  const granted = usePermissions();
+  return ROUTES.filter((item) => verdictOf(granted, item.permissions ?? {}) === 'granted');
 }

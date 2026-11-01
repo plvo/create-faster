@@ -1,0 +1,10 @@
+{{!-- The role procedures of a users router, inserted inside `router({ ... })` of a file that defines `authOf(ctx)` (the Better Auth instance of the request) and imports z, adminProcedure, AppRole, listAssignableRoles and roleIdInput. --}}
+// The plugin types a role as one of the compiled `roles`; guard-administrators.ts assigns any role of the database.
+setRole: adminProcedure
+  .input(z.object({ id: z.string(), role: roleIdInput }))
+  .mutation(async ({ ctx, input }) => {
+    await authOf(ctx).api.setRole({ headers: ctx.headers, body: { userId: input.id, role: input.role as AppRole } });
+    return { role: input.role };
+  }),
+
+assignableRoles: adminProcedure.query(({ ctx }) => listAssignableRoles(ctx.db)),

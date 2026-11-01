@@ -1,0 +1,115 @@
+{{!-- `router` is the name of the tRPC router that has `assignableRoles`. --}}
+{{{{raw}}}}
+'use client';
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { ADMIN_ROLE, DEFAULT_ROLE, isInheritedKey, MAX_ROLE_ID_LENGTH, MAX_ROLE_LABEL_LENGTH, ROLE_ID } from '@repo/auth/permissions';
+import { Button } from '@repo/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@repo/ui/components/ui/dialog';
+import { useAppForm } from '@repo/ui/lib/form';
+import { useTRPC } from '@/trpc/providers';
+
+const schema = z.object({
+  label: z.string().trim().min(1, 'A label is required').max(MAX_ROLE_LABEL_LENGTH, `At most ${MAX_ROLE_LABEL_LENGTH} characters`),
+  id: z
+    .string()
+    .min(1, 'An id is required')
+    .max(MAX_ROLE_ID_LENGTH, `At most ${MAX_ROLE_ID_LENGTH} characters`)
+    .regex(ROLE_ID, 'Lowercase letters, digits and hyphens only')
+    .refine((id) => id !== ADMIN_ROLE && id !== DEFAULT_ROLE && !isInheritedKey(id), 'This id is reserved'),
+});
+
+export function CreateRoleDialog() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const createMutation = useMutation(
+    trpc.roles.create.mutationOptions({
+      onSuccess: async () => {
+        toast.success('Role created');
+        setOpen(false);
+        form.reset();
+        await Promise.all([
+          queryClient.invalidateQueries(trpc.roles.matrix.queryFilter()),
+{{{{/raw}}}}
+          queryClient.invalidateQueries(trpc.{{router}}.assignableRoles.queryFilter()),
+{{{{raw}}}}
+        ]);
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+
+  const form = useAppForm({
+    defaultValues: { label: '', id: '' },
+    validators: { onSubmit: schema },
+    onSubmit: ({ value }) => {
+      createMutation.mutate({ id: value.id, label: value.label });
+    },
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) form.reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className='size-4' />
+          New role
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create a role</DialogTitle>
+          <DialogDescription>The role starts with no permission. Tick its boxes in the matrix once it exists.</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            form.handleSubmit();
+          }}
+          className='space-y-4'
+        >
+          <form.AppField name='label'>
+            {(f) => <f.InputField label='Label' props={{ placeholder: 'Auditor', maxLength: MAX_ROLE_LABEL_LENGTH, autoComplete: 'off' }} />}
+          </form.AppField>
+          <form.AppField name='id'>
+            {(f) => (
+              <f.InputField
+                label='Id'
+                description='Lowercase letters, digits and hyphens. It is stored on each account and cannot be changed later.'
+                props={{ placeholder: 'auditor', maxLength: MAX_ROLE_ID_LENGTH, autoComplete: 'off', autoCapitalize: 'none', spellCheck: false }}
+              />
+            )}
+          </form.AppField>
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <form.AppForm>
+              <form.SubmitButton props={{ disabled: createMutation.isPending }}>Create role</form.SubmitButton>
+            </form.AppForm>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+{{{{/raw}}}}

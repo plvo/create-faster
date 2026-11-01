@@ -1,6 +1,6 @@
 import { notFound, type ParsedLocation, redirect } from '@tanstack/react-router';
+import { type Permission, type PermissionRequest, verdictOf } from '@repo/auth/permissions';
 import type { Session } from '@repo/auth/types';
-import { hasPermission } from '@/lib/auth/permission';
 import { getSession } from '@/lib/auth/session';
 
 // The `_auth` and `_dashboard` layouts both decide through this check: a session one of them accepts is
@@ -21,6 +21,7 @@ export function requireAdmin(session: Session): void {
   if (session.user.role !== 'admin') throw redirect({ to: '/' });
 }
 
-export function requirePermission(session: Session, permissions: Record<string, string[]>): void {
-  if (!hasPermission(session.user.role, permissions)) throw notFound();
+// What a role may do is in the database: `permissions` is the list the `_dashboard` layout resolved on the server.
+export function requirePermission(permissions: readonly Permission[], request: PermissionRequest): void {
+  if (verdictOf(permissions, request) !== 'granted') throw notFound();
 }

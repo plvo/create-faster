@@ -4,24 +4,33 @@ mono:
   name: api
   path: src/search.ts
 ---
-import { asc, contactTable, desc, type db, or, sql, userTable } from '@repo/db';
-import { hasPermission, isAdmin } from './middleware/rbac';
+import { ADMIN_ROLE, type Permission } from '@repo/auth/permissions';
+import { isGranted } from '@repo/auth/role-permissions';
+import type { Database } from '@repo/auth/role-store';
+import { asc, contactTable, desc, or, sql, userTable } from '@repo/db';
+import { callerPermissions } from './middleware/rbac';
 import { type SearchGroup, type SearchableType, searchGroups } from './search-engine';
 import { containsText } from './text-match';
 
-// The signed-in user of a request and the database it reads.
+// The signed-in user of a request, with what the database grants them: the permissions are read once, for the types
+// below to check, as the procedures of a request do.
 export interface SearchCaller {
-  db: typeof db;
+  db: Database;
+  headers: Headers;
   session: { user: { id: string; role?: string | null } };
+}
+
+export interface SearchContext extends SearchCaller {
+  permissions: readonly Permission[];
 }
 
 // Adding a searchable type is one entry here. A type is read by the check its list procedure makes: `adminProcedure`
 // for the users, `permissionProcedure('contact', 'read')` for the contacts.
-const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
+const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
   {
     type: 'contacts',
     label: 'Contacts',
-    canSearch: ({ session }) => hasPermission(session.user.id, 'contact', 'read'),
+    canSearch: ({ permissions }) => isGranted(permissions, 'contact', 'read'),
     find: async ({ db }, text, limit) => {
       const fullName = sql`concat(${contactTable.firstName}, ' ', ${contactTable.lastName})`;
       const rows = await db
@@ -47,7 +56,7 @@ const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
   {
     type: 'users',
     label: 'Users',
-    canSearch: ({ session }) => isAdmin(session),
+    canSearch: ({ session }) => session.user.role === ADMIN_ROLE,
     find: async ({ db }, text, limit) => {
       const rows = await db
         .select({ id: userTable.id, name: userTable.name, email: userTable.email })
@@ -61,6 +70,10 @@ const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
 ];
 
 // The groups of records matching the text, for the types the caller may read. A group with no match is left out.
-export function searchRecords(request: SearchCaller, query: string): Promise<SearchGroup[]> {
-  return searchGroups(SEARCHABLE_TYPES, query, async () => request);
+export function searchRecords(
+  request: SearchCaller,
+  query: string,
+  types: SearchableType<SearchContext>[] = SEARCHABLE_TYPES,
+): Promise<SearchGroup[]> {
+  return searchGroups(types, query, async () => ({ ...request, permissions: await callerPermissions(request) }));
 }

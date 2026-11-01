@@ -1,20 +1,33 @@
-{{!-- The whole use-permission.ts file: the role check of the dashboard, with the Better Auth client. --}}
-{{{{raw}}}}
+{{!-- The whole use-permission.ts file: what the caller may do, from the permission list the server resolved. --}}
+{{#unless (eq stackName "tanstack-start")}}
 'use client';
 
-import type { AppRole } from '@repo/auth/permissions';
-import { authClient } from '@repo/auth/auth-client';
+{{/unless}}
+{{#if (eq stackName "tanstack-start")}}
+import { useRouteContext } from '@tanstack/react-router';
+{{else}}
+import { useQuery } from '@tanstack/react-query';
+{{/if}}
+import { type Permission, type PermissionRequest, type Verdict, verdictOf } from '@repo/auth/permissions';
+{{#unless (eq stackName "tanstack-start")}}
+import { useTRPC } from '@/trpc/providers';
+{{/unless}}
 
-type CheckArgs = Parameters<typeof authClient.admin.checkRolePermission>[0];
-
-export function can(role: string | null | undefined, permissions: Record<string, string[]>): boolean {
-  if (!role) return false;
-  if (Object.keys(permissions).length === 0) return true;
-  return authClient.admin.checkRolePermission({ role: role as AppRole, permissions } as CheckArgs);
+{{#if (eq stackName "tanstack-start")}}
+// The permission list of the caller, set in the route context by the `_dashboard` layout, so the first render already
+// has it.
+export function usePermissions(): readonly Permission[] | undefined {
+  return useRouteContext({ from: '/_dashboard', select: (context) => context.permissions });
 }
-
-export function usePermission(permissions: Record<string, string[]>): boolean {
-  const { data: session } = authClient.useSession();
-  return can(session?.user?.role, permissions);
+{{else}}
+// The permission list of the caller: the layout fetches it on the server and hydrates it into the query cache, so the
+// first render already has it. It stays `undefined` only if that failed, and `usePermission` then answers `unknown`.
+export function usePermissions(): readonly Permission[] | undefined {
+  const trpc = useTRPC();
+  return useQuery(trpc.permissions.mine.queryOptions()).data;
 }
-{{{{/raw}}}}
+{{/if}}
+
+export function usePermission(permissions: PermissionRequest): Verdict {
+  return verdictOf(usePermissions(), permissions);
+}

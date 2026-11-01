@@ -6,20 +6,18 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
-import { DEFAULT_ROLE } from '@repo/auth/permissions';
 import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
-import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { useAppForm } from '@repo/ui/lib/form';
 import { GeneratedPassword } from '@/components/admin/generated-password';
+import { UserRoleSelect } from '@/components/admin/user-role-select';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
 import { useTRPC } from '@/trpc/providers';
 
@@ -84,8 +82,6 @@ export function EditUser({ user }: { user: AdminUser }) {
   const isOtherAccount = session !== null && session !== undefined && !isOwnAccount;
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'ban' | 'delete' | null>(null);
-  const rolesQuery = useQuery(trpc.users.assignableRoles.queryOptions(undefined, { enabled: isOtherAccount }));
-  const currentRole = user.role ?? DEFAULT_ROLE;
   const profile = {
     name: user.name,
     firstName: user.firstName ?? '',
@@ -108,15 +104,6 @@ export function EditUser({ user }: { user: AdminUser }) {
         toast.error(e.message);
         form.reset(profile);
       },
-    }),
-  );
-  const roleMutation = useMutation(
-    trpc.users.setRole.mutationOptions({
-      onSuccess: () => {
-        invalidate();
-        toast.success('Role updated');
-      },
-      onError: (e) => toast.error(e.message),
     }),
   );
   const passwordMutation = useMutation(
@@ -194,35 +181,7 @@ export function EditUser({ user }: { user: AdminUser }) {
             <h2 className='text-sm font-semibold'>Role</h2>
             <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
           </div>
-          {rolesQuery.isPending && <Skeleton className='h-9 w-48' />}
-          {rolesQuery.isError && (
-            <p role='alert' className='text-sm text-destructive'>
-              The roles could not be loaded. Reload the page to try again.
-            </p>
-          )}
-          {rolesQuery.data && (
-            <Select
-              value={currentRole}
-              onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}
-              disabled={roleMutation.isPending}
-            >
-              <SelectTrigger aria-label='Role' className='w-48'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {rolesQuery.data.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {role.label}
-                  </SelectItem>
-                ))}
-                {!rolesQuery.data.some((role) => role.id === currentRole) && (
-                  <SelectItem value={currentRole} disabled>
-                    {currentRole} (no longer exists)
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          )}
+          <UserRoleSelect userId={user.id} role={user.role} onChanged={invalidate} />
         </section>
       )}
 

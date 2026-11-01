@@ -1,0 +1,3 @@
+The documents router gates `list` and `count` with `('document', 'read')` and `delete` with `('document', 'delete')`, and takes the scope of the rows from the list too (`packages/api/src/document-scope.ts`): `document.read-any` shows every user's documents, `document.delete-any` deletes anyone's, and a role without them works on its own rows, whatever the role is called.
+
+The Documents route asks for `document.read`, so a role without it has no link, and the documents page (`page.tsx`) answers it with a no-access message instead of starting its queries.

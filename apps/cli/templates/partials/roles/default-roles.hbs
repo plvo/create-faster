@@ -1,0 +1,44 @@
+import { ADMIN_ROLE, type BusinessPermission, isBusinessPermission, ROLE_ID } from './permissions';
+
+export interface DefaultRole {
+  label: string;
+  permissions: readonly BusinessPermission[];
+}
+
+// The roles a fresh database starts with. The names of the permissions are typed from `businessStatement`, so a
+// misspelled one fails type checking. The `db:roles` command writes them.
+{{> (blueprintPartial "default-roles")}}
+
+function permissionColumns(permission: string): { resource: string; action: string } {
+  const [resource, action, ...rest] = permission.split('.');
+  if (!resource || !action || rest.length > 0 || !isBusinessPermission(resource, action)) {
+    throw new Error(`"${permission}" is not a business permission: only the resources of businessStatement can be stored`);
+  }
+  return { resource, action };
+}
+
+function assertValid(id: string, role: DefaultRole): void {
+  if (id === ADMIN_ROLE) throw new Error(`"${ADMIN_ROLE}" is compiled, it cannot be stored`);
+  if (!ROLE_ID.test(id)) throw new Error(`"${id}" is not a role identifier (lowercase letters, digits and hyphens)`);
+  if (role.label.trim() === '') throw new Error(`The role "${id}" needs a label`);
+  for (const permission of role.permissions) permissionColumns(permission);
+}
+
+export interface DefaultRoleRows {
+  roles: { id: string; label: string }[];
+  permissions: { roleId: string; resource: string; action: string }[];
+}
+
+// The rows the roles of `definitions` are written as, the roles and then their permissions. Every definition is
+// validated first, so a default can never name `user` or `session`, the reserved `admin` or an invalid id.
+export function defaultRoleRows(definitions: Readonly<Record<string, DefaultRole>> = DEFAULT_ROLES): DefaultRoleRows {
+  for (const [id, role] of Object.entries(definitions)) assertValid(id, role);
+
+  const entries = Object.entries(definitions);
+  return {
+    roles: entries.map(([id, role]) => ({ id, label: role.label })),
+    permissions: entries.flatMap(([id, role]) =>
+      role.permissions.map((permission) => ({ roleId: id, ...permissionColumns(permission) })),
+    ),
+  };
+}

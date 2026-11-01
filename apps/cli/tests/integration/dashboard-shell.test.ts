@@ -92,15 +92,14 @@ export const createFileRoute = () => (options) => ({ options, useRouteContext: (
   'auth.mjs': `export const auth = { api: { getSession: async () => globalThis.__session ?? null } };
 export const getAuth = async () => auth;
 export const getRequestSession = async () => globalThis.__session ?? null;`,
-  'permission.mjs': `const DEFINITIONS = {
-  admin: { user: ['list', 'create'], contact: ['create', 'read', 'update', 'delete'] },
-  user: { contact: ['create', 'read', 'update', 'delete'] },
-  manager: { contact: ['read'] },
-};
-// Only the pure check: a component that asks for a session hook of this module fails to import.
-export const can = (role, permissions) => {
-  const granted = DEFINITIONS[role] ?? {};
-  return Object.entries(permissions).every(([resource, actions]) => actions.every((action) => granted[resource]?.includes(action)));
+  // The permission list of the caller: only what the sidebar reads, so a component that asks for a session hook of this module
+  // fails to import.
+  'permission.mjs': `export const usePermissions = () => globalThis.__granted;`,
+  'permissions.mjs': `export const verdictOf = (granted, request) => {
+  const wanted = Object.entries(request).flatMap(([resource, actions]) => actions.map((action) => resource + '.' + action));
+  if (wanted.length === 0) return 'granted';
+  if (!granted) return 'unknown';
+  return wanted.every((permission) => granted.includes(permission)) ? 'granted' : 'denied';
 };`,
   'trpc-server.mjs': `export const getQueryClient = () => ({
   fetchQuery: async (options) => globalThis.__records?.[options.procedure],
@@ -126,7 +125,8 @@ export const AppHeader = () => null;
 export const CommandPaletteProvider = ({ children }) => children;
 export const Card = ({ children }) => children[0];
 export const Separator = () => null;
-export const DashboardNotFound = () => null;`,
+export const DashboardNotFound = () => null;
+export const getPermissions = async () => [];`,
 };
 
 const UI_IMPORTS: Record<string, string> = {
@@ -145,6 +145,8 @@ const UI_IMPORTS: Record<string, string> = {
   '@/lib/auth/auth': './auth.mjs',
   '@/lib/server': './auth.mjs',
   '@/hooks/use-permission': './permission.mjs',
+  '@repo/auth/permissions': './permissions.mjs',
+  '@/lib/auth/permissions': './leaf.mjs',
   '@/lib/auth/session': './session.mjs',
   '@/trpc/server': './trpc-server.mjs',
   '@/components/query-boundary': './leaf.mjs',
@@ -516,15 +518,17 @@ describe('dashboard shell', () => {
     [START_BLUEPRINT, 'Dashboard'],
   ];
   describe.each(SIDEBAR_BLUEPRINTS)('%s sidebar', (blueprint, homeTitle) => {
-    const roles: [string, boolean][] = [
-      ['admin', true],
-      ['manager', false],
-      ['user', false],
+    // What the database grants each role: the list the layout resolved on the server and handed to the browser.
+    const roles: [string, boolean, string[]][] = [
+      ['admin', true, ['contact.read', 'user.list']],
+      ['manager', false, ['contact.read']],
+      ['user', false, ['contact.read', 'contact.update']],
     ];
 
-    // The role comes from the layout as a prop, so a server render lists the same links as the browser does: the
+    // The permission list is resolved on the server, so a server render lists the same links as the browser does: the
     // permission module of this test has no session hook, and a component that asked for one would not import.
-    test.each(roles)('%s sees no group without a link, on the server too', async (role, seesAdministration) => {
+    test.each(roles)('%s sees no group without a link, on the server too', async (role, seesAdministration, granted) => {
+      (globalThis as { __granted?: string[] }).__granted = granted;
       await load(blueprint, 'src/lib/constants.ts', {}, 'ts');
       await load(blueprint, 'src/lib/allowed-routes.ts', { '@/lib/constants': relativeModule(blueprint, 'src/lib/constants.ts') }, 'ts');
       const { SidebarLinks } = await load<{ SidebarLinks: Component }>(blueprint, 'src/components/navigation/sidebar-links.tsx', {
@@ -552,10 +556,12 @@ describe('dashboard shell', () => {
       }
     });
 
-    test('the sidebar is handed the role of the session, and the permission module exports the check', async () => {
+    test('the sidebar is handed the role of the session, and the permission module exports the list and the check', async () => {
       const appSidebar = await read(blueprint, 'src/components/navigation/app-sidebar.tsx');
       expect(appSidebar).toContain('<SidebarLinks role={session.user.role} />');
-      expect(await read(blueprint, 'src/hooks/use-permission.ts')).toMatch(/export function can\(/);
+      const hook = await read(blueprint, 'src/hooks/use-permission.ts');
+      expect(hook).toMatch(/export function usePermissions\(/);
+      expect(hook).toMatch(/export function usePermission\(/);
     });
   });
 

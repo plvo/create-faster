@@ -76,17 +76,8 @@ export const protectedProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;`,
   'db.mjs': `export * from '${REAL.drizzle}';
 export * from './schema.mjs';`,
-  // What better-auth's userHasPermission answers: the role of the user, found in the database, against the roles of the
-  // application. A role the application does not know holds nothing.
-  'auth.mjs': `import { roles } from './permissions.mjs';
-export const auth = {
-  api: {
-    userHasPermission: async ({ body }) => {
-      const role = await globalThis.__roleOf(body.userId);
-      return { success: roles[role]?.authorize(body.permissions).success ?? false };
-    },
-  },
-};`,
+  'auth.mjs': 'export const auth = {};',
+  'role-assignment.mjs': 'export const listAssignableRoles = async () => [];',
   'password.mjs': "export const generatePassword = () => 'x';",
 };
 
@@ -127,7 +118,14 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
 
   // One Postgres (the real engine, in process) per blueprint; each test empties it and fills the users and contacts it needs.
   const callerOn = async (contacts: ContactSeed[] = CONTACTS, extraUsers: UserSeed[] = []) => {
-    await postgres.exec('TRUNCATE users, contacts');
+    await postgres.exec('TRUNCATE users, contacts, roles, role_permissions');
+    // What the database grants each role, as `db:roles` writes it: a role the application does not know has no row.
+    for (const [id, label] of [['user', 'User'], ['manager', 'Manager']]) {
+      await postgres.query('INSERT INTO roles (id, label) VALUES ($1, $2)', [id, label]);
+    }
+    for (const [role, action] of [['user', 'create'], ['user', 'read'], ['user', 'update'], ['user', 'delete'], ['manager', 'read']]) {
+      await postgres.query("INSERT INTO role_permissions (role_id, resource, action) VALUES ($1, 'contact', $2)", [role, action]);
+    }
     for (const user of [...USERS, ...extraUsers]) {
       await postgres.query('INSERT INTO users (id, name, email, email_verified, role) VALUES ($1, $2, $3, false, $4)', [
         user.id,
@@ -152,8 +150,6 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
     const queries: LoggedQuery[] = [];
     const db = drizzle(postgres, { logger: { logQuery: (query, params) => queries.push({ query, params }) } });
     queries.length = 0;
-    (globalThis as { __roleOf?: (id: string) => Promise<string> }).__roleOf = async (id) =>
-      (await postgres.query<{ role: string }>('SELECT role FROM users WHERE id = $1', [id])).rows[0]?.role ?? '';
     const caller = async (userId: string): Promise<Caller> => {
       const role = (await postgres.query<{ role: string }>('SELECT role FROM users WHERE id = $1', [userId])).rows[0]?.role;
       return createCaller(appRouter)({ db, headers: new Headers(), session: { user: { id: userId, role } } });
@@ -183,23 +179,33 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
     postgres = new PGlite();
     await createPostgresTable(postgres, schema.userTable as PgTable);
     await createPostgresTable(postgres, schema.contactTable as PgTable);
+    await createPostgresTable(postgres, schema.roleTable as PgTable);
+    await createPostgresTable(postgres, schema.rolePermissionTable as PgTable, { foreignKeys: true });
     await generated('packages/auth/src/permissions.ts', 'permissions.mjs', {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
 
+    await generated('packages/auth/src/role-permissions.ts', 'role-permissions.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+    });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
+    await generated(`${API}/role-input.ts`, 'role-input.mjs', { zod: REAL.zod, '@repo/auth/permissions': './permissions.mjs' });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     queryModule = await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });
     engineModule = await generated(`${API}/search-engine.ts`, 'search-engine.mjs', { './search-query': './search-query.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', {
       '@trpc/server': REAL.trpcServer,
-      '../auth': './auth.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
       '../trpc': './trpc.mjs',
     });
     await generated(`${API}/search.ts`, 'search.mjs', {
       '@repo/db': './db.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
       './middleware/rbac': './rbac.mjs',
       './search-engine': './search-engine.mjs',
       './text-match': './text-match.mjs',
@@ -221,6 +227,9 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       zod: REAL.zod,
       '@repo/db': './db.mjs',
       '../auth': './auth.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-assignment': './role-assignment.mjs',
+      '../role-input': './role-input.mjs',
       '@repo/auth/password': './password.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',

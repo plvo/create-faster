@@ -143,6 +143,8 @@ describe(`${BLUEPRINT} role management`, () => {
       '@repo/auth/role-assignment': './role-assignment.mjs',
       '@repo/auth/role-management': './role-management.mjs',
       './permissions': './permissions.mjs',
+      './default-roles': './default-roles.mjs',
+      './role-store': './role-store.mjs',
       './role-permissions': './role-permissions.mjs',
       '../auth-errors': './auth-errors.mjs',
       '../trpc': './trpc.mjs',
@@ -156,6 +158,8 @@ describe(`${BLUEPRINT} role management`, () => {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
+    await generated(`${AUTH}/default-roles.ts`, 'default-roles.mjs', own);
+    await generated(`${AUTH}/role-store.ts`, 'role-store.mjs', own);
     await generated(`${AUTH}/role-permissions.ts`, 'role-permissions.mjs', own);
     assignment = await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', own);
     management = await generated(`${AUTH}/role-management.ts`, 'role-management.mjs', own);

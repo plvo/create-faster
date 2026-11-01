@@ -13,8 +13,10 @@ import { notFound } from 'next/navigation';
 {{/if}}
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { authClient } from '@repo/auth/auth-client';
 import { Button } from '@repo/ui/components/ui/button';
 import { GeneratedPassword } from '@/components/admin/generated-password';
+import { UserRoleSelect } from '@/components/admin/user-role-select';
 import { formatDate } from '@/lib/format-date';
 import { useTRPC } from '@/trpc/providers';
 
@@ -23,6 +25,9 @@ export function UserDetail({ id }: { id: string }) {
   const queryClient = useQueryClient();
   const { data: user } = useSuspenseQuery(trpc.user.getById.queryOptions({ id }));
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const { data: session } = authClient.useSession();
+  // The role is offered once the session says the account is someone else's, never before and never on your own.
+  const isOtherAccount = session !== null && session !== undefined && session.user.id !== id;
 
   const generatePasswordMutation = useMutation(
     trpc.user.generatePassword.mutationOptions({
@@ -193,6 +198,23 @@ export function UserDetail({ id }: { id: string }) {
           </Button>
         </form>
       </section>
+
+      {isOtherAccount && (
+        <section className='rounded-lg border bg-card p-6 space-y-4'>
+          <div>
+            <h2 className='text-lg font-semibold'>Role</h2>
+            <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
+          </div>
+          <UserRoleSelect
+            userId={id}
+            role={user.role}
+            onChanged={() => {
+              queryClient.invalidateQueries({ queryKey: trpc.user.getById.queryKey({ id }) });
+              queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
+            }}
+          />
+        </section>
+      )}
 
       <section className='rounded-lg border bg-card p-6 space-y-4'>
         <div>

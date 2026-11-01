@@ -15,8 +15,9 @@ import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
 import { emailChangeGuard } from './email-change-guard';
+import { guardAdministrators } from './guard-administrators';
 import { deliverLink } from './link-delivery';
-import { ac, roles } from './permissions';
+import { ac, ADMIN_ROLE, DEFAULT_ROLE, roles } from './permissions';
 import { refuseOwnRoleChange } from './refuse-own-role-change';
 
 const HOUR = 60 * 60;
@@ -61,9 +62,10 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
       admin({
         ac,
         roles,
-        defaultRole: 'user',
-        adminRoles: ['admin'],
+        defaultRole: DEFAULT_ROLE,
+        adminRoles: [ADMIN_ROLE],
       }),
+      guardAdministrators(db),
       refuseOwnRoleChange,
       emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),

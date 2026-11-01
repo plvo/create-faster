@@ -73,6 +73,8 @@ export const adminProcedure = protectedProcedure;
 export const permissionProcedure = () => protectedProcedure;`,
   'auth.mjs': 'export const auth = {};',
   'password.mjs': "export const generatePassword = () => 'x';",
+  'permissions.mjs': "export const DEFAULT_ROLE = 'user'; export const ROLE_ID = /^[a-z0-9-]+$/;",
+  'role-assignment.mjs': 'export const listAssignableRoles = async () => [];',
   // Column names stand for columns; the query builder applies orderBy, limit and offset to an array of rows.
   // The next/navigation and TanStack Router the generated hooks call: they record where the hook navigates.
   'next-navigation.mjs': `export const navigation = { pushed: [], path: '/contacts', query: '' };
@@ -150,9 +152,17 @@ describe.each(BLUEPRINTS)('%s pagination', (blueprint) => {
       { '@repo/db': './db.mjs', './pagination': './pagination.mjs' },
     );
 
+    await evaluateGeneratedModule(await readTextFile(join(project, API, 'role-input.ts')), join(stubs, 'role-input.mjs'), {
+      zod: REAL.zod,
+      '@repo/auth/permissions': './permissions.mjs',
+    });
+
     const imports = {
       zod: REAL.zod,
       '@repo/db': './db.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-assignment': './role-assignment.mjs',
+      '../role-input': './role-input.mjs',
       '../page-query': './page-query.mjs',
       '@repo/auth/password': './password.mjs',
       '../trpc': './trpc.mjs',

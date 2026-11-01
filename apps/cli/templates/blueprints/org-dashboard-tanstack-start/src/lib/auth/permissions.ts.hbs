@@ -1,0 +1,14 @@
+import { createServerFn } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
+import { appRouter, createTRPCContext } from '@repo/api';
+
+// The permission list of the caller: the procedure the Next.js dashboard hydrates (`permissions.mine`), asked of the
+// router in process, so a request decides once (`callerPermissions` keys its answer by the request headers).
+export const getPermissions = createServerFn({ method: 'GET' }).handler(async () => {
+  const { headers } = getRequest();
+  return appRouter
+    .createCaller(await createTRPCContext({ headers }), {
+      {{> trpc/on-error dev="import.meta.env.DEV"}}
+    })
+    .permissions.mine();
+});

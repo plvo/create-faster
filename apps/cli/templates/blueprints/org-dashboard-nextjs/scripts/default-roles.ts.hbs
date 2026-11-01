@@ -1,0 +1,30 @@
+---
+mono:
+  scope: root
+---
+import { writeDefaultRoles } from '@repo/auth/role-store';
+import { db } from '@repo/db';
+
+// The database is the one of DATABASE_URL, which the script reads from apps/web/.env. The defaults go only into a
+// database that has no role: once any role exists the command writes nothing, so a default role an operator deleted
+// or a permission revoked since is never written back.
+async function main(): Promise<void> {
+  const { written, roles, permissions } = await writeDefaultRoles(db);
+  if (written) {
+    console.log(`Wrote ${roles} default roles and ${permissions} permissions.`);
+    return;
+  }
+  console.log('The database already has roles, so nothing is written: the defaults only go into a database with none.');
+  if (permissions === 0) {
+    console.warn(
+      'No role holds a permission, so every role but admin is refused. Delete the rows of `roles` and run this command again.',
+    );
+  }
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Writing the default roles failed:', error instanceof Error ? error.message : error);
+    process.exit(1);
+  });

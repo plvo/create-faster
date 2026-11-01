@@ -1,0 +1,7 @@
+{{!-- The whole role-options.ts file: the options of a role select. --}}
+// The options of a role select, by label. Two roles can share a label, so a repeated one carries its id.
+export function roleOptions(roles: { id: string; label: string }[]): Record<string, string> {
+  const options: Record<string, string> = {};
+  for (const role of roles) options[role.label in options ? `${role.label} (${role.id})` : role.label] = role.id;
+  return options;
+}

@@ -42,6 +42,14 @@ const MENU_CONFIRMATION_MODULE = {
   '@/hooks/use-menu-confirmation': { file: 'src/hooks/use-menu-confirmation.ts', exportName: 'useMenuConfirmation', stub: 'use-menu-confirmation.mjs' },
 };
 
+const USER_ROLE_SELECT_MODULE = {
+  '@/components/admin/user-role-select': { file: 'src/components/admin/user-role-select.tsx', exportName: 'UserRoleSelect', stub: 'user-role-select.mjs' },
+};
+
+const ROLE_OPTIONS_MODULE = {
+  '@/lib/role-options': { file: 'src/lib/role-options.ts', exportName: 'roleOptions', stub: 'role-options.mjs' },
+};
+
 const USER_ACTIONS = { file: 'src/components/admin/user-actions.tsx', exportName: 'UserActions' };
 
 interface Blueprint {
@@ -169,6 +177,7 @@ export const UserActions = () => null;
 export const EditUser = () => null;
 export const UsersClient = () => null;
 export const UserClient = () => null;
+export const UserRoleSelect = (props) => ({ type: 'div', props: { 'data-component': 'UserRoleSelect', ...props, children: [] } });
 export const AppHeader = () => null;
 export const AppSidebar = () => null;
 export const CommandPaletteProvider = ({ children }) => children;
@@ -333,6 +342,8 @@ const COMMON_IMPORTS: Record<string, string> = {
   '@repo/auth/auth-client': './auth-client.mjs',
   zod: './zod.mjs',
   '@repo/ui/components/ui/badge': './badge.mjs',
+  '@repo/ui/components/ui/skeleton': './skeleton.mjs',
+  '@/components/admin/user-role-select': './leaf.mjs',
   '@repo/ui/components/ui/input': './input.mjs',
   '@repo/ui/components/ui/select': './select.mjs',
   '@repo/ui/components/ui/dialog': './dialog.mjs',
@@ -567,7 +578,7 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
         createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
       },
       { ...COMMON_IMPORTS, ...blueprint.routerStubs },
-      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE, ...FORMAT_DATE_MODULE, ...MENU_CONFIRMATION_MODULE },
+      { ...GENERATED_PASSWORD_MODULE, ...TABLE_PAGINATION_MODULE, ...FORMAT_DATE_MODULE, ...MENU_CONFIRMATION_MODULE, ...ROLE_OPTIONS_MODULE },
     ));
   });
 
@@ -606,6 +617,27 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       await page.click('Generate password');
       return page;
     };
+
+    test('the role of another account is a select of the roles, and your own account has none', async () => {
+      const globals = globalThis as Globals;
+      const roleBlock = (tree: RenderedChild[]) => find(tree, (element) => element.props['data-component'] === 'UserRoleSelect');
+
+      const others = await mount('userDetail', { data: USER });
+      expect(roleBlock(others.tree)?.props).toMatchObject({ userId: 'x', role: USER.role });
+
+      globals.__testViewerId = 'x';
+      try {
+        expect(roleBlock((await mount('userDetail', { data: USER })).tree)).toBeUndefined();
+      } finally {
+        globals.__testViewerId = undefined;
+      }
+      globals.__testNoSession = true;
+      try {
+        expect(roleBlock((await mount('userDetail', { data: USER })).tree)).toBeUndefined();
+      } finally {
+        globals.__testNoSession = undefined;
+      }
+    });
 
     test('the back link, the copy button and the generated password have an accessible name', async () => {
       const page = await generatePassword();
@@ -675,80 +707,6 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expectClasses(title, 'min-w-0', 'break-words');
       const header = must(find(page.tree, (element) => withTag(element, 'h1').includes(title) && classesOf(element).includes('flex')), 'the header');
       expectClasses(header, 'flex-wrap');
-    });
-  });
-
-  describe('roles page', () => {
-    test('exposes a table per role whose columns and rows have headers', async () => {
-      const page = await mount('roles');
-      const tables = withTag(page.tree, 'table');
-      expect(tables).toHaveLength(2);
-      for (const table of tables) {
-        const headers = withTag(table, 'th');
-        expect(headers.map((header) => header.props.scope).sort()).toEqual(['col', 'col', 'col', 'row', 'row']);
-        for (const row of withTag(table, 'tr').slice(1)) expect(withTag(row, 'th')[0]?.props.scope).toBe('row');
-      }
-    });
-
-    test('each table and each phone list is named by the heading of its role', async () => {
-      const page = await mount('roles');
-      for (const section of withTag(page.tree, 'section')) {
-        const title = must(withTag(section, 'h2')[0], 'the role heading');
-        expect(title.props.id).toEqual(expect.any(String));
-        for (const named of [...withTag(section, 'table'), ...withTag(section, 'ul').filter((list) => list.props['aria-labelledby'])]) {
-          expect(named.props['aria-labelledby']).toBe(title.props.id);
-        }
-        expect(withTag(section, 'table')).toHaveLength(1);
-      }
-      expect(withTag(page.tree, 'h2').map(textOf)).toEqual(['admin', 'manager']);
-    });
-
-    test('lists a granted action under Allowed and a denied one as plain text under Denied', async () => {
-      const page = await mount('roles');
-      const manager = must(withTag(page.tree, 'section')[1], 'the manager section');
-      const rows = withTag(must(withTag(manager, 'table')[0], 'the manager table'), 'tr');
-      const cells = (resource: string): RenderedElement[] => {
-        const row = must(rows.find((candidate) => textOf(candidate).startsWith(resource)), `the ${resource} row`);
-        return withTag(row, 'td');
-      };
-
-      const [contactAllowed, contactDenied] = cells('contact');
-      expect(items(must(contactAllowed, 'the allowed cell'))).toEqual(['read']);
-      expect(textOf(must(contactDenied, 'the denied cell'))).toBe('create');
-      expect(withTag(must(contactDenied, 'the denied cell'), 'li')).toEqual([]);
-
-      const [userAllowed, userDenied] = cells('user');
-      expect(textOf(must(userAllowed, 'the allowed cell'))).toBe('None allowed');
-      expect(textOf(must(userDenied, 'the denied cell'))).toBe('create, list');
-    });
-
-    test('a phone sees each resource stacked: its name, the allowed actions as pills, the denied ones as muted text', async () => {
-      const page = await mount('roles');
-      const manager = must(withTag(page.tree, 'section')[1], 'the manager section');
-      const list = must(withTag(manager, 'ul').find((candidate) => candidate.props['aria-labelledby']), 'the phone list');
-      expectClasses(list, 'sm:hidden');
-      const [user, contact] = withTag(list, 'li').filter((item) => withTag(item, 'p').length > 0);
-      expect(withTag(must(user, 'the user item'), 'p').map(textOf)).toEqual(['user', 'Not allowed: create, list']);
-      expect(textOf(must(user, 'the user item'))).toContain('None allowed');
-      expect(withTag(must(contact, 'the contact item'), 'p').map(textOf)).toEqual(['contact', 'Not allowed: create']);
-      const pill = must(withTag(must(contact, 'the contact item'), 'ul')[0]?.children.find((child) => typeof child !== 'string'), 'a pill');
-      expect(textOf(pill)).toBe('read');
-      expectClasses(pill, 'whitespace-nowrap');
-    });
-
-    test('the allowed list is named by its column header in the table and labelled in the phone list', async () => {
-      const page = await mount('roles');
-      const section = must(withTag(page.tree, 'section')[0], 'the first section');
-      const inTable = withTag(must(withTag(section, 'table')[0], 'the table'), 'ul');
-      expect(inTable.length).toBeGreaterThan(0);
-      for (const list of inTable) expect(list.props['aria-label']).toBeUndefined();
-      const phoneList = must(withTag(section, 'ul').find((candidate) => candidate.props['aria-labelledby']), 'the phone list');
-      for (const list of withTag(phoneList, 'ul').filter((candidate) => candidate !== phoneList)) expect(list.props['aria-label']).toBe('Allowed');
-    });
-
-    test('the table replaces the phone list from the sm breakpoint', async () => {
-      const page = await mount('roles');
-      expectClasses(withTag(page.tree, 'table')[0], 'hidden', 'sm:table');
     });
   });
 
@@ -963,7 +921,14 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
 
   describe('user actions', () => {
     const actions = (): Promise<Mounted> =>
-      mount('userActions', { props: { user: { id: 'u1', name: 'Ada Lovelace', role: 'admin', banned: false } } });
+      mount('userActions', {
+        data: [
+          { id: 'admin', label: 'Admin' },
+          { id: 'user', label: 'User' },
+          { id: 'manager', label: 'Manager' },
+        ],
+        props: { user: { id: 'u1', name: 'Ada Lovelace', role: 'admin', banned: false } },
+      });
 
     test('the trigger is a Button named Actions, drawn with an icon the name does not depend on', async () => {
       const page = await actions();
@@ -978,11 +943,11 @@ describe.each(BLUEPRINTS)('$name pages, rendered', (blueprint) => {
       expect(textOf(trigger)).toBe('');
     });
 
-    test('the menu offers the other roles and the ban', async () => {
+    test('the menu offers the other roles by label and the ban', async () => {
       const page = await actions();
       const menu = must(find(page.tree, (element) => element.props.role === 'menu'), 'the menu');
       const entries = elementsOf(menu.children).filter((element) => element.props.role === 'menuitem');
-      expect(entries.map(textOf)).toEqual(['Set role: user', 'Set role: manager', 'Ban User']);
+      expect(entries.map(textOf)).toEqual(['Set role: User', 'Set role: Manager', 'Ban User']);
     });
 
     test('the signed-in user gets no action on their own row', async () => {
@@ -1111,6 +1076,8 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         ...FORMAT_DATE_MODULE,
         ...FORMAT_FILE_SIZE_MODULE,
         ...CONFIRM_DIALOG_MODULE,
+        ...ROLE_OPTIONS_MODULE,
+        ...USER_ROLE_SELECT_MODULE,
       },
     ));
 
@@ -1611,23 +1578,49 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       expect(unnamedControls(dialog.tree)).toEqual([]);
     });
   });
+});
 
-  describe('roles page', () => {
+const MATRIX_BLUEPRINTS = [
+  { name: 'cloudflare-fullstack-nextjs', resource: 'document', hasRemoteScript: true },
+  { name: 'org-dashboard-nextjs', resource: 'contact', hasRemoteScript: false },
+];
+
+describe.each(MATRIX_BLUEPRINTS)('$name role matrix, rendered', ({ name: blueprint, resource, hasRemoteScript }) => {
+  let tempDir: string;
+  let mount: Mount<'roleMatrix'>;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+    ({ mount } = await createMounter(
+      tempDir,
+      join(tempDir, blueprint, 'apps/web'),
+      { roleMatrix: { file: 'src/components/admin/role-matrix.tsx', exportName: 'RoleMatrix' } },
+      { ...COMMON_IMPORTS, '@repo/ui/components/ui/checkbox': './checkbox.mjs' },
+      { ...CONFIRM_DIALOG_MODULE },
+    ));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
     // What roles.matrix answers: every permission of the vocabulary (the account ones are compiled, so not editable), admin
     // first and compiled too, then the stored roles.
     const ROLE_MATRIX = {
       permissions: [
         { name: 'user.create', editable: false },
         { name: 'user.list', editable: false },
-        { name: 'document.create', editable: true },
-        { name: 'document.read', editable: true },
+        { name: `${resource}.create`, editable: true },
+        { name: `${resource}.read`, editable: true },
       ],
       roles: [
-        { id: 'admin', label: 'Admin', permissions: ['user.create', 'user.list', 'document.create', 'document.read'], holders: 1, editable: false, deletable: false },
-        { id: 'manager', label: 'Manager', permissions: ['document.read'], holders: 2, editable: true, deletable: true },
+        { id: 'admin', label: 'Admin', permissions: ['user.create', 'user.list', `${resource}.create`, `${resource}.read`], holders: 1, editable: false, deletable: false },
+        { id: 'manager', label: 'Manager', permissions: [`${resource}.read`], holders: 2, editable: true, deletable: true },
       ],
     };
-    const PERMISSIONS = ['user.create', 'user.list', 'document.create', 'document.read'];
+    const PERMISSIONS = ['user.create', 'user.list', `${resource}.create`, `${resource}.read`];
     const open = (data: unknown = ROLE_MATRIX) => mount('roleMatrix', { data, props: { currentRole: 'admin' } });
     const table = async (data?: unknown): Promise<RenderedElement> => must(withTag((await open(data)).tree, 'table')[0], 'the table');
     const headers = (element: RenderedElement, scope: string): RenderedElement[] => withTag(element, 'th').filter((header) => header.props.scope === scope);
@@ -1656,7 +1649,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const verdicts = (permission: string): string[] => withTag(row(permission), 'td').map(textOf);
       expect(verdicts('user.create')).toEqual(['Allowed', 'Denied']);
       expect(verdicts('user.list')).toEqual(['Allowed', 'Denied']);
-      expect(verdicts('document.create')).toEqual(['Allowed', 'Manager may document.create']);
+      expect(verdicts(`${resource}.create`)).toEqual(['Allowed', `Manager may ${resource}.create`]);
 
       const compiled = withTag(roles, 'td').filter((cell) => withTag(cell, 'label').length === 0);
       expect(compiled).toHaveLength(6);
@@ -1676,7 +1669,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const boxes = withTag(roles, 'input').filter((box) => box.props.type === 'checkbox');
       expect(boxes.map((box) => box.props.checked)).toEqual([false, true]);
       const labels = withTag(roles, 'label');
-      expect(labels.map(textOf)).toEqual(['Manager may document.create', 'Manager may document.read']);
+      expect(labels.map(textOf)).toEqual([`Manager may ${resource}.create`, `Manager may ${resource}.read`]);
       for (const label of labels) expect(withTag(label, 'input')).toHaveLength(1);
     });
 
@@ -1689,7 +1682,8 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const empty = (await open({ ...ROLE_MATRIX, roles: [admin] })).tree;
       const notice = must(find(empty, (element) => element.props.role === 'status' && textOf(element).includes('No role is stored')), 'the empty state');
       expect(textOf(notice)).toContain('db:roles');
-      expect(textOf(notice)).toContain('db:roles:remote');
+      if (hasRemoteScript) expect(textOf(notice)).toContain('db:roles:remote');
+      else expect(textOf(notice)).not.toContain('db:roles:remote');
       expect(roleNames(await table({ ...ROLE_MATRIX, roles: [admin] }))).toEqual(['Admin(you)']);
     });
 
@@ -1723,5 +1717,5 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const frame = must(find(page.tree, (element) => classesOf(element).includes('rounded-lg') && withTag(element, 'table').length === 1), 'the rounded frame');
       expectClasses(frame, 'border', 'overflow-x-auto');
     });
-  });
+  
 });

@@ -1,0 +1,145 @@
+import type { BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from 'better-auth/api';
+import { parseUserOutput } from 'better-auth/db';
+import { ADMIN_ROLE, DEFAULT_ROLE } from './permissions';
+import {
+  AccountChangeRefused,
+  assignRole,
+  claimBan,
+  readRoleId,
+  readUserId,
+  removeAccount,
+} from './role-assignment';
+import type { Database } from './role-store';
+
+type Body = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is Body => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+type EndpointContext = Parameters<typeof getAuthoritativeSessionFromCtx>[0];
+
+// The signed-in caller of an endpoint, or null for a call without a session. A caller whose role the plugin merely
+// reads as administrator (`user,admin`) is refused: only exactly `admin` is one.
+async function adminCaller(ctx: EndpointContext) {
+  const caller = await getAuthoritativeSessionFromCtx(ctx);
+  if (caller && caller.user.role !== ADMIN_ROLE) throw new APIError('FORBIDDEN', { message: 'Only admins can manage accounts' });
+  return caller;
+}
+
+const unauthorized = () => new APIError('UNAUTHORIZED', { message: 'Sign in to manage accounts' });
+
+// The administrator an endpoint needs: an anonymous request is refused here, whatever the plugin makes of it.
+async function requiredAdmin(ctx: EndpointContext) {
+  const caller = await adminCaller(ctx);
+  if (!caller) throw unauthorized();
+  return caller;
+}
+
+// A refusal of role-assignment.ts as the error the plugin's endpoints answer with.
+async function refusing<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof AccountChangeRefused) throw new APIError(error.code, { message: error.message });
+    throw error;
+  }
+}
+
+// The `admin` plugin treats `user.role` as a comma list (`user,admin` is an administrator), stores an array of roles
+// as one, and only checks a role against the roles compiled in permissions.ts, which a role created in the database is
+// not. It also has no notion of a last administrator. This plugin sits in front of the five endpoints that write a
+// role, a ban or a removal, whoever calls them (the tRPC procedures call the same endpoints):
+//
+// - a caller must be exactly `admin`;
+// - a role is exactly one id that exists in `/admin/set-role`, and `/admin/create-user` takes only `admin` or the default
+//   role: the plugin writes the account after this plugin has read, so a role that can be deleted could be gone by then
+//   and the account would hold a role nobody has. The other roles are given with `set-role`, whose write is conditional
+//   on the role being there (`users.create` does exactly that);
+// - `/admin/update-user` writes no role and no ban (`set-role` and `ban-user` are the paths);
+// - the last administrator is never demoted, banned or removed, in the write itself (role-assignment.ts).
+//
+// `set-role` and `remove-user` are carried out here and the plugin's endpoint is skipped: the plugin cannot assign a
+// role it does not know, and a removed row cannot be found by it afterwards. `ban-user` marks the ban and ends the
+// sessions first, and the plugin's endpoint completes it (reason, expiry): a request the endpoint then refuses, because
+// its caller lost their session meanwhile, still leaves the account banned and signed out.
+export function guardAdministrators(db: Database) {
+  return {
+    id: 'guard-administrators',
+    hooks: {
+      before: [
+        {
+          matcher: (ctx) => ctx.path === '/admin/create-user',
+          handler: createAuthMiddleware(async (ctx) => {
+            // A call from the server with no request and no headers (a script) has no session and is trusted.
+            if (!(await adminCaller(ctx)) && (ctx.request || ctx.headers)) throw unauthorized();
+            const body = isRecord(ctx.body) ? ctx.body : {};
+            const data = isRecord(body.data) ? body.data : {};
+            await refusing(async () => {
+              for (const requested of [body.role, data.role]) {
+                if (requested === undefined) continue;
+                const role = readRoleId(requested);
+                if (role !== ADMIN_ROLE && role !== DEFAULT_ROLE) {
+                  throw new AccountChangeRefused('BAD_REQUEST', 'Create the account first, then give it that role with set-role');
+                }
+              }
+            });
+          }),
+        },
+        {
+          matcher: (ctx) => ctx.path === '/admin/update-user',
+          handler: createAuthMiddleware(async (ctx) => {
+            await requiredAdmin(ctx);
+            const data = isRecord(ctx.body) && isRecord(ctx.body.data) ? ctx.body.data : {};
+            if (Object.hasOwn(data, 'role')) {
+              throw new APIError('BAD_REQUEST', { message: 'Change a role with set-role: update-user writes none' });
+            }
+            if (['banned', 'banReason', 'banExpires'].some((key) => Object.hasOwn(data, key))) {
+              throw new APIError('BAD_REQUEST', { message: 'Ban an account with ban-user: update-user writes no ban' });
+            }
+          }),
+        },
+        {
+          matcher: (ctx) => ctx.path === '/admin/set-role',
+          handler: createAuthMiddleware(async (ctx) => {
+            const caller = await requiredAdmin(ctx);
+            const body = isRecord(ctx.body) ? ctx.body : {};
+            const user = await refusing(async () => {
+              const userId = readUserId(body.userId);
+              if (userId === caller.user.id) throw new AccountChangeRefused('BAD_REQUEST', 'You cannot change your own role');
+              await assignRole(db, userId, readRoleId(body.role));
+              return ctx.context.internalAdapter.findUserById(userId);
+            });
+            return ctx.json({ user: user ? parseUserOutput(ctx.context.options, user) : null });
+          }),
+        },
+        {
+          matcher: (ctx) => ctx.path === '/admin/ban-user',
+          handler: createAuthMiddleware(async (ctx) => {
+            const caller = await requiredAdmin(ctx);
+            const userId = await refusing(async () => {
+              const id = readUserId(isRecord(ctx.body) ? ctx.body.userId : undefined);
+              if (id === caller.user.id) throw new AccountChangeRefused('BAD_REQUEST', 'You cannot ban yourself');
+              await claimBan(db, id);
+              return id;
+            });
+            await ctx.context.internalAdapter.deleteUserSessions(userId);
+          }),
+        },
+        {
+          matcher: (ctx) => ctx.path === '/admin/remove-user',
+          handler: createAuthMiddleware(async (ctx) => {
+            const caller = await requiredAdmin(ctx);
+            const userId = await refusing(async () => {
+              const id = readUserId(isRecord(ctx.body) ? ctx.body.userId : undefined);
+              if (id === caller.user.id) throw new AccountChangeRefused('BAD_REQUEST', 'You cannot remove yourself');
+              await removeAccount(db, id);
+              return id;
+            });
+            await ctx.context.internalAdapter.deleteUserSessions(userId);
+            return ctx.json({ success: true });
+          }),
+        },
+      ],
+    },
+  } satisfies BetterAuthPlugin;
+}
