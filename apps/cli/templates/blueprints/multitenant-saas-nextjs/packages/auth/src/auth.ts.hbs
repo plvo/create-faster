@@ -28,7 +28,8 @@ const DAY = 24 * HOUR;
 const isDev = process.env.NODE_ENV === 'development';
 const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
 
-export function createAuth(cookiePlugin?: BetterAuthPlugin) {
+// `runInBackground` keeps a link's delivery from delaying the answer of the request that asked for it.
+export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (task: Promise<unknown>) => void) {
   return betterAuth({
     baseURL: {
       allowedHosts: [
@@ -57,11 +58,12 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
       minPasswordLength: 8,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        deliverLink({ kind: 'reset-password', to: user.email, link: url });
+        await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
     advanced: {
       {{> better-auth/client-ip}}
+      ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
     },
     plugins: [
       organization({
@@ -71,7 +73,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         requireEmailVerificationOnInvitation: false,
         cancelPendingInvitationsOnReInvite: true,
         async sendInvitationEmail(data) {
-          deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
+          await deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
       ...(cookiePlugin ? [cookiePlugin] : []),

@@ -22,18 +22,20 @@ describe.each([
   {
     blueprint: 'multitenant-saas-nextjs',
     seamFile: 'link-delivery.ts',
-    call: (file: string) =>
-      `import { deliverLink } from ${JSON.stringify(file)}; deliverLink({ kind: 'reset-password', to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
+    kinds: ['reset-password'] as string[],
+    call: (file: string, kind: string) =>
+      `import { deliverLink } from ${JSON.stringify(file)}; deliverLink({ kind: ${JSON.stringify(kind)}, to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
     forgotPasswordForm: 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx',
   },
   {
     blueprint: 'cloudflare-fullstack-nextjs',
     seamFile: 'email.ts',
-    call: (file: string) =>
-      `import { sendResetPasswordEmail } from ${JSON.stringify(file)}; await sendResetPasswordEmail({ to: 'a@b.co', url: ${JSON.stringify(LINK)} });`,
+    kinds: ['reset-password', 'change-email', 'email-changed'] as string[],
+    call: (file: string, kind: string) =>
+      `import { deliverLink } from ${JSON.stringify(file)}; await deliverLink({ kind: ${JSON.stringify(kind)}, to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
     forgotPasswordForm: 'apps/web/src/app/(auth)/forgot-password/forgot-password-form.tsx',
   },
-])('$blueprint delivers links through one mailer seam', ({ blueprint, seamFile, call, forgotPasswordForm }) => {
+])('$blueprint delivers links through one mailer seam', ({ blueprint, seamFile, kinds, call, forgotPasswordForm }) => {
   let tempDir: string;
   let projectPath: string;
 
@@ -48,7 +50,8 @@ describe.each([
     await cleanupTempDir(tempDir);
   });
 
-  const deliver = (nodeEnv: string) => runWithNodeEnv(call(join(projectPath, 'packages/auth/src', seamFile)), nodeEnv);
+  const deliver = (nodeEnv: string, kind: string) =>
+    runWithNodeEnv(call(join(projectPath, 'packages/auth/src', seamFile), kind), nodeEnv);
 
   test('auth.ts never logs a link itself', async () => {
     const auth = await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'));
@@ -56,17 +59,17 @@ describe.each([
     expect(auth).not.toContain('console.');
   });
 
-  test('development logs the link without a warning', async () => {
-    const { stdout, stderr } = await deliver('development');
+  test.each(kinds)('development logs the %s link without a warning', async (kind) => {
+    const { stdout, stderr } = await deliver('development', kind);
+    expect(stdout).toContain(`[${kind}] a@b.co`);
     expect(stdout).toContain(LINK);
-    expect(stdout).toContain('a@b.co');
     expect(stderr).toBe('');
   });
 
-  test('production still logs the link and warns that no mailer is configured', async () => {
-    const { stdout, stderr } = await deliver('production');
+  test.each(kinds)('production still logs the %s link and warns that no mailer is configured', async (kind) => {
+    const { stdout, stderr } = await deliver('production', kind);
     expect(stdout).toContain(LINK);
-    expect(stderr).toContain('No mailer is configured');
+    expect(stderr).toContain(`[${kind}] No mailer is configured`);
     expect(stderr).toContain(seamFile);
   });
 

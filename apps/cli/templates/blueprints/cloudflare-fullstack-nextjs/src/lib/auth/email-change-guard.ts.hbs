@@ -1,0 +1,92 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/email-change-guard.ts
+---
+import type { BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { deliverLink } from './email';
+
+interface TrustsOrigins {
+  context: { isTrustedOrigin: (url: string, settings?: { allowRelativePaths: boolean }) => boolean };
+}
+
+// The callback is checked the way better-auth checks it: a path of this site or a trusted origin, no control characters.
+function trustedCallback(ctx: TrustsOrigins, value: unknown): string | null {
+  return typeof value === 'string' && ctx.context.isTrustedOrigin(value, { allowRelativePaths: true }) ? value : null;
+}
+
+function withError(callbackURL: string, error: string): string {
+  const hashAt = callbackURL.indexOf('#');
+  const end = hashAt === -1 ? callbackURL.length : hashAt;
+  const head = callbackURL.slice(0, end);
+  return `${head}${head.includes('?') ? '&' : '?'}error=${error}${callbackURL.slice(end)}`;
+}
+
+// A session is not proof of the person: a stolen one could point the account at the thief's address, open the link
+// and use the password reset there. So the change asks for the current password, and the link only works in a
+// browser signed in to the account (without a session better-auth signs in whoever opens it, so an address typed
+// with a typo would hand the account to its owner). A change that completed is told to the old address, and a
+// link whose address was taken meanwhile ends on the callback with an error instead of a database failure.
+export const emailChangeGuard = {
+  id: 'email-change-guard',
+  hooks: {
+    before: [
+      {
+        matcher: (ctx) => ctx.path === '/change-email',
+        handler: createAuthMiddleware(async (ctx) => {
+          const session = await getSessionFromCtx(ctx);
+          if (!session) return;
+          const currentPassword = ctx.body?.currentPassword;
+          const account = await ctx.context.internalAdapter.findCredentialAccount(session.user.id);
+          const isCurrentPassword =
+            typeof currentPassword === 'string' &&
+            currentPassword !== '' &&
+            Boolean(account?.password) &&
+            (await ctx.context.password.verify({ hash: account?.password ?? '', password: currentPassword }));
+          if (!isCurrentPassword) {
+            throw new APIError('BAD_REQUEST', { message: 'Invalid password', code: 'INVALID_PASSWORD' });
+          }
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/verify-email',
+        handler: createAuthMiddleware(async (ctx) => {
+          if (await getSessionFromCtx(ctx)) return;
+          if (ctx.query?.callbackURL === undefined) {
+            throw new APIError('UNAUTHORIZED', { message: 'Sign in to confirm your new email address' });
+          }
+          const callbackURL = trustedCallback(ctx, ctx.query.callbackURL);
+          if (!callbackURL) throw new APIError('FORBIDDEN', { message: 'Invalid callbackURL' });
+          throw ctx.redirect(withError(callbackURL, 'SIGN_IN_REQUIRED'));
+        }),
+      },
+    ],
+  },
+  init: () => ({
+    options: {
+      databaseHooks: {
+        user: {
+          update: {
+            before: async (data, ctx) => {
+              if (ctx?.path !== '/verify-email' || typeof data.email !== 'string') return;
+              if (!(await ctx.context.internalAdapter.findUserByEmail(data.email))) return;
+              const callbackURL = trustedCallback(ctx, ctx.query?.callbackURL);
+              if (!callbackURL) throw new APIError('CONFLICT', { message: 'This email address is already taken' });
+              throw ctx.redirect(withError(callbackURL, 'EMAIL_TAKEN'));
+            },
+            after: async (user, ctx) => {
+              const previous = ctx?.context.session?.user.email;
+              if (ctx?.path !== '/verify-email' || !user || !previous || previous === user.email) return;
+              // The address is already written: a mailer that fails or is slow must not fail or hold the answer.
+              await ctx.context.runInBackgroundOrAwait(
+                deliverLink({ kind: 'email-changed', to: previous, link: new URL(ctx.context.baseURL).origin }),
+              );
+            },
+          },
+        },
+      },
+    },
+  }),
+} satisfies BetterAuthPlugin;

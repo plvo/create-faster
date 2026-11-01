@@ -503,7 +503,7 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     test('the account page requires a session', async () => {
       recorder.state.session = { user: { name: 'Ada', email: 'ada@example.com', image: null, createdAt: '2026-01-01' } };
       const route = await load(`${APP}/profile/account/page.tsx`);
-      await route.default?.();
+      await route.default?.({ searchParams: Promise.resolve({}) });
       expect(recorder.calls).toEqual(['requireSession']);
     });
 

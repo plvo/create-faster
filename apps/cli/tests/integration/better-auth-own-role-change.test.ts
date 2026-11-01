@@ -116,6 +116,6 @@ describe('an admin cannot change their own role', () => {
   test.each(BLUEPRINTS)('%s registers the plugin', async (blueprint) => {
     const auth = await readTextFile(join(projectPaths.get(blueprint) as string, AUTH));
     expect(auth).toContain("import { refuseOwnRoleChange } from './refuse-own-role-change';");
-    expect(auth).toMatch(/refuseOwnRoleChange,\s*\.\.\.\(cookiePlugin/);
+    expect(auth).toMatch(/refuseOwnRoleChange,\s*(emailChangeGuard,\s*)?\.\.\.\(cookiePlugin/);
   });
 });

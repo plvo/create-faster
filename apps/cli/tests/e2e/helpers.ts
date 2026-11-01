@@ -20,6 +20,8 @@ export interface ServerOutput {
 
 export interface RunningServer {
   url: string;
+  /** What the server has printed so far. */
+  output: () => ServerOutput;
   stop: () => Promise<ServerOutput>;
 }
 
@@ -39,6 +41,15 @@ export async function getFreePort(): Promise<number> {
   const { port } = probe.address() as AddressInfo;
   await new Promise<void>((resolve) => probe.close(() => resolve()));
   return port;
+}
+
+function collect(stream: ReadableStream<Uint8Array>): { text: () => string; done: Promise<void> } {
+  const decoder = new TextDecoder();
+  let text = '';
+  const done = (async () => {
+    for await (const chunk of stream) text += decoder.decode(chunk, { stream: true });
+  })();
+  return { text: () => text, done };
 }
 
 async function isPortFree(port: number): Promise<boolean> {
@@ -81,9 +92,9 @@ export async function startServer(
   const env = { ...userShellEnv(), CI: '1', ...(ownPort === undefined && { PORT: String(port) }), ...extraEnv };
   // detached makes the command a process group leader, so stop() also reaches the server behind a wrapper like `bun run`.
   const proc = Bun.spawn(args, { cwd, env, stdout: 'pipe', stderr: 'pipe', detached: true });
-  const output = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]).then(
-    ([stdout, stderr]) => ({ stdout, stderr }),
-  );
+  const stdoutStream = collect(proc.stdout);
+  const stderrStream = collect(proc.stderr);
+  const output = (): ServerOutput => ({ stdout: stdoutStream.text(), stderr: stderrStream.text() });
 
   const stop = async (): Promise<ServerOutput> => {
     try {
@@ -92,13 +103,14 @@ export async function startServer(
       // the process group is already gone
     }
     await proc.exited;
-    return output;
+    await Promise.all([stdoutStream.done, stderrStream.done]);
+    return output();
   };
 
   const readyUrl = new URL(readyPath, url).href;
   const deadline = Date.now() + readyTimeout;
   while (Date.now() < deadline && proc.exitCode === null) {
-    if (await isResponding(readyUrl)) return { url, stop };
+    if (await isResponding(readyUrl)) return { url, output, stop };
     await Bun.sleep(SERVER_POLL_INTERVAL);
   }
 
