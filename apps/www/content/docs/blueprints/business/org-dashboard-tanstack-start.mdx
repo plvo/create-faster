@@ -43,6 +43,8 @@ The contacts and admin pages render the same markup in both variants (shared par
 | Post-login redirect | Query parameter validated by `safeRedirectPath` | `redirectTo` search parameter validated in `validateSearch` with the same `safeRedirectPath` |
 | Production server | `next start` | Nitro server (`.output/server/index.mjs`) started with Node |
 | Profile tabs | Directional slide animation with React `ViewTransition` | Plain tab navigation, no transition |
+| Email change notice | `searchParams` of the account page, `router.replace` drops the query | `validateSearch` of the account route, `navigate` drops the query |
+| Background link delivery | `after` of `next/server` | `waitUntil` of the Nitro request |
 
 ### Pathless layouts and guards
 
