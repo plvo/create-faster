@@ -129,6 +129,9 @@ const ROUTE_STUB = `export const createFileRoute = () => (options) => ({ options
 // leaves it to the server's `waitUntil` where there is one.
 describe('the background tasks of the Start auth route', () => {
   const name = 'org-dashboard-tanstack-start';
+  // The generated wait is seconds long: the test runs the route with a short one.
+  const DELIVERY_WAIT = /(const DELIVERY_WAIT_MS = )[\d_]+/;
+  const SHORT_DELIVERY_WAIT_MS = 100;
   let tempDir: string;
   let harness: Harness;
   let handleAuthRequest: (request: Request) => Promise<Response>;
@@ -160,8 +163,10 @@ describe('the background tasks of the Start auth route', () => {
     harness = ((await import(join(stubs, 'harness.mjs'))) as { harness: Harness }).harness;
 
     const web = join(tempDir, name, 'apps/web/src');
+    const authSource = await readTextFile(join(web, 'lib/auth/auth.ts'));
+    expect(authSource).toMatch(DELIVERY_WAIT);
     const auth = await evaluateGeneratedModule<{ handleAuthRequest: typeof handleAuthRequest }>(
-      await readTextFile(join(web, 'lib/auth/auth.ts')),
+      authSource.replace(DELIVERY_WAIT, `$1${SHORT_DELIVERY_WAIT_MS}`),
       join(stubs, 'auth.mjs'),
       {
         '@repo/auth/auth': join(stubs, 'factory.mjs'),
@@ -196,6 +201,26 @@ describe('the background tasks of the Start auth route', () => {
     expect(await settlesWithin(answer, 50)).toBe(false);
     finish();
     expect(await (await answer).text()).toBe('answer');
+  });
+
+  test('a delivery that never settles holds the answer for a bounded time and says so', async () => {
+    harness.onHandle = (runInBackground) => runInBackground(new Promise(() => {}));
+    const warnings: string[] = [];
+    const realWarn = console.warn;
+    console.warn = (...parts: unknown[]) => {
+      warnings.push(parts.join(' '));
+    };
+
+    try {
+      const answer = handleAuthRequest(new Request('http://localhost/api/auth/verify-email', { method: 'GET' }));
+      expect(await settlesWithin(answer, SHORT_DELIVERY_WAIT_MS / 2)).toBe(false);
+      expect(await settlesWithin(answer, 1_000)).toBe(true);
+      expect(await (await answer).text()).toBe('answer');
+    } finally {
+      console.warn = realWarn;
+    }
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('still running');
   });
 
   test('the auth route answers through the same wait', async () => {

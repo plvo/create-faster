@@ -436,12 +436,12 @@ describe.each(BLUEPRINTS)('email change in $name', (blueprint) => {
 // A link's delivery must not be lost on a Lambda, and the generated notes say what that costs: OpenNext awaits the
 // `after()` tasks of a Next.js dashboard before the handler returns, and the Start dashboard holds its auth answer.
 describe.each([
-  ['org-dashboard-nextjs', 'sst', true],
-  ['multitenant-saas-nextjs', 'sst', true],
-  ['org-dashboard-tanstack-start', 'sst', true],
-  ['org-dashboard-tanstack-start', 'terraform-aws', true],
-  ['org-dashboard-nextjs', 'terraform-aws', false],
-])('the timing note of the email change links of %s on %s', (blueprint, deployment, hasNote) => {
+  ['org-dashboard-nextjs', 'sst', true, false],
+  ['multitenant-saas-nextjs', 'sst', true, true],
+  ['org-dashboard-tanstack-start', 'sst', true, false],
+  ['org-dashboard-tanstack-start', 'terraform-aws', true, false],
+  ['org-dashboard-nextjs', 'terraform-aws', false, false],
+])('the timing note of the email change links of %s on %s', (blueprint, deployment, hasNote, sendsPasswordReset) => {
   let tempDir: string;
   let readme: string;
   let guide: string;
@@ -473,4 +473,17 @@ describe.each([
       expect(guide).toContain('awaits every `after()` task before the handler returns');
     },
   );
+
+  // Better Auth answers an email change for a taken address without sending anything, so it is the free address that
+  // waits for the mailer. A password reset sends only for an account that exists, the other way round.
+  const FREE_ADDRESS_WAITS = 'a free address answers later than a taken one';
+  const ACCOUNT_WAITS = 'an address that has an account answers later than one that has not';
+
+  test.if(hasNote)('the notes say the free address is the slow one of an email change', () => {
+    for (const note of [readme, guide]) expect(note).toContain(FREE_ADDRESS_WAITS);
+  });
+
+  test.if(hasNote)('the notes name the password reset as the other way round, only when the blueprint has one', () => {
+    for (const note of [readme, guide]) expect(note.includes(ACCOUNT_WAITS)).toBe(sendsPasswordReset);
+  });
 });

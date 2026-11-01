@@ -27,10 +27,26 @@ export const auth = createAuth({{> better-auth/cookie-plugin}}, (task) => {
   else unsettled.set(request, [...(unsettled.get(request) ?? []), task]);
 });
 
+// How long the answer waits for the deliveries of its request: a mailer that hangs must not hold the answer until the
+// Lambda times out, which on `/verify-email` would show a gateway error after the address is already written.
+const DELIVERY_WAIT_MS = 2_000;
+const timedOut = Symbol('timed out');
+
 // The handler of the auth route. better-auth has already guarded each task against a rejection.
 export async function handleAuthRequest(request: Request): Promise<Response> {
   const response = await auth.handler(request);
-  await Promise.all(unsettled.get(getRequest()) ?? []);
+  const deliveries = unsettled.get(getRequest()) ?? [];
+  if (deliveries.length === 0) return response;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof timedOut>((resolve) => {
+    timer = setTimeout(() => resolve(timedOut), DELIVERY_WAIT_MS);
+  });
+  const outcome = await Promise.race([Promise.all(deliveries), timeout]);
+  clearTimeout(timer);
+  if (outcome === timedOut) {
+    console.warn(`A link delivery was still running after ${DELIVERY_WAIT_MS} ms: the answer left without it.`);
+  }
   return response;
 }
 {{/if}}
