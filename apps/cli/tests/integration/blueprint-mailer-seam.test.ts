@@ -29,7 +29,7 @@ describe.each([
   },
   {
     blueprint: 'cloudflare-fullstack-nextjs',
-    seamFile: 'email.ts',
+    seamFile: 'link-delivery.ts',
     kinds: ['reset-password', 'change-email', 'email-changed'] as string[],
     call: (file: string, kind: string) =>
       `import { deliverLink } from ${JSON.stringify(file)}; await deliverLink({ kind: ${JSON.stringify(kind)}, to: 'a@b.co', link: ${JSON.stringify(LINK)} });`,
