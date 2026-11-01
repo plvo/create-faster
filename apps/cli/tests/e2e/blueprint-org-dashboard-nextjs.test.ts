@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { describeWithDocker } from './docker-database';
 import { type CommandResult, cleanupTempDir, createTempDir, type RunningServer, runCli, runCommand } from './helpers';
-import { buildAndStartWeb, describeFailure, describePaging, describeSearch, SEEDED_ADMIN, signIn } from './org-dashboard';
+import { buildAndStartWeb, describeFailure, describePaging, describeRoles, describeSearch, SEEDED_ADMIN, signIn } from './org-dashboard';
 
 const TIMEOUT_INSTALL = 180_000;
 const TIMEOUT_SETUP = 240_000;
@@ -59,7 +59,9 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   describeSearch({ server: () => server, projectDir: () => projectDir });
 
-  test('the server logs no error while paging', async () => {
+  describeRoles({ server: () => server, projectDir: () => projectDir });
+
+  test('the server logs no error while paging, searching and editing roles', async () => {
     const { stdout, stderr } = await server.stop();
     expect(`${stdout}\n${stderr}`).not.toMatch(/Error|⨯/);
   });
