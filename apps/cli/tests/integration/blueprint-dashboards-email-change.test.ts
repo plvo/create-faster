@@ -432,3 +432,45 @@ describe.each(BLUEPRINTS)('email change in $name', (blueprint) => {
     });
   });
 });
+
+// A link's delivery must not be lost on a Lambda, and the generated notes say what that costs: OpenNext awaits the
+// `after()` tasks of a Next.js dashboard before the handler returns, and the Start dashboard holds its auth answer.
+describe.each([
+  ['org-dashboard-nextjs', 'sst', true],
+  ['multitenant-saas-nextjs', 'sst', true],
+  ['org-dashboard-tanstack-start', 'sst', true],
+  ['org-dashboard-tanstack-start', 'terraform-aws', true],
+  ['org-dashboard-nextjs', 'terraform-aws', false],
+])('the timing note of the email change links of %s on %s', (blueprint, deployment, hasNote) => {
+  let tempDir: string;
+  let readme: string;
+  let guide: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli(
+      ['lam', '--blueprint', blueprint, '--deployment', deployment, '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode, result.stderr).toBe(0);
+    readme = await readTextFile(join(tempDir, 'lam/README.md'));
+    const guideFile = blueprint === 'multitenant-saas-nextjs' ? 'docs/agents/auth-rbac.md' : 'docs/agents/auth.md';
+    guide = await readTextFile(join(tempDir, 'lam', guideFile));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test(`the README deploy notes ${hasNote ? 'name' : 'leave out'} the timing difference`, () => {
+    expect(readme.includes('### Delivery of links on Lambda')).toBe(hasNote);
+  });
+
+  test.if(deployment === 'sst' && blueprint !== 'org-dashboard-tanstack-start')(
+    'the auth guide says OpenNext awaits the after() tasks',
+    () => {
+      expect(guide).toContain('OpenNext');
+      expect(guide).toContain('awaits every `after()` task before the handler returns');
+    },
+  );
+});

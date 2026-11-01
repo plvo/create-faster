@@ -1,0 +1,7 @@
+{{!-- The README deploy note of a Next.js dashboard that sends links (`deliverLink`): what running `after()` on SST costs. --}}
+{{#if (has "deployment" "sst")}}
+
+### Delivery of links on Lambda
+
+The links the project sends through `deliverLink` (`packages/auth/src/link-delivery.ts`) only go to the server logs until a mailer is plugged in, and they leave from `after()`. On SST, Next.js runs through OpenNext on Lambda, which freezes the process when the handler returns, so OpenNext keeps the invocation alive for `after()` work: it hands the task to the `waitUntil` of its streaming Lambda wrapper, which sends the response first, and otherwise awaits every `after()` task before the handler returns (`awaitAllDetachedPromise` in `@opennextjs/aws`, `utils/promise.js`), so no delivery is lost. With the second, the response leaves only once the delivery is done: once a real mailer is plugged in, a request for an address that has an account answers later than one for an address that has not (nothing is sent for it), by the time the mailer takes. A mailer that answers in milliseconds narrows the gap; handing the link to a queue (SQS, ...) instead of sending it closes it.
+{{/if}}

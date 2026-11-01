@@ -16,6 +16,9 @@ The guard is the `emailChangeGuard` plugin (`packages/auth/src/email-change-guar
 {{#if (has "stack" "tanstack-start")}}
 - **A Lambda gives the request no `waitUntil`** (the `sst` and `terraform-aws` deployments run Nitro with the `aws-lambda` preset) and freezes the process when the handler returns, so a delivery nobody waits for could be lost. There `handleAuthRequest` (`apps/web/src/lib/auth/auth.ts`, the handler of `routes/api/auth/$.ts`) holds the answer until the deliveries of the request are done. The cost is a timing difference: an address that has an account answers later than one that has not (nothing is sent for it), by the time the mailer takes, so once a real mailer is plugged in a Lambda deployment can tell the two apart by the response time. A mailer that answers in milliseconds narrows the gap, and handing the link to a queue (SQS, ...) instead of sending it closes it. Do not call `auth.handler` from another route without `handleAuthRequest`.
 {{/if}}
+{{#if (and (has "stack" "nextjs") (has "deployment" "sst"))}}
+- **On SST a Lambda runs the delivery through OpenNext.** `after()` hands the task to the `waitUntil` of OpenNext's streaming Lambda wrapper, which sends the response first, or, with no `waitUntil` (its non-streaming wrapper), OpenNext awaits every `after()` task before the handler returns (`awaitAllDetachedPromise` in `@opennextjs/aws`, `utils/promise.js`), so no delivery is lost in either case. With the second the response leaves only after the delivery: once a real mailer is plugged in, an address that has an account answers later than one that has not (nothing is sent for it), by the time the mailer takes. A mailer that answers in milliseconds narrows the gap, and handing the link to a queue (SQS, ...) instead of sending it closes it.
+{{/if}}
 {{#if admin}}
 - `user.role = admin` can still change any email through the admin API: it stays equivalent to root.
 {{/if}}
