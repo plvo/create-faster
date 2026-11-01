@@ -31,7 +31,7 @@ export function EmailChangeNoticeAlert({ notice }: { notice: EmailChangeNotice |
       <AlertDescription className='text-destructive wrap-anywhere'>{shown.message}</AlertDescription>
     </Alert>
   ) : (
-    <Alert role='status' className='border-green-600/40 text-green-700 dark:text-green-400'>
+    <Alert role='status' className='border-success/40 text-success'>
       <CircleCheckIcon />
       <AlertDescription className='text-current wrap-anywhere'>{shown.message}</AlertDescription>
     </Alert>
