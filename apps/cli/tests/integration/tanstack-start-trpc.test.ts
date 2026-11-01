@@ -201,14 +201,21 @@ describe('TanStack Start + tRPC', () => {
       expect(providers).not.toContain('get-app-url');
     });
 
+    test('the provider wrapper reads both clients from the router context', async () => {
+      const providers = await readTextFile(join(projectPath, 'src/trpc/providers.tsx'));
+      expect(providers).toContain('export function RouterTRPCProvider({ children }: { children: ReactNode }) {');
+      expect(providers).toContain('const { queryClient, trpcClient } = useRouter().options.context;');
+      expect(providers).toContain('<TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>');
+    });
+
     test('getRouter builds the query client, the client and the options proxy per request', async () => {
       const router = await readTextFile(join(projectPath, 'src/router.tsx'));
       expect(router).toContain("import { makeQueryClient } from '@/lib/query-client'");
       expect(router).toContain('const queryClient = makeQueryClient()');
       expect(router).toContain('const trpcClient = makeTRPCClient()');
       expect(router).toContain('const trpc = createTRPCOptionsProxy({ client: trpcClient, queryClient })');
-      expect(router).toContain('context: { queryClient, trpc },');
-      expect(router).toContain('<TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>');
+      expect(router).toContain('context: { queryClient, trpc, trpcClient },');
+      expect(router).toContain('InnerWrap: RouterTRPCProvider,');
       expect(router).toContain('setupRouterSsrQueryIntegration({ router, queryClient })');
     });
 
@@ -216,6 +223,7 @@ describe('TanStack Start + tRPC', () => {
       const root = await readTextFile(join(projectPath, 'src/routes/__root.tsx'));
       expect(root).toContain('queryClient: QueryClient');
       expect(root).toContain('trpc: TRPCOptionsProxy<AppRouter>');
+      expect(root).toContain('trpcClient: TRPCClient<AppRouter>');
       expect(root).toContain('createRootRouteWithContext<RouterContext>()({');
     });
 
