@@ -911,7 +911,7 @@ describe(`${BLUEPRINT} command palette`, () => {
   });
 });
 
-const ORG_DASHBOARDS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start'] as const;
+const ORG_DASHBOARDS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start'];
 
 // What the org dashboards add to the stand-ins above: the role check is the generated access control, and the router of
 // TanStack Start is a route that carries its component and its context.

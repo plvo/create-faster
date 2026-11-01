@@ -162,7 +162,12 @@ describe(`${BLUEPRINT} database roles`, () => {
       './auth-errors': './auth-errors.mjs',
     });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod });
-    await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod, './pagination': './pagination.mjs' });
+    await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod });
+    await generated(`${API}/user-list.ts`, 'user-list.mjs', {
+      zod,
+      './pagination': './pagination.mjs',
+      './search-query': './search-query.mjs',
+    });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     scope = await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
