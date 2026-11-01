@@ -4,7 +4,7 @@ mono:
   name: auth
   path: src/default-roles.ts
 ---
-import { ADMIN_ROLE, type BusinessPermission, isBusinessPermission } from './permissions';
+import { ADMIN_ROLE, type BusinessPermission, isBusinessPermission, ROLE_ID } from './permissions';
 
 export interface DefaultRole {
   label: string;
@@ -18,9 +18,6 @@ export const DEFAULT_ROLES = {
   user: { label: 'User', permissions: ['document.create', 'document.read', 'document.update', 'document.delete'] },
   manager: { label: 'Manager', permissions: ['document.read', 'document.read-any'] },
 } as const satisfies Record<string, DefaultRole>;
-
-// A role identifier is the value of `users.role`, which the admin plugin and the SQL below carry as plain text.
-const ROLE_ID = /^[a-z0-9-]+$/;
 
 function quoted(text: string): string {
   return `'${text.replaceAll("'", "''")}'`;

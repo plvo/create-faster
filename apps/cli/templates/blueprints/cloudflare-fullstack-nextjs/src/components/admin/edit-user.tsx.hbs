@@ -6,17 +6,18 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
-import { roles } from '@repo/auth/permissions';
+import { DEFAULT_ROLE } from '@repo/auth/permissions';
 import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
+import { Skeleton } from '@repo/ui/components/ui/skeleton';
 import { useAppForm } from '@repo/ui/lib/form';
 import { GeneratedPassword } from '@/components/admin/generated-password';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
@@ -40,8 +41,6 @@ const profileSchema = z.object({
   lastName: z.string().max(255),
   phone: z.string().max(40),
 });
-
-const ROLES = Object.keys(roles);
 
 const PROFILE_FIELDS = [
   { name: 'name', label: 'Display name' },
@@ -81,8 +80,12 @@ export function EditUser({ user }: { user: AdminUser }) {
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const isOwnAccount = session?.user.id === user.id;
+  // Role, ban and delete are offered once the session says the account is someone else's, never before.
+  const isOtherAccount = session !== null && session !== undefined && !isOwnAccount;
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'ban' | 'delete' | null>(null);
+  const rolesQuery = useQuery(trpc.users.assignableRoles.queryOptions(undefined, { enabled: isOtherAccount }));
+  const currentRole = user.role ?? DEFAULT_ROLE;
   const profile = {
     name: user.name,
     firstName: user.firstName ?? '',
@@ -185,24 +188,41 @@ export function EditUser({ user }: { user: AdminUser }) {
         </dl>
       </section>
 
-      {!isOwnAccount && (
+      {isOtherAccount && (
         <section className='space-y-3 rounded-lg border bg-card p-4 sm:p-6'>
           <div>
             <h2 className='text-sm font-semibold'>Role</h2>
             <p className='text-sm text-muted-foreground'>Controls what this user can access.</p>
           </div>
-          <Select value={user.role ?? 'user'} onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}>
-            <SelectTrigger aria-label='Role' className='w-48 capitalize'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map((role) => (
-                <SelectItem key={role} value={role} className='capitalize'>
-                  {role}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {rolesQuery.isPending && <Skeleton className='h-9 w-48' />}
+          {rolesQuery.isError && (
+            <p role='alert' className='text-sm text-destructive'>
+              The roles could not be loaded. Reload the page to try again.
+            </p>
+          )}
+          {rolesQuery.data && (
+            <Select
+              value={currentRole}
+              onValueChange={(role) => roleMutation.mutate({ id: user.id, role })}
+              disabled={roleMutation.isPending}
+            >
+              <SelectTrigger aria-label='Role' className='w-48'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {rolesQuery.data.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    {role.label}
+                  </SelectItem>
+                ))}
+                {!rolesQuery.data.some((role) => role.id === currentRole) && (
+                  <SelectItem value={currentRole} disabled>
+                    {currentRole} (no longer exists)
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          )}
         </section>
       )}
 
@@ -223,7 +243,7 @@ export function EditUser({ user }: { user: AdminUser }) {
         </Button>
       </section>
 
-      {!isOwnAccount && (
+      {isOtherAccount && (
         <section className='space-y-3 rounded-lg border border-destructive/30 bg-card p-4 sm:p-6'>
           <div>
             <h2 className='text-sm font-semibold text-destructive'>Danger zone</h2>

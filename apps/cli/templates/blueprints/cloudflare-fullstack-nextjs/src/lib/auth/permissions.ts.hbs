@@ -11,6 +11,14 @@ import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 // database: `permissionsOf` (role-permissions.ts) grants it what `adminStatement` below lists.
 export const ADMIN_ROLE = 'admin';
 
+// The role of an account nobody assigned another: the `defaultRole` of the plugin. It holds only what its rows in the
+// database give it.
+export const DEFAULT_ROLE = 'user';
+
+// A role identifier is the value of `users.role`, which the `admin` plugin splits on `,` and compares as plain text.
+// Exactly one such id, never a list, is what any path may write there.
+export const ROLE_ID = /^[a-z0-9-]+$/;
+
 // Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for
 // `admin` alone, and is never stored.
 export const accountStatement = defaultStatements;
@@ -30,8 +38,9 @@ export const ac = createAccessControl(statement);
 // What `admin` holds: the account administration the plugin grants its administrators, and every business action.
 const adminStatement = { ...adminAc.statements, ...businessStatement } as const;
 
-// The compiled roles of the `admin` plugin, which rejects any other role name when it assigns one. Only `admin`
-// holds permissions here; what `user` and `manager` may do on business resources is read from the database.
+// The compiled roles of the `admin` plugin, whose own endpoints reject any other role name (`guard-administrators.ts`
+// assigns the roles of the database itself). Only `admin` holds permissions here; what `user` and `manager` may do on
+// business resources is read from the database.
 export const roles = {
   admin: ac.newRole(adminStatement),
   user: ac.newRole({}),

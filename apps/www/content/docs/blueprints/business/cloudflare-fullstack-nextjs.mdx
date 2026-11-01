@@ -72,6 +72,8 @@ packages/
 │   ├── auth.ts                         # createAuth(db, cookiePlugin?) factory + admin plugin
 │   ├── permissions.ts                  # the vocabulary: account statement, business statement, compiled admin role
 │   ├── role-permissions.ts             # hasPermission / permissionsOf: what a role may do, read from D1 per request
+│   ├── role-assignment.ts              # assign a role, ban or remove an account: one conditional write that keeps an administrator
+│   ├── guard-administrators.ts         # plugin in front of the admin endpoints that write a role, a ban or a removal
 │   ├── default-roles.ts                # the default roles and the SQL that writes the missing ones
 │   ├── email.ts                        # reset link logger, the seam for a mailer
 │   └── auth-client.ts                  # authClient with adminClient
@@ -104,7 +106,7 @@ Better Auth with the **admin plugin** for account administration, and roles whos
 
 ### User management
 
-The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` with a **Create user** dialog (see [Paginated lists](#paginated-lists)) — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. On your own account the role, ban and delete controls are not offered, and the server refuses them with a 400 (Better Auth for ban and delete, the `refuseOwnRoleChange` plugin for the role). A Better Auth refusal inside a router reaches the toast as its own message (see [tRPC](/docs/modules/api/trpc)). Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
+The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure`). `/admin/users` lists accounts in the shuip `DataTableShell` with a **Create user** dialog (see [Paginated lists](#paginated-lists)) — the server generates a random password and reveals it once. `/admin/users/[id]` is a per-user editor where the display name, first/last name and phone are **inline-edit** fields, alongside role, password reset, ban/unban and delete. The role select lists `admin` and the roles of the database, so a role you create is assignable at once. On your own account the role, ban and delete controls are not offered, and the server refuses them with a 400. A role is exactly one existing id: the Better Auth `admin` plugin reads `user,admin` as an administrator and accepts a list, so the `guardAdministrators` plugin refuses anything else on every path, and the last administrator can never be demoted, banned or removed (the check is part of the write, since D1 has no interactive transaction). Impersonation, setting a password and changing an email are equivalent to root for an `admin` and are documented as such. A Better Auth refusal inside a router reaches the toast as its own message (see [tRPC](/docs/modules/api/trpc)). Credential- and session-touching actions go through the Better Auth admin API per-request (`createAuth(ctx.db).api.*` with the request headers); profile columns are written directly via Drizzle.
 
 ### Dashboard shell
 

@@ -10,7 +10,8 @@ import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
 import { deliverLink } from './email';
 import { emailChangeGuard } from './email-change-guard';
-import { ac, roles } from './permissions';
+import { guardAdministrators } from './guard-administrators';
+import { ac, ADMIN_ROLE, DEFAULT_ROLE, roles } from './permissions';
 import { refuseOwnRoleChange } from './refuse-own-role-change';
 
 const HOUR = 60 * 60;
@@ -46,7 +47,8 @@ export function createAuth(
       ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
     },
     plugins: [
-      admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] }),
+      admin({ ac, roles, defaultRole: DEFAULT_ROLE, adminRoles: [ADMIN_ROLE] }),
+      guardAdministrators(db),
       refuseOwnRoleChange,
       emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),
