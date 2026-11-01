@@ -1,0 +1,4 @@
+{{!-- The `advanced` entry that lets the app run a link's delivery after the response, inside the betterAuth(...) call of a
+factory whose signature takes `runInBackground?: (task: Promise<unknown>) => void`. --}}
+// A link's delivery runs through `runInBackground` when the app gives one, so it does not delay the answer of the request.
+...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),

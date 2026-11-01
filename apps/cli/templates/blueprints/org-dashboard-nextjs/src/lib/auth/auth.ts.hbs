@@ -14,13 +14,15 @@ import { prismaAdapter } from '@better-auth/prisma-adapter';
 {{/if}}
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
+import { emailChangeGuard } from './email-change-guard';
+import { deliverLink } from './link-delivery';
 import { ac, roles } from './permissions';
 import { refuseOwnRoleChange } from './refuse-own-role-change';
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
-export function createAuth(cookiePlugin?: BetterAuthPlugin) {
+export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (task: Promise<unknown>) => void) {
   return betterAuth({
     {{#if (has "orm" "drizzle")}}
     database: drizzleAdapter(db, {
@@ -53,6 +55,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
 
     advanced: {
       {{> better-auth/client-ip}}
+      {{> better-auth/background-tasks}}
     },
     plugins: [
       admin({
@@ -62,6 +65,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
         adminRoles: ['admin'],
       }),
       refuseOwnRoleChange,
+      emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
     emailAndPassword: {
@@ -70,8 +74,10 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin) {
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
     },
+    {{> better-auth/email-change-options}}
     // verbose for explicitly setting the model name
     user: {
+      changeEmail: { enabled: true },
       modelName: 'user',
       fields: {
         email: 'email',

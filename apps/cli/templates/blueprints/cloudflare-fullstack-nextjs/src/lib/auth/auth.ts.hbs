@@ -8,7 +8,7 @@ import { type Database, userAccountTable, userSessionTable, userTable, userVerif
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
-import { deliverLink } from './email';
+import { deliverLink } from './link-delivery';
 import { emailChangeGuard } from './email-change-guard';
 import { guardAdministrators } from './guard-administrators';
 import { ac, ADMIN_ROLE, DEFAULT_ROLE, roles } from './permissions';
@@ -20,7 +20,6 @@ const DAY = 24 * HOUR;
 const isDev = process.env.NODE_ENV === 'development';
 const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
 
-// `runInBackground` keeps a link's delivery from delaying the answer of the request that asked for it (a Worker's `waitUntil`).
 export function createAuth(
   db: Database,
   cookiePlugin?: BetterAuthPlugin,
@@ -44,7 +43,7 @@ export function createAuth(
     }),
     advanced: {
       {{> better-auth/client-ip}}
-      ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
+      {{> better-auth/background-tasks}}
     },
     plugins: [
       admin({ ac, roles, defaultRole: DEFAULT_ROLE, adminRoles: [ADMIN_ROLE] }),
@@ -61,12 +60,7 @@ export function createAuth(
         await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
-    emailVerification: {
-      sendVerificationEmail: async ({ user, url }) => {
-        await deliverLink({ kind: 'change-email', to: user.email, link: url });
-      },
-    },
-    disabledPaths: ['/send-verification-email'],
+    {{> better-auth/email-change-options}}
     user: {
       changeEmail: { enabled: true },
       modelName: 'user',

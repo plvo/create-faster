@@ -1,9 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { QueryBoundary } from '@/components/query-boundary';
 import { AccountForm } from '@/components/profile/account-form';
+import { ChangeEmailForm } from '@/components/profile/change-email-form';
+import { EmailChangeNoticeAlert } from '@/components/profile/email-change-notice';
+import { emailChangeNotice } from '@/lib/auth/email-change';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/profile/account')({
+  validateSearch: (search: Record<string, unknown>): { error?: string; emailChange?: string } => ({
+    error: typeof search.error === 'string' ? search.error : undefined,
+    emailChange: typeof search.emailChange === 'string' ? search.emailChange : undefined,
+  }),
   loader: ({ context }) => {
     void context.queryClient.prefetchQuery(context.trpc.user.me.queryOptions());
   },
@@ -12,9 +19,16 @@ export const Route = createFileRoute('/_dashboard/profile/account')({
 });
 
 function AccountPage() {
+  const { session } = Route.useRouteContext();
+  const notice = emailChangeNotice(Route.useSearch(), session.user.email);
+
   return (
-    <QueryBoundary>
-      <AccountForm />
-    </QueryBoundary>
+    <div className='space-y-6'>
+      <EmailChangeNoticeAlert notice={notice} />
+      <QueryBoundary>
+        <AccountForm />
+      </QueryBoundary>
+      <ChangeEmailForm email={session.user.email} />
+    </div>
   );
 }

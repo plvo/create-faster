@@ -1,0 +1,30 @@
+{{!-- The whole account/page.tsx of a Next.js web app whose AccountForm reads the user from tRPC: the name form, the
+change email form and the notice for the link the user opened. --}}
+import type { Metadata } from 'next';
+import { requireSession } from '@/lib/auth/session';
+import { prefetch, trpc, HydrateClient } from '@/trpc/server';
+import { QueryBoundary } from '@/components/query-boundary';
+import { AccountForm } from '@/components/profile/account-form';
+import { ChangeEmailForm } from '@/components/profile/change-email-form';
+import { EmailChangeNoticeAlert } from '@/components/profile/email-change-notice';
+import { type EmailChangeSearch, emailChangeNotice } from '@/lib/auth/email-change';
+
+export const metadata: Metadata = { title: 'Account' };
+
+export default async function AccountPage({ searchParams }: { searchParams: Promise<EmailChangeSearch> }) {
+  const session = await requireSession();
+  const notice = emailChangeNotice(await searchParams, session.user.email);
+  void prefetch(trpc.user.me.queryOptions());
+
+  return (
+    <div className='space-y-6'>
+      <EmailChangeNoticeAlert notice={notice} />
+      <HydrateClient>
+        <QueryBoundary>
+          <AccountForm />
+        </QueryBoundary>
+      </HydrateClient>
+      <ChangeEmailForm email={session.user.email} />
+    </div>
+  );
+}

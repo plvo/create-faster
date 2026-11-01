@@ -171,7 +171,7 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       '@repo/db': './db.mjs',
       './permissions': './permissions.mjs',
       './role-assignment': './role-assignment.mjs',
-      './email': './email.mjs',
+      './link-delivery': './link-delivery.mjs',
       './email-change-guard': './email-change-guard.mjs',
       './refuse-own-role-change': './refuse-own-role-change.mjs',
       './guard-administrators': './guard-administrators.mjs',
@@ -180,7 +180,7 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
-    await generated(`${AUTH}/email.ts`, 'email.mjs');
+    await generated(`${AUTH}/link-delivery.ts`, 'link-delivery.mjs');
     await generated(`${AUTH}/email-change-guard.ts`, 'email-change-guard.mjs', { ...ownModules, 'better-auth/api': REAL.api });
     await generated(`${AUTH}/role-permissions.ts`, 'role-permissions.mjs', ownModules);
     assignment = await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', ownModules);

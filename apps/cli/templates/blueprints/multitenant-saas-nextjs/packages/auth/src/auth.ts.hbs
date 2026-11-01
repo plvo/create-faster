@@ -18,6 +18,7 @@ import {
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
+import { emailChangeGuard } from './email-change-guard';
 import { invitationLink } from './invitation-link';
 import { deliverLink } from './link-delivery';
 import { ac, admin, member, owner } from './permissions';
@@ -28,7 +29,6 @@ const DAY = 24 * HOUR;
 const isDev = process.env.NODE_ENV === 'development';
 const prodHost = process.env.BETTER_AUTH_URL ? new URL(process.env.BETTER_AUTH_URL).host : undefined;
 
-// `runInBackground` keeps a link's delivery from delaying the answer of the request that asked for it.
 export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (task: Promise<unknown>) => void) {
   return betterAuth({
     baseURL: {
@@ -61,9 +61,10 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
         await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
+    {{> better-auth/email-change-options}}
     advanced: {
       {{> better-auth/client-ip}}
-      ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
+      {{> better-auth/background-tasks}}
     },
     plugins: [
       organization({
@@ -76,6 +77,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
           await deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
+      emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
     databaseHooks: {
@@ -97,6 +99,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
       },
     },
     user: {
+      changeEmail: { enabled: true },
       modelName: 'user',
       fields: {
         email: 'email',

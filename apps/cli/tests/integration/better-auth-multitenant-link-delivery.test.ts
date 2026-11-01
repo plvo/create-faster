@@ -43,8 +43,7 @@ describe('the links of multitenant-saas-nextjs on the generated auth', () => {
     expect(result.exitCode, result.stderr).toBe(0);
     projectPath = join(tempDir, 'mt');
     ({ createAuth, database, delivery } = await loadGeneratedAuth<CreateAuth>(projectPath, tempDir, {
-      modules: ['invitation-link', 'permissions'],
-      deliveryModule: './link-delivery',
+      modules: ['email-change-guard', 'invitation-link', 'permissions'],
     }));
   });
 
@@ -104,7 +103,15 @@ describe('the links of multitenant-saas-nextjs on the generated auth', () => {
     const release = holdDelivery();
 
     const existing = await answeredWithin(post('/request-password-reset', { email: 'owner@example.com', redirectTo: '/reset-password' }));
-    const unknown = await answeredWithin(post('/request-password-reset', { email: 'nobody@example.com', redirectTo: '/reset-password' }));
+    const warned: string[] = [];
+    const realWarn = console.warn;
+    console.warn = (...parts: unknown[]) => {
+      warned.push(parts.map(String).join(' '));
+    };
+    const unknown = await answeredWithin(post('/request-password-reset', { email: 'nobody@example.com', redirectTo: '/reset-password' })).finally(() => {
+      console.warn = realWarn;
+    });
+    expect(warned.join('\n')).toContain('Reset Password: User not found');
 
     expect(existing).not.toBe(timedOut);
     expect(unknown).not.toBe(timedOut);

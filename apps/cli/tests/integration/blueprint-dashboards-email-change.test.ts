@@ -49,6 +49,7 @@ interface ToastHarness {
 }
 
 const WEB = 'apps/web';
+const ACCOUNT_PATH = '/profile/account';
 const CURRENT_EMAIL = 'owner@example.com';
 const NEW_EMAIL = 'a-rather-long-new.address@example.com';
 const PASSWORD = 'correct-horse-battery';
@@ -89,11 +90,55 @@ export const authClient = { changeEmail: async (request) => { harness.requests.p
 const TOAST_STUB = `export const harness = { errors: [] };
 export const toast = { error: (message) => harness.errors.push(message) };`;
 
-describe('cloudflare-fullstack-nextjs email change', () => {
+interface Blueprint {
+  name: string;
+  /** The blueprint renders its own `src/lib/server.ts`, which must export what the deployment server module exports. */
+  ownServerModule: boolean;
+  /** The blueprint's own proxy redirects a signed-out visit to sign in, with the path to come back to. */
+  ownSignInProxy: boolean;
+  /** The module the notice component navigates with, and what the router it hands out records for the expected URL. */
+  router: { module: string; stub: string; expectedReplacement: unknown };
+}
+
+const NEXT_ROUTER_STUB = `export const harness = { replacements: [] };
+export const useRouter = () => ({ replace: (...args) => harness.replacements.push(args) });`;
+
+const START_ROUTER_STUB = `export const harness = { replacements: [] };
+export const useNavigate = () => (...args) => harness.replacements.push(args);`;
+
+const NEXT_ROUTER = {
+  module: 'next/navigation',
+  stub: NEXT_ROUTER_STUB,
+  expectedReplacement: [ACCOUNT_PATH, { scroll: false }],
+};
+const START_ROUTER = {
+  module: '@tanstack/react-router',
+  stub: START_ROUTER_STUB,
+  expectedReplacement: [{ to: ACCOUNT_PATH, search: {}, replace: true }],
+};
+
+const BLUEPRINTS: Blueprint[] = [
+  { name: 'cloudflare-fullstack-nextjs', ownServerModule: true, ownSignInProxy: false, router: NEXT_ROUTER },
+  { name: 'org-dashboard-nextjs', ownServerModule: false, ownSignInProxy: false, router: NEXT_ROUTER },
+  { name: 'org-dashboard-tanstack-start', ownServerModule: false, ownSignInProxy: false, router: START_ROUTER },
+  { name: 'multitenant-saas-nextjs', ownServerModule: false, ownSignInProxy: true, router: NEXT_ROUTER },
+];
+
+const ALERT_STUB = `import { createElement } from './react.mjs';
+export const Alert = ({ variant, role, children }) => createElement('alert', { variant, role }, ...children);
+export const AlertDescription = ({ children }) => createElement('alert-description', {}, ...children);`;
+
+const ICON_STUB = `import { createElement } from './react.mjs';
+export const CircleAlertIcon = () => createElement('icon', { name: 'alert' });
+export const CircleCheckIcon = () => createElement('icon', { name: 'check' });`;
+
+describe.each(BLUEPRINTS)('email change in $name', (blueprint) => {
   let tempDir: string;
   let emailChange: EmailChangeModule;
   let ChangeEmailForm: Component;
-  let react: { beginRender: () => void; resetState: () => void };
+  let EmailChangeNoticeAlert: Component;
+  let navigation: { replacements: unknown[][] };
+  let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
   let form: FormHarness;
   let authClient: AuthClientHarness;
   let toast: ToastHarness;
@@ -101,7 +146,7 @@ describe('cloudflare-fullstack-nextjs email change', () => {
   beforeAll(async () => {
     tempDir = await createTempDir();
     const result = await runCli(
-      ['ec', '--blueprint', 'cloudflare-fullstack-nextjs', '--no-git', '--no-install', '--pm', 'bun'],
+      ['ec', '--blueprint', blueprint.name, '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode).toBe(0);
@@ -113,10 +158,14 @@ describe('cloudflare-fullstack-nextjs email change', () => {
     await Bun.write(join(stubs, 'form.mjs'), FORM_STUB);
     await Bun.write(join(stubs, 'auth-client.mjs'), AUTH_CLIENT_STUB);
     await Bun.write(join(stubs, 'sonner.mjs'), TOAST_STUB);
+    await Bun.write(join(stubs, 'router.mjs'), blueprint.router.stub);
+    await Bun.write(join(stubs, 'alert.mjs'), ALERT_STUB);
+    await Bun.write(join(stubs, 'lucide.mjs'), ICON_STUB);
     react = (await import(join(stubs, 'react.mjs'))) as typeof react;
     form = ((await import(join(stubs, 'form.mjs'))) as { harness: FormHarness }).harness;
     authClient = ((await import(join(stubs, 'auth-client.mjs'))) as { harness: AuthClientHarness }).harness;
     toast = ((await import(join(stubs, 'sonner.mjs'))) as { harness: ToastHarness }).harness;
+    navigation = ((await import(join(stubs, 'router.mjs'))) as { harness: typeof navigation }).harness;
 
     emailChange = await evaluateGeneratedModule<EmailChangeModule>(
       await readTextFile(join(web, 'src/lib/auth/email-change.ts')),
@@ -135,6 +184,18 @@ describe('cloudflare-fullstack-nextjs email change', () => {
       },
       'tsx',
     ));
+    ({ EmailChangeNoticeAlert } = await evaluateGeneratedModule<{ EmailChangeNoticeAlert: Component }>(
+      await readTextFile(join(web, 'src/components/profile/email-change-notice.tsx')),
+      join(stubs, 'email-change-notice.mjs'),
+      {
+        react: join(stubs, 'react.mjs'),
+        [blueprint.router.module]: join(stubs, 'router.mjs'),
+        'lucide-react': join(stubs, 'lucide.mjs'),
+        '@repo/ui/components/ui/alert': join(stubs, 'alert.mjs'),
+        '@/lib/auth/email-change': join(stubs, 'email-change.mjs'),
+      },
+      'tsx',
+    ));
   });
 
   afterAll(async () => {
@@ -143,7 +204,7 @@ describe('cloudflare-fullstack-nextjs email change', () => {
 
   // The blueprint renders its own `src/lib/server.ts` to hand better-auth the Worker's waitUntil. Every page guard and
   // the tRPC context import from it, so it must offer what the one of a plain D1 project offers.
-  test('the blueprint server module exports what the deployment server module of a plain project exports', async () => {
+  test.if(blueprint.ownServerModule)('the blueprint server module exports what the deployment server module of a plain project exports', async () => {
     const plainDir = await createTempDir();
     try {
       const plain = await runCli(
@@ -207,6 +268,76 @@ describe('cloudflare-fullstack-nextjs email change', () => {
       expect(notice({ emailChange: 'confirmed', error: 'TOKEN_EXPIRED' })?.tone).toBe('error');
       expect(notice({})).toBeNull();
       expect(notice({ emailChange: 'other' })).toBeNull();
+    });
+  });
+
+  // A link opened signed out is sent back to the account page with `error=SIGN_IN_REQUIRED`; the sign-in has to bring
+  // the user back to that URL with its query, or the sentence that says to open the link again never shows.
+  test.if(blueprint.ownSignInProxy)(
+    'the proxy sends a signed-out visit to sign in with the whole path and query to come back to',
+    async () => {
+      const stubs = join(tempDir, 'stubs');
+      await Bun.write(join(stubs, 'cookies.mjs'), 'export const getSessionCookie = () => null;');
+      await Bun.write(
+        join(stubs, 'server.mjs'),
+        'export const NextResponse = { redirect: (url) => ({ redirect: String(url) }), next: () => ({ next: true }) };',
+      );
+      const { default: proxy } = await evaluateGeneratedModule<{
+        default: (request: unknown) => { redirect?: string; next?: boolean };
+      }>(await readTextFile(join(tempDir, 'ec', WEB, 'src/proxy.ts')), join(stubs, 'proxy.mjs'), {
+        'better-auth/cookies': join(stubs, 'cookies.mjs'),
+        'next/server': join(stubs, 'server.mjs'),
+      });
+
+      const search = '?emailChange=confirmed&error=SIGN_IN_REQUIRED';
+      const answer = proxy({ url: `http://localhost:3000${ACCOUNT_PATH}${search}`, nextUrl: { pathname: ACCOUNT_PATH, search } });
+      const login = new URL(answer.redirect ?? '');
+      expect([login.pathname, login.searchParams.get('redirect')]).toEqual(['/login', `${ACCOUNT_PATH}${search}`]);
+    },
+  );
+
+  test('the notice and the form use the theme tokens, never a raw Tailwind palette color', async () => {
+    const rawColor = /\b(?:[a-z-]+:)*(?:bg|text|border|ring|fill|stroke)-(?:red|green|blue|amber|yellow|orange|emerald|slate|gray|zinc|neutral|stone)-\d{2,3}\b/;
+    for (const file of ['email-change-notice.tsx', 'change-email-form.tsx']) {
+      expect(await readTextFile(join(tempDir, 'ec', WEB, 'src/components/profile', file))).not.toMatch(rawColor);
+    }
+  });
+
+  describe('the alert the account page shows', () => {
+    const show = async (notice: EmailChangeNotice | null): Promise<RenderedChild[]> => {
+      react.beginRender();
+      return renderElementTree({ type: EmailChangeNoticeAlert, props: { notice } });
+    };
+
+    beforeEach(() => {
+      react.resetState();
+      navigation.replacements = [];
+    });
+
+    test('a failure is a destructive alert with the message', async () => {
+      const tree = await show({ tone: 'error', message: 'This confirmation link has expired.' });
+      const alert = elementsOf(tree).find((element) => element.tag === 'alert');
+      expect(alert?.props.variant).toBe('destructive');
+      expect(textOf(alert as never)).toBe('This confirmation link has expired.');
+    });
+
+    test('a confirmation is a status alert with the message', async () => {
+      const tree = await show({ tone: 'success', message: `Your email address is now ${NEW_EMAIL}.` });
+      const alert = elementsOf(tree).find((element) => element.tag === 'alert');
+      expect(alert?.props.role).toBe('status');
+      expect(textOf(alert as never)).toBe(`Your email address is now ${NEW_EMAIL}.`);
+    });
+
+    test('the query that carried the notice is dropped from the URL once, so a reload does not say it again', async () => {
+      await show({ tone: 'success', message: 'Your email address is now a@example.com.' });
+      react.flushEffects();
+      expect(navigation.replacements).toEqual([blueprint.router.expectedReplacement as unknown[]]);
+    });
+
+    test('a plain visit shows nothing and leaves the URL alone', async () => {
+      expect(await show(null)).toEqual([]);
+      react.flushEffects();
+      expect(navigation.replacements).toEqual([]);
     });
   });
 
@@ -299,5 +430,60 @@ describe('cloudflare-fullstack-nextjs email change', () => {
       const tree = await submit({ newEmail: 'second@example.com', currentPassword: 'wrong' });
       expect(textOf(status(tree) as never)).toBe('');
     });
+  });
+});
+
+// A link's delivery must not be lost on a Lambda, and the generated notes say what that costs: OpenNext awaits the
+// `after()` tasks of a Next.js dashboard before the handler returns, and the Start dashboard holds its auth answer.
+describe.each([
+  ['org-dashboard-nextjs', 'sst', true, false],
+  ['multitenant-saas-nextjs', 'sst', true, true],
+  ['org-dashboard-tanstack-start', 'sst', true, false],
+  ['org-dashboard-tanstack-start', 'terraform-aws', true, false],
+  ['org-dashboard-nextjs', 'terraform-aws', false, false],
+])('the timing note of the email change links of %s on %s', (blueprint, deployment, hasNote, sendsPasswordReset) => {
+  let tempDir: string;
+  let readme: string;
+  let guide: string;
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli(
+      ['lam', '--blueprint', blueprint, '--deployment', deployment, '--no-git', '--no-install', '--pm', 'bun'],
+      tempDir,
+    );
+    expect(result.exitCode, result.stderr).toBe(0);
+    readme = await readTextFile(join(tempDir, 'lam/README.md'));
+    const guideFile = blueprint === 'multitenant-saas-nextjs' ? 'docs/agents/auth-rbac.md' : 'docs/agents/auth.md';
+    guide = await readTextFile(join(tempDir, 'lam', guideFile));
+  });
+
+  afterAll(async () => {
+    await cleanupTempDir(tempDir);
+  });
+
+  test(`the README deploy notes ${hasNote ? 'name' : 'leave out'} the timing difference`, () => {
+    expect(readme.includes('### Delivery of links on Lambda')).toBe(hasNote);
+  });
+
+  test.if(deployment === 'sst' && blueprint !== 'org-dashboard-tanstack-start')(
+    'the auth guide says OpenNext awaits the after() tasks',
+    () => {
+      expect(guide).toContain('OpenNext');
+      expect(guide).toContain('awaits every `after()` task before the handler returns');
+    },
+  );
+
+  // Better Auth answers an email change for a taken address without sending anything, so it is the free address that
+  // waits for the mailer. A password reset sends only for an account that exists, the other way round.
+  const FREE_ADDRESS_WAITS = 'a free address answers later than a taken one';
+  const ACCOUNT_WAITS = 'an address that has an account answers later than one that has not';
+
+  test.if(hasNote)('the notes say the free address is the slow one of an email change', () => {
+    for (const note of [readme, guide]) expect(note).toContain(FREE_ADDRESS_WAITS);
+  });
+
+  test.if(hasNote)('the notes name the password reset as the other way round, only when the blueprint has one', () => {
+    for (const note of [readme, guide]) expect(note.includes(ACCOUNT_WAITS)).toBe(sendsPasswordReset);
   });
 });

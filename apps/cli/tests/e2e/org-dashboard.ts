@@ -8,7 +8,7 @@ const SEED_PASSWORD = 'password';
 export const SEEDED_ADMIN = 'admin@example.com';
 export const SEEDED_MEMBER = 'user@example.com';
 export const SEEDED_READER = 'manager@example.com';
-const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
+export const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 const TIMEOUT_SERVER = 120_000;
 
 export function describeFailure(result: CommandResult): string {

@@ -1,0 +1,52 @@
+{{!-- The whole src/lib/auth/auth.ts of a web app in a turborepo whose auth package takes a runInBackground handler:
+the app's instance, built with its framework's cookie plugin and its way to run a task after the response. --}}
+import { createAuth } from '@repo/auth/auth';
+{{#if (eq stackName "tanstack-start")}}
+import { getRequest } from '@tanstack/react-start/server';
+{{/if}}
+{{> better-auth/cookie-plugin-import}}
+{{#if (eq stackName "nextjs")}}
+import { after } from 'next/server';
+
+// A link's delivery runs after the response (`after`), so the time a request takes does not tell an address that has
+// an account from one that has not.
+export const auth = createAuth({{> better-auth/cookie-plugin}}, (task) => after(task));
+{{else}}
+
+type RequestWithWaitUntil = Request & { waitUntil?: (task: Promise<unknown>) => void };
+
+const unsettled = new WeakMap<Request, Promise<unknown>[]>();
+
+// A link's delivery runs after the response when the server gives the request a `waitUntil` (the Nitro node server
+// does, and waits for it on shutdown), so the time a request takes does not tell an address that has an account from
+// one that has not. A Lambda gives none and freezes the process once the handler returns: the task is kept for
+// `handleAuthRequest`, which holds the answer until it is done, so no link or notice is lost.
+export const auth = createAuth({{> better-auth/cookie-plugin}}, (task) => {
+  const request: RequestWithWaitUntil = getRequest();
+  if (request.waitUntil) request.waitUntil(task);
+  else unsettled.set(request, [...(unsettled.get(request) ?? []), task]);
+});
+
+// How long the answer waits for the deliveries of its request: a mailer that hangs must not hold the answer until the
+// Lambda times out, which on `/verify-email` would show a gateway error after the address is already written.
+const DELIVERY_WAIT_MS = 2_000;
+const timedOut = Symbol('timed out');
+
+// The handler of the auth route. better-auth has already guarded each task against a rejection.
+export async function handleAuthRequest(request: Request): Promise<Response> {
+  const response = await auth.handler(request);
+  const deliveries = unsettled.get(getRequest()) ?? [];
+  if (deliveries.length === 0) return response;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof timedOut>((resolve) => {
+    timer = setTimeout(() => resolve(timedOut), DELIVERY_WAIT_MS);
+  });
+  const outcome = await Promise.race([Promise.all(deliveries), timeout]);
+  clearTimeout(timer);
+  if (outcome === timedOut) {
+    console.warn(`A link delivery was still running after ${DELIVERY_WAIT_MS} ms: the answer left without it.`);
+  }
+  return response;
+}
+{{/if}}

@@ -8,16 +8,12 @@ import { AccountForm } from '@/components/profile/account-form';
 import { AvatarUpload } from '@/components/profile/avatar-upload';
 import { ChangeEmailForm } from '@/components/profile/change-email-form';
 import { EmailChangeNoticeAlert } from '@/components/profile/email-change-notice';
-import { emailChangeNotice } from '@/lib/auth/email-change';
+import { type EmailChangeSearch, emailChangeNotice } from '@/lib/auth/email-change';
 import { requireSession } from '@/lib/auth/session';
 
 export const metadata: Metadata = { title: 'Account' };
 
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string | string[]; emailChange?: string | string[] }>;
-}) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<EmailChangeSearch> }) {
   const session = await requireSession();
   const notice = emailChangeNotice(await searchParams, session.user.email);
 

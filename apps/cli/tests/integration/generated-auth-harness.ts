@@ -55,18 +55,14 @@ interface GeneratedAuth<Factory> {
 /**
  * Evaluates the generated `createAuth` of a project's auth package, with the generated modules it imports
  * (`modules`, in dependency order, as file names without extension under `packages/auth/src`) and the stand-ins above.
- * Other imports of `auth.ts` resolve to the real packages. `deliveryModule` is the module `auth.ts` imports its
- * `deliverLink` from, as written in its source (`./email`, `./link-delivery`). `standIns` replace generated modules
- * that need a database this harness does not have (specifier to source), for a test that never reaches them.
+ * Other imports of `auth.ts` resolve to the real packages, except `./link-delivery`, which is the mailer stand-in.
+ * `standIns` replace generated modules that need a database this harness does not have (specifier to source), for a
+ * test that never reaches them.
  */
 export async function loadGeneratedAuth<Factory>(
   projectPath: string,
   workDir: string,
-  {
-    modules,
-    deliveryModule,
-    standIns = {},
-  }: { modules: string[]; deliveryModule: string; standIns?: Record<string, string> },
+  { modules, standIns = {} }: { modules: string[]; standIns?: Record<string, string> },
 ): Promise<GeneratedAuth<Factory>> {
   const stubs = join(workDir, 'auth-stubs');
   await mkdir(stubs, { recursive: true });
@@ -77,7 +73,7 @@ export async function loadGeneratedAuth<Factory>(
   const imports: Record<string, string> = {
     '@repo/db': join(stubs, 'db.mjs'),
     '@better-auth/drizzle-adapter': join(stubs, 'drizzle.mjs'),
-    [deliveryModule]: join(stubs, 'delivery.mjs'),
+    './link-delivery': join(stubs, 'delivery.mjs'),
   };
   for (const name of ['better-auth', 'better-auth/api', 'better-auth/plugins', 'better-auth/plugins/access']) {
     imports[name] = resolve(name);

@@ -1,0 +1,4 @@
+
+### Delivery of links on Lambda
+
+The email change sends a link to the new address and a notice to the old one through `deliverLink` (`packages/auth/src/link-delivery.ts`), which only logs them until a mailer is plugged in. A Lambda gives the request no `waitUntil` and freezes the process when the handler returns, so the auth route (`handleAuthRequest` in `apps/web/src/lib/auth/auth.ts`) holds its answer until the deliveries of the request are done, for at most two seconds (it logs a warning when a mailer is still running by then), and none is lost while the mailer answers in time. The cost is a timing difference: once a real mailer is plugged in, Better Auth sends nothing for an email change to a taken address, so a free address answers later than a taken one, by the time the mailer takes. A mailer that answers in milliseconds narrows the gap; handing the link to a queue (SQS, ...) instead of sending it closes it.

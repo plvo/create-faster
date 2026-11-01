@@ -160,7 +160,7 @@ A search field under the logo in the sidebar, or Ctrl+K (Cmd+K on macOS), opens 
 ### Profile with View Transitions
 
 Route-based profile tabs using React 19 `ViewTransition` API with directional slide animations. Four sections:
-- **Account** — user info (email, role, joined date) + edit display name
+- **Account** — user info (email, role, joined date), edit display name, and change email: the form asks for the new address and the current password, the new address gets a link, and the address changes once the link is opened in a browser signed in to the account (the old address is told). There is no mailer: the link is logged by `deliverLink` in `packages/auth/src/link-delivery.ts`, the one place to plug a mail provider into. Works while public sign-up is closed
 - **Security** — change password (revokes other sessions)
 - **Sessions** — list active sessions with device/IP info, revoke individual or all others
 - **Preferences** — theme switcher (light/dark/system)

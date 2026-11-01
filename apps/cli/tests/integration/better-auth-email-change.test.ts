@@ -14,21 +14,78 @@ const SECRET = 'integration-secret-integration-secret-0123';
 const PATIENCE = 3_000;
 
 type Handler = (request: Request) => Promise<Response>;
-type CreateAuth = (
-  db: unknown,
-  cookiePlugin?: BetterAuthPlugin,
-  runInBackground?: (task: Promise<unknown>) => void,
-) => { handler: Handler };
+type RunInBackground = (task: Promise<unknown>) => void;
+interface AuthContext {
+  internalAdapter: {
+    createUser: (user: { email: string; name: string; emailVerified: boolean }) => Promise<{ id: string }>;
+    linkAccount: (account: { userId: string; providerId: string; accountId: string; password: string }) => Promise<unknown>;
+  };
+  password: { hash: (password: string) => Promise<string> };
+}
+interface Auth {
+  handler: Handler;
+  $context: Promise<AuthContext>;
+}
+
+// How each blueprint's generated `createAuth` is called, and what its auth package holds.
+interface Blueprint {
+  name: string;
+  modules: string[];
+  tables: string[];
+  closedSignUp: boolean;
+  standIns?: Record<string, string>;
+  build: (createAuth: unknown, runInBackground?: RunInBackground) => Auth;
+}
+
+const ACCOUNT_TABLES = ['user', 'session', 'account', 'verification'];
+const ORGANIZATION_TABLES = ['organization', 'member', 'invitation', 'organizationRole'];
+const ADMIN_MODULES = ['email-change-guard', 'permissions', 'refuse-own-role-change'];
+
+const BLUEPRINTS: Blueprint[] = [
+  {
+    name: 'cloudflare-fullstack-nextjs',
+    modules: ADMIN_MODULES,
+    tables: ACCOUNT_TABLES,
+    closedSignUp: false,
+    // The guard of the admin endpoints runs on the Drizzle database, which this memory database is not.
+    standIns: { './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });" },
+    build: (createAuth, runInBackground) =>
+      (createAuth as (db: unknown, cookie?: BetterAuthPlugin, background?: RunInBackground) => Auth)(
+        {},
+        undefined,
+        runInBackground,
+      ),
+  },
+  ...['org-dashboard-nextjs', 'org-dashboard-tanstack-start'].map(
+    (name): Blueprint => ({
+      name,
+      modules: ADMIN_MODULES,
+      tables: ACCOUNT_TABLES,
+      closedSignUp: true,
+      build: (createAuth, runInBackground) =>
+        (createAuth as (cookie?: BetterAuthPlugin, background?: RunInBackground) => Auth)(undefined, runInBackground),
+    }),
+  ),
+  {
+    name: 'multitenant-saas-nextjs',
+    modules: ['email-change-guard', 'invitation-link', 'permissions'],
+    tables: [...ACCOUNT_TABLES, ...ORGANIZATION_TABLES],
+    closedSignUp: false,
+    build: (createAuth, runInBackground) =>
+      (createAuth as (cookie?: BetterAuthPlugin, background?: RunInBackground) => Auth)(undefined, runInBackground),
+  },
+];
 
 const timedOut = Symbol('the answer waited');
 const answeredWithin = <T>(answer: Promise<T>): Promise<T | typeof timedOut> =>
   Promise.race([answer, Bun.sleep(PATIENCE).then((): typeof timedOut => timedOut)]);
 
-// The generated `createAuth` of cloudflare-fullstack-nextjs, with its generated plugins and permissions, on the real
+// The generated `createAuth` of each dashboard blueprint, with its generated plugins and permissions, on the real
 // better-auth over a memory database: the wiring of `auth.ts` is what runs, not a copy of it.
-describe('the email change on the generated auth of cloudflare-fullstack-nextjs', () => {
+describe.each(BLUEPRINTS)('the email change on the generated auth of $name', (blueprint) => {
   let tempDir: string;
-  let createAuth: CreateAuth;
+  let createAuth: unknown;
+  let auth: Auth;
   let database: DatabaseHarness;
   let delivery: DeliveryHarness;
   let handler: Handler;
@@ -43,15 +100,13 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
     process.env.BETTER_AUTH_SECRET = SECRET;
     tempDir = await createTempDir();
     const result = await runCli(
-      ['ec', '--blueprint', 'cloudflare-fullstack-nextjs', '--no-git', '--no-install', '--pm', 'bun'],
+      ['ec', '--blueprint', blueprint.name, '--no-git', '--no-install', '--pm', 'bun'],
       tempDir,
     );
     expect(result.exitCode, result.stderr).toBe(0);
-    ({ createAuth, database, delivery } = await loadGeneratedAuth<CreateAuth>(join(tempDir, 'ec'), tempDir, {
-      modules: ['email-change-guard', 'permissions', 'refuse-own-role-change'],
-      deliveryModule: './email',
-      // The guard of the admin endpoints runs on the Drizzle database, which this memory database is not.
-      standIns: { './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });" },
+    ({ createAuth, database, delivery } = await loadGeneratedAuth<unknown>(join(tempDir, 'ec'), tempDir, {
+      modules: blueprint.modules,
+      standIns: blueprint.standIns,
     }));
   });
 
@@ -68,7 +123,7 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
   });
 
   beforeEach(() => {
-    database.tables = { user: [], session: [], account: [], verification: [] };
+    database.tables = Object.fromEntries(blueprint.tables.map((table) => [table, []]));
     delivery.delivered = [];
     delivery.gate = Promise.resolve();
     delivery.failing = new Set();
@@ -77,8 +132,9 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
     console.error = (...parts: unknown[]) => {
       logged.push(parts.map(String).join(' '));
     };
-    // The app hands better-auth the Worker's waitUntil: a task runs on after the response.
-    handler = createAuth({}, undefined, (task) => background.push(task)).handler;
+    // The app hands better-auth a way to run a task on after the response.
+    auth = blueprint.build(createAuth, (task) => background.push(task));
+    handler = auth.handler;
   });
 
   afterEach(async () => {
@@ -104,8 +160,18 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
       .map((cookie) => cookie.split(';')[0])
       .join('; ');
 
+  // The account is written through the adapter and signs in with its password, as the seed and the admin panel do it:
+  // two of the blueprints close public sign-up, and the email change must not depend on it.
   const signUp = async (email: string): Promise<string> => {
-    const response = await post('/sign-up/email', { email, password: PASSWORD, name: email });
+    const { internalAdapter, password } = await auth.$context;
+    const user = await internalAdapter.createUser({ email, name: email, emailVerified: false });
+    await internalAdapter.linkAccount({
+      userId: user.id,
+      providerId: 'credential',
+      accountId: user.id,
+      password: await password.hash(PASSWORD),
+    });
+    const response = await post('/sign-in/email', { email, password: PASSWORD });
     expect(response.status, await response.clone().text()).toBe(200);
     return cookieOf(response);
   };
@@ -139,7 +205,17 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
       await Promise.allSettled(background);
 
       expect(await emailOf(cookie)).toBe('owner@example.com');
-      expect((await post('/sign-in/email', { email: 'new@example.com', password: PASSWORD })).status).toBe(401);
+      const warned: string[] = [];
+      const realWarn = console.warn;
+      console.warn = (...parts: unknown[]) => {
+        warned.push(parts.map(String).join(' '));
+      };
+      try {
+        expect((await post('/sign-in/email', { email: 'new@example.com', password: PASSWORD })).status).toBe(401);
+      } finally {
+        console.warn = realWarn;
+      }
+      expect(warned.join('\n')).toContain('User not found');
       expect((await post('/sign-in/email', { email: 'owner@example.com', password: PASSWORD })).status).toBe(200);
     });
 
@@ -149,6 +225,17 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
       expect(response.status).toBe(404);
       await Promise.allSettled(background);
       expect(delivery.delivered).toEqual([]);
+    });
+
+    test.if(blueprint.closedSignUp)('works while public sign-up is closed', async () => {
+      const signUpAttempt = await post('/sign-up/email', { email: 'stranger@example.com', password: PASSWORD, name: 'x' });
+      expect(signUpAttempt.status).toBeGreaterThanOrEqual(400);
+      expect(signUpAttempt.status).toBeLessThan(500);
+
+      const cookie = await signUp('owner@example.com');
+      expect((await requestChange(cookie, 'new@example.com')).status).toBe(200);
+      expect((await open(linkTo('new@example.com'), cookie)).headers.get('location')).toBe(CALLBACK);
+      expect(await emailOf(cookie)).toBe('new@example.com');
     });
 
     test('a free address is answered before its slow delivery finishes, as a taken one is', async () => {
@@ -285,7 +372,7 @@ describe('the email change on the generated auth of cloudflare-fullstack-nextjs'
     });
 
     test('answers as well when the app gives better-auth no background handler, as a script that builds auth does', async () => {
-      handler = createAuth({}).handler;
+      handler = blueprint.build(createAuth).handler;
       const cookie = await signUp('owner@example.com');
       expect((await requestChange(cookie, 'new@example.com')).status).toBe(200);
       const link = linkTo('new@example.com');
