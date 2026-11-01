@@ -43,6 +43,80 @@ interface FakeKeyEvent {
   preventDefault: () => void;
 }
 
+interface FakeTimer {
+  callback: () => void;
+  delay: number;
+  cancelled: boolean;
+}
+
+// The browser the palette meets: a document that keeps the key listeners it is given, a navigator, and the timers the
+// palette sets, kept so a test decides when the delay of the search has elapsed. `release` puts the real ones back.
+function createFakeBrowser() {
+  const document = { listeners: [] as KeyHandler[] };
+  const timers: FakeTimer[] = [];
+  const real = {
+    document: Object.getOwnPropertyDescriptor(globalThis, 'document'),
+    navigator: Object.getOwnPropertyDescriptor(globalThis, 'navigator'),
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout,
+  };
+
+  return {
+    timers,
+    open(userAgent: string): void {
+      document.listeners = [];
+      timers.length = 0;
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: {
+          addEventListener: (_type: string, handler: KeyHandler) => document.listeners.push(handler),
+          removeEventListener: (_type: string, handler: KeyHandler) => {
+            document.listeners = document.listeners.filter((listener) => listener !== handler);
+          },
+        },
+      });
+      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent } });
+    },
+    press(init: Partial<FakeKeyEvent>): FakeKeyEvent {
+      const event: FakeKeyEvent = {
+        key: 'k',
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        defaultPrevented: false,
+        preventDefault: () => {
+          event.defaultPrevented = true;
+        },
+        ...init,
+      };
+      for (const listener of [...document.listeners]) listener(event);
+      return event;
+    },
+    holdTimers(): void {
+      globalThis.setTimeout = ((callback: () => void, delay: number) => {
+        const timer = { callback, delay, cancelled: false };
+        timers.push(timer);
+        return timer;
+      }) as never;
+      globalThis.clearTimeout = ((timer: FakeTimer) => {
+        timer.cancelled = true;
+      }) as never;
+    },
+    elapse(): void {
+      for (const timer of timers.splice(0)) if (!timer.cancelled) timer.callback();
+    },
+    release(): void {
+      globalThis.setTimeout = real.setTimeout;
+      globalThis.clearTimeout = real.clearTimeout;
+      if (real.document) Object.defineProperty(globalThis, 'document', real.document);
+      else Reflect.deleteProperty(globalThis, 'document');
+      if (real.navigator) Object.defineProperty(globalThis, 'navigator', real.navigator);
+    },
+  };
+}
+
 // Stand-ins for what the palette imports. Components render to `{ type, props }` objects (see `renderElementTree`).
 const STUBS: Record<string, string> = {
   'react.mjs': `${REACT_HOOKS_STUB}
@@ -167,47 +241,19 @@ describe(`${BLUEPRINT} command palette`, () => {
   let StartProvider: Component;
   let StartTrigger: Component;
 
-  const fakeDocument = { listeners: [] as KeyHandler[] };
-  const realDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const browser = createFakeBrowser();
+  const { timers } = browser;
 
   const useBrowser = (userAgent: string) => {
-    fakeDocument.listeners = [];
-    Object.defineProperty(globalThis, 'document', {
-      configurable: true,
-      value: {
-        addEventListener: (_type: string, handler: KeyHandler) => fakeDocument.listeners.push(handler),
-        removeEventListener: (_type: string, handler: KeyHandler) => {
-          fakeDocument.listeners = fakeDocument.listeners.filter((listener) => listener !== handler);
-        },
-      },
-    });
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent } });
+    browser.open(userAgent);
     globals.__serverRender = false;
     globals.__pushed = [];
     globals.__searches = [];
     answer({ isPending: true });
-    timers.length = 0;
     react.resetState();
   };
 
-  const press = (init: Partial<FakeKeyEvent>): FakeKeyEvent => {
-    const event: FakeKeyEvent = {
-      key: 'k',
-      metaKey: false,
-      ctrlKey: false,
-      altKey: false,
-      shiftKey: false,
-      repeat: false,
-      defaultPrevented: false,
-      preventDefault: () => {
-        event.defaultPrevented = true;
-      },
-      ...init,
-    };
-    for (const listener of [...fakeDocument.listeners]) listener(event);
-    return event;
-  };
+  const press = browser.press;
 
   // What the database grants each role: the blueprint reads the permission list of the caller, never the role name.
   const GRANTED: Record<string, string[]> = {
@@ -257,14 +303,8 @@ describe(`${BLUEPRINT} command palette`, () => {
   const hintWrapperOf = (trigger: RenderedElement): RenderedElement | undefined =>
     elementsOf([trigger]).find((element) => element.children.some((inner) => typeof inner !== 'string' && inner.tag === 'kbd'));
 
-  // The timers the palette sets, kept so a test decides when the delay of the search has elapsed.
-  const timers: { callback: () => void; delay: number; cancelled: boolean }[] = [];
   const realSetTimeout = globalThis.setTimeout;
-  const realClearTimeout = globalThis.clearTimeout;
-
-  const elapse = (): void => {
-    for (const timer of timers.splice(0)) if (!timer.cancelled) timer.callback();
-  };
+  const { elapse } = browser;
 
   const inputOf = (tree: RenderedChild[]): RenderedElement => {
     const input = elementsOf(tree).find((element) => element.tag === 'input');
@@ -311,7 +351,6 @@ describe(`${BLUEPRINT} command palette`, () => {
     const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
     for (const [name, source] of Object.entries(STUBS)) if (source) await Bun.write(join(stubs, name), source);
-    await Bun.write(join(stubs, 'user-list.mjs'), 'export const MAX_SEARCH_LENGTH = 100;');
     react = (await import(join(stubs, 'react.mjs'))) as typeof react;
 
     const load = async <T,>(file: string, name: string, imports: Record<string, string> = {}): Promise<T> =>
@@ -324,7 +363,7 @@ describe(`${BLUEPRINT} command palette`, () => {
     await evaluateGeneratedModule(
       await readTextFile(join(projectPath, 'packages/api/src/search-query.ts')),
       join(stubs, 'search-query.mjs'),
-      { zod: REAL.zod, './user-list': './user-list.mjs' },
+      { zod: REAL.zod },
     );
     await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
     await load('src/hooks/use-permission.ts', 'permission.mjs', {
@@ -372,9 +411,7 @@ describe(`${BLUEPRINT} command palette`, () => {
   });
 
   afterAll(async () => {
-    if (realDocument) Object.defineProperty(globalThis, 'document', realDocument);
-    else Reflect.deleteProperty(globalThis, 'document');
-    if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator);
+    browser.release();
     await cleanupTempDir(tempDir);
   });
 
@@ -531,21 +568,9 @@ describe(`${BLUEPRINT} command palette`, () => {
       { type: 'users', label: 'Users', items: [{ id: 'u1', title: 'Ada Archer', subtitle: 'ada@example.com', href: '/admin/users/u1' }] },
     ];
 
-    beforeAll(() => {
-      globalThis.setTimeout = ((callback: () => void, delay: number) => {
-        const timer = { callback, delay, cancelled: false };
-        timers.push(timer);
-        return timer;
-      }) as never;
-      globalThis.clearTimeout = ((timer: { cancelled: boolean }) => {
-        timer.cancelled = true;
-      }) as never;
-    });
+    beforeAll(() => browser.holdTimers());
 
-    afterAll(() => {
-      globalThis.setTimeout = realSetTimeout;
-      globalThis.clearTimeout = realClearTimeout;
-    });
+    afterAll(() => browser.release());
 
     const openPalette = async (role = 'admin'): Promise<void> => {
       await mount(role, LINUX);
@@ -908,6 +933,245 @@ describe(`${BLUEPRINT} command palette`, () => {
       const inside = elementsOf(content.children);
       expect(inside.find((element) => element.tag === 'h2')?.children).toEqual(['Command Palette']);
       expect(inside.find((element) => element.props['data-cmdk'])?.props.label).toBe('Command Palette');
+    });
+  });
+});
+
+const ORG_DASHBOARDS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start'];
+
+// What the org dashboards add to the stand-ins above: the role check is the generated access control, and the router of
+// TanStack Start is a route that carries its component and its context.
+const ORG_STUBS: Record<string, string> = {
+  'auth-client.mjs': `import { roles } from './permissions.mjs';
+export const authClient = {
+  admin: { checkRolePermission: ({ role, permissions }) => roles[role]?.authorize(permissions).success ?? false },
+  useSession: () => ({ data: globalThis.__orgSession }),
+};`,
+  'tanstack-router-org.mjs': `export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__navigated ??= []).push(to); } });
+export const useRouteContext = ({ select }) => select(globalThis.__routeContext);
+export const Outlet = () => globalThis.__outlet;
+export const createFileRoute = () => (options) => ({
+  ...options,
+  useRouteContext: () => globalThis.__routeContext,
+});`,
+  'org-leaf.mjs': `export const AppHeader = () => null;
+export const NavUser = () => null;
+export const SidebarLinks = () => null;`,
+  'guards.mjs': 'export const requireSession = async () => globalThis.__session;',
+};
+
+const ORG_IMPORTS: Record<string, string> = {
+  '@repo/auth/auth-client': './auth-client.mjs',
+  '@repo/auth/permissions': './permissions.mjs',
+  '@/lib/auth/permission': './auth-permission.mjs',
+  '@/lib/auth/guards': './guards.mjs',
+  '@/components/navigation/app-header': './org-leaf.mjs',
+  './nav-user': './org-leaf.mjs',
+  './sidebar-links': './org-leaf.mjs',
+};
+
+// The org dashboards carry no permission list of their own: a page is listed when the role of the session may open it.
+const ORG_PAGES: Record<string, string[]> = {
+  admin: ['/', '/contacts', '/admin/users', '/admin/roles'],
+  user: ['/', '/contacts'],
+  manager: ['/', '/contacts'],
+  stranger: ['/'],
+};
+
+const orgGlobals = globalThis as { __routeContext?: unknown; __outlet?: unknown };
+
+describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
+  const isStart = blueprint === 'org-dashboard-tanstack-start';
+  let tempDir: string;
+  let projectPath: string;
+  let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
+  let Layout: Component;
+
+  const browser = createFakeBrowser();
+
+  const useBrowser = () => {
+    browser.open(LINUX);
+    globals.__serverRender = false;
+    globals.__pushed = [];
+    globals.__navigated = [];
+    globals.__searches = [];
+    globals.__searchResult = { isPending: true, isError: false, isFetching: false, data: [] };
+    react.resetState();
+  };
+
+  const pressShortcut = () => browser.press({ ctrlKey: true });
+
+  const renderLayout = async (role: string): Promise<RenderedChild[]> => {
+    globals.__session = { user: { role } };
+    orgGlobals.__routeContext = { session: { user: { role } } };
+    orgGlobals.__outlet = 'Page body';
+    react.beginRender();
+    return renderElementTree({ type: Layout, props: { children: 'Page body' } });
+  };
+
+  const openPalette = async (role: string): Promise<RenderedChild[]> => {
+    useBrowser();
+    await renderLayout(role);
+    react.flushEffects();
+    pressShortcut();
+    return renderLayout(role);
+  };
+
+  const dialogOf = (tree: RenderedChild[]) => elementsOf(tree).find((element) => element.props.role === 'dialog');
+  const optionsOf = (tree: RenderedChild[]): string[] =>
+    elementsOf(tree)
+      .filter((element) => element.props.role === 'option')
+      .map((element) => String(element.props['data-value']));
+  const groupsOf = (tree: RenderedChild[]): string[] =>
+    elementsOf(tree)
+      .filter((element) => element.props.role === 'group')
+      .map((element) => String(element.props['aria-label']));
+
+  // Types the text in the box, lets the delay elapse and renders the answer the server gives for it.
+  const search = async (role: string, text: string, data: unknown[]): Promise<RenderedChild[]> => {
+    const tree = await openPalette(role);
+    const input = must(elementsOf(tree).find((element) => element.tag === 'input'), 'the search input');
+    (input.props.onValueChange as (value: string) => void)(text);
+    await renderLayout(role);
+    react.flushEffects();
+    browser.elapse();
+    globals.__searchResult = { isPending: false, isError: false, isFetching: false, data };
+    return renderLayout(role);
+  };
+
+  const GROUPS = [
+    { type: 'contacts', label: 'Contacts', items: [{ id: 'c1', title: 'Grace Hopper', subtitle: 'grace@navy.example', href: '/contacts/c1' }] },
+    { type: 'users', label: 'Users', items: [{ id: 'u1', title: 'Ada Admin', subtitle: 'ada@example.com', href: '/admin/users/u1' }] },
+  ];
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli([blueprint, '--blueprint', blueprint, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+    projectPath = join(tempDir, blueprint);
+
+    const stubs = join(tempDir, 'stubs');
+    await mkdir(stubs, { recursive: true });
+    const icons = `${STUBS['icons.mjs']}\nexport const Shield = icon('Shield');`;
+    for (const [name, source] of Object.entries({ ...STUBS, ...ORG_STUBS, 'icons.mjs': icons })) {
+      if (source) await Bun.write(join(stubs, name), source);
+    }
+    react = (await import(join(stubs, 'react.mjs'))) as typeof react;
+
+    const imports = {
+      ...IMPORTS,
+      ...ORG_IMPORTS,
+      '@tanstack/react-router': './tanstack-router-org.mjs',
+      '@/lib/auth/session': './session.mjs',
+      '@/components/navigation/command-palette': './command-palette.mjs',
+      './command-palette': './command-palette.mjs',
+      '@/components/navigation/app-sidebar': './app-sidebar.mjs',
+    };
+    const load = async <T,>(file: string, name: string): Promise<T> =>
+      evaluateGeneratedModule<T>(await readTextFile(join(projectPath, 'apps/web', file)), join(stubs, name), imports, 'tsx');
+
+    await evaluateGeneratedModule(
+      await readTextFile(join(projectPath, 'packages/api/src/search-query.ts')),
+      join(stubs, 'search-query.mjs'),
+      { zod: REAL.zod },
+    );
+    await evaluateGeneratedModule(
+      await readTextFile(join(projectPath, 'packages/auth/src/permissions.ts')),
+      join(stubs, 'permissions.mjs'),
+      {
+        'better-auth/plugins/access': Bun.resolveSync('better-auth/plugins/access', import.meta.dir),
+        'better-auth/plugins/admin/access': Bun.resolveSync('better-auth/plugins/admin/access', import.meta.dir),
+      },
+    );
+    await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
+    if (isStart) await load('src/lib/auth/permission.ts', 'auth-permission.mjs');
+    await load('src/hooks/use-permission.ts', 'permission.mjs');
+    await load('src/lib/constants.ts', 'constants.mjs');
+    await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
+    await load('src/components/navigation/command-palette.tsx', 'command-palette.mjs');
+    await load('src/components/navigation/app-sidebar.tsx', 'app-sidebar.mjs');
+
+    if (isStart) {
+      Layout = (await load<{ Route: { component: Component } }>('src/routes/_dashboard.tsx', 'layout.mjs')).Route.component;
+    } else {
+      Layout = (await load<{ default: Component }>('src/app/(dashboard)/layout.tsx', 'layout.mjs')).default;
+    }
+
+    browser.holdTimers();
+  });
+
+  afterAll(async () => {
+    browser.release();
+    await cleanupTempDir(tempDir);
+  });
+
+  test('Ctrl+K in the dashboard layout opens a labelled palette that does not filter', async () => {
+    useBrowser();
+    const closed = await renderLayout('admin');
+    react.flushEffects();
+    expect(dialogOf(closed)).toBeUndefined();
+    pressShortcut();
+    const open = dialogOf(await renderLayout('admin'));
+    expect(open?.props['aria-label']).toBe('Search');
+    expect(open?.props['data-should-filter']).toBe('false');
+  });
+
+  test.each(Object.entries(ORG_PAGES))('the palette lists the pages a %s may open, as the sidebar does', async (role, pages) => {
+    expect(optionsOf(await openPalette(role))).toEqual(pages);
+  });
+
+  test('the search field sits in the sidebar header under the logo and opens the palette of the layout', async () => {
+    useBrowser();
+    const tree = await renderLayout('admin');
+    react.flushEffects();
+    const header = must(elementsOf(tree).find((element) => element.tag === 'header'), 'the sidebar header');
+    const inHeader = elementsOf(header.children);
+    const logo = inHeader.findIndex((element) => element.tag === 'button' && textOf(element).includes(blueprint));
+    const trigger = inHeader.findIndex((element) => element.tag === 'button' && element.props['aria-haspopup'] === 'dialog');
+    expect(logo).toBeGreaterThanOrEqual(0);
+    expect(trigger).toBeGreaterThan(logo);
+
+    (inHeader[trigger]?.props.onClick as () => void)();
+    expect(dialogOf(await renderLayout('admin'))).toBeDefined();
+  });
+
+  test('the palette asks the server for records of the text, from two characters', async () => {
+    await search('admin', 'gr', []);
+    const asked = must(globals.__searches?.at(-1), 'a search') as { input: { query: string }; enabled: boolean; retry: boolean };
+    expect(asked).toMatchObject({ input: { query: 'gr' }, enabled: true, retry: false });
+  });
+
+  test('the groups the server returns are shown under its labels, a contact and a user among them', async () => {
+    const tree = await search('admin', 'gr', GROUPS);
+    expect(groupsOf(tree), 'no page title holds the text').toEqual(['Contacts', 'Users']);
+    expect(optionsOf(tree)).toEqual(['contacts:c1', 'users:u1']);
+    const contact = must(elementsOf(tree).find((element) => element.props['data-value'] === 'contacts:c1'), 'the contact');
+    expect(textOf(contact)).toBe('Grace Hoppergrace@navy.example');
+  });
+
+  test.each([
+    ['a contact', 'contacts:c1', '/contacts/c1'],
+    ['a user', 'users:u1', '/admin/users/u1'],
+  ])('selecting %s closes the palette and goes to its page with the router of the stack', async (_kind, value, path) => {
+    const tree = await search('admin', 'gr', GROUPS);
+    const record = must(elementsOf(tree).find((element) => element.props['data-value'] === value), 'the record');
+    (record.props.onSelect as () => void)();
+    expect(isStart ? globals.__navigated : globals.__pushed).toEqual([path]);
+    expect(isStart ? globals.__pushed : globals.__navigated).toEqual([]);
+    expect(dialogOf(await renderLayout('admin'))).toBeUndefined();
+  });
+
+  describe('the packages', () => {
+    test('the ui package declares cmdk and ships the command component that imports it and the dialog under it', async () => {
+      const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/ui/package.json')));
+      expect(manifest.dependencies).toHaveProperty('cmdk');
+      expect(await readTextFile(join(projectPath, 'packages/ui/src/components/ui/command.tsx'))).toMatch(/from ['"]cmdk['"]/);
+      expect(await readTextFile(join(projectPath, 'packages/ui/src/components/ui/dialog.tsx'))).toContain('export {');
+    });
+
+    test('the api package exports the module the palette imports', async () => {
+      const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/api/package.json')));
+      expect(manifest.exports).toHaveProperty(['./search-query']);
     });
   });
 });

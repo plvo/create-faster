@@ -96,6 +96,16 @@ const idsOf = (rows: { id: string }[]): string[] => rows.map((row) => row.id);
 const linksIn = (html: string, prefix: string): string[] =>
   [...new Set([...html.matchAll(new RegExp(`href="${prefix}/([^"/]+)"`, 'g'))].map((match) => match[1] ?? ''))];
 
+// A statement run by psql in the database container of the project. It sits inside double quotes of the container's
+// shell, so it holds no double quote, dollar sign or backtick.
+async function psql(projectDir: string, statement: string): Promise<void> {
+  const result = await runCommand(
+    ['docker', 'compose', 'exec', '-T', 'postgres', 'sh', '-c', `psql -U postgres -d "$POSTGRES_DB" -c "${statement}"`],
+    projectDir,
+  );
+  expect(result.exitCode, describeFailure(result)).toBe(0);
+}
+
 interface PagingContext {
   server: () => RunningServer;
   projectDir: () => string;
@@ -108,13 +118,7 @@ const EXTRA_ROWS = 25;
 // tRPC procedures, and the HTML the server renders for a page of the URL.
 export function describePaging({ server, projectDir }: PagingContext): void {
   describe('pagination', () => {
-    const sql = async (statement: string): Promise<void> => {
-      const result = await runCommand(
-        ['docker', 'compose', 'exec', '-T', 'postgres', 'sh', '-c', `psql -U postgres -d "$POSTGRES_DB" -c "${statement}"`],
-        projectDir(),
-      );
-      expect(result.exitCode, describeFailure(result)).toBe(0);
-    };
+    const sql = (statement: string): Promise<void> => psql(projectDir(), statement);
 
     beforeAll(async () => {
       const created = `timestamp '2030-01-01 00:00:00' + ((i / 5) || ' minutes')::interval`;
@@ -230,6 +234,110 @@ export function describePaging({ server, projectDir }: PagingContext): void {
       }
       const redirect = await redirectOf(server(), '/admin/users?page=2', member);
       expect([redirect.status, redirect.location?.pathname]).toEqual([307, '/']);
+    });
+  });
+}
+
+interface SearchGroup {
+  type: string;
+  label: string;
+  items: { id: string; title: string; subtitle: string; href: string }[];
+}
+
+const titlesOf = (groups: SearchGroup[], type: string): string[] =>
+  groups.find((group) => group.type === type)?.items.map((item) => item.title) ?? [];
+
+// The palette search against the production server and the seeded Docker database: the real Postgres matches the text,
+// and the real Better Auth decides which types a role may read.
+export function describeSearch({ server, projectDir }: PagingContext): void {
+  describe('palette search', () => {
+    const sql = (statement: string): Promise<void> => psql(projectDir(), statement);
+
+    const records = async (cookie: string, query: string): Promise<SearchGroup[]> => {
+      const result = await queryTrpc<SearchGroup[]>(server(), 'search.records', cookie, { query });
+      expect([query, result.status]).toEqual([query, 200]);
+      return result.data;
+    };
+
+    beforeAll(async () => {
+      await sql(
+        `insert into contacts (id, first_name, last_name, email, company) values ('srch-zelda', 'Zelda', 'Quirk', 'zelda@quirk.example', 'Quirk Labs'), ('srch-percent', 'Pct', '50% Off', null, null), ('srch-plain', 'Pct', '50 Off', null, null), ('srch-underscore', 'Plan_b', 'Notes', null, null), ('srch-letter', 'PlanXb', 'Notes', null, null)`,
+      );
+      await sql(
+        `insert into contacts (id, first_name, last_name, created_at) select 'srch-bulk-' || i, 'Bulkrow', 'Number ' || i, timestamp '2031-01-01 00:00:00' + (i || ' minutes')::interval from generate_series(1, 8) as i`,
+      );
+      await sql(
+        `insert into users (id, name, email, email_verified, role) values ('srch-user', 'Quirkly Person', 'quirkly@example.com', false, 'user')`,
+      );
+    });
+
+    test('an administrator finds contacts and users, each with the page that opens it, whatever the case', async () => {
+      const admin = await signIn(server(), SEEDED_ADMIN, '10.4.1.1');
+      const groups = await records(admin, 'QUIRK');
+      expect(groups.map((group) => [group.type, group.label])).toEqual([
+        ['contacts', 'Contacts'],
+        ['users', 'Users'],
+      ]);
+      expect(groups[0]?.items).toEqual([
+        { id: 'srch-zelda', title: 'Zelda Quirk', subtitle: 'zelda@quirk.example', href: '/contacts/srch-zelda' },
+      ]);
+      expect(groups[1]?.items).toEqual([
+        { id: 'srch-user', title: 'Quirkly Person', subtitle: 'quirkly@example.com', href: '/admin/users/srch-user' },
+      ]);
+      expect(titlesOf(await records(admin, 'zelda qu'), 'contacts')).toEqual(['Zelda Quirk']);
+      expect(titlesOf(await records(admin, 'quirk labs'), 'contacts')).toEqual(['Zelda Quirk']);
+    });
+
+    test('% and _ match themselves, as the contacts list would show them', async () => {
+      const admin = await signIn(server(), SEEDED_ADMIN, '10.4.1.2');
+      expect(titlesOf(await records(admin, '50%'), 'contacts')).toEqual(['Pct 50% Off']);
+      expect(await records(admin, '%%')).toEqual([]);
+      expect(titlesOf(await records(admin, 'n_b'), 'contacts')).toEqual(['Plan_b Notes']);
+      expect(await records(admin, '__')).toEqual([]);
+    });
+
+    test('a type returns five items at most, the newest first', async () => {
+      const admin = await signIn(server(), SEEDED_ADMIN, '10.4.1.3');
+      expect(titlesOf(await records(admin, 'bulkrow'), 'contacts')).toEqual([
+        'Bulkrow Number 8',
+        'Bulkrow Number 7',
+        'Bulkrow Number 6',
+        'Bulkrow Number 5',
+        'Bulkrow Number 4',
+      ]);
+    });
+
+    test('a text under two characters, or nothing, returns no group', async () => {
+      const admin = await signIn(server(), SEEDED_ADMIN, '10.4.1.4');
+      expect(await records(admin, 'q')).toEqual([]);
+      expect(await records(admin, '   ')).toEqual([]);
+    });
+
+    test.each([
+      ['a user', SEEDED_MEMBER, '10.4.1.5'],
+      ['a manager', SEEDED_READER, '10.4.1.6'],
+    ])('%s finds contacts and no users, although a user matches', async (_role, email, ip) => {
+      const cookie = await signIn(server(), email, ip);
+      const groups = await records(cookie, 'quirk');
+      expect(groups.map((group) => group.type)).toEqual(['contacts']);
+      expect(await records(cookie, 'quirkly')).toEqual([]);
+    });
+
+    test('a role that cannot read contacts gets no group, as the contacts list refuses it', async () => {
+      const cookie = await signIn(server(), SEEDED_MEMBER, '10.4.1.7');
+      try {
+        await sql(`update users set role = 'guest' where email = '${SEEDED_MEMBER}'`);
+        expect(await records(cookie, 'quirk')).toEqual([]);
+        const list = await queryTrpc(server(), 'contact.list', cookie, { page: 1, pageSize: 10 });
+        expect(list.status).toBe(403);
+      } finally {
+        await sql(`update users set role = 'user' where email = '${SEEDED_MEMBER}'`);
+      }
+    });
+
+    test('an anonymous request is refused', async () => {
+      const result = await queryTrpc(server(), 'search.records', '', { query: 'quirk' });
+      expect(result.status).toBe(401);
     });
   });
 }

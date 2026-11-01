@@ -4,10 +4,4 @@ mono:
   name: api
   path: src/router/search.ts
 ---
-import { router, protectedProcedure } from '../trpc';
-import { searchInput } from '../search-query';
-import { searchRecords } from '../search';
-
-export const searchRouter = router({
-  records: protectedProcedure.input(searchInput).query(({ ctx, input }) => searchRecords(ctx, input.query)),
-});
+{{> search/router}}

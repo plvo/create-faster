@@ -14,6 +14,7 @@ import {
   callTrpc,
   describeFailure,
   describePaging,
+  describeSearch,
   firstContact,
   post,
   redirectOf,
@@ -262,6 +263,8 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
   });
 
   describePaging({ server: () => server, projectDir: () => projectDir });
+
+  describeSearch({ server: () => server, projectDir: () => projectDir });
 
   test('an unknown page answers not found and the server logs no error', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.5');

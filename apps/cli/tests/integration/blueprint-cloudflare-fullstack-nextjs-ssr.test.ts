@@ -230,9 +230,11 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     const real = { zod: Bun.resolveSync('zod', import.meta.dir) };
     const api = join(tempDir, FULLSTACK, 'packages/api/src');
     await evaluateGeneratedModule(await readTextFile(join(api, 'pagination.ts')), join(stubs, 'pagination.mjs'), real);
+    await evaluateGeneratedModule(await readTextFile(join(api, 'search-query.ts')), join(stubs, 'search-query.mjs'), real);
     await evaluateGeneratedModule(await readTextFile(join(api, 'user-list.ts')), join(stubs, 'user-list.mjs'), {
       ...real,
       './pagination': './pagination.mjs',
+      './search-query': './search-query.mjs',
     });
   });
 

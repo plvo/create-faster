@@ -86,7 +86,7 @@ export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__ev
 export const useLocation = ({ select }) => select({ pathname: globalThis.__pathname ?? '/' });
 export const notFound = () => ({ kind: 'notFound' });
 export const Outlet = () => ({ type: 'div', props: { 'data-component': 'Outlet', children: [] } });
-export const createFileRoute = () => (options) => ({ options, useRouteContext: () => ({ session: {} }) });`,
+export const createFileRoute = () => (options) => ({ options, useRouteContext: () => ({ session: { user: { role: 'admin' } } }) });`,
   'query.mjs': `export const useQueryClient = () => ({ clear() { (globalThis.__events ??= []).push('clear'); } });`,
   'auth-client.mjs': `export const authClient = { signOut: async () => { (globalThis.__events ??= []).push('signOut'); } };`,
   'auth.mjs': `export const auth = { api: { getSession: async () => globalThis.__session ?? null } };

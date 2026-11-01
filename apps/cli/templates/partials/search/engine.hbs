@@ -1,0 +1,51 @@
+{{!-- The whole search-engine.ts file of an api package: the shape of a palette search (the searchable types and the limit per type) and the loop that runs them; the minimum length is `search-query`'s. The searchable types themselves are the project's own, in search.ts. --}}
+import { SEARCH_MIN_LENGTH } from './search-query';
+
+export const SEARCH_LIMIT_PER_TYPE = 5;
+
+export interface SearchItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+}
+
+export interface SearchGroup {
+  type: string;
+  label: string;
+  items: SearchItem[];
+}
+
+// A kind of record the command palette finds. The palette knows no type: it shows the groups `searchGroups` returns.
+// `Context` is what the checks and the queries of the project read (the database, the session).
+export interface SearchableType<Context> {
+  type: string;
+  label: string;
+  // Whether the caller may read this type, by the check the list of the type makes. A type the caller may not read is
+  // skipped, and no group is returned.
+  canSearch: (context: Context) => boolean | Promise<boolean>;
+  // The records matching the text, at most `limit`, each with the page that opens it. A record without a detail page
+  // links to its list page.
+  find: (context: Context, text: string, limit: number) => Promise<SearchItem[]>;
+}
+
+// The groups of records matching the query, for the types the caller may read. A group with no match is left out. The
+// context is loaded once, and only for a query long enough to search.
+export async function searchGroups<Context>(
+  types: SearchableType<Context>[],
+  query: string,
+  loadContext: () => Promise<Context>,
+): Promise<SearchGroup[]> {
+  const text = query.trim();
+  if (text.length < SEARCH_MIN_LENGTH) return [];
+
+  const context = await loadContext();
+  const groups = await Promise.all(
+    types.map(async ({ type, label, canSearch, find }): Promise<SearchGroup | null> => {
+      if (!(await canSearch(context))) return null;
+      const items = (await find(context, text, SEARCH_LIMIT_PER_TYPE)).slice(0, SEARCH_LIMIT_PER_TYPE);
+      return items.length === 0 ? null : { type, label, items };
+    }),
+  );
+  return groups.filter((group) => group !== null);
+}
