@@ -1,6 +1,8 @@
 {{!-- The whole command-palette.tsx file: the Ctrl+K / Cmd+K palette that opens a page of the dashboard.
 CommandPaletteProvider holds the shortcut and the dialog, CommandPaletteTrigger is the search field of the sidebar header.
-It reads from the project: @repo/ui (command, sidebar), useMounted, useAllowedRoutes for the pages a role can open, the `search.records` procedure of the tRPC router for the records, and the router of the stack. --}}
+It reads from the project: @repo/ui (command, sidebar), useMounted, useAllowedRoutes for the pages the user can open, the `search.records` procedure of the tRPC router for the records, and the router of the stack.
+icons="hugeicons": the icons come from Hugeicons (default: lucide-react), and a page icon is a Hugeicons icon object.
+The provider takes the role the layout read on the server and hands it to useAllowedRoutes(role), so the first server render lists the pages of the role. A project whose pages do not depend on the role of the session (their permissions come from the database or from an organization) leaves it out and declares the parameter unused. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { useRouter } from '@tanstack/react-router';
 {{else}}
@@ -19,10 +21,18 @@ import {
   CommandList,
 } from '@repo/ui/components/ui/command';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@repo/ui/components/ui/sidebar';
+{{{{/raw}}}}
+{{#if (eq icons "hugeicons")}}
+import { Search01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+{{else}}
 import { Search } from 'lucide-react';
+{{/if}}
+{{{{raw}}}}
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useMounted } from '@/hooks/use-mounted';
 import { useAllowedRoutes } from '@/lib/allowed-routes';
+import type { RouteProps } from '@/lib/constants';
 import { useTRPC } from '@/trpc/providers';
 
 const SEARCH_DELAY_MS = 250;
@@ -51,6 +61,7 @@ export function isPaletteShortcut(event: KeyboardEvent, platform: Platform): boo
 
 interface CommandPaletteState {
   setOpen: (open: boolean) => void;
+  pages: RouteProps[];
 }
 
 const CommandPaletteContext = createContext<CommandPaletteState | null>(null);
@@ -74,17 +85,10 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 // The palette does not filter (`shouldFilter` is false, the records come filtered from the server), so the pages are
 // matched here, on their title and category.
-function PageResults({
-  role,
-  query,
-  onSelect,
-}: {
-  role: string | null | undefined;
-  query: string;
-  onSelect: (url: string) => void;
-}) {
+function PageResults({ query, onSelect }: { query: string; onSelect: (url: string) => void }) {
+  const { pages: allowed } = useCommandPalette();
   const needle = query.trim().toLowerCase();
-  const pages = useAllowedRoutes(role).filter((page) =>
+  const pages = allowed.filter((page) =>
     [page.title, page.category ?? ''].some((text) => text.toLowerCase().includes(needle)),
   );
   if (pages.length === 0) return null;
@@ -93,7 +97,13 @@ function PageResults({
     <CommandGroup heading='Pages'>
       {pages.map((page) => (
         <CommandItem key={page.url} value={page.url} onSelect={() => onSelect(page.url)}>
+{{{{/raw}}}}
+{{#if (eq icons "hugeicons")}}
+          <HugeiconsIcon icon={page.icon} />
+{{else}}
           {page.icon && <page.icon />}
+{{/if}}
+{{{{raw}}}}
           <span>{page.title}</span>
           {page.category && <span className='ml-auto text-xs text-muted-foreground'>{page.category}</span>}
         </CommandItem>
@@ -166,7 +176,7 @@ function RecordGroups({ search, onSelect }: { search: RecordSearch; onSelect: (h
     <CommandGroup key={group.type} heading={group.label}>
       {group.items.map((item) => (
         <CommandItem key={item.id} value={`${group.type}:${item.id}`} onSelect={() => onSelect(item.href)}>
-          <span className='truncate'>{item.title}</span>
+          <span className='max-w-2/3 shrink-0 truncate'>{item.title}</span>
           <span className='ml-auto truncate text-xs text-muted-foreground'>{item.subtitle}</span>
         </CommandItem>
       ))}
@@ -208,7 +218,7 @@ function RecordStatus({ search }: { search: RecordSearch }) {
 }
 
 // The dialog content is unmounted while the palette is closed, so the text and the search start over at each opening.
-function CommandPaletteBody({ role, onSelect }: { role: string | null | undefined; onSelect: (url: string) => void }) {
+function CommandPaletteBody({ onSelect }: { onSelect: (url: string) => void }) {
   const [query, setQuery] = useState('');
   const search = useRecordSearch(query);
 
@@ -216,7 +226,7 @@ function CommandPaletteBody({ role, onSelect }: { role: string | null | undefine
     <>
       <CommandInput value={query} onValueChange={setQuery} placeholder='Search pages and records...' />
       <CommandList>
-        <PageResults role={role} query={query} onSelect={onSelect} />
+        <PageResults query={query} onSelect={onSelect} />
         <RecordGroups search={search} onSelect={onSelect} />
       </CommandList>
       <RecordStatus search={search} />
@@ -224,15 +234,7 @@ function CommandPaletteBody({ role, onSelect }: { role: string | null | undefine
   );
 }
 
-function CommandPaletteDialog({
-  role,
-  open,
-  onOpenChange,
-}: {
-  role: string | null | undefined;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+function CommandPaletteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
 
   const openPage = (url: string) => {
@@ -254,12 +256,13 @@ function CommandPaletteDialog({
       title='Search'
       description='Search for a page or a record to open.'
     >
-      <CommandPaletteBody role={role} onSelect={openPage} />
+      <CommandPaletteBody onSelect={openPage} />
     </CommandDialog>
   );
 }
 
-export function CommandPaletteProvider({ role, children }: { role: string | null | undefined; children: ReactNode }) {
+export function CommandPaletteProvider({ role, children }: { role?: string | null; children: ReactNode }) {
+  const pages = useAllowedRoutes(role);
   const [open, setOpen] = useState(false);
   const platform = usePlatform();
 
@@ -275,9 +278,9 @@ export function CommandPaletteProvider({ role, children }: { role: string | null
   }, [platform]);
 
   return (
-    <CommandPaletteContext.Provider value={{ setOpen }}>
+    <CommandPaletteContext.Provider value={{ setOpen, pages }}>
       {children}
-      <CommandPaletteDialog role={role} open={open} onOpenChange={setOpen} />
+      <CommandPaletteDialog open={open} onOpenChange={setOpen} />
     </CommandPaletteContext.Provider>
   );
 }
@@ -305,7 +308,13 @@ export function CommandPaletteTrigger() {
           onClick={openPalette}
           className='text-muted-foreground'
         >
+{{{{/raw}}}}
+{{#if (eq icons "hugeicons")}}
+          <HugeiconsIcon icon={Search01Icon} />
+{{else}}
           <Search />
+{{/if}}
+{{{{raw}}}}
           <span>Search</span>
           {shortcut && (
             <span aria-hidden='true' className='ml-auto hidden md:inline-block group-data-[collapsible=icon]:hidden'>

@@ -27,4 +27,5 @@ Link-based, no email required. `packages/api/src/router/invitation.ts` `create` 
 1. Add a table with `organizationId` (FK to `organizations`) in `packages/db/src/schema.ts`.
 2. Add resource + actions to `statement` in `packages/auth/src/permissions.ts` and grant them on the built-in roles.
 3. Add a router under `packages/api/src/router/`, gating with `permissionProcedure(resource, action)`, filtering by `ctx.orgId`, and using `assertInScope` for by-id reads. Register it in `packages/api/src/root.ts`.
-4. Add a sidebar entry (with `permission`) in `apps/web/src/lib/constants.ts` and build the UI.
+4. Add a sidebar entry (with `permission`) in `apps/web/src/lib/constants.ts` and build the UI. The command palette lists the same entries, so it needs no change.
+5. To make the records findable in the palette, add an entry to `SEARCHABLE_TYPES` in `packages/api/src/search.ts`: scope its query to the organization and give it the check of the list procedure.

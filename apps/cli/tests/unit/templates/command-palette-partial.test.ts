@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, test } from 'bun:test';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import type { StackName } from '@/types/stack-name';
 import type { TemplateContext } from '@/types/ctx';
+import { templateSources } from '../../template-sources';
 
 beforeAll(() => {
   setupTemplateEngine();
@@ -66,6 +67,63 @@ describe('the command palette partial', () => {
       expect(palette).not.toContain('useSyncExternalStore');
     }
   });
+});
+
+describe('the command palette partial with Hugeicons', () => {
+  let palette: string;
+
+  beforeAll(() => {
+    palette = renderPartial('navigation/command-palette icons="hugeicons"', 'nextjs');
+  });
+
+  test('it compiles', () => {
+    expect(() => compiles(palette)).not.toThrow();
+  });
+
+  test('the icons are Hugeicons and lucide-react is not imported', () => {
+    expect(palette).toContain("import { Search01Icon } from '@hugeicons/core-free-icons'");
+    expect(palette).toContain("import { HugeiconsIcon } from '@hugeicons/react'");
+    expect(palette).toContain('<HugeiconsIcon icon={page.icon} />');
+    expect(palette).toContain('<HugeiconsIcon icon={Search01Icon} />');
+    expect(palette).not.toContain('lucide-react');
+  });
+
+  test('without the option the icons are lucide', () => {
+    const plain = renderPartial('navigation/command-palette', 'nextjs');
+    expect(plain).toContain("import { Search } from 'lucide-react'");
+    expect(plain).not.toContain('@hugeicons');
+  });
+});
+
+describe('the pages of the command palette', () => {
+  // One mechanism for every blueprint: the layout hands the role it read on the server to the provider, which gives it
+  // to the useAllowedRoutes of the project. A project whose pages do not follow the role simply leaves it out.
+  test.each([
+    ['nextjs', ''],
+    ['nextjs', ' icons="hugeicons"'],
+    ['tanstack-start', ''],
+  ] as const)('on %s%s the provider takes an optional role and passes it on', (stack, options) => {
+    const palette = renderPartial(`navigation/command-palette${options}`, stack);
+    expect(palette).toContain('export function CommandPaletteProvider({ role, children }: { role?: string | null; children: ReactNode })');
+    expect(palette).toContain('useAllowedRoutes(role)');
+  });
+});
+
+describe('the dialog partial', () => {
+  test('it renders the dialog of a ui package, which the command component builds on', () => {
+    const dialog = renderPartial('ui/dialog', 'nextjs');
+    expect(dialog).toContain('function DialogContent(');
+    expect(dialog).not.toContain('{{');
+    expect(() => compiles(dialog)).not.toThrow();
+  });
+
+  test.each(['org-dashboard-nextjs', 'cloudflare-fullstack-nextjs', 'multitenant-saas-nextjs'])(
+    '%s ships the dialog from the partial, not a copy of its own',
+    (blueprint) => {
+      const source = templateSources()[`blueprints/${blueprint}/packages/ui/src/components/ui/dialog.tsx.hbs`];
+      expect(source?.replace(/^---\n[\s\S]*?\n---\n/, '').trim()).toBe('{{> ui/dialog}}');
+    },
+  );
 });
 
 describe('the command component partial', () => {

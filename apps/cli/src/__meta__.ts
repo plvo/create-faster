@@ -1847,6 +1847,9 @@ export const META: Meta = {
           dependencies: {
             'better-auth': BETTER_AUTH_VERSION,
           },
+          exports: {
+            './search-query': './src/search-query.ts',
+          },
         },
         db: {
           scripts: {
@@ -1856,6 +1859,7 @@ export const META: Meta = {
         ui: {
           dependencies: {
             '@tanstack/react-form': '^1.33.5',
+            ...COMMAND_UI_DEPENDENCIES,
           },
         },
       },

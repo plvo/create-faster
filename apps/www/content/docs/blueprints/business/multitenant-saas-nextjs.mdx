@@ -81,7 +81,7 @@ src/
 │           └── preferences/page.tsx                  # Theme switcher
 ├── components/
 │   ├── members/                                      # Members table, invite dialog, invitation link dialog, pending invitations table
-│   ├── navigation/                                   # App sidebar, header with breadcrumb, org switcher, nav-user dropdown, sidebar links
+│   ├── navigation/                                   # App sidebar, header with breadcrumb, org switcher, nav-user dropdown, sidebar links, command palette
 │   ├── profile/                                      # Account form, security form, session list, preferences, tab nav
 │   ├── projects/                                     # Project table, create/edit/delete dialogs, project form
 │   ├── roles/                                        # Roles table, permissions grid, role form dialog
@@ -93,6 +93,7 @@ src/
 ├── lib/
 │   ├── auth/
 │   │   └── session.ts                                # requireSession(): cached session check, redirects to /login or /onboarding
+│   ├── allowed-routes.ts                             # useAllowedRoutes(): the pages the active organization lets the user open (sidebar and palette)
 │   └── constants.ts                                  # ROUTES with per-route { resource, action } permission gating, PROFILE_TABS
 └── proxy.ts                                          # Next.js middleware (proxy export): session cookie guard
 ```
@@ -112,9 +113,13 @@ src/
 
 ```
 src/
-├── root.ts             # appRouter composition (project, organization, member, role, invitation, session, user)
+├── root.ts             # appRouter composition (project, organization, member, role, invitation, session, user, search)
+├── search.ts           # SEARCHABLE_TYPES: the projects and members of the active organization the palette finds
+├── search-engine.ts    # The shape of a searchable type and the loop that runs them
+├── search-query.ts     # Minimum length, maximum length and input of search.records
+├── text-match.ts       # containsText: plain-text, case-insensitive match on your database
 ├── middleware/
-│   └── rbac.ts         # orgProcedure, permissionProcedure(resource, action), assertInScope
+│   └── rbac.ts         # orgProcedure, hasPermission, permissionProcedure(resource, action), assertInScope
 └── router/
     ├── project.ts      # Project CRUD scoped to active org
     ├── organization.ts # Update / delete org + active membership
@@ -122,7 +127,8 @@ src/
     ├── role.ts         # Catalog + dynamic role CRUD via Better Auth org-roles API
     ├── invitation.ts   # Create, list, cancel invitations
     ├── session.ts      # List + revoke sessions
-    └── user.ts         # Profile read + update
+    ├── user.ts         # Profile read + update
+    └── search.ts       # records: the groups of records the palette shows
 ```
 
 ## What's included
@@ -200,6 +206,15 @@ No email sending is required. An admin creates an invitation in the Members sett
 
 The sidebar includes an org switcher component that lists all organizations the user belongs to. Switching orgs updates the active organization in the session without a full page reload.
 
+### Command palette
+
+A search field under the org switcher in the sidebar, or Ctrl+K (Cmd+K on macOS), opens a command palette. It lists the pages the active organization lets you open, from the same `ROUTES` table and the same permission answers as the sidebar, and finds the projects and the members of the active organization from two characters, grouped by type. Selecting a result opens its page: `/projects/<id>`, or `/settings/members` for a member, who has no page of their own.
+
+- The records come from one procedure, `search.records`, which returns `{ type, label, items: [{ id, title, subtitle, href }] }[]`. `SEARCHABLE_TYPES` in `packages/api/src/search.ts` is the one list of what can be found: an entry declares its `canSearch` check, its `find` query and the link of an item, so a new record type is one entry and the palette needs no change.
+- Results come from the active organization of your session only, read on the server, and every query is scoped to it. Switching organization changes what the palette finds.
+- A role finds a type exactly when it can list it. Projects need `project: ['read']` (the check of `permissionProcedure('project', 'read')`, which `project.list` goes through), a custom role included. Members are listed to any member of the organization (`member.list` asks no permission), so any member finds them. A type the caller may not read runs no query and returns no group.
+- The text is matched as plain text and whatever the case: `%` and `_` match themselves. It scans the organization's rows, which is accepted at this size; add an index or a full-text search when a table grows. Each type returns at most five items.
+
 ### Projects CRUD
 
 Full create, read, update, delete for projects scoped to the active organization. Project form with Zod validation via TanStack Form. Project table with inline actions gated by the `project:update` and `project:delete` permissions.
@@ -276,6 +291,7 @@ App (`apps/web`) and root extras declared by the blueprint:
 | `react-error-boundary` | QueryBoundary error handling |
 | `sonner` | Toast notifications |
 | `zod` | Form validation schemas |
+| `cmdk` | Command palette (`packages/ui`) |
 | `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
 
 Shared UI package (`packages/ui`) extras:

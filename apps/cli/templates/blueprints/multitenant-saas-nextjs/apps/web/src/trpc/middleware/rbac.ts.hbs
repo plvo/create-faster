@@ -28,17 +28,28 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 type Statement = typeof statement;
 
-// A resource and action that the statement does not declare fail to compile.
+// Whether the caller's role in the organization holds the permission, as `permissionProcedure` and the palette search
+// ask it. A resource and action that the statement does not declare fail to compile. better-auth refuses a caller who
+// is not a member of the organization.
+export async function hasPermission<Resource extends keyof Statement>(
+  headers: Headers,
+  organizationId: string,
+  resource: Resource,
+  action: Statement[Resource][number],
+): Promise<boolean> {
+  const result = await auth.api.hasPermission({
+    headers,
+    body: { organizationId, permissions: { [resource]: [action] } },
+  });
+  return result.success;
+}
+
 export const permissionProcedure = <Resource extends keyof Statement>(
   resource: Resource,
   action: Statement[Resource][number],
 ) =>
   orgProcedure.use(async ({ ctx, next }) => {
-    const result = await auth.api.hasPermission({
-      headers: ctx.headers,
-      body: { permissions: { [resource]: [action] } },
-    });
-    if (!result.success) {
+    if (!(await hasPermission(ctx.headers, ctx.orgId, resource, action))) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: `Missing permission ${resource}.${action}`,

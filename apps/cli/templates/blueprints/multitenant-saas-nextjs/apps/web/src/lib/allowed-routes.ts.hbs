@@ -1,0 +1,27 @@
+---
+path: src/lib/allowed-routes.ts
+mono:
+  scope: app
+  path: src/lib/allowed-routes.ts
+---
+'use client';
+
+import { useQueries } from '@tanstack/react-query';
+import { type Permissions, permissionQueryOptions } from '@/hooks/use-permission';
+import { ROUTES, type RouteProps } from '@/lib/constants';
+
+{{{{raw}}}}
+// The pages the active organization lets the user open, one list for the sidebar and the command palette. A page that
+// needs a permission is left out until the browser has the answer, and again when the permission is refused. The role
+// the shared components hand over is only a name here: what it may do is in the organization, so it is not read.
+export function useAllowedRoutes(_role?: string | null): RouteProps[] {
+  const answers = useQueries({
+    queries: ROUTES.map(({ permission }) => ({
+      ...permissionQueryOptions(permission ? ({ [permission.resource]: [permission.action] } as Permissions) : {}),
+      enabled: Boolean(permission),
+    })),
+  });
+
+  return ROUTES.filter((route, index) => !route.permission || answers[index]?.data === true);
+}
+{{{{/raw}}}}

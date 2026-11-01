@@ -1,8 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { desc } from '@repo/db';
 import { type PageParams, pageOffset } from './pagination';
-
-export type Column = Parameters<typeof desc>[0];
+import type { Column } from './text-match';
 
 interface PageableQuery<Rows> {
   orderBy: (...order: SQL[]) => { limit: (limit: number) => { offset: (offset: number) => Rows } };
