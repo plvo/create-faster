@@ -68,7 +68,7 @@ src/
 ├── components/
 │   ├── admin/                            # Create user dialog, user actions, user table
 │   ├── contacts/                         # Contact dialog, form, table
-│   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown
+│   ├── navigation/                       # Sidebar, header, breadcrumbs, nav-user dropdown, command palette
 │   ├── table-pagination.tsx              # PagedList: empty state, page past the end, or rows with range, page size and previous/next
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
 │   ├── can.tsx                           # Permission gate component
@@ -86,16 +86,21 @@ src/
 
 ```
 src/
-├── root.ts                   # App router (user, contact, session)
+├── root.ts                   # App router (user, contact, session, search)
 ├── trpc.ts                   # tRPC init with auth context + headers
 ├── pagination.ts             # Page and page size validation shared by the routers and the web app
 ├── page-query.ts             # One page of a table, newest first (server only)
+├── search.ts                 # SEARCHABLE_TYPES: the contacts and users the palette finds
+├── search-engine.ts          # The shape of a searchable type and the loop that runs them
+├── search-query.ts           # Minimum length, maximum length and input of search.records
+├── text-match.ts             # containsText: plain-text, case-insensitive match on your database
 ├── middleware/
 │   └── rbac.ts               # adminProcedure + permissionProcedure(resource, action)
 └── router/
     ├── user.ts               # me, create, list (paginated), count, getById, edit, generatePassword
     ├── contact.ts            # list (paginated), getById, create, update, delete, count
-    └── session.ts            # list, revoke, revokeOthers
+    ├── session.ts            # list, revoke, revokeOthers
+    └── search.ts             # records: the groups of records the palette shows
 ```
 
 ### Auth package (packages/auth)
@@ -142,6 +147,15 @@ Full create, read, update, delete for contacts. Contact form with validation (Ta
 - The total is its own `count` query, so changing page does not count again; a mutation that adds or removes a row invalidates it.
 - The page prefetches the page the URL names and dehydrates that one page. A page past the end shows an empty state with a button to the last page.
 - `PagedList` (`src/components/table-pagination.tsx`) renders the empty state, the page past the end, or the rows with a pager: range and total, a page size select and previous/next buttons. A new list calls `usePageParams()` for the page, asks for its rows with `{ page, pageSize }` and for its `count`, and renders its table inside `PagedList`.
+
+### Command palette
+
+A search field under the logo in the sidebar, or Ctrl+K (Cmd+K on macOS), opens a command palette. It lists the pages the role may open, from the same `ROUTES` table and permission filter as the sidebar, and finds contacts and users from two characters, grouped by type. Selecting a result opens its page: `/contacts/<id>` or `/admin/users/<id>`.
+
+- The records come from one procedure, `search.records`, which returns `{ type, label, items: [{ id, title, subtitle, href }] }[]`. `SEARCHABLE_TYPES` in `packages/api/src/search.ts` is the one list of what can be found: an entry declares its `canSearch` check, its `find` query and the link of an item, so a new record type is one entry and the palette needs no change.
+- A role finds a type exactly when it can list it. Contacts need `contact: ['read']` (the check of `permissionProcedure('contact', 'read')`, which `contact.list` goes through) and users need the `admin` role (the check of `adminProcedure`, behind `user.list`). A type the caller may not read runs no query and returns no group, so the palette reveals nothing the tables would refuse.
+- The text is matched as plain text and whatever the case: `%` and `_` match themselves. `containsText` uses the substring function of your database, never `LIKE`, so the match is the same on each. It scans the table, which is accepted at this size; add an index or a full-text search when a table grows.
+- Each type returns at most five items, newest contacts first and users by name. The palette waits for a pause in typing, drops the answer for an older text, and tells apart a search that is running, one that found nothing and one that failed (with a way to try again).
 
 ### Profile with View Transitions
 
@@ -196,6 +210,7 @@ The packages below are declared on the `web` app; the `batch` app receives none 
 | `sonner` | Toast notifications |
 | `zod` | Form validation schemas |
 | `vaul` | Drawer behind the responsive dialog (mobile) |
+| `cmdk` | Command palette (`packages/ui`) |
 | `@faker-js/faker` | Demo data for the seed fixtures (dev only) |
 
 ## Environment variables
