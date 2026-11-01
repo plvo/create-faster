@@ -64,7 +64,7 @@ export async function callTrpc<T>(server: RunningServer, procedure: string, cook
   return { status: response.status, data: body.result?.data.json as T };
 }
 
-async function queryTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<TrpcResult<T>> {
+export async function queryTrpc<T>(server: RunningServer, procedure: string, cookie: string, input?: unknown): Promise<TrpcResult<T>> {
   const query = input === undefined ? '' : `?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
   const response = await fetch(new URL(`/api/trpc/${procedure}${query}`, server.url), { headers: { cookie } });
   const body = (await response.json()) as { result?: { data: { json: T } } };
