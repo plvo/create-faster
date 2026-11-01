@@ -14,6 +14,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 {{#if (hasLibrary "tanstack-query")}}
 import type { QueryClient } from '@tanstack/react-query'
 {{#if (hasLibrary "trpc")}}
+import type { TRPCClient } from '@trpc/client'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 {{/if}}
 {{else if (hasLibrary "trpc")}}
@@ -38,6 +39,7 @@ interface RouterContext {
   queryClient: QueryClient
 {{#if (hasLibrary "trpc")}}
   trpc: TRPCOptionsProxy<AppRouter>
+  trpcClient: TRPCClient<AppRouter>
 {{/if}}
 {{else}}
   trpc: TRPCClient<AppRouter>

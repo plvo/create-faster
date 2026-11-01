@@ -9,7 +9,7 @@ import { makeQueryClient } from '@/lib/query-client'
 {{#if (hasLibrary "trpc")}}
 import { makeTRPCClient } from '@/trpc/client'
 {{#if (hasLibrary "tanstack-query")}}
-import { TRPCProvider } from '@/trpc/providers'
+import { RouterTRPCProvider } from '@/trpc/providers'
 {{/if}}
 {{/if}}
 
@@ -29,7 +29,7 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
 {{#if (hasLibrary "tanstack-query")}}
-    context: { queryClient{{#if (hasLibrary "trpc")}}, trpc{{/if}} },
+    context: { queryClient{{#if (hasLibrary "trpc")}}, trpc, trpcClient{{/if}} },
 {{else if (hasLibrary "trpc")}}
     context: { trpc: makeTRPCClient() },
 {{else}}
@@ -39,11 +39,7 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
 {{#if (hasLibrary "tanstack-query")}}
 {{#if (hasLibrary "trpc")}}
-    Wrap: ({ children }) => (
-      <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
-        {children}
-      </TRPCProvider>
-    ),
+    InnerWrap: RouterTRPCProvider,
 {{/if}}
 {{/if}}
   })

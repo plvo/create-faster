@@ -85,6 +85,13 @@ describe('templates pass every linter with warnings denied', () => {
     expect(badge).not.toMatch(/asChild/);
   });
 
+  test('the TanStack Start router defines no component inside getRouter', async () => {
+    const router = await read(await generate('lint-start-router', ['--app', 'web:tanstack-start:tanstack-query,trpc']), 'src/router.tsx');
+    expect(router).toContain('InnerWrap: RouterTRPCProvider,');
+    expect(router).not.toMatch(/\bWrap: /);
+    expect(router).not.toMatch(/<[A-Z]/);
+  });
+
   test('oxlint allows the triple-slash reference of sst.config.ts, and only under sst', async () => {
     const config = await read(await generate('lint-sst', ['--blueprint', 'lambda-sst-hono', '--linter', 'oxc']), 'oxlint.config.mts');
     expect(config).toMatch(/files: \['sst\.config\.ts'\][\s\S]*'typescript\/triple-slash-reference': 'off'/);

@@ -4,6 +4,7 @@ import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import type { QueryClient } from '@tanstack/react-query';
 import { formDevtoolsPlugin } from '@tanstack/react-form-devtools';
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
+import type { TRPCClient } from '@trpc/client';
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
@@ -15,6 +16,7 @@ import appCss from '../styles.css?url';
 interface RouterContext {
   queryClient: QueryClient;
   trpc: TRPCOptionsProxy<AppRouter>;
+  trpcClient: TRPCClient<AppRouter>;
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
