@@ -10,6 +10,7 @@ import { router } from './trpc';
 import { documentsRouter } from './router/documents';
 import { helloRouter } from './router/hello';
 import { permissionsRouter } from './router/permissions';
+import { rolesRouter } from './router/roles';
 import { searchRouter } from './router/search';
 import { usersRouter } from './router/users';
 
@@ -17,6 +18,7 @@ export const appRouter = router({
   hello: helloRouter,
   documents: documentsRouter,
   permissions: permissionsRouter,
+  roles: rolesRouter,
   search: searchRouter,
   users: usersRouter,
 });

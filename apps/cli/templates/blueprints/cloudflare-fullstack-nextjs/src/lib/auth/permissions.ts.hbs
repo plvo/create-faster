@@ -19,6 +19,20 @@ export const DEFAULT_ROLE = 'user';
 // Exactly one such id, never a list, is what any path may write there.
 export const ROLE_ID = /^[a-z0-9-]+$/;
 
+// The `admin` plugin looks a role up by plain object key, so a role named after a key every object has (`constructor`)
+// resolves to that member and the plugin's endpoints fail with a 500 for the account that holds it. No path accepts one.
+export function isInheritedKey(id: string): boolean {
+  return id in Object.prototype;
+}
+
+export function isRoleId(value: unknown): value is string {
+  return typeof value === 'string' && ROLE_ID.test(value) && !isInheritedKey(value);
+}
+
+// The longest identifier and label a role created in the dashboard can have.
+export const MAX_ROLE_ID_LENGTH = 40;
+export const MAX_ROLE_LABEL_LENGTH = 64;
+
 // Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for
 // `admin` alone, and is never stored.
 export const accountStatement = defaultStatements;

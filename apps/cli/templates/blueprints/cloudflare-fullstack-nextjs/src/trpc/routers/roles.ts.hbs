@@ -1,0 +1,40 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/router/roles.ts
+---
+import { createRole, deleteRole, describeRoles, RoleChangeRefused, setRolePermission } from '@repo/auth/role-management';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { adminProcedure } from '../middleware/rbac';
+import { router } from '../trpc';
+
+// A refusal of the rules as the answer the client shows: its message says why. The inputs are plain strings because the
+// rules (role-management.ts) are the one validation, with a sentence for the toast instead of a schema report.
+async function refusing<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof RoleChangeRefused) throw new TRPCError({ code: error.code, message: error.message });
+    throw error;
+  }
+}
+
+// Only the literal `admin` role manages roles. It is `adminProcedure`, never a permission a role could be granted:
+// a role that could edit the matrix could grant itself everything.
+export const rolesRouter = router({
+  matrix: adminProcedure.query(({ ctx }) => describeRoles(ctx.db)),
+
+  create: adminProcedure
+    .input(z.object({ id: z.string(), label: z.string() }))
+    .mutation(({ ctx, input }) => refusing(() => createRole(ctx.db, input))),
+
+  setPermission: adminProcedure
+    .input(z.object({ id: z.string(), permission: z.string(), granted: z.boolean() }))
+    .mutation(({ ctx, input }) => refusing(() => setRolePermission(ctx.db, input.id, input.permission, input.granted))),
+
+  remove: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(({ ctx, input }) => refusing(() => deleteRole(ctx.db, input.id))),
+});

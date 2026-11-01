@@ -8,10 +8,9 @@ import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from 'better-auth/api';
 import { parseUserOutput } from 'better-auth/db';
 import type { Database } from '@repo/db';
-import { ADMIN_ROLE } from './permissions';
+import { ADMIN_ROLE, DEFAULT_ROLE } from './permissions';
 import {
   AccountChangeRefused,
-  assertExistingRole,
   assignRole,
   claimBan,
   readRoleId,
@@ -58,7 +57,10 @@ async function refusing<T>(run: () => Promise<T>): Promise<T> {
 // role, a ban or a removal, whoever calls them (the tRPC procedures call the same endpoints):
 //
 // - a caller must be exactly `admin`;
-// - a role is exactly one id that exists, in `/admin/set-role` and `/admin/create-user`;
+// - a role is exactly one id that exists in `/admin/set-role`, and `/admin/create-user` takes only `admin` or the default
+//   role: the plugin writes the account after this plugin has read, so a role that can be deleted could be gone by then
+//   and the account would hold a role nobody has. The other roles are given with `set-role`, whose write is conditional
+//   on the role being there (`users.create` does exactly that);
 // - `/admin/update-user` writes no role and no ban (`set-role` and `ban-user` are the paths);
 // - the last administrator is never demoted, banned or removed, in the write itself (role-assignment.ts).
 //
@@ -80,7 +82,11 @@ export function guardAdministrators(db: Database) {
             const data = isRecord(body.data) ? body.data : {};
             await refusing(async () => {
               for (const requested of [body.role, data.role]) {
-                if (requested !== undefined) await assertExistingRole(db, readRoleId(requested));
+                if (requested === undefined) continue;
+                const role = readRoleId(requested);
+                if (role !== ADMIN_ROLE && role !== DEFAULT_ROLE) {
+                  throw new AccountChangeRefused('BAD_REQUEST', 'Create the account first, then give it that role with set-role');
+                }
               }
             });
           }),

@@ -103,6 +103,7 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
   let db: unknown;
   let auth: Auth;
   let emails = 0;
+  let beforeQuery: ((query: string) => void) | null = null;
 
   const addRole = (id: string, label = id) => sqlite.run('INSERT INTO roles (id, label) VALUES (?, ?)', [id, label]);
   const roleOf = (id: string) => (sqlite.query('SELECT role FROM users WHERE id = ?').get(id) as { role: string } | null)?.role;
@@ -240,7 +241,8 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     sqlite = new Database(':memory:');
     sqlite.run('PRAGMA foreign_keys = ON');
     for (const name of TABLES) createTable(sqlite, schema[name] as SQLiteTable);
-    db = drizzle(sqlite);
+    beforeQuery = null;
+    db = drizzle(sqlite, { logger: { logQuery: (query) => beforeQuery?.(query) } });
     auth = createAuth(db);
     addRole('user', 'User');
     addRole('manager', 'Manager');
@@ -319,20 +321,72 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       expect(sqlite.query('SELECT name FROM users WHERE id = ?').get(target.id)).toEqual({ name: 'Renamed' });
     });
 
-    test('/admin/create-user creates the account with a compiled role that exists, in body.role and in data.role', async () => {
+    test('/admin/create-user creates the account on the default role or on admin, in body.role and in data.role', async () => {
       const admin = await addAccount('admin', 'admin');
       const cookie = await signIn(admin.email);
-      for (const [index, body] of [
-        { role: 'manager' },
-        { data: { role: 'manager' } },
-        {},
-      ].entries()) {
+      for (const [index, [body, expected]] of (
+        [
+          [{ role: 'admin' }, 'admin'],
+          [{ data: { role: 'admin' } }, 'admin'],
+          [{ role: 'user' }, 'user'],
+          [{}, 'user'],
+        ] as const
+      ).entries()) {
         const email = `created${index}@example.com`;
         const answer = await request(cookie, '/admin/create-user', { email, password: PASSWORD, name: 'Created', ...body });
         expect(answer.status, JSON.stringify(answer.json)).toBe(200);
-        const expected = index === 2 ? 'user' : 'manager';
         expect(sqlite.query('SELECT role FROM users WHERE email = ?').get(email)).toEqual({ role: expected });
       }
+    });
+
+    // The plugin writes the account after the guard has read: a role that can be deleted (every role but admin and the
+    // default one) could be gone by then, leaving an account on a role nobody has. The account is created on the default
+    // role and the role is given with set-role, whose write is conditional on the role being there (users.create does so).
+    test.each([
+      ['a compiled role the database has', 'manager'],
+      ['a role only the database has', 'auditor'],
+    ])('/admin/create-user refuses %s, in body.role and in data.role, and creates no account', async (_, role) => {
+      addRole('auditor', 'Auditor');
+      const admin = await addAccount('admin', 'admin');
+      const cookie = await signIn(admin.email);
+      for (const [index, body] of [{ role }, { data: { role } }].entries()) {
+        const email = `deferred${index}@example.com`;
+        const answer = await request(cookie, '/admin/create-user', { email, password: PASSWORD, name: 'Deferred', ...body });
+        expect(answer.status).toBe(400);
+        expect(answer.json?.message).toContain('set-role');
+        expect(sqlite.query('SELECT 1 FROM users WHERE email = ?').get(email)).toBeNull();
+      }
+    });
+
+    test('a role deleted while an account is being created never leaves the account on it', async () => {
+      const admin = await addAccount('admin', 'admin');
+      const cookie = await signIn(admin.email);
+      // The second administrator deletes the role at the moment the plugin writes the account.
+      beforeQuery = (query) => {
+        if (query.startsWith('insert into "users"')) sqlite.run("DELETE FROM roles WHERE id = 'manager'");
+      };
+      const answer = await request(cookie, '/admin/create-user', { email: 'racer@example.com', password: PASSWORD, name: 'Racer', role: 'manager' });
+      beforeQuery = null;
+
+      expect(answer.status).toBe(400);
+      expect(sqlite.query("SELECT id FROM users WHERE role <> 'admin' AND role NOT IN (SELECT id FROM roles)").all()).toEqual([]);
+    });
+
+    test('a role row named after a key every object has is never assigned: the plugin reads roles by plain key', async () => {
+      addRole('constructor', 'Constructor');
+      const admin = await addAccount('admin', 'admin');
+      const target = await addAccount('target', 'user');
+      const cookie = await signIn(admin.email);
+      for (const [path, body] of [
+        ['/admin/set-role', { userId: target.id, role: 'constructor' }],
+        ['/admin/create-user', { email: 'proto@example.com', password: PASSWORD, name: 'Proto', role: 'constructor' }],
+      ] as const) {
+        const answer = await request(cookie, path, body);
+        expect([path, answer.status]).toEqual([path, 400]);
+      }
+      expect(roleOf(target.id)).toBe('user');
+      expect(sqlite.query("SELECT 1 FROM users WHERE email = 'proto@example.com'").get()).toBeNull();
+      await expect(assignment.assignRole(db, target.id, 'constructor')).rejects.toThrow('reserved');
     });
 
     test.each(NOT_ONE_EXISTING_ROLE)('/admin/create-user refuses %s, in body.role and in data.role, and creates no account', async (_, role) => {
@@ -383,8 +437,11 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     });
 
     test('a call from the server without a session or headers still creates an account, under the same role rule', async () => {
-      const created = await auth.api.createUser({ body: { email: 'trusted@example.com', password: PASSWORD, name: 'Trusted', role: 'manager' } });
-      expect(roleOf(created.user.id)).toBe('manager');
+      const created = await auth.api.createUser({ body: { email: 'trusted@example.com', password: PASSWORD, name: 'Trusted', role: 'admin' } });
+      expect(roleOf(created.user.id)).toBe('admin');
+      await expect(
+        auth.api.createUser({ body: { email: 'trusted3@example.com', password: PASSWORD, name: 'Trusted', role: 'manager' } }),
+      ).rejects.toMatchObject({ statusCode: 400 });
       await expect(
         auth.api.createUser({ body: { email: 'trusted2@example.com', password: PASSWORD, name: 'Trusted', role: ['user', 'admin'] } }),
       ).rejects.toMatchObject({ statusCode: 400 });
@@ -603,23 +660,24 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     });
 
     // `ghost` and `constructor` pass the zod pattern of the procedure, so they reach the guard: the first has no row, the
-    // second is a key the plugin finds in its compiled roles. Each leaves the account on the default role, read back.
-    test.each(['ghost', 'constructor'])('users.create with the id %s, which no role has, leaves the account on the default role and says why', async (role) => {
+    // second is a key every object has, which the plugin would find in its compiled roles. Each leaves the account on the
+    // default role, read back, and says why.
+    test.each([
+      ['ghost', 'No role has that id'],
+      ['constructor', '"constructor" is reserved and cannot be a role id'],
+    ])('users.create with the id %s leaves the account on the default role and says why', async (role, message) => {
       const caller = await callerOf(await addAccount('admin', 'admin'));
       const email = `${role}@example.com`;
-      await expect(caller.users.create({ name: 'Gus', email, role })).rejects.toMatchObject({
-        code: 'BAD_REQUEST',
-        message: 'No role has that id',
-      });
+      await expect(caller.users.create({ name: 'Gus', email, role })).rejects.toMatchObject({ code: 'BAD_REQUEST', message });
       expect(sqlite.query('SELECT role FROM users WHERE email = ?').get(email)).toEqual({ role: 'user' });
     });
 
-    test.each(['ghost', 'constructor'])('users.setRole with the id %s, which no role has, leaves the role as it was', async (role) => {
+    test.each([
+      ['ghost', 'No role has that id'],
+      ['constructor', '"constructor" is reserved and cannot be a role id'],
+    ])('users.setRole with the id %s leaves the role as it was', async (role, message) => {
       const [admin, target] = [await addAccount('admin', 'admin'), await addAccount('target', 'manager')];
-      await expect((await callerOf(admin)).users.setRole({ id: target.id, role })).rejects.toMatchObject({
-        code: 'BAD_REQUEST',
-        message: 'No role has that id',
-      });
+      await expect((await callerOf(admin)).users.setRole({ id: target.id, role })).rejects.toMatchObject({ code: 'BAD_REQUEST', message });
       expect(roleOf(target.id)).toBe('manager');
     });
 
