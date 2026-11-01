@@ -1,0 +1,207 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/role-management.ts
+---
+import {
+  and,
+  count,
+  type Database,
+  eq,
+  notExists,
+  rolePermissionTable,
+  roleTable,
+  sql,
+  userTable,
+} from '@repo/db';
+import {
+  ADMIN_PERMISSIONS,
+  ADMIN_ROLE,
+  BUSINESS_PERMISSIONS,
+  DEFAULT_ROLE,
+  isBusinessPermission,
+  isInheritedKey,
+  MAX_ROLE_ID_LENGTH,
+  MAX_ROLE_LABEL_LENGTH,
+  PERMISSIONS,
+  ROLE_ID,
+} from './permissions';
+import { listRoleMatrix } from './role-permissions';
+
+export type RoleChangeRefusalCode = 'BAD_REQUEST' | 'NOT_FOUND' | 'CONFLICT';
+
+// A change the rules refuse, as the status it answers with. The roles router turns it into a `TRPCError`. No message
+// contains `does not exist`, `table` or `column`: better-auth logs a thrown message with one of them at error level, as
+// a database failure, and a refusal is an answer.
+export class RoleChangeRefused extends Error {
+  constructor(
+    readonly code: RoleChangeRefusalCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'RoleChangeRefused';
+  }
+}
+
+const refuse = (code: RoleChangeRefusalCode, message: string) => new RoleChangeRefused(code, message);
+const unknownRole = () => refuse('NOT_FOUND', 'No role has that id');
+
+// Only `admin` manages roles, and its own role is compiled: it has no rows to edit and none to delete. The default role
+// is the one every new account starts on (`defaultRole` of the plugin, written with no check), so it is edited but
+// neither created nor deleted here. A key every object has (`constructor`) is reserved too: see `isInheritedKey`.
+const RESERVED_ROLE_IDS: readonly string[] = [ADMIN_ROLE, DEFAULT_ROLE];
+
+const isReserved = (id: string): boolean => RESERVED_ROLE_IDS.includes(id) || isInheritedKey(id);
+
+function readRoleId(value: unknown): string {
+  if (typeof value !== 'string' || value.length > MAX_ROLE_ID_LENGTH || !ROLE_ID.test(value)) {
+    throw refuse('BAD_REQUEST', `A role id is 1 to ${MAX_ROLE_ID_LENGTH} lowercase letters, digits and hyphens`);
+  }
+  return value;
+}
+
+function readLabel(value: unknown): string {
+  const label = typeof value === 'string' ? value.trim() : '';
+  if (label === '' || label.length > MAX_ROLE_LABEL_LENGTH) {
+    throw refuse('BAD_REQUEST', `A role label is 1 to ${MAX_ROLE_LABEL_LENGTH} characters`);
+  }
+  return label;
+}
+
+// A permission is a name of `businessStatement`: `user` and `session` belong to the `admin` plugin and are never stored.
+function readPermission(value: unknown): { resource: string; action: string } {
+  const [resource, action, ...rest] = typeof value === 'string' ? value.split('.') : [];
+  if (!resource || !action || rest.length > 0 || !isBusinessPermission(resource, action)) {
+    throw refuse('BAD_REQUEST', 'That is not a permission a role can be given');
+  }
+  return { resource, action };
+}
+
+async function roleExists(db: Database, id: string): Promise<boolean> {
+  const [found] = await db.select({ id: roleTable.id }).from(roleTable).where(eq(roleTable.id, id)).limit(1);
+  return found !== undefined;
+}
+
+// Creates a role that holds nothing. The primary key decides a duplicate, so two requests for one id make one role.
+export async function createRole(db: Database, input: { id: unknown; label: unknown }): Promise<{ id: string }> {
+  const id = readRoleId(input.id);
+  if (isReserved(id)) throw refuse('BAD_REQUEST', `"${id}" is reserved and cannot be used as a role id`);
+  const label = readLabel(input.label);
+
+  const [created] = await db.insert(roleTable).values({ id, label }).onConflictDoNothing().returning({ id: roleTable.id });
+  if (!created) throw refuse('CONFLICT', 'A role with that id already exists');
+  return created;
+}
+
+// Grants or revokes one permission, and does nothing more when it already is so. The grant is one statement that writes
+// only while the role has its row, so a role deleted a moment earlier gets no permission row, which a role created
+// later under the same id would otherwise inherit.
+export async function setRolePermission(db: Database, id: unknown, permission: unknown, granted: boolean): Promise<{ granted: boolean }> {
+  const roleId = readRoleId(id);
+  if (roleId === ADMIN_ROLE) throw refuse('BAD_REQUEST', 'The admin role is compiled and cannot be edited');
+  const { resource, action } = readPermission(permission);
+
+  if (granted) {
+    await db
+      .insert(rolePermissionTable)
+      .select(
+        sql`select ${roleId}, ${resource}, ${action} where exists (select 1 from ${roleTable} where ${roleTable.id} = ${roleId})`,
+      )
+      .onConflictDoNothing();
+  } else {
+    await db
+      .delete(rolePermissionTable)
+      .where(
+        and(
+          eq(rolePermissionTable.roleId, roleId),
+          eq(rolePermissionTable.resource, resource),
+          eq(rolePermissionTable.action, action),
+        ),
+      );
+  }
+  if (!(await roleExists(db, roleId))) throw unknownRole();
+  return { granted };
+}
+
+// Deletes a role nobody holds, and refuses one somebody holds. The check is part of the statement that deletes, not a
+// read before it: D1 has no interactive transaction, so an account given the role between a read and a write would end
+// up holding a role that no longer exists. Assigning a role is the mirror (`assignRole` writes only while the role has
+// its row), so the two cannot interleave into that state, provided every path that writes `users.role` is that write:
+// `set-role` is (guard-administrators.ts carries it out through `assignRole`), `users.create` creates the account on the
+// default role and then calls `set-role`, and `/admin/create-user` accepts only `admin` and the default role, which are
+// never deleted. The permission rows follow in the same batch, which D1 runs as one transaction, and only once the role
+// is gone, so a refused delete leaves them.
+export async function deleteRole(db: Database, id: unknown): Promise<{ removed: true }> {
+  const roleId = readRoleId(id);
+  if (roleId === ADMIN_ROLE) throw refuse('BAD_REQUEST', 'The admin role is compiled and cannot be deleted');
+  if (roleId === DEFAULT_ROLE) throw refuse('BAD_REQUEST', 'The default role cannot be deleted: new accounts start on it');
+
+  const [removed] = await db.batch([
+    db
+      .delete(roleTable)
+      .where(and(eq(roleTable.id, roleId), notExists(db.select({ held: sql`1` }).from(userTable).where(eq(userTable.role, roleId)))))
+      .returning({ id: roleTable.id }),
+    db
+      .delete(rolePermissionTable)
+      .where(
+        and(
+          eq(rolePermissionTable.roleId, roleId),
+          notExists(db.select({ kept: sql`1` }).from(roleTable).where(eq(roleTable.id, roleId))),
+        ),
+      )
+      .returning({ roleId: rolePermissionTable.roleId }),
+  ]);
+  if (removed.length > 0) return { removed: true };
+
+  // Nothing was deleted: say why. The reads only choose the message, the statement decided.
+  const [holders] = await db.select({ holders: count() }).from(userTable).where(eq(userTable.role, roleId));
+  const held = holders?.holders ?? 0;
+  if (held === 0) throw unknownRole();
+  throw refuse('CONFLICT', `${held === 1 ? '1 account holds' : `${held} users hold`} this role: give ${held === 1 ? 'it' : 'them'} another role first`);
+}
+
+export interface RoleOverview {
+  id: string;
+  label: string;
+  permissions: string[];
+  holders: number;
+  editable: boolean;
+  deletable: boolean;
+}
+
+export interface RoleMatrix {
+  permissions: { name: string; editable: boolean }[];
+  roles: RoleOverview[];
+}
+
+const EDITABLE_PERMISSIONS: ReadonlySet<string> = new Set(BUSINESS_PERMISSIONS);
+
+// What the roles page shows: every permission of the code vocabulary, the business ones that can be edited first and the
+// account ones, which are compiled, after them; `admin` first with what it is compiled with, then the roles of the
+// database with what each holds and how many accounts hold it.
+export async function describeRoles(db: Database): Promise<RoleMatrix> {
+  const [stored, counts] = await Promise.all([
+    listRoleMatrix(db),
+    db.select({ role: userTable.role, holders: count() }).from(userTable).groupBy(userTable.role),
+  ]);
+  const holdersOf = (role: string) => counts.find((row) => row.role === role)?.holders ?? 0;
+
+  return {
+    permissions: [...BUSINESS_PERMISSIONS, ...PERMISSIONS.filter((name) => !EDITABLE_PERMISSIONS.has(name))].map((name) => ({
+      name,
+      editable: EDITABLE_PERMISSIONS.has(name),
+    })),
+    roles: [
+      { id: ADMIN_ROLE, label: 'Admin', permissions: [...ADMIN_PERMISSIONS], holders: holdersOf(ADMIN_ROLE), editable: false, deletable: false },
+      ...stored.map((role) => ({
+        id: role.id,
+        label: role.label,
+        permissions: role.permissions,
+        holders: holdersOf(role.id),
+        editable: true,
+        deletable: role.id !== DEFAULT_ROLE,
+      })),
+    ],
+  };
+}

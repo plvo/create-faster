@@ -121,6 +121,8 @@ export const prefetch = () => {};
 export const getQueryClient = () => ({ fetchQuery: async () => ({}), prefetchQuery: async () => {} });
 export const trpc = new Proxy({}, { get: () => new Proxy({}, { get: () => ({ queryOptions: (input) => input ?? {} }) }) });`,
   'skeleton.mjs': 'export const Skeleton = () => null;',
+  'checkbox.mjs': `import { createElement } from './react.mjs';
+export const Checkbox = (props) => createElement('input', { type: 'checkbox', ...props });`,
   'server.mjs': `export const getAuth = async () => ({ api: { getSession: async () => ({ user: { role: 'admin' } }) } });
 export const getDb = async () => null;`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
@@ -169,7 +171,10 @@ export const UsersClient = () => null;
 export const UserClient = () => null;
 export const AppHeader = () => null;
 export const AppSidebar = () => null;
-export const CommandPaletteProvider = ({ children }) => children;`,
+export const CommandPaletteProvider = ({ children }) => children;
+export const RolesClient = () => null;
+export const RoleMatrix = () => null;
+export const CreateRoleDialog = () => null;`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 export const SidebarProvider = ({ children }) => children;
 // SidebarInset renders the main landmark of the page, as the generated ui component does.
@@ -1004,7 +1009,9 @@ const FULLSTACK_PAGES = {
   editUser: { file: 'src/components/admin/edit-user.tsx', exportName: 'EditUser' },
   createUserDialog: { file: 'src/components/admin/create-user-dialog.tsx', exportName: 'CreateUserDialog' },
   generatedPassword: GENERATED_PASSWORD,
-  roles: { file: `${APP}/admin/roles/page.tsx`, exportName: 'default' },
+  rolesRoute: { file: `${APP}/admin/roles/page.tsx`, exportName: 'default' },
+  rolesPage: { file: `${APP}/admin/roles/roles.client.tsx`, exportName: 'RolesClient' },
+  roleMatrix: { file: 'src/components/admin/role-matrix.tsx', exportName: 'RoleMatrix' },
   documents: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient' },
 };
 
@@ -1086,6 +1093,10 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         '@/lib/auth/session': './session.mjs',
         '@/trpc/server': './trpc-server.mjs',
         '@repo/auth/role-permissions': './role-permissions.mjs',
+        './roles.client': './leaf.mjs',
+        '@/components/admin/role-matrix': './leaf.mjs',
+        '@/components/admin/create-role-dialog': './leaf.mjs',
+        '@repo/ui/components/ui/checkbox': './checkbox.mjs',
         '@repo/ui/components/ui/skeleton': './skeleton.mjs',
         '@repo/ui/components/ui/search-input': './search-input.mjs',
         '@repo/ui/components/ui/field': './field.mjs',
@@ -1126,13 +1137,13 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
         generateMetadata: (props: { params: Promise<{ id: string }> }) => Promise<unknown>;
       };
       expect(await generateMetadata({ params: Promise.resolve({ id: 'u1' }) })).toEqual({ title: 'User' });
-      expect((await load('roles')).metadata).toEqual({ title: 'Roles' });
+      expect((await load('rolesRoute')).metadata).toEqual({ title: 'Roles' });
     });
 
     test('the users list and the roles page have a level one heading', async () => {
       const users = await mount('usersPage');
       expect(withTag(users.tree, 'h1').map(textOf)).toEqual(['Users']);
-      const roles = await mount('roles');
+      const roles = await mount('rolesPage', { props: { currentRole: 'admin' } });
       expect(withTag(roles.tree, 'h1').map(textOf)).toEqual(['Roles']);
     });
 
@@ -1151,7 +1162,7 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const titles = [
         withTag((await mount('usersPage')).tree, 'h1')[0],
         withTag((await mount('editUser', { props: { user: USER } })).tree, 'h1')[0],
-        withTag((await mount('roles')).tree, 'h1')[0],
+        withTag((await mount('rolesPage', { props: { currentRole: 'admin' } })).tree, 'h1')[0],
       ];
       for (const title of titles) expectClasses(title, 'text-3xl', 'font-bold');
     });
@@ -1602,29 +1613,54 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
   });
 
   describe('roles page', () => {
-    const PERMISSIONS = ['user.create', 'user.list', 'contact.create', 'contact.read'];
-    const table = async (): Promise<RenderedElement> => must(withTag((await mount('roles')).tree, 'table')[0], 'the table');
+    // What roles.matrix answers: every permission of the vocabulary (the account ones are compiled, so not editable), admin
+    // first and compiled too, then the stored roles.
+    const ROLE_MATRIX = {
+      permissions: [
+        { name: 'user.create', editable: false },
+        { name: 'user.list', editable: false },
+        { name: 'document.create', editable: true },
+        { name: 'document.read', editable: true },
+      ],
+      roles: [
+        { id: 'admin', label: 'Admin', permissions: ['user.create', 'user.list', 'document.create', 'document.read'], holders: 1, editable: false, deletable: false },
+        { id: 'manager', label: 'Manager', permissions: ['document.read'], holders: 2, editable: true, deletable: true },
+      ],
+    };
+    const PERMISSIONS = ['user.create', 'user.list', 'document.create', 'document.read'];
+    const open = (data: unknown = ROLE_MATRIX) => mount('roleMatrix', { data, props: { currentRole: 'admin' } });
+    const table = async (data?: unknown): Promise<RenderedElement> => must(withTag((await open(data)).tree, 'table')[0], 'the table');
     const headers = (element: RenderedElement, scope: string): RenderedElement[] => withTag(element, 'th').filter((header) => header.props.scope === scope);
+    // A header names its role first; the id, the number of holders and the delete button follow.
+    const roleNames = (element: RenderedElement): string[] => headers(element, 'col').slice(1).map((header) => textOf(must(withTag(header, 'span')[0], 'the role name')));
 
     test('is one table named by a caption, with a header for each column and each row', async () => {
       const roles = await table();
       expect(textOf(must(withTag(roles, 'caption')[0], 'the caption'))).toBe('Permissions granted to each role');
-      expect(headers(roles, 'col').map(textOf)).toEqual(['Permission', 'Admin(you)', 'Manager']);
+      expect(roleNames(roles)).toEqual(['Admin(you)', 'Manager']);
+      expect(textOf(must(headers(roles, 'col')[0], 'the permission header'))).toBe('Permission');
       expect(headers(roles, 'row').map(textOf)).toEqual(PERMISSIONS);
       for (const row of withTag(must(withTag(roles, 'tbody')[0], 'the body'), 'tr')) expect(withTag(row, 'th')[0]?.props.scope).toBe('row');
     });
 
-    test('says Allowed or Denied in text and draws a check or a dash, so colour never carries it', async () => {
-      const roles = await table();
-      const verdicts = (permission: string): string[] => {
-        const row = must(withTag(roles, 'tr').find((candidate) => withTag(candidate, 'th').some((header) => textOf(header) === permission)), `the ${permission} row`);
-        return withTag(row, 'td').map(textOf);
-      };
-      expect(verdicts('user.create')).toEqual(['Allowed', 'Denied']);
-      expect(verdicts('contact.create')).toEqual(['Allowed', 'Denied']);
-      expect(verdicts('contact.read')).toEqual(['Allowed', 'Allowed']);
+    test('a role is named by its label, then its id and how many accounts hold it', async () => {
+      const [admin, manager] = headers(await table(), 'col').slice(1);
+      expect(textOf(must(admin, 'the admin header'))).toBe('Admin(you)admin1 user');
+      expect(textOf(must(manager, 'the manager header'))).toBe('Managermanager2 users');
+    });
 
-      for (const cell of withTag(roles, 'td')) {
+    test('says Allowed or Denied in text where a permission is compiled, and draws a check or a dash, so colour never carries it', async () => {
+      const roles = await table();
+      const row = (permission: string): RenderedElement =>
+        must(withTag(roles, 'tr').find((candidate) => withTag(candidate, 'th').some((header) => textOf(header) === permission)), `the ${permission} row`);
+      const verdicts = (permission: string): string[] => withTag(row(permission), 'td').map(textOf);
+      expect(verdicts('user.create')).toEqual(['Allowed', 'Denied']);
+      expect(verdicts('user.list')).toEqual(['Allowed', 'Denied']);
+      expect(verdicts('document.create')).toEqual(['Allowed', 'Manager may document.create']);
+
+      const compiled = withTag(roles, 'td').filter((cell) => withTag(cell, 'label').length === 0);
+      expect(compiled).toHaveLength(6);
+      for (const cell of compiled) {
         const allowed = textOf(cell) === 'Allowed';
         const icon = must(find(cell, (element) => element.tag === 'svg'), 'the icon');
         expect(icon.props['data-icon']).toBe(allowed ? 'Check' : 'Minus');
@@ -1635,41 +1671,57 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       }
     });
 
-    test('names a role by its label, and tells where the defaults come from when the database holds no role', async () => {
-      const globals = globalThis as { __storedRoles?: unknown };
-      globals.__storedRoles = [{ id: 'auditor', label: 'External auditor', permissions: [] }];
-      try {
-        expect(headers(await table(), 'col').map(textOf)).toEqual(['Permission', 'Admin(you)', 'External auditor']);
-        expect(withTag((await mount('roles')).tree, 'p').map(textOf).join(' ')).not.toContain('db:roles');
+    test('a stored role has a labelled box for each business permission, ticked as the server says', async () => {
+      const roles = await table();
+      const boxes = withTag(roles, 'input').filter((box) => box.props.type === 'checkbox');
+      expect(boxes.map((box) => box.props.checked)).toEqual([false, true]);
+      const labels = withTag(roles, 'label');
+      expect(labels.map(textOf)).toEqual(['Manager may document.create', 'Manager may document.read']);
+      for (const label of labels) expect(withTag(label, 'input')).toHaveLength(1);
+    });
 
-        globals.__storedRoles = [];
-        const empty = (await mount('roles')).tree;
-        const notice = must(find(empty, (element) => element.props.role === 'status'), 'the empty state');
-        expect(textOf(notice)).toContain('db:roles');
-        expect(textOf(notice)).toContain('db:roles:remote');
-        expect(headers(await table(), 'col').map(textOf)).toEqual(['Permission', 'Admin(you)']);
-      } finally {
-        globals.__storedRoles = undefined;
-      }
+    test('names a role by its label, and tells where the defaults come from when the database holds no role', async () => {
+      const auditor = { id: 'auditor', label: 'External auditor', permissions: [], holders: 0, editable: true, deletable: true };
+      const [admin] = ROLE_MATRIX.roles;
+      expect(roleNames(await table({ ...ROLE_MATRIX, roles: [admin, auditor] }))).toEqual(['Admin(you)', 'External auditor']);
+      expect(withTag((await open({ ...ROLE_MATRIX, roles: [admin, auditor] })).tree, 'p').map(textOf).join(' ')).not.toContain('db:roles');
+
+      const empty = (await open({ ...ROLE_MATRIX, roles: [admin] })).tree;
+      const notice = must(find(empty, (element) => element.props.role === 'status' && textOf(element).includes('No role is stored')), 'the empty state');
+      expect(textOf(notice)).toContain('db:roles');
+      expect(textOf(notice)).toContain('db:roles:remote');
+      expect(roleNames(await table({ ...ROLE_MATRIX, roles: [admin] }))).toEqual(['Admin(you)']);
     });
 
     test('marks the role of the signed-in admin with text', async () => {
-      const roles = await table();
-      expect(headers(roles, 'col').map(textOf).filter((name) => name.includes('(you)'))).toEqual(['Admin(you)']);
+      expect(roleNames(await table()).filter((name) => name.includes('(you)'))).toEqual(['Admin(you)']);
     });
 
-    test('is compact enough to fit a phone and scrolls inside its frame when it does not', async () => {
-      const page = await mount('roles');
-      const frame = must(find(page.tree, (element) => classesOf(element).includes('overflow-x-auto')), 'the table frame');
+    // The widths below are classes on stand-in elements, not a measured layout: they show the page asks for a compact
+    // table that scrolls inside its frame. That the page does not scroll sideways at 375px is checked in a browser.
+    test('asks for compact cells and a frame that scrolls inside itself, so a phone does not scroll the page', async () => {
+      const page = await open();
+      const frame = must(find(page.tree, (element) => classesOf(element).includes('overflow-x-auto') && withTag(element, 'table').length === 1), 'the table frame');
       expect(withTag(frame, 'table')).toHaveLength(1);
-      for (const cell of [...withTag(page.tree, 'th'), ...withTag(page.tree, 'td')]) expectClasses(cell, 'px-2', 'sm:px-4');
+      for (const header of withTag(page.tree, 'th')) expectClasses(header, 'px-2', 'sm:px-4');
+      // A cell with a box hands its whole width to the label, which is the 44px target; any other cell is as compact as a header.
+      for (const cell of withTag(page.tree, 'td')) {
+        const label = withTag(cell, 'label')[0];
+        if (label) {
+          expectClasses(cell, 'p-0');
+          expectClasses(label, 'min-h-11');
+        } else {
+          expectClasses(cell, 'px-2', 'sm:px-4');
+        }
+      }
       expectClasses(headers(must(withTag(page.tree, 'table')[0], 'the table'), 'row')[0], 'whitespace-normal', 'wrap-anywhere');
     });
 
-    test('rounds its corners over the header row and the current role column', async () => {
-      const page = await mount('roles');
+    test('keeps the permission names in view while the roles scroll, and rounds its corners over the header row', async () => {
+      const page = await open();
+      expectClasses(headers(must(withTag(page.tree, 'table')[0], 'the table'), 'row')[0], 'sticky', 'left-0');
       const frame = must(find(page.tree, (element) => classesOf(element).includes('rounded-lg') && withTag(element, 'table').length === 1), 'the rounded frame');
-      expectClasses(frame, 'border', 'overflow-hidden');
+      expectClasses(frame, 'border', 'overflow-x-auto');
     });
   });
 });

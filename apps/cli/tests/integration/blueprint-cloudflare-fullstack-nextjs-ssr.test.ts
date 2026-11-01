@@ -88,7 +88,8 @@ export const ADMIN_PERMISSIONS = ['user.list'];`,
   'role-permissions.mjs': 'export const listRoleMatrix = async () => [];',
   'clients.mjs': `export const UsersClient = () => null;
 export const UserClient = () => null;
-export const DocumentsClient = () => null;`,
+export const DocumentsClient = () => null;
+export const RolesClient = () => null;`,
 };
 
 const SHARED_IMPORTS: Record<string, string> = {
@@ -105,6 +106,7 @@ const SHARED_IMPORTS: Record<string, string> = {
   './users.client': './clients.mjs',
   './user.client': './clients.mjs',
   './documents.client': './clients.mjs',
+  './roles.client': './clients.mjs',
   '@/hooks/use-user-list-params': './url-hooks.mjs',
   '@/hooks/use-page-params': './url-hooks.mjs',
   '@repo/api/pagination': './pagination.mjs',
@@ -169,6 +171,17 @@ const PROTECTED_PAGES = [
     loads: 'prefetch',
     reader: { file: `${APP}/documents.client.tsx`, exportName: 'DocumentsClient', props: { userId: 'u1' } },
     client: 'DocumentsClient',
+  },
+  {
+    title: 'the role matrix',
+    page: `${APP}/admin/roles/page.tsx`,
+    props: {},
+    guard: 'requireAdmin',
+    keys: [{ path: 'roles.matrix', input: undefined }],
+    loads: 'prefetch',
+    data: { permissions: [], roles: [] },
+    reader: { file: 'src/components/admin/role-matrix.tsx', exportName: 'RoleMatrix', props: { currentRole: 'admin' } },
+    client: 'RolesClient',
   },
 ];
 
@@ -254,13 +267,14 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
     recorder.state.search = '';
   });
 
-  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, keys, loads, reader, client }) => {
+  describe.each(PROTECTED_PAGES)('$title', ({ page, props, guard, keys, loads, reader, client, ...rest }) => {
     test(`loads the keys its client reads, after ${guard}`, async () => {
       const route = await load(page);
       await route.default?.(props);
       expect(recorder.calls).toEqual([guard, ...keys.map((key) => [loads, key])]);
 
       recorder.calls.length = 0;
+      if ('data' in rest) recorder.state.data = rest.data;
       const readerModule = await load(reader.file);
       await readerModule[reader.exportName]?.('props' in reader ? reader.props : undefined);
       expect(recorder.calls).toEqual(keys.map((key) => ['read', key]));
@@ -488,9 +502,9 @@ describe(`${FULLSTACK} protected pages on the server`, () => {
       expect(recorder.calls).toEqual(['requireSession']);
     });
 
-    test('the admin layout and the roles page require an admin', async () => {
+    test('the admin layout requires an admin', async () => {
       recorder.state.session = { user: { role: 'admin' } };
-      for (const file of [`${APP}/admin/layout.tsx`, `${APP}/admin/roles/page.tsx`]) {
+      for (const file of [`${APP}/admin/layout.tsx`]) {
         recorder.calls.length = 0;
         recorder.state.denied = false;
         const route = await load(file);

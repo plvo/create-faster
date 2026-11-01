@@ -1968,6 +1968,7 @@ export const META: Meta = {
             './permissions': './src/permissions.ts',
             './role-permissions': './src/role-permissions.ts',
             './role-assignment': './src/role-assignment.ts',
+            './role-management': './src/role-management.ts',
             './default-roles': './src/default-roles.ts',
           },
         },

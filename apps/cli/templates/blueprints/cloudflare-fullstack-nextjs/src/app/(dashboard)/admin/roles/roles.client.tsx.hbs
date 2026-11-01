@@ -1,0 +1,31 @@
+---
+mono:
+  scope: app
+  path: src/app/(dashboard)/admin/roles/roles.client.tsx
+---
+{{{{raw}}}}
+'use client';
+
+import { CreateRoleDialog } from '@/components/admin/create-role-dialog';
+import { RoleMatrix } from '@/components/admin/role-matrix';
+
+export function RolesClient({ currentRole }: { currentRole: string }) {
+  return (
+    <div className='space-y-6'>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='space-y-1'>
+          <h1 className='text-3xl font-bold'>Roles</h1>
+          <p className='max-w-prose text-sm text-muted-foreground'>
+            What each role may do. Tick a box to grant a permission, clear it to revoke it: the change applies to the next request
+            of everyone who holds the role. Only <strong>admin</strong> manages roles, and it is compiled in the code with the
+            account permissions (<code className='rounded bg-muted px-1 py-0.5 text-xs'>user</code>,{' '}
+            <code className='rounded bg-muted px-1 py-0.5 text-xs'>session</code>), so neither can be edited here.
+          </p>
+        </div>
+        <CreateRoleDialog />
+      </div>
+      <RoleMatrix currentRole={currentRole} />
+    </div>
+  );
+}
+{{{{/raw}}}}
