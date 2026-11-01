@@ -127,7 +127,6 @@ export const admin = (options) => {
 };`;
     const { createAuth } = await loadGeneratedAuth<(db: unknown) => unknown>(join(tempDir, BLUEPRINT), tempDir, {
       modules: ['email-change-guard', 'permissions', 'refuse-own-role-change'],
-      deliveryModule: './email',
       standIns: {
         './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });",
         'better-auth/plugins': recordingPlugins,
