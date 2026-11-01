@@ -8,6 +8,7 @@ import {
   createTempDir,
   elementsOf,
   evaluateGeneratedModule,
+  exportedNames,
   readTextFile,
   renderElementTree,
   runCli,
@@ -138,6 +139,24 @@ describe('cloudflare-fullstack-nextjs email change', () => {
 
   afterAll(async () => {
     await cleanupTempDir(tempDir);
+  });
+
+  // The blueprint renders its own `src/lib/server.ts` to hand better-auth the Worker's waitUntil. Every page guard and
+  // the tRPC context import from it, so it must offer what the one of a plain D1 project offers.
+  test('the blueprint server module exports what the deployment server module of a plain project exports', async () => {
+    const plainDir = await createTempDir();
+    try {
+      const plain = await runCli(
+        ['plain', '--app', 'web:nextjs:better-auth', '--database', 'd1', '--orm', 'drizzle', '--deployment', 'cloudflare', '--no-git', '--no-install', '--pm', 'bun'],
+        plainDir,
+      );
+      expect(plain.exitCode, plain.stderr).toBe(0);
+      const expected = (await exportedNames(join(plainDir, 'plain/src/lib/server.ts'))).sort();
+      expect(expected).toContain('getRequestSession');
+      expect((await exportedNames(join(tempDir, 'ec', WEB, 'src/lib/server.ts'))).sort()).toEqual(expected);
+    } finally {
+      await cleanupTempDir(plainDir);
+    }
   });
 
   describe('the notice the account page shows for the link the user opened', () => {

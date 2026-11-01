@@ -9,6 +9,8 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createAuth } from '@repo/auth/auth';
 import { createDb } from '@repo/db';
 import { nextCookies } from 'better-auth/next-js';
+import { headers } from 'next/headers';
+import { cache } from 'react';
 import { getEnv } from '@/lib/env';
 
 export async function getDb() {
@@ -22,3 +24,6 @@ export async function getAuth() {
   const { ctx } = await getCloudflareContext({ async: true });
   return createAuth(db, nextCookies(), (task) => ctx.waitUntil(task));
 }
+
+// The session of the request, read once by whoever asks first: the page guards and the tRPC context of the server share it.
+export const getRequestSession = cache(async () => (await getAuth()).api.getSession({ headers: await headers() }));
