@@ -10,11 +10,13 @@ import { router } from './trpc';
 import { userRouter } from './router/user';
 import { contactRouter } from './router/contact';
 import { sessionRouter } from './router/session';
+import { searchRouter } from './router/search';
 
 export const appRouter = router({
   user: userRouter,
   contact: contactRouter,
   session: sessionRouter,
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;

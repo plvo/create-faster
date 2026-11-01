@@ -6,13 +6,12 @@ mono:
 ---
 import { z } from 'zod';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, PAGE_KEYS, firstValue, pageParams, pageSearch, parseParams } from './pagination';
+import { MAX_SEARCH_LENGTH } from './search-query';
 
 // The orders the users table offers; a leading `-` is descending. Each one is served by an index of the users table
 // (`users_created_at_id_idx`, `users_name_id_idx`, and the unique email), and is the only way a URL picks a column.
 export const USER_SORTS = ['-createdAt', 'name', '-name', 'email', '-email'] as const;
 export const DEFAULT_USER_SORT = '-createdAt';
-// A longer text matches no name or email, and the search is capped before it reaches the database.
-export const MAX_SEARCH_LENGTH = 100;
 
 export type UserSort = (typeof USER_SORTS)[number];
 

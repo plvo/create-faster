@@ -5,6 +5,8 @@ import { format } from 'node:util';
 import { expect, test } from 'bun:test';
 import { $, Glob } from 'bun';
 import type { Database } from 'bun:sqlite';
+import type { PGlite } from '@electric-sql/pglite';
+import { getTableConfig as getPgTableConfig, type PgTable } from 'drizzle-orm/pg-core';
 import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 import { CTRL_C, DOWN, ENTER, runOnPseudoTerminal } from '../pseudo-terminal';
@@ -577,4 +579,25 @@ export function createSqliteTable(sqlite: Database, table: SQLiteTable): void {
 export function expectServedBy(plan: string, index: string): void {
   expect(plan, plan).toMatch(new RegExp(`USING INDEX ${index}\\b`));
   expect(plan, plan).not.toContain('TEMP B-TREE');
+}
+
+/**
+ * Creates the table of a Drizzle schema in a PGlite database (the Postgres engine, in process), with its unique
+ * columns, the default of its time columns and the indexes it declares.
+ */
+export async function createPostgresTable(postgres: PGlite, table: PgTable): Promise<void> {
+  const config = getPgTableConfig(table);
+  const columns = config.columns.map((column) => {
+    const defaulted = column.name === 'created_at' || column.name === 'updated_at' ? ' DEFAULT now()' : '';
+    return `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}${defaulted}`;
+  });
+  await postgres.exec(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
+  for (const column of config.columns.filter((each) => each.isUnique)) {
+    await postgres.exec(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);
+  }
+  for (const index of config.indexes) {
+    const { name, columns: indexed, unique } = index.config;
+    const names = indexed.map((column) => `"${(column as { name: string }).name}"`).join(', ');
+    await postgres.exec(`CREATE ${unique ? 'UNIQUE ' : ''}INDEX "${name}" ON "${config.name}" (${names})`);
+  }
 }

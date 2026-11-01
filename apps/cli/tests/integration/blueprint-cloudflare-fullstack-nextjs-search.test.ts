@@ -110,8 +110,8 @@ describe(`${BLUEPRINT} palette search`, () => {
   let schema: Record<string, SQLiteTable>;
   let createCaller: (appRouter: unknown) => (ctx: unknown) => Caller;
   let appRouter: unknown;
+  let engineModule: { SEARCH_LIMIT_PER_TYPE: number };
   let searchModule: {
-    SEARCH_LIMIT_PER_TYPE: number;
     searchRecords: (caller: unknown, query: string, types?: SearchableType[]) => Promise<SearchGroup[]>;
   };
   let queryModule: { SEARCH_MIN_LENGTH: number };
@@ -210,9 +210,9 @@ describe(`${BLUEPRINT} palette search`, () => {
 
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
-    await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod: REAL.zod, './pagination': './pagination.mjs' });
     await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
-    queryModule = await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod, './user-list': './user-list.mjs' });
+    queryModule = await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });
+    engineModule = await generated(`${API}/search-engine.ts`, 'search-engine.mjs', { './search-query': './search-query.mjs' });
     await generated(`${API}/format-date.ts`, 'format-date.mjs', {});
     await generated(`${API}/format-file-size.ts`, 'format-file-size.mjs', {});
     await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
@@ -231,7 +231,7 @@ describe(`${BLUEPRINT} palette search`, () => {
       './format-date': './format-date.mjs',
       './format-file-size': './format-file-size.mjs',
       './middleware/rbac': './rbac.mjs',
-      './search-query': './search-query.mjs',
+      './search-engine': './search-engine.mjs',
       './text-match': './text-match.mjs',
     });
     const { searchRouter } = await generated<{ searchRouter: unknown }>(`${API}/router/search.ts`, 'search-router.mjs', {
@@ -254,7 +254,7 @@ describe(`${BLUEPRINT} palette search`, () => {
   describe('what is searched', () => {
     test('the limits are two characters and five items per type', () => {
       expect(queryModule.SEARCH_MIN_LENGTH).toBe(2);
-      expect(searchModule.SEARCH_LIMIT_PER_TYPE).toBe(5);
+      expect(engineModule.SEARCH_LIMIT_PER_TYPE).toBe(5);
     });
 
     test('an administrator finds documents and users, grouped by type, each with the page that opens it', async () => {
@@ -585,7 +585,7 @@ describe(`${BLUEPRINT} palette search`, () => {
       });
       await searchModule.searchRecords(caller, '  ab  ', [recording]);
       await searchModule.searchRecords(caller, ' a ', [recording]);
-      expect(received).toEqual([['ab', searchModule.SEARCH_LIMIT_PER_TYPE]]);
+      expect(received).toEqual([['ab', engineModule.SEARCH_LIMIT_PER_TYPE]]);
     });
   });
 });

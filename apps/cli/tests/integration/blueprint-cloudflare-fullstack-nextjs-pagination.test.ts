@@ -48,7 +48,6 @@ interface UserListControls extends UserListParams {
 interface UserList {
   USER_SORTS: readonly string[];
   DEFAULT_USER_SORT: string;
-  MAX_SEARCH_LENGTH: number;
   USER_LIST_KEYS: readonly string[];
   parseUserListParams: (search: unknown) => UserListParams;
   userListSearch: (search: Record<string, unknown>) => Partial<UserListParams>;
@@ -173,6 +172,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
   let stubs: string;
   let pagination: Pagination;
   let userList: UserList;
+  let searchQuery: { MAX_SEARCH_LENGTH: number };
   let schema: Record<string, SQLiteTable>;
   let createCaller: (appRouter: unknown) => (ctx: unknown) => Caller;
   let appRouter: unknown;
@@ -242,7 +242,12 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       evaluateGeneratedModule<T>(await readTextFile(join(project, file)), join(stubs, name), imports);
 
     pagination = await generated<Pagination>(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
-    userList = await generated<UserList>(`${API}/user-list.ts`, 'user-list.mjs', { zod: REAL.zod, './pagination': './pagination.mjs' });
+    searchQuery = await generated<{ MAX_SEARCH_LENGTH: number }>(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });
+    userList = await generated<UserList>(`${API}/user-list.ts`, 'user-list.mjs', {
+      zod: REAL.zod,
+      './pagination': './pagination.mjs',
+      './search-query': './search-query.mjs',
+    });
     schema = await generated<Record<string, SQLiteTable>>('packages/db/src/schema.ts', 'schema.mjs', {
       'drizzle-orm': REAL.drizzle,
       'drizzle-orm/sqlite-core': REAL.sqliteCore,
@@ -320,8 +325,8 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
 
     test('a search keeps the text as typed, up to a bounded length', () => {
       expect(userList.parseUserListParams({ search: '  ada ' }).search).toBe('  ada ');
-      expect(userList.parseUserListParams({ search: 'x'.repeat(userList.MAX_SEARCH_LENGTH + 400) }).search).toHaveLength(
-        userList.MAX_SEARCH_LENGTH,
+      expect(userList.parseUserListParams({ search: 'x'.repeat(searchQuery.MAX_SEARCH_LENGTH + 400) }).search).toHaveLength(
+        searchQuery.MAX_SEARCH_LENGTH,
       );
       for (const search of [null, 42, {}, undefined]) expect(userList.parseUserListParams({ search }).search, String(search)).toBe('');
     });

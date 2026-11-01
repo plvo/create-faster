@@ -11,10 +11,8 @@ import { visibleDocuments } from './document-scope';
 import { formatDate } from './format-date';
 import { formatFileSize } from './format-file-size';
 import { callerPermissions } from './middleware/rbac';
-import { SEARCH_MIN_LENGTH } from './search-query';
+import { type SearchGroup, type SearchableType, searchGroups } from './search-engine';
 import { containsText } from './text-match';
-
-export const SEARCH_LIMIT_PER_TYPE = 5;
 
 // The signed-in user of a request, with what the database grants them: the permissions are read once, for the types
 // below to check, as the procedures of a request do.
@@ -28,33 +26,8 @@ export interface SearchContext extends SearchCaller {
   permissions: readonly Permission[];
 }
 
-export interface SearchItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  href: string;
-}
-
-export interface SearchGroup {
-  type: string;
-  label: string;
-  items: SearchItem[];
-}
-
-// A kind of record the command palette finds. The palette knows no type: it shows the groups `searchRecords` returns.
-export interface SearchableType {
-  type: string;
-  label: string;
-  // Whether the caller may read this type, by the check the list of the type makes. A type the caller may not read is
-  // skipped, and no group is returned.
-  canSearch: (caller: SearchContext) => boolean;
-  // The records matching the text, at most `limit`, each with the page that opens it. A record without a detail page
-  // links to its list page.
-  find: (caller: SearchContext, text: string, limit: number) => Promise<SearchItem[]>;
-}
-
 // Adding a searchable type is one entry here.
-const SEARCHABLE_TYPES: SearchableType[] = [
+const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
   {
     type: 'documents',
     label: 'Documents',
@@ -96,21 +69,10 @@ const SEARCHABLE_TYPES: SearchableType[] = [
 ];
 
 // The groups of records matching the text, for the types the caller may read. A group with no match is left out.
-export async function searchRecords(
+export function searchRecords(
   request: SearchCaller,
   query: string,
-  types: SearchableType[] = SEARCHABLE_TYPES,
+  types: SearchableType<SearchContext>[] = SEARCHABLE_TYPES,
 ): Promise<SearchGroup[]> {
-  const text = query.trim();
-  if (text.length < SEARCH_MIN_LENGTH) return [];
-
-  const caller: SearchContext = { ...request, permissions: await callerPermissions(request) };
-  const groups = await Promise.all(
-    types.map(async ({ type, label, canSearch, find }): Promise<SearchGroup | null> => {
-      if (!canSearch(caller)) return null;
-      const items = (await find(caller, text, SEARCH_LIMIT_PER_TYPE)).slice(0, SEARCH_LIMIT_PER_TYPE);
-      return items.length === 0 ? null : { type, label, items };
-    }),
-  );
-  return groups.filter((group) => group !== null);
+  return searchGroups(types, query, async () => ({ ...request, permissions: await callerPermissions(request) }));
 }

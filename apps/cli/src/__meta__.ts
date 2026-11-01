@@ -307,10 +307,14 @@ const orgDashboardAgentArchitecture = (webFramework: string) =>
     '- [Data layer](docs/agents/data-layer.md)',
   ].join('\n');
 
+// The dependency of the `ui/command` partial, which a dashboard blueprint renders as the `command.tsx` of its `ui` package.
+const COMMAND_UI_DEPENDENCIES = { cmdk: '^1.1.1' };
+
 const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
   api: {
     exports: {
       './pagination': './src/pagination.ts',
+      './search-query': './src/search-query.ts',
     },
   },
   auth: {
@@ -328,6 +332,7 @@ const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
   ui: {
     dependencies: {
       '@tanstack/react-form': '^1.33.5',
+      ...COMMAND_UI_DEPENDENCIES,
       'react-dom': '^19.2.8',
       vaul: '^1.1.2',
     },
@@ -359,9 +364,6 @@ const FORMAT_GENERATED_FILES: PostGenerateStep[] = [{ description: 'Format the g
 const LIBSQL_CLIENT_VERSION = '^0.17.4';
 
 const BETTER_AUTH_VERSION = '^1.7.14';
-
-// The dependency of the `ui/command` partial, which a dashboard blueprint renders as the `command.tsx` of its `ui` package.
-const COMMAND_UI_DEPENDENCIES = { cmdk: '^1.1.1' };
 
 // The postgres TLS warning parses DATABASE_URL with the same parser as pg; keep it in pg's range.
 const PG_CONNECTION_STRING_VERSION = '^2.14.1';

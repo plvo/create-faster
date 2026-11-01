@@ -1,0 +1,24 @@
+{{!-- The whole text-match.ts file of an api package: whether a column contains a text, as plain text, on the database of the project. --}}
+import { type SQL, sql } from '@repo/db';
+import type { Column } from './page-query';
+
+// Whether the column contains the text, whatever the case, and with every character taken as itself: LIKE would read a
+// `%` or `_` of the text as a wildcard, so each database uses its function that searches for a substring. It cannot use
+// an index, so the query scans the table.
+{{#if (has "database" "postgres")}}
+export function containsText(column: Column, text: string): SQL {
+  return sql`position(lower(${text}) in lower(${column})) > 0`;
+}
+{{/if}}
+{{#if (has "database" "mysql")}}
+// The comparison is binary (`utf8mb4_bin`) after `lower`, so an accent counts as it does elsewhere: the default
+// collation of MySQL would match `e` in `é`.
+export function containsText(column: Column, text: string): SQL {
+  return sql`locate(lower(${text}) collate utf8mb4_bin, lower(${column}) collate utf8mb4_bin) > 0`;
+}
+{{/if}}
+{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
+export function containsText(column: Column, text: string): SQL {
+  return sql`instr(lower(${column}), lower(${text})) > 0`;
+}
+{{/if}}

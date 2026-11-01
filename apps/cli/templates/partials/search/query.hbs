@@ -1,0 +1,13 @@
+{{!-- The whole search-query.ts file of an api package: the limits of a palette search and the input of `search.records`. Framework free (zod only), so the palette can import it. --}}
+import { z } from 'zod';
+
+// A shorter text matches too much to be worth a scan of the tables. The palette reads this too: it asks from here.
+export const SEARCH_MIN_LENGTH = 2;
+
+// A longer text matches no name or email, and the search is capped before it reaches the database.
+export const MAX_SEARCH_LENGTH = 100;
+
+// The input of `search.records`. A longer text is cut when it is read, so what reaches the server code is bounded.
+export const searchInput = z.object({
+  query: z.string().transform((text) => text.slice(0, MAX_SEARCH_LENGTH)),
+});
