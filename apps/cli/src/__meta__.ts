@@ -312,7 +312,8 @@ const orgDashboardContext = (webStack: StackName) => ({
 const orgDashboardAgentArchitecture = (webFramework: string) =>
   [
     `Organization dashboard: ${webFramework} web app + Node.js batch app (Turborepo), Better Auth`,
-    'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
+    'admin plugin and roles whose permissions are rows of the database (admin/user/manager by default),',
+    'tRPC for typed API calls,',
     'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
     '',
     'Per-aspect detail in `docs/agents/`:',

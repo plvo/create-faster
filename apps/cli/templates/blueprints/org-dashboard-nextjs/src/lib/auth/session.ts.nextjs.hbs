@@ -10,7 +10,7 @@ import { getQueryClient, trpc } from '@/trpc/server';
 {{> auth/session-guards}}
 
 // The permission list is the one the layout fetches (`permissions.mine`), read once per request: what a role may do is in
-// the database, so a check of the compiled roles (`userHasPermission`) would refuse every role but `admin`.
+// the database.
 export async function requirePermission<R extends BusinessResource>(resource: R, action: BusinessAction<R>) {
   const session = await requireSession();
   const granted = await getQueryClient().ensureQueryData(trpc.permissions.mine.queryOptions());

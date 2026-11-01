@@ -842,7 +842,8 @@ describe.each(BLUEPRINTS)('%s roles on PostgreSQL', (blueprint) => {
       remove: (id: string) => assignment.removeAccount(db, id),
     };
     const REFUSED_VERB = { demote: 'demoted', ban: 'banned', remove: 'removed' };
-    const pairs = Object.keys(writes).flatMap((first) => Object.keys(writes).map((second) => [first, second] as const));
+    const CHANGES = ['demote', 'ban', 'remove'] as const;
+    const pairs = CHANGES.flatMap((first) => CHANGES.map((second) => [first, second] as const));
 
     test.each(['demote', 'ban', 'remove'] as const)('the sole administrator is protected from being %s, whoever asks', async (change) => {
       const only = await addAccount('only', 'admin');

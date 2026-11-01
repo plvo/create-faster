@@ -287,7 +287,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
     let evaluate: <T>(source: string, name: string, loader?: 'ts' | 'tsx') => Promise<T>;
     const routeOptions = async (file: string, name: string) =>
       (
-        await evaluate<{ Route: { options: { beforeLoad: (args: { context: { session: Session; permissions: string[] } }) => unknown } } }>(
+        await evaluate<{ Route: { options: { beforeLoad: (args: { context: { session: Session; permissions?: string[] } }) => unknown } } }>(
           `${WEB}/src/routes/_dashboard/${file}`,
           name,
         )

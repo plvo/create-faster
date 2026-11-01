@@ -59,7 +59,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   describeSearch({ server: () => server, projectDir: () => projectDir });
 
-  describeRoles({ server: () => server, projectDir: () => projectDir });
+  describeRoles({ server: () => server, projectDir: () => projectDir, rendersMatrixOnServer: true });
 
   test('the server logs no error while paging, searching and editing roles', async () => {
     const { stdout, stderr } = await server.stop();

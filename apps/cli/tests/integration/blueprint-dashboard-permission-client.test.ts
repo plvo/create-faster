@@ -10,7 +10,16 @@ const WEB = 'apps/web/src';
 
 // The blueprints that render the permission hook, `<Can>`, the page filter and the sidebar from the shared partials, with
 // what each one asks of its caller: its business resource, the links a caller sees, and the links that ask for nothing.
-const BLUEPRINTS = [
+interface Setup {
+  blueprint: string;
+  router: 'next' | 'tanstack';
+  resource: string;
+  own: string[];
+  everything: string[];
+  alwaysShown: string[];
+}
+
+const BLUEPRINTS: Setup[] = [
   {
     blueprint: 'cloudflare-fullstack-nextjs',
     router: 'next',
@@ -35,7 +44,7 @@ const BLUEPRINTS = [
     everything: ['Dashboard', 'Contacts', 'Users', 'Roles'],
     alwaysShown: ['Dashboard'],
   },
-] as const;
+];
 
 const ICONS = ['FileText', 'LayoutDashboard', 'Shield', 'ShieldCheck', 'Users'];
 

@@ -64,7 +64,7 @@ type PermissionOf<S extends Record<string, readonly string[]>> = {
   [R in keyof S & string]: `${R}.${S[R][number]}`;
 }[keyof S & string];
 
-// A permission as a flat name, `document.read`, the form the server sends to the client and the database stores
+// A permission as a flat name, `resource.action`, the form the server sends to the client and the database stores
 // split in two columns.
 export type Permission = PermissionOf<Statement>;
 export type BusinessPermission = PermissionOf<typeof businessStatement>;
