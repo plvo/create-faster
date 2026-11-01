@@ -1,7 +1,7 @@
-import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
+import { loadGeneratedAuth } from './generated-auth-harness';
+import { cleanupTempDir, createTempDir, runCli } from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -21,8 +21,6 @@ const REAL = {
   plugins: Bun.resolveSync('better-auth/plugins', import.meta.dir),
   api: Bun.resolveSync('better-auth/api', import.meta.dir),
   memory: Bun.resolveSync('better-auth/adapters/memory', import.meta.dir),
-  access: Bun.resolveSync('better-auth/plugins/access', import.meta.dir),
-  adminAccess: Bun.resolveSync('better-auth/plugins/admin/access', import.meta.dir),
 };
 
 // Every endpoint of the `admin` plugin, by path. The guard covers the five that write a role, a ban or a removal; the
@@ -62,7 +60,8 @@ describe('the better-auth admin plugin keeps the behavior the role assignment gu
   let tempDir: string;
   let betterAuth: BetterAuthFactory;
   let admin: (options: Record<string, unknown>) => { endpoints: Record<string, { path: string }> };
-  let permissions: { ac: unknown; roles: Record<string, unknown> };
+  // The options the generated auth.ts gives the admin plugin, captured when it builds its plugin list.
+  let adminOptions: Record<string, unknown>;
   let createAuthMiddleware: (handler: (ctx: Record<string, unknown>) => unknown) => unknown;
 
   let memory: { user: Record<string, unknown>[]; session: unknown[]; account: unknown[]; verification: unknown[] };
@@ -70,15 +69,13 @@ describe('the better-auth admin plugin keeps the behavior the role assignment gu
   let memoryAdapterOf: (db: typeof memory) => unknown;
   let accounts = 0;
 
-  const adminOptions = () => ({ ac: permissions.ac, roles: permissions.roles, defaultRole: 'user', adminRoles: ['admin'] });
-
   function authWith(extraPlugins: unknown[] = []): PluginApi {
     return betterAuth({
       baseURL: ORIGIN,
       secret: 'a-secret-for-the-tests-only-0123456789abcdef',
       database: memoryAdapterOf(memory),
       emailAndPassword: { enabled: true },
-      plugins: [...extraPlugins, admin(adminOptions())],
+      plugins: [...extraPlugins, admin(adminOptions)],
     });
   }
 
@@ -118,13 +115,27 @@ describe('the better-auth admin plugin keeps the behavior the role assignment gu
     const result = await runCli([BLUEPRINT, '--blueprint', BLUEPRINT, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
 
-    const stubs = join(tempDir, 'stubs');
-    await mkdir(stubs, { recursive: true });
-    permissions = await evaluateGeneratedModule(
-      await readTextFile(join(tempDir, BLUEPRINT, 'packages/auth/src/permissions.ts')),
-      join(stubs, 'permissions.mjs'),
-      { 'better-auth/plugins/access': REAL.access, 'better-auth/plugins/admin/access': REAL.adminAccess },
-    );
+    // The generated createAuth runs on a memory database, with the admin plugin wrapped to record its options: the pins
+    // below run the plugin as the blueprint configures it, never as a copy of that configuration. The guard of the
+    // admin endpoints is the thing under test elsewhere and is left out here.
+    process.env.BETTER_AUTH_URL = ORIGIN;
+    const recordingPlugins = `import { admin as realAdmin } from ${JSON.stringify(REAL.plugins)};
+export * from ${JSON.stringify(REAL.plugins)};
+export const admin = (options) => {
+  globalThis.__adminOptionsOfTheGeneratedAuth = options;
+  return realAdmin(options);
+};`;
+    const { createAuth } = await loadGeneratedAuth<(db: unknown) => unknown>(join(tempDir, BLUEPRINT), tempDir, {
+      modules: ['email-change-guard', 'permissions', 'refuse-own-role-change'],
+      deliveryModule: './email',
+      standIns: {
+        './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });",
+        'better-auth/plugins': recordingPlugins,
+      },
+    });
+    createAuth({});
+    adminOptions = (globalThis as { __adminOptionsOfTheGeneratedAuth?: Record<string, unknown> }).__adminOptionsOfTheGeneratedAuth ?? {};
+    expect(Object.keys(adminOptions).sort()).toEqual(['ac', 'adminRoles', 'defaultRole', 'roles']);
     ({ betterAuth } = (await import(REAL.betterAuth)) as { betterAuth: BetterAuthFactory });
     ({ admin } = (await import(REAL.plugins)) as { admin: typeof admin });
     ({ createAuthMiddleware } = (await import(REAL.api)) as { createAuthMiddleware: typeof createAuthMiddleware });
@@ -144,7 +155,7 @@ describe('the better-auth admin plugin keeps the behavior the role assignment gu
   describe('the endpoints that can write a role, a ban or a removal', () => {
     test('are exactly the five the guard stands in front of, and no endpoint is new', () => {
       reset();
-      const paths = Object.values(admin(adminOptions()).endpoints)
+      const paths = Object.values(admin(adminOptions).endpoints)
         .map((endpoint) => endpoint.path)
         .sort();
       expect(paths).toEqual([...GUARDED_PATHS, ...UNGUARDED_PATHS].sort());
@@ -220,6 +231,32 @@ describe('the better-auth admin plugin keeps the behavior the role assignment gu
       const member = await addAccount('user');
       await post(await cookieOf(member.email), '/update-user', { role: 'admin' });
       expect(storedUser(member.id).role).toBe('user');
+    });
+  });
+
+  describe('an anonymous request', () => {
+    test('is refused with a 401 by each of the five endpoints, and writes nothing', async () => {
+      reset();
+      const target = await addAccount('user');
+      const before = JSON.stringify(memory.user);
+      for (const [path, body] of [
+        ['/admin/set-role', { userId: target.id, role: 'manager' }],
+        ['/admin/ban-user', { userId: target.id }],
+        ['/admin/remove-user', { userId: target.id }],
+        ['/admin/update-user', { userId: target.id, data: { name: 'Hijacked' } }],
+        ['/admin/create-user', { email: 'anonymous@example.com', password: PASSWORD, name: 'Anonymous', role: 'manager' }],
+      ] as const) {
+        expect([path, (await post('', path, body)).status]).toEqual([path, 401]);
+      }
+      expect(JSON.stringify(memory.user)).toBe(before);
+    });
+
+    test('is allowed by create-user when it is a call from the server with no headers, which the guard keeps', async () => {
+      reset();
+      const created = await (auth.api as unknown as { createUser: (input: unknown) => Promise<{ user: { id: string } }> }).createUser({
+        body: { email: 'trusted@example.com', password: PASSWORD, name: 'Trusted', role: 'manager' },
+      });
+      expect(storedUser(created.user.id).role).toBe('manager');
     });
   });
 

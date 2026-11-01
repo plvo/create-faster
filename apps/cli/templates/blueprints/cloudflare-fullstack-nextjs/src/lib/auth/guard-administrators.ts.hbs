@@ -23,11 +23,22 @@ type Body = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is Body => typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// The signed-in caller of an endpoint, or null for a call without a session (the plugin's own endpoints answer those).
-// A caller whose role the plugin merely reads as administrator (`user,admin`) is refused: only exactly `admin` is one.
-async function adminCaller(ctx: Parameters<typeof getAuthoritativeSessionFromCtx>[0]) {
+type EndpointContext = Parameters<typeof getAuthoritativeSessionFromCtx>[0];
+
+// The signed-in caller of an endpoint, or null for a call without a session. A caller whose role the plugin merely
+// reads as administrator (`user,admin`) is refused: only exactly `admin` is one.
+async function adminCaller(ctx: EndpointContext) {
   const caller = await getAuthoritativeSessionFromCtx(ctx);
   if (caller && caller.user.role !== ADMIN_ROLE) throw new APIError('FORBIDDEN', { message: 'Only admins can manage accounts' });
+  return caller;
+}
+
+const unauthorized = () => new APIError('UNAUTHORIZED', { message: 'Sign in to manage accounts' });
+
+// The administrator an endpoint needs: an anonymous request is refused here, whatever the plugin makes of it.
+async function requiredAdmin(ctx: EndpointContext) {
+  const caller = await adminCaller(ctx);
+  if (!caller) throw unauthorized();
   return caller;
 }
 
@@ -63,7 +74,8 @@ export function guardAdministrators(db: Database) {
         {
           matcher: (ctx) => ctx.path === '/admin/create-user',
           handler: createAuthMiddleware(async (ctx) => {
-            await adminCaller(ctx);
+            // A call from the server with no request and no headers (a script) has no session and is trusted.
+            if (!(await adminCaller(ctx)) && (ctx.request || ctx.headers)) throw unauthorized();
             const body = isRecord(ctx.body) ? ctx.body : {};
             const data = isRecord(body.data) ? body.data : {};
             await refusing(async () => {
@@ -76,7 +88,7 @@ export function guardAdministrators(db: Database) {
         {
           matcher: (ctx) => ctx.path === '/admin/update-user',
           handler: createAuthMiddleware(async (ctx) => {
-            if (!(await adminCaller(ctx))) return;
+            await requiredAdmin(ctx);
             const data = isRecord(ctx.body) && isRecord(ctx.body.data) ? ctx.body.data : {};
             if (Object.hasOwn(data, 'role')) {
               throw new APIError('BAD_REQUEST', { message: 'Change a role with set-role: update-user writes none' });
@@ -89,8 +101,7 @@ export function guardAdministrators(db: Database) {
         {
           matcher: (ctx) => ctx.path === '/admin/set-role',
           handler: createAuthMiddleware(async (ctx) => {
-            const caller = await adminCaller(ctx);
-            if (!caller) return;
+            const caller = await requiredAdmin(ctx);
             const body = isRecord(ctx.body) ? ctx.body : {};
             const user = await refusing(async () => {
               const userId = readUserId(body.userId);
@@ -104,8 +115,7 @@ export function guardAdministrators(db: Database) {
         {
           matcher: (ctx) => ctx.path === '/admin/ban-user',
           handler: createAuthMiddleware(async (ctx) => {
-            const caller = await adminCaller(ctx);
-            if (!caller) return;
+            const caller = await requiredAdmin(ctx);
             const userId = await refusing(async () => {
               const id = readUserId(isRecord(ctx.body) ? ctx.body.userId : undefined);
               if (id === caller.user.id) throw new AccountChangeRefused('BAD_REQUEST', 'You cannot ban yourself');
@@ -118,8 +128,7 @@ export function guardAdministrators(db: Database) {
         {
           matcher: (ctx) => ctx.path === '/admin/remove-user',
           handler: createAuthMiddleware(async (ctx) => {
-            const caller = await adminCaller(ctx);
-            if (!caller) return;
+            const caller = await requiredAdmin(ctx);
             const userId = await refusing(async () => {
               const id = readUserId(isRecord(ctx.body) ? ctx.body.userId : undefined);
               if (id === caller.user.id) throw new AccountChangeRefused('BAD_REQUEST', 'You cannot remove yourself');

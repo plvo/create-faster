@@ -9,9 +9,7 @@ import { asc, count, desc, eq, or, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
 import { type AppRole, DEFAULT_ROLE, ROLE_ID } from '@repo/auth/permissions';
 import { listAssignableRoles } from '@repo/auth/role-assignment';
-import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { trpcErrorFromAuthError } from '../auth-errors';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 import { orderedPage } from '../page-query';
@@ -48,16 +46,6 @@ function matchingSearch(search: string): SQL | undefined {
 }
 
 const roleId = z.string().regex(ROLE_ID, 'A role is one id: lowercase letters, digits and hyphens');
-
-// The account exists with the default role when assigning the chosen one fails, which the message says.
-function roleNotAssigned(error: unknown, role: string): TRPCError {
-  const refusal = trpcErrorFromAuthError(error);
-  return new TRPCError({
-    code: refusal?.code ?? 'INTERNAL_SERVER_ERROR',
-    message: `The account was created with the default role (${DEFAULT_ROLE}), but "${role}" could not be assigned: ${refusal?.message ?? 'unexpected error'}. Assign it from the user page.`,
-    cause: refusal ? undefined : error,
-  });
-}
 
 // Cryptographically-random password for admin-created accounts (shown once).
 function generatePassword(length = 14): string {
@@ -112,12 +100,9 @@ export const usersRouter = router({
           .set({ firstName: input.firstName || null, lastName: input.lastName || null, phone: input.phone || null })
           .where(eq(userTable.id, user.id));
       }
+      // The account exists on the default role until this succeeds, and stays on it when it fails.
       if (input.role !== DEFAULT_ROLE) {
-        try {
-          await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
-        } catch (error) {
-          throw roleNotAssigned(error, input.role);
-        }
+        await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
       }
       return { id: user.id, password };
     }),

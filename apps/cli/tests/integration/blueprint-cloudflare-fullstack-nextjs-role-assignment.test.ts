@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Database } from 'bun:sqlite';
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
@@ -48,6 +48,7 @@ interface Auth {
   handler: (request: Request) => Promise<Response>;
   api: {
     signUpEmail: (input: { body: { email: string; password: string; name: string } }) => Promise<{ user: UserOutput }>;
+    createUser: (input: { body: { email: string; password: string; name: string; role?: unknown } }) => Promise<{ user: UserOutput }>;
     signInEmail: (input: { body: { email: string; password: string }; asResponse: true }) => Promise<Response>;
   };
 }
@@ -225,7 +226,12 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     await cleanupTempDir(tempDir);
   });
 
+  // better-auth logs an error for a thrown message that contains `does not exist`, `table` or `column` (it reads them as
+  // database errors), so a refusal worded that way would fill the production log. A refusal is an answer, not a failure.
+  let errorLog: ReturnType<typeof spyOn<Console, 'error'>>;
+
   beforeEach(() => {
+    errorLog = spyOn(console, 'error');
     sqlite = new Database(':memory:');
     sqlite.run('PRAGMA foreign_keys = ON');
     for (const name of TABLES) createTable(sqlite, schema[name] as SQLiteTable);
@@ -233,6 +239,12 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     auth = createAuth(db);
     addRole('user', 'User');
     addRole('manager', 'Manager');
+  });
+
+  afterEach(() => {
+    const logged = errorLog.mock.calls.map((call) => String(call[0]));
+    errorLog.mockRestore();
+    expect(logged).toEqual([]);
   });
 
   describe('a role is assigned as exactly one id that exists', () => {
@@ -347,6 +359,31 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       }
       expect(sqlite.query('SELECT role, banned, name FROM users WHERE id = ?').get(target.id)).toMatchObject({ role: 'user', banned: 0 });
       expect(exists(target.id)).toBe(true);
+    });
+
+    test('an anonymous request is refused on each of the five endpoints, and writes nothing', async () => {
+      const target = await addAccount('target', 'user');
+      const before = sqlite.query('SELECT id, role, banned, name FROM users ORDER BY id').all();
+      for (const [path, body] of [
+        ['/admin/set-role', { userId: target.id, role: 'manager' }],
+        ['/admin/ban-user', { userId: target.id }],
+        ['/admin/remove-user', { userId: target.id }],
+        ['/admin/update-user', { userId: target.id, data: { name: 'Hijacked' } }],
+        ['/admin/create-user', { email: 'anonymous@example.com', password: PASSWORD, name: 'Anonymous', role: 'manager' }],
+      ] as const) {
+        const answer = await request('', path, body);
+        expect([path, answer.status, answer.json?.message]).toEqual([path, 401, 'Sign in to manage accounts']);
+      }
+      expect(sqlite.query('SELECT id, role, banned, name FROM users ORDER BY id').all()).toEqual(before);
+    });
+
+    test('a call from the server without a session or headers still creates an account, under the same role rule', async () => {
+      const created = await auth.api.createUser({ body: { email: 'trusted@example.com', password: PASSWORD, name: 'Trusted', role: 'manager' } });
+      expect(roleOf(created.user.id)).toBe('manager');
+      await expect(
+        auth.api.createUser({ body: { email: 'trusted2@example.com', password: PASSWORD, name: 'Trusted', role: ['user', 'admin'] } }),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(sqlite.query("SELECT 1 FROM users WHERE email = 'trusted2@example.com'").get()).toBeNull();
     });
 
     test('the other ways to write users.role are closed to a user: sign-up and the user\'s own update', async () => {
@@ -549,26 +586,44 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       expect(roleOf(plain.id)).toBe('user');
     });
 
-    test('a failure while assigning the role leaves the account on the default role and says so', async () => {
+    test('a failure while assigning the role leaves the account on the default role', async () => {
       addRole('auditor', 'Auditor');
       const caller = await callerOf(await addAccount('admin', 'admin'));
       sqlite.run(
         "CREATE TRIGGER fail_role_change BEFORE UPDATE OF role ON users WHEN NEW.role = 'auditor' BEGIN SELECT RAISE(ABORT, 'disk on fire'); END",
       );
 
-      const failure = await caller.users.create({ name: 'Audrey', email: 'audrey@example.com', role: 'auditor' }).catch((error: Error) => error);
-      expect(failure).toBeInstanceOf(Error);
-      expect((failure as Error).message).toContain('default role');
+      await expect(caller.users.create({ name: 'Audrey', email: 'audrey@example.com', role: 'auditor' })).rejects.toBeInstanceOf(Error);
       expect(sqlite.query("SELECT role FROM users WHERE email = 'audrey@example.com'").get()).toEqual({ role: 'user' });
     });
 
-    test('users.create refuses an unknown role, and the account keeps the default one', async () => {
+    // `ghost` and `constructor` pass the zod pattern of the procedure, so they reach the guard: the first has no row, the
+    // second is a key the plugin finds in its compiled roles. Each leaves the account on the default role, read back.
+    test.each(['ghost', 'constructor'])('users.create with the id %s, which no role has, leaves the account on the default role and says why', async (role) => {
       const caller = await callerOf(await addAccount('admin', 'admin'));
-      await expect(caller.users.create({ name: 'Gus', email: 'gus@example.com', role: 'ghost' })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
-      await expect(caller.users.create({ name: 'Gus', email: 'gus2@example.com', role: 'user,admin' })).rejects.toMatchObject({
+      const email = `${role}@example.com`;
+      await expect(caller.users.create({ name: 'Gus', email, role })).rejects.toMatchObject({
         code: 'BAD_REQUEST',
+        message: 'No role has that id',
       });
-      expect(sqlite.query("SELECT count(*) AS n FROM users WHERE role LIKE '%admin%' AND email LIKE 'gus%'").get()).toEqual({ n: 0 });
+      expect(sqlite.query('SELECT role FROM users WHERE email = ?').get(email)).toEqual({ role: 'user' });
+    });
+
+    test.each(['ghost', 'constructor'])('users.setRole with the id %s, which no role has, leaves the role as it was', async (role) => {
+      const [admin, target] = [await addAccount('admin', 'admin'), await addAccount('target', 'manager')];
+      await expect((await callerOf(admin)).users.setRole({ id: target.id, role })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+        message: 'No role has that id',
+      });
+      expect(roleOf(target.id)).toBe('manager');
+    });
+
+    test('users.create refuses a role that is not one id before it creates anything', async () => {
+      const caller = await callerOf(await addAccount('admin', 'admin'));
+      for (const role of ['user,admin', 'Admin', 'admin ']) {
+        await expect(caller.users.create({ name: 'Gus', email: 'gus@example.com', role })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+      }
+      expect(sqlite.query("SELECT 1 FROM users WHERE email = 'gus@example.com'").get()).toBeNull();
     });
 
     test('users.assignableRoles lists admin and the roles of the database, to an administrator only', async () => {

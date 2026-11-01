@@ -22,7 +22,7 @@ export class AccountChangeRefused extends Error {
 }
 
 const userNotFound = () => new AccountChangeRefused('NOT_FOUND', 'User not found');
-const unknownRole = () => new AccountChangeRefused('BAD_REQUEST', 'That role does not exist');
+const unknownRole = () => new AccountChangeRefused('BAD_REQUEST', 'No role has that id');
 const lastAdministrator = (change: 'demoted' | 'banned' | 'removed') =>
   new AccountChangeRefused('BAD_REQUEST', `The last administrator cannot be ${change}`);
 

@@ -56,7 +56,11 @@ export function CreateUserDialog() {
         invalidatePagedList(queryClient, trpc.users);
         setCreatedPassword(password);
       },
-      onError: (error) => toast.error(error.message),
+      // The account may exist, on the default role, when the assignment of the chosen one failed.
+      onError: (error) => {
+        invalidatePagedList(queryClient, trpc.users);
+        toast.error(error.message);
+      },
     }),
   );
 

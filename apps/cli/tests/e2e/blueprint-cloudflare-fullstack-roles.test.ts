@@ -87,6 +87,20 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
     return { status: response.status, message: body.error?.json.message, data: body.result?.data.json };
   };
 
+  // Runs every statement even when one fails, so a failed cleanup never leaves the rest of the state unrestored, and
+  // then reports the first failure.
+  const restore = async (...statements: string[]): Promise<void> => {
+    const failures: unknown[] = [];
+    for (const statement of statements) {
+      try {
+        await d1(statement);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length > 0) throw failures[0];
+  };
+
   const idOf = async (email: string): Promise<string> => String((await d1(`SELECT id FROM users WHERE email = '${email}'`))[0]?.id);
   const roleOf = async (email: string): Promise<unknown> => (await d1(`SELECT role FROM users WHERE email = '${email}'`))[0]?.role;
 
@@ -303,63 +317,87 @@ describe('cloudflare-fullstack-nextjs roles read from the database, on a served 
         expect(created.status).toBe(200);
         expect(await roleOf('audrey@example.com')).toBe('auditor');
       } finally {
-        await d1(`UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`);
-        await d1("DELETE FROM users WHERE email = 'audrey@example.com'; DELETE FROM roles WHERE id = 'auditor'");
+        await restore(
+          `UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`,
+          "DELETE FROM users WHERE email = 'audrey@example.com'",
+          "DELETE FROM roles WHERE id = 'auditor'",
+        );
       }
     }, TIMEOUT_SETUP);
 
     test('a role is exactly one id that exists, whichever endpoint writes it', async () => {
       const adminCookie = await signIn(ADMIN);
       const memberId = await idOf(MEMBER);
-      for (const role of ['user,admin', 'admin,user', ['user', 'admin'], 'Admin', ' admin', 'ghost', 'constructor']) {
-        const answer = await authPost('/admin/set-role', adminCookie, { userId: memberId, role });
-        expect([role, answer.status]).toEqual([role, 400]);
-        expect((await authPost('/admin/update-user', adminCookie, { userId: memberId, data: { role } })).status).toBe(400);
-        expect((await mutate('users.setRole', adminCookie, { id: memberId, role: role as string })).status).toBeGreaterThanOrEqual(400);
+      try {
+        for (const role of ['user,admin', 'admin,user', ['user', 'admin'], 'Admin', ' admin', 'ghost', 'constructor']) {
+          const answer = await authPost('/admin/set-role', adminCookie, { userId: memberId, role });
+          expect([role, answer.status]).toEqual([role, 400]);
+          expect((await authPost('/admin/update-user', adminCookie, { userId: memberId, data: { role } })).status).toBe(400);
+          expect((await mutate('users.setRole', adminCookie, { id: memberId, role: role as string })).status).toBeGreaterThanOrEqual(400);
+        }
+        expect(await roleOf(MEMBER)).toBe('user');
+        expect((await mutate('users.setRole', adminCookie, { id: await idOf(ADMIN), role: 'user' })).message).toBe(
+          'You cannot change your own role',
+        );
+        expect(await roleOf(ADMIN)).toBe('admin');
+      } finally {
+        await restore(`UPDATE users SET role = 'user' WHERE email = '${MEMBER}'`, `UPDATE users SET role = 'admin' WHERE email = '${ADMIN}'`);
       }
-      expect(await roleOf(MEMBER)).toBe('user');
-      expect((await mutate('users.setRole', adminCookie, { id: await idOf(ADMIN), role: 'user' })).message).toBe(
-        'You cannot change your own role',
-      );
     }, TIMEOUT_SETUP);
 
-    // The seeded administrator would remain after any race, so it is a plain user while the two accounts race, and
-    // the count that matters is every administrator who can sign in.
+    // Two requests at once, repeated. What this proves: through the endpoints on a real D1, however the two requests
+    // interleave, exactly one succeeds and an administrator who can sign in is left. What it cannot prove: that the
+    // two guarded writes themselves meet. Over HTTP the second request is often refused before it reaches the guard,
+    // because its caller was already demoted, banned or removed when the request read its session. The interleaving of
+    // the writes is held by blueprint-cloudflare-fullstack-nextjs-role-assignment.test.ts ("in the write itself"),
+    // which sends the guarded statements together and fails on a read followed by a write.
+    //
+    // The seeded administrator would remain after any race, so it is a plain user while the accounts race, and the
+    // count that matters is every administrator who can sign in.
+    const RACE_REPETITIONS = 5;
     const raceBetween = async (
-      emails: [string, string],
+      label: string,
       race: (cookies: [string, string], ids: [string, string]) => Promise<{ status: number }[]>,
     ): Promise<void> => {
-      await d1(`UPDATE users SET role = 'user' WHERE email = '${ADMIN}'`);
+      const created: string[] = [];
       try {
-        const ids: [string, string] = [await signUp(emails[0], 'admin'), await signUp(emails[1], 'admin')];
-        const cookies: [string, string] = [await signIn(emails[0]), await signIn(emails[1])];
-        const answers = await race(cookies, ids);
-        expect(answers.filter((answer) => answer.status === 200), JSON.stringify(answers)).toHaveLength(1);
-        const [{ n }] = (await d1("SELECT count(*) AS n FROM users WHERE role = 'admin' AND coalesce(banned, 0) = 0")) as [{ n: number }];
-        expect(n).toBe(1);
+        await d1(`UPDATE users SET role = 'user' WHERE email = '${ADMIN}'`);
+        for (let attempt = 0; attempt < RACE_REPETITIONS; attempt++) {
+          const emails: [string, string] = [`race-${label}-${attempt}-a@example.com`, `race-${label}-${attempt}-b@example.com`];
+          created.push(...emails);
+          const ids: [string, string] = [await signUp(emails[0], 'admin'), await signUp(emails[1], 'admin')];
+          const cookies: [string, string] = [await signIn(emails[0]), await signIn(emails[1])];
+          const answers = await race(cookies, ids);
+          expect(answers.filter((answer) => answer.status === 200), `attempt ${attempt}: ${JSON.stringify(answers)}`).toHaveLength(1);
+          const [{ n }] = (await d1("SELECT count(*) AS n FROM users WHERE role = 'admin' AND coalesce(banned, 0) = 0")) as [{ n: number }];
+          expect(n, `attempt ${attempt}`).toBe(1);
+          await d1(`DELETE FROM users WHERE email IN ('${emails[0]}', '${emails[1]}')`);
+        }
       } finally {
-        await d1(`DELETE FROM users WHERE email IN ('${emails[0]}', '${emails[1]}')`);
-        await d1(`UPDATE users SET role = 'admin' WHERE email = '${ADMIN}'`);
+        await restore(
+          `UPDATE users SET role = 'admin' WHERE email = '${ADMIN}'`,
+          ...(created.length > 0 ? [`DELETE FROM users WHERE email IN (${created.map((email) => `'${email}'`).join(', ')})`] : []),
+        );
       }
     };
 
     test('two administrators who demote each other at once leave one, on the local D1', async () => {
-      await raceBetween(['race-a@example.com', 'race-b@example.com'], (cookies, ids) =>
+      await raceBetween('demote', (cookies, ids) =>
         Promise.all([
           authPost('/admin/set-role', cookies[0], { userId: ids[1], role: 'user' }),
           authPost('/admin/set-role', cookies[1], { userId: ids[0], role: 'user' }),
         ]),
       );
-    }, TIMEOUT_SETUP);
+    }, TIMEOUT_SETUP * 3);
 
     test('an administrator who bans the other while the other removes them leaves one, on the local D1', async () => {
-      await raceBetween(['race-c@example.com', 'race-d@example.com'], (cookies, ids) =>
+      await raceBetween('ban-remove', (cookies, ids) =>
         Promise.all([
           authPost('/admin/ban-user', cookies[0], { userId: ids[1] }),
           authPost('/admin/remove-user', cookies[1], { userId: ids[0] }),
         ]),
       );
-    }, TIMEOUT_SETUP);
+    }, TIMEOUT_SETUP * 3);
   });
 
   test('permissionProcedure takes business resources and their actions only, at type check', async () => {

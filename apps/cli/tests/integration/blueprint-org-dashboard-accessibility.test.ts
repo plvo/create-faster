@@ -134,11 +134,18 @@ const deep = (path = []) => new Proxy(function () {}, {
 });
 export const useTRPC = () => deep();
 export const useSuspenseQuery = () => ({ data: globalThis.__testQueryData });
-export const useQuery = () => ({ data: globalThis.__testQueryData, isPending: globalThis.__testQueryData === undefined, isError: false });
+export const useQuery = () => ({
+  data: globalThis.__testQueryError ? undefined : globalThis.__testQueryData,
+  isPending: !globalThis.__testQueryError && globalThis.__testQueryData === undefined,
+  isError: Boolean(globalThis.__testQueryError),
+});
 // A list page asks for its rows and its total together: the rows are __testQueryData.items, the total .total.
 export const useSuspenseQueries = () => [{ data: globalThis.__testQueryData.items }, { data: globalThis.__testQueryData.total }];
 export const useMutation = (options) => ({
-  mutate: (variables) => options.onSuccess?.(globalThis.__testMutationResult, variables),
+  mutate: (variables) =>
+    globalThis.__testMutationError
+      ? options.onError?.(globalThis.__testMutationError, variables)
+      : options.onSuccess?.(globalThis.__testMutationResult, variables),
   mutateAsync: async (variables) => { options.onSuccess?.(globalThis.__testMutationResult, variables); return globalThis.__testMutationResult; },
   isPending: false,
 });
@@ -263,7 +270,7 @@ const field = {
   InputField: (props) => createElement('input', { 'aria-label': props.label }),
   TextareaField: (props) => createElement('textarea', { 'aria-label': props.label }),
   SelectField: (props) =>
-    createElement('button', { role: 'combobox', 'aria-label': props.label, 'data-options': JSON.stringify(props.options), disabled: props.props?.disabled }),
+    createElement('button', { role: 'combobox', 'aria-label': props.label, 'data-options': JSON.stringify(props.options), 'data-description': props.description, disabled: props.props?.disabled }),
 };
 export const useAppForm = (options) => {
   globalThis.__testFormOptions = options;
@@ -442,6 +449,8 @@ interface PageSource {
 
 interface MountOptions {
   data?: unknown;
+  queryError?: boolean;
+  mutationError?: Error;
   mutationResult?: unknown;
   props?: Record<string, unknown>;
 }
@@ -458,6 +467,8 @@ interface Globals {
   __testViewerId?: string;
   __testNoSession?: boolean;
   __testQueryData?: unknown;
+  __testQueryError?: boolean;
+  __testMutationError?: Error;
   __testPage?: { page: number; pageSize: number };
   __pageCalls?: [string, number][];
   __testMutationResult?: unknown;
@@ -500,6 +511,8 @@ async function createMounter<Name extends string>(
     const globals = globalThis as Globals;
     globals.__testQueryData = options.data;
     globals.__testMutationResult = options.mutationResult;
+    globals.__testQueryError = options.queryError;
+    globals.__testMutationError = options.mutationError;
     globals.__toasts = [];
     globals.__invalidated = [];
     resetState();
@@ -1375,6 +1388,28 @@ describe('cloudflare-fullstack-nextjs admin pages, rendered', () => {
       const loading = await mount('createUserDialog', {});
       const waiting = must(find(loading.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
       expect(waiting.props.disabled).toBe(true);
+    });
+
+    test('the editor says the roles could not be loaded, and offers no select', async () => {
+      const page = await mount('editUser', { props: { user: USER }, queryError: true });
+      const alert = must(find(page.tree, (element) => element.props.role === 'alert'), 'the alert');
+      expect(textOf(alert)).toBe('The roles could not be loaded. Reload the page to try again.');
+      expect(find(page.tree, (element) => element.props['data-component'] === 'Select')).toBeUndefined();
+    });
+
+    test('the create dialog says the roles could not be loaded, and the select stays disabled', async () => {
+      const page = await mount('createUserDialog', { queryError: true });
+      const role = must(find(page.tree, (element) => element.props['aria-label'] === 'Role'), 'the role select');
+      expect(role.props['data-description']).toBe('The roles could not be loaded. Close this dialog and try again.');
+      expect(role.props.disabled).toBe(true);
+    });
+
+    test('a creation that fails after the account exists refreshes the list and shows the reason', async () => {
+      const page = await mount('createUserDialog', { data: ASSIGNABLE_ROLES, mutationError: new Error('No role has that id') });
+      const form = must(find(page.tree, (element) => element.tag === 'form'), 'the form');
+      await page.act(async () => (form.props.onSubmit as (event: { preventDefault(): void }) => unknown)({ preventDefault() {} }));
+      expect((globalThis as Globals).__invalidated).toEqual(['users']);
+      expect(toasts()).toEqual([{ kind: 'error', message: 'No role has that id' }]);
     });
 
     test('two roles with one label stay two options', async () => {
