@@ -69,11 +69,11 @@ describe('the command palette partial', () => {
   });
 });
 
-describe('the command palette partial with Hugeicons and the permissions of an organization', () => {
+describe('the command palette partial with Hugeicons', () => {
   let palette: string;
 
   beforeAll(() => {
-    palette = renderPartial('navigation/command-palette icons="hugeicons" pageAccess="organization"', 'nextjs');
+    palette = renderPartial('navigation/command-palette icons="hugeicons"', 'nextjs');
   });
 
   test('it compiles', () => {
@@ -88,18 +88,24 @@ describe('the command palette partial with Hugeicons and the permissions of an o
     expect(palette).not.toContain('lucide-react');
   });
 
-  test('the pages follow the permissions of the organization, so the provider takes no role', () => {
-    expect(palette).toContain('export function CommandPaletteProvider({ children }: { children: ReactNode })');
-    expect(palette).toContain('useAllowedRoutes()');
-    expect(palette).not.toMatch(/\brole\b(?!=)/);
-  });
-
-  test('without the two options the icons are lucide and the provider takes the role of the user', () => {
+  test('without the option the icons are lucide', () => {
     const plain = renderPartial('navigation/command-palette', 'nextjs');
     expect(plain).toContain("import { Search } from 'lucide-react'");
     expect(plain).not.toContain('@hugeicons');
-    expect(plain).toContain('export function CommandPaletteProvider({ role, children }');
-    expect(plain).toContain('useAllowedRoutes(role)');
+  });
+});
+
+describe('the pages of the command palette', () => {
+  // One mechanism for every blueprint: the layout hands the role it read on the server to the provider, which gives it
+  // to the useAllowedRoutes of the project. A project whose pages do not follow the role simply leaves it out.
+  test.each([
+    ['nextjs', ''],
+    ['nextjs', ' icons="hugeicons"'],
+    ['tanstack-start', ''],
+  ] as const)('on %s%s the provider takes an optional role and passes it on', (stack, options) => {
+    const palette = renderPartial(`navigation/command-palette${options}`, stack);
+    expect(palette).toContain('export function CommandPaletteProvider({ role, children }: { role?: string | null; children: ReactNode })');
+    expect(palette).toContain('useAllowedRoutes(role)');
   });
 });
 

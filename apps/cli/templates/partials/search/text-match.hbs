@@ -1,8 +1,8 @@
 {{!-- The whole text-match.ts file of an api package: whether a column contains a text, as plain text, on the database of the project. --}}
 import { type desc, type SQL, sql } from '@repo/db';
 
-// What a query can compare: a column, or an SQL expression built from columns.
-type Column = Parameters<typeof desc>[0];
+// What a query can compare or order by: a column, or an SQL expression built from columns. `page-query` uses it too.
+export type Column = Parameters<typeof desc>[0];
 
 // Whether the column contains the text, whatever the case, and with every character taken as itself: LIKE would read a
 // `%` or `_` of the text as a wildcard, so each database uses its function that searches for a substring. It cannot use

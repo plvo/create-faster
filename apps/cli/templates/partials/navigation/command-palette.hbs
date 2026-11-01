@@ -2,7 +2,7 @@
 CommandPaletteProvider holds the shortcut and the dialog, CommandPaletteTrigger is the search field of the sidebar header.
 It reads from the project: @repo/ui (command, sidebar), useMounted, useAllowedRoutes for the pages the user can open, the `search.records` procedure of the tRPC router for the records, and the router of the stack.
 icons="hugeicons": the icons come from Hugeicons (default: lucide-react), and a page icon is a Hugeicons icon object.
-pageAccess="organization": the pages follow the permissions of the active organization, which the browser resolves, so the provider takes no role and useAllowedRoutes() takes none (default: the provider takes the role of the user and passes it to useAllowedRoutes(role)). --}}
+The provider takes the role the layout read on the server and hands it to useAllowedRoutes(role), so the first server render lists the pages of the role. A project whose pages do not depend on the role of the session (their permissions come from the database or from an organization) leaves it out and declares the parameter unused. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { useRouter } from '@tanstack/react-router';
 {{else}}
@@ -261,15 +261,8 @@ function CommandPaletteDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   );
 }
 
-{{{{/raw}}}}
-{{#if (eq pageAccess "organization")}}
-export function CommandPaletteProvider({ children }: { children: ReactNode }) {
-  const pages = useAllowedRoutes();
-{{else}}
-export function CommandPaletteProvider({ role, children }: { role: string | null | undefined; children: ReactNode }) {
+export function CommandPaletteProvider({ role, children }: { role?: string | null; children: ReactNode }) {
   const pages = useAllowedRoutes(role);
-{{/if}}
-{{{{raw}}}}
   const [open, setOpen] = useState(false);
   const platform = usePlatform();
 
