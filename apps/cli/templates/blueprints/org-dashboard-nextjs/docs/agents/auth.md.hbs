@@ -6,7 +6,7 @@ mono:
 ---
 # Auth & Permissions
 
-Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `createAuth(cookiePlugin?, runInBackground?)` factory (from `@repo/auth/auth`) with the `admin` plugin and a custom access-control model. `runInBackground` becomes `advanced.backgroundTasks.handler`, so a link's delivery runs after the response. The web app builds its instance in `apps/web/src/lib/auth/auth.ts` with {{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}`createAuth(nextCookies(), (task) => after(task))`{{/if}}{{/each}}{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}}`createAuth(tanstackStartCookies(), runInBackground)`, where `runInBackground` hands the task to the `waitUntil` of the request{{/if}}{{/each}}, and the tRPC package reads sessions through its own cookie-less `createAuth()` in `packages/api/src/auth.ts`, which sends no link. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
+Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `createAuth(cookiePlugin?, runInBackground?)` factory (from `@repo/auth/auth`) with the `admin` plugin and a custom access-control model. `runInBackground` becomes `advanced.backgroundTasks.handler`, so a link's delivery runs after the response. The web app builds its instance in `apps/web/src/lib/auth/auth.ts` with `createAuth({{#each apps}}{{#if (eq appName "web")}}{{> better-auth/cookie-plugin}}{{/if}}{{/each}}, runInBackground)` (the next section says how `runInBackground` runs a task), and the tRPC package reads sessions through its own cookie-less `createAuth()` in `packages/api/src/auth.ts`, which sends no link. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
 
 {{#each (stackApps "nextjs")}}
 {{#if (eq appName "web")}}
@@ -73,9 +73,4 @@ Gating on both sides matters: the client gate prevents UI leaks, the server proc
 ## Creating users & passwords
 Public sign-up is closed: `emailAndPassword.disableSignUp` is set in `packages/auth/src/auth.ts`, so the `/api/auth/sign-up/email` endpoint rejects every call. Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`) and returns it once so the admin can share it. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
 
-{{#if (has "stack" "nextjs")}}
-{{> auth/email-change-guide admin=true file="packages/auth/src/link-delivery.ts" links="the email change link and the notice to the old address" background="`apps/web/src/lib/auth/auth.ts` hands it `after` of `next/server`"}}
-{{/if}}
-{{#if (has "stack" "tanstack-start")}}
-{{> auth/email-change-guide admin=true file="packages/auth/src/link-delivery.ts" links="the email change link and the notice to the old address" background="`apps/web/src/lib/auth/auth.ts` hands it the `waitUntil` of the request, which Nitro gives it and a graceful shutdown waits for; a server without one still runs the task"}}
-{{/if}}
+{{> auth/email-change-guide admin=true file="packages/auth/src/link-delivery.ts" links="the email change link and the notice to the old address"}}

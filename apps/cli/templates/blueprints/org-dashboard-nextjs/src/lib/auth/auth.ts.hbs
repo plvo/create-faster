@@ -22,7 +22,6 @@ import { refuseOwnRoleChange } from './refuse-own-role-change';
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
 
-// `runInBackground` keeps a link's delivery from delaying the answer of the request that asked for it.
 export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (task: Promise<unknown>) => void) {
   return betterAuth({
     {{#if (has "orm" "drizzle")}}
@@ -56,7 +55,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
 
     advanced: {
       {{> better-auth/client-ip}}
-      ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
+      {{> better-auth/background-tasks}}
     },
     plugins: [
       admin({
@@ -75,7 +74,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
       minPasswordLength: 6,
       revokeSessionsOnPasswordReset: true,
     },
-    {{> auth/email-change-options}}
+    {{> better-auth/email-change-options}}
     // verbose for explicitly setting the model name
     user: {
       changeEmail: { enabled: true },

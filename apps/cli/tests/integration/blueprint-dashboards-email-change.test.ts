@@ -92,6 +92,10 @@ export const toast = { error: (message) => harness.errors.push(message) };`;
 
 interface Blueprint {
   name: string;
+  /** The blueprint renders its own `src/lib/server.ts`, which must export what the deployment server module exports. */
+  ownServerModule: boolean;
+  /** The blueprint's own proxy redirects a signed-out visit to sign in, with the path to come back to. */
+  ownSignInProxy: boolean;
   /** The module the notice component navigates with, and what the router it hands out records for the expected URL. */
   router: { module: string; stub: string; expectedReplacement: unknown };
 }
@@ -114,10 +118,10 @@ const START_ROUTER = {
 };
 
 const BLUEPRINTS: Blueprint[] = [
-  { name: 'cloudflare-fullstack-nextjs', router: NEXT_ROUTER },
-  { name: 'org-dashboard-nextjs', router: NEXT_ROUTER },
-  { name: 'org-dashboard-tanstack-start', router: START_ROUTER },
-  { name: 'multitenant-saas-nextjs', router: NEXT_ROUTER },
+  { name: 'cloudflare-fullstack-nextjs', ownServerModule: true, ownSignInProxy: false, router: NEXT_ROUTER },
+  { name: 'org-dashboard-nextjs', ownServerModule: false, ownSignInProxy: false, router: NEXT_ROUTER },
+  { name: 'org-dashboard-tanstack-start', ownServerModule: false, ownSignInProxy: false, router: START_ROUTER },
+  { name: 'multitenant-saas-nextjs', ownServerModule: false, ownSignInProxy: true, router: NEXT_ROUTER },
 ];
 
 const ALERT_STUB = `import { createElement } from './react.mjs';
@@ -200,7 +204,7 @@ describe.each(BLUEPRINTS)('email change in $name', (blueprint) => {
 
   // The blueprint renders its own `src/lib/server.ts` to hand better-auth the Worker's waitUntil. Every page guard and
   // the tRPC context import from it, so it must offer what the one of a plain D1 project offers.
-  test.if(blueprint.name === 'cloudflare-fullstack-nextjs')('the blueprint server module exports what the deployment server module of a plain project exports', async () => {
+  test.if(blueprint.ownServerModule)('the blueprint server module exports what the deployment server module of a plain project exports', async () => {
     const plainDir = await createTempDir();
     try {
       const plain = await runCli(
@@ -269,7 +273,7 @@ describe.each(BLUEPRINTS)('email change in $name', (blueprint) => {
 
   // A link opened signed out is sent back to the account page with `error=SIGN_IN_REQUIRED`; the sign-in has to bring
   // the user back to that URL with its query, or the sentence that says to open the link again never shows.
-  test.if(blueprint.name === 'multitenant-saas-nextjs')(
+  test.if(blueprint.ownSignInProxy)(
     'the proxy sends a signed-out visit to sign in with the whole path and query to come back to',
     async () => {
       const stubs = join(tempDir, 'stubs');

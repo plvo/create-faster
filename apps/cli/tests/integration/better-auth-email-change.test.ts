@@ -31,7 +31,6 @@ interface Auth {
 interface Blueprint {
   name: string;
   modules: string[];
-  deliveryModule: string;
   tables: string[];
   closedSignUp: boolean;
   standIns?: Record<string, string>;
@@ -46,7 +45,6 @@ const BLUEPRINTS: Blueprint[] = [
   {
     name: 'cloudflare-fullstack-nextjs',
     modules: ADMIN_MODULES,
-    deliveryModule: './email',
     tables: ACCOUNT_TABLES,
     closedSignUp: false,
     // The guard of the admin endpoints runs on the Drizzle database, which this memory database is not.
@@ -62,7 +60,6 @@ const BLUEPRINTS: Blueprint[] = [
     (name): Blueprint => ({
       name,
       modules: ADMIN_MODULES,
-      deliveryModule: './link-delivery',
       tables: ACCOUNT_TABLES,
       closedSignUp: true,
       build: (createAuth, runInBackground) =>
@@ -72,7 +69,6 @@ const BLUEPRINTS: Blueprint[] = [
   {
     name: 'multitenant-saas-nextjs',
     modules: ['email-change-guard', 'invitation-link', 'permissions'],
-    deliveryModule: './link-delivery',
     tables: [...ACCOUNT_TABLES, ...ORGANIZATION_TABLES],
     closedSignUp: false,
     build: (createAuth, runInBackground) =>
@@ -110,7 +106,6 @@ describe.each(BLUEPRINTS)('the email change on the generated auth of $name', (bl
     expect(result.exitCode, result.stderr).toBe(0);
     ({ createAuth, database, delivery } = await loadGeneratedAuth<unknown>(join(tempDir, 'ec'), tempDir, {
       modules: blueprint.modules,
-      deliveryModule: blueprint.deliveryModule,
       standIns: blueprint.standIns,
     }));
   });

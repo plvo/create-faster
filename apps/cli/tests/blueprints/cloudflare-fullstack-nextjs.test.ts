@@ -435,9 +435,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     const auth = bpFile('src/lib/auth/auth.ts.hbs');
     expect(auth).toContain('sendResetPassword');
     expect(auth).toContain("deliverLink({ kind: 'reset-password'");
-    expect(auth).toContain("deliverLink({ kind: 'change-email'");
+    expect(auth).toContain('{{> better-auth/email-change-options}}');
+    expect(partial('better-auth/email-change-options')).toContain("deliverLink({ kind: 'change-email'");
     expect(auth).not.toContain('console.');
-    expect(bpFile('src/lib/auth/email.ts.hbs')).toContain('{{> auth/deliver-link');
+    expect(bpFile('src/lib/auth/link-delivery.ts.hbs')).toContain('{{> auth/deliver-link');
     const delivery = partial('auth/deliver-link');
     expect(delivery).toContain('export async function deliverLink');
     expect(delivery).toContain('[${kind}] ${to} → ${link}');

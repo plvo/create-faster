@@ -247,6 +247,6 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     ]) {
       expect(await fileExists(join(web, f))).toBe(true);
     }
-    expect(await fileExists(join(projectPath, 'packages/auth/src/email.ts'))).toBe(true);
+    expect(await fileExists(join(projectPath, 'packages/auth/src/link-delivery.ts'))).toBe(true);
   });
 });

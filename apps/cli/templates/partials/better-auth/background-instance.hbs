@@ -1,24 +1,36 @@
 {{!-- The whole src/lib/auth/auth.ts of a web app in a turborepo whose auth package takes a runInBackground handler:
 the app's instance, built with its framework's cookie plugin and its way to run a task after the response. --}}
 import { createAuth } from '@repo/auth/auth';
+{{#if (eq stackName "tanstack-start")}}
+import { getRequest } from '@tanstack/react-start/server';
+{{/if}}
+{{> better-auth/cookie-plugin-import}}
 {{#if (eq stackName "nextjs")}}
-import { nextCookies } from 'better-auth/next-js';
 import { after } from 'next/server';
 
 // A link's delivery runs after the response (`after`), so the time a request takes does not tell an address that has
 // an account from one that has not.
-export const auth = createAuth(nextCookies(), (task) => after(task));
+export const auth = createAuth({{> better-auth/cookie-plugin}}, (task) => after(task));
 {{else}}
-import { getRequest } from '@tanstack/react-start/server';
-import { tanstackStartCookies } from 'better-auth/tanstack-start';
 
 type RequestWithWaitUntil = Request & { waitUntil?: (task: Promise<unknown>) => void };
 
-// A link's delivery runs after the response, so the time a request takes does not tell an address that has an account
-// from one that has not. The server hands the request a `waitUntil` that a graceful shutdown waits for; a server
-// without one still runs the task, which better-auth has already guarded against a rejection.
-export const auth = createAuth(tanstackStartCookies(), (task) => {
+const unsettled = new WeakMap<Request, Promise<unknown>[]>();
+
+// A link's delivery runs after the response when the server gives the request a `waitUntil` (the Nitro node server
+// does, and waits for it on shutdown), so the time a request takes does not tell an address that has an account from
+// one that has not. A Lambda gives none and freezes the process once the handler returns: the task is kept for
+// `handleAuthRequest`, which holds the answer until it is done, so no link or notice is lost.
+export const auth = createAuth({{> better-auth/cookie-plugin}}, (task) => {
   const request: RequestWithWaitUntil = getRequest();
-  request.waitUntil?.(task);
+  if (request.waitUntil) request.waitUntil(task);
+  else unsettled.set(request, [...(unsettled.get(request) ?? []), task]);
 });
+
+// The handler of the auth route. better-auth has already guarded each task against a rejection.
+export async function handleAuthRequest(request: Request): Promise<Response> {
+  const response = await auth.handler(request);
+  await Promise.all(unsettled.get(getRequest()) ?? []);
+  return response;
+}
 {{/if}}

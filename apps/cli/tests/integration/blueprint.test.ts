@@ -235,7 +235,7 @@ describe('Blueprint generation - org-dashboard-nextjs', () => {
   test('auth notes name the Next.js cookie plugin, session guard and redirect helper usage', async () => {
     const projectPath = join(tempDir, 'test-dashboard');
     const notes = await readTextFile(join(projectPath, 'docs/agents/auth.md'));
-    expect(notes).toContain('with `createAuth(nextCookies(), (task) => after(task))`');
+    expect(notes).toContain('with `createAuth(nextCookies(), runInBackground)`');
     expect(notes).toContain('## Reading the session server-side');
     expect(notes).toContain('Call `requireSession()` from `apps/web/src/lib/auth/session.ts`');
     expect(notes).toContain('## Post-login redirect');

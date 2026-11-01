@@ -1,8 +1,8 @@
 {{!-- The whole email-change-guard.ts of an auth package: the better-auth plugin that protects the email change.
-delivery: the module `deliverLink` is imported from, as written in the source (`./email`, `./link-delivery`). --}}
+It imports `deliverLink` from the link-delivery module of the package. --}}
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
-import { deliverLink } from '{{delivery}}';
+import { deliverLink } from './link-delivery';
 
 interface TrustsOrigins {
   context: { isTrustedOrigin: (url: string, settings?: { allowRelativePaths: boolean }) => boolean };
