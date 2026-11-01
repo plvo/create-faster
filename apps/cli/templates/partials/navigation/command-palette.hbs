@@ -176,7 +176,7 @@ function RecordGroups({ search, onSelect }: { search: RecordSearch; onSelect: (h
     <CommandGroup key={group.type} heading={group.label}>
       {group.items.map((item) => (
         <CommandItem key={item.id} value={`${group.type}:${item.id}`} onSelect={() => onSelect(item.href)}>
-          <span className='truncate'>{item.title}</span>
+          <span className='max-w-2/3 shrink-0 truncate'>{item.title}</span>
           <span className='ml-auto truncate text-xs text-muted-foreground'>{item.subtitle}</span>
         </CommandItem>
       ))}
