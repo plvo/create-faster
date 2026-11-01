@@ -1,4 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
+import { createTRPCClient, TRPCClientError, type TRPCLink } from '@trpc/client';
+import { observable } from '@trpc/server/observable';
+import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
@@ -25,6 +29,7 @@ const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 
 const LINUX = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36';
 
 type Component = (props: Record<string, unknown>) => unknown;
+type RecordSearchOptions = (trpc: unknown, text: string) => never;
 type KeyHandler = (event: FakeKeyEvent) => void;
 
 interface FakeKeyEvent {
@@ -51,14 +56,15 @@ export const useContext = (context) => context.value;`,
 export const host = (tag, extra = {}) => ({ children, ...props }) => createElement(tag, { ...extra, ...props }, ...children);`,
   'command.mjs': `import { createElement } from './react.mjs';
 import { host } from './ui.mjs';
-export const CommandDialog = ({ open, title, children }) =>
-  open ? createElement('div', { role: 'dialog', 'aria-label': title }, ...children) : null;
-export const CommandInput = () => createElement('input', {});
+export const CommandDialog = ({ open, title, shouldFilter, children }) =>
+  open ? createElement('div', { role: 'dialog', 'aria-label': title, 'data-should-filter': String(shouldFilter) }, ...children) : null;
+export const CommandInput = ({ value, onValueChange, placeholder }) => createElement('input', { value, onValueChange, placeholder });
 export const CommandList = host('div', { role: 'listbox' });
-export const CommandEmpty = host('p');
 export const CommandGroup = ({ heading, children }) => createElement('div', { role: 'group', 'aria-label': heading }, ...children);
-export const CommandItem = ({ value, keywords, onSelect, children }) =>
-  createElement('div', { role: 'option', 'data-value': value, 'data-keywords': (keywords ?? []).join(' '), onSelect }, ...children);`,
+export const CommandItem = ({ value, onSelect, children }) =>
+  createElement('div', { role: 'option', 'data-value': value, onSelect }, ...children);`,
+  'search-query.mjs': '',
+  'trpc-providers.mjs': `export const useTRPC = () => ({ search: { records: { queryOptions: (input, options) => ({ input, ...options }) } } });`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 import { host } from './ui.mjs';
 export const SidebarMenu = host('ul');
@@ -97,7 +103,13 @@ export const Command = host('div', { 'data-cmdk': 'true' });`,
   'leaf.mjs': `export const AppHeader = () => null;
 export const NavUser = () => null;`,
   'next-link.mjs': `export default ({ href, children }) => ({ type: 'a', props: { href, children } });`,
-  'react-query.mjs': 'export const useQuery = () => ({ data: globalThis.__granted });',
+  // The permission list of the caller, and the search of the palette, which is the query that carries an input.
+  'react-query.mjs': `export const useQuery = (options) => {
+  if (!options?.input) return { data: globalThis.__granted };
+  (globalThis.__searches ??= []).push(options);
+  const result = globalThis.__searchResult;
+  return typeof result === 'function' ? result(options) : result;
+};`,
   'providers.mjs': 'export const useTRPC = () => ({ permissions: { mine: { queryOptions: () => ({}) } } });',
   'trpc-server.mjs': `export const getQueryClient = () => ({ prefetchQuery: async () => {} });
 export const HydrateClient = ({ children }) => children;
@@ -110,6 +122,9 @@ const IMPORTS: Record<string, string> = {
   'next/navigation': './next-navigation.mjs',
   'next/link': './next-link.mjs',
   '@repo/ui/components/ui/command': './command.mjs',
+  '@repo/api/search-query': './search-query.mjs',
+  '@tanstack/react-query': './react-query.mjs',
+  '@/trpc/providers': './trpc-providers.mjs',
   '@repo/ui/components/ui/sidebar': './sidebar.mjs',
   '@/hooks/use-permission': './permission.mjs',
   '@/trpc/server': './trpc-server.mjs',
@@ -119,6 +134,10 @@ const IMPORTS: Record<string, string> = {
   '@/hooks/use-mounted': './use-mounted.mjs',
   '@/lib/constants': './constants.mjs',
   '@/lib/allowed-routes': './allowed-routes.mjs',
+};
+
+const REAL = {
+  zod: Bun.resolveSync('zod', import.meta.dir),
 };
 
 const must = <T,>(value: T | undefined, what: string): T => {
@@ -133,6 +152,8 @@ const globals = globalThis as {
   __mobileSidebarOpen?: boolean;
   __session?: unknown;
   __granted?: string[];
+  __searches?: unknown[];
+  __searchResult?: unknown;
 };
 
 describe(`${BLUEPRINT} command palette`, () => {
@@ -141,6 +162,7 @@ describe(`${BLUEPRINT} command palette`, () => {
   let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
   let CommandPaletteProvider: Component;
   let CommandPaletteTrigger: Component;
+  let recordSearchOptions: RecordSearchOptions;
   let DashboardLayout: Component;
   let StartProvider: Component;
   let StartTrigger: Component;
@@ -163,6 +185,9 @@ describe(`${BLUEPRINT} command palette`, () => {
     Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent } });
     globals.__serverRender = false;
     globals.__pushed = [];
+    globals.__searches = [];
+    answer({ isPending: true });
+    timers.length = 0;
     react.resetState();
   };
 
@@ -229,6 +254,51 @@ describe(`${BLUEPRINT} command palette`, () => {
   const hintOf = (trigger: RenderedElement): RenderedElement | undefined =>
     elementsOf([trigger]).find((element) => element.tag === 'kbd');
 
+  // The timers the palette sets, kept so a test decides when the delay of the search has elapsed.
+  const timers: { callback: () => void; delay: number; cancelled: boolean }[] = [];
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+
+  const elapse = (): void => {
+    for (const timer of timers.splice(0)) if (!timer.cancelled) timer.callback();
+  };
+
+  const inputOf = (tree: RenderedChild[]): RenderedElement => {
+    const input = elementsOf(tree).find((element) => element.tag === 'input');
+    if (!input) throw new Error('the search input is not there');
+    return input;
+  };
+
+  // Types in the input of the open palette and renders again, as a user typing would.
+  const typeInPalette = async (text: string, role = 'admin'): Promise<RenderedChild[]> => {
+    (inputOf(await render(role)).props.onValueChange as (value: string) => void)(text);
+    const tree = await render(role);
+    react.flushEffects();
+    return tree;
+  };
+
+  const settled = { isPending: false, isError: false, isFetching: false, data: [] };
+
+  const answer = (result: Record<string, unknown>): void => {
+    globals.__searchResult = { ...settled, ...result };
+  };
+
+  // The answer of the query layer per text searched, as the server answers each text on its own.
+  const answerPer = (answers: Record<string, Record<string, unknown>>): void => {
+    globals.__searchResult = (options: { input: { query: string } }) => ({
+      ...settled,
+      ...(answers[options.input.query] ?? { isPending: true }),
+    });
+  };
+
+  const alertOf = (tree: RenderedChild[]): RenderedElement | undefined =>
+    elementsOf(tree).find((element) => element.props.role === 'alert');
+  // The text of the status region, which is always in the page so that a message put into it is announced.
+  const messageOf = (tree: RenderedChild[]): string =>
+    textOf(must(elementsOf(tree).find((element) => element.props.role === 'status'), 'the status region'));
+  const lastSearch = (): { input: { query: string }; enabled: boolean; retry: boolean } =>
+    must((globals.__searches ?? []).at(-1), 'a search') as never;
+
   beforeAll(async () => {
     tempDir = await createTempDir();
     const result = await runCli([BLUEPRINT, '--blueprint', BLUEPRINT, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
@@ -237,7 +307,8 @@ describe(`${BLUEPRINT} command palette`, () => {
 
     const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
-    for (const [name, source] of Object.entries(STUBS)) await Bun.write(join(stubs, name), source);
+    for (const [name, source] of Object.entries(STUBS)) if (source) await Bun.write(join(stubs, name), source);
+    await Bun.write(join(stubs, 'user-list.mjs'), 'export const MAX_SEARCH_LENGTH = 100;');
     react = (await import(join(stubs, 'react.mjs'))) as typeof react;
 
     const load = async <T,>(file: string, name: string, imports: Record<string, string> = {}): Promise<T> =>
@@ -247,6 +318,11 @@ describe(`${BLUEPRINT} command palette`, () => {
         { ...IMPORTS, ...imports },
         'tsx',
       );
+    await evaluateGeneratedModule(
+      await readTextFile(join(projectPath, 'packages/api/src/search-query.ts')),
+      join(stubs, 'search-query.mjs'),
+      { zod: REAL.zod, './user-list': './user-list.mjs' },
+    );
     await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
     await load('src/hooks/use-permission.ts', 'permission.mjs', {
       '@tanstack/react-query': './react-query.mjs',
@@ -255,9 +331,10 @@ describe(`${BLUEPRINT} command palette`, () => {
     await load('src/lib/constants.ts', 'constants.mjs');
     await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
     await load('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs');
-    ({ CommandPaletteProvider, CommandPaletteTrigger } = await load<{
+    ({ CommandPaletteProvider, CommandPaletteTrigger, recordSearchOptions } = await load<{
       CommandPaletteProvider: Component;
       CommandPaletteTrigger: Component;
+      recordSearchOptions: RecordSearchOptions;
     }>('src/components/navigation/command-palette.tsx', 'command-palette.mjs'));
 
     const layoutImports = {
@@ -413,10 +490,18 @@ describe(`${BLUEPRINT} command palette`, () => {
       expect(elementsOf(tree).filter((element) => element.props.role === 'group')).toEqual([]);
     });
 
-    test('a page is findable by its title, which is not in its address', async () => {
-      const documents = elementsOf(await open('admin')).find((element) => element.props['data-value'] === '/');
-      const searchable = `${documents?.props['data-value']} ${documents?.props['data-keywords']}`.toLowerCase();
-      expect(searchable).toContain('documents');
+    test('a page is findable by part of its title, which is not in its address', async () => {
+      await open('admin');
+      await typeInPalette('docum');
+      expect(pagesOf(await render('admin'))).toEqual(['/']);
+    });
+
+    test('a page is findable by its category, and a page that matches nothing is not listed', async () => {
+      await open('admin');
+      await typeInPalette('administ');
+      expect(pagesOf(await render('admin'))).toEqual(['/admin/users', '/admin/roles']);
+      await typeInPalette('zzz');
+      expect(pagesOf(await render('admin'))).toEqual([]);
     });
 
     test('selecting a page closes the palette and goes to it', async () => {
@@ -425,6 +510,287 @@ describe(`${BLUEPRINT} command palette`, () => {
       (roles?.props.onSelect as () => void)();
       expect(globals.__pushed).toEqual(['/admin/roles']);
       expect(dialogOf(await render('admin'))).toBeUndefined();
+    });
+  });
+
+  describe('the records', () => {
+    const GROUPS = [
+      { type: 'documents', label: 'Documents', items: [{ id: 'd1', title: 'Quarterly report', subtitle: 'application/pdf', href: '/' }] },
+      { type: 'users', label: 'Users', items: [{ id: 'u1', title: 'Ada Archer', subtitle: 'ada@example.com', href: '/admin/users/u1' }] },
+    ];
+
+    beforeAll(() => {
+      globalThis.setTimeout = ((callback: () => void, delay: number) => {
+        const timer = { callback, delay, cancelled: false };
+        timers.push(timer);
+        return timer;
+      }) as never;
+      globalThis.clearTimeout = ((timer: { cancelled: boolean }) => {
+        timer.cancelled = true;
+      }) as never;
+    });
+
+    afterAll(() => {
+      globalThis.setTimeout = realSetTimeout;
+      globalThis.clearTimeout = realClearTimeout;
+    });
+
+    const openPalette = async (role = 'admin'): Promise<void> => {
+      await mount(role, LINUX);
+      press({ ctrlKey: true });
+    };
+
+    // Types the text, lets the delay of the search elapse and renders again, as the browser would.
+    const searchFor = async (text: string, role = 'admin'): Promise<RenderedChild[]> => {
+      await typeInPalette(text, role);
+      elapse();
+      return render(role);
+    };
+
+    const groupsOf = (tree: RenderedChild[]): string[] =>
+      elementsOf(tree)
+        .filter((element) => element.props.role === 'group')
+        .map((element) => String(element.props['aria-label']));
+
+    test('the palette does not filter, the pages are matched by the palette and the records by the server', async () => {
+      await openPalette();
+      expect(dialogOf(await render('admin'))?.props['data-should-filter']).toBe('false');
+    });
+
+    test('nothing is searched while the box is empty or holds a single character', async () => {
+      await openPalette();
+      expect(messageOf(await render('admin'))).toBe('');
+
+      await typeInPalette('a');
+      elapse();
+      const tree = await render('admin');
+      expect(lastSearch().enabled).toBe(false);
+      expect(messageOf(tree)).toContain('at least 2 characters');
+    });
+
+    test('the search starts at two characters, once the delay of the typing has elapsed', async () => {
+      await openPalette();
+      const typing = await typeInPalette('ad');
+      expect(lastSearch().enabled, 'no request before the delay').toBe(false);
+      expect(messageOf(typing)).toContain('Searching');
+      expect(timers.length, 'the typing waits on a timer').toBeGreaterThan(0);
+      expect(timers.every((timer) => timer.delay >= 150 && timer.delay <= 500)).toBe(true);
+
+      elapse();
+      await render('admin');
+      expect(lastSearch()).toMatchObject({ input: { query: 'ad' }, enabled: true });
+    });
+
+    test('the text is trimmed, so a space around it neither counts nor asks twice', async () => {
+      await openPalette();
+      await searchFor('  ad ');
+      expect(lastSearch()).toMatchObject({ input: { query: 'ad' }, enabled: true });
+    });
+
+    test('a failed search is not retried by the query, so the failure shows at once', async () => {
+      await openPalette();
+      await searchFor('ad');
+      expect(lastSearch().retry).toBe(false);
+    });
+
+    test('a newer text supersedes the older one: the answer for "ad" is never shown for "ada"', async () => {
+      await openPalette();
+      answerPer({ ad: { data: [GROUPS[0]] }, ada: { data: [GROUPS[1]] } });
+      await searchFor('ad');
+      const first = await render('admin');
+      expect(groupsOf(first)).toEqual(['Pages', 'Documents']);
+
+      const typing = await typeInPalette('ada');
+      expect(groupsOf(typing), 'the delay has not elapsed: the text has no answer yet').toEqual([]);
+      expect(messageOf(typing)).toContain('Searching');
+
+      elapse();
+      const second = await render('admin');
+      expect(lastSearch().input.query).toBe('ada');
+      expect(groupsOf(second)).toEqual(['Users']);
+    });
+
+    test('while a search runs, it says so in the status region', async () => {
+      await openPalette();
+      answer({ isPending: true, isFetching: true });
+      const tree = await searchFor('ad');
+      expect(messageOf(tree)).toBe('Searching records...');
+      expect(alertOf(tree)).toBeUndefined();
+    });
+
+    test('a search with no match says so, with the text, and is not the running state', async () => {
+      await openPalette();
+      answer({ data: [] });
+      const tree = await searchFor('zzz');
+      expect(messageOf(tree)).toBe('No records match "zzz".');
+      expect(alertOf(tree)).toBeUndefined();
+      expect(groupsOf(tree)).toEqual([]);
+    });
+
+    describe('a failed search', () => {
+      const fail = async (refetch: () => void = () => {}): Promise<RenderedChild[]> => {
+        await openPalette();
+        answer({ isError: true, error: new Error('boom'), refetch });
+        return searchFor('ad');
+      };
+      const retryOf = (tree: RenderedChild[]): RenderedElement =>
+        must(elementsOf(tree).find((element) => element.props['data-value'] === 'records:retry'), 'the retry item');
+
+      test('says so as an alert, apart from the status region', async () => {
+        const tree = await fail();
+        expect(textOf(must(alertOf(tree), 'an alert'))).toBe('The search failed.');
+        expect(messageOf(tree)).toBe('');
+      });
+
+      test('offers the retry as an item of the list, so Enter selects it as it selects any item, and there is no button', async () => {
+        const tree = await fail();
+        expect(retryOf(tree).props.role).toBe('option');
+        expect(elementsOf(must(dialogOf(tree), 'the dialog').children).filter((element) => element.tag === 'button')).toEqual([]);
+      });
+
+      test('selecting the retry asks again and neither closes the palette nor goes to a page', async () => {
+        let retried = 0;
+        const tree = await fail(() => {
+          retried += 1;
+        });
+        (retryOf(tree).props.onSelect as () => void)();
+        expect(retried).toBe(1);
+        expect(globals.__pushed).toEqual([]);
+        expect(dialogOf(await render('admin'))).toBeDefined();
+      });
+
+      test('a retry in flight shows the running state again, without the alert', async () => {
+        await openPalette();
+        answer({ isError: true, isFetching: true });
+        const tree = await searchFor('ad');
+        expect(messageOf(tree)).toBe('Searching records...');
+        expect(alertOf(tree)).toBeUndefined();
+      });
+    });
+
+    test('no message sits inside the listbox, which holds options and their groups only', async () => {
+      await openPalette();
+      for (const result of [{ isPending: true }, { data: [] }, { isError: true }]) {
+        answer(result);
+        const tree = await searchFor('ad');
+        const listbox = must(elementsOf(tree).find((element) => element.props.role === 'listbox'), 'the listbox');
+        const inside = elementsOf(listbox.children).map((element) => element.props.role);
+        expect(inside.filter((role) => role === 'status' || role === 'alert')).toEqual([]);
+        expect(elementsOf(listbox.children).filter((element) => element.tag === 'button')).toEqual([]);
+      }
+    });
+
+    test('the three states are three different messages', async () => {
+      await openPalette();
+      const seen: string[] = [];
+      for (const result of [{ isPending: true }, { data: [] }, { isError: true }]) {
+        answer(result);
+        const tree = await searchFor('ad');
+        seen.push(alertOf(tree) ? textOf(must(alertOf(tree), 'an alert')) : messageOf(tree));
+      }
+      expect(new Set(seen).size).toBe(3);
+    });
+
+    test('the groups are the ones the server returned, in its order, under its labels', async () => {
+      await openPalette();
+      answer({ data: GROUPS });
+      const tree = await searchFor('ad');
+      expect(groupsOf(tree)).toEqual(['Pages', 'Documents', 'Users']);
+      const items = elementsOf(tree).filter((element) => element.props.role === 'option');
+      expect(items.map((item) => item.props['data-value'])).toEqual(['/admin/users', '/admin/roles', 'documents:d1', 'users:u1']);
+      expect(textOf(must(items.at(-1), 'an item'))).toBe('Ada Archerada@example.com');
+    });
+
+    test('a type the palette has never heard of needs no change in it', async () => {
+      await openPalette();
+      answer({ data: [{ type: 'invoices', label: 'Invoices', items: [{ id: 'i1', title: 'INV-001', subtitle: 'Paid', href: '/invoices/i1' }] }] });
+      const tree = await searchFor('inv');
+      expect(groupsOf(tree)).toContain('Invoices');
+      expect(elementsOf(tree).some((element) => element.props['data-value'] === 'invoices:i1')).toBe(true);
+    });
+
+    test('a group the server leaves out is not shown', async () => {
+      await openPalette('user');
+      answer({ data: [GROUPS[0]] });
+      const tree = await searchFor('ad', 'user');
+      expect(groupsOf(tree)).toEqual(['Documents']);
+    });
+
+    test('the records are not filtered by the pages: a record shows although its text is nowhere in a page title', async () => {
+      await openPalette();
+      answer({ data: GROUPS });
+      const tree = await searchFor('archer');
+      expect(pagesOf(tree)).toEqual(['documents:d1', 'users:u1']);
+    });
+
+    test('selecting a record closes the palette and goes to its page', async () => {
+      await openPalette();
+      answer({ data: GROUPS });
+      const tree = await searchFor('ada');
+      const user = must(elementsOf(tree).find((element) => element.props['data-value'] === 'users:u1'), 'the user');
+      (user.props.onSelect as () => void)();
+      expect(globals.__pushed).toEqual(['/admin/users/u1']);
+      expect(dialogOf(await render('admin'))).toBeUndefined();
+    });
+  });
+
+  // The request layer is the real one: a QueryClient, tRPC's options proxy and a link that records each request with
+  // its abort signal. Only the network is a stand-in.
+  describe('the requests', () => {
+    interface Request {
+      query: string;
+      signal: AbortSignal | null | undefined;
+    }
+
+    const requests: Request[] = [];
+    const link: TRPCLink<never> = () =>
+      ({ op }) =>
+        observable((observer) => {
+          requests.push({ query: (op.input as { query: string }).query, signal: op.signal });
+          const abort = () => observer.error(TRPCClientError.from(new Error('aborted')));
+          op.signal?.addEventListener('abort', abort);
+          return () => op.signal?.removeEventListener('abort', abort);
+        });
+
+    const watch = (queryClient: QueryClient, text: string) => {
+      const trpc = createTRPCOptionsProxy({ client: createTRPCClient({ links: [link as never] }), queryClient });
+      const options = (value: string) => recordSearchOptions(trpc, value) as never;
+      const observer = new QueryObserver(queryClient, options(text));
+      return { observer, options, stop: observer.subscribe(() => {}) };
+    };
+    const settle = () => new Promise((resolve) => realSetTimeout(resolve, 20));
+
+    test('a request for an older text is aborted when a newer text replaces it', async () => {
+      requests.length = 0;
+      const { observer, options, stop } = watch(new QueryClient(), 'ad');
+      await settle();
+      expect(requests.map((request) => request.query)).toEqual(['ad']);
+
+      observer.setOptions(options('ada'));
+      await settle();
+      expect(requests.map((request) => request.query)).toEqual(['ad', 'ada']);
+      expect(requests[0]?.signal?.aborted, 'the request for "ad" is aborted').toBe(true);
+      expect(requests[1]?.signal?.aborted, 'the request for "ada" runs on').toBe(false);
+      stop();
+    });
+
+    test('closing the palette aborts the request still running', async () => {
+      requests.length = 0;
+      const { stop } = watch(new QueryClient(), 'ad');
+      await settle();
+      expect(requests[0]?.signal?.aborted).toBe(false);
+
+      stop();
+      await settle();
+      expect(requests[0]?.signal?.aborted).toBe(true);
+    });
+
+    test('a text under the minimum sends no request', async () => {
+      requests.length = 0;
+      const { stop } = watch(new QueryClient(), 'a');
+      await settle();
+      expect(requests).toEqual([]);
+      stop();
     });
   });
 

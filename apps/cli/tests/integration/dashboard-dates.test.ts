@@ -19,6 +19,8 @@ const BLUEPRINTS_WITH_DATES = [
 ];
 
 const HELPER_PATHS = ['apps/web/src/lib/format-date.ts', 'src/lib/format-date.ts'];
+// A package that formats a date for a text it writes on the server carries the same helper, rendered from the same partial.
+const HELPER_COPY_PATHS = ['packages/api/src/format-date.ts'];
 const LOCALE_DEPENDENT_DATE_CALL = /\.toLocale(?:Date|Time)?String\(/;
 const DATE_FORMATTER_CALL = /Intl\.DateTimeFormat\(/;
 
@@ -82,10 +84,13 @@ describe('dates rendered by the blueprints', () => {
       const root = projectPaths.get(blueprint) as string;
       const helper = await helperPathOf(blueprint);
       const sources = (await filesUnder(root, ['node_modules'])).filter((file) => /\.(ts|tsx)$/.test(file));
+      const copies = HELPER_COPY_PATHS.map((path) => join(root, path)).filter((path) => sources.includes(path));
+      for (const copy of copies) expect(await readTextFile(copy), copy).toBe(await readTextFile(helper as string));
       const offenders: string[] = [];
       for (const file of sources) {
         const text = await readTextFile(file);
-        const formatsDate = LOCALE_DEPENDENT_DATE_CALL.test(text) || (file !== helper && DATE_FORMATTER_CALL.test(text));
+        const isHelper = file === helper || copies.includes(file);
+        const formatsDate = LOCALE_DEPENDENT_DATE_CALL.test(text) || (!isHelper && DATE_FORMATTER_CALL.test(text));
         if (formatsDate) offenders.push(file.slice(root.length + 1));
       }
       expect(offenders).toEqual([]);

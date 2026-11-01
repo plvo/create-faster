@@ -1,0 +1,14 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/text-match.ts
+---
+import { type SQL, sql } from '@repo/db';
+import type { Column } from './page-query';
+
+// Whether the column contains the text, whatever the case. `instr` reads the text as plain text: LIKE would read a
+// `%` or `_` of it as a wildcard. It cannot use an index, so the query scans the table.
+export function containsText(column: Column, text: string): SQL {
+  return sql`instr(lower(${column}), lower(${text})) > 0`;
+}

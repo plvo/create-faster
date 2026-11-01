@@ -1994,6 +1994,7 @@ export const META: Meta = {
           exports: {
             './pagination': './src/pagination.ts',
             './user-list': './src/user-list.ts',
+            './search-query': './src/search-query.ts',
           },
         },
       },
