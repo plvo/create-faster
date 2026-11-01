@@ -184,7 +184,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     expect(await missingUser.text()).toContain('Page not found');
     const roles = await fetch(new URL('/admin/roles', server.url), { headers: { cookie } });
     expect(roles.status).toBe(200);
-    expect(await roles.text()).toContain('packages/auth/src/permissions.ts');
+    expect(await roles.text()).toContain('What each role may do');
 
     const created = await callTrpc<{ user: { id: string; email: string; role: string }; password: string }>(
       server,

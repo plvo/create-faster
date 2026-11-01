@@ -48,10 +48,9 @@ export const userRouter = router({
         body: { name: input.name, email: input.email, password },
       });
       // The account exists on the default role until this succeeds, and stays on it when it fails.
-      if (input.role !== DEFAULT_ROLE) {
-        await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
-      }
-      return { user, password };
+      if (input.role === DEFAULT_ROLE) return { user, password };
+      const assigned = await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
+      return { user: assigned.user ?? user, password };
     }),
 
   {{> roles/user-role-procedures}}
