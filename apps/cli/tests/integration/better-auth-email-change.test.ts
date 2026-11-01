@@ -205,7 +205,17 @@ describe.each(BLUEPRINTS)('the email change on the generated auth of $name', (bl
       await Promise.allSettled(background);
 
       expect(await emailOf(cookie)).toBe('owner@example.com');
-      expect((await post('/sign-in/email', { email: 'new@example.com', password: PASSWORD })).status).toBe(401);
+      const warned: string[] = [];
+      const realWarn = console.warn;
+      console.warn = (...parts: unknown[]) => {
+        warned.push(parts.map(String).join(' '));
+      };
+      try {
+        expect((await post('/sign-in/email', { email: 'new@example.com', password: PASSWORD })).status).toBe(401);
+      } finally {
+        console.warn = realWarn;
+      }
+      expect(warned.join('\n')).toContain('User not found');
       expect((await post('/sign-in/email', { email: 'owner@example.com', password: PASSWORD })).status).toBe(200);
     });
 
