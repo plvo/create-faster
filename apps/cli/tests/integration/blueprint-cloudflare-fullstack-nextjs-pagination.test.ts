@@ -109,7 +109,7 @@ export const createCallerFactory = t.createCallerFactory;`,
   // caller varies, so the admin gate and the owner filter are what the tests tell apart. What a role holds is
   // decided by the generated engine, which blueprint-cloudflare-fullstack-nextjs-roles.test.ts runs on a database.
   'auth.mjs': 'export const createAuth = () => ({ api: {} });',
-  'permissions.mjs': "export const ADMIN_ROLE = 'admin'; export const DEFAULT_ROLE = 'user'; export const ROLE_ID = /^[a-z0-9-]+$/;",
+  'permissions.mjs': "export const ADMIN_ROLE = 'admin'; export const DEFAULT_ROLE = 'user'; export const ROLE_ID = /^[a-z0-9-]+$/; export const isAdmin = (session) => session.user.role === ADMIN_ROLE;",
   'role-assignment.mjs': 'export const listAssignableRoles = async () => [];',
   'auth-errors.mjs': 'export const trpcErrorFromAuthError = () => undefined;',
   // The admin and the manager read every document, the others their own: the scope the defaults give, by permission.
