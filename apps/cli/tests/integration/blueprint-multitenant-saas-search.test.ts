@@ -202,11 +202,16 @@ describe(`${BLUEPRINT} palette search`, () => {
       'better-auth/plugins/organization/access': REAL.organizationAccess,
     });
     await generated('packages/auth/src/invitation-link.ts', 'invitation-link.mjs', {});
+    await generated('packages/auth/src/email-change-guard.ts', 'email-change-guard.mjs', {
+      'better-auth/api': REAL.betterAuthApi,
+      './link-delivery': './link-delivery.mjs',
+    });
     const { createAuth } = await generated<{ createAuth: () => { api: AuthApi } }>('packages/auth/src/auth.ts', 'create-auth.mjs', {
       '@repo/db': './db.mjs',
       '@better-auth/drizzle-adapter': REAL.drizzleAdapter,
       'better-auth': REAL.betterAuth,
       'better-auth/plugins': REAL.betterAuthPlugins,
+      './email-change-guard': './email-change-guard.mjs',
       './invitation-link': './invitation-link.mjs',
       './link-delivery': './link-delivery.mjs',
       './permissions': './permissions.mjs',
