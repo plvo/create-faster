@@ -435,7 +435,7 @@ main()
 
 // What the roles of the database do on the served project and its real PostgreSQL: the matrix, a revocation at the next
 // request, the values that must never become a role, and two requests that race. Every test restores what it changed.
-export function describeRoles({ server, projectDir, rendersMatrixOnServer }: PagingContext & { rendersMatrixOnServer: boolean }): void {
+export function describeRoles({ server, projectDir }: PagingContext): void {
   describe('roles', () => {
     let clientNumber = 0;
     const nextIp = (): string => `10.5.${Math.floor(clientNumber / 200)}.${(clientNumber++ % 200) + 1}`;
@@ -652,13 +652,15 @@ export function describeRoles({ server, projectDir, rendersMatrixOnServer }: Pag
       expect(await rows(`select count(*) from users where role = 'admin' and not coalesce(banned, false)`)).toEqual([['1']]);
     });
 
-    test.skipIf(!rendersMatrixOnServer)('the roles page renders the matrix from the database, with a labelled box for each stored role', async () => {
+    test('the roles page renders the matrix from the database, with a labelled box for each stored role', async () => {
       const admin = await signedIn(SEEDED_ADMIN);
       const response = await fetch(new URL('/admin/roles', server().url), { headers: { cookie: admin } });
       expect(response.status).toBe(200);
       // React separates the text nodes of `{label} may {name}` with comments.
       const html = (await response.text()).replaceAll('<!-- -->', '');
       expect(html).toContain('Permissions granted to each role');
+      // The signed-in role reaches the page from the server, so the column of the administrator says whose it is.
+      expect(html).toContain('(you)');
       expect(html).toContain('Manager may contact.read');
       expect(html).toContain('User may contact.delete');
       expect(html).toContain('Delete role Manager');
@@ -682,5 +684,60 @@ export function describeRoles({ server, projectDir, rendersMatrixOnServer }: Pag
         await rm(script, { force: true });
       }
     }, 240_000);
+  });
+}
+
+// The permission list a TanStack Start document carries: the `_dashboard` layout resolves it on the server into the route
+// context, and the router serializes the context into the document, so the browser that hydrates the page already
+// holds it and asks the server for nothing.
+const permissionListOf = (html: string): string[] | undefined => {
+  const serialized = /[{,]permissions:(?:\$R\[\d+\]=)?\[([^\]]*)\]/.exec(html)?.[1];
+  return serialized === undefined ? undefined : [...serialized.matchAll(/"([^"]+)"/g)].map((entry) => entry[1] ?? '');
+};
+
+// What the first render of a TanStack Start dashboard holds for each kind of caller, a role created at runtime included.
+// The role and the account it is given to are restored whatever the assertions found.
+export function describeFirstRender({ server, projectDir }: PagingContext): void {
+  describe('first render', () => {
+    const FIRST_RENDER_ROLE = 'first-render';
+    let clientNumber = 0;
+    const signedIn = (email: string): Promise<string> => signIn(server(), email, `10.6.0.${++clientNumber}`);
+
+    const documentOf = async (path: string, cookie: string): Promise<string> => {
+      const response = await fetch(new URL(path, server().url), { headers: { cookie } });
+      expect([path, response.status]).toEqual([path, 200]);
+      return response.text();
+    };
+
+    afterEach(async () => {
+      await psql(projectDir(), `update users set role = 'user' where email = '${SEEDED_MEMBER}'`);
+      await psql(projectDir(), `delete from roles where id = '${FIRST_RENDER_ROLE}'`);
+    });
+
+    test('the document carries the permission list of each caller, the role of the database, so hydrating asks the server for nothing', async () => {
+      expect(permissionListOf(await documentOf('/contacts', await signedIn(SEEDED_READER)))).toEqual(['contact.read']);
+      expect(permissionListOf(await documentOf('/contacts', await signedIn(SEEDED_MEMBER)))?.sort()).toEqual([
+        'contact.create',
+        'contact.delete',
+        'contact.read',
+        'contact.update',
+      ]);
+      expect(permissionListOf(await documentOf('/admin/users', await signedIn(SEEDED_ADMIN)))).toEqual(
+        expect.arrayContaining(['contact.read', 'user.list', 'session.list']),
+      );
+    });
+
+    test('a role created at runtime shows in the document the next time the account asks, and so does its revocation', async () => {
+      const admin = await signedIn(SEEDED_ADMIN);
+      expect((await callTrpc(server(), 'roles.create', admin, { id: FIRST_RENDER_ROLE, label: 'First render' })).status).toBe(200);
+      expect((await callTrpc(server(), 'roles.setPermission', admin, { id: FIRST_RENDER_ROLE, permission: 'contact.read', granted: true })).status).toBe(200);
+      await psql(projectDir(), `update users set role = '${FIRST_RENDER_ROLE}' where email = '${SEEDED_MEMBER}'`);
+
+      const member = await signedIn(SEEDED_MEMBER);
+      expect(permissionListOf(await documentOf('/contacts', member))).toEqual(['contact.read']);
+
+      expect((await callTrpc(server(), 'roles.setPermission', admin, { id: FIRST_RENDER_ROLE, permission: 'contact.read', granted: false })).status).toBe(200);
+      expect(permissionListOf(await documentOf('/profile/account', member))).toEqual([]);
+    });
   });
 }

@@ -13,6 +13,7 @@ import {
   buildAndStartWeb,
   callTrpc,
   describeFailure,
+  describeFirstRender,
   describePaging,
   describeRoles,
   describeSearch,
@@ -267,7 +268,9 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
 
   describeSearch({ server: () => server, projectDir: () => projectDir });
 
-  describeRoles({ server: () => server, projectDir: () => projectDir, rendersMatrixOnServer: false });
+  describeRoles({ server: () => server, projectDir: () => projectDir });
+
+  describeFirstRender({ server: () => server, projectDir: () => projectDir });
 
   test('an unknown page answers not found and the server logs no error', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.5');
