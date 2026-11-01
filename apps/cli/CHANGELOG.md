@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.6.10](https://github.com/plvo/create-faster/compare/create-faster-v1.6.9...create-faster-v1.6.10) (2026-11-01)
+
+
+### Features
+
+* **cloudflare-fullstack:** assign roles, keep an administrator ([#469](https://github.com/plvo/create-faster/issues/469)) ([5fed5ce](https://github.com/plvo/create-faster/commit/5fed5ced7dc9346bda8247798dce056fac746c99))
+* **cloudflare-fullstack:** change email from the profile ([#462](https://github.com/plvo/create-faster/issues/462)) ([d5da819](https://github.com/plvo/create-faster/commit/d5da8195c0b8bbc85d67943e863141dbedf6ab7c))
+* **cloudflare-fullstack:** edit the role matrix, create and delete roles ([#471](https://github.com/plvo/create-faster/issues/471)) ([d4c2d73](https://github.com/plvo/create-faster/commit/d4c2d739df1ac2fb4247e553f933ec5021f0f5bd))
+* **cloudflare-fullstack:** read role permissions from the database ([#464](https://github.com/plvo/create-faster/issues/464)) ([2879b12](https://github.com/plvo/create-faster/commit/2879b12b652c7ebe35c6f79a91baed0670011b8c))
+* **cloudflare-fullstack:** search records from the command palette ([#463](https://github.com/plvo/create-faster/issues/463)) ([c232ebd](https://github.com/plvo/create-faster/commit/c232ebd5294526f7a19354dcc81114dbc2087aeb))
+* **dashboard:** keep the user menu open on theme change ([#457](https://github.com/plvo/create-faster/issues/457)) ([f607c25](https://github.com/plvo/create-faster/commit/f607c253bb2e5fd8e5509501c6a757def93b9d5e))
+* **dashboard:** open a command palette with pages ([#460](https://github.com/plvo/create-faster/issues/460)) ([26a3052](https://github.com/plvo/create-faster/commit/26a3052fae13446e7790569aaff8000563807504))
+* **dashboards:** change email on the three other dashboards ([#467](https://github.com/plvo/create-faster/issues/467)) ([8c10ace](https://github.com/plvo/create-faster/commit/8c10ace1d32cb370e62a015a666f9c3a39b85dc4))
+* **multitenant:** add the palette to the dashboard ([#472](https://github.com/plvo/create-faster/issues/472)) ([5bbb7ef](https://github.com/plvo/create-faster/commit/5bbb7eff6164e725e464a4c7e8a554ce12fdc8cb))
+* **org-dashboard:** editable roles on PostgreSQL ([#473](https://github.com/plvo/create-faster/issues/473)) ([ff583a0](https://github.com/plvo/create-faster/commit/ff583a0979fa48e7e5b9cd3b780e8d554561111f))
+* **org-dashboard:** search contacts and users in the palette ([#470](https://github.com/plvo/create-faster/issues/470)) ([ca8c88b](https://github.com/plvo/create-faster/commit/ca8c88bf01467e9f263b47f0e71f04ae744f01fd))
+
+
+### Bug Fixes
+
+* **d1:** generate no drizzle script without an orm ([#435](https://github.com/plvo/create-faster/issues/435)) ([f4f4d3e](https://github.com/plvo/create-faster/commit/f4f4d3e72cb1b3c9b7f08e0bf30d521cb58646e8))
+* **tanstack-start:** wrap the router in a module-level tRPC provider ([#468](https://github.com/plvo/create-faster/issues/468)) ([f72c929](https://github.com/plvo/create-faster/commit/f72c9291b63f05cb5326dadd55edde43ff341bea))
+
+
+### Refactor
+
+* **nextjs:** move the rainbowkit next config to a blueprint partial ([#438](https://github.com/plvo/create-faster/issues/438)) ([aa03930](https://github.com/plvo/create-faster/commit/aa03930c5a4414052ef384f1a42706c086db17a3))
+
+
+### Miscellaneous
+
+* **meta:** update better-auth to ^1.7.14 ([#456](https://github.com/plvo/create-faster/issues/456)) ([ac059f8](https://github.com/plvo/create-faster/commit/ac059f85846348aecc2bddd57568250f63b5eee0))
+
+
+### Tests
+
+* **roles:** prove editable roles on the Start first render ([#474](https://github.com/plvo/create-faster/issues/474)) ([ba0a00d](https://github.com/plvo/create-faster/commit/ba0a00da2d407c8a87771a151d8501f48fa5bb5b))
+
 ## [1.6.9](https://github.com/plvo/create-faster/compare/create-faster-v1.6.8...create-faster-v1.6.9) (2026-10-21)
 
 
