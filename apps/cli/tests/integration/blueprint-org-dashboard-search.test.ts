@@ -121,9 +121,6 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
   let schema: Record<string, PgTable>;
   let createCaller: (appRouter: unknown) => (ctx: unknown) => Caller;
   let appRouter: unknown;
-  let searchModule: {
-    searchRecords: (caller: unknown, query: string) => Promise<SearchGroup[]>;
-  };
   let engineModule: { SEARCH_LIMIT_PER_TYPE: number };
   let queryModule: { SEARCH_MIN_LENGTH: number };
   let postgres: PGlite;
@@ -161,8 +158,9 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       const role = (await postgres.query<{ role: string }>('SELECT role FROM users WHERE id = $1', [userId])).rows[0]?.role;
       return createCaller(appRouter)({ db, headers: new Headers(), session: { user: { id: userId, role } } });
     };
-    const searches = (): LoggedQuery[] => queries.filter(({ query }) => /position\(/.test(query));
-    return Object.assign(caller, { queries, searches });
+    const readingTable = (table: string): LoggedQuery[] =>
+      queries.filter(({ query }) => new RegExp(`\\bfrom "${table}"`, 'i').test(query));
+    return Object.assign(caller, { queries, readingTable });
   };
 
   beforeAll(async () => {
@@ -200,7 +198,7 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       '../auth': './auth.mjs',
       '../trpc': './trpc.mjs',
     });
-    searchModule = await generated(`${API}/search.ts`, 'search.mjs', {
+    await generated(`${API}/search.ts`, 'search.mjs', {
       '@repo/db': './db.mjs',
       './middleware/rbac': './rbac.mjs',
       './search-engine': './search-engine.mjs',
@@ -408,10 +406,12 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
     test('no query runs for a type the caller may not read', async () => {
       const database = await callerOn();
       await (await database(MEMBER)).search.records({ query: 'mia' });
-      expect(database.searches().map(({ query }) => query).join('\n')).not.toContain('"users"');
+      expect(database.readingTable('contacts')).toHaveLength(1);
+      expect(database.readingTable('users')).toEqual([]);
       const stranger = await callerOn();
       await (await stranger(STRANGER)).search.records({ query: 'grace' });
-      expect(stranger.searches()).toEqual([]);
+      expect(stranger.readingTable('contacts')).toEqual([]);
+      expect(stranger.readingTable('users')).toEqual([]);
     });
 
     // The search asks what the lists ask: a role gets a group of a type exactly when it can list that type.

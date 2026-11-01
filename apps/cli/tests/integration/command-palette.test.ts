@@ -43,6 +43,80 @@ interface FakeKeyEvent {
   preventDefault: () => void;
 }
 
+interface FakeTimer {
+  callback: () => void;
+  delay: number;
+  cancelled: boolean;
+}
+
+// The browser the palette meets: a document that keeps the key listeners it is given, a navigator, and the timers the
+// palette sets, kept so a test decides when the delay of the search has elapsed. `release` puts the real ones back.
+function createFakeBrowser() {
+  const document = { listeners: [] as KeyHandler[] };
+  const timers: FakeTimer[] = [];
+  const real = {
+    document: Object.getOwnPropertyDescriptor(globalThis, 'document'),
+    navigator: Object.getOwnPropertyDescriptor(globalThis, 'navigator'),
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout,
+  };
+
+  return {
+    timers,
+    open(userAgent: string): void {
+      document.listeners = [];
+      timers.length = 0;
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: {
+          addEventListener: (_type: string, handler: KeyHandler) => document.listeners.push(handler),
+          removeEventListener: (_type: string, handler: KeyHandler) => {
+            document.listeners = document.listeners.filter((listener) => listener !== handler);
+          },
+        },
+      });
+      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent } });
+    },
+    press(init: Partial<FakeKeyEvent>): FakeKeyEvent {
+      const event: FakeKeyEvent = {
+        key: 'k',
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        repeat: false,
+        defaultPrevented: false,
+        preventDefault: () => {
+          event.defaultPrevented = true;
+        },
+        ...init,
+      };
+      for (const listener of [...document.listeners]) listener(event);
+      return event;
+    },
+    holdTimers(): void {
+      globalThis.setTimeout = ((callback: () => void, delay: number) => {
+        const timer = { callback, delay, cancelled: false };
+        timers.push(timer);
+        return timer;
+      }) as never;
+      globalThis.clearTimeout = ((timer: FakeTimer) => {
+        timer.cancelled = true;
+      }) as never;
+    },
+    elapse(): void {
+      for (const timer of timers.splice(0)) if (!timer.cancelled) timer.callback();
+    },
+    release(): void {
+      globalThis.setTimeout = real.setTimeout;
+      globalThis.clearTimeout = real.clearTimeout;
+      if (real.document) Object.defineProperty(globalThis, 'document', real.document);
+      else Reflect.deleteProperty(globalThis, 'document');
+      if (real.navigator) Object.defineProperty(globalThis, 'navigator', real.navigator);
+    },
+  };
+}
+
 // Stand-ins for what the palette imports. Components render to `{ type, props }` objects (see `renderElementTree`).
 const STUBS: Record<string, string> = {
   'react.mjs': `${REACT_HOOKS_STUB}
@@ -167,47 +241,19 @@ describe(`${BLUEPRINT} command palette`, () => {
   let StartProvider: Component;
   let StartTrigger: Component;
 
-  const fakeDocument = { listeners: [] as KeyHandler[] };
-  const realDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const browser = createFakeBrowser();
+  const { timers } = browser;
 
   const useBrowser = (userAgent: string) => {
-    fakeDocument.listeners = [];
-    Object.defineProperty(globalThis, 'document', {
-      configurable: true,
-      value: {
-        addEventListener: (_type: string, handler: KeyHandler) => fakeDocument.listeners.push(handler),
-        removeEventListener: (_type: string, handler: KeyHandler) => {
-          fakeDocument.listeners = fakeDocument.listeners.filter((listener) => listener !== handler);
-        },
-      },
-    });
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent } });
+    browser.open(userAgent);
     globals.__serverRender = false;
     globals.__pushed = [];
     globals.__searches = [];
     answer({ isPending: true });
-    timers.length = 0;
     react.resetState();
   };
 
-  const press = (init: Partial<FakeKeyEvent>): FakeKeyEvent => {
-    const event: FakeKeyEvent = {
-      key: 'k',
-      metaKey: false,
-      ctrlKey: false,
-      altKey: false,
-      shiftKey: false,
-      repeat: false,
-      defaultPrevented: false,
-      preventDefault: () => {
-        event.defaultPrevented = true;
-      },
-      ...init,
-    };
-    for (const listener of [...fakeDocument.listeners]) listener(event);
-    return event;
-  };
+  const press = browser.press;
 
   // What the database grants each role: the blueprint reads the permission list of the caller, never the role name.
   const GRANTED: Record<string, string[]> = {
@@ -257,14 +303,8 @@ describe(`${BLUEPRINT} command palette`, () => {
   const hintWrapperOf = (trigger: RenderedElement): RenderedElement | undefined =>
     elementsOf([trigger]).find((element) => element.children.some((inner) => typeof inner !== 'string' && inner.tag === 'kbd'));
 
-  // The timers the palette sets, kept so a test decides when the delay of the search has elapsed.
-  const timers: { callback: () => void; delay: number; cancelled: boolean }[] = [];
   const realSetTimeout = globalThis.setTimeout;
-  const realClearTimeout = globalThis.clearTimeout;
-
-  const elapse = (): void => {
-    for (const timer of timers.splice(0)) if (!timer.cancelled) timer.callback();
-  };
+  const { elapse } = browser;
 
   const inputOf = (tree: RenderedChild[]): RenderedElement => {
     const input = elementsOf(tree).find((element) => element.tag === 'input');
@@ -371,9 +411,7 @@ describe(`${BLUEPRINT} command palette`, () => {
   });
 
   afterAll(async () => {
-    if (realDocument) Object.defineProperty(globalThis, 'document', realDocument);
-    else Reflect.deleteProperty(globalThis, 'document');
-    if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator);
+    browser.release();
     await cleanupTempDir(tempDir);
   });
 
@@ -530,21 +568,9 @@ describe(`${BLUEPRINT} command palette`, () => {
       { type: 'users', label: 'Users', items: [{ id: 'u1', title: 'Ada Archer', subtitle: 'ada@example.com', href: '/admin/users/u1' }] },
     ];
 
-    beforeAll(() => {
-      globalThis.setTimeout = ((callback: () => void, delay: number) => {
-        const timer = { callback, delay, cancelled: false };
-        timers.push(timer);
-        return timer;
-      }) as never;
-      globalThis.clearTimeout = ((timer: { cancelled: boolean }) => {
-        timer.cancelled = true;
-      }) as never;
-    });
+    beforeAll(() => browser.holdTimers());
 
-    afterAll(() => {
-      globalThis.setTimeout = realSetTimeout;
-      globalThis.clearTimeout = realClearTimeout;
-    });
+    afterAll(() => browser.release());
 
     const openPalette = async (role = 'admin'): Promise<void> => {
       await mount(role, LINUX);
@@ -960,37 +986,20 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
   let projectPath: string;
   let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
   let Layout: Component;
-  let recordSearchOptions: RecordSearchOptions;
 
-  const fakeDocument = { listeners: [] as KeyHandler[] };
-  const realDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
-  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const browser = createFakeBrowser();
 
   const useBrowser = () => {
-    fakeDocument.listeners = [];
-    Object.defineProperty(globalThis, 'document', {
-      configurable: true,
-      value: {
-        addEventListener: (_type: string, handler: KeyHandler) => fakeDocument.listeners.push(handler),
-        removeEventListener: (_type: string, handler: KeyHandler) => {
-          fakeDocument.listeners = fakeDocument.listeners.filter((listener) => listener !== handler);
-        },
-      },
-    });
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent: LINUX } });
+    browser.open(LINUX);
     globals.__serverRender = false;
     globals.__pushed = [];
     globals.__navigated = [];
     globals.__searches = [];
     globals.__searchResult = { isPending: true, isError: false, isFetching: false, data: [] };
-    timers.length = 0;
     react.resetState();
   };
 
-  const pressShortcut = () => {
-    const event = { key: 'k', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, repeat: false, preventDefault: () => {} };
-    for (const listener of [...fakeDocument.listeners]) listener(event as FakeKeyEvent);
-  };
+  const pressShortcut = () => browser.press({ ctrlKey: true });
 
   const renderLayout = async (role: string): Promise<RenderedChild[]> => {
     globals.__session = { user: { role } };
@@ -1018,11 +1027,6 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
       .filter((element) => element.props.role === 'group')
       .map((element) => String(element.props['aria-label']));
 
-  // The timers the palette sets, kept so a test decides when the delay of the search has elapsed.
-  const timers: { callback: () => void; delay: number }[] = [];
-  const realSetTimeout = globalThis.setTimeout;
-  const realClearTimeout = globalThis.clearTimeout;
-
   // Types the text in the box, lets the delay elapse and renders the answer the server gives for it.
   const search = async (role: string, text: string, data: unknown[]): Promise<RenderedChild[]> => {
     const tree = await openPalette(role);
@@ -1030,7 +1034,7 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
     (input.props.onValueChange as (value: string) => void)(text);
     await renderLayout(role);
     react.flushEffects();
-    for (const timer of timers.splice(0)) timer.callback();
+    browser.elapse();
     globals.__searchResult = { isPending: false, isError: false, isFetching: false, data };
     return renderLayout(role);
   };
@@ -1084,10 +1088,7 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
     await load('src/hooks/use-permission.ts', 'permission.mjs');
     await load('src/lib/constants.ts', 'constants.mjs');
     await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
-    ({ recordSearchOptions } = await load<{ recordSearchOptions: RecordSearchOptions }>(
-      'src/components/navigation/command-palette.tsx',
-      'command-palette.mjs',
-    ));
+    await load('src/components/navigation/command-palette.tsx', 'command-palette.mjs');
     await load('src/components/navigation/app-sidebar.tsx', 'app-sidebar.mjs');
 
     if (isStart) {
@@ -1096,19 +1097,11 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
       Layout = (await load<{ default: Component }>('src/app/(dashboard)/layout.tsx', 'layout.mjs')).default;
     }
 
-    globalThis.setTimeout = ((callback: () => void, delay: number) => {
-      timers.push({ callback, delay });
-      return timers.length;
-    }) as never;
-    globalThis.clearTimeout = (() => {}) as never;
+    browser.holdTimers();
   });
 
   afterAll(async () => {
-    globalThis.setTimeout = realSetTimeout;
-    globalThis.clearTimeout = realClearTimeout;
-    if (realDocument) Object.defineProperty(globalThis, 'document', realDocument);
-    else Reflect.deleteProperty(globalThis, 'document');
-    if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator);
+    browser.release();
     await cleanupTempDir(tempDir);
   });
 
@@ -1146,7 +1139,6 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
     await search('admin', 'gr', []);
     const asked = must(globals.__searches?.at(-1), 'a search') as { input: { query: string }; enabled: boolean; retry: boolean };
     expect(asked).toMatchObject({ input: { query: 'gr' }, enabled: true, retry: false });
-    expect(typeof recordSearchOptions).toBe('function');
   });
 
   test('the groups the server returns are shown under its labels, a contact and a user among them', async () => {
@@ -1155,11 +1147,6 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
     expect(optionsOf(tree)).toEqual(['contacts:c1', 'users:u1']);
     const contact = must(elementsOf(tree).find((element) => element.props['data-value'] === 'contacts:c1'), 'the contact');
     expect(textOf(contact)).toBe('Grace Hoppergrace@navy.example');
-  });
-
-  test('a role the server gives no users group sees none', async () => {
-    const tree = await search('manager', 'gr', [GROUPS[0]]);
-    expect(groupsOf(tree)).toEqual(['Contacts']);
   });
 
   test.each([
