@@ -147,14 +147,14 @@ describe(`${BLUEPRINT} database roles`, () => {
       '@repo/auth/role-permissions': './role-permissions.mjs',
       '@repo/auth/role-assignment': './role-assignment.mjs',
       '../auth-errors': './auth-errors.mjs',
-      '../role-input': './role-input.mjs',
+      '../user-role': './user-role.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',
       '../text-match': './text-match.mjs',
     };
     const zod = Bun.resolveSync('zod', import.meta.dir);
-    await generated(`${API}/role-input.ts`, 'role-input.mjs', { zod, '@repo/auth/permissions': './permissions.mjs' });
+    await generated(`${API}/user-role.ts`, 'user-role.mjs', { zod, '@repo/auth/permissions': './permissions.mjs' });
     // The real context and procedures of the generated api package: a stand-in would make the refusals below test the stand-in.
     await Bun.write(
       join(stubs, 'counting-auth.mjs'),

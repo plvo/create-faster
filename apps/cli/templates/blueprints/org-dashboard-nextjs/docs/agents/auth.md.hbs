@@ -29,13 +29,7 @@ Loaders prefetch without awaiting, `void context.queryClient.prefetchQuery(conte
 ## Post-login redirect
 {{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to `router.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}}The login route (`apps/web/src/routes/_auth/login.tsx`) reads the destination from the `redirectTo` search parameter in `validateSearch` and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`): only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`, so the form only navigates to a validated destination. Never hand a query parameter straight to `navigate`, `history.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}
 
-{{> roles/docs-roles router="user"}}
-
-{{> roles/docs-editing-roles}}
-
-{{> roles/docs-assigning-roles router="user"}}
-
-{{> roles/docs-enforcing router="user"}}
+{{> roles/docs router="user"}}
 
 ## Creating users & passwords
 Public sign-up is closed: `emailAndPassword.disableSignUp` is set in `packages/auth/src/auth.ts`, so the `/api/auth/sign-up/email` endpoint rejects every call. Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`), creates the account with the default role, gives it the chosen role with `setRole` and returns the password once so the admin can share it. The seed (`scripts/seed.ts`) gives the three demo accounts their role with a write of its own after it created them, as the guard of the `admin` plugin endpoints takes `admin` or the default role at creation. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.

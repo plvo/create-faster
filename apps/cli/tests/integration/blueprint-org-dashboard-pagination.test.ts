@@ -152,7 +152,7 @@ describe.each(BLUEPRINTS)('%s pagination', (blueprint) => {
       { '@repo/db': './db.mjs', './pagination': './pagination.mjs' },
     );
 
-    await evaluateGeneratedModule(await readTextFile(join(project, API, 'role-input.ts')), join(stubs, 'role-input.mjs'), {
+    await evaluateGeneratedModule(await readTextFile(join(project, API, 'user-role.ts')), join(stubs, 'user-role.mjs'), {
       zod: REAL.zod,
       '@repo/auth/permissions': './permissions.mjs',
     });
@@ -162,7 +162,7 @@ describe.each(BLUEPRINTS)('%s pagination', (blueprint) => {
       '@repo/db': './db.mjs',
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-assignment': './role-assignment.mjs',
-      '../role-input': './role-input.mjs',
+      '../user-role': './user-role.mjs',
       '../page-query': './page-query.mjs',
       '@repo/auth/password': './password.mjs',
       '../trpc': './trpc.mjs',

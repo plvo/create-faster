@@ -1,5 +1,5 @@
 import { eq, roleTable, type User, userTable } from '@repo/db';
-import { ADMIN_ROLE, isInheritedKey, isRoleId, ROLE_ID } from './permissions';
+import { ADMIN_ROLE, roleIdProblem } from './permissions';
 import { banAccountUnlessLast, type Database, removeAccountUnlessLast, writeRoleUnlessLast } from './role-store';
 
 export type AccountChangeRefusalCode = 'BAD_REQUEST' | 'NOT_FOUND';
@@ -24,10 +24,11 @@ const lastAdministrator = (change: 'demoted' | 'banned' | 'removed') =>
 // A role is the id of one role, as text: the plugin stores a list as `a,b` and reads `user,admin` as an administrator,
 // which `permissionsOf` reads as nothing, so no path writes anything but one id.
 export function readRoleId(value: unknown): string {
-  if (typeof value === 'string' && ROLE_ID.test(value) && isInheritedKey(value)) {
-    throw new AccountChangeRefused('BAD_REQUEST', `"${value}" is reserved and cannot be a role id`);
+  const problem = roleIdProblem(value);
+  if (problem === 'reserved') {
+    throw new AccountChangeRefused('BAD_REQUEST', `"${String(value)}" is reserved and cannot be a role id`);
   }
-  if (!isRoleId(value)) {
+  if (problem || typeof value !== 'string') {
     throw new AccountChangeRefused('BAD_REQUEST', 'A role is one id: lowercase letters, digits and hyphens');
   }
   return value;

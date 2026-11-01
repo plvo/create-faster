@@ -19,13 +19,23 @@ export function isInheritedKey(id: string): boolean {
   return id in Object.prototype;
 }
 
-export function isRoleId(value: unknown): value is string {
-  return typeof value === 'string' && ROLE_ID.test(value) && !isInheritedKey(value);
-}
-
 // The longest identifier and label a role created in the dashboard can have.
 export const MAX_ROLE_ID_LENGTH = 40;
 export const MAX_ROLE_LABEL_LENGTH = 64;
+
+// What is wrong with a value used as a role id: it is not one id (`invalid`: not a string, too long, outside `ROLE_ID`)
+// or it names a key every object has (`reserved`). Every path that reads a role id asks this one question and words its
+// own refusal.
+export type RoleIdProblem = 'invalid' | 'reserved';
+
+export function roleIdProblem(value: unknown): RoleIdProblem | undefined {
+  if (typeof value !== 'string' || value.length > MAX_ROLE_ID_LENGTH || !ROLE_ID.test(value)) return 'invalid';
+  return isInheritedKey(value) ? 'reserved' : undefined;
+}
+
+export function isRoleId(value: unknown): value is string {
+  return roleIdProblem(value) === undefined;
+}
 
 // Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for
 // `admin` alone, and is never stored.
@@ -43,13 +53,28 @@ export const ac = createAccessControl(statement);
 // What `admin` holds: the account administration the plugin grants its administrators, and every business action.
 const adminStatement = { ...adminAc.statements, ...businessStatement } as const;
 
+export interface DefaultRole {
+  label: string;
+  permissions: readonly BusinessPermission[];
+}
+
+// The roles a fresh database starts with. The names of the permissions are typed from `businessStatement`, so a
+// misspelled one fails type checking. The `db:roles` command writes them.
+{{> (blueprintPartial "default-roles")}}
+
+type DefaultRoleId = typeof DEFAULT_ROLE | keyof typeof DEFAULT_ROLES;
+
 // The compiled roles of the `admin` plugin, whose own endpoints reject any other role name (`guard-administrators.ts`
-// assigns the roles of the database itself). Only `admin` holds permissions here; what `user` and `manager` may do on
-// business resources is read from the database.
+// assigns the roles of the database itself). Only `admin` holds permissions here; every default role is a name the
+// plugin accepts, and what it may do on business resources is read from the database.
+const noPermission = ac.newRole({});
+
 export const roles = {
   admin: ac.newRole(adminStatement),
-  user: ac.newRole({}),
-  manager: ac.newRole({}),
+  ...(Object.fromEntries([DEFAULT_ROLE, ...Object.keys(DEFAULT_ROLES)].map((id) => [id, noPermission])) as Record<
+    DefaultRoleId,
+    typeof noPermission
+  >),
 };
 
 export type AppRole = keyof typeof roles;
@@ -84,6 +109,19 @@ const BUSINESS_NAMES: ReadonlySet<string> = new Set(BUSINESS_PERMISSIONS);
 
 export function isBusinessPermission(resource: string, action: string): boolean {
   return BUSINESS_NAMES.has(`${resource}.${action}`);
+}
+
+// The resource and the action of a permission name of `businessStatement` (`resource.action`), or nothing for any other
+// value: `user` and `session` belong to the `admin` plugin and are never stored.
+export function parseBusinessPermission(value: unknown): { resource: string; action: string } | undefined {
+  const [resource, action, ...rest] = typeof value === 'string' ? value.split('.') : [];
+  if (!resource || !action || rest.length > 0 || !isBusinessPermission(resource, action)) return undefined;
+  return { resource, action };
+}
+
+// Whether the session is the one of the `admin` role: `adminProcedure` and the palette search ask the same question.
+export function isAdmin(session: { user: { role?: string | null } }): boolean {
+  return session.user.role === ADMIN_ROLE;
 }
 
 // What the interface knows of a request: `unknown` until the permission list of the caller is there, then `granted` when

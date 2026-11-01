@@ -1,6 +1,6 @@
 import { and, count, type db, eq, rolePermissionTable, roleTable, type SQL, sql, type User, userTable } from '@repo/db';
-import { DEFAULT_ROLES, type DefaultRole, defaultRoleRows } from './default-roles';
-import { ADMIN_ROLE } from './permissions';
+import { defaultRoleRows } from './default-roles';
+import { ADMIN_ROLE, DEFAULT_ROLES, type DefaultRole } from './permissions';
 
 export type Database = typeof db;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];

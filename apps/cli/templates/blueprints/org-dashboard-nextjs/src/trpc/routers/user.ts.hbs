@@ -7,17 +7,14 @@ mono:
 import { z } from 'zod';
 import { count as dbCount, eq, userTable } from '@repo/db';
 import { auth } from '../auth';
-import { type AppRole, DEFAULT_ROLE } from '@repo/auth/permissions';
+import type { AppRole } from '@repo/auth/permissions';
 import { generatePassword } from '@repo/auth/password';
 import { listAssignableRoles } from '@repo/auth/role-assignment';
 import { protectedProcedure, router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 import { newestFirstPage } from '../page-query';
 import { pageInput } from '../pagination';
-import { roleIdInput } from '../role-input';
-
-// The Better Auth instance of the request: the one of the package, which has no cookie plugin.
-const authOf = (_ctx: unknown) => auth;
+import { giveRole, roleIdInput } from '../user-role';
 
 const editUserInput = z.object({
   id: z.string(),
@@ -47,13 +44,11 @@ export const userRouter = router({
         headers: ctx.headers,
         body: { name: input.name, email: input.email, password },
       });
-      // The account exists on the default role until this succeeds, and stays on it when it fails.
-      if (input.role === DEFAULT_ROLE) return { user, password };
-      const assigned = await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
-      return { user: assigned.user ?? user, password };
+      await giveRole(auth, ctx.headers, user.id, input.role);
+      return { user: { ...user, role: input.role }, password };
     }),
 
-  {{> roles/user-role-procedures}}
+  {{> roles/user-role-procedures auth="auth"}}
 
   list: adminProcedure
     .input(pageInput)

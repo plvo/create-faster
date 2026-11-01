@@ -1,6 +1,6 @@
 import { and, type Database, eq, notExists, rolePermissionTable, roleTable, type SQL, sql, type User, userTable } from '@repo/db';
-import { DEFAULT_ROLES, type DefaultRole, defaultRoleRows } from './default-roles';
-import { ADMIN_ROLE } from './permissions';
+import { defaultRoleRows } from './default-roles';
+import { ADMIN_ROLE, DEFAULT_ROLES, type DefaultRole } from './permissions';
 
 export type { Database };
 

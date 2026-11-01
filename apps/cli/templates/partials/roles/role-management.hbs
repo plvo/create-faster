@@ -4,12 +4,11 @@ import {
   ADMIN_ROLE,
   BUSINESS_PERMISSIONS,
   DEFAULT_ROLE,
-  isBusinessPermission,
-  isInheritedKey,
   MAX_ROLE_ID_LENGTH,
   MAX_ROLE_LABEL_LENGTH,
   PERMISSIONS,
-  ROLE_ID,
+  parseBusinessPermission,
+  roleIdProblem,
 } from './permissions';
 import { listRoleMatrix } from './role-permissions';
 import { type Database, deleteRoleUnlessHeld, grantRolePermission } from './role-store';
@@ -34,13 +33,14 @@ const unknownRole = () => refuse('NOT_FOUND', 'No role has that id');
 
 // Only `admin` manages roles, and its own role is compiled: it has no rows to edit and none to delete. The default role
 // is the one every new account starts on (`defaultRole` of the plugin, written with no check), so it is edited but
-// neither created nor deleted here. A key every object has (`constructor`) is reserved too: see `isInheritedKey`.
+// neither created nor deleted here. A key every object has (`constructor`) is reserved too: see `roleIdProblem`.
 const RESERVED_ROLE_IDS: readonly string[] = [ADMIN_ROLE, DEFAULT_ROLE];
 
-const isReserved = (id: string): boolean => RESERVED_ROLE_IDS.includes(id) || isInheritedKey(id);
-
-function readRoleId(value: unknown): string {
-  if (typeof value !== 'string' || value.length > MAX_ROLE_ID_LENGTH || !ROLE_ID.test(value)) {
+// The id of the role a procedure acts on: one id, and not a key every object has.
+function readManagedRoleId(value: unknown): string {
+  const problem = roleIdProblem(value);
+  if (problem === 'reserved') throw refuse('BAD_REQUEST', `"${String(value)}" is reserved and cannot be used as a role id`);
+  if (problem || typeof value !== 'string') {
     throw refuse('BAD_REQUEST', `A role id is 1 to ${MAX_ROLE_ID_LENGTH} lowercase letters, digits and hyphens`);
   }
   return value;
@@ -56,11 +56,9 @@ function readLabel(value: unknown): string {
 
 // A permission is a name of `businessStatement`: `user` and `session` belong to the `admin` plugin and are never stored.
 function readPermission(value: unknown): { resource: string; action: string } {
-  const [resource, action, ...rest] = typeof value === 'string' ? value.split('.') : [];
-  if (!resource || !action || rest.length > 0 || !isBusinessPermission(resource, action)) {
-    throw refuse('BAD_REQUEST', 'That is not a permission a role can be given');
-  }
-  return { resource, action };
+  const permission = parseBusinessPermission(value);
+  if (!permission) throw refuse('BAD_REQUEST', 'That is not a permission a role can be given');
+  return permission;
 }
 
 async function roleExists(db: Database, id: string): Promise<boolean> {
@@ -70,8 +68,8 @@ async function roleExists(db: Database, id: string): Promise<boolean> {
 
 // Creates a role that holds nothing. The primary key decides a duplicate, so two requests for one id make one role.
 export async function createRole(db: Database, input: { id: unknown; label: unknown }): Promise<{ id: string }> {
-  const id = readRoleId(input.id);
-  if (isReserved(id)) throw refuse('BAD_REQUEST', `"${id}" is reserved and cannot be used as a role id`);
+  const id = readManagedRoleId(input.id);
+  if (RESERVED_ROLE_IDS.includes(id)) throw refuse('BAD_REQUEST', `"${id}" is reserved and cannot be used as a role id`);
   const label = readLabel(input.label);
 
   const [created] = await db.insert(roleTable).values({ id, label }).onConflictDoNothing().returning({ id: roleTable.id });
@@ -83,7 +81,7 @@ export async function createRole(db: Database, input: { id: unknown; label: unkn
 // has its row (role-store.ts), so a role deleted a moment earlier gets no permission row, which a role created later
 // under the same id would otherwise inherit.
 export async function setRolePermission(db: Database, id: unknown, permission: unknown, granted: boolean): Promise<{ granted: boolean }> {
-  const roleId = readRoleId(id);
+  const roleId = readManagedRoleId(id);
   if (roleId === ADMIN_ROLE) throw refuse('BAD_REQUEST', 'The admin role is compiled and cannot be edited');
   const { resource, action } = readPermission(permission);
 
@@ -112,7 +110,7 @@ export async function setRolePermission(db: Database, id: unknown, permission: u
 // and then calls `set-role`, and `/admin/create-user` accepts only `admin` and the default role, which are never
 // deleted. The permission rows go with the role, and only with it, so a refused delete leaves them.
 export async function deleteRole(db: Database, id: unknown): Promise<{ removed: true }> {
-  const roleId = readRoleId(id);
+  const roleId = readManagedRoleId(id);
   if (roleId === ADMIN_ROLE) throw refuse('BAD_REQUEST', 'The admin role is compiled and cannot be deleted');
   if (roleId === DEFAULT_ROLE) throw refuse('BAD_REQUEST', 'The default role cannot be deleted: new accounts start on it');
 

@@ -1,5 +1,0 @@
-import { ROLE_ID } from '@repo/auth/permissions';
-import { z } from 'zod';
-
-// A role as a procedure takes it: one id, as text. The rules of role-assignment.ts check that it exists.
-export const roleIdInput = z.string().regex(ROLE_ID, 'A role is one id: lowercase letters, digits and hyphens');

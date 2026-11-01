@@ -1,20 +1,11 @@
-import { ADMIN_ROLE, type BusinessPermission, isBusinessPermission, ROLE_ID } from './permissions';
-
-export interface DefaultRole {
-  label: string;
-  permissions: readonly BusinessPermission[];
-}
-
-// The roles a fresh database starts with. The names of the permissions are typed from `businessStatement`, so a
-// misspelled one fails type checking. The `db:roles` command writes them.
-{{> (blueprintPartial "default-roles")}}
+import { ADMIN_ROLE, DEFAULT_ROLES, type DefaultRole, parseBusinessPermission, ROLE_ID } from './permissions';
 
 function permissionColumns(permission: string): { resource: string; action: string } {
-  const [resource, action, ...rest] = permission.split('.');
-  if (!resource || !action || rest.length > 0 || !isBusinessPermission(resource, action)) {
+  const columns = parseBusinessPermission(permission);
+  if (!columns) {
     throw new Error(`"${permission}" is not a business permission: only the resources of businessStatement can be stored`);
   }
-  return { resource, action };
+  return columns;
 }
 
 function assertValid(id: string, role: DefaultRole): void {

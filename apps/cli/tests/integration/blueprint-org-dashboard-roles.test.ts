@@ -269,7 +269,7 @@ describe.each(BLUEPRINTS)('%s roles on PostgreSQL', (blueprint) => {
       '../trpc': './trpc.mjs',
       '../auth-errors': './auth-errors.mjs',
       '../middleware/rbac': './rbac.mjs',
-      '../role-input': './role-input.mjs',
+      '../user-role': './user-role.mjs',
       '../page-query': './page-query.mjs',
       '../pagination': './pagination.mjs',
       superjson: REAL.superjson,
@@ -281,7 +281,7 @@ describe.each(BLUEPRINTS)('%s roles on PostgreSQL', (blueprint) => {
     await generated(`${API}/trpc.ts`, 'trpc.mjs', apiModules);
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
-    await generated(`${API}/role-input.ts`, 'role-input.mjs', apiModules);
+    await generated(`${API}/user-role.ts`, 'user-role.mjs', apiModules);
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', apiModules);
     const routers: Record<string, unknown> = {};
     for (const [key, file, exportName] of [

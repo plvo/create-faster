@@ -5,15 +5,15 @@ mono:
   path: src/router/users.ts
 ---
 import type { SQL } from 'drizzle-orm';
-import { asc, count, type Database, desc, eq, or, userTable } from '@repo/db';
+import { asc, count, desc, eq, or, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
-import { type AppRole, DEFAULT_ROLE } from '@repo/auth/permissions';
+import type { AppRole } from '@repo/auth/permissions';
 import { listAssignableRoles } from '@repo/auth/role-assignment';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 import { orderedPage } from '../page-query';
-import { roleIdInput } from '../role-input';
+import { giveRole, roleIdInput } from '../user-role';
 import { containsText } from '../text-match';
 import { type UserSort, userCountInput, userListInput } from '../user-list';
 
@@ -46,10 +46,6 @@ function matchingSearch(search: string): SQL | undefined {
   return or(containsText(userTable.name, text), containsText(userTable.email, text), containsText(userTable.role, text));
 }
 
-// The Better Auth instance of the request. It has no cookie plugin, so a procedure only calls endpoints that set no
-// cookie on the caller.
-const authOf = (ctx: { db: Database }) => createAuth(ctx.db);
-
 // Cryptographically-random password for admin-created accounts (shown once).
 function generatePassword(length = 14): string {
   const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
@@ -58,6 +54,8 @@ function generatePassword(length = 14): string {
   return Array.from(values, (v) => charset[v % charset.length]).join('');
 }
 
+// Procedures build their Better Auth instance from the request database (`createAuth(ctx.db)`). It has no cookie plugin, so
+// a procedure only calls endpoints that set no cookie on the caller.
 export const usersRouter = router({
   list: adminProcedure
     .input(userListInput)
@@ -91,7 +89,7 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const auth = authOf(ctx);
+      const auth = createAuth(ctx.db);
       const password = generatePassword();
       const { user } = await auth.api.createUser({
         headers: ctx.headers,
@@ -103,10 +101,7 @@ export const usersRouter = router({
           .set({ firstName: input.firstName || null, lastName: input.lastName || null, phone: input.phone || null })
           .where(eq(userTable.id, user.id));
       }
-      // The account exists on the default role until this succeeds, and stays on it when it fails.
-      if (input.role !== DEFAULT_ROLE) {
-        await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
-      }
+      await giveRole(auth, ctx.headers, user.id, input.role);
       return { id: user.id, password };
     }),
 
@@ -133,10 +128,10 @@ export const usersRouter = router({
       return { updated: true };
     }),
 
-  {{> roles/user-role-procedures}}
+  {{> roles/user-role-procedures auth="createAuth(ctx.db)"}}
 
   setPassword: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
-    const auth = authOf(ctx);
+    const auth = createAuth(ctx.db);
     const password = generatePassword();
     await auth.api.setUserPassword({ headers: ctx.headers, body: { userId: input.id, newPassword: password } });
     return { password };
@@ -145,7 +140,7 @@ export const usersRouter = router({
   setBanned: adminProcedure
     .input(z.object({ id: z.string(), banned: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const auth = authOf(ctx);
+      const auth = createAuth(ctx.db);
       if (input.banned) {
         await auth.api.banUser({ headers: ctx.headers, body: { userId: input.id } });
       } else {
@@ -155,7 +150,7 @@ export const usersRouter = router({
     }),
 
   remove: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
-    const auth = authOf(ctx);
+    const auth = createAuth(ctx.db);
     await auth.api.removeUser({ headers: ctx.headers, body: { userId: input.id } });
     return { removed: true };
   }),

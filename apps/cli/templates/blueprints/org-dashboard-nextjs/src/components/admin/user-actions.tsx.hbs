@@ -29,8 +29,8 @@ export function UserActions({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [loading, setLoading] = useState(false);
-  const { actionRef, cancelRef, ...banConfirmation } = useMenuConfirmation();
-  const rolesQuery = useQuery(trpc.user.assignableRoles.queryOptions(undefined, { enabled: banConfirmation.open }));
+  const { actionRef, cancelRef, ...menu } = useMenuConfirmation();
+  const rolesQuery = useQuery(trpc.user.assignableRoles.queryOptions(undefined, { enabled: menu.open }));
 
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: trpc.user.list.queryKey() });
@@ -84,7 +84,7 @@ export function UserActions({ user }: { user: User }) {
   if (session?.user.id === user.id) return null;
 
   return (
-    <DropdownMenu open={banConfirmation.open} onOpenChange={banConfirmation.onOpenChange}>
+    <DropdownMenu open={menu.open} onOpenChange={menu.onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' size='icon' disabled={loading} aria-label='Actions'>
           <MoreHorizontal />
@@ -107,7 +107,7 @@ export function UserActions({ user }: { user: User }) {
           <DropdownMenuItem onClick={handleUnban}>
             Unban User
           </DropdownMenuItem>
-        ) : banConfirmation.confirming ? (
+        ) : menu.confirming ? (
           <>
             <DropdownMenuItem onSelect={handleBan} className='text-destructive focus:text-destructive'>
               Confirm ban
@@ -116,7 +116,7 @@ export function UserActions({ user }: { user: User }) {
               ref={cancelRef}
               onSelect={(event) => {
                 event.preventDefault();
-                banConfirmation.swapItems(false);
+                menu.swapItems(false);
               }}
             >
               Cancel
@@ -127,7 +127,7 @@ export function UserActions({ user }: { user: User }) {
             ref={actionRef}
             onSelect={(event) => {
               event.preventDefault();
-              banConfirmation.swapItems(true);
+              menu.swapItems(true);
             }}
             className='text-destructive focus:text-destructive'
           >

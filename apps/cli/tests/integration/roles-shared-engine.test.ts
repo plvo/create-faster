@@ -19,7 +19,7 @@ const SHARED_FILES = [
   'packages/api/src/middleware/rbac.ts',
   'packages/api/src/router/roles.ts',
   'packages/api/src/router/permissions.ts',
-  'packages/api/src/role-input.ts',
+  'packages/api/src/user-role.ts',
   'packages/ui/src/components/ui/table.tsx',
   'apps/web/src/components/can.tsx',
   'apps/web/src/components/confirm-dialog.tsx',
@@ -81,21 +81,24 @@ describe('the roles engine is rendered once for every blueprint that has it', ()
   // What differs is what the blueprint declares (the vocabulary, the defaults) and what the database needs (the
   // role store), and it differs through a partial of the blueprint or of the database, never through a copy of a file.
   test('the vocabulary and the defaults are the blueprint part of two otherwise identical files', async () => {
-    const fullstack = { permissions: await read(FULLSTACK, 'packages/auth/src/permissions.ts'), defaults: await read(FULLSTACK, 'packages/auth/src/default-roles.ts') };
-    const org = { permissions: await read(ORG_DASHBOARD, 'packages/auth/src/permissions.ts'), defaults: await read(ORG_DASHBOARD, 'packages/auth/src/default-roles.ts') };
-    expect(fullstack.permissions).toContain("document: ['create', 'read', 'update', 'delete', 'read-any', 'delete-any']");
-    expect(org.permissions).toContain("contact: ['create', 'read', 'update', 'delete']");
-    expect(org.permissions).not.toContain('document');
-    expect(fullstack.defaults).toContain("manager: { label: 'Manager', permissions: ['document.read', 'document.read-any'] }");
-    expect(org.defaults).toContain("manager: { label: 'Manager', permissions: ['contact.read'] }");
+    const fullstack = await read(FULLSTACK, 'packages/auth/src/permissions.ts');
+    const org = await read(ORG_DASHBOARD, 'packages/auth/src/permissions.ts');
+    expect(fullstack).toContain("document: ['create', 'read', 'update', 'delete', 'read-any', 'delete-any']");
+    expect(org).toContain("contact: ['create', 'read', 'update', 'delete']");
+    expect(org).not.toContain('document');
+    expect(fullstack).toContain("manager: { label: 'Manager', permissions: ['document.read', 'document.read-any'] }");
+    expect(org).toContain("manager: { label: 'Manager', permissions: ['contact.read'] }");
 
-    const outsideVocabulary = (source: string, from: string, to: string) => source.slice(0, source.indexOf(from)) + source.slice(source.indexOf(to));
-    expect(outsideVocabulary(org.permissions, 'export const businessStatement', 'export const statement')).toBe(
-      outsideVocabulary(fullstack.permissions, '// `read-any`', 'export const statement'),
-    );
-    expect(outsideVocabulary(org.defaults, '// `manager` reads', 'function permissionColumns')).toBe(
-      outsideVocabulary(fullstack.defaults, '// `manager` reads', 'function permissionColumns'),
-    );
+    // The compiled roles are admin and the default roles, so the shared text names no other role.
+    for (const source of [fullstack, org]) {
+      expect(source).toContain('Object.keys(DEFAULT_ROLES)');
+      expect(source.replace(/\/\/ `manager`[\s\S]*?satisfies Record<string, DefaultRole>;/, '')).not.toContain('manager');
+    }
+
+    const outside = (source: string, from: string, to: string) => source.slice(0, source.indexOf(from)) + source.slice(source.indexOf(to));
+    const withoutBlueprintParts = (source: string, vocabulary: string) =>
+      outside(outside(source, vocabulary, 'export const statement'), '// `manager` reads', 'type CompiledRoleId');
+    expect(withoutBlueprintParts(org, 'export const businessStatement')).toBe(withoutBlueprintParts(fullstack, '// `read-any`'));
   });
 
   test('the role store is the one module that differs by database', async () => {

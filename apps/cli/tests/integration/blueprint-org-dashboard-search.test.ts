@@ -191,7 +191,7 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       './permissions': './permissions.mjs',
     });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
-    await generated(`${API}/role-input.ts`, 'role-input.mjs', { zod: REAL.zod, '@repo/auth/permissions': './permissions.mjs' });
+    await generated(`${API}/user-role.ts`, 'user-role.mjs', { zod: REAL.zod, '@repo/auth/permissions': './permissions.mjs' });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     queryModule = await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });
@@ -202,11 +202,22 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       '@repo/auth/role-permissions': './role-permissions.mjs',
       '../trpc': './trpc.mjs',
     });
+    const searchImports = {
+      '@repo/db': './db.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
+      './middleware/rbac': './rbac.mjs',
+      './search-engine': './search-engine.mjs',
+      './search-records': './search-records.mjs',
+      './text-match': './text-match.mjs',
+    };
+    await generated(`${API}/search-records.ts`, 'search-records.mjs', searchImports);
     await generated(`${API}/search.ts`, 'search.mjs', {
       '@repo/db': './db.mjs',
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-permissions': './role-permissions.mjs',
       './middleware/rbac': './rbac.mjs',
+      './search-records': './search-records.mjs',
       './search-engine': './search-engine.mjs',
       './text-match': './text-match.mjs',
     });
@@ -229,7 +240,7 @@ describe.each(BLUEPRINTS)('%s palette search', (blueprint) => {
       '../auth': './auth.mjs',
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-assignment': './role-assignment.mjs',
-      '../role-input': './role-input.mjs',
+      '../user-role': './user-role.mjs',
       '@repo/auth/password': './password.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
