@@ -61,12 +61,7 @@ export function createAuth(
         await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
-    emailVerification: {
-      sendVerificationEmail: async ({ user, url }) => {
-        await deliverLink({ kind: 'change-email', to: user.email, link: url });
-      },
-    },
-    disabledPaths: ['/send-verification-email'],
+    {{> auth/email-change-options}}
     user: {
       changeEmail: { enabled: true },
       modelName: 'user',

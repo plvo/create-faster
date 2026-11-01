@@ -1,0 +1,80 @@
+{{!-- The whole change-email-form.tsx of a web app: the form that asks for the new address and the current password. --}}
+{{#if (eq stackName "nextjs")}}
+'use client';
+
+{{/if}}
+{{{{raw}}}}
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { authClient } from '@repo/auth/auth-client';
+import { useAppForm } from '@repo/ui/lib/form';
+import { EMAIL_CHANGE_CALLBACK_URL } from '@/lib/auth/email-change';
+
+export function ChangeEmailForm({ email }: { email: string }) {
+  const [requestedFor, setRequestedFor] = useState('');
+
+  const schema = z
+    .object({
+      newEmail: z.string().trim().email('Enter a valid email address'),
+      currentPassword: z.string().min(1, 'Enter your current password'),
+    })
+    .refine((d) => d.newEmail.toLowerCase() !== email.toLowerCase(), {
+      message: 'This is already your email address',
+      path: ['newEmail'],
+    });
+
+  const form = useAppForm({
+    defaultValues: { newEmail: '', currentPassword: '' },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value, formApi }) => {
+      const newEmail = value.newEmail.trim();
+      // `currentPassword` is not part of better-auth's typed body: a better-auth `before` hook (`emailChangeGuard`) reads it
+      // from the request, then zod drops the extra key when the endpoint validates the body.
+      const request = { newEmail, currentPassword: value.currentPassword, callbackURL: EMAIL_CHANGE_CALLBACK_URL };
+      const result = await authClient.changeEmail(request);
+      if (result.error) {
+        toast.error(result.error.message ?? 'Email change failed');
+        return;
+      }
+      formApi.reset();
+      setRequestedFor(newEmail);
+    },
+  });
+
+  return (
+    <section className='space-y-4 rounded-lg border bg-card p-6'>
+      <div>
+        <h2 className='text-lg font-semibold'>Change email</h2>
+        <p className='text-sm text-muted-foreground wrap-anywhere'>
+          Your email address is {email}. To change it, enter the new address and your password: we send a confirmation
+          link to the new address.
+        </p>
+      </div>
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          setRequestedFor('');
+          form.handleSubmit();
+        }}
+        className='flex max-w-md flex-col gap-3'
+      >
+        <form.AppField name='newEmail'>
+          {(f) => <f.InputField label='New email' props={{ type: 'email', autoComplete: 'email' }} />}
+        </form.AppField>
+        <form.AppField name='currentPassword'>
+          {(f) => <f.PasswordField label='Current password' props={{ autoComplete: 'current-password' }} />}
+        </form.AppField>
+        <form.AppForm>
+          <form.SubmitButton>Send confirmation link</form.SubmitButton>
+        </form.AppForm>
+        <p role='status' className='text-sm text-muted-foreground wrap-anywhere empty:-mt-3'>
+          {requestedFor &&
+            `If ${requestedFor} can be used, a confirmation link has been sent to it. Your email does not change until you open the link.`}
+        </p>
+      </form>
+    </section>
+  );
+}
+{{{{/raw}}}}

@@ -3,38 +3,4 @@ mono:
   scope: app
   path: src/components/profile/email-change-notice.tsx
 ---
-{{{{raw}}}}
-'use client';
-
-import { CircleAlertIcon, CircleCheckIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Alert, AlertDescription } from '@repo/ui/components/ui/alert';
-import { ACCOUNT_PATH, type EmailChangeNotice } from '@/lib/auth/email-change';
-
-// The link puts its outcome in the query. The notice is kept in state and the query is dropped from the URL, so a
-// reload does not say it again.
-export function EmailChangeNoticeAlert({ notice }: { notice: EmailChangeNotice | null }) {
-  const router = useRouter();
-  const [shown, setShown] = useState(notice);
-  if (notice && notice.message !== shown?.message) setShown(notice);
-
-  useEffect(() => {
-    if (notice) router.replace(ACCOUNT_PATH, { scroll: false });
-  }, [notice, router]);
-
-  if (!shown) return null;
-
-  return shown.tone === 'error' ? (
-    <Alert variant='destructive'>
-      <CircleAlertIcon />
-      <AlertDescription className='text-destructive wrap-anywhere'>{shown.message}</AlertDescription>
-    </Alert>
-  ) : (
-    <Alert role='status' className='border-success/40 text-success'>
-      <CircleCheckIcon />
-      <AlertDescription className='text-current wrap-anywhere'>{shown.message}</AlertDescription>
-    </Alert>
-  );
-}
-{{{{/raw}}}}
+{{> profile/email-change-notice}}

@@ -18,6 +18,7 @@ import {
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { type BetterAuthPlugin, betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
+import { emailChangeGuard } from './email-change-guard';
 import { invitationLink } from './invitation-link';
 import { deliverLink } from './link-delivery';
 import { ac, admin, member, owner } from './permissions';
@@ -61,6 +62,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
         await deliverLink({ kind: 'reset-password', to: user.email, link: url });
       },
     },
+    {{> auth/email-change-options}}
     advanced: {
       {{> better-auth/client-ip}}
       ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
@@ -76,6 +78,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
           await deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
+      emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
     databaseHooks: {
@@ -97,6 +100,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
       },
     },
     user: {
+      changeEmail: { enabled: true },
       modelName: 'user',
       fields: {
         email: 'email',

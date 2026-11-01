@@ -1,0 +1,11 @@
+{{!-- The betterAuth(...) options that send the link of an email change to the new address, called with the deliverLink
+module of the auth package in scope. `user.changeEmail.enabled` stays in the `user` block of the caller. --}}
+// The link goes to the new address. Nothing is sent on sign-up or sign-in, and the address is never changed without
+// the link (updateEmailWithoutVerification stays off: a stolen session could replace it with no proof).
+emailVerification: {
+  sendVerificationEmail: async ({ user, url }) => {
+    await deliverLink({ kind: 'change-email', to: user.email, link: url });
+  },
+},
+// Enabling sendVerificationEmail makes better-auth expose this route to anyone, for any unverified account.
+disabledPaths: ['/send-verification-email'],

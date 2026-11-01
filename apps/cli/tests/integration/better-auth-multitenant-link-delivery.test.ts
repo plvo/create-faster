@@ -43,7 +43,7 @@ describe('the links of multitenant-saas-nextjs on the generated auth', () => {
     expect(result.exitCode, result.stderr).toBe(0);
     projectPath = join(tempDir, 'mt');
     ({ createAuth, database, delivery } = await loadGeneratedAuth<CreateAuth>(projectPath, tempDir, {
-      modules: ['invitation-link', 'permissions'],
+      modules: ['email-change-guard', 'invitation-link', 'permissions'],
       deliveryModule: './link-delivery',
     }));
   });

@@ -217,7 +217,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
   test('the app builds its auth instance with tanstackStartCookies and the shared factory binds no framework', async () => {
     const instance = await read(`${WEB}/src/lib/auth/auth.ts`);
     expect(instance).toContain("from 'better-auth/tanstack-start'");
-    expect(instance).toContain('createAuth(tanstackStartCookies())');
+    expect(instance).toContain('createAuth(tanstackStartCookies(), (task) => {');
 
     const factory = await read('packages/auth/src/auth.ts');
     expect(factory).not.toMatch(/tanstack-start|next-js|nextCookies/);

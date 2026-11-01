@@ -451,10 +451,10 @@ describe('TanStack Start + better-auth', () => {
     test('org-dashboard-nextjs: the blueprint doc names the factory the package exports', async () => {
       const projectPath = await generate('docs-org-dashboard', ['--blueprint', 'org-dashboard-nextjs', '--linter', 'biome']);
       const authDoc = await readTextFile(join(projectPath, 'docs/agents/auth.md'));
-      expect(authDoc).toContain('exports the `createAuth(cookiePlugin?)` factory');
+      expect(authDoc).toContain('exports the `createAuth(cookiePlugin?, runInBackground?)` factory');
       expect(authDoc).not.toContain('exported as `auth`');
       expect(await readTextFile(join(projectPath, 'packages/auth/src/auth.ts'))).toContain(
-        'export function createAuth(cookiePlugin?: BetterAuthPlugin)',
+        'export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?:',
       );
     });
 

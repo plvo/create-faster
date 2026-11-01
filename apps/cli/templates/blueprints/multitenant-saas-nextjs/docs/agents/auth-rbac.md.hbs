@@ -11,6 +11,8 @@ Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `cre
 ## Reset and invitation links
 The blueprint has no mailer. `sendResetPassword` and the organization plugin's `sendInvitationEmail` (both in `packages/auth/src/auth.ts`) hand the link to `deliverLink` in `packages/auth/src/link-delivery.ts`, which logs it to the server console (`[reset-password] <email> → <url>`, `[invitation] <email> → <url>`), in development and in production. In production it also logs `No mailer is configured`: the link is only in the server logs, so a user who forgot a password cannot reset it from their inbox. An invitation link is also shown in the invite dialog, ready to copy. Plug a mail provider (Resend, SES, Postmark, ...) into `deliverLink`, the one place every link leaves the server, before going live.
 
+{{> auth/email-change-guide file="packages/auth/src/link-delivery.ts" links="the reset and invitation links, the email change link, and the notice to the old address" background="`apps/web/src/lib/auth/auth.ts` hands it `after` of `next/server`"}}
+
 ## Access control model
 `packages/auth/src/permissions.ts` defines the `statement` (resources → actions) and built-in roles:
 - Resources/actions: `organization` (update, delete), `member` (create, update, delete), `invitation` (create, cancel), `ac` (create, read, update, delete), `project` (create, read, update, delete).

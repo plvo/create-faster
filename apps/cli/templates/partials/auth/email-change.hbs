@@ -1,0 +1,41 @@
+{{!-- The whole src/lib/auth/email-change.ts of a web app: the account page path, the callback of the link and the notice an error code stands for. --}}
+export const ACCOUNT_PATH = '/profile/account';
+export const EMAIL_CHANGE_CALLBACK_URL = `${ACCOUNT_PATH}?emailChange=confirmed`;
+
+export interface EmailChangeNotice {
+  tone: 'success' | 'error';
+  message: string;
+}
+
+type SearchValue = string | string[] | undefined;
+
+const LINK_ERRORS = new Map([
+  ['TOKEN_EXPIRED', 'This confirmation link has expired. Request a new one below.'],
+  [
+    'SIGN_IN_REQUIRED',
+    'The link was opened while you were signed out, so nothing changed. Open it again now that you are signed in.',
+  ],
+  ['INVALID_USER', 'This link was sent for another account. Sign in with that account and open the link again.'],
+  ['USER_NOT_FOUND', 'This link has already been used or is no longer valid. Request a new one below.'],
+  ['EMAIL_TAKEN', 'That address can no longer be used for your account. Request a change to another address.'],
+]);
+
+const INVALID_LINK = 'This confirmation link is invalid. Request a new one below.';
+
+const firstValue = (value: SearchValue): string | undefined => (Array.isArray(value) ? value[0] : value);
+
+/**
+ * What the account page says about the link the user just opened, from the query better-auth redirects to:
+ * `error` carries its error code, `emailChange` the marker added to EMAIL_CHANGE_CALLBACK_URL.
+ */
+export function emailChangeNotice(
+  search: { error?: SearchValue; emailChange?: SearchValue },
+  email: string,
+): EmailChangeNotice | null {
+  const error = firstValue(search.error);
+  if (error) return { tone: 'error', message: LINK_ERRORS.get(error) ?? INVALID_LINK };
+  if (firstValue(search.emailChange) === 'confirmed') {
+    return { tone: 'success', message: `Your email address is now ${email}.` };
+  }
+  return null;
+}
