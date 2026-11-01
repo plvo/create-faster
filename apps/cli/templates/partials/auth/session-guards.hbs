@@ -1,8 +1,5 @@
 {{#if (has "database" "d1")}}
-export const getSession = cache(async () => {
-  const auth = await getAuth();
-  return auth.api.getSession({ headers: await headers() });
-});
+export const getSession = getRequestSession;
 {{else}}
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 {{/if}}

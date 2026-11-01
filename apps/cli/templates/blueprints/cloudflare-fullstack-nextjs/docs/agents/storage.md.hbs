@@ -15,7 +15,7 @@ Objects are keyed `documents/<userId>/<documentId>`. The same key is stored in `
 `apps/web/src/app/api/documents/upload/route.ts` is a Route Handler (POST, multipart):
 
 1. Authenticates via `getAuth()` → 401 if no session.
-2. Checks the `document:create` permission with `auth.api.userHasPermission`, the same check as `permissionProcedure` and driven by the same `roles` in `packages/auth/src/permissions.ts` → 403 for a role without it (`manager`).
+2. Checks the `document:create` permission with `hasPermission`, the same decision as `permissionProcedure`, read from the `role_permissions` table (see [Auth & RBAC](auth-rbac.md)) → 403 for a role without it (`manager` by default).
 3. Parses the `FormData` (`file`, optional `title`); rejects a missing/empty file (400) or anything over **25 MB** (413).
 4. `const { STORAGE } = await getEnv()` then `STORAGE.put(key, file, { httpMetadata: { contentType } })` — the `File` (a Blob) is passed straight through. Don't pass `file.stream()`: R2 needs a known content length and a bare stream doesn't carry one (`Provided readable stream must have a known length`). A Blob has a size, so R2 streams it without buffering the whole body into JS memory.
 5. Inserts the `documents` row (`getDb()`) and returns it as JSON. If the insert throws, the just-uploaded object is deleted so no orphan is left in R2.

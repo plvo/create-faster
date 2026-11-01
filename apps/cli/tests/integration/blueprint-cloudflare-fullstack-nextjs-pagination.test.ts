@@ -99,8 +99,16 @@ export const router = t.router;
 export const protectedProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;`,
   // The generated middleware runs for real; every signed-in user holds every permission, only the role of the
-  // caller varies, so the admin gate and the owner filter are what the tests tell apart.
-  'auth.mjs': 'export const createAuth = () => ({ api: { userHasPermission: async () => ({ success: true }) } });',
+  // caller varies, so the admin gate and the owner filter are what the tests tell apart. What a role holds is
+  // decided by the generated engine, which blueprint-cloudflare-fullstack-nextjs-roles.test.ts runs on a database.
+  'auth.mjs': 'export const createAuth = () => ({ api: {} });',
+  'permissions.mjs': "export const ADMIN_ROLE = 'admin';",
+  // The admin and the manager read every document, the others their own: the scope the defaults give, by permission.
+  'role-permissions.mjs': `export const permissionsOf = async (_db, role) => [
+  'document.create', 'document.read', 'document.update', 'document.delete',
+  ...(role === 'admin' || role === 'manager' ? ['document.read-any', 'document.delete-any'] : []),
+];
+export const isGranted = (granted, resource, action) => granted.includes(resource + '.' + action);`,
   'db.mjs': `export * from '${REAL.drizzle}';
 export * from './schema.mjs';`,
 };
@@ -253,18 +261,22 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       'drizzle-orm/sqlite-core': REAL.sqliteCore,
     });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
+    await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', {
-      '@repo/auth/auth': './auth.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
       '@trpc/server': REAL.trpcServer,
       '../trpc': './trpc.mjs',
     });
 
     const imports = {
       zod: REAL.zod,
+      '@trpc/server': REAL.trpcServer,
       '@repo/db': './db.mjs',
       '@repo/auth/auth': './auth.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
+      '../document-scope': './document-scope.mjs',
       '../page-query': './page-query.mjs',
       '../pagination': './pagination.mjs',
       '../user-list': './user-list.mjs',

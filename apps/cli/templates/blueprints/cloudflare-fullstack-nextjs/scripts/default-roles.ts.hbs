@@ -1,0 +1,78 @@
+---
+mono:
+  scope: root
+---
+import { spawn } from 'node:child_process';
+import { defaultRoleStatements } from '@repo/auth/default-roles';
+
+// Wrangler runs from the web app, which declares it, and reaches the D1 database through the `DB` binding of its
+// wrangler.jsonc. The local state is the one the migrations and the seed use. The command runs through a shell, as the
+// package manager runners are `.cmd` shims on Windows; every part of it is a constant or the SQL below, which must
+// pass `SHELL_SAFE` before it is put in double quotes.
+const WRANGLER = '{{installedBinaryRunner}} wrangler d1 execute DB';
+const WRANGLER_DIRECTORY = 'apps/web';
+const remote = process.argv.includes('--remote');
+const target = remote ? '--remote' : '--local --persist-to ../../.wrangler';
+
+// What the statements of `defaultRoleStatements` are made of: words, spaces and SQL punctuation. A label with a double
+// quote, a dollar sign, a backtick or a backslash is refused here instead of reaching the shell.
+const SHELL_SAFE = /^[\w ,.'();*>-]+$/;
+
+function quotedSql(sql: string): string {
+  if (!SHELL_SAFE.test(sql)) throw new Error(`The SQL has a character that a shell would read: ${sql}`);
+  return `"${sql}"`;
+}
+
+function wrangler(args: string, capture: boolean): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(`${WRANGLER} ${target} ${args}`, {
+      cwd: WRANGLER_DIRECTORY,
+      shell: true,
+      stdio: ['inherit', capture ? 'pipe' : 'inherit', 'inherit'],
+    });
+    let output = '';
+    child.stdout?.on('data', (chunk) => {
+      output += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve(output);
+      else reject(new Error(`wrangler d1 execute exited with code ${code}`));
+    });
+  });
+}
+
+async function countRows(): Promise<{ roles: number; permissions: number }> {
+  const output = await wrangler(
+    `--json --command ${quotedSql('SELECT (SELECT count(*) FROM roles) AS roles, (SELECT count(*) FROM role_permissions) AS permissions')}`,
+    true,
+  );
+  const start = output.indexOf('[');
+  if (start === -1) throw new Error(`Wrangler did not print JSON:\n${output}`);
+  const [statement] = JSON.parse(output.slice(start)) as { results: { roles: number; permissions: number }[] }[];
+  const counts = statement?.results[0];
+  if (!counts) throw new Error(`Wrangler printed no row:\n${output}`);
+  return counts;
+}
+
+async function main(): Promise<void> {
+  const where = remote ? 'production' : 'local';
+  const { roles, permissions } = await countRows();
+  if (roles > 0) {
+    console.log(`The ${where} database already has roles, so nothing is written: the defaults only go into a database with none.`);
+    if (permissions === 0) {
+      console.warn(
+        'No role holds a permission, so every role but admin is refused. If a previous run stopped half way, delete the rows of `roles` and run this command again.',
+      );
+    }
+    return;
+  }
+
+  await wrangler(`--command ${quotedSql(defaultRoleStatements().join(' '))}`, false);
+  console.log(`Wrote the default roles to the ${where} database.`);
+}
+
+main().catch((error) => {
+  console.error('Writing the default roles failed:', error instanceof Error ? error.message : error);
+  process.exit(1);
+});

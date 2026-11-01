@@ -97,16 +97,11 @@ export const Command = host('div', { 'data-cmdk': 'true' });`,
   'leaf.mjs': `export const AppHeader = () => null;
 export const NavUser = () => null;`,
   'next-link.mjs': `export default ({ href, children }) => ({ type: 'a', props: { href, children } });`,
-  'permission.mjs': `const GRANTS = {
-  admin: { user: ['list', 'create'] },
-  user: {},
-  manager: {},
-};
-export const can = (role, permissions) => {
-  const granted = GRANTS[role];
-  if (!granted) return false;
-  return Object.entries(permissions).every(([resource, actions]) => actions.every((action) => granted[resource]?.includes(action)));
-};`,
+  'react-query.mjs': 'export const useQuery = () => ({ data: globalThis.__granted });',
+  'providers.mjs': 'export const useTRPC = () => ({ permissions: { mine: { queryOptions: () => ({}) } } });',
+  'trpc-server.mjs': `export const getQueryClient = () => ({ prefetchQuery: async () => {} });
+export const HydrateClient = ({ children }) => children;
+export const trpc = { permissions: { mine: { queryOptions: () => ({}) } } };`,
 };
 
 const IMPORTS: Record<string, string> = {
@@ -117,6 +112,7 @@ const IMPORTS: Record<string, string> = {
   '@repo/ui/components/ui/command': './command.mjs',
   '@repo/ui/components/ui/sidebar': './sidebar.mjs',
   '@/hooks/use-permission': './permission.mjs',
+  '@/trpc/server': './trpc-server.mjs',
   cmdk: './cmdk.mjs',
   '@repo/ui/components/ui/dialog': './dialog.mjs',
   '@repo/ui/lib/utils': './utils.mjs',
@@ -136,6 +132,7 @@ const globals = globalThis as {
   __navigated?: string[];
   __mobileSidebarOpen?: boolean;
   __session?: unknown;
+  __granted?: string[];
 };
 
 describe(`${BLUEPRINT} command palette`, () => {
@@ -187,7 +184,15 @@ describe(`${BLUEPRINT} command palette`, () => {
     return event;
   };
 
+  // What the database grants each role: the blueprint reads the permission list of the caller, never the role name.
+  const GRANTED: Record<string, string[]> = {
+    admin: ['document.read', 'user.list', 'user.create'],
+    user: ['document.read'],
+    manager: ['document.read'],
+  };
+
   const render = async (role: string): Promise<RenderedChild[]> => {
+    globals.__granted = GRANTED[role] ?? [];
     react.beginRender();
     return renderElementTree({
       type: CommandPaletteProvider,
@@ -197,6 +202,7 @@ describe(`${BLUEPRINT} command palette`, () => {
 
   const renderLayout = async (role: string): Promise<RenderedChild[]> => {
     globals.__session = { user: { role } };
+    globals.__granted = GRANTED[role] ?? [];
     react.beginRender();
     return renderElementTree({ type: DashboardLayout, props: { children: 'Page body' } });
   };
@@ -242,6 +248,10 @@ describe(`${BLUEPRINT} command palette`, () => {
         'tsx',
       );
     await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
+    await load('src/hooks/use-permission.ts', 'permission.mjs', {
+      '@tanstack/react-query': './react-query.mjs',
+      '@/trpc/providers': './providers.mjs',
+    });
     await load('src/lib/constants.ts', 'constants.mjs');
     await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
     await load('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs');

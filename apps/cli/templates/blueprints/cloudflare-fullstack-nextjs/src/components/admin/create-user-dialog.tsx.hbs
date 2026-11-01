@@ -11,7 +11,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { roleDefinitions } from '@repo/auth/permissions';
+import { roles } from '@repo/auth/permissions';
 import { Button } from '@repo/ui/components/ui/button';
 import {
   Dialog,
@@ -37,7 +37,7 @@ const schema = z.object({
 });
 
 const ROLE_OPTIONS = Object.fromEntries(
-  Object.keys(roleDefinitions).map((role) => [role.charAt(0).toUpperCase() + role.slice(1), role]),
+  Object.keys(roles).map((role) => [role.charAt(0).toUpperCase() + role.slice(1), role]),
 );
 
 export function CreateUserDialog() {

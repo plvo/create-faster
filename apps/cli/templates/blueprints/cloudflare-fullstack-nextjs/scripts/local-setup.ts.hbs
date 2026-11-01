@@ -14,6 +14,7 @@ const steps: Step[] = [
   { label: 'Resetting local D1 state', run: () => rm('.wrangler/v3/d1', { recursive: true, force: true }) },
   { label: 'Generating Drizzle migrations from schema', run: () => sh('{{runScript "db:generate"}}') },
   { label: 'Applying migrations to local D1', run: () => sh('{{runScript "db:migrate"}}', undefined, { CI: 'true' }) },
+  { label: 'Writing the default roles', run: () => sh('{{runScript "db:roles"}}') },
   { label: 'Generating Cloudflare env types', run: () => sh('{{runScript "cf-typegen"}}', 'apps/web') },
   { label: 'Seeding local D1 with demo data', run: () => sh('{{runScript "db:seed" "--fixtures"}}', undefined, { NODE_ENV: 'development' }) },
 ];

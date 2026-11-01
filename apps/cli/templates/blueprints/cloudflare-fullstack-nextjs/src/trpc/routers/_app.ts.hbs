@@ -9,11 +9,13 @@ import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { router } from './trpc';
 import { documentsRouter } from './router/documents';
 import { helloRouter } from './router/hello';
+import { permissionsRouter } from './router/permissions';
 import { usersRouter } from './router/users';
 
 export const appRouter = router({
   hello: helloRouter,
   documents: documentsRouter,
+  permissions: permissionsRouter,
   users: usersRouter,
 });
 

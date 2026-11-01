@@ -42,18 +42,18 @@ describe('the command palette partial', () => {
   test('both stacks open pages from the one list the sidebar renders', () => {
     for (const stack of ['nextjs', 'tanstack-start'] as const) {
       expect(renderPartial('navigation/command-palette', stack)).toContain(
-        "import { allowedRoutes } from '@/lib/allowed-routes'",
+        "import { useAllowedRoutes } from '@/lib/allowed-routes'",
       );
       expect(renderPartial('org-dashboard/sidebar-links', stack)).toContain(
-        "import { allowedRoutes } from '@/lib/allowed-routes'",
+        "import { useAllowedRoutes } from '@/lib/allowed-routes'",
       );
-      expect(renderPartial('org-dashboard/sidebar-links', stack)).not.toContain('export function allowedRoutes');
+      expect(renderPartial('org-dashboard/sidebar-links', stack)).not.toContain('export function useAllowedRoutes');
     }
   });
 
   test('the page-access rule lives with the route list, as a module of its own', () => {
     const rule = renderPartial('org-dashboard/allowed-routes', 'nextjs');
-    expect(rule).toContain('export function allowedRoutes(');
+    expect(rule).toContain('export function useAllowedRoutes(');
     expect(rule).toContain("from '@/hooks/use-permission'");
     expect(rule).toContain("from '@/lib/constants'");
     expect(() => compiles(rule)).not.toThrow();

@@ -1,0 +1,21 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/document-scope.ts
+---
+import type { SQL } from 'drizzle-orm';
+import type { Permission } from '@repo/auth/permissions';
+import { and, documentTable, eq } from '@repo/db';
+
+// Whose documents a caller sees: their own, or every user's with `document.read-any`. The role is never read here:
+// the scope is part of what the database grants.
+export function visibleDocuments(granted: readonly Permission[], userId: string): SQL | undefined {
+  return granted.includes('document.read-any') ? undefined : eq(documentTable.userId, userId);
+}
+
+// The document a caller may delete: their own, or anyone's with `document.delete-any`.
+export function deletableDocument(granted: readonly Permission[], userId: string, id: string): SQL | undefined {
+  const byId = eq(documentTable.id, id);
+  return granted.includes('document.delete-any') ? byId : and(byId, eq(documentTable.userId, userId));
+}

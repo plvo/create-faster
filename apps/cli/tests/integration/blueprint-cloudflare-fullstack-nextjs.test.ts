@@ -85,10 +85,11 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
   test('the upload route enforces the document:create permission after the session check', async () => {
     const route = await readTextFile(join(projectPath, 'apps/web/src/app/api/documents/upload/route.ts'));
     const sessionCheck = route.indexOf('status: 401');
-    const permissionCheck = route.indexOf('userHasPermission');
+    const permissionCheck = route.indexOf('hasPermission(');
     const forbidden = route.indexOf('status: 403');
     expect(permissionCheck).toBeGreaterThan(sessionCheck);
-    expect(route).toContain("permissions: { document: ['create'] }");
+    expect(route).toContain("hasPermission(db, session.user.role, 'document', 'create')");
+    expect(route).not.toContain('userHasPermission');
     expect(forbidden).toBeGreaterThan(permissionCheck);
     expect(route.indexOf('req.formData()')).toBeGreaterThan(forbidden);
   });
@@ -97,9 +98,9 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     const dashboard = join(projectPath, 'apps/web/src/app/(dashboard)');
     const page = await readTextFile(join(dashboard, 'page.tsx'));
     expect(page).not.toContain("'use client'");
-    expect(page).toContain("import { HydrateClient, prefetch, trpc } from '@/trpc/server'");
+    expect(page).toContain("import { getQueryClient, HydrateClient, prefetch, trpc } from '@/trpc/server'");
     expect(page).toContain('<HydrateClient>');
-    expect(page).toContain('<DocumentsClient />');
+    expect(page).toContain('<DocumentsClient userId={session.user.id} />');
 
     const client = await readTextFile(join(dashboard, 'documents.client.tsx'));
     expect(client).toContain("'use client'");
@@ -195,7 +196,8 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
       join(projectPath, 'apps/web/src/app/(dashboard)/admin/roles/page.tsx'),
     );
     expect(page).toContain('read-only');
-    expect(page).toContain('roleDefinitions');
+    expect(page).toContain('listRoleMatrix');
+    expect(page).not.toContain('roleDefinitions');
     expect(page).not.toContain('{{');
   });
 

@@ -73,7 +73,7 @@ export const HugeiconsIcon = ({ icon: name }) => createElement('svg', { 'aria-hi
   resolvedTheme: globalThis.__theme,
   setTheme: (value) => { (globalThis.__themeChanges ??= []).push(value); },
 });`,
-  'next-navigation.mjs': `export const useRouter = () => ({ push() {} });
+  'next-navigation.mjs': `export const useRouter = () => ({ push: (url) => { (globalThis.__events ??= []).push('navigate:' + url); } });
 export const usePathname = () => globalThis.__pathname ?? '/';
 export const useSearchParams = () => new URLSearchParams(globalThis.__search ?? '');
 export const notFound = () => { throw { kind: 'notFound' }; };
@@ -82,15 +82,16 @@ export const redirect = (url) => { throw { redirectTo: url }; };`,
   'next-headers.mjs': `export const headers = async () => ({ get: (name) => globalThis.__requestHeaders?.[name.toLowerCase()] ?? null });`,
   'next-server.mjs': `export const NextResponse = { next: (init) => ({ init }) };`,
   'tanstack-router.mjs': `export const Link = ({ to, children, ...props }) => ({ type: 'a', props: { href: to, ...props, children } });
-export const useRouter = () => ({ navigate: async () => {} });
+export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__events ??= []).push('navigate:' + to); } });
 export const useLocation = ({ select }) => select({ pathname: globalThis.__pathname ?? '/' });
 export const notFound = () => ({ kind: 'notFound' });
 export const Outlet = () => ({ type: 'div', props: { 'data-component': 'Outlet', children: [] } });
 export const createFileRoute = () => (options) => ({ options, useRouteContext: () => ({ session: {} }) });`,
-  'query.mjs': `export const useQueryClient = () => ({ clear() {} });`,
-  'auth-client.mjs': `export const authClient = { signOut: async () => {} };`,
+  'query.mjs': `export const useQueryClient = () => ({ clear() { (globalThis.__events ??= []).push('clear'); } });`,
+  'auth-client.mjs': `export const authClient = { signOut: async () => { (globalThis.__events ??= []).push('signOut'); } };`,
   'auth.mjs': `export const auth = { api: { getSession: async () => globalThis.__session ?? null } };
-export const getAuth = async () => auth;`,
+export const getAuth = async () => auth;
+export const getRequestSession = async () => globalThis.__session ?? null;`,
   'permission.mjs': `const DEFINITIONS = {
   admin: { user: ['list', 'create'], contact: ['create', 'read', 'update', 'delete'] },
   user: { contact: ['create', 'read', 'update', 'delete'] },
@@ -101,7 +102,10 @@ export const can = (role, permissions) => {
   const granted = DEFINITIONS[role] ?? {};
   return Object.entries(permissions).every(([resource, actions]) => actions.every((action) => granted[resource]?.includes(action)));
 };`,
-  'trpc-server.mjs': `export const getQueryClient = () => ({ fetchQuery: async (options) => globalThis.__records?.[options.procedure] });
+  'trpc-server.mjs': `export const getQueryClient = () => ({
+  fetchQuery: async (options) => globalThis.__records?.[options.procedure],
+  prefetchQuery: async () => {},
+});
 const procedures = (path) => new Proxy(function () {}, {
   get: (_, key) => (key === 'then' ? undefined : key === 'queryOptions' ? (input) => ({ procedure: path.join('.'), input }) : procedures([...path, key])),
 });
@@ -336,6 +340,26 @@ describe('dashboard shell', () => {
       expect(itemNamed(cancelled, 'Logout')).toBeDefined();
     });
 
+    // The query cache holds the permissions and records of the account that signs out, and lives as long as the tab: the
+    // next account signing in would first render what the previous one saw. It must go while no dashboard is mounted, or
+    // its queries refetch without a session and flash UNAUTHORIZED. Start navigates inside the app and clears once the
+    // login page replaced the dashboard; a Next.js `router.push` returns before it navigates, so Next.js leaves with a
+    // full navigation, which starts the next page with a cache of its own.
+    test('confirming Logout signs out and leaves for the login page, with the query cache gone once the dashboard is', async () => {
+      const events: string[] = [];
+      const globals = globalThis as { __events?: string[]; window?: unknown };
+      const realWindow = globals.window;
+      globals.__events = events;
+      globals.window = { location: { origin: 'https://app.test', assign: (url: URL | string) => events.push(`assign:${url}`) } };
+      try {
+        const confirm = must(itemNamed(await askConfirmation(), 'Logout'), 'the confirm item');
+        await (confirm.props.onSelect as (event: FakeEvent) => Promise<void>)(fakeEvent());
+      } finally {
+        globals.window = realWindow;
+      }
+      expect(events).toEqual(blueprint === START_BLUEPRINT ? ['signOut', 'navigate:/login', 'clear'] : ['signOut', 'assign:https://app.test/login']);
+    });
+
     test('Cancel takes the focus the removed Logout item leaves behind', async () => {
       const confirming = await askConfirmation();
       const cancel = must(itemNamed(confirming, 'Cancel'), 'the Cancel item');
@@ -490,7 +514,6 @@ describe('dashboard shell', () => {
   const SIDEBAR_BLUEPRINTS: [string, string][] = [
     ['org-dashboard-nextjs', 'Dashboard'],
     [START_BLUEPRINT, 'Dashboard'],
-    ['cloudflare-fullstack-nextjs', 'Documents'],
   ];
   describe.each(SIDEBAR_BLUEPRINTS)('%s sidebar', (blueprint, homeTitle) => {
     const roles: [string, boolean][] = [

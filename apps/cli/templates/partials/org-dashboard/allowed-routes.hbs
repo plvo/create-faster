@@ -2,6 +2,6 @@
 import { can } from '@/hooks/use-permission';
 import { ROUTES, type RouteProps } from '@/lib/constants';
 
-export function allowedRoutes(role: string | null | undefined): RouteProps[] {
+export function useAllowedRoutes(role: string | null | undefined): RouteProps[] {
   return ROUTES.filter((item) => can(role, item.permissions ?? {}));
 }

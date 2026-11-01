@@ -9,7 +9,7 @@ mono:
 The database is **Cloudflare D1** (SQLite) everywhere — local dev and production both go through the `DB` binding. There is **no connection-string env var**; D1 is never a module singleton because it is only reachable from a request- or event-bound binding.
 
 ## Schema
-`packages/db/src/schema.ts` (Drizzle `sqliteTable`) holds the Better Auth tables (`users`, `user_sessions`, `user_accounts`, `user_verifications` — with admin columns `role`, `banned`, `ban_reason`, `ban_expires`) and the domain `documents` table (`r2_key`, `size`, `mime_type`, nullable `expires_at`, owner FK to `users`).
+`packages/db/src/schema.ts` (Drizzle `sqliteTable`) holds the Better Auth tables (`users`, `user_sessions`, `user_accounts`, `user_verifications` — with admin columns `role`, `banned`, `ban_reason`, `ban_expires`) the domain `documents` table (`r2_key`, `size`, `mime_type`, nullable `expires_at`, owner FK to `users`) and the two role tables, `roles` (`id` is the value of `users.role`) and `role_permissions` (what each role may do on a business resource, unique on role, resource and action, deleted with the role). Only the names of `businessStatement` (`packages/auth/src/permissions.ts`) are honored in `role_permissions`; see [Auth & RBAC](auth-rbac.md).
 
 ## Connecting
 `packages/db/src/index.ts` exports `createDb(d1: D1Database)` → `drizzle(d1, { schema })`, plus the `Database` type and a re-export of `drizzle-orm` (so `eq`, `and`, `desc`, `lt`, `isNotNull`, … import from `@repo/db`).
@@ -31,8 +31,8 @@ The database is **Cloudflare D1** (SQLite) everywhere — local dev and producti
 ## Migrations
 - `{{runScript "db:generate"}}` — Drizzle Kit generates SQL from the schema into `packages/db/drizzle`.
 - `{{runScript "db:migrate"}}` — applies migrations to the local D1 sqlite (`--persist-to .wrangler`).
-- `{{runScript "local-setup"}}` — deletes the local D1 state (`.wrangler/v3/d1`, so every account created by sign-up is lost), then runs `db:generate`, `db:migrate`, `cf-typegen` and `db:seed` with `--fixtures`; run it once after install to get a working local DB, and again only to start over from the seeded state.
-- Remote: `{{runScript "db:migrate:remote"}}` applies migrations to the live D1 database.
+- `{{runScript "local-setup"}}` — deletes the local D1 state (`.wrangler/v3/d1`, so every account created by sign-up is lost), then runs `db:generate`, `db:migrate`, `db:roles` (the default roles, see [Auth & RBAC](auth-rbac.md)), `cf-typegen` and `db:seed` with `--fixtures`; run it once after install to get a working local DB, and again only to start over from the seeded state.
+- Remote: `{{runScript "db:migrate:remote"}}` applies migrations to the live D1 database, then `{{runScript "db:roles:remote"}}` writes the default roles (the migrations create the role tables empty, and an empty table refuses every role but `admin`).
 
 `drizzle.config.ts` resolves the newest local sqlite under `.wrangler/v3/d1/miniflare-D1DatabaseObject` for local introspection, and switches to the `d1-http` driver (account id / database id / API token) when `NODE_ENV=production`.
 

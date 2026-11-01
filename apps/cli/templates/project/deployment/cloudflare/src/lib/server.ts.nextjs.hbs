@@ -3,6 +3,8 @@
 import 'server-only';
 {{#if (hasLibrary "better-auth")}}
 {{> better-auth/cookie-plugin-import}}
+import { headers } from 'next/headers';
+import { cache } from 'react';
 {{/if}}
 import { createDb } from {{#if (isMono)}}'@repo/db'{{else}}'@/lib/db'{{/if}};
 {{#if (hasLibrary "better-auth")}}
@@ -18,6 +20,9 @@ export async function getDb() {
 export async function getAuth() {
   return createAuth(await getDb(), {{> better-auth/cookie-plugin}});
 }
+
+// The session of the request, read once by whoever asks first: the page guards and the tRPC context of the server share it.
+export const getRequestSession = cache(async () => (await getAuth()).api.getSession({ headers: await headers() }));
 {{/if}}
 {{/if}}
 {{/if}}

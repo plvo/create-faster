@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { authClient } from '@repo/auth/auth-client';
-import { roleDefinitions } from '@repo/auth/permissions';
+import { roles } from '@repo/auth/permissions';
 import { Badge } from '@repo/ui/components/ui/badge';
 import { Button } from '@repo/ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/ui/components/ui/select';
@@ -41,7 +41,7 @@ const profileSchema = z.object({
   phone: z.string().max(40),
 });
 
-const ROLES = Object.keys(roleDefinitions);
+const ROLES = Object.keys(roles);
 
 const PROFILE_FIELDS = [
   { name: 'name', label: 'Display name' },

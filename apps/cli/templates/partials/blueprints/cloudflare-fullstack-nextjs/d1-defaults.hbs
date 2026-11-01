@@ -1,0 +1,5 @@
+Write the default roles to the production database. The migrations create the `roles` and `role_permissions` tables empty, and a role with no rows is refused every business action, so until this runs only `admin` can use the app. The command writes the defaults only into a database that has no role yet: once a role exists it writes nothing, so a role you deleted or a permission you revoked is never written back, and running it again changes nothing. If a run was interrupted half way (roles without permissions), delete the rows of `roles` and run it again:
+
+   ```bash
+   {{runScript "db:roles:remote"}}
+   ```

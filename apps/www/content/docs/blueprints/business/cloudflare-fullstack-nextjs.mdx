@@ -5,7 +5,7 @@ description: Auth + RBAC dashboard with a documents CRUD on D1, R2 uploads, and 
 
 ## Presentation
 
-A complete Cloudflare-native SaaS starter: a [Next.js](/docs/stacks/nextjs) (OpenNext) web app and a [Hono](/docs/stacks/hono) cron Worker in a Turborepo, sharing one [D1](/docs/database/d1) database and one R2 bucket. It ships email/password auth with role-based access control (admin / manager / user), a documents domain with [tRPC](/docs/modules/api/trpc) CRUD and direct-binding R2 file uploads, and a scheduled Worker that purges expired documents. Everything runs on Cloudflare's edge with no always-on server and no connection-string database.
+A complete Cloudflare-native SaaS starter: a [Next.js](/docs/stacks/nextjs) (OpenNext) web app and a [Hono](/docs/stacks/hono) cron Worker in a Turborepo, sharing one [D1](/docs/database/d1) database and one R2 bucket. It ships email/password auth with role-based access control (admin / manager / user, with the permissions of each role stored in D1), a documents domain with [tRPC](/docs/modules/api/trpc) CRUD and direct-binding R2 file uploads, and a scheduled Worker that purges expired documents. Everything runs on Cloudflare's edge with no always-on server and no connection-string database.
 
 ## Composition
 
@@ -67,10 +67,12 @@ apps/
 
 packages/
 ├── ui/src/components/                  # shuip data-table block, search-input, inline-edit + base shadcn (registry)
-├── db/src/schema.ts                    # D1/sqlite schema: auth tables + documents
+├── db/src/schema.ts                    # D1/sqlite schema: auth tables + documents + roles and role_permissions
 ├── auth/src/
 │   ├── auth.ts                         # createAuth(db, cookiePlugin?) factory + admin plugin
-│   ├── permissions.ts                  # ac/roles statements (admin/manager/user)
+│   ├── permissions.ts                  # the vocabulary: account statement, business statement, compiled admin role
+│   ├── role-permissions.ts             # hasPermission / permissionsOf: what a role may do, read from D1 per request
+│   ├── default-roles.ts                # the default roles and the SQL that writes the missing ones
 │   ├── email.ts                        # reset link logger, the seam for a mailer
 │   └── auth-client.ts                  # authClient with adminClient
 └── api/src/
@@ -80,9 +82,11 @@ packages/
     ├── page-query.ts                   # ordered page of a query (server only)
     ├── router/documents.ts             # documents list/count/delete
     ├── router/users.ts                 # admin user list/count + CRUD (create/update/role/password/ban)
+    ├── router/permissions.ts           # permissions.mine: the permission list of the caller
     └── middleware/rbac.ts              # permissionProcedure / adminProcedure
 
 scripts/seed.ts                         # Local-D1 seed (users + demo documents, three pages of each)
+scripts/default-roles.ts                # db:roles / db:roles:remote: writes the default roles into an empty database
 docs/agents/{auth-rbac,data-layer,storage,cloudflare-deploy}.md
 ```
 
@@ -96,7 +100,7 @@ D1 is only reachable through a request- or event-bound binding, so the blueprint
 
 ### Auth & RBAC
 
-Better Auth with the **admin plugin** + access control. `packages/auth/src/permissions.ts` is the single source of truth: a `document` resource and three roles — `admin` (full access + user management), `user` (own-document CRUD), `manager` (read-only). Server endpoints are gated with `permissionProcedure('document', action)` / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by `usePermission`. Because `ac`/`roles` are shared by the server `auth` and the client `authClient`, both stay in sync. The admin **Roles** page (`/admin/roles`) renders the role × permission matrix straight from `roleDefinitions` — read-only, since roles live in code. Password reset is wired too: `sendResetPassword` hands the link to `sendResetPasswordEmail` in `packages/auth/src/email.ts`. There is no mailer, so it logs the link to the server console in development and in production, and in production also logs a warning, `No mailer is configured`: the link is only in the Worker logs. Plug a mail provider (Resend, SES, Postmark, ...) into that function before going live. It sits behind `/forgot-password` and `/reset-password` pages. Details in the generated `docs/agents/auth-rbac.md`.
+Better Auth with the **admin plugin** for account administration, and roles whose permissions are **data**. `packages/auth/src/permissions.ts` holds the vocabulary: the account resources of the plugin (`user`, `session`, held by `admin` alone, compiled and never stored) and the business resources (`document` today), the only names a role can be given. What each role may do on them is read from the `roles` and `role_permissions` tables of D1 on every request, by one function, read once per request and never kept after it: a permission removed from the table is refused on the next request, a role the database does not know holds nothing, and a stored row that names `user` or `session` grants nothing. `admin` has no rows and keeps every business action. Server endpoints are gated with `permissionProcedure('document', action)` (typed from the vocabulary) / `adminProcedure`; the UI gates with `<Can permissions={...}>` backed by a three-state verdict (unknown, granted, denied) over the permission list of the caller, which the dashboard layout fetches on the server so the first render of the sidebar and the buttons is already right. The tables start empty because no template ships a migration: `local-setup` and the deploy steps run `db:roles` / `db:roles:remote`, a command that writes the default roles (`user`: its own documents CRUD, `manager`: read every user's documents) only into a database that has no role, so a role you deleted or a permission you revoked is never written back. The admin **Roles** page (`/admin/roles`) renders the role × permission matrix from the database, read-only. Password reset is wired too: `sendResetPassword` hands the link to `sendResetPasswordEmail` in `packages/auth/src/email.ts`. There is no mailer, so it logs the link to the server console in development and in production, and in production also logs a warning, `No mailer is configured`: the link is only in the Worker logs. Plug a mail provider (Resend, SES, Postmark, ...) into that function before going live. It sits behind `/forgot-password` and `/reset-password` pages. Details in the generated `docs/agents/auth-rbac.md`.
 
 ### User management
 
@@ -104,7 +108,7 @@ The admin **Users** area is backed by a `users` tRPC router (all `adminProcedure
 
 ### Dashboard shell
 
-A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item — a whole category label is hidden when none of its links are permitted (`useCan`). The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs (so pages don't repeat their own title). A search field under the logo, or Ctrl+K (Cmd+K on macOS), opens a command palette that lists the pages the role can open, from the same `ROUTES` table and permission filter as the sidebar. The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`, plus `table`, `badge`, `dialog`, `popover`, `command`, `search-input`) and the shuip `data-table` block live in `packages/ui` as registry-faithful code.
+A collapsible shadcn sidebar (`SidebarProvider` + `AppSidebar`) drives navigation from a single `ROUTES` table (`lib/constants.ts`), permission-gated per item — a whole category label is hidden when none of its links are permitted (a granted verdict of the permission list). The footer user menu (`nav-user`) carries the avatar, theme toggle, and sign-out; the header renders breadcrumbs (so pages don't repeat their own title). A search field under the logo, or Ctrl+K (Cmd+K on macOS), opens a command palette that lists the pages the permission list grants, from the same `ROUTES` table and permission filter as the sidebar. The shadcn primitives the shell needs (`sidebar`, `sheet`, `skeleton`, `dropdown-menu`, `breadcrumb`, `avatar`, plus `table`, `badge`, `dialog`, `popover`, `command`, `search-input`) and the shuip `data-table` block live in `packages/ui` as registry-faithful code.
 
 ### Forms
 
@@ -139,7 +143,7 @@ The dashboard lists documents one page at a time (own rows for users; all rows f
 
 ```bash
 bun install
-bun run local-setup     # .env files, reset + migrate local D1, generate CF types, seed
+bun run local-setup     # .env files, reset + migrate local D1, default roles, generate CF types, seed
 cd apps/web && bun run preview   # OpenNext preview against local bindings
 ```
 
