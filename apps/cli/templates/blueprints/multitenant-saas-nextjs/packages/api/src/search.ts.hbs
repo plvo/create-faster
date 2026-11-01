@@ -1,0 +1,97 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/search.ts
+---
+{{{{raw}}}}
+import { and, asc, desc, eq, memberTable, or, project, type db, userTable } from '@repo/db';
+import { APIError } from 'better-auth/api';
+import { auth } from './auth';
+import { hasPermission } from './middleware/rbac';
+import { type SearchableType, type SearchGroup, searchGroups } from './search-engine';
+import { containsText } from './text-match';
+
+// The signed-in user of a request, the database it reads and the organization the session works in.
+export interface SearchCaller {
+  db: typeof db;
+  headers: Headers;
+  session: { session: { activeOrganizationId?: string | null }; user: { id: string } };
+}
+
+// The caller and the organization every query is scoped to: it is the active organization of the session, never a
+// value the browser sends.
+interface SearchContext extends SearchCaller {
+  organizationId: string;
+}
+
+// A caller better-auth refuses (not a member of the organization they work in) may read nothing of it.
+async function mayRead(check: () => Promise<boolean>): Promise<boolean> {
+  try {
+    return await check();
+  } catch (error) {
+    if (error instanceof APIError) return false;
+    throw error;
+  }
+}
+
+// Adding a searchable type is one entry here, scoped to `organizationId`. A type is read by the check its list
+// procedure makes: `permissionProcedure('project', 'read')` for the projects, and for the members the membership
+// that `member.list` (`listMembers`) requires.
+const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
+  {
+    type: 'projects',
+    label: 'Projects',
+    canSearch: ({ headers, organizationId }) => mayRead(() => hasPermission(headers, organizationId, 'project', 'read')),
+    find: async ({ db, organizationId }, text, limit) => {
+      const rows = await db
+        .select({ id: project.id, name: project.name, description: project.description, status: project.status })
+        .from(project)
+        .where(
+          and(
+            eq(project.organizationId, organizationId),
+            or(containsText(project.name, text), containsText(project.description, text)),
+          ),
+        )
+        .orderBy(desc(project.createdAt), desc(project.id))
+        .limit(limit);
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.name,
+        subtitle: row.description ?? row.status,
+        href: `/projects/${row.id}`,
+      }));
+    },
+  },
+  {
+    type: 'members',
+    label: 'Members',
+    canSearch: ({ headers, organizationId }) =>
+      mayRead(async () => (await auth.api.getActiveMember({ headers })).organizationId === organizationId),
+    // A member has no page of their own: the record links to the members page.
+    find: async ({ db, organizationId }, text, limit) => {
+      const rows = await db
+        .select({ id: memberTable.id, name: userTable.name, email: userTable.email })
+        .from(memberTable)
+        .innerJoin(userTable, eq(memberTable.userId, userTable.id))
+        .where(
+          and(
+            eq(memberTable.organizationId, organizationId),
+            or(containsText(userTable.name, text), containsText(userTable.email, text)),
+          ),
+        )
+        .orderBy(asc(userTable.name), asc(memberTable.id))
+        .limit(limit);
+      return rows.map((row) => ({ id: row.id, title: row.name, subtitle: row.email, href: '/settings/members' }));
+    },
+  },
+];
+
+// The groups of records of the active organization matching the text, for the types the caller may read. A group with
+// no match is left out, and a session with no active organization finds nothing.
+export async function searchRecords(request: SearchCaller, query: string): Promise<SearchGroup[]> {
+  const organizationId = request.session.session.activeOrganizationId;
+  if (!organizationId) return [];
+  return searchGroups(SEARCHABLE_TYPES, query, async () => ({ ...request, organizationId }));
+}
+{{{{/raw}}}}

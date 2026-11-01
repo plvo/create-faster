@@ -13,6 +13,7 @@ import { memberRouter } from './router/member';
 import { organizationRouter } from './router/organization';
 import { projectRouter } from './router/project';
 import { roleRouter } from './router/role';
+import { searchRouter } from './router/search';
 import { sessionRouter } from './router/session';
 import { userRouter } from './router/user';
 {{else}}
@@ -22,6 +23,7 @@ import { memberRouter } from './member';
 import { organizationRouter } from './organization';
 import { projectRouter } from './project';
 import { roleRouter } from './role';
+import { searchRouter } from './search';
 import { sessionRouter } from './session';
 import { userRouter } from './user';
 {{/if}}
@@ -32,6 +34,7 @@ export const appRouter = router({
   organization: organizationRouter,
   member: memberRouter,
   role: roleRouter,
+  search: searchRouter,
   invitation: invitationRouter,
   session: sessionRouter,
   user: userRouter,
