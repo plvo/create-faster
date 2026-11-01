@@ -178,12 +178,19 @@ export const Command = host('div', { 'data-cmdk': 'true' });`,
 export const NavUser = () => null;`,
   'next-link.mjs': `export default ({ href, children }) => ({ type: 'a', props: { href, children } });`,
   // The permission list of the caller, and the search of the palette, which is the query that carries an input.
+  // \`useQueries\` is the permission check of an organization: one answer per query, from the "resource.action" list the
+  // test grants, and none for a query that is not enabled or while the browser has no answer yet (the list is null).
   'react-query.mjs': `export const useQuery = (options) => {
   if (!options?.input) return { data: globalThis.__granted };
   (globalThis.__searches ??= []).push(options);
   const result = globalThis.__searchResult;
   return typeof result === 'function' ? result(options) : result;
-};`,
+};
+export const useQueries = ({ queries }) => queries.map((query) => {
+  if (query.enabled === false || globalThis.__organizationPermissions === null) return { data: undefined };
+  const [resource, actions] = Object.entries(query.queryKey[1])[0];
+  return { data: (globalThis.__organizationPermissions ?? []).includes(resource + '.' + actions[0]) };
+});`,
   'providers.mjs': 'export const useTRPC = () => ({ permissions: { mine: { queryOptions: () => ({}) } } });',
   'trpc-server.mjs': `export const getQueryClient = () => ({ prefetchQuery: async () => {} });
 export const HydrateClient = ({ children }) => children;
@@ -1172,6 +1179,261 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
     test('the api package exports the module the palette imports', async () => {
       const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/api/package.json')));
       expect(manifest.exports).toHaveProperty(['./search-query']);
+    });
+  });
+});
+
+const MULTITENANT = 'multitenant-saas-nextjs';
+
+// What the multitenant blueprint adds to the stand-ins above: Hugeicons objects instead of lucide components, and the
+// parts of the sidebar and the header the layout composes around the palette.
+const HUGEICONS = [
+  'DashboardSquare01Icon',
+  'FolderLibraryIcon',
+  'Settings02Icon',
+  'UserGroupIcon',
+  'UserIcon',
+  'Search01Icon',
+];
+
+const MULTITENANT_STUBS: Record<string, string> = {
+  'auth-client.mjs': 'export const authClient = {};',
+  'hugeicons-react.mjs': `import { createElement } from './react.mjs';
+export const HugeiconsIcon = ({ icon }) => createElement('svg', { 'aria-hidden': 'true', 'data-icon': icon.name });`,
+  'hugeicons.mjs': HUGEICONS.map((name) => `export const ${name} = { name: '${name}' };`).join('\n'),
+  'organization-leaf.mjs': `import { createElement } from './react.mjs';
+export const OrgSwitcher = () => createElement('div', { 'data-part': 'org-switcher' });
+export const NavUser = () => null;
+export const AppHeader = () => null;`,
+};
+
+const MULTITENANT_IMPORTS: Record<string, string> = {
+  ...IMPORTS,
+  '@repo/auth/auth-client': './auth-client.mjs',
+  '@hugeicons/react': './hugeicons-react.mjs',
+  '@hugeicons/core-free-icons': './hugeicons.mjs',
+  '@/lib/auth/session': './session.mjs',
+  '@/components/navigation/command-palette': './command-palette.mjs',
+  './command-palette': './command-palette.mjs',
+  '@/components/navigation/app-sidebar': './app-sidebar.mjs',
+  '@/components/navigation/app-header': './organization-leaf.mjs',
+  './org-switcher': './organization-leaf.mjs',
+  './nav-user': './organization-leaf.mjs',
+  './sidebar-links': './sidebar-links.mjs',
+};
+
+// The pages of the sidebar and what each needs: the organization decides, in the browser, not the role of the user.
+const ALL_PERMISSIONS = ['project.read', 'organization.update', 'member.update', 'ac.read'];
+const MULTITENANT_PAGES: [string, string[], string[]][] = [
+  ['no permission', [], ['/']],
+  ['only project.read', ['project.read'], ['/', '/projects']],
+  ['only member.update', ['member.update'], ['/', '/settings/members']],
+  ['every permission', ALL_PERMISSIONS, ['/', '/projects', '/settings/general', '/settings/members', '/settings/roles']],
+];
+
+describe(`${MULTITENANT} command palette`, () => {
+  let tempDir: string;
+  let projectPath: string;
+  let react: { beginRender: () => void; resetState: () => void; flushEffects: () => void };
+  let Layout: Component;
+
+  const browser = createFakeBrowser();
+  const permissions = globalThis as { __organizationPermissions?: string[] | null };
+
+  const useBrowser = () => {
+    browser.open(LINUX);
+    globals.__serverRender = false;
+    globals.__pushed = [];
+    globals.__searches = [];
+    globals.__searchResult = { isPending: true, isError: false, isFetching: false, data: [] };
+    react.resetState();
+  };
+
+  const renderLayout = async (): Promise<RenderedChild[]> => {
+    globals.__session = { user: { id: 'u1' }, session: { activeOrganizationId: 'org-1' } };
+    react.beginRender();
+    return renderElementTree({ type: Layout, props: { children: 'Page body' } });
+  };
+
+  const openPalette = async (granted: string[] | null): Promise<RenderedChild[]> => {
+    permissions.__organizationPermissions = granted;
+    useBrowser();
+    await renderLayout();
+    react.flushEffects();
+    browser.press({ ctrlKey: true });
+    return renderLayout();
+  };
+
+  const optionsOf = (tree: RenderedChild[]): string[] =>
+    elementsOf(tree)
+      .filter((element) => element.props.role === 'option')
+      .map((element) => String(element.props['data-value']));
+  const sidebarLinksOf = (tree: RenderedChild[]): string[] =>
+    elementsOf(tree)
+      .filter((element) => element.tag === 'a')
+      .map((element) => String(element.props.href));
+  const dialogOf = (tree: RenderedChild[]) => elementsOf(tree).find((element) => element.props.role === 'dialog');
+  const iconsOf = (element: RenderedElement): string[] =>
+    elementsOf([element])
+      .filter((inner) => inner.tag === 'svg')
+      .map((inner) => String(inner.props['data-icon']));
+
+  // Types the text in the box, lets the delay elapse and renders the answer the server gives for it.
+  const search = async (text: string, data: unknown[]): Promise<RenderedChild[]> => {
+    const tree = await openPalette(ALL_PERMISSIONS);
+    const input = must(elementsOf(tree).find((element) => element.tag === 'input'), 'the search input');
+    (input.props.onValueChange as (value: string) => void)(text);
+    await renderLayout();
+    react.flushEffects();
+    browser.elapse();
+    globals.__searchResult = { isPending: false, isError: false, isFetching: false, data };
+    return renderLayout();
+  };
+
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    const result = await runCli([MULTITENANT, '--blueprint', MULTITENANT, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
+    expect(result.exitCode, result.stderr).toBe(0);
+    projectPath = join(tempDir, MULTITENANT);
+
+    const stubs = join(tempDir, 'stubs');
+    await mkdir(stubs, { recursive: true });
+    for (const [name, source] of Object.entries({ ...STUBS, ...MULTITENANT_STUBS })) {
+      if (source) await Bun.write(join(stubs, name), source);
+    }
+    react = (await import(join(stubs, 'react.mjs'))) as typeof react;
+
+    const load = async <T,>(file: string, name: string): Promise<T> =>
+      evaluateGeneratedModule<T>(await readTextFile(join(projectPath, 'apps/web', file)), join(stubs, name), MULTITENANT_IMPORTS, 'tsx');
+
+    await evaluateGeneratedModule(
+      await readTextFile(join(projectPath, 'packages/api/src/search-query.ts')),
+      join(stubs, 'search-query.mjs'),
+      { zod: REAL.zod },
+    );
+    await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
+    await load('src/hooks/use-permission.ts', 'permission.mjs');
+    await load('src/lib/constants.ts', 'constants.mjs');
+    await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
+    await load('src/components/navigation/command-palette.tsx', 'command-palette.mjs');
+    await load('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs');
+    await load('src/components/navigation/app-sidebar.tsx', 'app-sidebar.mjs');
+    Layout = (await load<{ default: Component }>('src/app/(dashboard)/layout.tsx', 'layout.mjs')).default;
+
+    browser.holdTimers();
+  });
+
+  afterAll(async () => {
+    browser.release();
+    await cleanupTempDir(tempDir);
+  });
+
+  test('Ctrl+K in the dashboard layout opens a labelled palette that does not filter', async () => {
+    useBrowser();
+    const closed = await renderLayout();
+    react.flushEffects();
+    expect(dialogOf(closed)).toBeUndefined();
+    browser.press({ ctrlKey: true });
+    const open = dialogOf(await renderLayout());
+    expect(open?.props['aria-label']).toBe('Search');
+    expect(open?.props['data-should-filter']).toBe('false');
+  });
+
+  test('the search field sits in the sidebar header under the organization switcher and opens the palette of the layout', async () => {
+    permissions.__organizationPermissions = [];
+    useBrowser();
+    const tree = await renderLayout();
+    react.flushEffects();
+    const header = must(elementsOf(tree).find((element) => element.tag === 'header'), 'the sidebar header');
+    const inHeader = elementsOf(header.children);
+    const switcher = inHeader.findIndex((element) => element.props['data-part'] === 'org-switcher');
+    const trigger = inHeader.findIndex((element) => element.tag === 'button' && element.props['aria-haspopup'] === 'dialog');
+    expect(switcher).toBeGreaterThanOrEqual(0);
+    expect(trigger).toBeGreaterThan(switcher);
+
+    (inHeader[trigger]?.props.onClick as () => void)();
+    expect(dialogOf(await renderLayout())).toBeDefined();
+  });
+
+  test.each(MULTITENANT_PAGES)('with %s the palette lists the pages the sidebar shows, and no other', async (_name, granted, pages) => {
+    const tree = await openPalette(granted);
+    expect(sidebarLinksOf(tree)).toEqual(pages);
+    expect(optionsOf(tree)).toEqual(pages);
+  });
+
+  test('until the browser has the permissions, only the page that needs none is listed, in the sidebar and in the palette', async () => {
+    const tree = await openPalette(null);
+    expect(sidebarLinksOf(tree)).toEqual(['/']);
+    expect(optionsOf(tree)).toEqual(['/']);
+  });
+
+  test('a page a permission refuses is in neither the sidebar nor the palette, and one it grants is in both', async () => {
+    const before = await openPalette(['project.read']);
+    expect(optionsOf(before)).toContain('/projects');
+    const after = await openPalette([]);
+    expect(optionsOf(after)).not.toContain('/projects');
+    expect(sidebarLinksOf(after)).not.toContain('/projects');
+  });
+
+  test('the icons are Hugeicons: the search field, and the page of each result', async () => {
+    const tree = await openPalette(ALL_PERMISSIONS);
+    const trigger = must(elementsOf(tree).find((element) => element.props['aria-haspopup'] === 'dialog' && element.tag === 'button'), 'the trigger');
+    expect(iconsOf(trigger)).toEqual(['Search01Icon']);
+    const projects = must(elementsOf(tree).find((element) => element.props['data-value'] === '/projects'), 'the page');
+    expect(iconsOf(projects)).toEqual(['FolderLibraryIcon']);
+    expect(elementsOf(tree).filter((element) => element.tag === 'svg' && !String(element.props['data-icon']).endsWith('Icon'))).toEqual([]);
+  });
+
+  describe('the records', () => {
+    const GROUPS = [
+      { type: 'projects', label: 'Projects', items: [{ id: 'p1', title: 'Orchid rollout', subtitle: 'Spring launch', href: '/projects/p1' }] },
+      { type: 'members', label: 'Members', items: [{ id: 'm1', title: 'Cleo Cole', subtitle: 'cleo@example.com', href: '/settings/members' }] },
+    ];
+
+    test('the groups the server returns are shown under its labels, after the pages that match', async () => {
+      const tree = await search('pro', GROUPS);
+      const groups = elementsOf(tree)
+        .filter((element) => element.props.role === 'group')
+        .map((element) => String(element.props['aria-label']));
+      expect(groups).toEqual(['Pages', 'Projects', 'Members']);
+      const member = must(elementsOf(tree).find((element) => element.props['data-value'] === 'members:m1'), 'the member');
+      expect(textOf(member)).toBe('Cleo Colecleo@example.com');
+    });
+
+    test.each([
+      ['a project', 'projects:p1', '/projects/p1'],
+      ['a member, who has no page of their own', 'members:m1', '/settings/members'],
+    ])('selecting %s closes the palette and goes to its page', async (_kind, value, path) => {
+      const tree = await search('or', GROUPS);
+      const record = must(elementsOf(tree).find((element) => element.props['data-value'] === value), 'the record');
+      (record.props.onSelect as () => void)();
+      expect(globals.__pushed).toEqual([path]);
+      expect(dialogOf(await renderLayout())).toBeUndefined();
+    });
+
+    test('the palette asks the server for records of the text, from two characters', async () => {
+      await search('or', []);
+      const asked = must(globals.__searches?.at(-1), 'a search') as { input: { query: string }; enabled: boolean; retry: boolean };
+      expect(asked).toMatchObject({ input: { query: 'or' }, enabled: true, retry: false });
+    });
+  });
+
+  describe('the packages', () => {
+    test('the ui package declares cmdk and ships the command component that imports it and the shared dialog under it', async () => {
+      const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/ui/package.json')));
+      expect(manifest.dependencies).toHaveProperty('cmdk');
+      expect(await readTextFile(join(projectPath, 'packages/ui/src/components/ui/command.tsx'))).toMatch(/from ['"]cmdk['"]/);
+      expect(await readTextFile(join(projectPath, 'packages/ui/src/components/ui/dialog.tsx'))).toContain('showCloseButton');
+    });
+
+    test('the api package exports the module the palette imports', async () => {
+      const manifest = JSON.parse(await readTextFile(join(projectPath, 'packages/api/package.json')));
+      expect(manifest.exports).toHaveProperty(['./search-query']);
+    });
+
+    test('the search procedure is registered on the router', async () => {
+      const root = await readTextFile(join(projectPath, 'packages/api/src/root.ts'));
+      expect(root).toContain('search: searchRouter');
     });
   });
 });

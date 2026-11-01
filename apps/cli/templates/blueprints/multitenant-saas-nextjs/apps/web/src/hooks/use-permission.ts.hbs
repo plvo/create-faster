@@ -14,19 +14,24 @@ import { useQuery } from '@tanstack/react-query';
 export type Permissions = { [Resource in keyof Statement]?: Statement[Resource][number][] };
 
 // Asks the endpoint the server's permissionProcedure asks, so the UI and the router agree on who may write.
-// The answer is cached per permission set and shared by every component that asks.
-export function usePermission(permissions: Permissions): {
-  allowed: boolean;
-  loading: boolean;
-} {
-  const { data, isLoading } = useQuery({
+// The answer is cached per permission set and shared by every component that asks, whether it asks through
+// `usePermission` or through `useQueries` (the pages of the sidebar and of the command palette).
+export function permissionQueryOptions(permissions: Permissions) {
+  return {
     queryKey: ['permission', permissions],
     queryFn: async () => {
       const result = await authClient.organization.hasPermission({ permissions });
       return result.data?.success ?? false;
     },
     retry: false,
-  });
+  };
+}
+
+export function usePermission(permissions: Permissions): {
+  allowed: boolean;
+  loading: boolean;
+} {
+  const { data, isLoading } = useQuery(permissionQueryOptions(permissions));
 
   return { allowed: data ?? false, loading: isLoading };
 }

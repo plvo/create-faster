@@ -19,6 +19,15 @@ The web app wires tRPC + React Query in `apps/web/src/trpc/providers.tsx` (`useT
 ## Forms (TanStack Form)
 `useAppForm` is composed in `packages/ui/src/lib/form.ts` (`@repo/ui/lib/form`) with shuip field components (`InputField`, `SelectField`, etc.). See `apps/web/src/components/projects/project-form.tsx`: a Zod schema in `validators.onChange`, `form.AppField` per field, and `form.SubmitButton` inside `form.AppForm`.
 
+## Palette search
+The command palette (Ctrl+K, or the search field under the organization switcher) lists the pages the active organization lets the user open and finds projects and members through one tRPC procedure, `search.records` (`packages/api/src/router/search.ts`, a `protectedProcedure`). It returns `{ type, label, items: { id, title, subtitle, href }[] }[]`, and the palette (`apps/web/src/components/navigation/command-palette.tsx`) shows whatever groups come back, so it knows no record type.
+- The pages are `useAllowedRoutes()` (`apps/web/src/lib/allowed-routes.ts`), the list the sidebar renders: each route that needs a permission is asked through `permissionQueryOptions` (`apps/web/src/hooks/use-permission.ts`, the key `usePermission` and `<Can>` share), so the palette never offers a page the sidebar hides.
+- `SEARCHABLE_TYPES` in `packages/api/src/search.ts` is the one list of what can be found. An entry declares `canSearch`, `find` (the query, at most the `limit` it is given) and the `href` of each item. To make a new type searchable, add one entry; the palette needs no change.
+- Every query is scoped to the active organization of the session (`activeOrganizationId`, read on the server, never sent by the browser), and a session without one finds nothing. A type the caller may not read gets no group and runs no query. Projects use the check of `project.list` (`hasPermission(headers, organizationId, 'project', 'read')` from `packages/api/src/middleware/rbac.ts`, which `permissionProcedure` calls too). Members use the check of `member.list`, which asks no permission, only membership of the active organization. A caller better-auth refuses finds nothing.
+- A member has no page of their own, so a member item opens the members page (`/settings/members`); a project item opens `/projects/<id>`.
+- The text is cut at `MAX_SEARCH_LENGTH` (100) when the input is read (`packages/api/src/search-query.ts`, which also holds `SEARCH_MIN_LENGTH` for the palette), trimmed, and nothing is searched under 2 characters. Each type returns at most `SEARCH_LIMIT_PER_TYPE` (5) items (`packages/api/src/search-engine.ts`).
+- The match is `containsText` (`packages/api/src/text-match.ts`): plain text and case-insensitive, so `%` and `_` match themselves (`position(lower(text) in lower(column))`), never `LIKE`. It cannot use an index, so a search scans the organization's rows; that is accepted at this size.
+
 ## Adding a query/mutation
 1. Add the procedure to the relevant router in `packages/api/src/router/`, validating input with Zod and gating with `permissionProcedure`.
 2. (New router) register it in `packages/api/src/root.ts`.

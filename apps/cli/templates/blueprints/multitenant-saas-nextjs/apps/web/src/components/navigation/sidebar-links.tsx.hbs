@@ -6,7 +6,6 @@ mono:
 ---
 'use client';
 
-import { authClient } from '@repo/auth/auth-client';
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -17,37 +16,13 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ROUTES, type RouteProps } from '@/lib/constants';
+import { useAllowedRoutes } from '@/lib/allowed-routes';
+import type { RouteProps } from '@/lib/constants';
 
 {{{{raw}}}}
 export function SidebarLinks() {
   const pathname = usePathname();
-  const [visibleUrls, setVisibleUrls] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    let cancelled = false;
-    async function resolve() {
-      const checks = await Promise.all(
-        ROUTES.map(async (route) => {
-          if (!route.permission) return route.url;
-          const result = await authClient.organization.hasPermission({
-            permissions: { [route.permission.resource]: [route.permission.action] },
-          });
-          return result.data?.success ? route.url : null;
-        }),
-      );
-      if (!cancelled) {
-        setVisibleUrls(new Set(checks.filter((u): u is string => u !== null)));
-      }
-    }
-    resolve();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const visible = ROUTES.filter((r) => !r.permission || visibleUrls.has(r.url));
+  const visible = useAllowedRoutes();
 
   const ungrouped = visible.filter((r) => !r.category);
   const grouped = visible.reduce<Record<string, RouteProps[]>>((acc, r) => {

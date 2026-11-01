@@ -12,6 +12,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from '@repo/ui/components/ui/sidebar';
+import { CommandPaletteTrigger } from './command-palette';
 import { NavUser } from './nav-user';
 import { OrgSwitcher } from './org-switcher';
 import { SidebarLinks } from './sidebar-links';
@@ -26,6 +27,7 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
     <Sidebar collapsible='icon' variant='sidebar' {...props}>
       <SidebarHeader>
         <OrgSwitcher />
+        <CommandPaletteTrigger />
       </SidebarHeader>
       <SidebarContent>
         <SidebarLinks />
