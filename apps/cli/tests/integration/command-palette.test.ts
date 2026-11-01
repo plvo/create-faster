@@ -253,6 +253,9 @@ describe(`${BLUEPRINT} command palette`, () => {
 
   const hintOf = (trigger: RenderedElement): RenderedElement | undefined =>
     elementsOf([trigger]).find((element) => element.tag === 'kbd');
+  // The element that hides the hint from assistive technology and from a phone: it wraps the kbd.
+  const hintWrapperOf = (trigger: RenderedElement): RenderedElement | undefined =>
+    elementsOf([trigger]).find((element) => element.children.some((inner) => typeof inner !== 'string' && inner.tag === 'kbd'));
 
   // The timers the palette sets, kept so a test decides when the delay of the search has elapsed.
   const timers: { callback: () => void; delay: number; cancelled: boolean }[] = [];
@@ -438,7 +441,7 @@ describe(`${BLUEPRINT} command palette`, () => {
     });
 
     test('the hint is hidden below md, so a phone shows none, and with the sidebar collapsed', async () => {
-      const classes = String(hintOf(triggerOf(await mount('admin', LINUX)))?.props.className).split(/\s+/);
+      const classes = String(hintWrapperOf(triggerOf(await mount('admin', LINUX)))?.props.className).split(/\s+/);
       expect(classes).toContain('hidden');
       expect(classes).toContain('md:inline-block');
       expect(classes).toContain('group-data-[collapsible=icon]:hidden');
@@ -451,7 +454,16 @@ describe(`${BLUEPRINT} command palette`, () => {
     });
 
     test('the key hint is hidden from screen readers, the button carries the announcement', async () => {
-      expect(hintOf(triggerOf(await mount('admin', MAC)))?.props['aria-hidden']).toBe('true');
+      const trigger = triggerOf(await mount('admin', MAC));
+      expect(hintWrapperOf(trigger)?.props['aria-hidden']).toBe('true');
+    });
+
+    // Biome reads aria-hidden on a kbd as hidden from assistive technology on a focusable element
+    // (lint/a11y/noAriaHiddenOnFocusable): the kbd stays the semantic element and the wrapper carries aria-hidden.
+    test('aria-hidden sits on the element around the kbd, never on the kbd itself', async () => {
+      const trigger = triggerOf(await mount('admin', MAC));
+      expect(hintOf(trigger)?.props['aria-hidden']).toBeUndefined();
+      expect(hintWrapperOf(trigger)?.tag).toBe('span');
     });
 
     test('clicking it opens the palette and closes the mobile sidebar it sits in', async () => {

@@ -308,12 +308,11 @@ export function CommandPaletteTrigger() {
           <Search />
           <span>Search</span>
           {shortcut && (
-            <kbd
-              aria-hidden='true'
-              className='ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground md:inline-block group-data-[collapsible=icon]:hidden'
-            >
-              {shortcut.label}
-            </kbd>
+            <span aria-hidden='true' className='ml-auto hidden md:inline-block group-data-[collapsible=icon]:hidden'>
+              <kbd className='rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground'>
+                {shortcut.label}
+              </kbd>
+            </span>
           )}
         </SidebarMenuButton>
       </SidebarMenuItem>
