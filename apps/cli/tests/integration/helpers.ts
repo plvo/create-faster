@@ -4,6 +4,8 @@ import { join, normalize, relative, sep } from 'node:path';
 import { format } from 'node:util';
 import { expect, test } from 'bun:test';
 import { $, Glob } from 'bun';
+import type { Database } from 'bun:sqlite';
+import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { PLAIN_OUTPUT_ENV } from '../plain-output-env';
 import { CTRL_C, DOWN, ENTER, runOnPseudoTerminal } from '../pseudo-terminal';
 
@@ -544,4 +546,35 @@ export function elementsOf(children: RenderedChild[]): RenderedElement[] {
 export function textOf(child: RenderedChild): string {
   if (!isRenderedElement(child)) return child;
   return child.props['aria-hidden'] === 'true' ? '' : child.children.map(textOf).join('');
+}
+
+/**
+ * Creates the table of a Drizzle schema in a SQLite database, with its unique columns, its composite primary key, the
+ * default of its time columns and the indexes it declares.
+ */
+export function createSqliteTable(sqlite: Database, table: SQLiteTable): void {
+  const config = getTableConfig(table);
+  const columns = config.columns.map((column) => {
+    const defaulted = column.name === 'created_at' || column.name === 'updated_at' ? ' DEFAULT (unixepoch())' : '';
+    return `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}${defaulted}`;
+  });
+  for (const key of config.primaryKeys) {
+    columns.push(`PRIMARY KEY (${key.columns.map((column) => `"${column.name}"`).join(', ')})`);
+  }
+  sqlite.run(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
+  for (const column of config.columns.filter((each) => each.isUnique)) {
+    sqlite.run(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);
+  }
+  // The indexes of the generated schema, created as drizzle-kit would.
+  for (const index of config.indexes) {
+    const { name, columns: indexed, unique } = index.config;
+    const names = indexed.map((column) => `"${(column as { name: string }).name}"`).join(', ');
+    sqlite.run(`CREATE ${unique ? 'UNIQUE ' : ''}INDEX "${name}" ON "${config.name}" (${names})`);
+  }
+}
+
+/** The query plan reads the index and sorts nothing: the order of the query is the order of the index. */
+export function expectServedBy(plan: string, index: string): void {
+  expect(plan, plan).toMatch(new RegExp(`USING INDEX ${index}\\b`));
+  expect(plan, plan).not.toContain('TEMP B-TREE');
 }

@@ -164,6 +164,7 @@ describe(`${BLUEPRINT} database roles`, () => {
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',
+      '../text-match': './text-match.mjs',
     };
     const zod = Bun.resolveSync('zod', import.meta.dir);
     // The real context and procedures of the generated api package: a stand-in would make the refusals below test the stand-in.
@@ -181,6 +182,7 @@ describe(`${BLUEPRINT} database roles`, () => {
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod });
     await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod, './pagination': './pagination.mjs' });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
+    await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     scope = await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', imports);
     const { documentsRouter } = await generated<{ documentsRouter: unknown }>(`${API}/router/documents.ts`, 'documents-router.mjs', {

@@ -3,8 +3,16 @@ import { join } from 'node:path';
 import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { getTableConfig, type SQLiteTable } from 'drizzle-orm/sqlite-core';
-import { cleanupTempDir, createTempDir, evaluateGeneratedModule, readTextFile, runCli } from './helpers';
+import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
+import {
+  cleanupTempDir,
+  createSqliteTable,
+  createTempDir,
+  evaluateGeneratedModule,
+  expectServedBy,
+  readTextFile,
+  runCli,
+} from './helpers';
 import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
@@ -157,29 +165,6 @@ const USER_SORT_INDEX: Record<string, string> = {
   '-email': 'users_email_unique',
 };
 
-function expectServedBy(plan: string, index: string): void {
-  expect(plan, plan).toMatch(new RegExp(`USING INDEX ${index}\\b`));
-  expect(plan, plan).not.toContain('TEMP B-TREE');
-}
-
-function createTable(sqlite: Database, table: SQLiteTable): void {
-  const config = getTableConfig(table);
-  const columns = config.columns.map(
-    (column) =>
-      `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}`,
-  );
-  sqlite.run(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
-  for (const column of config.columns.filter((each) => each.isUnique)) {
-    sqlite.run(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);
-  }
-  // The indexes of the generated schema, created as drizzle-kit would: the query plans below rely on these only.
-  for (const index of config.indexes) {
-    const { name, columns: indexed, unique } = index.config;
-    const names = indexed.map((column) => `"${(column as { name: string }).name}"`).join(', ');
-    sqlite.run(`CREATE ${unique ? 'UNIQUE ' : ''}INDEX "${name}" ON "${config.name}" (${names})`);
-  }
-}
-
 describe(`${BLUEPRINT} pagination, search and sort`, () => {
   let tempDir: string;
   let project: string;
@@ -194,8 +179,8 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
     const sqlite = new Database(':memory:');
     const userTable = schema.userTable as SQLiteTable;
     const documentTable = schema.documentTable as SQLiteTable;
-    createTable(sqlite, userTable);
-    createTable(sqlite, documentTable);
+    createSqliteTable(sqlite, userTable);
+    createSqliteTable(sqlite, documentTable);
     const queries: LoggedQuery[] = [];
     const db = drizzle(sqlite, {
       logger: { logQuery: (query, params) => queries.push({ query, params }) },
@@ -261,6 +246,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       'drizzle-orm/sqlite-core': REAL.sqliteCore,
     });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
+    await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/document-scope.ts`, 'document-scope.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', {
       '@repo/auth/permissions': './permissions.mjs',
@@ -278,6 +264,7 @@ describe(`${BLUEPRINT} pagination, search and sort`, () => {
       '../middleware/rbac': './rbac.mjs',
       '../document-scope': './document-scope.mjs',
       '../page-query': './page-query.mjs',
+      '../text-match': './text-match.mjs',
       '../pagination': './pagination.mjs',
       '../user-list': './user-list.mjs',
     };

@@ -1,0 +1,16 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/search-query.ts
+---
+import { z } from 'zod';
+import { MAX_SEARCH_LENGTH } from './user-list';
+
+// A shorter text matches too much to be worth a scan of the tables. The palette reads this too: it asks from here.
+export const SEARCH_MIN_LENGTH = 2;
+
+// The input of `search.records`. A longer text is cut when it is read, so what reaches the server code is bounded.
+export const searchInput = z.object({
+  query: z.string().transform((text) => text.slice(0, MAX_SEARCH_LENGTH)),
+});

@@ -5,13 +5,14 @@ mono:
   path: src/router/users.ts
 ---
 import type { SQL } from 'drizzle-orm';
-import { asc, count, desc, eq, or, sql, userTable } from '@repo/db';
+import { asc, count, desc, eq, or, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
 import type { AppRole } from '@repo/auth/permissions';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
-import { type Column, orderedPage } from '../page-query';
+import { orderedPage } from '../page-query';
+import { containsText } from '../text-match';
 import { type UserSort, userCountInput, userListInput } from '../user-list';
 
 const userColumns = {
@@ -36,13 +37,11 @@ const ORDER_BY_SORT: Record<UserSort, SQL[]> = {
   '-email': [desc(userTable.email)],
 };
 
-// The users whose name, email or role contains the text, whatever the case. `instr` reads the text as plain text:
-// LIKE would read a `%` or `_` of it as a wildcard.
+// The users whose name, email or role contains the text.
 function matchingSearch(search: string): SQL | undefined {
   const text = search.trim();
   if (text === '') return undefined;
-  const contains = (column: Column) => sql`instr(lower(${column}), lower(${text})) > 0`;
-  return or(contains(userTable.name), contains(userTable.email), contains(userTable.role));
+  return or(containsText(userTable.name, text), containsText(userTable.email, text), containsText(userTable.role, text));
 }
 
 // Cryptographically-random password for admin-created accounts (shown once).

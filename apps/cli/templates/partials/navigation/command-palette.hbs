@@ -1,6 +1,6 @@
 {{!-- The whole command-palette.tsx file: the Ctrl+K / Cmd+K palette that opens a page of the dashboard.
 CommandPaletteProvider holds the shortcut and the dialog, CommandPaletteTrigger is the search field of the sidebar header.
-It reads from the project: @repo/ui (command, sidebar), useMounted, useAllowedRoutes for the pages a role can open, and the router of the stack. --}}
+It reads from the project: @repo/ui (command, sidebar), useMounted, useAllowedRoutes for the pages a role can open, the `search.records` procedure of the tRPC router for the records, and the router of the stack. --}}
 {{#if (eq stackName "tanstack-start")}}
 import { useRouter } from '@tanstack/react-router';
 {{else}}
@@ -9,9 +9,10 @@ import { useRouter } from '@tanstack/react-router';
 import { useRouter } from 'next/navigation';
 {{/if}}
 {{{{raw}}}}
+import { useQuery } from '@tanstack/react-query';
+import { SEARCH_MIN_LENGTH } from '@repo/api/search-query';
 import {
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -22,6 +23,9 @@ import { Search } from 'lucide-react';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useMounted } from '@/hooks/use-mounted';
 import { useAllowedRoutes } from '@/lib/allowed-routes';
+import { useTRPC } from '@/trpc/providers';
+
+const SEARCH_DELAY_MS = 250;
 
 type Platform = 'mac' | 'other';
 
@@ -57,25 +61,166 @@ function useCommandPalette(): CommandPaletteState {
   return palette;
 }
 
-function PageResults({ role, onSelect }: { role: string | null | undefined; onSelect: (url: string) => void }) {
-  const pages = useAllowedRoutes(role);
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
+// The palette does not filter (`shouldFilter` is false, the records come filtered from the server), so the pages are
+// matched here, on their title and category.
+function PageResults({
+  role,
+  query,
+  onSelect,
+}: {
+  role: string | null | undefined;
+  query: string;
+  onSelect: (url: string) => void;
+}) {
+  const needle = query.trim().toLowerCase();
+  const pages = useAllowedRoutes(role).filter((page) =>
+    [page.title, page.category ?? ''].some((text) => text.toLowerCase().includes(needle)),
+  );
   if (pages.length === 0) return null;
 
   return (
     <CommandGroup heading='Pages'>
       {pages.map((page) => (
-        <CommandItem
-          key={page.url}
-          value={page.url}
-          keywords={[page.title, page.category ?? '']}
-          onSelect={() => onSelect(page.url)}
-        >
+        <CommandItem key={page.url} value={page.url} onSelect={() => onSelect(page.url)}>
           {page.icon && <page.icon />}
           <span>{page.title}</span>
           {page.category && <span className='ml-auto text-xs text-muted-foreground'>{page.category}</span>}
         </CommandItem>
       ))}
     </CommandGroup>
+  );
+}
+
+interface RecordGroup {
+  type: string;
+  label: string;
+  items: { id: string; title: string; subtitle: string; href: string }[];
+}
+
+type RecordSearch =
+  | { state: 'idle' | 'short' | 'running' }
+  | { state: 'failed'; retry: () => void }
+  | { state: 'empty'; text: string }
+  | { state: 'found'; groups: RecordGroup[] };
+
+// The query of the records for a text. A request for an older text is aborted when a newer text replaces it: the query
+// key is the text, so the observer moves to another query and nothing observes the older one any more. TanStack Query
+// aborts a request that nothing observes only if the request took its abort signal, and tRPC passes the signal only
+// with `trpc.abortOnUnmount`.
+export function recordSearchOptions(trpc: ReturnType<typeof useTRPC>, text: string) {
+  return trpc.search.records.queryOptions(
+    { query: text },
+    { enabled: text.length >= SEARCH_MIN_LENGTH, retry: false, trpc: { abortOnUnmount: true } },
+  );
+}
+
+// What the palette shows for the records, from the text in the box. The answer is always the one for that text: while
+// the delay or the request runs the state is `running`, never the answer of an older text.
+function useRecordSearch(query: string): RecordSearch {
+  const trpc = useTRPC();
+  const text = query.trim();
+  const searchText = useDebouncedValue(text, SEARCH_DELAY_MS);
+  const search = useQuery(recordSearchOptions(trpc, searchText));
+
+  if (text === '') return { state: 'idle' };
+  if (text.length < SEARCH_MIN_LENGTH) return { state: 'short' };
+  if (searchText !== text || search.isPending || (search.isError && search.isFetching)) return { state: 'running' };
+  if (search.isError) {
+    return {
+      state: 'failed',
+      retry: () => {
+        search.refetch();
+      },
+    };
+  }
+  if (search.data.length === 0) return { state: 'empty', text };
+  return { state: 'found', groups: search.data };
+}
+
+// One group per type the server returns: this component knows no type. A failed search offers its retry as an item, so
+// the keyboard reaches it the way cmdk does (Enter selects the item, the focus stays in the input).
+function RecordGroups({ search, onSelect }: { search: RecordSearch; onSelect: (href: string) => void }) {
+  if (search.state === 'failed') {
+    return (
+      <CommandGroup heading='Records'>
+        <CommandItem value='records:retry' onSelect={search.retry}>
+          Try again
+        </CommandItem>
+      </CommandGroup>
+    );
+  }
+  if (search.state !== 'found') return null;
+
+  return search.groups.map((group) => (
+    <CommandGroup key={group.type} heading={group.label}>
+      {group.items.map((item) => (
+        <CommandItem key={item.id} value={`${group.type}:${item.id}`} onSelect={() => onSelect(item.href)}>
+          <span className='truncate'>{item.title}</span>
+          <span className='ml-auto truncate text-xs text-muted-foreground'>{item.subtitle}</span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  ));
+}
+
+function recordStatusMessage(search: RecordSearch): string | null {
+  switch (search.state) {
+    case 'short':
+      return `Type at least ${SEARCH_MIN_LENGTH} characters to search records.`;
+    case 'running':
+      return 'Searching records...';
+    case 'empty':
+      return `No records match "${search.text}".`;
+    default:
+      return null;
+  }
+}
+
+// What is not a result: kept out of the listbox, which holds options only. The status region stays in the page so a
+// message put into it is announced.
+function RecordStatus({ search }: { search: RecordSearch }) {
+  const message = recordStatusMessage(search);
+  const style = 'px-2 py-6 text-center text-sm text-muted-foreground';
+
+  return (
+    <>
+      <div role='status' className={message ? style : undefined}>
+        {message}
+      </div>
+      {search.state === 'failed' && (
+        <div role='alert' className={style}>
+          The search failed.
+        </div>
+      )}
+    </>
+  );
+}
+
+// The dialog content is unmounted while the palette is closed, so the text and the search start over at each opening.
+function CommandPaletteBody({ role, onSelect }: { role: string | null | undefined; onSelect: (url: string) => void }) {
+  const [query, setQuery] = useState('');
+  const search = useRecordSearch(query);
+
+  return (
+    <>
+      <CommandInput value={query} onValueChange={setQuery} placeholder='Search pages and records...' />
+      <CommandList>
+        <PageResults role={role} query={query} onSelect={onSelect} />
+        <RecordGroups search={search} onSelect={onSelect} />
+      </CommandList>
+      <RecordStatus search={search} />
+    </>
   );
 }
 
@@ -102,12 +247,14 @@ function CommandPaletteDialog({
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title='Search' description='Search for a page to open.'>
-      <CommandInput placeholder='Search pages...' />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <PageResults role={role} onSelect={openPage} />
-      </CommandList>
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      shouldFilter={false}
+      title='Search'
+      description='Search for a page or a record to open.'
+    >
+      <CommandPaletteBody role={role} onSelect={openPage} />
     </CommandDialog>
   );
 }
@@ -161,12 +308,11 @@ export function CommandPaletteTrigger() {
           <Search />
           <span>Search</span>
           {shortcut && (
-            <kbd
-              aria-hidden='true'
-              className='ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground md:inline-block group-data-[collapsible=icon]:hidden'
-            >
-              {shortcut.label}
-            </kbd>
+            <span aria-hidden='true' className='ml-auto hidden md:inline-block group-data-[collapsible=icon]:hidden'>
+              <kbd className='rounded border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-muted-foreground'>
+                {shortcut.label}
+              </kbd>
+            </span>
           )}
         </SidebarMenuButton>
       </SidebarMenuItem>

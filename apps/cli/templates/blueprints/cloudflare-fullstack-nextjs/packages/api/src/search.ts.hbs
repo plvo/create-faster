@@ -1,0 +1,116 @@
+---
+mono:
+  scope: pkg
+  name: api
+  path: src/search.ts
+---
+import { ADMIN_ROLE, type Permission } from '@repo/auth/permissions';
+import { isGranted } from '@repo/auth/role-permissions';
+import { and, asc, desc, type Database, documentTable, or, userTable } from '@repo/db';
+import { visibleDocuments } from './document-scope';
+import { formatDate } from './format-date';
+import { formatFileSize } from './format-file-size';
+import { callerPermissions } from './middleware/rbac';
+import { SEARCH_MIN_LENGTH } from './search-query';
+import { containsText } from './text-match';
+
+export const SEARCH_LIMIT_PER_TYPE = 5;
+
+// The signed-in user of a request, with what the database grants them: the permissions are read once, for the types
+// below to check, as the procedures of a request do.
+export interface SearchCaller {
+  db: Database;
+  headers: Headers;
+  session: { user: { id: string; role?: string | null } };
+}
+
+export interface SearchContext extends SearchCaller {
+  permissions: readonly Permission[];
+}
+
+export interface SearchItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+}
+
+export interface SearchGroup {
+  type: string;
+  label: string;
+  items: SearchItem[];
+}
+
+// A kind of record the command palette finds. The palette knows no type: it shows the groups `searchRecords` returns.
+export interface SearchableType {
+  type: string;
+  label: string;
+  // Whether the caller may read this type, by the check the list of the type makes. A type the caller may not read is
+  // skipped, and no group is returned.
+  canSearch: (caller: SearchContext) => boolean;
+  // The records matching the text, at most `limit`, each with the page that opens it. A record without a detail page
+  // links to its list page.
+  find: (caller: SearchContext, text: string, limit: number) => Promise<SearchItem[]>;
+}
+
+// Adding a searchable type is one entry here.
+const SEARCHABLE_TYPES: SearchableType[] = [
+  {
+    type: 'documents',
+    label: 'Documents',
+    canSearch: ({ permissions }) => isGranted(permissions, 'document', 'read'),
+    find: async ({ db, permissions, session }, text, limit) => {
+      const rows = await db
+        .select({
+          id: documentTable.id,
+          title: documentTable.title,
+          size: documentTable.size,
+          createdAt: documentTable.createdAt,
+        })
+        .from(documentTable)
+        .where(and(containsText(documentTable.title, text), visibleDocuments(permissions, session.user.id)))
+        .orderBy(desc(documentTable.createdAt), desc(documentTable.id))
+        .limit(limit);
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        subtitle: `${formatFileSize(row.size)}, ${formatDate(row.createdAt)}`,
+        href: '/',
+      }));
+    },
+  },
+  {
+    type: 'users',
+    label: 'Users',
+    canSearch: ({ session }) => session.user.role === ADMIN_ROLE,
+    find: async ({ db }, text, limit) => {
+      const rows = await db
+        .select({ id: userTable.id, name: userTable.name, email: userTable.email })
+        .from(userTable)
+        .where(or(containsText(userTable.name, text), containsText(userTable.email, text)))
+        .orderBy(asc(userTable.name), asc(userTable.id))
+        .limit(limit);
+      return rows.map((row) => ({ id: row.id, title: row.name, subtitle: row.email, href: `/admin/users/${row.id}` }));
+    },
+  },
+];
+
+// The groups of records matching the text, for the types the caller may read. A group with no match is left out.
+export async function searchRecords(
+  request: SearchCaller,
+  query: string,
+  types: SearchableType[] = SEARCHABLE_TYPES,
+): Promise<SearchGroup[]> {
+  const text = query.trim();
+  if (text.length < SEARCH_MIN_LENGTH) return [];
+
+  const caller: SearchContext = { ...request, permissions: await callerPermissions(request) };
+  const groups = await Promise.all(
+    types.map(async ({ type, label, canSearch, find }): Promise<SearchGroup | null> => {
+      if (!canSearch(caller)) return null;
+      const items = (await find(caller, text, SEARCH_LIMIT_PER_TYPE)).slice(0, SEARCH_LIMIT_PER_TYPE);
+      return items.length === 0 ? null : { type, label, items };
+    }),
+  );
+  return groups.filter((group) => group !== null);
+}
