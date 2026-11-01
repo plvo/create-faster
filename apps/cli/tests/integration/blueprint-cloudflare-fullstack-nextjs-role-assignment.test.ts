@@ -210,7 +210,12 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
     await generated(`${API}/trpc.ts`, 'trpc.mjs', { ...apiModules, superjson: REAL.superjson });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
-    await generated(`${API}/user-list.ts`, 'user-list.mjs', { zod: REAL.zod, './pagination': './pagination.mjs' });
+    await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });
+    await generated(`${API}/user-list.ts`, 'user-list.mjs', {
+      zod: REAL.zod,
+      './pagination': './pagination.mjs',
+      './search-query': './search-query.mjs',
+    });
     await generated(`${API}/page-query.ts`, 'page-query.mjs', { '@repo/db': './db.mjs', './pagination': './pagination.mjs' });
     await generated(`${API}/text-match.ts`, 'text-match.mjs', { '@repo/db': './db.mjs' });
     await generated(`${API}/middleware/rbac.ts`, 'rbac.mjs', apiModules);
