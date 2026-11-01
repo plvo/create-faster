@@ -191,14 +191,25 @@ describe('Blueprint generation - cloudflare-fullstack-nextjs', () => {
     }
   });
 
-  test('generates the read-only role matrix page', async () => {
-    const page = await readTextFile(
-      join(projectPath, 'apps/web/src/app/(dashboard)/admin/roles/page.tsx'),
-    );
-    expect(page).toContain('read-only');
-    expect(page).toContain('listRoleMatrix');
-    expect(page).not.toContain('roleDefinitions');
-    expect(page).not.toContain('{{');
+  test('generates the editable role matrix: page, client, dialog, rules and router, with every placeholder resolved', async () => {
+    const web = join(projectPath, 'apps/web/src');
+    const files = [
+      join(web, 'app/(dashboard)/admin/roles/page.tsx'),
+      join(web, 'app/(dashboard)/admin/roles/roles.client.tsx'),
+      join(web, 'components/admin/role-matrix.tsx'),
+      join(web, 'components/admin/create-role-dialog.tsx'),
+      join(projectPath, 'packages/auth/src/role-management.ts'),
+      join(projectPath, 'packages/api/src/router/roles.ts'),
+    ];
+    for (const file of files) {
+      const source = await readTextFile(file);
+      // JSX holds `{{` for an object prop: what a rendered file must not hold is a Handlebars tag (`{{pm}}`), a block or a helper call.
+      expect(source, file).not.toMatch(/\{\{\{\{|\{\{[#/>^!]|\{\{\s*\w+\s+"|\{\{\s*\w+\s*\}\}/);
+      expect(source, file).not.toContain('roleDefinitions');
+    }
+    const matrix = await readTextFile(files[2] as string);
+    expect(matrix).toContain('npm run db:roles');
+    expect(matrix).toContain('npm run db:roles:remote');
   });
 
   test('generates the users datatable, create dialog, per-id page and users router', async () => {

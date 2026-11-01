@@ -192,15 +192,13 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(get).toContain('if (!session?.user)');
   });
 
-  test('roles page renders the role × permission matrix read from the database (read-only)', () => {
+  test('roles page hands the matrix of the database to an editable client, behind the admin guard', () => {
     const page = bpFile('src/app/(dashboard)/admin/roles/page.tsx.hbs');
-    expect(page).toContain("import { listRoleMatrix } from '@repo/auth/role-permissions'");
-    expect(page).not.toContain('roleDefinitions');
-    // the matrix stays read-only.
-    expect(page).toContain('read-only');
     expect(page).toContain('await requireAdmin()');
-    // current viewer's column is highlighted.
-    expect(page).toContain('role.id === currentRole');
+    expect(page).toContain('trpc.roles.matrix.queryOptions()');
+    expect(page).not.toContain('roleDefinitions');
+    // the viewer's own column is highlighted.
+    expect(bpFile('src/components/admin/role-matrix.tsx.hbs')).toContain('role.id === currentRole');
   });
 
   test('sidebar route labels rename access control to "Roles"', () => {
@@ -510,7 +508,7 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     for (const c of ['table', 'badge', 'dialog', 'popover', 'command', 'search-input']) {
       const file = bpFile(`packages/ui/src/components/ui/${c}.tsx.hbs`);
       expect(file).toContain('mono:');
-      expect(file).toMatch(/\{\{\{\{raw\}\}\}\}|\{\{> ui\/command\}\}/);
+      expect(file).toMatch(/\{\{\{\{raw\}\}\}\}|\{\{> ui\/[\w-]+\}\}/);
     }
     const dataTable = bpFile('packages/ui/src/components/block/shuip/data-table.tsx.hbs');
     expect(dataTable).toContain('@tanstack/react-table');
