@@ -1,17 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { drizzle as drizzleMysql } from 'drizzle-orm/mysql2';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/node-postgres';
-import { int as mysqlInt, mysqlTable, varchar as mysqlVarchar } from 'drizzle-orm/mysql-core';
 import { integer, pgTable, varchar as pgVarchar } from 'drizzle-orm/pg-core';
-import { createPool } from 'mysql2/promise';
 import { Pool } from 'pg';
 import { renderTemplate, setupTemplateEngine } from '@/lib/handlebars';
 import type { TemplateContext } from '@/types/ctx';
 import { evaluateGeneratedModule } from '../integration/helpers';
 import { cleanupTempDir, createTempDir } from './helpers';
-import { type DatabaseContainer, type DatabaseEngine, describeWithDocker, removeDatabase, startDatabase } from './docker-database';
+import { type DatabaseContainer, describeWithDocker, removeDatabase, startDatabase } from './docker-database';
 
 const TIMEOUT_DATABASE = 180_000;
 
@@ -60,30 +57,25 @@ const CASES: [text: string, ids: number[]][] = [
   ['nothing like this', []],
 ];
 
-interface Probe {
-  matching: (text: string) => Promise<number[]>;
-  close: () => Promise<void>;
-}
-
-const hostContext = (database: DatabaseEngine): TemplateContext => ({
+const postgresContext: TemplateContext = {
   projectName: 'my-project',
   repo: 'turborepo',
   apps: [{ appName: 'web', stackName: 'nextjs', libraries: [] }],
-  project: { database, tooling: [] },
+  project: { database: 'postgres', tooling: [] },
   git: false,
-});
+};
 
-describeWithDocker('search text match')('containsText on a real database', () => {
+describeWithDocker('search text match')('containsText on a real Postgres', () => {
   let tempDir: string;
-  const databases: Partial<Record<DatabaseEngine, DatabaseContainer>> = {};
-  const probes: Partial<Record<DatabaseEngine, Probe>> = {};
+  let database: DatabaseContainer | undefined;
+  let pool: Pool | undefined;
+  let matching: (text: string) => Promise<number[]>;
 
-  // The generated text-match module of the dialect, over the SQL builder of Drizzle.
-  const containsTextFor = async (engine: DatabaseEngine): Promise<(column: unknown, text: string) => unknown> => {
+  // The generated text-match module of the project, over the SQL builder of Drizzle.
+  const generatedContainsText = async (): Promise<(column: unknown, text: string) => unknown> => {
     setupTemplateEngine();
-    const context = hostContext(engine);
-    const source = renderTemplate('{{> search/text-match}}', { ...context, ...context.apps[0] });
-    const stubs = join(tempDir, engine);
+    const source = renderTemplate('{{> search/text-match}}', { ...postgresContext, ...postgresContext.apps[0] });
+    const stubs = join(tempDir, 'stubs');
     await mkdir(stubs, { recursive: true });
     await Bun.write(join(stubs, 'db.mjs'), `export * from '${Bun.resolveSync('drizzle-orm', import.meta.dir)}';`);
     const module = await evaluateGeneratedModule<{ containsText: (column: unknown, text: string) => unknown }>(
@@ -94,57 +86,28 @@ describeWithDocker('search text match')('containsText on a real database', () =>
     return module.containsText;
   };
 
-  const postgresProbe = async (url: string): Promise<Probe> => {
-    const pool = new Pool({ connectionString: url });
+  beforeAll(async () => {
+    tempDir = await createTempDir();
+    database = await startDatabase('postgres', 'search-text-match-postgres');
+    pool = new Pool({ connectionString: database.connectionString });
     const db = drizzlePostgres(pool);
     const table = pgTable('things', { id: integer('id').primaryKey(), name: pgVarchar('name', { length: 255 }) });
     await pool.query('CREATE TABLE things (id integer PRIMARY KEY, name varchar(255))');
     await db.insert(table).values(ROWS);
-    const containsText = await containsTextFor('postgres');
-    return {
-      matching: async (text) =>
-        (await db.select({ id: table.id }).from(table).where(containsText(table.name, text) as never).orderBy(table.id)).map((row) => row.id),
-      close: () => pool.end(),
-    };
-  };
-
-  const mysqlProbe = async (url: string): Promise<Probe> => {
-    const pool = createPool(url);
-    const db = drizzleMysql(pool, { mode: 'default' });
-    const table = mysqlTable('things', { id: mysqlInt('id').primaryKey(), name: mysqlVarchar('name', { length: 255 }) });
-    await pool.query('CREATE TABLE things (id int PRIMARY KEY, name varchar(255))');
-    await db.insert(table).values(ROWS);
-    const containsText = await containsTextFor('mysql');
-    return {
-      matching: async (text) =>
-        (await db.select({ id: table.id }).from(table).where(containsText(table.name, text) as never).orderBy(table.id)).map((row) => row.id),
-      close: () => pool.end(),
-    };
-  };
-
-  beforeAll(async () => {
-    tempDir = await createTempDir();
-    const [postgres, mysql] = await Promise.all([
-      startDatabase('postgres', 'search-text-match-postgres'),
-      startDatabase('mysql', 'search-text-match-mysql'),
-    ]);
-    databases.postgres = postgres;
-    databases.mysql = mysql;
-    probes.postgres = await postgresProbe(postgres.connectionString);
-    probes.mysql = await mysqlProbe(mysql.connectionString);
+    const containsText = await generatedContainsText();
+    matching = async (text) =>
+      (await db.select({ id: table.id }).from(table).where(containsText(table.name, text) as never).orderBy(table.id)).map(
+        (row) => row.id,
+      );
   }, TIMEOUT_DATABASE);
 
   afterAll(async () => {
-    await Promise.all(Object.values(probes).map((probe) => probe.close()));
-    await Promise.all(Object.values(databases).map((database) => removeDatabase(database.name)));
+    await pool?.end();
+    if (database) await removeDatabase(database.name);
     if (tempDir) await cleanupTempDir(tempDir);
   });
 
-  describe.each(['postgres', 'mysql'] as const)('%s', (engine) => {
-    test.each(CASES)('"%s" finds the rows %p', async (text, ids) => {
-      const probe = probes[engine];
-      if (!probe) throw new Error(`${engine} is not there`);
-      expect(await probe.matching(text)).toEqual(ids);
-    });
+  test.each(CASES)('"%s" finds the rows %p', async (text, ids) => {
+    expect(await matching(text)).toEqual(ids);
   });
 });

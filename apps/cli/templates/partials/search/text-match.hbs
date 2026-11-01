@@ -10,14 +10,7 @@ export function containsText(column: Column, text: string): SQL {
   return sql`position(lower(${text}) in lower(${column})) > 0`;
 }
 {{/if}}
-{{#if (has "database" "mysql")}}
-// The comparison is binary (`utf8mb4_bin`) after `lower`, so an accent counts as it does elsewhere: the default
-// collation of MySQL would match `e` in `é`.
-export function containsText(column: Column, text: string): SQL {
-  return sql`locate(lower(${text}) collate utf8mb4_bin, lower(${column}) collate utf8mb4_bin) > 0`;
-}
-{{/if}}
-{{#if (or (has "database" "sqlite") (has "database" "d1"))}}
+{{#if (has "database" "d1")}}
 export function containsText(column: Column, text: string): SQL {
   return sql`instr(lower(${column}), lower(${text})) > 0`;
 }

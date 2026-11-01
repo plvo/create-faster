@@ -61,10 +61,6 @@ const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
 ];
 
 // The groups of records matching the text, for the types the caller may read. A group with no match is left out.
-export function searchRecords(
-  request: SearchCaller,
-  query: string,
-  types: SearchableType<SearchCaller>[] = SEARCHABLE_TYPES,
-): Promise<SearchGroup[]> {
-  return searchGroups(types, query, async () => request);
+export function searchRecords(request: SearchCaller, query: string): Promise<SearchGroup[]> {
+  return searchGroups(SEARCHABLE_TYPES, query, async () => request);
 }
