@@ -583,14 +583,29 @@ export function expectServedBy(plan: string, index: string): void {
 
 /**
  * Creates the table of a Drizzle schema in a PGlite database (the Postgres engine, in process), with its unique
- * columns, the default of its time columns and the indexes it declares.
+ * columns, the default of its time columns and the indexes it declares. With `foreignKeys`, the composite primary
+ * keys and the foreign keys it declares too (the tables they reference are created first).
  */
-export async function createPostgresTable(postgres: PGlite, table: PgTable): Promise<void> {
+export async function createPostgresTable(
+  postgres: PGlite,
+  table: PgTable,
+  { foreignKeys = false }: { foreignKeys?: boolean } = {},
+): Promise<void> {
   const config = getPgTableConfig(table);
   const columns = config.columns.map((column) => {
     const defaulted = column.name === 'created_at' || column.name === 'updated_at' ? ' DEFAULT now()' : '';
     return `"${column.name}" ${column.getSQLType()}${column.primary ? ' PRIMARY KEY' : ''}${column.notNull ? ' NOT NULL' : ''}${defaulted}`;
   });
+  if (foreignKeys) {
+    const names = (list: { name: string }[]) => list.map((column) => `"${column.name}"`).join(', ');
+    for (const key of config.primaryKeys) columns.push(`PRIMARY KEY (${names(key.columns)})`);
+    for (const foreignKey of config.foreignKeys) {
+      const reference = foreignKey.reference();
+      columns.push(
+        `FOREIGN KEY (${names(reference.columns)}) REFERENCES "${getPgTableConfig(reference.foreignTable).name}" (${names(reference.foreignColumns)}) ON DELETE ${(foreignKey.onDelete ?? 'no action').toUpperCase()}`,
+      );
+    }
+  }
   await postgres.exec(`CREATE TABLE "${config.name}" (${columns.join(', ')})`);
   for (const column of config.columns.filter((each) => each.isUnique)) {
     await postgres.exec(`CREATE UNIQUE INDEX "${config.name}_${column.name}_unique" ON "${config.name}" ("${column.name}")`);

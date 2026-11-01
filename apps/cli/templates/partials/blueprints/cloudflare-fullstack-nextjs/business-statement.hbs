@@ -1,0 +1,5 @@
+// `read-any` and `delete-any` are scope, not new operations: `read` shows a caller their own documents and `read-any`
+// everyone's, `delete` removes their own and `delete-any` anyone's.
+export const businessStatement = {
+  document: ['create', 'read', 'update', 'delete', 'read-any', 'delete-any'],
+} as const;

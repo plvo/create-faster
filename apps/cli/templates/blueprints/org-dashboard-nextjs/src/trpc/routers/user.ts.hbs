@@ -7,11 +7,14 @@ mono:
 import { z } from 'zod';
 import { count as dbCount, eq, userTable } from '@repo/db';
 import { auth } from '../auth';
+import type { AppRole } from '@repo/auth/permissions';
 import { generatePassword } from '@repo/auth/password';
+import { listAssignableRoles } from '@repo/auth/role-assignment';
 import { protectedProcedure, router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 import { newestFirstPage } from '../page-query';
 import { pageInput } from '../pagination';
+import { giveRole, roleIdInput } from '../user-role';
 
 const editUserInput = z.object({
   id: z.string(),
@@ -32,17 +35,20 @@ export const userRouter = router({
       z.object({
         name: z.string().min(1),
         email: z.string().email(),
-        role: z.enum(['admin', 'user', 'manager']),
+        role: roleIdInput,
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const password = generatePassword();
       const { user } = await auth.api.createUser({
         headers: ctx.headers,
-        body: { name: input.name, email: input.email, password, role: input.role },
+        body: { name: input.name, email: input.email, password },
       });
-      return { user, password };
+      await giveRole(auth, ctx.headers, user.id, input.role);
+      return { user: { ...user, role: input.role }, password };
     }),
+
+  {{> roles/user-role-procedures auth="auth"}}
 
   list: adminProcedure
     .input(pageInput)

@@ -4,9 +4,13 @@ import { AppHeader } from '@/components/navigation/app-header';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { CommandPaletteProvider } from '@/components/navigation/command-palette';
 import { requireSession } from '@/lib/auth/guards';
+import { getPermissions } from '@/lib/auth/permissions';
 
 export const Route = createFileRoute('/_dashboard')({
-  beforeLoad: async ({ location }) => ({ session: await requireSession(location) }),
+  beforeLoad: async ({ location }) => {
+    const session = await requireSession(location);
+    return { session, permissions: await getPermissions() };
+  },
   component: DashboardLayout,
 });
 

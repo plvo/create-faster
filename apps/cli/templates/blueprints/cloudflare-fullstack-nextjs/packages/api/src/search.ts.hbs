@@ -4,27 +4,14 @@ mono:
   name: api
   path: src/search.ts
 ---
-import { ADMIN_ROLE, type Permission } from '@repo/auth/permissions';
 import { isGranted } from '@repo/auth/role-permissions';
-import { and, asc, desc, type Database, documentTable, or, userTable } from '@repo/db';
+import { and, desc, documentTable } from '@repo/db';
 import { visibleDocuments } from './document-scope';
 import { formatDate } from './format-date';
 import { formatFileSize } from './format-file-size';
-import { callerPermissions } from './middleware/rbac';
-import { type SearchGroup, type SearchableType, searchGroups } from './search-engine';
+import type { SearchGroup, SearchableType } from './search-engine';
+import { type SearchCaller, type SearchContext, searchTypes, USERS_SEARCH_TYPE } from './search-records';
 import { containsText } from './text-match';
-
-// The signed-in user of a request, with what the database grants them: the permissions are read once, for the types
-// below to check, as the procedures of a request do.
-export interface SearchCaller {
-  db: Database;
-  headers: Headers;
-  session: { user: { id: string; role?: string | null } };
-}
-
-export interface SearchContext extends SearchCaller {
-  permissions: readonly Permission[];
-}
 
 // Adding a searchable type is one entry here.
 const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
@@ -52,20 +39,7 @@ const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
       }));
     },
   },
-  {
-    type: 'users',
-    label: 'Users',
-    canSearch: ({ session }) => session.user.role === ADMIN_ROLE,
-    find: async ({ db }, text, limit) => {
-      const rows = await db
-        .select({ id: userTable.id, name: userTable.name, email: userTable.email })
-        .from(userTable)
-        .where(or(containsText(userTable.name, text), containsText(userTable.email, text)))
-        .orderBy(asc(userTable.name), asc(userTable.id))
-        .limit(limit);
-      return rows.map((row) => ({ id: row.id, title: row.name, subtitle: row.email, href: `/admin/users/${row.id}` }));
-    },
-  },
+  USERS_SEARCH_TYPE,
 ];
 
 // The groups of records matching the text, for the types the caller may read. A group with no match is left out.
@@ -74,5 +48,5 @@ export function searchRecords(
   query: string,
   types: SearchableType<SearchContext>[] = SEARCHABLE_TYPES,
 ): Promise<SearchGroup[]> {
-  return searchGroups(types, query, async () => ({ ...request, permissions: await callerPermissions(request) }));
+  return searchTypes(types, request, query);
 }

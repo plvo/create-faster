@@ -3,6 +3,9 @@ import { RolesPage } from '@/components/admin/roles-page';
 import { pageTitle } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/admin/roles')({
+  loader: ({ context }) => {
+    void context.queryClient.prefetchQuery(context.trpc.roles.matrix.queryOptions());
+  },
   head: () => ({ meta: [{ title: pageTitle('Roles') }] }),
   component: RolesPage,
 });

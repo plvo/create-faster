@@ -1,0 +1,111 @@
+import { and, type Database, eq, notExists, rolePermissionTable, roleTable, type SQL, sql, type User, userTable } from '@repo/db';
+import { defaultRoleRows } from './default-roles';
+import { ADMIN_ROLE, DEFAULT_ROLES, type DefaultRole } from './permissions';
+
+export type { Database };
+
+// The writes of the role rules (role-assignment.ts, role-management.ts) for a SQLite database that has no interactive
+// transaction (D1). Each is one statement whose WHERE holds the condition, so the check and the write are one step: a
+// read followed by a write would let two requests each see what the other is about to change and both go through.
+// A multi-statement write is a `db.batch`, which D1 runs as one transaction.
+
+// An administrator other than the account being changed who can still sign in: a banned one does not keep the
+// application administrable.
+const anotherAdministrator = (userId: string): SQL =>
+  sql`exists (select 1 from ${userTable} as other_administrator where other_administrator.id <> ${userId} and other_administrator.role = ${ADMIN_ROLE} and coalesce(other_administrator.banned, 0) = 0)`;
+
+// The condition under which changing this account leaves an administrator.
+const keepsAnAdministrator = (userId: string): SQL => sql`(${userTable.role} <> ${ADMIN_ROLE} or ${anotherAdministrator(userId)})`;
+
+// The role exists: `admin` is compiled and has no row, any other role must have one.
+const isAssignable = (role: string): SQL => sql`(${role} = ${ADMIN_ROLE} or exists (select 1 from ${roleTable} where ${roleTable.id} = ${role}))`;
+
+// Sets the role of the account while the role exists and the account is not the last administrator being demoted.
+export async function writeRoleUnlessLast(db: Database, userId: string, role: string): Promise<User | undefined> {
+  const [written] = await db
+    .update(userTable)
+    .set({ role, updatedAt: new Date() })
+    .where(
+      and(eq(userTable.id, userId), isAssignable(role), sql`(${role} = ${ADMIN_ROLE} or ${keepsAnAdministrator(userId)})`),
+    )
+    .returning();
+  return written;
+}
+
+// Marks the account banned unless it is the last administrator.
+export async function banAccountUnlessLast(db: Database, userId: string): Promise<boolean> {
+  const [claimed] = await db
+    .update(userTable)
+    .set({ banned: true, updatedAt: new Date() })
+    .where(and(eq(userTable.id, userId), keepsAnAdministrator(userId)))
+    .returning({ id: userTable.id });
+  return claimed !== undefined;
+}
+
+// Deletes the account unless it is the last administrator.
+export async function removeAccountUnlessLast(db: Database, userId: string): Promise<boolean> {
+  const [removed] = await db
+    .delete(userTable)
+    .where(and(eq(userTable.id, userId), keepsAnAdministrator(userId)))
+    .returning({ id: userTable.id });
+  return removed !== undefined;
+}
+
+// Grants one permission while the role has its row.
+export async function grantRolePermission(db: Database, roleId: string, resource: string, action: string): Promise<void> {
+  await db
+    .insert(rolePermissionTable)
+    .select(
+      sql`select ${roleId}, ${resource}, ${action} where exists (select 1 from ${roleTable} where ${roleTable.id} = ${roleId})`,
+    )
+    .onConflictDoNothing();
+}
+
+// Deletes a role nobody holds, with its permission rows once the role is gone, in one batch. Returns whether the role
+// was deleted.
+export async function deleteRoleUnlessHeld(db: Database, roleId: string): Promise<boolean> {
+  const [removed] = await db.batch([
+    db
+      .delete(roleTable)
+      .where(and(eq(roleTable.id, roleId), notExists(db.select({ held: sql`1` }).from(userTable).where(eq(userTable.role, roleId)))))
+      .returning({ id: roleTable.id }),
+    db
+      .delete(rolePermissionTable)
+      .where(
+        and(
+          eq(rolePermissionTable.roleId, roleId),
+          notExists(db.select({ kept: sql`1` }).from(roleTable).where(eq(roleTable.id, roleId))),
+        ),
+      )
+      .returning({ roleId: rolePermissionTable.roleId }),
+  ]);
+  return removed.length > 0;
+}
+
+function quoted(text: string): string {
+  return `'${text.replaceAll("'", "''")}'`;
+}
+
+// The SQL that writes the roles of `definitions`, in the order to run it: the roles, then their permissions. The
+// defaults are written once, into a database that has no role at all: the statements write nothing as soon as a role
+// exists, so a default role an operator deleted, a permission revoked since or a matrix emptied is never written back
+// and a role someone else created first is left alone. The permissions are written only by the run that wrote the roles
+// (`changes()` is the row count of the statement before). Send both statements in one request, so that D1 writes them
+// together: a run stopped between them leaves roles that hold nothing, which refuses, and a rerun does not guess.
+// Every definition is validated first.
+export function defaultRoleStatements(definitions: Readonly<Record<string, DefaultRole>> = DEFAULT_ROLES): string[] {
+  const { roles, permissions } = defaultRoleRows(definitions);
+  if (roles.length === 0) return [];
+
+  const roleRows = roles.map((role) => `(${quoted(role.id)}, ${quoted(role.label)})`);
+  const permissionRows = permissions.map((row) => `(${quoted(row.roleId)}, ${quoted(row.resource)}, ${quoted(row.action)})`);
+
+  return [
+    `INSERT INTO roles (id, label) SELECT column1, column2 FROM (VALUES ${roleRows.join(', ')}) WHERE NOT EXISTS (SELECT 1 FROM roles);`,
+    ...(permissionRows.length > 0
+      ? [
+          `INSERT INTO role_permissions (role_id, resource, action) SELECT column1, column2, column3 FROM (VALUES ${permissionRows.join(', ')}) WHERE changes() > 0;`,
+        ]
+      : []),
+  ];
+}

@@ -1,17 +1,19 @@
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
+import { type BusinessAction, type BusinessResource, verdictOf } from '@repo/auth/permissions';
 import { auth } from '@/lib/auth/auth';
 import { REQUEST_PATH_HEADER } from '@/lib/auth/request-path';
 import { safeRedirectPath } from '@/lib/safe-redirect';
+import { getQueryClient, trpc } from '@/trpc/server';
 
 {{> auth/session-guards}}
 
-export async function requirePermission(resource: string, action: string) {
+// The permission list is the one the layout fetches (`permissions.mine`), read once per request: what a role may do is in
+// the database.
+export async function requirePermission<R extends BusinessResource>(resource: R, action: BusinessAction<R>) {
   const session = await requireSession();
-  const { success } = await auth.api.userHasPermission({
-    body: { userId: session.user.id, permissions: { [resource]: [action] } },
-  });
-  if (!success) notFound();
+  const granted = await getQueryClient().ensureQueryData(trpc.permissions.mine.queryOptions());
+  if (verdictOf(granted, { [resource]: [action] }) !== 'granted') notFound();
   return session;
 }

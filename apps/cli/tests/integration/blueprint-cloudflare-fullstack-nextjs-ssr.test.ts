@@ -84,7 +84,8 @@ export const usePageParams = () => ({ page: 1, pageSize: 10, setPage: write('set
   'zod.mjs': 'export const z = new Proxy(() => {}, { get: () => z, apply: () => z });',
   'permissions.mjs': `export const ADMIN_ROLE = 'admin';
 export const PERMISSIONS = ['user.list'];
-export const ADMIN_PERMISSIONS = ['user.list'];`,
+export const ADMIN_PERMISSIONS = ['user.list'];
+export const verdictOf = (granted, request) => Object.entries(request).every(([resource, actions]) => actions.every((action) => granted.includes(resource + '.' + action))) ? 'granted' : 'denied';`,
   'role-permissions.mjs': 'export const listRoleMatrix = async () => [];',
   'clients.mjs': `export const UsersClient = () => null;
 export const UserClient = () => null;

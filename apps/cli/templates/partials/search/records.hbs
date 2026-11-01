@@ -1,0 +1,40 @@
+{{!-- The whole search-records.ts file of an api package with database roles: the caller of a palette search with what the database grants it, the users type every such project searches, and the loop that runs a list of types for that caller. The record types of the project are its own, in search.ts. --}}
+import { isAdmin, type Permission } from '@repo/auth/permissions';
+import type { Database } from '@repo/auth/role-store';
+import { asc, or, userTable } from '@repo/db';
+import { callerPermissions } from './middleware/rbac';
+import { type SearchGroup, type SearchableType, searchGroups } from './search-engine';
+import { containsText } from './text-match';
+
+// The signed-in user of a request, with what the database grants them: the permissions are read once, for the types
+// to check, as the procedures of a request do.
+export interface SearchCaller {
+  db: Database;
+  headers: Headers;
+  session: { user: { id: string; role?: string | null } };
+}
+
+export interface SearchContext extends SearchCaller {
+  permissions: readonly Permission[];
+}
+
+// The users are read by the check of `adminProcedure`, which guards the list behind them.
+export const USERS_SEARCH_TYPE: SearchableType<SearchContext> = {
+  type: 'users',
+  label: 'Users',
+  canSearch: ({ session }) => isAdmin(session),
+  find: async ({ db }, text, limit) => {
+    const rows = await db
+      .select({ id: userTable.id, name: userTable.name, email: userTable.email })
+      .from(userTable)
+      .where(or(containsText(userTable.name, text), containsText(userTable.email, text)))
+      .orderBy(asc(userTable.name), asc(userTable.id))
+      .limit(limit);
+    return rows.map((row) => ({ id: row.id, title: row.name, subtitle: row.email, href: `/admin/users/${row.id}` }));
+  },
+};
+
+// The groups of records matching the text, for the types the caller may read. A group with no match is left out.
+export function searchTypes(types: SearchableType<SearchContext>[], request: SearchCaller, query: string): Promise<SearchGroup[]> {
+  return searchGroups(types, query, async () => ({ ...request, permissions: await callerPermissions(request) }));
+}

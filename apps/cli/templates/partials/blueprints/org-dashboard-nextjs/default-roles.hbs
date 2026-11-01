@@ -1,0 +1,5 @@
+// `manager` reads the contacts and changes none; `user` works on them freely.
+export const DEFAULT_ROLES = {
+  user: { label: 'User', permissions: ['contact.create', 'contact.read', 'contact.update', 'contact.delete'] },
+  manager: { label: 'Manager', permissions: ['contact.read'] },
+} as const satisfies Record<string, DefaultRole>;

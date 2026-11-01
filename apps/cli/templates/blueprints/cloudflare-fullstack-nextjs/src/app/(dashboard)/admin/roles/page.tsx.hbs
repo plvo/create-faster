@@ -3,26 +3,4 @@ mono:
   scope: app
   path: src/app/(dashboard)/admin/roles/page.tsx
 ---
-{{{{raw}}}}
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
-import { Skeleton } from '@repo/ui/components/ui/skeleton';
-import { requireAdmin } from '@/lib/auth/session';
-import { HydrateClient, prefetch, trpc } from '@/trpc/server';
-import { RolesClient } from './roles.client';
-
-export const metadata: Metadata = { title: 'Roles' };
-
-export default async function RolesPage() {
-  const session = await requireAdmin();
-  prefetch(trpc.roles.matrix.queryOptions());
-
-  return (
-    <HydrateClient>
-      <Suspense fallback={<Skeleton className='h-64 w-full' />}>
-        <RolesClient currentRole={session.user.role ?? ''} />
-      </Suspense>
-    </HydrateClient>
-  );
-}
-{{{{/raw}}}}
+{{> roles/roles-page}}

@@ -3,19 +3,25 @@ import { SidebarProvider, SidebarInset } from '@repo/ui/components/ui/sidebar';
 import { AppSidebar } from '@/components/navigation/app-sidebar';
 import { AppHeader } from '@/components/navigation/app-header';
 import { CommandPaletteProvider } from '@/components/navigation/command-palette';
+import { getQueryClient, HydrateClient, trpc } from '@/trpc/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  // The permissions of the caller are awaited and handed to the browser, so the first render of the sidebar, of the
+  // palette and of every <Can> is already right. A failed fetch is not hydrated and the browser asks again.
+  await getQueryClient().prefetchQuery(trpc.permissions.mine.queryOptions());
 
   return (
-    <SidebarProvider defaultOpen>
-      <CommandPaletteProvider role={session.user.role}>
-        <AppSidebar session={session} />
-        <SidebarInset>
-          <AppHeader />
-          <div className='flex-1 p-6'>{children}</div>
-        </SidebarInset>
-      </CommandPaletteProvider>
-    </SidebarProvider>
+    <HydrateClient>
+      <SidebarProvider defaultOpen>
+        <CommandPaletteProvider role={session.user.role}>
+          <AppSidebar session={session} />
+          <SidebarInset>
+            <AppHeader />
+            <div className='flex-1 p-6'>{children}</div>
+          </SidebarInset>
+        </CommandPaletteProvider>
+      </SidebarProvider>
+    </HydrateClient>
   );
 }

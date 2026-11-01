@@ -14,6 +14,7 @@ import {
   callTrpc,
   describeFailure,
   describePaging,
+  describeRoles,
   describeSearch,
   firstContact,
   post,
@@ -183,7 +184,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     expect(await missingUser.text()).toContain('Page not found');
     const roles = await fetch(new URL('/admin/roles', server.url), { headers: { cookie } });
     expect(roles.status).toBe(200);
-    expect(await roles.text()).toContain('packages/auth/src/permissions.ts');
+    expect(await roles.text()).toContain('What each role may do');
 
     const created = await callTrpc<{ user: { id: string; email: string; role: string }; password: string }>(
       server,
@@ -265,6 +266,8 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
   describePaging({ server: () => server, projectDir: () => projectDir });
 
   describeSearch({ server: () => server, projectDir: () => projectDir });
+
+  describeRoles({ server: () => server, projectDir: () => projectDir, rendersMatrixOnServer: false });
 
   test('an unknown page answers not found and the server logs no error', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.5');

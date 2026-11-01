@@ -140,6 +140,8 @@ export const useQueryClient = () => ({
 export const ContactForm = () => null;
 export const EditUser = () => null;
 export const GeneratedPassword = () => null;
+export const UserRoleSelect = () => null;
+export const authClient = { useSession: () => ({ data: null }) };
 export const formatDate = () => '';`,
   'invalidate-paged-list.mjs': 'export const invalidatePagedList = async () => {};',
 };
@@ -161,6 +163,8 @@ const IMPORTS: Record<string, string> = {
   '@/components/contacts/contact-form': './leaf.mjs',
   '@/components/admin/edit-user': './leaf.mjs',
   '@/components/admin/generated-password': './leaf.mjs',
+  '@/components/admin/user-role-select': './leaf.mjs',
+  '@repo/auth/auth-client': './leaf.mjs',
   '@/lib/format-date': './leaf.mjs',
   '@/lib/constants': './constants.mjs',
   '@/lib/invalidate-paged-list': './invalidate-paged-list.mjs',

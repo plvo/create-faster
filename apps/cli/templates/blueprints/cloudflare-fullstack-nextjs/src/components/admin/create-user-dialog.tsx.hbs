@@ -25,6 +25,7 @@ import {
 import { useAppForm } from '@repo/ui/lib/form';
 import { GeneratedPassword } from '@/components/admin/generated-password';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
+import { roleOptions } from '@/lib/role-options';
 import { useTRPC } from '@/trpc/providers';
 
 const schema = z.object({
@@ -35,13 +36,6 @@ const schema = z.object({
   lastName: z.string().max(255),
   phone: z.string().max(40),
 });
-
-// The options of the select, by label. Two roles can share a label, so a repeated one carries its id.
-function roleOptions(roles: { id: string; label: string }[]): Record<string, string> {
-  const options: Record<string, string> = {};
-  for (const role of roles) options[role.label in options ? `${role.label} (${role.id})` : role.label] = role.id;
-  return options;
-}
 
 export function CreateUserDialog() {
   const trpc = useTRPC();

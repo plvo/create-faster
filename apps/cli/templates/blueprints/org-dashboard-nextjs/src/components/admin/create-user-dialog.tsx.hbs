@@ -6,9 +6,10 @@ mono:
 {{{{raw}}}}
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { DEFAULT_ROLE } from '@repo/auth/permissions';
 import {
   ResponsiveDialog,
   ResponsiveDialogBody,
@@ -20,17 +21,19 @@ import {
 } from '@repo/ui/components/block/shuip/responsive-dialog';
 import { useAppForm } from '@repo/ui/lib/form';
 import { invalidatePagedList } from '@/lib/invalidate-paged-list';
+import { roleOptions } from '@/lib/role-options';
 import { useTRPC } from '@/trpc/providers';
 
 const schema = z.object({
   name: z.string().min(1, 'Name required'),
   email: z.string().email('Invalid email'),
-  role: z.enum(['admin', 'user', 'manager']),
+  role: z.string().min(1),
 });
 
 export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const rolesQuery = useQuery(trpc.user.assignableRoles.queryOptions(undefined, { enabled: open }));
 
   const createUser = useMutation(
     trpc.user.create.mutationOptions({
@@ -42,12 +45,16 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
         });
         onOpenChange(false);
       },
-      onError: (error) => toast.error(error.message),
+      // The account may exist, on the default role, when the assignment of the chosen one failed.
+      onError: (error) => {
+        void invalidatePagedList(queryClient, trpc.user);
+        toast.error(error.message);
+      },
     }),
   );
 
   const form = useAppForm({
-    defaultValues: { name: '', email: '', role: 'user' as 'admin' | 'user' | 'manager' },
+    defaultValues: { name: '', email: '', role: DEFAULT_ROLE as string },
     validators: { onChange: schema },
     onSubmit: ({ value }) => {
       createUser.mutate(value);
@@ -73,7 +80,14 @@ export function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpen
             <form.AppField name='name'>{(f) => <f.InputField label='Name' />}</form.AppField>
             <form.AppField name='email'>{(f) => <f.InputField label='Email' props={{ type: 'email' }} />}</form.AppField>
             <form.AppField name='role'>
-              {(f) => <f.SelectField label='Role' options={{ Admin: 'admin', User: 'user', Manager: 'manager' }} />}
+              {(f) => (
+                <f.SelectField
+                  label='Role'
+                  options={roleOptions(rolesQuery.data ?? [])}
+                  description={rolesQuery.isError ? 'The roles could not be loaded. Close this dialog and try again.' : undefined}
+                  props={{ disabled: !rolesQuery.data }}
+                />
+              )}
             </form.AppField>
           </form>
         </ResponsiveDialogBody>

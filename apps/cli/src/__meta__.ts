@@ -103,6 +103,10 @@ const WRITE_DEFAULT_ROLES = {
   script: 'db:roles',
   description: 'Write the default roles into the local database, only when it has no role yet',
 };
+const WRITE_DEFAULT_ROLES_IN_DATABASE = {
+  script: 'db:roles',
+  description: 'Write the default roles into the database, only when it has no role yet',
+};
 const WRITE_DEFAULT_ROLES_REMOTE = {
   script: 'db:roles:remote',
   description: 'Write the default roles into the production database, only when it has no role yet',
@@ -282,6 +286,15 @@ const ORG_DASHBOARD_SEED: BlueprintSeed = {
   target: 'refuses-remote-without-force',
 };
 
+const ORG_DASHBOARD_SCRIPTS = [...SEEDING_SCRIPTS, WRITE_DEFAULT_ROLES_IN_DATABASE];
+
+const ORG_DASHBOARD_FIRST_RUN: FirstRunStep[] = [
+  {
+    description: 'Set up the local database, write the default roles (the `db:roles` script) and seed demo data',
+    commands: [{ script: 'local-setup' }],
+  },
+];
+
 const orgDashboardContext = (webStack: StackName) => ({
   apps: [
     {
@@ -299,7 +312,8 @@ const orgDashboardContext = (webStack: StackName) => ({
 const orgDashboardAgentArchitecture = (webFramework: string) =>
   [
     `Organization dashboard: ${webFramework} web app + Node.js batch app (Turborepo), Better Auth`,
-    'admin plugin with access-control roles (admin/user/manager), tRPC for typed API calls,',
+    'admin plugin and roles whose permissions are rows of the database (admin/user/manager by default),',
+    'tRPC for typed API calls,',
     'TanStack Query for client data, TanStack Form for form handling, and Drizzle + PostgreSQL.',
     '',
     'Per-aspect detail in `docs/agents/`:',
@@ -322,6 +336,11 @@ const ORG_DASHBOARD_PKG_PACKAGE_JSON: Record<string, PackageJsonConfig> = {
       './types': './src/types.ts',
       './password': './src/password.ts',
       './permissions': './src/permissions.ts',
+      './role-permissions': './src/role-permissions.ts',
+      './role-assignment': './src/role-assignment.ts',
+      './role-management': './src/role-management.ts',
+      './role-store': './src/role-store.ts',
+      './default-roles': './src/default-roles.ts',
     },
   },
   db: {
@@ -355,6 +374,7 @@ const ORG_DASHBOARD_ROOT_PACKAGE_JSON: PackageJsonConfig = {
   scripts: {
     'local-setup': '{{tsRunner}} scripts/local-setup.ts',
     'db:seed': '{{tsRunner}} --env-file=apps/web/.env scripts/seed.ts',
+    'db:roles': '{{tsRunner}} --env-file=apps/web/.env scripts/default-roles.ts',
     start: 'turbo start',
   },
 };
@@ -1754,8 +1774,8 @@ export const META: Meta = {
       label: 'Org Dashboard',
       hint: ORG_DASHBOARD_HINT,
       category: 'Business',
-      scriptDescriptions: SEEDING_SCRIPTS,
-      firstRun: RUN_LOCAL_SETUP,
+      scriptDescriptions: ORG_DASHBOARD_SCRIPTS,
+      firstRun: ORG_DASHBOARD_FIRST_RUN,
       agentArchitecture: orgDashboardAgentArchitecture('Next.js'),
       context: orgDashboardContext('nextjs'),
       seed: ORG_DASHBOARD_SEED,
@@ -1767,8 +1787,8 @@ export const META: Meta = {
       hint: ORG_DASHBOARD_HINT,
       category: 'Business',
       extends: 'org-dashboard-nextjs',
-      scriptDescriptions: SEEDING_SCRIPTS,
-      firstRun: RUN_LOCAL_SETUP,
+      scriptDescriptions: ORG_DASHBOARD_SCRIPTS,
+      firstRun: ORG_DASHBOARD_FIRST_RUN,
       agentArchitecture: orgDashboardAgentArchitecture('TanStack Start'),
       context: orgDashboardContext('tanstack-start'),
       seed: ORG_DASHBOARD_SEED,
@@ -1973,6 +1993,7 @@ export const META: Meta = {
             './role-permissions': './src/role-permissions.ts',
             './role-assignment': './src/role-assignment.ts',
             './role-management': './src/role-management.ts',
+            './role-store': './src/role-store.ts',
             './default-roles': './src/default-roles.ts',
           },
         },

@@ -170,6 +170,8 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
     const ownModules = {
       '@repo/db': './db.mjs',
       './permissions': './permissions.mjs',
+      './default-roles': './default-roles.mjs',
+      './role-store': './role-store.mjs',
       './role-assignment': './role-assignment.mjs',
       './link-delivery': './link-delivery.mjs',
       './email-change-guard': './email-change-guard.mjs',
@@ -181,6 +183,8 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
     await generated(`${AUTH}/link-delivery.ts`, 'link-delivery.mjs');
+    await generated(`${AUTH}/default-roles.ts`, 'default-roles.mjs', ownModules);
+    await generated(`${AUTH}/role-store.ts`, 'role-store.mjs', ownModules);
     await generated(`${AUTH}/email-change-guard.ts`, 'email-change-guard.mjs', { ...ownModules, 'better-auth/api': REAL.api });
     await generated(`${AUTH}/role-permissions.ts`, 'role-permissions.mjs', ownModules);
     assignment = await generated(`${AUTH}/role-assignment.ts`, 'role-assignment.mjs', ownModules);
@@ -202,6 +206,7 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       '@repo/auth/role-assignment': './role-assignment.mjs',
       '../trpc': './trpc.mjs',
       '../auth-errors': './auth-errors.mjs',
+      '../user-role': './user-role.mjs',
       '../middleware/rbac': './rbac.mjs',
       '../page-query': './page-query.mjs',
       '../user-list': './user-list.mjs',
@@ -209,6 +214,7 @@ describe(`${BLUEPRINT} role assignment and the last administrator`, () => {
       zod: REAL.zod,
     };
     await generated(`${API}/auth-errors.ts`, 'auth-errors.mjs', { '@trpc/server': REAL.trpcServer });
+    await generated(`${API}/user-role.ts`, 'user-role.mjs', apiModules);
     await generated(`${API}/trpc.ts`, 'trpc.mjs', { ...apiModules, superjson: REAL.superjson });
     await generated(`${API}/pagination.ts`, 'pagination.mjs', { zod: REAL.zod });
     await generated(`${API}/search-query.ts`, 'search-query.mjs', { zod: REAL.zod });

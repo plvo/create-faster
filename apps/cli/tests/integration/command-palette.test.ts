@@ -138,7 +138,10 @@ export const CommandGroup = ({ heading, children }) => createElement('div', { ro
 export const CommandItem = ({ value, onSelect, children }) =>
   createElement('div', { role: 'option', 'data-value': value, onSelect }, ...children);`,
   'search-query.mjs': '',
-  'trpc-providers.mjs': `export const useTRPC = () => ({ search: { records: { queryOptions: (input, options) => ({ input, ...options }) } } });`,
+  'trpc-providers.mjs': `export const useTRPC = () => ({
+  permissions: { mine: { queryOptions: () => ({}) } },
+  search: { records: { queryOptions: (input, options) => ({ input, ...options }) } },
+});`,
   'sidebar.mjs': `import { createElement } from './react.mjs';
 import { host } from './ui.mjs';
 export const SidebarMenu = host('ul');
@@ -516,13 +519,22 @@ describe(`${BLUEPRINT} command palette`, () => {
       join(stubs, 'search-query.mjs'),
       { zod: REAL.zod },
     );
+    await evaluateGeneratedModule(
+      await readTextFile(join(projectPath, 'packages/auth/src/permissions.ts')),
+      join(stubs, 'permissions.mjs'),
+      {
+        'better-auth/plugins/access': Bun.resolveSync('better-auth/plugins/access', import.meta.dir),
+        'better-auth/plugins/admin/access': Bun.resolveSync('better-auth/plugins/admin/access', import.meta.dir),
+      },
+    );
     await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
     await load('src/hooks/use-permission.ts', 'permission.mjs', {
       '@tanstack/react-query': './react-query.mjs',
       '@/trpc/providers': './providers.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
     });
     await load('src/lib/constants.ts', 'constants.mjs');
-    await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');
+    await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs', { '@repo/auth/permissions': './permissions.mjs' });
     await load('src/components/navigation/sidebar-links.tsx', 'sidebar-links.mjs');
     ({ CommandPaletteProvider, CommandPaletteTrigger, recordSearchOptions } = await load<{
       CommandPaletteProvider: Component;
@@ -1090,14 +1102,9 @@ describe(`${BLUEPRINT} command palette`, () => {
 
 const ORG_DASHBOARDS = ['org-dashboard-nextjs', 'org-dashboard-tanstack-start'];
 
-// What the org dashboards add to the stand-ins above: the role check is the generated access control, and the router of
-// TanStack Start is a route that carries its component and its context.
+// What the org dashboards add to the stand-ins above: the router of TanStack Start is a route that carries its component
+// and its context, which holds the permission list the layout resolved.
 const ORG_STUBS: Record<string, string> = {
-  'auth-client.mjs': `import { roles } from './permissions.mjs';
-export const authClient = {
-  admin: { checkRolePermission: ({ role, permissions }) => roles[role]?.authorize(permissions).success ?? false },
-  useSession: () => ({ data: globalThis.__orgSession }),
-};`,
   'tanstack-router-org.mjs': `export const useRouter = () => ({ navigate: async ({ to }) => { (globalThis.__navigated ??= []).push(to); } });
 export const useRouteContext = ({ select }) => select(globalThis.__routeContext);
 export const Outlet = () => globalThis.__outlet;
@@ -1107,21 +1114,28 @@ export const createFileRoute = () => (options) => ({
 });`,
   'org-leaf.mjs': `export const AppHeader = () => null;
 export const NavUser = () => null;
-export const SidebarLinks = () => null;`,
+export const SidebarLinks = () => null;
+export const getPermissions = async () => globalThis.__granted;`,
   'guards.mjs': 'export const requireSession = async () => globalThis.__session;',
 };
 
 const ORG_IMPORTS: Record<string, string> = {
-  '@repo/auth/auth-client': './auth-client.mjs',
   '@repo/auth/permissions': './permissions.mjs',
-  '@/lib/auth/permission': './auth-permission.mjs',
   '@/lib/auth/guards': './guards.mjs',
+  '@/lib/auth/permissions': './org-leaf.mjs',
   '@/components/navigation/app-header': './org-leaf.mjs',
   './nav-user': './org-leaf.mjs',
   './sidebar-links': './org-leaf.mjs',
 };
 
-// The org dashboards carry no permission list of their own: a page is listed when the role of the session may open it.
+// What the database grants each role: a page is listed when the permission list of the caller grants it.
+const ORG_GRANTED: Record<string, string[]> = {
+  admin: ['contact.read', 'user.list', 'user.create'],
+  user: ['contact.create', 'contact.read', 'contact.update', 'contact.delete'],
+  manager: ['contact.read'],
+  stranger: [],
+};
+
 const ORG_PAGES: Record<string, string[]> = {
   admin: ['/', '/contacts', '/admin/users', '/admin/roles'],
   user: ['/', '/contacts'],
@@ -1143,7 +1157,8 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
 
   const renderLayout = async (): Promise<RenderedChild[]> => {
     globals.__session = { user: { role } };
-    orgGlobals.__routeContext = { session: { user: { role } } };
+    globals.__granted = ORG_GRANTED[role] ?? [];
+    orgGlobals.__routeContext = { session: { user: { role } }, permissions: globals.__granted };
     orgGlobals.__outlet = 'Page body';
     react.beginRender();
     return renderElementTree({ type: Layout, props: { children: 'Page body' } });
@@ -1196,7 +1211,6 @@ describe.each(ORG_DASHBOARDS)('%s command palette', (blueprint) => {
       },
     );
     await load('src/hooks/use-mounted.ts', 'use-mounted.mjs');
-    if (isStart) await load('src/lib/auth/permission.ts', 'auth-permission.mjs');
     await load('src/hooks/use-permission.ts', 'permission.mjs');
     await load('src/lib/constants.ts', 'constants.mjs');
     await load('src/lib/allowed-routes.ts', 'allowed-routes.mjs');

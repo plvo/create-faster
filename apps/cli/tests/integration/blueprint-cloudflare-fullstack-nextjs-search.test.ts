@@ -202,7 +202,12 @@ describe(`${BLUEPRINT} palette search`, () => {
       'better-auth/plugins/access': REAL.access,
       'better-auth/plugins/admin/access': REAL.adminAccess,
     });
-    defaults = await generated('packages/auth/src/default-roles.ts', 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    await generated('packages/auth/src/default-roles.ts', 'default-roles.mjs', { './permissions': './permissions.mjs' });
+    defaults = await generated('packages/auth/src/role-store.ts', 'role-store.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+      './default-roles': './default-roles.mjs',
+    });
     await generated('packages/auth/src/role-permissions.ts', 'role-permissions.mjs', {
       '@repo/db': './db.mjs',
       './permissions': './permissions.mjs',
@@ -223,6 +228,16 @@ describe(`${BLUEPRINT} palette search`, () => {
       '@repo/db': './db.mjs',
       '../trpc': './trpc.mjs',
     });
+    const searchImports = {
+      '@repo/db': './db.mjs',
+      '@repo/auth/permissions': './permissions.mjs',
+      '@repo/auth/role-permissions': './role-permissions.mjs',
+      './middleware/rbac': './rbac.mjs',
+      './search-engine': './search-engine.mjs',
+      './search-records': './search-records.mjs',
+      './text-match': './text-match.mjs',
+    };
+    await generated(`${API}/search-records.ts`, 'search-records.mjs', searchImports);
     searchModule = await generated(`${API}/search.ts`, 'search.mjs', {
       '@repo/auth/permissions': './permissions.mjs',
       '@repo/auth/role-permissions': './role-permissions.mjs',
@@ -231,6 +246,7 @@ describe(`${BLUEPRINT} palette search`, () => {
       './format-date': './format-date.mjs',
       './format-file-size': './format-file-size.mjs',
       './middleware/rbac': './rbac.mjs',
+      './search-records': './search-records.mjs',
       './search-engine': './search-engine.mjs',
       './text-match': './text-match.mjs',
     });

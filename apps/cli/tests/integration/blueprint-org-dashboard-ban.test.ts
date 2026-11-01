@@ -43,7 +43,9 @@ const fakeEvent = (): FakeEvent => {
 // `renderElementTree`); hooks keep their state in slots that survive a re-render, and effects wait for `flushEffects`.
 const STUBS: Record<string, string> = {
   'react.mjs': REACT_HOOKS_STUB,
-  'query.mjs': 'export const useQueryClient = () => ({ invalidateQueries() {} });',
+  'query.mjs': `export const useQueryClient = () => ({ invalidateQueries() {} });
+export const useQuery = () => ({ data: [{ id: 'admin', label: 'Admin' }, { id: 'user', label: 'User' }] });
+export const useMutation = () => ({ mutate() {}, isPending: false });`,
   'sonner.mjs': 'export const toast = { success() {}, error() {} };',
   'icons.mjs': `import { createElement } from './react.mjs';
 export const MoreHorizontal = () => createElement('svg', { 'aria-hidden': 'true' });`,
@@ -61,7 +63,7 @@ export const useTRPC = () => chain;`,
   'auth-client.mjs': `const record = (name) => async (args) => { globalThis.__adminCalls.push({ name, args }); return {}; };
 export const authClient = {
   useSession: () => ({ data: { user: { id: 'signed-in-admin' } } }),
-  admin: { banUser: record('banUser'), unbanUser: record('unbanUser'), setRole: record('setRole') },
+  admin: { banUser: record('banUser'), unbanUser: record('unbanUser') },
 };`,
 };
 

@@ -3,14 +3,4 @@ mono:
   scope: app
   path: src/lib/allowed-routes.ts
 ---
-import { usePermissions, verdictOf } from '@/hooks/use-permission';
-import { ROUTES, type RouteProps } from '@/lib/constants';
-
-// The pages the permission list of the caller grants, for the sidebar and the command palette. The list is the one the
-// layout fetched on the server and hydrated, so the first render already has it; while it is unknown only a page that
-// asks for nothing is listed. The role the shared components hand over is only a name here: what it may do is in the
-// database, so it is not read.
-export function useAllowedRoutes(_role?: string | null): RouteProps[] {
-  const granted = usePermissions();
-  return ROUTES.filter((item) => verdictOf(granted, item.permissions ?? {}) === 'granted');
-}
+{{> org-dashboard/allowed-routes}}

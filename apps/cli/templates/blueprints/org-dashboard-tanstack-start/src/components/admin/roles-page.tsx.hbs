@@ -1,1 +1,15 @@
-{{> org-dashboard/roles-page}}
+{{{{raw}}}}
+import { useRouteContext } from '@tanstack/react-router';
+import { RolesClient } from '@/components/admin/roles-client';
+import { QueryBoundary } from '@/components/query-boundary';
+
+export function RolesPage() {
+  const currentRole = useRouteContext({ from: '/_dashboard', select: (context) => context.session.user.role });
+
+  return (
+    <QueryBoundary>
+      <RolesClient currentRole={currentRole ?? ''} />
+    </QueryBoundary>
+  );
+}
+{{{{/raw}}}}

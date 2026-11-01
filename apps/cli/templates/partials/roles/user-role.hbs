@@ -1,0 +1,19 @@
+import { type AppRole, DEFAULT_ROLE, ROLE_ID } from '@repo/auth/permissions';
+import { z } from 'zod';
+
+// A role as a procedure takes it: one id, as text. The rules of role-assignment.ts check that it exists.
+export const roleIdInput = z.string().regex(ROLE_ID, 'A role is one id: lowercase letters, digits and hyphens');
+
+// The part of a Better Auth instance a role is given through.
+interface RoleGiver {
+  api: { setRole: (input: { headers: Headers; body: { userId: string; role: AppRole } }) => Promise<unknown> };
+}
+
+// A new account starts on the default role and is given the chosen one afterwards, through `setRole`, which meets the guard
+// of the admin endpoints (guard-administrators.ts): when that fails the account stays on the default role, the lowest
+// privilege, never on a higher one. The plugin writes the account after the guard read, so creating it on a role that can
+// be deleted could leave it on a role nobody has.
+export async function giveRole(auth: RoleGiver, headers: Headers, userId: string, role: string): Promise<void> {
+  if (role === DEFAULT_ROLE) return;
+  await auth.api.setRole({ headers, body: { userId, role: role as AppRole } });
+}

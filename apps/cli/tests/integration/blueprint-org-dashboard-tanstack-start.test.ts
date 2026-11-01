@@ -38,16 +38,15 @@ interface Thrown {
 }
 
 interface GeneratedGuards {
-  hasPermission: (role: string | null | undefined, permissions: Record<string, string[]>) => boolean;
   isSignedIn: (session: Session | null) => boolean;
   requireSession: (location: { href: string }) => Promise<Session>;
   requireAdmin: (session: Session) => void;
-  requirePermission: (session: Session, permissions: Record<string, string[]>) => void;
-  usePermission: (permissions: Record<string, string[]>) => boolean;
+  requirePermission: (permissions: readonly string[], request: Record<string, string[]>) => void;
+  usePermission: (request: Record<string, string[]>) => 'unknown' | 'granted' | 'denied';
 }
 
 // Stand-ins for what the generated files import from packages: the router builds the value `throw`n by
-// redirect() and notFound(), and the auth client checks a role against the generated `roleDefinitions`.
+// redirect() and notFound(), and better-auth's access control keeps the statements it is given.
 const STUBS: Record<string, string> = {
   'router.mjs': `export const redirect = (options) => ({ kind: 'redirect', ...options });
 export const notFound = () => ({ kind: 'notFound' });
@@ -65,16 +64,6 @@ export const SidebarMenuItem = passThrough;`,
   'access.mjs': 'export const createAccessControl = () => ({ newRole: (statements) => statements });',
   'admin-access.mjs': `export const defaultStatements = {};
 export const adminAc = { statements: { user: ['list', 'create', 'set-role'], session: ['list', 'revoke'] } };`,
-  'auth-client.mjs': `import { roleDefinitions } from './permissions.mjs';
-// An empty requirement is never granted here, so only the short-circuit in hasPermission lets it through.
-export const authClient = {
-  admin: {
-    checkRolePermission: ({ role, permissions }) =>
-      Object.keys(permissions).length > 0 &&
-      Object.entries(permissions).every(([resource, actions]) =>
-        actions.every((action) => roleDefinitions[role]?.[resource]?.includes(action) ?? false)),
-  },
-};`,
   'session.mjs': 'export const getSession = async () => globalThis.__testSession ?? null;',
   'skeleton.mjs': 'export const Skeleton = () => null;',
   'page-parts.mjs': `export const ContactDetail = () => null;
@@ -93,9 +82,7 @@ const IMPORT_TARGETS: Record<string, string> = {
   'better-auth/plugins/access': './access.mjs',
   'better-auth/plugins/admin/access': './admin-access.mjs',
   '@tanstack/react-router': './router.mjs',
-  '@repo/auth/auth-client': './auth-client.mjs',
   '@repo/auth/permissions': './permissions.mjs',
-  '@/lib/auth/permission': './permission.mjs',
   '@/lib/auth/session': './session.mjs',
   'lucide-react': './icons.mjs',
   react: './react.mjs',
@@ -227,7 +214,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
   test('the dashboard layout requires a session before any child route and the login layout agrees with it', async () => {
     const dashboard = await read(`${WEB}/src/routes/_dashboard.tsx`);
-    expect(dashboard).toMatch(/beforeLoad: async \(\{ location \}\) => \(\{ session: await requireSession\(location\) \}\)/);
+    expect(dashboard).toMatch(/const session = await requireSession\(location\);\n\s+return \{ session, permissions: await getPermissions\(\) \};/);
 
     const guards = await read(`${WEB}/src/lib/auth/guards.ts`);
     expect(guards).toMatch(/export function isSignedIn\(/);
@@ -284,7 +271,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
     const loader = home.indexOf('loader:');
     expect(beforeLoad).toBeGreaterThan(-1);
     expect(loader).toBeGreaterThan(beforeLoad);
-    expect(home).toContain("requirePermission(context.session, { contact: ['read'] })");
+    expect(home).toContain("requirePermission(context.permissions, { contact: ['read'] })");
     expect(home).toMatch(/void context\.queryClient\.prefetchQuery\(/);
     expect(home).not.toMatch(/await context\.queryClient/);
   });
@@ -300,13 +287,23 @@ describe(`${BLUEPRINT} blueprint`, () => {
     let evaluate: <T>(source: string, name: string, loader?: 'ts' | 'tsx') => Promise<T>;
     const routeOptions = async (file: string, name: string) =>
       (
-        await evaluate<{ Route: { options: { beforeLoad: (args: { context: { session: Session } }) => unknown } } }>(
+        await evaluate<{ Route: { options: { beforeLoad: (args: { context: { session: Session; permissions?: string[] } }) => unknown } } }>(
           `${WEB}/src/routes/_dashboard/${file}`,
           name,
         )
       ).Route.options;
+    // What the database grants each role: the list the `_dashboard` layout resolves into the route context.
+    const GRANTED: Record<string, string[]> = {
+      admin: ['user.list', 'user.create', 'contact.create', 'contact.read', 'contact.update', 'contact.delete'],
+      user: ['contact.create', 'contact.read', 'contact.update', 'contact.delete'],
+      manager: ['contact.read'],
+    };
+    const grantedTo = (role: string | null): string[] => (role ? (GRANTED[role] ?? []) : []);
     const inRouteContext = (role: string | null) => {
-      (globalThis as { __testRouteContext?: { session: Session } }).__testRouteContext = { session: member(role) };
+      (globalThis as { __testRouteContext?: { session: Session; permissions: string[] } }).__testRouteContext = {
+        session: member(role),
+        permissions: grantedTo(role),
+      };
     };
 
     beforeAll(async () => {
@@ -317,34 +314,27 @@ describe(`${BLUEPRINT} blueprint`, () => {
       evaluate = async <T>(source: string, name: string, loader: 'ts' | 'tsx' = 'ts'): Promise<T> =>
         evaluateGeneratedModule<T>(await read(source), join(dir, name), IMPORT_TARGETS, loader);
       await evaluate('packages/auth/src/permissions.ts', 'permissions.mjs');
-      const permission = await evaluate<Pick<GeneratedGuards, 'hasPermission'>>(`${WEB}/src/lib/auth/permission.ts`, 'permission.mjs');
-      const evaluated = await evaluate<Omit<GeneratedGuards, 'hasPermission' | 'usePermission'>>(`${WEB}/src/lib/auth/guards.ts`, 'guards.mjs');
+      const evaluated = await evaluate<Omit<GeneratedGuards, 'usePermission'>>(`${WEB}/src/lib/auth/guards.ts`, 'guards.mjs');
       const hook = await evaluate<Pick<GeneratedGuards, 'usePermission'>>(`${WEB}/src/hooks/use-permission.ts`, 'use-permission.mjs');
-      guards = { ...permission, ...evaluated, ...hook };
+      guards = { ...evaluated, ...hook };
     });
 
     afterAll(() => signedInAs(null));
 
-    test('hasPermission refuses a missing or unknown role and checks the others against their definition', () => {
-      expect(guards.hasPermission(undefined, { contact: ['read'] })).toBe(false);
-      expect(guards.hasPermission(null, {})).toBe(false);
-      expect(guards.hasPermission('ghost', { contact: ['read'] })).toBe(false);
-      expect(guards.hasPermission('manager', {})).toBe(true);
-      expect(guards.hasPermission('manager', { contact: ['read'] })).toBe(true);
-      expect(guards.hasPermission('manager', { contact: ['read', 'create'] })).toBe(false);
-      expect(guards.hasPermission('user', { contact: ['create', 'delete'] })).toBe(true);
-      expect(guards.hasPermission('user', { user: ['list'] })).toBe(false);
-      expect(guards.hasPermission('admin', { user: ['list'], contact: ['delete'] })).toBe(true);
-    });
-
-    test('requirePermission passes a role that has the permission and answers not found for one that lacks it', async () => {
-      expect(await thrownBy(() => guards.requirePermission(member('manager'), { contact: ['read'] }))).toBeUndefined();
-      expect(await thrownBy(() => guards.requirePermission(member('manager'), { contact: ['create'] }))).toEqual({
+    test('requirePermission passes a list that holds the permission and answers not found for one that lacks it', async () => {
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('manager'), { contact: ['read'] }))).toBeUndefined();
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('manager'), { contact: ['create'] }))).toEqual({
         kind: 'notFound',
       });
-      expect(await thrownBy(() => guards.requirePermission(member('ghost'), { contact: ['read'] }))).toEqual({
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('manager'), { contact: ['read', 'create'] }))).toEqual({
         kind: 'notFound',
       });
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('user'), { user: ['list'] }))).toEqual({ kind: 'notFound' });
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('admin'), { user: ['list'], contact: ['delete'] }))).toBeUndefined();
+      expect(await thrownBy(() => guards.requirePermission(grantedTo('ghost'), { contact: ['read'] }))).toEqual({
+        kind: 'notFound',
+      });
+      expect(await thrownBy(() => guards.requirePermission([], {}))).toBeUndefined();
     });
 
     test('requireAdmin lets an admin through and sends anyone else home', async () => {
@@ -368,16 +358,15 @@ describe(`${BLUEPRINT} blueprint`, () => {
       }
     });
 
-    test('usePermission reads the role from the dashboard route context', () => {
+    test('usePermission reads the permission list from the dashboard route context', () => {
       inRouteContext('manager');
-      expect(guards.usePermission({ contact: ['read'] })).toBe(true);
-      expect(guards.usePermission({ contact: ['create'] })).toBe(false);
-      expect(guards.usePermission({})).toBe(true);
+      expect(guards.usePermission({ contact: ['read'] })).toBe('granted');
+      expect(guards.usePermission({ contact: ['create'] })).toBe('denied');
+      expect(guards.usePermission({})).toBe('granted');
       inRouteContext('admin');
-      expect(guards.usePermission({ user: ['list'] })).toBe(true);
+      expect(guards.usePermission({ user: ['list'] })).toBe('granted');
       inRouteContext(null);
-      expect(guards.usePermission({})).toBe(false);
-      expect(guards.usePermission({ contact: ['read'] })).toBe(false);
+      expect(guards.usePermission({ contact: ['read'] })).toBe('denied');
     });
 
     test('the sidebar renders each role only the links its permissions open', async () => {
@@ -388,7 +377,10 @@ describe(`${BLUEPRINT} blueprint`, () => {
         'sidebar-links.mjs',
         'tsx',
       );
-      const linksFor = (role: string): Promise<string[]> => renderedLinks(SidebarLinks({ role }));
+      const linksFor = (role: string): Promise<string[]> => {
+        inRouteContext(role);
+        return renderedLinks(SidebarLinks({ role }));
+      };
 
       expect(await linksFor('admin')).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
       expect(await linksFor('user')).toEqual(['/', '/contacts']);
@@ -398,9 +390,10 @@ describe(`${BLUEPRINT} blueprint`, () => {
 
     test('the contacts layout answers not found to a role without the contact permission', async () => {
       const { beforeLoad } = await routeOptions('contacts.tsx', 'contacts-route.mjs');
-      expect(await thrownBy(() => beforeLoad({ context: { session: member('manager') } }))).toBeUndefined();
+      const contextOf = (role: string | null) => ({ session: member(role), permissions: grantedTo(role) });
+      expect(await thrownBy(() => beforeLoad({ context: contextOf('manager') }))).toBeUndefined();
       for (const role of ['ghost', null]) {
-        expect(await thrownBy(() => beforeLoad({ context: { session: member(role) } }))).toEqual({ kind: 'notFound' });
+        expect(await thrownBy(() => beforeLoad({ context: contextOf(role) }))).toEqual({ kind: 'notFound' });
       }
     });
 
@@ -485,13 +478,15 @@ describe(`${BLUEPRINT} blueprint`, () => {
     });
   });
 
-  test('the permission hook reads the session from the route context, not from a second fetch', async () => {
+  test('the permission hook reads the list from the route context, not from a second fetch, and no check reads the compiled roles', async () => {
     const hook = await read(`${WEB}/src/hooks/use-permission.ts`);
     expect(hook).toContain("useRouteContext({ from: '/_dashboard'");
     expect(hook).not.toContain('useSession');
+    expect(hook).not.toContain('checkRolePermission');
 
-    const permission = await read(`${WEB}/src/lib/auth/permission.ts`);
-    expect(permission).toContain('authClient.admin.checkRolePermission');
+    const permissions = await read(`${WEB}/src/lib/auth/permissions.ts`);
+    expect(permissions).toContain('.permissions.mine()');
+    expect(await read(`${WEB}/src/lib/auth/guards.ts`)).not.toContain('checkRolePermission');
   });
 
   test('signing out clears the query cache after leaving the dashboard', async () => {

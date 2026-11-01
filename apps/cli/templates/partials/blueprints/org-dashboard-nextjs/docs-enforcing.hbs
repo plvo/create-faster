@@ -1,0 +1,1 @@
+The contact router gates every procedure with `permissionProcedure('contact', ...)`, and the Users and Roles panels with `adminProcedure`. The palette search reads the same list (`caller.permissions` in `packages/api/src/search.ts`), so a role finds a type of record exactly when it can list it.

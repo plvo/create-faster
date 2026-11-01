@@ -6,7 +6,7 @@ mono:
   path: src/schema.ts
 ---
 {{#if (has "database" "postgres")}}
-import { pgTable, boolean, index, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, boolean, index, primaryKey, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 {{/if}}
 {{#if (has "database" "mysql")}}
 import { mysqlTable, boolean, index, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
@@ -170,3 +170,21 @@ export const contactTableRelations = relations(contactTable, ({ one }) => ({
     references: [userTable.id],
   }),
 }));
+
+{{#if (has "database" "postgres")}}
+// The roles of the application, next to the `admin` plugin: `id` is the value of `users.role`. `admin` has no row (it
+// is compiled, see packages/auth/src/permissions.ts). A user whose role has no row here holds no permission.
+export const roleTable = pgTable('roles', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  label: varchar('label', { length: 255 }).notNull(),
+  ...timeColumns,
+});
+
+// What a role may do on a business resource, one row per permission. Only the names of `businessStatement` are
+// honored (packages/auth/src/role-permissions.ts); `user` and `session` are account administration and never stored.
+export const rolePermissionTable = pgTable('role_permissions', {
+  roleId: varchar('role_id', { length: 255 }).notNull().references(() => roleTable.id, { onDelete: 'cascade' }),
+  resource: varchar('resource', { length: 255 }).notNull(),
+  action: varchar('action', { length: 255 }).notNull(),
+}, (table) => [primaryKey({ columns: [table.roleId, table.resource, table.action] })]);
+{{/if}}

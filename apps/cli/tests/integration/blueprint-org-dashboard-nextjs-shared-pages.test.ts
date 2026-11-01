@@ -73,6 +73,6 @@ describe(`${BLUEPRINT} pages shared with the TanStack Start blueprint`, () => {
   test('the roles page requires an admin before it renders', async () => {
     const page = await read(NEXTJS_PAGES.roles.file);
     expect(page).toContain("import { requireAdmin } from '@/lib/auth/session';");
-    expect(page).toContain('export default async function RolesPage() {\n  await requireAdmin();\n');
+    expect(page).toContain('export default async function RolesPage() {\n  const session = await requireAdmin();\n');
   });
 });

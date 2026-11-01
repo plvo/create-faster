@@ -62,6 +62,7 @@ const BLUEPRINTS: Blueprint[] = [
       modules: ADMIN_MODULES,
       tables: ACCOUNT_TABLES,
       closedSignUp: true,
+      standIns: { './guard-administrators': "export const guardAdministrators = () => ({ id: 'guard-administrators' });" },
       build: (createAuth, runInBackground) =>
         (createAuth as (cookie?: BetterAuthPlugin, background?: RunInBackground) => Auth)(undefined, runInBackground),
     }),

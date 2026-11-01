@@ -72,10 +72,11 @@ packages/
 │   ├── auth.ts                         # createAuth(db, cookiePlugin?) factory + admin plugin
 │   ├── permissions.ts                  # the vocabulary: account statement, business statement, compiled admin role
 │   ├── role-permissions.ts             # hasPermission / permissionsOf: what a role may do, read from D1 per request
-│   ├── role-assignment.ts              # assign a role, ban or remove an account: one conditional write that keeps an administrator
+│   ├── role-assignment.ts              # assign a role, ban or remove an account, and keep an administrator (the write is in role-store.ts)
 │   ├── role-management.ts              # create a role, grant or revoke a permission, delete a role nobody holds: the rules of the Roles page
 │   ├── guard-administrators.ts         # plugin in front of the admin endpoints that write a role, a ban or a removal
-│   ├── default-roles.ts                # the default roles and the SQL that writes the missing ones
+│   ├── role-store.ts                   # the writes of the role rules for D1: one conditional statement each, and the SQL of the default roles
+│   ├── default-roles.ts                # the default roles and their validation
 │   ├── link-delivery.ts                # link logger (reset, email change), the seam for a mailer
 │   └── auth-client.ts                  # authClient with adminClient
 └── api/src/

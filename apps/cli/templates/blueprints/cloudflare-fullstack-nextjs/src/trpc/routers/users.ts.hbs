@@ -7,12 +7,13 @@ mono:
 import type { SQL } from 'drizzle-orm';
 import { asc, count, desc, eq, or, userTable } from '@repo/db';
 import { createAuth } from '@repo/auth/auth';
-import { type AppRole, DEFAULT_ROLE, ROLE_ID } from '@repo/auth/permissions';
+import type { AppRole } from '@repo/auth/permissions';
 import { listAssignableRoles } from '@repo/auth/role-assignment';
 import { z } from 'zod';
 import { router } from '../trpc';
 import { adminProcedure } from '../middleware/rbac';
 import { orderedPage } from '../page-query';
+import { giveRole, roleIdInput } from '../user-role';
 import { containsText } from '../text-match';
 import { type UserSort, userCountInput, userListInput } from '../user-list';
 
@@ -45,8 +46,6 @@ function matchingSearch(search: string): SQL | undefined {
   return or(containsText(userTable.name, text), containsText(userTable.email, text), containsText(userTable.role, text));
 }
 
-const roleId = z.string().regex(ROLE_ID, 'A role is one id: lowercase letters, digits and hyphens');
-
 // Cryptographically-random password for admin-created accounts (shown once).
 function generatePassword(length = 14): string {
   const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
@@ -55,6 +54,8 @@ function generatePassword(length = 14): string {
   return Array.from(values, (v) => charset[v % charset.length]).join('');
 }
 
+// Procedures build their Better Auth instance from the request database (`createAuth(ctx.db)`). It has no cookie plugin, so
+// a procedure only calls endpoints that set no cookie on the caller.
 export const usersRouter = router({
   list: adminProcedure
     .input(userListInput)
@@ -81,7 +82,7 @@ export const usersRouter = router({
       z.object({
         name: z.string().min(1).max(64),
         email: z.string().email(),
-        role: roleId,
+        role: roleIdInput,
         firstName: z.string().max(255).optional(),
         lastName: z.string().max(255).optional(),
         phone: z.string().max(40).optional(),
@@ -100,10 +101,7 @@ export const usersRouter = router({
           .set({ firstName: input.firstName || null, lastName: input.lastName || null, phone: input.phone || null })
           .where(eq(userTable.id, user.id));
       }
-      // The account exists on the default role until this succeeds, and stays on it when it fails.
-      if (input.role !== DEFAULT_ROLE) {
-        await auth.api.setRole({ headers: ctx.headers, body: { userId: user.id, role: input.role as AppRole } });
-      }
+      await giveRole(auth, ctx.headers, user.id, input.role);
       return { id: user.id, password };
     }),
 
@@ -130,16 +128,7 @@ export const usersRouter = router({
       return { updated: true };
     }),
 
-  // The plugin types a role as one of the compiled `roles`; guard-administrators.ts assigns any role of the database.
-  setRole: adminProcedure
-    .input(z.object({ id: z.string(), role: roleId }))
-    .mutation(async ({ ctx, input }) => {
-      const auth = createAuth(ctx.db);
-      await auth.api.setRole({ headers: ctx.headers, body: { userId: input.id, role: input.role as AppRole } });
-      return { role: input.role };
-    }),
-
-  assignableRoles: adminProcedure.query(({ ctx }) => listAssignableRoles(ctx.db)),
+  {{> roles/user-role-procedures auth="createAuth(ctx.db)"}}
 
   setPassword: adminProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
     const auth = createAuth(ctx.db);

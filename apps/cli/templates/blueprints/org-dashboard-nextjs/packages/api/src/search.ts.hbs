@@ -4,24 +4,19 @@ mono:
   name: api
   path: src/search.ts
 ---
-import { asc, contactTable, desc, type db, or, sql, userTable } from '@repo/db';
-import { hasPermission, isAdmin } from './middleware/rbac';
-import { type SearchGroup, type SearchableType, searchGroups } from './search-engine';
+import { isGranted } from '@repo/auth/role-permissions';
+import { contactTable, desc, or, sql } from '@repo/db';
+import type { SearchGroup, SearchableType } from './search-engine';
+import { type SearchCaller, type SearchContext, searchTypes, USERS_SEARCH_TYPE } from './search-records';
 import { containsText } from './text-match';
 
-// The signed-in user of a request and the database it reads.
-export interface SearchCaller {
-  db: typeof db;
-  session: { user: { id: string; role?: string | null } };
-}
-
-// Adding a searchable type is one entry here. A type is read by the check its list procedure makes: `adminProcedure`
-// for the users, `permissionProcedure('contact', 'read')` for the contacts.
-const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
+// Adding a searchable type is one entry here. A type is read by the check its list procedure makes:
+// `permissionProcedure('contact', 'read')` for the contacts.
+const SEARCHABLE_TYPES: SearchableType<SearchContext>[] = [
   {
     type: 'contacts',
     label: 'Contacts',
-    canSearch: ({ session }) => hasPermission(session.user.id, 'contact', 'read'),
+    canSearch: ({ permissions }) => isGranted(permissions, 'contact', 'read'),
     find: async ({ db }, text, limit) => {
       const fullName = sql`concat(${contactTable.firstName}, ' ', ${contactTable.lastName})`;
       const rows = await db
@@ -44,23 +39,14 @@ const SEARCHABLE_TYPES: SearchableType<SearchCaller>[] = [
       }));
     },
   },
-  {
-    type: 'users',
-    label: 'Users',
-    canSearch: ({ session }) => isAdmin(session),
-    find: async ({ db }, text, limit) => {
-      const rows = await db
-        .select({ id: userTable.id, name: userTable.name, email: userTable.email })
-        .from(userTable)
-        .where(or(containsText(userTable.name, text), containsText(userTable.email, text)))
-        .orderBy(asc(userTable.name), asc(userTable.id))
-        .limit(limit);
-      return rows.map((row) => ({ id: row.id, title: row.name, subtitle: row.email, href: `/admin/users/${row.id}` }));
-    },
-  },
+  USERS_SEARCH_TYPE,
 ];
 
 // The groups of records matching the text, for the types the caller may read. A group with no match is left out.
-export function searchRecords(request: SearchCaller, query: string): Promise<SearchGroup[]> {
-  return searchGroups(SEARCHABLE_TYPES, query, async () => request);
+export function searchRecords(
+  request: SearchCaller,
+  query: string,
+  types: SearchableType<SearchContext>[] = SEARCHABLE_TYPES,
+): Promise<SearchGroup[]> {
+  return searchTypes(types, request, query);
 }

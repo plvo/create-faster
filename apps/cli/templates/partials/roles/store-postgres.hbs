@@ -1,0 +1,122 @@
+import { and, count, type db, eq, rolePermissionTable, roleTable, type SQL, sql, type User, userTable } from '@repo/db';
+import { defaultRoleRows } from './default-roles';
+import { ADMIN_ROLE, DEFAULT_ROLES, type DefaultRole } from './permissions';
+
+export type Database = typeof db;
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+// The writes of the role rules (role-assignment.ts, role-management.ts) for PostgreSQL. A check and the write it
+// protects run in one transaction, and a request that could break the rule waits for the one in front of it:
+//
+// - Every write that can remove an administrator (a demotion, a ban, a removal) first takes one advisory lock for the
+//   transaction, so two of them never overlap. Under READ COMMITTED each statement then sees what the one before
+//   committed: two administrators demoting each other at once cannot both find the other still an administrator.
+// - Giving a role locks its row for share and deleting it locks the row for update, so one of the two waits for the
+//   other, and the delete counts the holders in a statement of its own after the lock. A single conditional DELETE
+//   would not be enough: its subquery keeps the snapshot of the statement, which was taken before it waited.
+const ADMINISTRATORS_LOCK = sql`select pg_advisory_xact_lock(hashtext('administrators'))`;
+
+// An administrator other than the account being changed who can still sign in: a banned one does not keep the
+// application administrable.
+const anotherAdministrator = (userId: string): SQL =>
+  sql`exists (select 1 from ${userTable} as other_administrator where other_administrator.id <> ${userId} and other_administrator.role = ${ADMIN_ROLE} and not coalesce(other_administrator.banned, false))`;
+
+// The condition under which changing this account leaves an administrator.
+const keepsAnAdministrator = (userId: string): SQL => sql`(${userTable.role} <> ${ADMIN_ROLE} or ${anotherAdministrator(userId)})`;
+
+async function serializeAdministratorChanges(tx: Transaction): Promise<void> {
+  await tx.execute(ADMINISTRATORS_LOCK);
+}
+
+// Sets the role of the account while the role exists and the account is not the last administrator being demoted.
+export function writeRoleUnlessLast(database: Database, userId: string, role: string): Promise<User | undefined> {
+  return database.transaction(async (tx) => {
+    await serializeAdministratorChanges(tx);
+    if (role !== ADMIN_ROLE) {
+      const [known] = await tx.select({ id: roleTable.id }).from(roleTable).where(eq(roleTable.id, role)).for('share');
+      if (!known) return undefined;
+    }
+    const [written] = await tx
+      .update(userTable)
+      .set({ role, updatedAt: new Date() })
+      .where(and(eq(userTable.id, userId), role === ADMIN_ROLE ? undefined : keepsAnAdministrator(userId)))
+      .returning();
+    return written;
+  });
+}
+
+// Marks the account banned unless it is the last administrator.
+export function banAccountUnlessLast(database: Database, userId: string): Promise<boolean> {
+  return database.transaction(async (tx) => {
+    await serializeAdministratorChanges(tx);
+    const [claimed] = await tx
+      .update(userTable)
+      .set({ banned: true, updatedAt: new Date() })
+      .where(and(eq(userTable.id, userId), keepsAnAdministrator(userId)))
+      .returning({ id: userTable.id });
+    return claimed !== undefined;
+  });
+}
+
+// Deletes the account unless it is the last administrator.
+export function removeAccountUnlessLast(database: Database, userId: string): Promise<boolean> {
+  return database.transaction(async (tx) => {
+    await serializeAdministratorChanges(tx);
+    const [removed] = await tx
+      .delete(userTable)
+      .where(and(eq(userTable.id, userId), keepsAnAdministrator(userId)))
+      .returning({ id: userTable.id });
+    return removed !== undefined;
+  });
+}
+
+// Grants one permission while the role has its row: the row is locked for share until the transaction ends, so the
+// role cannot be deleted in between and the permission row never outlives it.
+export function grantRolePermission(database: Database, roleId: string, resource: string, action: string): Promise<void> {
+  return database.transaction(async (tx) => {
+    const [known] = await tx.select({ id: roleTable.id }).from(roleTable).where(eq(roleTable.id, roleId)).for('share');
+    if (!known) return;
+    await tx.insert(rolePermissionTable).values({ roleId, resource, action }).onConflictDoNothing();
+  });
+}
+
+// Deletes a role nobody holds, with its permission rows (the foreign key cascades). Returns whether the role was deleted.
+export function deleteRoleUnlessHeld(database: Database, roleId: string): Promise<boolean> {
+  return database.transaction(async (tx) => {
+    const [locked] = await tx.select({ id: roleTable.id }).from(roleTable).where(eq(roleTable.id, roleId)).for('update');
+    if (!locked) return false;
+    const [holder] = await tx.select({ id: userTable.id }).from(userTable).where(eq(userTable.role, roleId)).limit(1);
+    if (holder) return false;
+    await tx.delete(roleTable).where(eq(roleTable.id, roleId));
+    return true;
+  });
+}
+
+export interface DefaultRolesOutcome {
+  written: boolean;
+  roles: number;
+  permissions: number;
+}
+
+// Writes the roles of `definitions` into a database that has no role at all, and nothing otherwise: a default role an
+// operator deleted, a permission revoked since or a matrix emptied is never written back, a role someone else created
+// first is left alone, and running it again changes nothing. The roles and their permissions are one transaction, so a
+// run stopped half way writes nothing, and a second run at the same time waits for the first and then finds roles.
+// Every definition is validated first.
+export async function writeDefaultRoles(
+  database: Database,
+  definitions: Readonly<Record<string, DefaultRole>> = DEFAULT_ROLES,
+): Promise<DefaultRolesOutcome> {
+  const { roles, permissions } = defaultRoleRows(definitions);
+  return database.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('default-roles'))`);
+    const [existing] = await tx.select({ roles: count() }).from(roleTable);
+    if ((existing?.roles ?? 0) > 0) {
+      const [held] = await tx.select({ permissions: count() }).from(rolePermissionTable);
+      return { written: false, roles: existing?.roles ?? 0, permissions: held?.permissions ?? 0 };
+    }
+    if (roles.length > 0) await tx.insert(roleTable).values(roles);
+    if (permissions.length > 0) await tx.insert(rolePermissionTable).values(permissions);
+    return { written: roles.length > 0, roles: roles.length, permissions: permissions.length };
+  });
+}

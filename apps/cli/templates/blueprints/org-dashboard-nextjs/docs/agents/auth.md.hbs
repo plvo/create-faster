@@ -6,12 +6,12 @@ mono:
 ---
 # Auth & Permissions
 
-Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `createAuth(cookiePlugin?, runInBackground?)` factory (from `@repo/auth/auth`) with the `admin` plugin and a custom access-control model. `runInBackground` becomes `advanced.backgroundTasks.handler`, so a link's delivery runs after the response. The web app builds its instance in `apps/web/src/lib/auth/auth.ts` with `createAuth({{#each apps}}{{#if (eq appName "web")}}{{> better-auth/cookie-plugin}}{{/if}}{{/each}}, runInBackground)` (the next section says how `runInBackground` runs a task), and the tRPC package reads sessions through its own cookie-less `createAuth()` in `packages/api/src/auth.ts`, which sends no link. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
+Better Auth is configured in `packages/auth/src/auth.ts`, which exports the `createAuth(cookiePlugin?, runInBackground?)` factory (from `@repo/auth/auth`) with the `admin` plugin, the `guardAdministrators` plugin in front of it (see "Assigning roles") and the roles of the database. `runInBackground` becomes `advanced.backgroundTasks.handler`, so a link's delivery runs after the response. The web app builds its instance in `apps/web/src/lib/auth/auth.ts` with `createAuth({{#each apps}}{{#if (eq appName "web")}}{{> better-auth/cookie-plugin}}{{/if}}{{/each}}, runInBackground)` (the next section says how `runInBackground` runs a task), and the tRPC package reads sessions through its own cookie-less `createAuth()` in `packages/api/src/auth.ts`, which sends no link. Sessions are persisted in PostgreSQL via Drizzle — the schema lives in `packages/db/src/schema.ts` (`user`, `account`, `session`, `verification` tables).
 
 {{#each (stackApps "nextjs")}}
 {{#if (eq appName "web")}}
 ## Reading the session server-side
-Call `requireSession()` from `apps/web/src/lib/auth/session.ts`: it reads the session once per request and redirects to `/login?redirectTo=<requested path>` when there is no `session.user.role`: the proxy (`apps/web/src/proxy.ts`) copies the requested path into the request header named by `REQUEST_PATH_HEADER` (`apps/web/src/lib/auth/request-path.ts`), which the guard reads back and passes through `safeRedirectPath`. The dashboard layout calls it, and so does every page that prefetches protected tRPC data, before the prefetch: a layout and its page render in parallel, so the layout redirect alone does not stop the page from querying. A page that prefetches an `adminProcedure` query calls `requireAdmin()` instead (a non-admin is redirected to `/`), and one that prefetches a `permissionProcedure` query calls `requirePermission(resource, action)` (a missing permission renders the not-found page); both include `requireSession()`. Use the guard that matches the procedure of the prefetch, so a rejected query never starts. A detail page (`admin/users/[id]`, `contacts/[id]`) awaits its record instead of prefetching it: `const user = await getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id }))`, then `if (!user) notFound()` before the hydration boundary, so an unknown id answers 404 with the not-found page. The procedure returns `null` for it rather than throwing, since the server link logs a thrown error in development.
+Call `requireSession()` from `apps/web/src/lib/auth/session.ts`: it reads the session once per request and redirects to `/login?redirectTo=<requested path>` when there is no `session.user.role`: the proxy (`apps/web/src/proxy.ts`) copies the requested path into the request header named by `REQUEST_PATH_HEADER` (`apps/web/src/lib/auth/request-path.ts`), which the guard reads back and passes through `safeRedirectPath`. The dashboard layout calls it, and so does every page that prefetches protected tRPC data, before the prefetch: a layout and its page render in parallel, so the layout redirect alone does not stop the page from querying. A page that prefetches an `adminProcedure` query calls `requireAdmin()` instead (a non-admin is redirected to `/`), and one that prefetches a `permissionProcedure` query calls `requirePermission(resource, action)` (a missing permission renders the not-found page: it reads the permission list the dashboard layout fetches, `permissions.mine`, once per request); both include `requireSession()`. Use the guard that matches the procedure of the prefetch, so a rejected query never starts. A detail page (`admin/users/[id]`, `contacts/[id]`) awaits its record instead of prefetching it: `const user = await getQueryClient().fetchQuery(trpc.user.getById.queryOptions({ id }))`, then `if (!user) notFound()` before the hydration boundary, so an unknown id answers 404 with the not-found page. The procedure returns `null` for it rather than throwing, since the server link logs a thrown error in development.
 
 {{/if}}
 {{/each}}
@@ -20,7 +20,7 @@ Call `requireSession()` from `apps/web/src/lib/auth/session.ts`: it reads the se
 ## Reading the session server-side
 Routes are TanStack Start file routes in `apps/web/src/routes/`, guarded by two pathless layouts. `_dashboard.tsx` wraps every dashboard page: its `beforeLoad` calls `requireSession(location)` from `apps/web/src/lib/auth/guards.ts`, which reads the session through the `getSession` server function (`apps/web/src/lib/auth/session.ts`, shared with the tRPC context through the per-request session cache), redirects to `/login?redirectTo=<requested path>` when there is no `session.user.role`, and returns `{ session }` into the route context, so every child route and component reads the session from there. `_auth.tsx` wraps the login page and redirects a signed-in user to `/`. Both layouts decide through `isSignedIn(session)` in `guards.ts`: change that check in one place, never in a layout, or one layout accepts a session the other refuses and the two redirect to each other in a loop.
 
-`beforeLoad` hooks run parent first and every loader starts after all of them, so an anonymous visit redirects before any protected query starts and a page needs no session guard of its own. A route that needs more adds it to its own `beforeLoad`, from `guards.ts`: `requireAdmin(context.session)` (a non-admin is redirected to `/`) once on the admin route, or `requirePermission(context.session, { resource: ['action'] })` (a missing permission renders the not-found page with status 404, through `authClient.admin.checkRolePermission`). Pair a route with the matching `adminProcedure` or `permissionProcedure` for its prefetch.
+`beforeLoad` hooks run parent first and every loader starts after all of them, so an anonymous visit redirects before any protected query starts and a page needs no session guard of its own. A route that needs more adds it to its own `beforeLoad`, from `guards.ts`: `requireAdmin(context.session)` (a non-admin is redirected to `/`) once on the admin route, or `requirePermission(context.permissions, { resource: ['action'] })` (a missing permission renders the not-found page with status 404). `context.permissions` is the list the `_dashboard` layout resolves with its session (`getPermissions` in `apps/web/src/lib/auth/permissions.ts`, which asks the tRPC router `permissions.mine` in process). Pair a route with the matching `adminProcedure` or `permissionProcedure` for its prefetch.
 
 Loaders prefetch without awaiting, `void context.queryClient.prefetchQuery(context.trpc.<router>.<procedure>.queryOptions())`, and the component reads the query with `useSuspenseQuery` inside `QueryBoundary`, so the page streams and the data follows it. The detail routes (`admin/users/$id`, `contacts/$id`) await the record with `context.queryClient.fetchQuery(...)` instead and `throw notFound()` when the procedure returns `null`, so an unknown id answers 404 with the not-found page, and their `pendingComponent` shows the detail skeleton while the loader runs. Signing out clears the query cache (`NavUser`), so the next user of the browser sees nothing from the previous session.
 
@@ -29,48 +29,9 @@ Loaders prefetch without awaiting, `void context.queryClient.prefetchQuery(conte
 ## Post-login redirect
 {{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to `router.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}}The login route (`apps/web/src/routes/_auth/login.tsx`) reads the destination from the `redirectTo` search parameter in `validateSearch` and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`): only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`, so the form only navigates to a validated destination. Never hand a query parameter straight to `navigate`, `history.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}
 
-## RBAC (access control)
-
-Roles and permissions are defined as code in `packages/auth/src/permissions.ts` (exported from `@repo/auth/permissions`):
-
-- `statement` — the permission catalog: a map of resource → allowed actions. It spreads the admin plugin's `defaultStatements` (`user`, `session`) and adds the app's own `contact` resource.
-- `ac` — the access controller created from `statement`.
-- `roleDefinitions` — the single source of truth mapping each role to the actions it may perform.
-- `roles` — the Better Auth roles, built from `roleDefinitions` with `ac.newRole(...)`.
-
-Admins can browse the roles and their permission matrix (read-only) at `/admin/roles`, which renders `roleDefinitions` directly.
-
-Three roles ship by default:
-
-| Role | Permissions |
-|---|---|
-| `admin` | Everything: full `user`/`session` management (`adminAc.statements`) + all `contact` actions |
-| `user` (default) | Full CRUD on `contact`, no user management |
-| `manager` | `contact: ['read']` only — a read-only example role |
-
-`manager` exists to demonstrate a restricted role end to end: it can open Contacts and read rows, but the "New contact" button and the per-contact Edit/Delete actions are hidden, and the server rejects any write.
-
-### Add a role
-Add a key to `roles` in `permissions.ts` with the permissions you want, e.g.:
-
-```ts
-export const roles = {
-  // ...existing roles
-  auditor: ac.newRole({ contact: ['read'], user: ['list'] }),
-};
-```
-
-New roles are immediately assignable (admin → Users → row actions → "Set role: auditor") and enforceable. To surface a new resource, add it to `statement` first.
-
-## Enforcing permissions
-
-**Server (tRPC):** gate data routes with `permissionProcedure(resource, action)` from `packages/api/src/middleware/rbac.ts`. It calls `auth.api.userHasPermission` and throws `FORBIDDEN` when the role lacks the permission. Example: `contact.create` uses `permissionProcedure('contact', 'create')`. Use `adminProcedure` for admin-only surfaces (the Users panel). Both procedures call the checks that the palette search reads too, `isAdmin(session)` and `hasPermission(userId, resource, action)` of the same file, so a role finds a type of record exactly when it can list it.
-
-**Client (UI):** wrap any permission-sensitive affordance in `<Can permissions=\{{ resource: ['action'] }}>` (`apps/web/src/components/can.tsx`), or call the `usePermission` hook (`apps/web/src/hooks/use-permission.ts`) directly. Both resolve the current role from the session{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}} in the route context set by the `_dashboard` layout (no second fetch){{/if}}{{/each}} and check it synchronously with `authClient.admin.checkRolePermission`{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}} (`hasPermission` in `apps/web/src/lib/auth/permission.ts`, which the route guards use too){{/if}}{{/each}}. Navigation links in `lib/constants.ts` carry a `permissions` field and are filtered the same way in `components/navigation/sidebar-links.tsx`.
-
-Gating on both sides matters: the client gate prevents UI leaks, the server procedure prevents route bypass.
+{{> roles/docs router="user"}}
 
 ## Creating users & passwords
-Public sign-up is closed: `emailAndPassword.disableSignUp` is set in `packages/auth/src/auth.ts`, so the `/api/auth/sign-up/email` endpoint rejects every call. Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`) and returns it once so the admin can share it. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
+Public sign-up is closed: `emailAndPassword.disableSignUp` is set in `packages/auth/src/auth.ts`, so the `/api/auth/sign-up/email` endpoint rejects every call. Admins create users from the Users panel. The form never asks for a password: `user.create` (`packages/api/src/router/user.ts`, `adminProcedure`) generates one server-side with `generatePassword()` (`@repo/auth/password`), creates the account with the default role, gives it the chosen role with `setRole` and returns the password once so the admin can share it. The seed (`scripts/seed.ts`) gives the three demo accounts their role with a write of its own after it created them, as the guard of the `admin` plugin endpoints takes `admin` or the default role at creation. A password can be regenerated anytime from the user detail page (`user.generatePassword`), shown a single time with a copy button.
 
 {{> auth/email-change-guide admin=true file="packages/auth/src/link-delivery.ts" links="the email change link and the notice to the old address"}}

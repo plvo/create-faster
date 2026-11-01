@@ -1,0 +1,88 @@
+import { eq, roleTable, type User, userTable } from '@repo/db';
+import { ADMIN_ROLE, roleIdProblem } from './permissions';
+import { banAccountUnlessLast, type Database, removeAccountUnlessLast, writeRoleUnlessLast } from './role-store';
+
+export type AccountChangeRefusalCode = 'BAD_REQUEST' | 'NOT_FOUND';
+
+// A change the rules refuse, as the status it answers with. The guard of the `admin` plugin endpoints
+// (guard-administrators.ts) turns it into the plugin's own error.
+export class AccountChangeRefused extends Error {
+  constructor(
+    readonly code: AccountChangeRefusalCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AccountChangeRefused';
+  }
+}
+
+const userNotFound = () => new AccountChangeRefused('NOT_FOUND', 'User not found');
+const unknownRole = () => new AccountChangeRefused('BAD_REQUEST', 'No role has that id');
+const lastAdministrator = (change: 'demoted' | 'banned' | 'removed') =>
+  new AccountChangeRefused('BAD_REQUEST', `The last administrator cannot be ${change}`);
+
+// A role is the id of one role, as text: the plugin stores a list as `a,b` and reads `user,admin` as an administrator,
+// which `permissionsOf` reads as nothing, so no path writes anything but one id.
+export function readRoleId(value: unknown): string {
+  const problem = roleIdProblem(value);
+  if (problem === 'reserved') {
+    throw new AccountChangeRefused('BAD_REQUEST', `"${String(value)}" is reserved and cannot be a role id`);
+  }
+  if (problem || typeof value !== 'string') {
+    throw new AccountChangeRefused('BAD_REQUEST', 'A role is one id: lowercase letters, digits and hyphens');
+  }
+  return value;
+}
+
+export function readUserId(value: unknown): string {
+  if (typeof value !== 'string' || value === '') throw new AccountChangeRefused('BAD_REQUEST', 'Invalid user id');
+  return value;
+}
+
+async function accountExists(db: Database, userId: string): Promise<boolean> {
+  const [found] = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.id, userId)).limit(1);
+  return found !== undefined;
+}
+
+// `admin` is compiled and has no row; any other role must have one.
+async function assertExistingRole(db: Database, role: string): Promise<void> {
+  if (role === ADMIN_ROLE) return;
+  const [known] = await db.select({ id: roleTable.id }).from(roleTable).where(eq(roleTable.id, role)).limit(1);
+  if (!known) throw unknownRole();
+}
+
+// The three writes below leave the last administrator alone and only write while the role exists: the write itself
+// decides (role-store.ts, one module per database, so the check and the write cannot be split by another request), and
+// the reads that follow an empty result only choose the message.
+
+// Sets the role of an account to an existing one, unless the account is the last administrator and the role is not
+// admin. Returns the account as written.
+export async function assignRole(db: Database, userId: string, role: string): Promise<User> {
+  const id = readRoleId(role);
+  const written = await writeRoleUnlessLast(db, userId, id);
+  if (written) return written;
+
+  if (!(await accountExists(db, userId))) throw userNotFound();
+  await assertExistingRole(db, id);
+  throw lastAdministrator('demoted');
+}
+
+// Marks the account banned unless it is the last administrator. The plugin's own ban follows (reason, expiry, the end
+// of the sessions) and sets the same flag again, so it can never be the write that leaves no administrator.
+export async function claimBan(db: Database, userId: string): Promise<void> {
+  if (await banAccountUnlessLast(db, userId)) return;
+  throw (await accountExists(db, userId)) ? lastAdministrator('banned') : userNotFound();
+}
+
+// Deletes the account unless it is the last administrator. The sessions and accounts of the user go with it (foreign
+// keys with cascade).
+export async function removeAccount(db: Database, userId: string): Promise<void> {
+  if (await removeAccountUnlessLast(db, userId)) return;
+  throw (await accountExists(db, userId)) ? lastAdministrator('removed') : userNotFound();
+}
+
+// The roles an account can be given, for the role selects: `admin` first, then the roles of the database by id.
+export async function listAssignableRoles(db: Database): Promise<{ id: string; label: string }[]> {
+  const stored = await db.select({ id: roleTable.id, label: roleTable.label }).from(roleTable).orderBy(roleTable.id);
+  return [{ id: ADMIN_ROLE, label: 'Admin' }, ...stored.filter((role) => role.id !== ADMIN_ROLE)];
+}
