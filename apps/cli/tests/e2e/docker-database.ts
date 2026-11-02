@@ -1,12 +1,17 @@
-import { describe, expect } from 'bun:test';
-import { join } from 'node:path';
+import { describe } from 'bun:test';
 import { $ } from 'bun';
-import { isolatedProjectName, isolateDatabasePort, OWNER_LABEL, removeOrphanedComposeProjects, removeOrphanedDatabases } from './docker-isolation';
-import { cleanupTempDir, createTempDir, getFreePort, runCli, runCommand } from './helpers';
+import {
+  CONTAINER_LABEL_KEY,
+  isolatedProjectName,
+  isolateDatabasePort,
+  OWNER_LABEL,
+  removeOrphanedComposeProjects,
+  removeOrphanedContainers,
+} from './docker-isolation';
+import { generateInstalledProject, getFreePort } from './helpers';
 
 const DATABASE_READY_TIMEOUT = 90_000;
 const DATABASE_POLL_INTERVAL = 1_000;
-const LABEL_KEY = 'create-faster-e2e';
 
 export type DatabaseEngine = 'postgres' | 'mysql';
 
@@ -57,11 +62,11 @@ export async function removeDatabase(name: string): Promise<void> {
 /** Starts a throwaway database on a free port and waits until it accepts connections. */
 export async function startDatabase(engine: DatabaseEngine, label: string): Promise<DatabaseContainer> {
   const { image, containerPort, env, readyCommand, connectionString } = ENGINES[engine];
-  await removeOrphanedDatabases();
+  await removeOrphanedContainers(CONTAINER_LABEL_KEY);
 
   const port = await getFreePort();
   const name = `create-faster-e2e-${engine}-${process.pid}-${port}`;
-  const labelArg = `${LABEL_KEY}=${label}`;
+  const labelArg = `${CONTAINER_LABEL_KEY}=${label}`;
   const envArgs = env.flatMap((variable) => ['-e', variable]);
   await $`docker run -d --rm --name ${name} --label ${labelArg} --label ${OWNER_LABEL} ${envArgs} -p 127.0.0.1:${port}:${containerPort} ${image}`.quiet();
 
@@ -82,20 +87,7 @@ export async function startDatabase(engine: DatabaseEngine, label: string): Prom
  * directory to clean up, after `docker compose down --volumes` in the project.
  */
 export async function generateDockerProject(baseName: string, flags: string[], pm = 'bun'): Promise<string> {
-  await removeOrphanedComposeProjects();
   const name = isolatedProjectName(baseName);
-  const tempDir = await createTempDir();
-  try {
-    const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', pm], tempDir);
-    expect(result.exitCode, result.stderr).toBe(0);
-
-    const projectDir = join(tempDir, name);
-    await isolateDatabasePort(projectDir);
-    const install = await runCommand([pm, 'install'], projectDir);
-    expect(install.exitCode, install.stderr).toBe(0);
-    return projectDir;
-  } catch (error) {
-    await cleanupTempDir(tempDir);
-    throw error;
-  }
+  await removeOrphanedComposeProjects();
+  return generateInstalledProject(name, flags, pm, isolateDatabasePort);
 }

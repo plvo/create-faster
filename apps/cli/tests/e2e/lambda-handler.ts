@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { $ } from 'bun';
 import type { TerraformLambda } from '../integration/helpers';
-import { OWNER_LABEL, removeOrphanedContainers } from './docker-isolation';
+import { CONTAINER_LABEL_KEY, OWNER_LABEL, removeOrphanedContainers } from './docker-isolation';
 import { getFreePort, runCommand } from './helpers';
 
 interface LambdaHttpResponse {
@@ -49,7 +49,7 @@ export async function bundleForLambda(entry: string, outDir: string): Promise<st
 const LAMBDA_EMULATOR_READY_TIMEOUT = 30_000;
 // Lambda runs an on-demand function's init in its own 10 seconds, before the function timeout applies.
 const LAMBDA_INIT_TIMEOUT = 10_000;
-const LAMBDA_CONTAINER_LABEL = 'create-faster-e2e=lambda-runtime';
+const LAMBDA_CONTAINER_LABEL = `${CONTAINER_LABEL_KEY}=lambda-runtime`;
 
 /** The official AWS Lambda base image of a Node.js runtime identifier such as `nodejs22.x`. */
 function lambdaImage(runtime: string): string {

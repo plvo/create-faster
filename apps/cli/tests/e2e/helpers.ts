@@ -174,14 +174,23 @@ export async function runCommand(
   }
 }
 
-/** Generates a project and installs its dependencies; its parent directory is the temp dir to clean up. */
-export async function generateInstalledProject(name: string, flags: string[], pm = 'bun'): Promise<string> {
+/**
+ * Generates a project and installs its dependencies; its parent directory is the temp dir to clean up.
+ * `beforeInstall` receives the generated project before the install, while its tree is small.
+ */
+export async function generateInstalledProject(
+  name: string,
+  flags: string[],
+  pm = 'bun',
+  beforeInstall?: (projectDir: string) => Promise<unknown>,
+): Promise<string> {
   const tempDir = await createTempDir();
   try {
     const result = await runCli([name, ...flags, '--no-git', '--no-install', '--pm', pm], tempDir);
     expect(result.exitCode, result.stderr).toBe(0);
 
     const projectDir = join(tempDir, name);
+    await beforeInstall?.(projectDir);
     const install = await runCommand([pm, 'install'], projectDir);
     expect(install.exitCode, install.stderr).toBe(0);
     return projectDir;
