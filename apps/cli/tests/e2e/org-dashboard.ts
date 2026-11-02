@@ -10,6 +10,17 @@ export const SEEDED_MEMBER = 'user@example.com';
 export const SEEDED_READER = 'manager@example.com';
 export const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 const TIMEOUT_SERVER = 120_000;
+// The contact count query in the dehydrated state a page carries: the key is tRPC's `[['contact', 'count'], ...]`, and the
+// quotes are escaped in the streamed payload.
+const DEHYDRATED_CONTACT_COUNT = /contact\W{1,8}count/;
+// The address of the "Back to the dashboard" link of a not found page: an anchor in the markup, or the props of the
+// link in the streamed payload, where Next.js carries it with escaped quotes.
+function backLinkTarget(html: string): string | undefined {
+  const anchor = /<a\b([^>]*)>(?:(?!<\/a>)[\s\S])*Back to the dashboard/.exec(html);
+  if (anchor) return /href="([^"]+)"/.exec(anchor[1] ?? '')?.[1];
+  return /\\?"href\\?":\\?"([^"\\]+)\\?"[^}]*?\\?"children\\?":\\?"Back to the dashboard/.exec(html)?.[1];
+}
+
 export const NO_ACCESS_TO_CONTACTS = 'Your role has no access to contacts. Ask an administrator to grant it.';
 
 export function describeFailure(result: CommandResult): string {
@@ -569,14 +580,15 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       };
       expect(await linksOf('/contacts', member)).toEqual(['/', '/contacts']);
       expect(await linksOf('/contacts', admin)).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
-      const homeOf = async (cookie: string): Promise<{ status: number; html: string }> => {
-        const response = await fetch(new URL('/', server().url), { headers: { cookie } });
+      const homeOf = async (cookie: string, path = '/'): Promise<{ status: number; html: string }> => {
+        const response = await fetch(new URL(path, server().url), { headers: { cookie } });
         return { status: response.status, html: await response.text() };
       };
       const granted = await homeOf(member);
       expect(granted.status).toBe(200);
       expect(granted.html).toContain('Total Contacts');
       expect(granted.html).not.toContain(NO_ACCESS_TO_CONTACTS);
+      expect(granted.html).toMatch(DEHYDRATED_CONTACT_COUNT);
 
       await sql(`delete from role_permissions where role_id = '${AUDITOR}'`);
       expect(await linksOf('/profile/account', member)).toEqual(['/']);
@@ -587,12 +599,17 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       expect(home.html).toContain('Dashboard');
       expect(home.html).toContain(NO_ACCESS_TO_CONTACTS);
       expect(home.html).not.toContain('Total Contacts');
+      expect(home.html).not.toMatch(DEHYDRATED_CONTACT_COUNT);
       expect(home.html).toMatch(/<title>Dashboard \|/);
       expect(await linksOf('/', member)).toEqual(['/']);
 
       const unknown = await fetch(new URL('/no-such-page', server().url), { headers: { cookie: member } });
       expect(unknown.status).toBe(404);
-      expect(await unknown.text()).toContain('Back to the dashboard');
+      const target = backLinkTarget(await unknown.text());
+      expect(target, 'the not found page links back to the dashboard').toBe('/');
+      const landing = await homeOf(member, target);
+      expect(landing.status).toBe(200);
+      expect(landing.html).toContain(NO_ACCESS_TO_CONTACTS);
       expect((await queryTrpc(server(), 'contact.count', member)).status).toBe(403);
     });
 

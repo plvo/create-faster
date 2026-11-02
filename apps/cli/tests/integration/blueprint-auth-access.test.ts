@@ -6,6 +6,8 @@ import { setIntegrationTimeout } from './timeout';
 
 setIntegrationTimeout();
 
+const HOME_PAGE = '(dashboard)/page.tsx';
+
 describe('blueprint auth access', () => {
   let tempDir: string;
 
@@ -85,9 +87,16 @@ describe('blueprint auth access', () => {
         const guardName = strict.get(procedure);
         if (!guardName) continue;
         guardedPages.push(page);
-        // A page every signed-in role may open (the home page) prefetches only inside `if (await hasPermission(...))`.
-        const conditional = guardName === 'requirePermission' ? source.indexOf('if (await hasPermission(') : -1;
-        const guard = conditional > -1 ? conditional : source.indexOf(`await ${guardName}(`);
+        if (page === HOME_PAGE) {
+          // The one page every signed-in role may open: it needs a session, and prefetches only inside the check.
+          expect(source.indexOf('await requireSession(')).toBeGreaterThan(-1);
+          expect(source, `${page} must prefetch ${procedure} only inside the permission check`).toMatch(
+            /if \(await hasPermission\([^)]*\)\) (\{\s*)?(void )?prefetch\(/,
+          );
+          expect(source.indexOf('await requireSession(')).toBeLessThan(source.indexOf('prefetch('));
+          continue;
+        }
+        const guard = source.indexOf(`await ${guardName}(`);
         expect(guard, `${page} must await ${guardName}() before prefetching ${procedure}`).toBeGreaterThan(-1);
         expect(guard).toBeLessThan(source.indexOf('prefetch('));
       }
