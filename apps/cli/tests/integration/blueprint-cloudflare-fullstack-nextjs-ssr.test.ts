@@ -36,6 +36,7 @@ const guard = (name) => async () => {
 export const requireSession = guard('requireSession');
 export const requireAdmin = guard('requireAdmin');
 export const requirePermission = guard('requirePermission');
+export const permittedMetadata = async () => ({ title: 'page' });
 export const getSession = async () => {
   calls.push('getSession');
   return state.session;
