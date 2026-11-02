@@ -126,11 +126,8 @@ async function filterInvitations<T extends { role: string | null }>(ctx: Context
   return caller ? visibleInvitations(caller.role, caller.stored, invitations) : [];
 }
 
-// The organization plugin trusts any member whose role holds `member.update`, `member.delete`, `invitation.create`,
-// `ac.update` or `ac.delete` with every role that exists, names a role with any text, renames a role without the
-// members and invitations that hold it by name, and lists the id of every pending invitation to every member. This
-// plugin sits in front of its endpoints, so a tRPC procedure, `auth.api.*` and a direct request to
-// `/api/auth/organization/*` meet the same rules:
+// This plugin sits in front of the organization endpoints, so a tRPC procedure, `auth.api.*` and a direct request to
+// `/api/auth/organization/*` meet the same rules, whatever a role is allowed to do on them:
 // - a role is named and given as one id, and given only by a member that holds every permission of that role;
 // - a member, an invitation or a stored role is changed only by a member that holds every permission of what it holds;
 // - a role is not renamed;

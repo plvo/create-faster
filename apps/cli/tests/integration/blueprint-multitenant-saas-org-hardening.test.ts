@@ -392,6 +392,10 @@ describe(`${BLUEPRINT} organization hardening`, () => {
       const values: [unknown, string][] = [
         [['member', 'admin'], ONE_ROLE_ID],
         ['member,admin', ONE_ROLE_ID],
+        ['member, admin', ONE_ROLE_ID],
+        ['admin, owner', ONE_ROLE_ID],
+        [' admin', ONE_ROLE_ID],
+        ['admin ', ONE_ROLE_ID],
         ['', ONE_ROLE_ID],
         ['constructor', ONE_ROLE_ID],
         ['Admin', ONE_ROLE_ID],

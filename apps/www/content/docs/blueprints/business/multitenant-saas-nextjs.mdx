@@ -180,13 +180,13 @@ The permission system is defined in `packages/auth/src/permissions.ts` using Bet
 
 Admins can create additional roles with custom permission combinations via the Roles UI. Custom roles are stored in the database and resolved dynamically at runtime.
 
-Better Auth's organization plugin trusts a member whose role holds `member.update`, `member.delete`, `invitation.create`, `ac.update` or `ac.delete` with any role, member or invitation of the organization, so `packages/auth/src/organization-guard.ts` puts the following in front of its endpoints, for the tRPC procedures and for a direct request to `/api/auth/organization/*` alike:
+A member whose role holds `member.update`, `member.delete`, `invitation.create`, `ac.update` or `ac.delete` acts only on the roles, members and invitations whose permissions it holds. `packages/auth/src/organization-guard.ts` enforces it, with the following in front of the organization endpoints, for the tRPC procedures and for a direct request to `/api/auth/organization/*` alike:
 
 - A role is given to a member or an invitation as one id, and only by a member that holds every permission of that role. The members table and the invite dialog offer those roles and no others.
 - A member is changed or removed only by a member that holds every permission of the role it has now, and a stored role is changed or deleted only by a member that holds every permission of it.
 - A role name is one id of lowercase letters, digits and hyphens, at most 40 characters. The role form shows the error as you type.
 - A role is not renamed, because members and invitations store it by name. Create the new role, move the members, delete the old one.
-- Invitation ids are shown only to the members who could have sent the invitation, and a pending invitation is replaced or sent again only by one of them. Sign-up is open and the project sends no verification email, so an id that any member could read would let that member join a second account with the role of the invitation.
+- Invitation ids are shown only to the members who could have sent the invitation, and a pending invitation is replaced or sent again only by one of them. The id is what its recipient joins with, so it stays with the members who may send the invitation.
 
 The `<Can>` component and `usePermission` hook provide declarative permission checks in the UI:
 
