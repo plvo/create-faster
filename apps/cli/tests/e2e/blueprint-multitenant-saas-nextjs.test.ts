@@ -175,6 +175,61 @@ describeWithDocker(`${BLUEPRINT} palette search e2e`)(`${BLUEPRINT}: records of 
     expect(await search(ownerInAcme, '  ')).toEqual([]);
   });
 
+  test('a role that holds member.update cannot give a stronger role, through the interface or a direct request', async () => {
+    const created = await callTrpc(server, 'role.create', ownerInBeta, {
+      role: 'people',
+      permission: { member: ['update'], project: ['read'] },
+    });
+    expect(created.status).toBe(200);
+    const people = await joinAs('people@example.com', 'people', ownerInBeta, betaId);
+    const membersOf = (cookie: string) =>
+      queryTrpc<{ id: string; role: string; user: { email: string } }[]>(server, 'member.list', cookie);
+    const self = (await membersOf(people)).data.find((member) => member.user.email === 'people@example.com');
+
+    const viaInterface = await callTrpc(server, 'member.updateRole', people, { memberId: self?.id, role: 'admin' });
+    expect(viaInterface.status).toBe(403);
+    const direct = await post(server, '/api/auth/organization/update-member-role', { memberId: self?.id, role: 'admin', organizationId: betaId }, { cookie: people });
+    expect(direct.status, await direct.clone().text()).toBe(403);
+    const unplaced = await post(server, '/api/auth/organization/update-member-role', { memberId: self?.id, role: 'admin', organizationId: '' }, { cookie: people });
+    expect(unplaced.status, await unplaced.clone().text()).toBe(403);
+    const invitation = await post(server, '/api/auth/organization/invite-member', { email: 'sneaky@example.com', role: 'admin', organizationId: betaId }, { cookie: people });
+    expect(invitation.status).toBe(403);
+    const afterwards = (await membersOf(ownerInBeta)).data.find((member) => member.user.email === 'people@example.com');
+    expect(afterwards?.role).toBe('people');
+
+    const choices = await queryTrpc<string[]>(server, 'member.assignableRoles', people);
+    expect(choices.data.slice().sort()).toEqual(['member', 'people']);
+  });
+
+  test('a member who cannot manage invitations never reads the id of a pending invitation', async () => {
+    const invited = await callTrpc<{ id: string }>(server, 'invitation.create', ownerInBeta, { email: 'later@example.com', role: 'admin' });
+    expect(invited.status).toBe(200);
+    const peeker = await joinAs('peeker@example.com', 'member', ownerInBeta, betaId);
+
+    expect((await queryTrpc<unknown[]>(server, 'invitation.list', peeker)).data).toEqual([]);
+    const listing = await fetch(new URL(`/api/auth/organization/list-invitations?organizationId=${betaId}`, server.url), { headers: { cookie: peeker } });
+    expect(await listing.json()).toEqual([]);
+    const full = await fetch(new URL(`/api/auth/organization/get-full-organization?organizationId=${betaId}`, server.url), { headers: { cookie: peeker } });
+    expect(((await full.json()) as { invitations: unknown[] }).invitations).toEqual([]);
+
+    const seen = await queryTrpc<{ id: string }[]>(server, 'invitation.list', ownerInBeta);
+    expect(seen.data.map((invitation) => invitation.id)).toContain(invited.data.id);
+  });
+
+  test('a role name is one id, and a role is not renamed while members hold it', async () => {
+    const badName = await post(server, '/api/auth/organization/create-role', { role: 'ops team', permission: { project: ['read'] }, organizationId: betaId }, { cookie: ownerInBeta });
+    expect(badName.status).toBe(400);
+    expect((await callTrpc(server, 'role.create', ownerInBeta, { role: 'crew', permission: { project: ['read'] } })).status).toBe(200);
+    const crew = await joinAs('crew@example.com', 'crew', ownerInBeta, betaId);
+
+    const rename = await post(server, '/api/auth/organization/update-role', { roleName: 'crew', data: { roleName: 'staff' }, organizationId: betaId }, { cookie: ownerInBeta });
+    expect(rename.status).toBe(400);
+    const roles = await queryTrpc<{ roleName: string }[]>(server, 'role.list', ownerInBeta);
+    expect(roles.data.map((role) => role.roleName)).toContain('crew');
+    expect(roles.data.map((role) => role.roleName)).not.toContain('staff');
+    expect((await queryTrpc(server, 'project.list', crew)).status).toBe(200);
+  });
+
   test('the server logs no error', async () => {
     const { stdout, stderr } = await server.stop();
     expect(`${stdout}\n${stderr}`).not.toMatch(/Error|⨯/);
