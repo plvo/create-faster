@@ -7,7 +7,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { ADMIN_ROLE, DEFAULT_ROLE, isInheritedKey, MAX_ROLE_ID_LENGTH, MAX_ROLE_LABEL_LENGTH, ROLE_ID } from '@repo/auth/permissions';
+import { ADMIN_ROLE, DEFAULT_ROLE, MAX_ROLE_ID_LENGTH, MAX_ROLE_LABEL_LENGTH, roleIdMessage, roleIdProblem } from '@repo/auth/permissions';
 import { Button } from '@repo/ui/components/ui/button';
 import {
   Dialog,
@@ -26,9 +26,10 @@ const schema = z.object({
   id: z
     .string()
     .min(1, 'An id is required')
-    .max(MAX_ROLE_ID_LENGTH, `At most ${MAX_ROLE_ID_LENGTH} characters`)
-    .regex(ROLE_ID, 'Lowercase letters, digits and hyphens only')
-    .refine((id) => id !== ADMIN_ROLE && id !== DEFAULT_ROLE && !isInheritedKey(id), 'This id is reserved'),
+    .superRefine((id, context) => {
+      const problem = roleIdProblem(id) ?? (id === ADMIN_ROLE || id === DEFAULT_ROLE ? 'reserved' : undefined);
+      if (problem) context.addIssue({ code: 'custom', message: roleIdMessage(problem) });
+    }),
 });
 
 export function CreateRoleDialog() {

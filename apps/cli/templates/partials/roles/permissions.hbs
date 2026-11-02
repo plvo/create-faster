@@ -9,33 +9,10 @@ export const ADMIN_ROLE = 'admin';
 // database give it.
 export const DEFAULT_ROLE = 'user';
 
-// A role identifier is the value of `users.role`, which the `admin` plugin splits on `,` and compares as plain text.
-// Exactly one such id, never a list, is what any path may write there.
-export const ROLE_ID = /^[a-z0-9-]+$/;
+{{> roles/role-id}}
 
-// The `admin` plugin looks a role up by plain object key, so a role named after a key every object has (`constructor`)
-// resolves to that member and the plugin's endpoints fail with a 500 for the account that holds it. No path accepts one.
-export function isInheritedKey(id: string): boolean {
-  return id in Object.prototype;
-}
-
-// The longest identifier and label a role created in the dashboard can have.
-export const MAX_ROLE_ID_LENGTH = 40;
+// The longest label a role created in the dashboard can have.
 export const MAX_ROLE_LABEL_LENGTH = 64;
-
-// What is wrong with a value used as a role id: it is not one id (`invalid`: not a string, too long, outside `ROLE_ID`)
-// or it names a key every object has (`reserved`). Every path that reads a role id asks this one question and words its
-// own refusal.
-export type RoleIdProblem = 'invalid' | 'reserved';
-
-export function roleIdProblem(value: unknown): RoleIdProblem | undefined {
-  if (typeof value !== 'string' || value.length > MAX_ROLE_ID_LENGTH || !ROLE_ID.test(value)) return 'invalid';
-  return isInheritedKey(value) ? 'reserved' : undefined;
-}
-
-export function isRoleId(value: unknown): value is string {
-  return roleIdProblem(value) === undefined;
-}
 
 // Account administration (`user`, `session`). It belongs to the `admin` plugin, is compiled into `roles` below for
 // `admin` alone, and is never stored.

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defaultStatements } from 'better-auth/plugins/organization/access';
@@ -166,7 +166,7 @@ const HOST_TAGS: Record<string, string> = {
 const QUERY_STUB = `const procedures = (path) => new Proxy(function () {}, {
   get: (_, key) => {
     if (key === 'then') return undefined;
-    if (key === 'queryOptions' || key === 'queryKey') return () => ({ procedure: path.join('.') });
+    if (key === 'queryOptions' || key === 'queryKey' || key === 'queryFilter') return () => ({ procedure: path.join('.') });
     if (key === 'mutationOptions') return (options) => ({ ...options, procedure: path.join('.') });
     return procedures([...path, key]);
   },
@@ -183,12 +183,12 @@ export const useQuery = (options) => {
   }
   return { data: globalThis.__data?.[options.procedure], isLoading: false };
 };
-export const useMutation = (options) => ({
+export const useMutation = (options) => (globalThis.__mutationOptions.push(options), {
   mutate: (input) => globalThis.__mutations.push({ procedure: options.procedure, input }),
   isPending: false,
 });
 export const useQueryClient = () => ({
-  invalidateQueries() {},
+  invalidateQueries(filter) { globalThis.__invalidated.push(filter?.procedure); },
   getQueryCache: () => ({ subscribe: () => () => {} }),
   getQueryData: (key) => globalThis.__data?.[key.procedure],
 });`;
@@ -210,8 +210,8 @@ export const useActiveOrganization = () => ({ data: { id: 'org1', name: 'Acme', 
 export const useListOrganizations = () => ({ data: globalThis.__organizations ?? [] });`;
 
 const FORM_STUB = `import { createElement } from './react.mjs';
-const field = (tag) => ({ label }) => createElement(tag, { 'aria-label': label });
-export const useAppForm = () => ({
+const field = (tag) => ({ label, options }) => createElement(tag, { 'aria-label': label, options });
+export const useAppForm = (config) => (globalThis.__forms.push(config), {
   AppField: ({ children }) => children[0]({ InputField: field('input'), SelectField: field('select') }),
   AppForm: ({ children }) => children,
   SubmitButton: ({ children }) => createElement('button', { type: 'submit' }, ...children),
@@ -222,7 +222,7 @@ export const useAppForm = () => ({
 
 const DIALOG_STUB = `import { createElement } from './react.mjs';
 export const DialogTrigger = ({ asChild, children, ...props }) => (asChild ? children[0] : createElement('button', props, ...children));
-export const Dialog = ({ open, children }) => children.flat().filter((child) => child?.type === DialogTrigger || open === true);
+export const Dialog = ({ open, onOpenChange, children }) => (globalThis.__openers.push(onOpenChange), children.flat().filter((child) => child?.type === DialogTrigger || open === true));
 const host = (tag) => ({ children, ...props }) => createElement(tag, props, ...children);
 export const DialogContent = host('div');
 export const DialogHeader = host('div');
@@ -271,6 +271,10 @@ interface Globals {
   __data?: Record<string, unknown>;
   __organizations?: unknown[];
   __mutations?: { procedure: string; input: unknown }[];
+  __forms?: { defaultValues: Record<string, string> }[];
+  __mutationOptions?: { procedure?: string; onSuccess?: () => void }[];
+  __invalidated?: (string | undefined)[];
+  __openers?: ((open: boolean) => void)[];
   __retries?: unknown[];
   __permissionCache?: Map<string, unknown>;
   __pendingPermissions?: Map<string, () => Promise<unknown>>;
@@ -360,6 +364,10 @@ function signIn(role: BetterAuthRole): void {
   globals.__asked = [];
   globals.__retries = [];
   globals.__mutations = [];
+  globals.__forms = [];
+  globals.__mutationOptions = [];
+  globals.__invalidated = [];
+  globals.__openers = [];
   globals.__permissionCache = new Map();
   globals.__pendingPermissions = new Map();
 }
@@ -392,6 +400,14 @@ describe(`${BLUEPRINT} write actions`, () => {
     );
     for (const [key, { file, name }] of Object.entries(COMPONENTS)) components.set(key, await rendering.load(file, name));
   });
+
+  // What a mutation invalidates when it succeeds, as the last component that asked for it declared.
+  const refreshedBy = (procedure: string): (string | undefined)[] => {
+    globals.__invalidated = [];
+    const options = (globals.__mutationOptions ?? []).filter((each) => each.procedure === procedure).at(-1);
+    (options?.onSuccess as () => void)();
+    return globals.__invalidated;
+  };
 
   const DATA = {
     'project.get': { id: 'p1', name: 'Roadmap', description: null, status: 'active' },
@@ -441,6 +457,60 @@ describe(`${BLUEPRINT} write actions`, () => {
     for (const select of selects) expect(select.props.disabled).toBeFalsy();
   });
 
+  test('the members table lists the roles the caller may give and shows the role of a member that is not one of them as it is', async () => {
+    signIn(permissions.owner);
+    globals.__data = {
+      ...DATA,
+      'member.list': [{ id: 'm1', userId: 'u1', role: 'owner', user: { email: 'jo@example.com' } }],
+      'member.assignableRoles': ['member', 'analyst'],
+    };
+    rendering.resetState();
+    const tree = await settle(rendering, components.get('members') as Component);
+    const items = elementsOf(tree)
+      .filter((element) => element.props['data-component'] === 'SelectItem')
+      .map((element) => [element.props.value, element.props.disabled]);
+    expect(items).toEqual([
+      ['owner', true],
+      ['member', false],
+      ['analyst', false],
+    ]);
+  });
+
+  test('deleting a role refreshes the roles the caller may give', async () => {
+    await mount('owner', 'roles');
+    expect(refreshedBy('role.delete')).toContain('member.assignableRoles');
+  });
+
+  test('the invite dialog offers the roles the caller may give and starts on one of them', async () => {
+    const open = async (assignable: string[]) => {
+      signIn(permissions.owner);
+      globals.__data = { ...DATA, 'member.assignableRoles': assignable };
+      rendering.resetState();
+      await settle(rendering, components.get('invite') as Component);
+      (globals.__openers?.at(-1) as (open: boolean) => void)(true);
+      const tree = await settle(rendering, components.get('invite') as Component);
+      const role = elementsOf(tree).find((element) => element.tag === 'select' && element.props['aria-label'] === 'Role');
+      return { options: role?.props.options, defaultRole: globals.__forms?.at(-1)?.defaultValues.role };
+    };
+    expect(await open(['member', 'analyst'])).toEqual({ options: { member: 'member', analyst: 'analyst' }, defaultRole: 'member' });
+    expect(await open(['analyst', 'viewer'])).toEqual({ options: { analyst: 'analyst', viewer: 'viewer' }, defaultRole: 'analyst' });
+    expect(await open([])).toEqual({ options: {}, defaultRole: '' });
+  });
+
+  test('a member who cannot manage invitations sees why the pending list is empty', async () => {
+    signIn(permissions.member);
+    globals.__data = { ...DATA, 'invitation.list': [] };
+    rendering.resetState();
+    const tree = await settle(rendering, components.get('invitations') as Component);
+    expect(tree.map(textOf).join(' ')).toContain('No pending invitations to show. Only members who can send or cancel invitations see them.');
+  });
+
+  test('deleting a role says only a role no member holds can be deleted', async () => {
+    const tree = await mount('owner', 'roles');
+    expect(String(componentNamed(tree, 'ConfirmDialog')?.props.description)).toContain('A role that members hold cannot be deleted.');
+    expect(String(componentNamed(tree, 'ConfirmDialog')?.props.description)).not.toContain('reset');
+  });
+
   test('removing a member opens the confirmation dialog, and only confirming removes', async () => {
     const tree = await mount('owner', 'members');
     expect(componentNamed(tree, 'ConfirmDialog')?.props.open).toBe(false);
@@ -470,6 +540,75 @@ describe(`${BLUEPRINT} write actions`, () => {
       }
       expect(globals.__retries?.every((retry) => retry === false), key).toBe(true);
     }
+  });
+});
+
+describe(`${BLUEPRINT} role form`, () => {
+  let rendering: Rendering;
+  let form: Component;
+
+  beforeAll(async () => {
+    const file = 'components/roles/role-form-dialog.tsx';
+    rendering = await createRendering('role-form', [file]);
+    form = await rendering.load(file, 'RoleFormDialog', {
+      '@repo/auth/permissions': join(tempDir, 'stubs', 'permissions.mjs'),
+    });
+    signIn(permissions.owner);
+  });
+
+  // Types into the name field and renders again, as a browser would after the change event.
+  async function typeName(initial: unknown, name: string): Promise<RenderedChild[]> {
+    const props = { open: true, onOpenChange() {}, initial };
+    const first = await settle(rendering, form, props);
+    const input = elementsOf(first).find((element) => element.tag === 'input' && element.props.id === 'roleName');
+    (input?.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: name } });
+    return settle(rendering, form, props);
+  }
+
+  const errorOf = (tree: RenderedChild[]): string | undefined =>
+    elementsOf(tree)
+      .filter((element) => element.props.role === 'alert')
+      .map((element) => textOf(element).trim())[0];
+  const createButton = (tree: RenderedChild[]) => buttonsOf(tree).find((button) => textOf(button).trim() === 'Create');
+
+  beforeEach(() => rendering.resetState());
+
+  test.each([
+    ['a space', 'ops team', 'Lowercase letters, digits and hyphens only'],
+    ['a comma', 'ops,team', 'Lowercase letters, digits and hyphens only'],
+    ['capitals', 'Ops', 'Lowercase letters, digits and hyphens only'],
+    ['a key every object has', 'constructor', 'This id is reserved'],
+    ['a built-in role', 'admin', 'This name is a built-in role'],
+    ['more than 40 characters', 'x'.repeat(41), 'At most 40 characters'],
+  ])('shows the error before submitting a name with %s, and does not offer to create it', async (_label, name, message) => {
+    const tree = await typeName(null, name);
+    expect(errorOf(tree)).toBe(message);
+    expect(createButton(tree)?.props.disabled).toBe(true);
+    expect(elementsOf(tree).find((element) => element.props.id === 'roleName')?.props['aria-invalid']).toBe(true);
+  });
+
+  test('creating or editing a role refreshes the roles the caller may give', async () => {
+    const props = { open: true, onOpenChange() {} };
+    await settle(rendering, form, { ...props, initial: null });
+    await settle(rendering, form, { ...props, initial: { roleName: 'auditor', permission: {} } });
+    for (const procedure of ['role.create', 'role.update']) {
+      globals.__invalidated = [];
+      const options = (globals.__mutationOptions ?? []).filter((each) => each.procedure === procedure).at(-1);
+      (options?.onSuccess as () => void)();
+      expect([procedure, globals.__invalidated]).toEqual([procedure, expect.arrayContaining(['member.assignableRoles', 'role.list'])]);
+    }
+  });
+
+  test('shows no error for a valid name, and offers to create it', async () => {
+    const tree = await typeName(null, 'billing-2');
+    expect(errorOf(tree)).toBeUndefined();
+    expect(createButton(tree)?.props.disabled).toBeFalsy();
+  });
+
+  test('does not offer to create a role with no name, and says nothing about it yet', async () => {
+    const tree = await settle(rendering, form, { open: true, onOpenChange() {}, initial: null });
+    expect(errorOf(tree)).toBeUndefined();
+    expect(createButton(tree)?.props.disabled).toBe(true);
   });
 });
 

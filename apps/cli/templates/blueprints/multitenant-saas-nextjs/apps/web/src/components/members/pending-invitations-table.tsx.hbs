@@ -48,7 +48,13 @@ export function PendingInvitationsTable() {
 
   if (isLoading) return <div>Loading...</div>;
   const pending = ((invitations as Invitation[] | undefined) ?? []).filter((i) => i.status === 'pending');
-  if (pending.length === 0) return <p className='text-sm text-muted-foreground'>No pending invitations.</p>;
+  if (pending.length === 0) {
+    return (
+      <p className='text-sm text-muted-foreground'>
+        No pending invitations to show. Only members who can send or cancel invitations see them.
+      </p>
+    );
+  }
 
   return (
     <Table>

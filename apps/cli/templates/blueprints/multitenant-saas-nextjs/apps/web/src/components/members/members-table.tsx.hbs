@@ -30,8 +30,6 @@ import { usePermission } from '@/hooks/use-permission';
 import { useTRPC } from '@/trpc/providers';
 
 {{{{raw}}}}
-const BUILT_IN_ROLES = ['owner', 'admin', 'member'];
-
 type MemberRow = {
   id: string;
   userId: string;
@@ -43,8 +41,8 @@ export function MembersTable() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: members, isLoading } = useQuery(trpc.member.list.queryOptions());
-  const { data: customRoles } = useQuery(trpc.role.list.queryOptions());
   const { allowed: canUpdate } = usePermission({ member: ['update'] });
+  const { data: assignable } = useQuery(trpc.member.assignableRoles.queryOptions(undefined, { enabled: canUpdate }));
   const { allowed: canRemove } = usePermission({ member: ['delete'] });
   const [removing, setRemoving] = useState<MemberRow | null>(null);
 
@@ -64,7 +62,7 @@ export function MembersTable() {
     }),
   );
 
-  const allRoles = [...BUILT_IN_ROLES, ...(customRoles ?? []).map((r: { roleName: string }) => r.roleName)];
+  const roleChoices = (current: string) => [...new Set([current, ...(assignable ?? [])])];
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -92,8 +90,8 @@ export function MembersTable() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {allRoles.map((r) => (
-                        <SelectItem key={r} value={r}>
+                      {roleChoices(m.role).map((r) => (
+                        <SelectItem key={r} value={r} disabled={!assignable?.includes(r)}>
                           {r}
                         </SelectItem>
                       ))}

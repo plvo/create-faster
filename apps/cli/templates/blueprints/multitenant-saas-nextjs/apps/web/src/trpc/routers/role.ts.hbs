@@ -31,7 +31,7 @@ export const roleRouter = router({
   }),
 
   create: permissionProcedure('ac', 'create')
-    .input(z.object({ role: z.string().min(1).max(60), permission: permissionMap }))
+    .input(z.object({ role: z.string(), permission: permissionMap }))
     .mutation(async ({ ctx, input }) => {
       return auth.api.createOrgRole({
         headers: ctx.headers,

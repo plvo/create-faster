@@ -48,7 +48,7 @@ const FACTORIES: Factory[] = [
   {
     name: 'multitenant-saas-nextjs',
     args: ['--blueprint', 'multitenant-saas-nextjs'],
-    modules: ['email-change-guard', 'invitation-link', 'permissions'],
+    modules: ['email-change-guard', 'invitation-link', 'permissions', 'role-grants', 'organization-guard'],
     call: 'createAuth()',
   },
   {

@@ -1,0 +1,118 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/role-grants.ts
+---
+import { db } from '@repo/db';
+import { isBuiltInRole, isRoleId, ROLES } from './permissions';
+
+{{{{raw}}}}
+type Grants = Record<string, readonly string[]>;
+
+export interface StoredRole {
+  id: string;
+  role: string;
+  permission: string;
+}
+
+export interface Invitation {
+  role: string | null;
+}
+
+export function storedRolesOf(organizationId: string): Promise<StoredRole[]> {
+  return db.query.organizationRoleTable.findMany({
+    columns: { id: true, role: true, permission: true },
+    where: (row, { eq }) => eq(row.organizationId, organizationId),
+  });
+}
+
+function parseGrants(permission: string): Grants | undefined {
+  try {
+    const parsed: unknown = JSON.parse(permission);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
+    return Object.values(parsed).every((actions) => Array.isArray(actions) && actions.every((action) => typeof action === 'string'))
+      ? (parsed as Grants)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// A built-in role, else the row of the organization. `undefined` for a role nobody defined and a row that cannot be read.
+export function grantsOf(roleId: string, stored: readonly StoredRole[]): Grants | undefined {
+  if (isBuiltInRole(roleId)) return ROLES[roleId].statements;
+  const row = stored.find((each) => each.role === roleId);
+  return row ? parseGrants(row.permission) : undefined;
+}
+
+function grantsOfMember(memberRole: string, stored: readonly StoredRole[]): Grants {
+  const held: Record<string, string[]> = {};
+  for (const roleId of memberRole.split(',')) {
+    for (const [resource, actions] of Object.entries(grantsOf(roleId, stored) ?? {})) {
+      held[resource] = [...new Set([...(held[resource] ?? []), ...actions])];
+    }
+  }
+  return held;
+}
+
+function holdsAll(held: Grants, wanted: Grants): boolean {
+  return Object.entries(wanted).every(([resource, actions]) =>
+    actions.every((action) => Object.hasOwn(held, resource) && held[resource]?.includes(action)),
+  );
+}
+
+function holds(memberRole: string, stored: readonly StoredRole[], request: Grants): boolean {
+  return holdsAll(grantsOfMember(memberRole, stored), request);
+}
+
+// A member gives, changes or deletes a role only when it holds every permission of it. The owner holds them all.
+export function canAssignRole(memberRole: string, targetRoleId: string, stored: readonly StoredRole[]): boolean {
+  const wanted = grantsOf(targetRoleId, stored);
+  return wanted !== undefined && holds(memberRole, stored, wanted);
+}
+
+export function holdsEveryPermissionOf(memberRole: string, otherRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, grantsOfMember(otherRole, stored));
+}
+
+export function assignableRoleIds(memberRole: string, stored: readonly StoredRole[]): string[] {
+  const ids = new Set([...Object.keys(ROLES), ...stored.map((each) => each.role)]);
+  return [...ids].filter((id) => isRoleId(id) && canAssignRole(memberRole, id, stored));
+}
+
+function canCancelInvitations(memberRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, { invitation: ['cancel'] });
+}
+
+function managesInvitations(memberRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, { invitation: ['create'] }) || canCancelInvitations(memberRole, stored);
+}
+
+// An invitation id is what its recipient joins with: only a member that manages invitations and could have sent it sees
+// it. One whose role was deleted is seen by a member that may cancel it, one whose role is not one id by no one.
+export function canSeeInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  const role = invitation.role;
+  if (!managesInvitations(memberRole, stored) || role === null || !isRoleId(role)) return false;
+  const isDeleted = !isBuiltInRole(role) && !stored.some((each) => each.role === role);
+  return isDeleted ? canCancelInvitations(memberRole, stored) : canAssignRole(memberRole, role, stored);
+}
+
+export function visibleInvitations<T extends Invitation>(
+  memberRole: string,
+  stored: readonly StoredRole[],
+  invitations: readonly T[],
+): T[] {
+  return invitations.filter((invitation) => canSeeInvitation(memberRole, stored, invitation));
+}
+
+// Sending an invitation again returns the stored one.
+export function canResendInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  return canSeeInvitation(memberRole, stored, invitation) && canAssignRole(memberRole, invitation.role ?? '', stored);
+}
+
+// An invitation to an address that has one cancels it.
+export function canReplaceInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  return canCancelInvitations(memberRole, stored) && canSeeInvitation(memberRole, stored, invitation);
+}
+{{{{/raw}}}}

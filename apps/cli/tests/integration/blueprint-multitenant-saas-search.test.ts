@@ -206,7 +206,17 @@ describe(`${BLUEPRINT} palette search`, () => {
       'better-auth/api': REAL.betterAuthApi,
       './link-delivery': './link-delivery.mjs',
     });
+    await generated('packages/auth/src/role-grants.ts', 'role-grants.mjs', {
+      '@repo/db': './db.mjs',
+      './permissions': './permissions.mjs',
+    });
+    await generated('packages/auth/src/organization-guard.ts', 'organization-guard.mjs', {
+      'better-auth/api': REAL.betterAuthApi,
+      './permissions': './permissions.mjs',
+      './role-grants': './role-grants.mjs',
+    });
     const { createAuth } = await generated<{ createAuth: () => { api: AuthApi } }>('packages/auth/src/auth.ts', 'create-auth.mjs', {
+      './organization-guard': './organization-guard.mjs',
       '@repo/db': './db.mjs',
       '@better-auth/drizzle-adapter': REAL.drizzleAdapter,
       'better-auth': REAL.betterAuth,
@@ -252,6 +262,9 @@ describe(`${BLUEPRINT} palette search`, () => {
     });
     const { memberRouter } = await generated<{ memberRouter: unknown }>(`${API}/router/member.ts`, 'member-router.mjs', {
       zod: REAL.zod,
+      '@repo/db': './db.mjs',
+      'drizzle-orm': REAL.drizzle,
+      '@repo/auth/role-grants': './role-grants.mjs',
       '../auth': './auth.mjs',
       '../trpc': './trpc.mjs',
       '../middleware/rbac': './rbac.mjs',

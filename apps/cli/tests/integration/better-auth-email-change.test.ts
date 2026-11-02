@@ -69,7 +69,7 @@ const BLUEPRINTS: Blueprint[] = [
   ),
   {
     name: 'multitenant-saas-nextjs',
-    modules: ['email-change-guard', 'invitation-link', 'permissions'],
+    modules: ['email-change-guard', 'invitation-link', 'permissions', 'role-grants', 'organization-guard'],
     tables: [...ACCOUNT_TABLES, ...ORGANIZATION_TABLES],
     closedSignUp: false,
     build: (createAuth, runInBackground) =>

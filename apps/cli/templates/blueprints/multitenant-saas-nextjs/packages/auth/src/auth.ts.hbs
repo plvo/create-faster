@@ -21,6 +21,7 @@ import { organization } from 'better-auth/plugins';
 import { emailChangeGuard } from './email-change-guard';
 import { invitationLink } from './invitation-link';
 import { deliverLink } from './link-delivery';
+import { organizationGuard } from './organization-guard';
 import { ac, admin, member, owner } from './permissions';
 
 const HOUR = 60 * 60;
@@ -78,6 +79,7 @@ export function createAuth(cookiePlugin?: BetterAuthPlugin, runInBackground?: (t
           await deliverLink({ kind: 'invitation', to: data.email, link: invitationLink(data.id) });
         },
       }),
+      organizationGuard,
       emailChangeGuard,
       ...(cookiePlugin ? [cookiePlugin] : []),
     ],
