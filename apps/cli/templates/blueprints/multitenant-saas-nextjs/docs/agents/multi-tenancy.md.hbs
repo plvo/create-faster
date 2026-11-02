@@ -18,7 +18,7 @@ The login form and the signup form reads the destination from the `redirect` que
 Every tenant-owned table carries `organizationId` (see `project` in `packages/db/src/schema.ts`). Procedures read the tenant from `ctx.orgId` (provided by `orgProcedure`), filter queries by it, and guard single-row reads with `assertInScope` — see `packages/api/src/middleware/rbac.ts` and `packages/api/src/router/project.ts`.
 
 ## Invitations
-Link-based, no email required. `packages/api/src/router/invitation.ts` `create` calls `auth.api.createInvitation` and returns an `inviteLink` to `/accept-invitation/[id]`. The dialog (`apps/web/src/components/members/invite-dialog.tsx` → `invitation-link-dialog.tsx`) surfaces the link to copy. The recipient opens `apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx`.
+Link-based, no email required. `packages/api/src/router/invitation.ts` `create` calls `auth.api.createInvitation` and returns an `inviteLink` to `/accept-invitation/[id]`. The dialog (`apps/web/src/components/members/invite-dialog.tsx` → `invitation-link-dialog.tsx`) surfaces the link to copy. The recipient opens `apps/web/src/app/(auth)/accept-invitation/[id]/page.tsx`. An invitation carries one role the inviter holds every permission of, and its id is listed only to the members who could have sent it (see Auth & RBAC, Giving a role and Pending invitations).
 
 ## Org switcher
 `apps/web/src/components/navigation/org-switcher.tsx` lists orgs via `useListOrganizations`, switches with `authClient.organization.setActive`, then invalidates queries and refreshes.
