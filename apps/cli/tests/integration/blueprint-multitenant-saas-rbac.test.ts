@@ -497,6 +497,14 @@ describe(`${BLUEPRINT} write actions`, () => {
     expect(await open([])).toEqual({ options: {}, defaultRole: '' });
   });
 
+  test('a member who cannot manage invitations sees why the pending list is empty', async () => {
+    signIn(permissions.member);
+    globals.__data = { ...DATA, 'invitation.list': [] };
+    rendering.resetState();
+    const tree = await settle(rendering, components.get('invitations') as Component);
+    expect(tree.map(textOf).join(' ')).toContain('No pending invitations to show. Only members who can send or cancel invitations see them.');
+  });
+
   test('deleting a role says only a role no member holds can be deleted', async () => {
     const tree = await mount('owner', 'roles');
     expect(String(componentNamed(tree, 'ConfirmDialog')?.props.description)).toContain('A role that members hold cannot be deleted.');

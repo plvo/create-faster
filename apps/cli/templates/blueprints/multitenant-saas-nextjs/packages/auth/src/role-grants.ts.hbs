@@ -16,6 +16,10 @@ export interface StoredRole {
   permission: string;
 }
 
+export interface Invitation {
+  role: string | null;
+}
+
 export function storedRolesOf(organizationId: string): Promise<StoredRole[]> {
   return db.query.organizationRoleTable.findMany({
     columns: { id: true, role: true, permission: true },
@@ -77,4 +81,38 @@ export function assignableRoleIds(memberRole: string, stored: readonly StoredRol
   return [...ids].filter((id) => isRoleId(id) && canAssignRole(memberRole, id, stored));
 }
 
+function canCancelInvitations(memberRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, { invitation: ['cancel'] });
+}
+
+function managesInvitations(memberRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, { invitation: ['create'] }) || canCancelInvitations(memberRole, stored);
+}
+
+// An invitation id is what its recipient joins with: only a member that manages invitations and could have sent it sees
+// it. One whose role was deleted is seen by a member that may cancel it, one whose role is not one id by no one.
+export function canSeeInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  const role = invitation.role;
+  if (!managesInvitations(memberRole, stored) || role === null || !isRoleId(role)) return false;
+  const isDeleted = !isBuiltInRole(role) && !stored.some((each) => each.role === role);
+  return isDeleted ? canCancelInvitations(memberRole, stored) : canAssignRole(memberRole, role, stored);
+}
+
+export function visibleInvitations<T extends Invitation>(
+  memberRole: string,
+  stored: readonly StoredRole[],
+  invitations: readonly T[],
+): T[] {
+  return invitations.filter((invitation) => canSeeInvitation(memberRole, stored, invitation));
+}
+
+// Sending an invitation again returns the stored one.
+export function canResendInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  return canSeeInvitation(memberRole, stored, invitation) && canAssignRole(memberRole, invitation.role ?? '', stored);
+}
+
+// An invitation to an address that has one cancels it.
+export function canReplaceInvitation(memberRole: string, stored: readonly StoredRole[], invitation: Invitation): boolean {
+  return canCancelInvitations(memberRole, stored) && canSeeInvitation(memberRole, stored, invitation);
+}
 {{{{/raw}}}}

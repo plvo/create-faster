@@ -413,6 +413,99 @@ describe(`${BLUEPRINT} organization hardening`, () => {
     });
   });
 
+  describe('pending invitations', () => {
+    let organizationId: string;
+    let owner: Account;
+    let admin: Account;
+    let inviter: Account;
+    let peer: Account;
+
+    const FUTURE = 'future@example.com';
+    const invite = async (caller: Account, role: string, email = FUTURE) => {
+      const answer = await request(caller, 'POST', '/organization/invite-member', { email, role, organizationId });
+      expect(answer.status).toBe(200);
+      return (answer.json as { id: string }).id;
+    };
+    // The ids a member reads on each endpoint that lists invitations, and the ones both agree on.
+    const listed = async (caller: Account) => {
+      const list = await request(caller, 'GET', '/organization/list-invitations', { organizationId });
+      const full = await request(caller, 'GET', '/organization/get-full-organization', { organizationId });
+      const fromList = Array.isArray(list.json) ? (list.json as { id: string }[]).map((row) => row.id).sort() : [];
+      const fromFull = ((full.json as { invitations?: { id: string }[] } | null)?.invitations ?? []).map((row) => row.id).sort();
+      expect(fromFull).toEqual(fromList);
+      return { list, full, ids: fromList };
+    };
+    const pendingFor = async (email: string) =>
+      (await rows<{ id: string }>("SELECT id FROM invitations WHERE email = $1 AND status = 'pending'", [email])).map((row) => row.id);
+
+    beforeEach(async () => {
+      owner = await signUp('owner');
+      organizationId = await createOrganization(owner);
+      await addRole(organizationId, 'inviter', { invitation: ['create', 'cancel'], project: ['read'] });
+      admin = await addMember(organizationId, 'admin', 'admin');
+      inviter = await addMember(organizationId, 'inviter', 'inviter');
+      peer = await addMember(organizationId, 'peer', 'member');
+    });
+
+    test('a member who does not manage invitations learns the id of none', async () => {
+      await invite(owner, 'admin');
+      await invite(owner, 'member', 'plain@example.com');
+      const { list, full, ids } = await listed(peer);
+      expect(list.status).toBe(200);
+      expect(full.status).toBe(200);
+      expect(ids).toEqual([]);
+    });
+
+    test('no channel a member can read gives the id of an invitation it could not have sent', async () => {
+      const hidden = await invite(owner, 'admin');
+      const sender = await addMember(organizationId, 'sender', 'inviter');
+      const answers = [
+        await request(peer, 'GET', '/organization/list-invitations', { organizationId }),
+        await request(peer, 'GET', '/organization/get-full-organization', { organizationId }),
+        await request(peer, 'POST', '/organization/invite-member', { email: FUTURE, role: 'member', resend: true, organizationId }),
+        await request(sender, 'POST', '/organization/invite-member', { email: FUTURE, role: 'member', resend: true, organizationId }),
+      ];
+      expect(answers.map((answer) => answer.status)).toEqual([200, 200, 403, 403]);
+      const read = JSON.stringify(answers.map((answer) => answer.json));
+      expect(read).not.toContain(hidden);
+    });
+
+    test('an inviter lists the invitation it sent itself, and cancels one it lists', async () => {
+      const sent = await invite(inviter, 'member', 'mine@example.com');
+      expect((await listed(inviter)).ids).toEqual([sent]);
+      const cancelled = await request(inviter, 'POST', '/organization/cancel-invitation', { invitationId: sent });
+      expect(cancelled.status).toBe(200);
+      expect(await pendingFor('mine@example.com')).toEqual([]);
+      const after = await request(inviter, 'GET', '/organization/list-invitations', { organizationId });
+      expect((after.json as { id: string; status: string }[]).map((row) => [row.id, row.status])).toEqual([[sent, 'canceled']]);
+    });
+
+    test('a member who manages invitations sees the ones it could have sent, and the owner sees them all', async () => {
+      const forMember = await invite(owner, 'member', 'plain@example.com');
+      const forInviter = await invite(owner, 'inviter', 'helper@example.com');
+      const forAdmin = await invite(owner, 'admin', 'second@example.com');
+      const forOwner = await invite(owner, 'owner', 'partner@example.com');
+      expect((await listed(inviter)).ids).toEqual([forMember, forInviter].sort());
+      expect((await listed(admin)).ids).toEqual([forMember, forInviter, forAdmin].sort());
+      expect((await listed(owner)).ids).toEqual([forMember, forInviter, forAdmin, forOwner].sort());
+    });
+
+    test('the procedure of the interface lists the same invitations', async () => {
+      const forMember = await invite(owner, 'member', 'plain@example.com');
+      await invite(owner, 'admin', 'second@example.com');
+      expect((await (await callerOf(inviter)).invitation.list()).map((row) => row.id)).toEqual([forMember]);
+      expect(await (await callerOf(peer)).invitation.list()).toEqual([]);
+    });
+
+    test('the invited person still opens the invitation and joins with its role', async () => {
+      const invitationId = await invite(owner, 'admin');
+      const invitee = await signUp('future', FUTURE);
+      expect((await request(invitee, 'GET', '/organization/get-invitation', { id: invitationId })).status).toBe(200);
+      expect((await request(invitee, 'POST', '/organization/accept-invitation', { invitationId })).status).toBe(200);
+      expect(await memberRole(invitee.id)).toBe('admin');
+      expect(await pendingFor(FUTURE)).toEqual([]);
+    });
+  });
   describe('renaming a role', () => {
     let organizationId: string;
     let owner: Account;
@@ -578,6 +671,46 @@ describe(`${BLUEPRINT} organization hardening`, () => {
       expect([outsider.status, outsider.message]).toEqual([403, 'You are not a member of this organization']);
     });
 
+    test('sending an invitation again does not hand over the stored one of a role the sender could not give', async () => {
+      const hidden = await post(owner, '/organization/invite-member', { email: 'future@example.com', role: 'admin', organizationId });
+      expect(hidden.status).toBe(200);
+      const hiddenId = (hidden.json as { id: string }).id;
+      const again = await post(who('sender'), '/organization/invite-member', {
+        email: 'future@example.com',
+        role: 'member',
+        resend: true,
+        organizationId,
+      });
+      expect(again.status).toBe(403);
+      expect(JSON.stringify(again.json)).not.toContain(hiddenId);
+    });
+
+    test('an invitation can be sent again by a member that could have sent it', async () => {
+      const first = await post(who('inviter'), '/organization/invite-member', { email: 'again@example.com', role: 'member', organizationId });
+      const again = await post(who('inviter'), '/organization/invite-member', { email: 'again@example.com', role: 'member', resend: true, organizationId });
+      expect([again.status, (again.json as { id: string }).id]).toEqual([200, (first.json as { id: string }).id]);
+    });
+
+    test('an invitation to an address that has one cancels it only for a member that may cancel and could have sent it', async () => {
+      const stored = await post(owner, '/organization/invite-member', { email: 'twice@example.com', role: 'admin', organizationId });
+      const storedId = (stored.json as { id: string }).id;
+      const statusOf = async () => (await rows<{ status: string }>('SELECT status FROM invitations WHERE id = $1', [storedId]))[0]?.status;
+      const replace = (caller: Account, role: string) => post(caller, '/organization/invite-member', { email: 'twice@example.com', role, organizationId });
+
+      expect((await replace(who('sender'), 'member')).status).toBe(403);
+      expect((await replace(who('inviter'), 'member')).status).toBe(403);
+      expect(await statusOf()).toBe('pending');
+      expect((await replace(who('admin'), 'member')).status).toBe(200);
+      expect(await statusOf()).toBe('canceled');
+    });
+
+    test('a role that sends invitations but may not cancel cannot replace the pending one of its own role either', async () => {
+      await post(who('admin'), '/organization/invite-member', { email: 'low@example.com', role: 'member', organizationId });
+      const replaced = await post(who('sender'), '/organization/invite-member', { email: 'low@example.com', role: 'member', organizationId });
+      expect([replaced.status, replaced.message]).toEqual([403, 'That address already has a pending invitation you may not replace']);
+      expect((await post(who('inviter'), '/organization/invite-member', { email: 'low@example.com', role: 'member', organizationId })).status).toBe(200);
+    });
+
     test('a role that holds member.update changes only members whose permissions it holds', async () => {
       const hr = who('hr');
       for (const stronger of ['admin', 'manager']) {
@@ -657,6 +790,47 @@ describe(`${BLUEPRINT} organization hardening`, () => {
       expect(stronger.status).toBe(403);
     });
 
+    test('an invitation whose role was deleted is shown to a member that may cancel it, and to no other', async () => {
+      const sent = await post(owner, '/organization/invite-member', { email: 'gone@example.com', role: 'hr', organizationId });
+      const invitationId = (sent.json as { id: string }).id;
+      await run("UPDATE members SET role = 'member' WHERE role = 'hr'");
+      await run("DELETE FROM organization_roles WHERE role = 'hr'");
+      const idsFor = async (caller: Account) => {
+        const list = await request(caller, 'GET', '/organization/list-invitations', { organizationId });
+        const full = await request(caller, 'GET', '/organization/get-full-organization', { organizationId });
+        return [
+          (list.json as { id: string }[]).map((row) => row.id),
+          ((full.json as { invitations: { id: string }[] }).invitations ?? []).map((row) => row.id),
+        ];
+      };
+      expect(await idsFor(who('inviter'))).toEqual([[invitationId], [invitationId]]);
+      expect(await idsFor(who('sender'))).toEqual([[], []]);
+      const cancelled = await post(who('inviter'), '/organization/cancel-invitation', { invitationId });
+      expect(cancelled.status).toBe(200);
+    });
+
+    test('an invitation whose role is not one role id is shown to no one, the owner included', async () => {
+      await run(
+        "INSERT INTO invitations (id, organization_id, email, inviter_id, role, status, expires_at) VALUES ('listed-1', $1, 'multi@example.com', $2, 'member,hr', 'pending', now() + interval '1 day')",
+        [organizationId, owner.id],
+      );
+      for (const caller of [owner, who('admin'), who('inviter')]) {
+        const list = await request(caller, 'GET', '/organization/list-invitations', { organizationId });
+        expect(list.json).toEqual([]);
+      }
+    });
+
+    test('a role that only sends invitations and a role that only cancels each see the invitation to its own role', async () => {
+      const toSender = (await post(owner, '/organization/invite-member', { email: 'c1@example.com', role: 'sender', organizationId })).json as { id: string };
+      const toCanceler = (await post(owner, '/organization/invite-member', { email: 'c2@example.com', role: 'canceler', organizationId })).json as { id: string };
+      const idsOf = async (caller: Account) =>
+        ((await request(caller, 'GET', '/organization/list-invitations', { organizationId })).json as { id: string }[]).map((row) => row.id);
+      expect(await idsOf(who('sender'))).toEqual([toSender.id]);
+      expect(await idsOf(who('canceler'))).toEqual([toCanceler.id]);
+      const cancelled = await post(who('canceler'), '/organization/cancel-invitation', { invitationId: toCanceler.id });
+      expect(cancelled.status).toBe(200);
+      expect((await rows<{ status: string }>('SELECT status FROM invitations WHERE id = $1', [toCanceler.id]))[0]?.status).toBe('canceled');
+    });
   });
 
   describe('two organizations', () => {
@@ -715,6 +889,11 @@ describe(`${BLUEPRINT} organization hardening`, () => {
 
       const offered = await (await callerOf(hra)).member.assignableRoles();
       expect(offered.sort()).toEqual(['hra', 'member', 'ops']);
+
+      const invitation = await request(hra, 'POST', '/organization/invite-member', { email: 'ops@example.com', role: 'ops', organizationId: organizationA });
+      expect(invitation.status).toBe(200);
+      const listed = await request(hra, 'GET', '/organization/list-invitations', { organizationId: organizationA });
+      expect((listed.json as { id: string }[]).map((row) => row.id)).toEqual([(invitation.json as { id: string }).id]);
     });
   });
 });
