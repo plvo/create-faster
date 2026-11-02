@@ -587,7 +587,7 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       expect(home.html).toContain('Dashboard');
       expect(home.html).toContain(NO_ACCESS_TO_CONTACTS);
       expect(home.html).not.toContain('Total Contacts');
-      expect(home.html).not.toContain('Page not found');
+      expect(home.html).toMatch(/<title>Dashboard \|/);
       expect(await linksOf('/', member)).toEqual(['/']);
 
       const unknown = await fetch(new URL('/no-such-page', server().url), { headers: { cookie: member } });

@@ -251,7 +251,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
       expect(home.status).toBe(200);
       const homeHtml = await home.text();
       expect(homeHtml).toContain(NO_ACCESS_TO_CONTACTS);
-      expect(homeHtml).not.toContain('Page not found');
+      expect(homeHtml).toMatch(/<title>Dashboard \|/);
 
       const contact = await firstContact(server, await signIn(server, SEEDED_ADMIN, '10.2.0.12'));
       for (const path of ['/contacts', `/contacts/${contact.id}`]) {
