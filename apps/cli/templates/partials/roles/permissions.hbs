@@ -136,3 +136,8 @@ export function verdictOf(granted: readonly Permission[] | undefined, request: P
   if (!granted) return 'unknown';
   return wanted.every((permission) => granted.includes(permission)) ? 'granted' : 'denied';
 }
+
+// Whether the permission list holds every action of the request: `unknown` and `denied` are both a no.
+export function isRequestGranted(granted: readonly Permission[] | undefined, request: PermissionRequest): boolean {
+  return verdictOf(granted, request) === 'granted';
+}

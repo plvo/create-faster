@@ -105,6 +105,7 @@ src/
 │   ├── navigation/                       # Sidebar, header, nav-user dropdown
 │   ├── profile/                          # Account form, security form, session list, preferences, tab nav
 │   ├── can.tsx                           # Permission gate component (renders nothing until the verdict is known)
+│   ├── dashboard-client.tsx              # Dashboard home: the contact count for contact:read, a no-access note otherwise
 │   ├── dashboard-not-found.tsx           # Not-found page shown inside the dashboard layout
 │   ├── not-found.tsx                     # Not-found component (404) for URLs outside the dashboard
 │   └── query-boundary.tsx                # Suspense + ErrorBoundary + QueryErrorResetBoundary
@@ -112,7 +113,7 @@ src/
 │   └── use-permission.ts                 # The permission list of the `_dashboard` route context, and the verdict for a request
 ├── lib/
 │   ├── auth/
-│   │   ├── guards.ts                     # isSignedIn, requireSession, requireAdmin, requirePermission
+│   │   ├── guards.ts                     # isSignedIn, requireSession, requireAdmin, hasPermission, requirePermission
 │   │   └── permissions.ts                # getPermissions: the permission list of the caller, resolved on the server for the route context
 │   ├── allowed-routes.ts                 # The pages the permission list grants, for the sidebar and the command palette
 │   ├── constants.ts                      # Route definitions with required permissions

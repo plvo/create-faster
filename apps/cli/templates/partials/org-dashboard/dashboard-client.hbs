@@ -1,4 +1,4 @@
-{{!-- The whole dashboard-client.tsx file: the home page, which renders for every signed-in role. --}}
+{{!-- The whole file of the `DashboardClient` component, the home page of both org dashboards (`dashboard.client.tsx` on Next.js, `dashboard-client.tsx` on TanStack Start). --}}
 {{#unless (eq stackName "tanstack-start")}}
 'use client';
 
@@ -9,8 +9,7 @@ import { Can } from '@/components/can';
 import { QueryBoundary } from '@/components/query-boundary';
 import { useTRPC } from '@/trpc/providers';
 
-// The home page asks for no permission: a role that holds none lands here too. The count is read only for a role that
-// may read contacts, and the other roles are told so instead of meeting a not found page.
+// The home page asks for no permission, so a role that holds none lands here too.
 export function DashboardClient() {
   return (
     <div className='space-y-6'>
@@ -18,9 +17,9 @@ export function DashboardClient() {
       <Can
         permissions={{ contact: ['read'] }}
         fallback={
-          <p className='text-sm text-muted-foreground'>
-            Your role has no access to contacts. Ask an administrator to grant it.
-          </p>
+{{{{/raw}}}}
+          {{> org-dashboard/no-access resource="contacts"}}
+{{{{raw}}}}
         }
       >
         <QueryBoundary>

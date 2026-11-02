@@ -1,5 +1,5 @@
 import { notFound, type ParsedLocation, redirect } from '@tanstack/react-router';
-import { type Permission, type PermissionRequest, verdictOf } from '@repo/auth/permissions';
+import { type Permission, type PermissionRequest, isRequestGranted } from '@repo/auth/permissions';
 import type { Session } from '@repo/auth/types';
 import { getSession } from '@/lib/auth/session';
 
@@ -23,7 +23,7 @@ export function requireAdmin(session: Session): void {
 
 // What a role may do is in the database: `permissions` is the list the `_dashboard` layout resolved on the server.
 export function hasPermission(permissions: readonly Permission[], request: PermissionRequest): boolean {
-  return verdictOf(permissions, request) === 'granted';
+  return isRequestGranted(permissions, request);
 }
 
 export function requirePermission(permissions: readonly Permission[], request: PermissionRequest): void {
