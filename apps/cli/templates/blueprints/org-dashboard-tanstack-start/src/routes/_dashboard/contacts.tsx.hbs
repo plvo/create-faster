@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { DashboardNotFound } from '@/components/dashboard-not-found';
 import { requirePermission } from '@/lib/auth/guards';
+import { notFoundHead } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/contacts')({
   beforeLoad: ({ context }) => requirePermission(context.permissions, { contact: ['read'] }),
+  head: notFoundHead,
   notFoundComponent: DashboardNotFound,
 });

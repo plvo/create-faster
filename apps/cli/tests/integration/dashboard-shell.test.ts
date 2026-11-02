@@ -22,6 +22,7 @@ setIntegrationTimeout();
 
 const NEXTJS_BLUEPRINTS: string[] = ['org-dashboard-nextjs', 'cloudflare-fullstack-nextjs', 'multitenant-saas-nextjs'];
 const START_BLUEPRINT = 'org-dashboard-tanstack-start';
+const MULTITENANT_BLUEPRINT = 'multitenant-saas-nextjs';
 const BLUEPRINTS = [...NEXTJS_BLUEPRINTS, START_BLUEPRINT];
 const SIGNED_OUT_GUARD_BLUEPRINTS: string[] = ['org-dashboard-nextjs', 'cloudflare-fullstack-nextjs'];
 const DETAIL_PAGE_BLUEPRINTS: string[] = ['org-dashboard-nextjs', 'cloudflare-fullstack-nextjs'];
@@ -113,6 +114,7 @@ export const trpc = procedures([]);
 export const HydrateClient = ({ children }) => children[0];`,
   'session.mjs': `export const requireAdmin = async () => ({});
 export const requirePermission = async () => ({});
+export const permittedMetadata = async (_resource, _action, title) => ({ title: typeof title === 'string' ? title : await title() });
 export const requireSession = async () => ({ user: { role: 'admin' } });`,
   'leaf.mjs': `export const Skeleton = () => null;
 export const QueryBoundary = ({ children }) => children[0];
@@ -361,6 +363,67 @@ describe('dashboard shell', () => {
         globals.window = realWindow;
       }
       expect(events).toEqual(blueprint === START_BLUEPRINT ? ['signOut', 'navigate:/login', 'clear'] : ['signOut', 'assign:https://app.test/login']);
+    });
+
+    // The organization plugin of the better-auth client listens to the session signal: once `sign-out` succeeds, every
+    // mounted atom that needs a session (the active organization and member, mounted by the organization switcher)
+    // fetches again ten milliseconds later, before the full navigation has unloaded the page, and the server answers 401.
+    // Only the real client shows it.
+    test.skipIf(blueprint !== MULTITENANT_BLUEPRINT)('signing out leaves no mounted auth query to fetch again without a session', async () => {
+      const clientModule = join(stubs, `${blueprint}-real-auth-client.mjs`);
+      const better = (specifier: string): string => Bun.resolveSync(specifier, import.meta.dir);
+      await Bun.write(
+        clientModule,
+        `import { createAuthClient } from ${JSON.stringify(better('better-auth/client'))};
+import { organizationClient } from ${JSON.stringify(better('better-auth/client/plugins'))};
+export const authClient = createAuthClient({
+  baseURL: 'https://app.test',
+  plugins: [organizationClient()],
+  fetchOptions: {
+    customFetchImpl: async (url) => {
+      (globalThis.__events ??= []).push('fetch:' + new URL(String(url)).pathname.replace('/api/auth', ''));
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  },
+});`,
+      );
+      const hook = 'src/hooks/use-menu-confirmation.ts';
+      const { NavUser: WithRealClient } = await evaluateGeneratedModule<{ NavUser: Component }>(
+        await read(blueprint, 'src/components/navigation/nav-user.tsx'),
+        join(stubs, `${blueprint}-nav-user-real-client.mjs`),
+        { ...UI_IMPORTS, '@/hooks/use-menu-confirmation': relativeModule(blueprint, hook), '@repo/auth/auth-client': `./${blueprint}-real-auth-client.mjs` },
+        'tsx',
+      );
+      const { authClient } = (await import(clientModule)) as {
+        authClient: { $store: { atoms: Record<string, { subscribe: (listener: () => void) => () => void }> } };
+      };
+      const events: string[] = [];
+      const globals = globalThis as { __events?: string[]; window?: unknown };
+      const realWindow = globals.window;
+      globals.__events = events;
+      globals.window = { location: { origin: 'https://app.test', assign: (url: URL | string) => events.push(`assign:${url}`) } };
+      const unsubscribe = ['activeOrganization', 'activeMember', 'activeMemberRole'].map((name) =>
+        must(authClient.$store.atoms[name], name).subscribe(() => {}),
+      );
+      try {
+        await Bun.sleep(50);
+        expect(events.sort(), 'the mounted queries fetch once on mount').toEqual([
+          'fetch:/organization/get-active-member',
+          'fetch:/organization/get-active-member-role',
+          'fetch:/organization/get-full-organization',
+        ]);
+        events.length = 0;
+
+        react.resetState();
+        select(itemNamed(await render(WithRealClient, { session }), 'Logout'), 'Logout');
+        const confirm = must(itemNamed(await render(WithRealClient, { session }), 'Logout'), 'the confirm item');
+        await (confirm.props.onSelect as (event: FakeEvent) => Promise<void>)(fakeEvent());
+        await Bun.sleep(50);
+        expect(events).toEqual(['fetch:/sign-out', 'assign:https://app.test/login']);
+      } finally {
+        for (const stop of unsubscribe) stop();
+        globals.window = realWindow;
+      }
     });
 
     test('Cancel takes the focus the removed Logout item leaves behind', async () => {
@@ -712,7 +775,7 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
 
   describe.each(NEXTJS_BLUEPRINTS)('%s page titles', (blueprint) => {
     const declaresTitle = (source: string): boolean =>
-      /export const metadata\b/.test(source) || /export (async )?function generateMetadata\b/.test(source);
+      /export const (metadata|generateMetadata)\b/.test(source) || /export (async )?function generateMetadata\b/.test(source);
 
     // The root layout holds the default title and the template that adds the project name. A title declared by a
     // layout between the root and a page replaces that template for every page below it, so each page declares its

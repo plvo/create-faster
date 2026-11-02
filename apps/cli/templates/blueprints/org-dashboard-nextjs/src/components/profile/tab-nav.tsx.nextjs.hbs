@@ -16,7 +16,7 @@ export function ProfileTabNav() {
   const currentIndex = getTabIndex(pathname);
 
   return (
-    <nav className='flex gap-1 border-b'>
+    <nav className='flex gap-1 overflow-x-auto border-b'>
       {PROFILE_TABS.map((tab, i) => {
         const isActive = pathname.startsWith(tab.url);
         return (
@@ -30,7 +30,7 @@ export function ProfileTabNav() {
                 router.push(tab.url);
               });
             }}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px sm:px-4 ${
               isActive
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'

@@ -57,12 +57,17 @@ interface GeneratedAuth<Factory> {
  * (`modules`, in dependency order, as file names without extension under `packages/auth/src`) and the stand-ins above.
  * Other imports of `auth.ts` resolve to the real packages, except `./link-delivery`, which is the mailer stand-in.
  * `standIns` replace generated modules that need a database this harness does not have (specifier to source), for a
- * test that never reaches them.
+ * test that never reaches them. `authFile` is the path of the factory in a project whose auth is not the
+ * `packages/auth` one.
  */
 export async function loadGeneratedAuth<Factory>(
   projectPath: string,
   workDir: string,
-  { modules, standIns = {} }: { modules: string[]; standIns?: Record<string, string> },
+  {
+    modules,
+    standIns = {},
+    authFile = 'packages/auth/src/auth.ts',
+  }: { modules: string[]; standIns?: Record<string, string>; authFile?: string },
 ): Promise<GeneratedAuth<Factory>> {
   const stubs = join(workDir, 'auth-stubs');
   await mkdir(stubs, { recursive: true });
@@ -90,7 +95,7 @@ export async function loadGeneratedAuth<Factory>(
 
   const authDir = join(projectPath, 'packages/auth/src');
   for (const name of [...modules, 'auth']) {
-    const source = await readTextFile(join(authDir, `${name}.ts`));
+    const source = await readTextFile(name === 'auth' ? join(projectPath, authFile) : join(authDir, `${name}.ts`));
     const target = join(stubs, `${name}.mjs`);
     await evaluateGeneratedModule(source, target, imports);
     imports[`./${name}`] = target;

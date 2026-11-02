@@ -72,7 +72,8 @@ export const DetailPending = () => null;
 export const UserDetail = () => null;
 export const DashboardNotFound = () => null;
 export const QueryBoundary = ({ children }) => children;
-export const pageTitle = (title) => title;`,
+export const pageTitle = (title) => title;
+export const notFoundHead = () => ({});`,
   'icons.mjs': `export const LayoutDashboard = 'LayoutDashboard';
 export const Users = 'Users';
 export const Shield = 'Shield';

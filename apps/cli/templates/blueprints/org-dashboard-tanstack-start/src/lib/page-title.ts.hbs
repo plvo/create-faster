@@ -1,3 +1,9 @@
 export function pageTitle(title = 'Home'): string {
   return `${title} | {{projectName}}`;
 }
+
+// The head of a route that answers not found before it loads: its own page title never renders, so the root one
+// (`Home`) would stay.
+export function notFoundHead() {
+  return { meta: [{ title: pageTitle('Page not found') }] };
+}

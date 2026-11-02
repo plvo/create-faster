@@ -1,0 +1,4 @@
+{{!-- The `advanced` entry that ties the `Secure` attribute and the `__Secure-` prefix of the cookies to the scheme of
+BETTER_AUTH_URL, inside the betterAuth(...) call of a factory that gives `baseURL` as an object. --}}
+// With an object baseURL better-auth picks the secure prefix from NODE_ENV, so a production build on plain http would get a Secure cookie
+useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith('https://'),
