@@ -1,9 +1,11 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { DashboardNotFound } from '@/components/dashboard-not-found';
+import { notFoundHead } from '@/lib/page-title';
 
 export const Route = createFileRoute('/_dashboard/admin/')({
   beforeLoad: () => {
     throw notFound();
   },
+  head: notFoundHead,
   notFoundComponent: DashboardNotFound,
 });

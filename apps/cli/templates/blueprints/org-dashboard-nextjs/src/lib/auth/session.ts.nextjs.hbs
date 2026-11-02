@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
@@ -20,4 +21,17 @@ export async function requirePermission<R extends BusinessResource>(resource: R,
   const session = await requireSession();
   if (!(await hasPermission(resource, action))) notFound();
   return session;
+}
+
+// The title of a page behind `requirePermission`. A page that answers not found still has its own metadata resolved,
+// so a static `metadata` would title the refusal after the page: the page declares `generateMetadata` and asks here,
+// where the title follows the same permission as the guard.
+export async function permittedMetadata<R extends BusinessResource>(
+  resource: R,
+  action: BusinessAction<R>,
+  title: string | (() => Promise<string>),
+): Promise<Metadata> {
+  await requireSession();
+  if (!(await hasPermission(resource, action))) return { title: 'Page not found' };
+  return { title: typeof title === 'string' ? title : await title() };
 }

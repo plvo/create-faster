@@ -113,6 +113,7 @@ export const trpc = procedures([]);
 export const HydrateClient = ({ children }) => children[0];`,
   'session.mjs': `export const requireAdmin = async () => ({});
 export const requirePermission = async () => ({});
+export const permittedMetadata = async (_resource, _action, title) => ({ title: typeof title === 'string' ? title : await title() });
 export const requireSession = async () => ({ user: { role: 'admin' } });`,
   'leaf.mjs': `export const Skeleton = () => null;
 export const QueryBoundary = ({ children }) => children[0];
@@ -712,7 +713,7 @@ export const useAppForm = () => new Proxy({ handleSubmit() {} }, {
 
   describe.each(NEXTJS_BLUEPRINTS)('%s page titles', (blueprint) => {
     const declaresTitle = (source: string): boolean =>
-      /export const metadata\b/.test(source) || /export (async )?function generateMetadata\b/.test(source);
+      /export const (metadata|generateMetadata)\b/.test(source) || /export (async )?function generateMetadata\b/.test(source);
 
     // The root layout holds the default title and the template that adds the project name. A title declared by a
     // layout between the root and a page replaces that template for every page below it, so each page declares its

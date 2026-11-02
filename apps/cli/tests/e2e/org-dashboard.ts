@@ -589,10 +589,15 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       expect(granted.html).toContain('Total Contacts');
       expect(granted.html).not.toContain(NO_ACCESS_TO_CONTACTS);
       expect(granted.html).toMatch(DEHYDRATED_CONTACT_COUNT);
+      expect((await homeOf(member, '/contacts')).html).toMatch(/<title>Contacts \|/);
 
       await sql(`delete from role_permissions where role_id = '${AUDITOR}'`);
       expect(await linksOf('/profile/account', member)).toEqual(['/']);
-      expect((await fetch(new URL('/contacts', server().url), { headers: { cookie: member } })).status).toBe(404);
+      for (const path of ['/contacts', '/contacts/no-such-contact']) {
+        const refused = await homeOf(member, path);
+        expect([path, refused.status]).toEqual([path, 404]);
+        expect(refused.html, `${path} is titled as a 404`).toMatch(/<title>Page not found \|/);
+      }
 
       const home = await homeOf(member);
       expect(home.status).toBe(200);
