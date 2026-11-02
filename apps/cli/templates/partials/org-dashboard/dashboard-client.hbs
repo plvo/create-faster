@@ -1,0 +1,47 @@
+{{!-- The whole dashboard-client.tsx file: the home page, which renders for every signed-in role. --}}
+{{#unless (eq stackName "tanstack-start")}}
+'use client';
+
+{{/unless}}
+{{{{raw}}}}
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { Can } from '@/components/can';
+import { QueryBoundary } from '@/components/query-boundary';
+import { useTRPC } from '@/trpc/providers';
+
+// The home page asks for no permission: a role that holds none lands here too. The count is read only for a role that
+// may read contacts, and the other roles are told so instead of meeting a not found page.
+export function DashboardClient() {
+  return (
+    <div className='space-y-6'>
+      <h1 className='text-3xl font-bold'>Dashboard</h1>
+      <Can
+        permissions={{ contact: ['read'] }}
+        fallback={
+          <p className='text-sm text-muted-foreground'>
+            Your role has no access to contacts. Ask an administrator to grant it.
+          </p>
+        }
+      >
+        <QueryBoundary>
+          <ContactTotal />
+        </QueryBoundary>
+      </Can>
+    </div>
+  );
+}
+
+function ContactTotal() {
+  const trpc = useTRPC();
+  const { data: contactCount } = useSuspenseQuery(trpc.contact.count.queryOptions());
+
+  return (
+    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+      <div className='rounded-lg border bg-card p-6'>
+        <p className='text-sm text-muted-foreground'>Total Contacts</p>
+        <p className='text-2xl font-bold'>{contactCount}</p>
+      </div>
+    </div>
+  );
+}
+{{{{/raw}}}}

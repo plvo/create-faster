@@ -11,9 +11,13 @@ import { getQueryClient, trpc } from '@/trpc/server';
 
 // The permission list is the one the layout fetches (`permissions.mine`), read once per request: what a role may do is in
 // the database.
+export async function hasPermission<R extends BusinessResource>(resource: R, action: BusinessAction<R>): Promise<boolean> {
+  const granted = await getQueryClient().ensureQueryData(trpc.permissions.mine.queryOptions());
+  return verdictOf(granted, { [resource]: [action] }) === 'granted';
+}
+
 export async function requirePermission<R extends BusinessResource>(resource: R, action: BusinessAction<R>) {
   const session = await requireSession();
-  const granted = await getQueryClient().ensureQueryData(trpc.permissions.mine.queryOptions());
-  if (verdictOf(granted, { [resource]: [action] }) !== 'granted') notFound();
+  if (!(await hasPermission(resource, action))) notFound();
   return session;
 }

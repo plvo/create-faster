@@ -10,6 +10,7 @@ export const SEEDED_MEMBER = 'user@example.com';
 export const SEEDED_READER = 'manager@example.com';
 export const AUTH_SECRET = 'e2e-secret-e2e-secret-e2e-secret-0123';
 const TIMEOUT_SERVER = 120_000;
+export const NO_ACCESS_TO_CONTACTS = 'Your role has no access to contacts. Ask an administrator to grant it.';
 
 export function describeFailure(result: CommandResult): string {
   return `${result.stdout}\n${result.stderr}`;
@@ -553,7 +554,7 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       expect((await queryTrpc(server(), 'contact.count', member)).status).toBe(200);
     });
 
-    test('the first render of the sidebar follows the role, and a role without the permission answers 404 for its page', async () => {
+    test('the first render of the sidebar follows the role, a role without the permission answers 404 for its page and lands on a home page that says so', async () => {
       const admin = await signedIn(SEEDED_ADMIN);
       expect((await mutate('roles.create', admin, { id: AUDITOR, label: 'Auditor' })).status).toBe(200);
       expect((await mutate('roles.setPermission', admin, { id: AUDITOR, permission: 'contact.read', granted: true })).status).toBe(200);
@@ -568,10 +569,31 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       };
       expect(await linksOf('/contacts', member)).toEqual(['/', '/contacts']);
       expect(await linksOf('/contacts', admin)).toEqual(['/', '/contacts', '/admin/users', '/admin/roles']);
+      const homeOf = async (cookie: string): Promise<{ status: number; html: string }> => {
+        const response = await fetch(new URL('/', server().url), { headers: { cookie } });
+        return { status: response.status, html: await response.text() };
+      };
+      const granted = await homeOf(member);
+      expect(granted.status).toBe(200);
+      expect(granted.html).toContain('Total Contacts');
+      expect(granted.html).not.toContain(NO_ACCESS_TO_CONTACTS);
 
       await sql(`delete from role_permissions where role_id = '${AUDITOR}'`);
       expect(await linksOf('/profile/account', member)).toEqual(['/']);
       expect((await fetch(new URL('/contacts', server().url), { headers: { cookie: member } })).status).toBe(404);
+
+      const home = await homeOf(member);
+      expect(home.status).toBe(200);
+      expect(home.html).toContain('Dashboard');
+      expect(home.html).toContain(NO_ACCESS_TO_CONTACTS);
+      expect(home.html).not.toContain('Total Contacts');
+      expect(home.html).not.toContain('Page not found');
+      expect(await linksOf('/', member)).toEqual(['/']);
+
+      const unknown = await fetch(new URL('/no-such-page', server().url), { headers: { cookie: member } });
+      expect(unknown.status).toBe(404);
+      expect(await unknown.text()).toContain('Back to the dashboard');
+      expect((await queryTrpc(server(), 'contact.count', member)).status).toBe(403);
     });
 
     test('a role someone holds is refused, with the reason, and a free one is deleted with its permissions', async () => {

@@ -36,7 +36,7 @@ The contacts and admin pages render the same markup in both variants (shared par
 |---|---|---|
 | Routing | App Router, route groups `(auth)` and `(dashboard)` | File routes in `src/routes/`, pathless layouts `_auth` and `_dashboard` |
 | Auth guard | `requireSession()` in the layout and in each protected page | `beforeLoad` of the `_dashboard` layout, once for every dashboard route |
-| Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, and of the dashboard home route, over the permission list the `_dashboard` route context holds |
+| Admin and permission checks | `requireAdmin()` / `requirePermission()` in each page | `beforeLoad` of the `admin` and `contacts` layout routes, once for their pages, over the permission list the `_dashboard` route context holds |
 | Permission list | `permissions.mine` prefetched by the dashboard layout inside `HydrateClient`, read from the query cache | `getPermissions` server function called by `beforeLoad` of `_dashboard`, serialized with the route context into the document, so hydrating the first page asks the server for nothing; `beforeLoad` runs again on each navigation, so a revocation reaches the next page the user opens |
 | Data prefetch | Server component prefetch inside a `HydrateClient` boundary; a detail page awaits its record and calls `notFound()` for an unknown id | Route `loader` prefetch without awaiting, `useSuspenseQuery` in the component; a detail loader awaits its record and throws `notFound()` for an unknown id, with a `pendingComponent` skeleton meanwhile |
 | List pages | `page` and `pageSize` read from the server component's `searchParams` and prefetched | `page` and `pageSize` search parameters validated in the route's `validateSearch`, read by the loader through `loaderDeps` |
@@ -54,7 +54,7 @@ The contacts and admin pages render the same markup in both variants (shared par
 - `_dashboard` calls `requireSession(location)` in `beforeLoad`. Without a session (or without a role) it redirects to `/login?redirectTo=<requested path>`, and returns `{ session, permissions }` into the route context (the permission list of the role, read from the database once per request), so every child route and component reads the session and the list from there. `beforeLoad` hooks run parent first and every loader starts after them, so an anonymous visit redirects before any protected query starts.
 - `_auth` wraps the login page and redirects a signed-in user to `/`.
 - `admin.tsx` calls `requireAdmin(context.session)` once for every page under `/admin`: a member is redirected to `/`. The bare `/admin` answers 404 through `admin/index.tsx`.
-- `contacts.tsx` calls `requirePermission(context.permissions, { contact: ['read'] })` once for every page under `/contacts`: a role without the permission gets the not-found page with a 404 status. The dashboard home (`_dashboard/index.tsx`) makes the same `contact:read` check in its own `beforeLoad`.
+- `contacts.tsx` calls `requirePermission(context.permissions, { contact: ['read'] })` once for every page under `/contacts`: a role without the permission gets the not-found page with a 404 status. The dashboard home (`_dashboard/index.tsx`) asks for no permission and renders for every signed-in role: a role without `contact:read` sees its heading and that it has no access, and the loader prefetches the contact count only for a role that may read it.
 
 The server still enforces every permission: each tRPC procedure keeps its `adminProcedure` or `permissionProcedure`, so the route guards only decide what a page shows.
 
@@ -79,7 +79,7 @@ src/
 │   │   └── login.tsx                     # Login page, redirectTo validated in validateSearch
 │   ├── _dashboard.tsx                    # Pathless layout: sidebar, header, requireSession in beforeLoad
 │   ├── _dashboard/
-│   │   ├── index.tsx                     # Dashboard home (contact count), requires contact:read
+│   │   ├── index.tsx                     # Dashboard home (contact count for contact:read, a no-access note otherwise)
 │   │   ├── admin.tsx                     # Layout route: requireAdmin
 │   │   ├── admin/
 │   │   │   ├── index.tsx                 # Bare /admin answers 404

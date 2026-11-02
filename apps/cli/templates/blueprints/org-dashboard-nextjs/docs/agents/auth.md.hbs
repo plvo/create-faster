@@ -26,6 +26,10 @@ Loaders prefetch without awaiting, `void context.queryClient.prefetchQuery(conte
 
 {{/if}}
 {{/each}}
+## The home page
+
+The home page (`/`) asks for no permission, so it renders for every signed-in role, one that holds no permission included. `DashboardClient` always shows the heading and reads the contact count only inside `<Can>` for `contact.read`: a role without it is told that it has no access and to ask an administrator, and the page prefetches the count only when `hasPermission` says the role may read it, so no request a role cannot read is made. The sidebar `Dashboard` link and the `Back to the dashboard` link of the not found page lead here, which keeps a role without any page from looping on a not found page. Do not give this page a `requirePermission` guard; a page that needs a permission keeps its own.
+
 ## Post-login redirect
 {{#each (stackApps "nextjs")}}{{#if (eq appName "web")}}The login form reads the destination from the `redirectTo` query parameter and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`) before `router.push`: only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`. Never hand a query parameter straight to `router.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}{{#each (stackApps "tanstack-start")}}{{#if (eq appName "web")}}The login route (`apps/web/src/routes/_auth/login.tsx`) reads the destination from the `redirectTo` search parameter in `validateSearch` and passes it through `safeRedirectPath` (`apps/web/src/lib/safe-redirect.ts`): only an internal path (a single leading `/`, same origin) is kept, anything else falls back to `/`, so the form only navigates to a validated destination. Never hand a query parameter straight to `navigate`, `history.push` or `redirect`: an absolute URL would send a freshly signed-in user to another site.{{/if}}{{/each}}
 

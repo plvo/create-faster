@@ -85,7 +85,9 @@ describe('blueprint auth access', () => {
         const guardName = strict.get(procedure);
         if (!guardName) continue;
         guardedPages.push(page);
-        const guard = source.indexOf(`await ${guardName}(`);
+        // A page every signed-in role may open (the home page) prefetches only inside `if (await hasPermission(...))`.
+        const conditional = guardName === 'requirePermission' ? source.indexOf('if (await hasPermission(') : -1;
+        const guard = conditional > -1 ? conditional : source.indexOf(`await ${guardName}(`);
         expect(guard, `${page} must await ${guardName}() before prefetching ${procedure}`).toBeGreaterThan(-1);
         expect(guard).toBeLessThan(source.indexOf('prefetch('));
       }
