@@ -71,9 +71,13 @@ export function isOrphanedOwner(owner: Owner | null): boolean {
   return owner !== null && owner.host === HOST_ID && Number.isInteger(owner.pid) && owner.pid > 0 && !isProcessAlive(owner.pid);
 }
 
+// Bun's shell keeps the environment of its first command, so `docker` is looked up on the PATH of the moment.
+async function docker(args: string[]): Promise<string> {
+  return $`docker ${args}`.env({ ...process.env }).quiet().nothrow().text();
+}
+
 async function dockerLines(args: string[]): Promise<string[]> {
-  const output = await $`docker ${args}`.quiet().nothrow().text();
-  return output.split('\n').filter(Boolean);
+  return (await docker(args)).split('\n').filter(Boolean);
 }
 
 /**
@@ -94,7 +98,7 @@ export async function removeOrphanedContainers(label: string): Promise<void> {
     .map((row) => row.split(' '))
     .filter(([, owner]) => isOrphanedOwner(parseOwner(owner ?? '')))
     .map(([id]) => id as string);
-  if (orphans.length > 0) await $`docker rm -f -v ${orphans}`.quiet().nothrow();
+  if (orphans.length > 0) await docker(['rm', '-f', '-v', ...orphans]);
 }
 
 /** Removes the containers, networks and volumes of the compose projects whose run (`isolatedProjectName`) is dead. */
@@ -110,11 +114,11 @@ export async function removeOrphanedComposeProjects(): Promise<void> {
   for (const project of orphans) {
     const filter = `label=${COMPOSE_PROJECT_LABEL}=${project}`;
     const containers = await dockerLines(['ps', '-aq', '--filter', filter]);
-    if (containers.length > 0) await $`docker rm -f -v ${containers}`.quiet().nothrow();
+    if (containers.length > 0) await docker(['rm', '-f', '-v', ...containers]);
     const networks = await dockerLines(['network', 'ls', '-q', '--filter', filter]);
-    if (networks.length > 0) await $`docker network rm ${networks}`.quiet().nothrow();
+    if (networks.length > 0) await docker(['network', 'rm', ...networks]);
     const volumes = await dockerLines(['volume', 'ls', '-q', '--filter', filter]);
-    if (volumes.length > 0) await $`docker volume rm ${volumes}`.quiet().nothrow();
+    if (volumes.length > 0) await docker(['volume', 'rm', ...volumes]);
   }
 }
 
