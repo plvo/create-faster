@@ -1,14 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { describeWithDocker } from './docker-database';
-import {
-  type CommandResult,
-  cleanupTempDir,
-  createTempDir,
-  type RunningServer,
-  runCli,
-  runCommand,
-} from './helpers';
+import { describeWithDocker, generateDockerProject } from './docker-database';
+import { type CommandResult, cleanupTempDir, type RunningServer, runCommand } from './helpers';
 import {
   buildAndStartWeb,
   callTrpc,
@@ -39,14 +32,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
   let server: RunningServer;
 
   beforeAll(async () => {
-    const tempDir = await createTempDir();
-    const name = 'bp-org-dashboard-start';
-    const result = await runCli([name, '--blueprint', BLUEPRINT, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-    expect(result.exitCode).toBe(0);
-
-    projectDir = join(tempDir, name);
-    const install = await runCommand(['bun', 'install'], projectDir);
-    expect(install.exitCode, install.stderr).toBe(0);
+    projectDir = await generateDockerProject('bp-org-dashboard-start', ['--blueprint', BLUEPRINT]);
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
