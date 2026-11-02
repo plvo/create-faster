@@ -1,11 +1,9 @@
 {{!-- The rule for the id of a role: one id, never a list. Rendered by `roles/permissions` and by the permissions of a
 blueprint that names its own roles. --}}
-// A role identifier is stored as plain text that the auth library splits on `,` and compares as it is. Exactly one such
-// id, never a list, is what any path may write there.
+// A role is exactly one id, never a list: the id is what any path may write as the role of a member or an invitation.
 export const ROLE_ID = /^[a-z0-9-]+$/;
 
-// The auth library looks a role up by plain object key, so a role named after a key every object has (`constructor`)
-// resolves to that member and its endpoints fail with a 500 for the account that holds it. No path accepts one.
+// A role is never named after a key every object has (`constructor`). No path accepts one.
 export function isInheritedKey(id: string): boolean {
   return id in Object.prototype;
 }

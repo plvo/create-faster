@@ -380,6 +380,25 @@ describe(`${BLUEPRINT} organization hardening`, () => {
         expect((await create(editor, 'reader', { project: ['read'] })).status).toBe(200);
       });
 
+      test('cannot be deleted while a pending invitation carries it, and can once the invitation is gone', async () => {
+        expect((await create(owner, 'ops-lead', { project: ['read'] })).status).toBe(200);
+        const invited = await request(owner, 'POST', '/organization/invite-member', { email: 'lead@example.com', role: 'ops-lead', organizationId });
+        expect(invited.status).toBe(200);
+        const remove = () => request(owner, 'POST', '/organization/delete-role', { roleName: 'ops-lead', organizationId });
+
+        const refused = await remove();
+        expect([refused.status, refused.message]).toEqual([400, 'A role that a pending invitation carries cannot be deleted']);
+        expect(refused.logged).toEqual([]);
+        expect(await storedPermission('ops-lead')).toBeDefined();
+
+        const cancelled = await request(owner, 'POST', '/organization/cancel-invitation', {
+          invitationId: (invited.json as { id: string }).id,
+        });
+        expect(cancelled.status).toBe(200);
+        expect((await remove()).status).toBe(200);
+        expect(await storedPermission('ops-lead')).toBeUndefined();
+      });
+
       test('cannot be edited to hold a permission its editor does not hold, the editor own role included', async () => {
         expect((await update(editor, 'editor', { ac: ['update'], member: ['update'] })).status).toBe(403);
         expect((await update(editor, 'hr', { member: ['update'], project: ['delete'] })).status).toBe(403);

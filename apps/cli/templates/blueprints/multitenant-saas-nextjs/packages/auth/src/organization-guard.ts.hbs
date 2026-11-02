@@ -70,13 +70,29 @@ function requireGivableRole(caller: Caller, value: unknown): void {
   }
 }
 
-async function requireHeldStoredRole(ctx: Context, caller: Caller, verb: 'change' | 'delete'): Promise<void> {
+async function requireHeldStoredRole(ctx: Context, caller: Caller, verb: 'change' | 'delete'): Promise<string> {
   const { roleName, roleId } = ctx.body ?? {};
   const named = typeof roleName === 'string' && roleName !== '' ? roleName : caller.stored.find((row) => row.id === roleId)?.role;
   if (!named || !grantsOf(named, caller.stored)) throw refuse('BAD_REQUEST', 'No role has that id');
   if (!canAssignRole(caller.role, named, caller.stored)) {
     throw refuse('FORBIDDEN', `You can only ${verb} a role whose permissions you hold`);
   }
+  return named;
+}
+
+async function requireNoPendingInvitationFor(ctx: Context, caller: Caller, role: string): Promise<void> {
+  const pending = await ctx.context.adapter.findMany<{ role: string | null; expiresAt: Date }>({
+    model: 'invitation',
+    where: [
+      { field: 'organizationId', value: caller.organizationId },
+      { field: 'status', value: 'pending' },
+    ],
+  });
+  const carried = pending.some(
+    (invitation) =>
+      new Date(invitation.expiresAt) > new Date() && invitation.role?.split(',').some((each) => each.trim() === role),
+  );
+  if (carried) throw refuse('BAD_REQUEST', 'A role that a pending invitation carries cannot be deleted');
 }
 
 async function targetMember(ctx: Context, caller: Caller, idOrEmail: unknown): Promise<{ role: string }> {
@@ -130,7 +146,7 @@ async function filterInvitations<T extends { role: string | null }>(ctx: Context
 // `/api/auth/organization/*` meet the same rules, whatever a role is allowed to do on them:
 // - a role is named and given as one id, and given only by a member that holds every permission of that role;
 // - a member, an invitation or a stored role is changed only by a member that holds every permission of what it holds;
-// - a role is not renamed;
+// - a role is not renamed, and a role a pending invitation carries is not deleted;
 // - a member sees the pending invitations it could have sent, and none unless it sends or cancels invitations.
 export const organizationGuard = {
   id: 'organization-guard',
@@ -180,7 +196,9 @@ export const organizationGuard = {
       {
         matcher: (ctx) => ctx.path === '/organization/delete-role',
         handler: createAuthMiddleware(async (ctx) => {
-          await requireHeldStoredRole(ctx, await requestCaller(ctx), 'delete');
+          const caller = await requestCaller(ctx);
+          const role = await requireHeldStoredRole(ctx, caller, 'delete');
+          await requireNoPendingInvitationFor(ctx, caller, role);
         }),
       },
     ],
