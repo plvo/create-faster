@@ -47,7 +47,7 @@ src/
 │   │       └── login-form.tsx            # Email/password login form
 │   └── (dashboard)/
 │       ├── layout.tsx                    # Sidebar + auth guard + session check
-│       ├── page.tsx                      # Dashboard home (contact count)
+│       ├── page.tsx                      # Dashboard home (contact count, or a no-access note)
 │       ├── admin/
 │       │   ├── users/
 │       │   │   ├── page.tsx              # User list, one page per URL (admin only)
@@ -124,7 +124,7 @@ src/
 
 ### Authentication
 
-Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers account administration, ban/unban, and session management, and the roles of the database sit next to it. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query. Pages that prefetch an admin-only or permission-gated query call `requireAdmin()` (non-admins are redirected home) or `requirePermission()` (not-found page) in the same place.
+Email/password login with Better Auth. Public sign-up is closed (`emailAndPassword.disableSignUp`, so `/api/auth/sign-up/email` is rejected): accounts are created by admins, or by the seed. The admin plugin powers account administration, ban/unban, and session management, and the roles of the database sit next to it. Auth layout redirects authenticated users away from login. Dashboard layout requires authentication and a valid role through `requireSession()` (`src/lib/auth/session.ts`); pages that prefetch protected data call it before the prefetch, because a layout and its page render in parallel and an anonymous visit must redirect without a failed query. Pages that prefetch an admin-only or permission-gated query call `requireAdmin()` (non-admins are redirected home) or `requirePermission()` (not-found page) in the same place. The dashboard home asks for no permission: it renders for every signed-in role, so a role that holds none lands on a page that says it has no access instead of a not-found page, and the page prefetches the contact count only when `hasPermission(...)` says the role may read contacts.
 
 ### Role-based access control
 

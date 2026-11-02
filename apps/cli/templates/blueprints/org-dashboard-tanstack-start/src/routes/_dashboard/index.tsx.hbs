@@ -1,42 +1,14 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { DashboardNotFound } from '@/components/dashboard-not-found';
-import { QueryBoundary } from '@/components/query-boundary';
-import { requirePermission } from '@/lib/auth/guards';
+import { DashboardClient } from '@/components/dashboard-client';
+import { hasPermission } from '@/lib/auth/guards';
 import { pageTitle } from '@/lib/page-title';
-import { useTRPC } from '@/trpc/providers';
 
 export const Route = createFileRoute('/_dashboard/')({
-  beforeLoad: ({ context }) => requirePermission(context.permissions, { contact: ['read'] }),
   loader: ({ context }) => {
-    void context.queryClient.prefetchQuery(context.trpc.contact.count.queryOptions());
+    if (hasPermission(context.permissions, { contact: ['read'] })) {
+      void context.queryClient.prefetchQuery(context.trpc.contact.count.queryOptions());
+    }
   },
   head: () => ({ meta: [{ title: pageTitle('Dashboard') }] }),
-  notFoundComponent: DashboardNotFound,
-  component: DashboardPage,
+  component: DashboardClient,
 });
-
-function DashboardPage() {
-  return (
-    <QueryBoundary>
-      <DashboardOverview />
-    </QueryBoundary>
-  );
-}
-
-function DashboardOverview() {
-  const trpc = useTRPC();
-  const { data: contactCount } = useSuspenseQuery(trpc.contact.count.queryOptions());
-
-  return (
-    <div className='space-y-6'>
-      <h1 className='text-3xl font-bold'>Dashboard</h1>
-      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
-        <div className='rounded-lg border bg-card p-6'>
-          <p className='text-sm text-muted-foreground'>Total Contacts</p>
-          <p className='text-2xl font-bold'>{contactCount}</p>
-        </div>
-      </div>
-    </div>
-  );
-}

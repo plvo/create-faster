@@ -42,6 +42,7 @@ interface GeneratedGuards {
   requireSession: (location: { href: string }) => Promise<Session>;
   requireAdmin: (session: Session) => void;
   requirePermission: (permissions: readonly string[], request: Record<string, string[]>) => void;
+  hasPermission: (permissions: readonly string[], request: Record<string, string[]>) => boolean;
   usePermission: (request: Record<string, string[]>) => 'unknown' | 'granted' | 'denied';
 }
 
@@ -166,6 +167,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
       'src/routes/_dashboard/admin/users/index.tsx',
       'src/routes/_dashboard/admin/users/$id.tsx',
       'src/routes/_dashboard/admin/roles.tsx',
+      'src/components/dashboard-client.tsx',
       'src/components/contacts/contact-table.tsx',
       'src/components/contacts/contacts-client.tsx',
       'src/components/contacts/contact-detail.tsx',
@@ -254,6 +256,7 @@ describe(`${BLUEPRINT} blueprint`, () => {
     expect(await read(`${WEB}/src/components/contacts/contact-detail.tsx`)).toContain("navigate({ to: '/contacts' })");
 
     for (const file of [
+      'dashboard-client',
       'contacts/contact-table',
       'contacts/contacts-client',
       'contacts/contact-detail',
@@ -265,15 +268,17 @@ describe(`${BLUEPRINT} blueprint`, () => {
     }
   });
 
-  test('a route checks its permission in beforeLoad, before its loader prefetches', async () => {
+  test('the home page asks for no permission and prefetches its count only for a role that may read contacts', async () => {
     const home = await read(`${WEB}/src/routes/_dashboard/index.tsx`);
-    const beforeLoad = home.indexOf('beforeLoad:');
-    const loader = home.indexOf('loader:');
-    expect(beforeLoad).toBeGreaterThan(-1);
-    expect(loader).toBeGreaterThan(beforeLoad);
-    expect(home).toContain("requirePermission(context.permissions, { contact: ['read'] })");
-    expect(home).toMatch(/void context\.queryClient\.prefetchQuery\(/);
+    expect(home).not.toContain('beforeLoad');
+    expect(home).not.toContain('requirePermission');
+    expect(home).toMatch(/if \(hasPermission\(context\.permissions, \{ contact: \['read'\] \}\)\) \{\n\s+void context\.queryClient\.prefetchQuery\(/);
     expect(home).not.toMatch(/await context\.queryClient/);
+  });
+
+  test('a page that needs a permission checks it in beforeLoad of its layout route', async () => {
+    const contacts = await read(`${WEB}/src/routes/_dashboard/contacts.tsx`);
+    expect(contacts).toContain("requirePermission(context.permissions, { contact: ['read'] })");
   });
 
   describe('the generated guards, evaluated', () => {
@@ -335,6 +340,13 @@ describe(`${BLUEPRINT} blueprint`, () => {
         kind: 'notFound',
       });
       expect(await thrownBy(() => guards.requirePermission([], {}))).toBeUndefined();
+    });
+
+    test('hasPermission answers whether the list holds every action, and never throws', () => {
+      expect(guards.hasPermission(grantedTo('manager'), { contact: ['read'] })).toBe(true);
+      expect(guards.hasPermission(grantedTo('manager'), { contact: ['create'] })).toBe(false);
+      expect(guards.hasPermission([], { contact: ['read'] })).toBe(false);
+      expect(guards.hasPermission(grantedTo('admin'), { user: ['list'], contact: ['delete'] })).toBe(true);
     });
 
     test('requireAdmin lets an admin through and sends anyone else home', async () => {

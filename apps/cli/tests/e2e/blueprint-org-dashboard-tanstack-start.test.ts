@@ -11,6 +11,7 @@ import {
   describeRoles,
   describeSearch,
   firstContact,
+  NO_ACCESS_TO_CONTACTS,
   post,
   redirectOf,
   SEEDED_ADMIN,
@@ -211,7 +212,7 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     }
   });
 
-  test('a signed-in user whose role lacks a permission gets a 404 on the page that needs it, not on the others', async () => {
+  test('a signed-in user whose role holds no permission lands on a home page that says so, and gets a 404 only on the pages that need one', async () => {
     const cookie = await signIn(server, SEEDED_MEMBER, '10.2.0.6');
     const setRole = async (role: string): Promise<void> => {
       const update = await runCommand(
@@ -233,8 +234,10 @@ describeWithDocker(`${BLUEPRINT} blueprint e2e`)(`${BLUEPRINT}: local-setup, pro
     await setRole('ghost');
     try {
       const home = await fetch(new URL('/', server.url), { redirect: 'manual', headers: { cookie } });
-      expect(home.status).toBe(404);
-      expect(await home.text()).toContain('Page not found');
+      expect(home.status).toBe(200);
+      const homeHtml = await home.text();
+      expect(homeHtml).toContain(NO_ACCESS_TO_CONTACTS);
+      expect(homeHtml).toMatch(/<title>Dashboard \|/);
 
       const contact = await firstContact(server, await signIn(server, SEEDED_ADMIN, '10.2.0.12'));
       for (const path of ['/contacts', `/contacts/${contact.id}`]) {

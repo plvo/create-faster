@@ -100,7 +100,8 @@ export const getRequestSession = async () => globalThis.__session ?? null;`,
   if (wanted.length === 0) return 'granted';
   if (!granted) return 'unknown';
   return wanted.every((permission) => granted.includes(permission)) ? 'granted' : 'denied';
-};`,
+};
+export const isRequestGranted = (granted, request) => verdictOf(granted, request) === 'granted';`,
   'trpc-server.mjs': `export const getQueryClient = () => ({
   fetchQuery: async (options) => globalThis.__records?.[options.procedure],
   prefetchQuery: async () => {},
