@@ -1,0 +1,35 @@
+{{!-- The rule for the id of a role: one id, never a list. Rendered by `roles/permissions` and by the permissions of a
+blueprint that names its own roles. --}}
+// A role identifier is stored as plain text that the auth library splits on `,` and compares as it is. Exactly one such
+// id, never a list, is what any path may write there.
+export const ROLE_ID = /^[a-z0-9-]+$/;
+
+// The auth library looks a role up by plain object key, so a role named after a key every object has (`constructor`)
+// resolves to that member and its endpoints fail with a 500 for the account that holds it. No path accepts one.
+export function isInheritedKey(id: string): boolean {
+  return id in Object.prototype;
+}
+
+// The longest identifier a role can have.
+export const MAX_ROLE_ID_LENGTH = 40;
+
+// What is wrong with a value used as a role id: it is not one id (`invalid`: not a string, outside `ROLE_ID`), it is too
+// long (`too-long`) or it names a key every object has (`reserved`). Every path that reads a role id asks this one
+// question, and a form words the answer with `roleIdMessage`.
+export type RoleIdProblem = 'invalid' | 'too-long' | 'reserved';
+
+export function roleIdProblem(value: unknown): RoleIdProblem | undefined {
+  if (typeof value !== 'string' || !ROLE_ID.test(value)) return 'invalid';
+  if (value.length > MAX_ROLE_ID_LENGTH) return 'too-long';
+  return isInheritedKey(value) ? 'reserved' : undefined;
+}
+
+export function roleIdMessage(problem: RoleIdProblem): string {
+  if (problem === 'too-long') return `At most ${MAX_ROLE_ID_LENGTH} characters`;
+  if (problem === 'reserved') return 'This id is reserved';
+  return 'Lowercase letters, digits and hyphens only';
+}
+
+export function isRoleId(value: unknown): value is string {
+  return roleIdProblem(value) === undefined;
+}
