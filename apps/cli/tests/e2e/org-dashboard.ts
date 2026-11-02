@@ -13,6 +13,14 @@ const TIMEOUT_SERVER = 120_000;
 // The contact count query in the dehydrated state a page carries: the key is tRPC's `[['contact', 'count'], ...]`, and the
 // quotes are escaped in the streamed payload.
 const DEHYDRATED_CONTACT_COUNT = /contact\W{1,8}count/;
+// The titles a document carries: the `title` elements of the markup, and the title of the metadata in the streamed
+// payload, where Next.js carries the metadata of a page that answers 404 (its markup is the error shell, titled with
+// the default of the root layout) with escaped quotes.
+function documentTitlesOf(html: string): string[] {
+  const elements = [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1] ?? '');
+  const streamed = [...html.matchAll(/\\"title\\",\\"\d+\\",\{\\"children\\":\\"([^"\\]*)\\"/g)].map((match) => match[1] ?? '');
+  return [...elements, ...streamed];
+}
 // The address of the "Back to the dashboard" link of a not found page: an anchor in the markup, or the props of the
 // link in the streamed payload, where Next.js carries it with escaped quotes.
 function backLinkTarget(html: string): string | undefined {
@@ -596,7 +604,9 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
       for (const path of ['/contacts', '/contacts/no-such-contact']) {
         const refused = await homeOf(member, path);
         expect([path, refused.status]).toEqual([path, 404]);
-        expect(refused.html, `${path} is titled as a 404`).toMatch(/<title>Page not found \|/);
+        const titles = documentTitlesOf(refused.html);
+        expect(titles.some((title) => title.startsWith('Page not found |')), `${path} is titled as a 404: ${titles.join(', ')}`).toBe(true);
+        expect(titles.some((title) => title.startsWith('Contact')), `${path} keeps no title of its page: ${titles.join(', ')}`).toBe(false);
       }
 
       const home = await homeOf(member);
@@ -610,7 +620,9 @@ export function describeRoles({ server, projectDir }: PagingContext): void {
 
       const unknown = await fetch(new URL('/no-such-page', server().url), { headers: { cookie: member } });
       expect(unknown.status).toBe(404);
-      const target = backLinkTarget(await unknown.text());
+      const unknownHtml = await unknown.text();
+      expect(documentTitlesOf(unknownHtml).some((title) => title.startsWith('Page not found |'))).toBe(true);
+      const target = backLinkTarget(unknownHtml);
       expect(target, 'the not found page links back to the dashboard').toBe('/');
       const landing = await homeOf(member, target);
       expect(landing.status).toBe(200);
