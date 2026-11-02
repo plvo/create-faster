@@ -374,13 +374,7 @@ describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-ne
     expectSessionCookieAttributes(ownerSignIn);
   });
 
-  // https://github.com/plvo/create-faster/issues/459: the factory passes better-auth a dynamic `baseURL` with
-  // `protocol: 'auto'`, and better-auth then decides the `__Secure-` prefix and the `Secure` attribute from NODE_ENV,
-  // not from the scheme of the request. The production build answers `__Secure-better-auth.session_token; Secure` on
-  // plain http, which a browser that does not treat the host as secure drops (Safari does so on localhost).
-  // The sign-in and its status are the test above, so only the scheme assertion sits here. `test.failing` passes
-  // while the body fails: once #459 is fixed the body passes, this test FAILS, and the marker comes off.
-  test.failing('the sign-in cookies are Secure only on https', () => {
+  test('the sign-in cookies are Secure only on https', () => {
     expectSessionCookieSecureMatchesScheme(ownerSignIn, server.url);
   });
 
