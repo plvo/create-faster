@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { createHmac } from 'node:crypto';
 import { join } from 'node:path';
-import { describeWithDocker } from './docker-database';
-import { type CommandResult, cleanupTempDir, createTempDir, type RunningServer, runCli, runCommand } from './helpers';
+import { describeWithDocker, generateDockerProject } from './docker-database';
+import { type CommandResult, cleanupTempDir, type RunningServer, runCommand } from './helpers';
 import { AUTH_SECRET, buildAndStartWeb, describeFailure, post, SEEDED_ADMIN, signIn } from './org-dashboard';
 
 const TIMEOUT_INSTALL = 180_000;
@@ -104,14 +104,7 @@ describeWithDocker(`${BLUEPRINT} email change e2e`)(`${BLUEPRINT}: email change 
   };
 
   beforeAll(async () => {
-    const tempDir = await createTempDir();
-    const name = 'bp-org-email-change';
-    const result = await runCli([name, '--blueprint', BLUEPRINT, '--no-git', '--no-install', '--pm', 'bun'], tempDir);
-    expect(result.exitCode, result.stderr).toBe(0);
-
-    projectDir = join(tempDir, name);
-    const install = await runCommand(['bun', 'install'], projectDir);
-    expect(install.exitCode, install.stderr).toBe(0);
+    projectDir = await generateDockerProject('bp-org-email-change', ['--blueprint', BLUEPRINT]);
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
     expect(setup.exitCode, describeFailure(setup)).toBe(0);
 

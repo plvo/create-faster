@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import { describeWithDocker } from './docker-database';
-import { cleanupTempDir, generateInstalledProject, type RunningServer, runCommand } from './helpers';
+import { describeWithDocker, generateDockerProject } from './docker-database';
+import { cleanupTempDir, type RunningServer, runCommand } from './helpers';
 import {
   buildAndStartWeb,
   callTrpc,
@@ -64,7 +64,7 @@ describeWithDocker(`${BLUEPRINT} palette search e2e`)(`${BLUEPRINT}: records of 
   };
 
   beforeAll(async () => {
-    projectDir = await generateInstalledProject('bp-multitenant-palette', ['--blueprint', BLUEPRINT]);
+    projectDir = await generateDockerProject('bp-multitenant-palette', ['--blueprint', BLUEPRINT]);
     const setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
     expect(setup.exitCode, describeFailure(setup)).toBe(0);
     server = await buildAndStartWeb(projectDir);

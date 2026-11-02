@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describeWithDocker } from './docker-database';
+import { describeWithDocker, generateDockerProject } from './docker-database';
 import {
   type CommandResult,
   cleanupTempDir,
@@ -234,7 +234,7 @@ describeWithDocker('org-dashboard-nextjs blueprint e2e')('org-dashboard-nextjs: 
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledProject('bp-seed-org-dashboard', ['--blueprint', 'org-dashboard-nextjs']);
+    projectDir = await generateDockerProject('bp-seed-org-dashboard', ['--blueprint', 'org-dashboard-nextjs']);
     setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
   }, TIMEOUT_INSTALL + TIMEOUT_SETUP);
 
@@ -352,7 +352,7 @@ describeWithDocker('multitenant-saas-nextjs blueprint e2e')('multitenant-saas-ne
   let server: RunningServer;
 
   beforeAll(async () => {
-    projectDir = await generateInstalledProject('bp-seed-multitenant-saas', ['--blueprint', 'multitenant-saas-nextjs']);
+    projectDir = await generateDockerProject('bp-seed-multitenant-saas', ['--blueprint', 'multitenant-saas-nextjs']);
     const setup = await runCommand(['bun', 'run', 'local-setup'], projectDir);
     expect(setup.exitCode, describeFailure(setup)).toBe(0);
     server = await buildAndStartWeb(projectDir);
