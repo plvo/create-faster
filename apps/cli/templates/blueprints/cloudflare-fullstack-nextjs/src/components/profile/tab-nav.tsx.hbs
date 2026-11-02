@@ -23,7 +23,7 @@ export function ProfileTabNav() {
             key={tab.url}
             href={tab.url}
             className={cn(
-              'rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              'inline-flex min-h-11 shrink-0 items-center rounded-md px-2 text-sm font-medium whitespace-nowrap transition-colors sm:px-3 md:min-h-9',
               isActive
                 ? 'bg-accent text-accent-foreground'
                 : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',

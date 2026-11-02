@@ -42,7 +42,7 @@ export function ProfileTabNav() {
                 router.push(tab.href);
               });
             }}
-            className={`px-2 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px sm:px-4 ${
+            className={`inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px sm:px-4 ${
               isActive
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
