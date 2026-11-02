@@ -296,7 +296,8 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(router).toContain("import { adminProcedure } from '../middleware/rbac'");
     expect(router).toContain('auth.api.createUser(');
     expect(router).toContain('headers: ctx.headers');
-    expect(router).toContain('auth.api.setRole(');
+    expect(router).toContain('{{> roles/user-role-procedures auth="createAuth(ctx.db)"}}');
+    expect(partial('roles/user-role-procedures')).toContain('{{auth}}.api.setRole(');
     expect(router).toContain('auth.api.setUserPassword(');
     expect(router).toContain('auth.api.banUser(');
     expect(router).toContain('auth.api.unbanUser(');
@@ -486,9 +487,10 @@ describe('cloudflare-fullstack-nextjs blueprint META', () => {
     expect(bpFile('src/lib/allowed-routes.ts.hbs')).toContain('{{> org-dashboard/allowed-routes}}');
     const rule = partial('org-dashboard/allowed-routes');
     expect(rule).toContain("import { usePermissions } from '@/hooks/use-permission'");
-    expect(rule).toContain("import { verdictOf } from '@repo/auth/permissions'");
+    expect(rule).toContain("import { isRequestGranted } from '@repo/auth/permissions'");
     // groupedPages only holds categories with at least one visible route, so empty groups never render.
-    expect(rule).toContain("ROUTES.filter((item) => verdictOf(granted, item.permissions ?? {}) === 'granted')");
+    expect(rule).toContain('ROUTES.filter((item) => isRequestGranted(granted, item.permissions ?? {}))');
+    expect(partial('roles/permissions')).toContain('export function isRequestGranted(');
     expect(partial('roles/permissions')).toContain('export function verdictOf(');
   });
 

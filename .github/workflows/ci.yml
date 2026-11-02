@@ -63,6 +63,10 @@ jobs:
         working-directory: apps/cli
         run: bun run test:integration
 
+      - name: "📘 Blueprint Tests"
+        working-directory: apps/cli
+        run: bun run test:blueprints
+
       - name: "💾 Cache Build Artifacts"
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
