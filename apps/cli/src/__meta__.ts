@@ -1861,6 +1861,7 @@ export const META: Meta = {
             './types': './src/types.ts',
             './permissions': './src/permissions.ts',
             './invitation-link': './src/invitation-link.ts',
+            './role-grants': './src/role-grants.ts',
           },
         },
         api: {

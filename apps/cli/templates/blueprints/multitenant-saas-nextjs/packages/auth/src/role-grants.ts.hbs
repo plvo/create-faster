@@ -1,0 +1,80 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/role-grants.ts
+---
+import { db } from '@repo/db';
+import { isBuiltInRole, isRoleId, ROLES } from './permissions';
+
+{{{{raw}}}}
+type Grants = Record<string, readonly string[]>;
+
+export interface StoredRole {
+  id: string;
+  role: string;
+  permission: string;
+}
+
+export function storedRolesOf(organizationId: string): Promise<StoredRole[]> {
+  return db.query.organizationRoleTable.findMany({
+    columns: { id: true, role: true, permission: true },
+    where: (row, { eq }) => eq(row.organizationId, organizationId),
+  });
+}
+
+function parseGrants(permission: string): Grants | undefined {
+  try {
+    const parsed: unknown = JSON.parse(permission);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
+    return Object.values(parsed).every((actions) => Array.isArray(actions) && actions.every((action) => typeof action === 'string'))
+      ? (parsed as Grants)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// A built-in role, else the row of the organization. `undefined` for a role nobody defined and a row that cannot be read.
+export function grantsOf(roleId: string, stored: readonly StoredRole[]): Grants | undefined {
+  if (isBuiltInRole(roleId)) return ROLES[roleId].statements;
+  const row = stored.find((each) => each.role === roleId);
+  return row ? parseGrants(row.permission) : undefined;
+}
+
+function grantsOfMember(memberRole: string, stored: readonly StoredRole[]): Grants {
+  const held: Record<string, string[]> = {};
+  for (const roleId of memberRole.split(',')) {
+    for (const [resource, actions] of Object.entries(grantsOf(roleId, stored) ?? {})) {
+      held[resource] = [...new Set([...(held[resource] ?? []), ...actions])];
+    }
+  }
+  return held;
+}
+
+function holdsAll(held: Grants, wanted: Grants): boolean {
+  return Object.entries(wanted).every(([resource, actions]) =>
+    actions.every((action) => Object.hasOwn(held, resource) && held[resource]?.includes(action)),
+  );
+}
+
+function holds(memberRole: string, stored: readonly StoredRole[], request: Grants): boolean {
+  return holdsAll(grantsOfMember(memberRole, stored), request);
+}
+
+// A member gives, changes or deletes a role only when it holds every permission of it. The owner holds them all.
+export function canAssignRole(memberRole: string, targetRoleId: string, stored: readonly StoredRole[]): boolean {
+  const wanted = grantsOf(targetRoleId, stored);
+  return wanted !== undefined && holds(memberRole, stored, wanted);
+}
+
+export function holdsEveryPermissionOf(memberRole: string, otherRole: string, stored: readonly StoredRole[]): boolean {
+  return holds(memberRole, stored, grantsOfMember(otherRole, stored));
+}
+
+export function assignableRoleIds(memberRole: string, stored: readonly StoredRole[]): string[] {
+  const ids = new Set([...Object.keys(ROLES), ...stored.map((each) => each.role)]);
+  return [...ids].filter((id) => isRoleId(id) && canAssignRole(memberRole, id, stored));
+}
+
+{{{{/raw}}}}

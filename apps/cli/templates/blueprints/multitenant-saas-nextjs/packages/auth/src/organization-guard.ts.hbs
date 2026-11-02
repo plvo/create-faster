@@ -1,0 +1,163 @@
+---
+mono:
+  scope: pkg
+  name: auth
+  path: src/organization-guard.ts
+---
+import type { BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { isRoleId } from './permissions';
+import {
+  canAssignRole,
+  grantsOf,
+  holdsEveryPermissionOf,
+  type StoredRole,
+  storedRolesOf,
+} from './role-grants';
+
+{{{{raw}}}}
+const ONE_ROLE_ID = 'A role is one id of lowercase letters, digits and hyphens';
+
+type Context = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
+
+interface Caller {
+  userId: string;
+  role: string;
+  organizationId: string;
+  stored: StoredRole[];
+}
+
+const refuse = (status: 'BAD_REQUEST' | 'UNAUTHORIZED' | 'FORBIDDEN', message: string) => new APIError(status, { message });
+
+async function memberIn(ctx: Context, organizationId: string, userId: string): Promise<Caller | null> {
+  const member = await ctx.context.adapter.findOne<{ role: string }>({
+    model: 'member',
+    where: [
+      { field: 'organizationId', value: organizationId },
+      { field: 'userId', value: userId },
+    ],
+  });
+  return member ? { userId, role: member.role, organizationId, stored: await storedRolesOf(organizationId) } : null;
+}
+
+// The member that sends the request, in the organization better-auth acts on: the one the body names, else the one the
+// session has active. A request that cannot be placed in an organization of the caller is refused here.
+async function requestCaller(ctx: Context): Promise<Caller> {
+  const session = await getSessionFromCtx(ctx);
+  if (!session) throw refuse('UNAUTHORIZED', 'Sign in to continue');
+  const named: unknown = ctx.body?.organizationId;
+  if (named !== undefined && typeof named !== 'string') throw refuse('BAD_REQUEST', 'Invalid organization');
+  const organizationId = named || session.session.activeOrganizationId;
+  if (!organizationId) throw refuse('BAD_REQUEST', 'No active organization');
+  const caller = await memberIn(ctx, organizationId, session.user.id);
+  if (!caller) throw refuse('FORBIDDEN', 'You are not a member of this organization');
+  return caller;
+}
+
+function readRoleId(value: unknown): string {
+  if (typeof value !== 'string' || !isRoleId(value)) throw refuse('BAD_REQUEST', ONE_ROLE_ID);
+  return value;
+}
+
+function requireGivableRole(caller: Caller, value: unknown): void {
+  const role = readRoleId(value);
+  if (!grantsOf(role, caller.stored)) throw refuse('BAD_REQUEST', 'No role has that id');
+  if (!canAssignRole(caller.role, role, caller.stored)) {
+    throw refuse('FORBIDDEN', 'You can only give a role whose permissions you hold');
+  }
+}
+
+async function requireHeldStoredRole(ctx: Context, caller: Caller, verb: 'change' | 'delete'): Promise<void> {
+  const { roleName, roleId } = ctx.body ?? {};
+  const named = typeof roleName === 'string' && roleName !== '' ? roleName : caller.stored.find((row) => row.id === roleId)?.role;
+  if (!named || !grantsOf(named, caller.stored)) throw refuse('BAD_REQUEST', 'No role has that id');
+  if (!canAssignRole(caller.role, named, caller.stored)) {
+    throw refuse('FORBIDDEN', `You can only ${verb} a role whose permissions you hold`);
+  }
+}
+
+async function targetMember(ctx: Context, caller: Caller, idOrEmail: unknown): Promise<{ role: string }> {
+  if (typeof idOrEmail !== 'string' || idOrEmail === '') throw refuse('BAD_REQUEST', 'Member not found');
+  const userId = idOrEmail.includes('@')
+    ? (await ctx.context.internalAdapter.findUserByEmail(idOrEmail.toLowerCase()))?.user.id
+    : undefined;
+  const member = await ctx.context.adapter.findOne<{ role: string }>({
+    model: 'member',
+    where: [
+      { field: 'organizationId', value: caller.organizationId },
+      userId ? { field: 'userId', value: userId } : { field: 'id', value: idOrEmail },
+    ],
+  });
+  if (!member) throw refuse('BAD_REQUEST', 'Member not found');
+  return member;
+}
+
+async function requireManageableMember(ctx: Context, caller: Caller, idOrEmail: unknown): Promise<void> {
+  const target = await targetMember(ctx, caller, idOrEmail);
+  if (!holdsEveryPermissionOf(caller.role, target.role, caller.stored)) {
+    throw refuse('FORBIDDEN', 'You can only change a member whose permissions you hold');
+  }
+}
+
+// The organization plugin trusts any member whose role holds `member.update`, `member.delete`, `invitation.create`,
+// `ac.update` or `ac.delete` with every role that exists, names a role with any text, renames a role without the
+// members and invitations that hold it by name. This
+// plugin sits in front of its endpoints, so a tRPC procedure, `auth.api.*` and a direct request to
+// `/api/auth/organization/*` meet the same rules:
+// - a role is named and given as one id, and given only by a member that holds every permission of that role;
+// - a member, an invitation or a stored role is changed only by a member that holds every permission of what it holds;
+// - a role is not renamed.
+export const organizationGuard = {
+  id: 'organization-guard',
+  hooks: {
+    before: [
+      {
+        matcher: (ctx) => ctx.path === '/organization/update-member-role',
+        handler: createAuthMiddleware(async (ctx) => {
+          const caller = await requestCaller(ctx);
+          requireGivableRole(caller, ctx.body?.role);
+          await requireManageableMember(ctx, caller, ctx.body?.memberId);
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/organization/remove-member',
+        handler: createAuthMiddleware(async (ctx) => {
+          const caller = await requestCaller(ctx);
+          await requireManageableMember(ctx, caller, ctx.body?.memberIdOrEmail);
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/organization/invite-member',
+        handler: createAuthMiddleware(async (ctx) => {
+          const caller = await requestCaller(ctx);
+          requireGivableRole(caller, ctx.body?.role);
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/organization/create-role',
+        handler: createAuthMiddleware(async (ctx) => {
+          readRoleId(ctx.body?.role);
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/organization/update-role',
+        handler: createAuthMiddleware(async (ctx) => {
+          if (ctx.body?.data?.roleName !== undefined) {
+            throw refuse(
+              'BAD_REQUEST',
+              'A role cannot be renamed: members and invitations hold it by name. Create a new role, move the members to it, then delete this one',
+            );
+          }
+          await requireHeldStoredRole(ctx, await requestCaller(ctx), 'change');
+        }),
+      },
+      {
+        matcher: (ctx) => ctx.path === '/organization/delete-role',
+        handler: createAuthMiddleware(async (ctx) => {
+          await requireHeldStoredRole(ctx, await requestCaller(ctx), 'delete');
+        }),
+      },
+    ],
+  },
+} satisfies BetterAuthPlugin;
+{{{{/raw}}}}

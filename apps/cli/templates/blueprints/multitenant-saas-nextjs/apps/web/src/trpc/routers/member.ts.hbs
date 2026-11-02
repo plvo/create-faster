@@ -5,6 +5,7 @@ mono:
   name: api
   path: src/router/member.ts
 ---
+import { assignableRoleIds, storedRolesOf } from '@repo/auth/role-grants';
 import { auth } from '../auth';
 {{#if (isMono)}}
 import { router } from '../trpc';
@@ -23,6 +24,11 @@ export const memberRouter = router({
       query: { organizationId: ctx.orgId },
     });
     return result?.members ?? [];
+  }),
+
+  assignableRoles: orgProcedure.query(async ({ ctx }) => {
+    const caller = await auth.api.getActiveMember({ headers: ctx.headers });
+    return caller ? assignableRoleIds(caller.role, await storedRolesOf(ctx.orgId)) : [];
   }),
 
   updateRole: permissionProcedure('member', 'update')

@@ -43,6 +43,7 @@ export function RolesTable() {
     trpc.role.delete.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.role.list.queryFilter());
+        queryClient.invalidateQueries(trpc.member.assignableRoles.queryFilter());
         setDeleting(null);
       },
       onError: (err) => toast.error(err.message),
@@ -134,7 +135,7 @@ export function RolesTable() {
           if (!next) setDeleting(null);
         }}
         title='Delete role'
-        description={`Delete role "${deleting ?? ''}"? Members with this role will be reset.`}
+        description={`Delete role "${deleting ?? ''}"? A role that members hold cannot be deleted.`}
         confirmLabel='Delete'
         disabled={remove.isPending}
         onConfirm={() => {

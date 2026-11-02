@@ -6,6 +6,7 @@ mono:
 ---
 'use client';
 
+import { isBuiltInRole, roleIdMessage, roleIdProblem } from '@repo/auth/permissions';
 import { Button } from '@repo/ui/components/ui/button';
 import {
   Dialog,
@@ -39,6 +40,13 @@ export function RoleFormDialog({ open, onOpenChange, initial }: RoleFormDialogPr
   );
 }
 
+function roleNameError(name: string): string | null {
+  if (name === '') return null;
+  if (isBuiltInRole(name)) return 'This name is a built-in role';
+  const problem = roleIdProblem(name);
+  return problem ? roleIdMessage(problem) : null;
+}
+
 function RoleForm({ onOpenChange, initial }: Pick<RoleFormDialogProps, 'onOpenChange' | 'initial'>) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -50,6 +58,7 @@ function RoleForm({ onOpenChange, initial }: Pick<RoleFormDialogProps, 'onOpenCh
     trpc.role.create.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.role.list.queryFilter());
+        queryClient.invalidateQueries(trpc.member.assignableRoles.queryFilter());
         onOpenChange(false);
       },
       onError: (err) => toast.error(err.message),
@@ -59,11 +68,15 @@ function RoleForm({ onOpenChange, initial }: Pick<RoleFormDialogProps, 'onOpenCh
     trpc.role.update.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.role.list.queryFilter());
+        queryClient.invalidateQueries(trpc.member.assignableRoles.queryFilter());
         onOpenChange(false);
       },
       onError: (err) => toast.error(err.message),
     }),
   );
+
+  const nameError = initial ? null : roleNameError(roleName);
+  const cannotSubmit = create.isPending || update.isPending || (!initial && (roleName === '' || nameError !== null));
 
   function submit() {
     if (initial) update.mutate({ roleName: initial.roleName, permission });
@@ -79,7 +92,22 @@ function RoleForm({ onOpenChange, initial }: Pick<RoleFormDialogProps, 'onOpenCh
         {!initial && (
           <div className='space-y-2'>
             <Label htmlFor='roleName'>Name</Label>
-            <Input id='roleName' value={roleName} onChange={(e) => setRoleName(e.target.value)} />
+            <Input
+              id='roleName'
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value)}
+              placeholder='billing-admin'
+              autoComplete='off'
+              autoCapitalize='none'
+              spellCheck={false}
+              aria-invalid={nameError !== null}
+              aria-describedby={nameError ? 'roleName-error' : undefined}
+            />
+            {nameError ? (
+              <p id='roleName-error' role='alert' className='text-sm text-destructive'>
+                {nameError}
+              </p>
+            ) : null}
           </div>
         )}
         {catalog && (
@@ -94,7 +122,7 @@ function RoleForm({ onOpenChange, initial }: Pick<RoleFormDialogProps, 'onOpenCh
         <Button variant='outline' onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
-        <Button onClick={submit} disabled={create.isPending || update.isPending}>
+        <Button onClick={submit} disabled={cannotSubmit}>
           {initial ? 'Save' : 'Create'}
         </Button>
       </DialogFooter>
